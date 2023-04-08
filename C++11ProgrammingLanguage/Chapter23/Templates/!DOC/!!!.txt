@@ -1,0 +1,159 @@
+//-------------------------------------------------------------------------------------------------------
+1. Solution demonstruje pouzitie TEMPLATES v C++.
+2. TEMPLATES umoznuje implementovat GENERIC PROGRAMMING v C++.
+3. TEMPLATES umoznuju definovat CLASSES, alebo FUNCTIONS, ktore maju TYPES ako PARAMETERS. TYPE PARAMETERS je mozne pouzivat v definicii CLASS, alebo FUNCTION ako normalny TYPE. Jeho realna hodnota sa aplikuje az pri pouziti TEMPLATE. C++ umoznuje nasledujuce typy TEMPLATES.
+   A. CLASS TEMPLATES.
+   B. FUNCTION TEMPLATES.
+   C. METHOD TEMPLATES. Su METHODS, ktore maju vlastne TYPE PARAMETERS. TYPE PARAMETERS pre METHODS musia byt uvedene na SEPARATNYCH deklaraciach [template<TType>], aby sa odlisili od pripadnych CLASS TYPE PARAMETERS.
+4. K FUNCTION TEMPLATES patria GLOBAL FUNCTION TEMPLATES, TEMPLATE METHODS, GLOBAL OPERATOR TEMPLATESS a METHOD OPERATOR TEMPLATES.
+!!! 5. TEMPLATES su CISTO COMPILE-TIME CONSTRUCTS, ktore nemaju ZIADNU SPECIALNU PODPORU v RUN-TIME, ako je to napriklad v pripade POLYMORFIZMU, kde exituje POLYMORFNE volanie VIRTUAL METHODS cez VIRTUAL TABLE. Na rozdiel od TEMPLATES su .NET GENERICS RUN-TIME CONSTRUCT.
+6. TEMPLATES su definovane pomocou SYNTAX [template<typename T1,...,typename TN>], ktora musi predchadzat definicii CLASS TEMPLATES, METHOD TEMPLATES, alebo FUNCTION TEMPLATES. Hodnoty 'T1', az 'TN' reprezentuju mena TYPE PARAMETERS, ktore je mozne pouzit v definicii TEMPLATE ako TYPE PLACEHOLDER. TYPE PLACEHOLDER sa v COMPILE TIME pri vytvarani TEMPLATE INSTANCE nahradi skutocnym TYPE.
+!!! 7. TEMPLATES v C++ NEUMOZNUJU definovat zoznam poziadaviek na to ake TYPES moze TEMPLATE prijimat. Ciastocne je toto obmedzenie mozne obist doplnenim prikazov [static_assert()], ktore hodia v COMPILE TIME ERROR v pripade, ze zadana podmienka vrati FALSE.
+8. METHODS definovane v TEMPLATES, aj ked nie su METHODS TEMPLATES (tj. nemaju vlastne specializovane TYPE PARAMETERS) su sami tiez TEMPLATES, ktore su vytvarane v COMPILE TIME pri vytvarani TEMPLATE INSTANCE.
+9. METHODS TEMPLATE CLASSES je podobne ako pri beznych CLASSES mozne definovat aj MIMO definicie TEMPLATE CLASS. V takom pripade je vsak nutne pouzit KEYWORD [template<>] a pri nazve CLASS je treba definovat vsetky TYPE PARAMETERS pomocou SYNTAXE [RETURN_TYPE FUNCTION<T1,...,TN>FunctionName(PARAMETERS)].
+!!! 10. FUNCTION TEMPLATES a METHOD TEMPLATES mozu byt OVERLOADED a to AJ KED MAJU IDENTICKY PROTOTYPE. Staci, aby sa lisili poctom TYPE PARAMETERS. Pri TEMPLATE INSTANCING, ak COMPILER automaticky detekuje vhodnu TEMPLATE, tak VZDY preferuje NON-TEMPLATE FUNCTION pred TEMPLATE FUNCTION, ak jej PARAMETERS sa zhoduju s PARAMETERS pouzitymi pri volani FUNCTION.
+!!! 11. CLASS TEMPLATES NEMOZU byt OVERLOADED.
+!!!!! 12. Pri deklaracii CLASS TEMPLATES sa SILNE NEDOPORUCUJE definovat METHODS v CPP FILES. C++ LINKER taketo METHODS NEDOKAZE bez EXPLICITNEHO INSTANCING vlozit do GENEROVANEHO OUTPUT suboru. Vysledkom je, ze LINKER NEVIE najst definicie METHOD TEMPLATES a hodi COMPILER ERROR.
+13. TEMPLATE INSTANTIATION je proces vytvarania CODE z TEMPLATES.
+14. TEMPLATE SPECIALIZATION je vytvorenie TEMPLATE CODE s uz substituovanymi TYPE PARAMETERS. TEMPLATE SPECIALIZATION je mozne vyuzit na implementaciu FUNCTIONS ci METHODS, ktore je mozne pre urcite typy TYPE PARAMETERS mozne implementovat optimalejsie ako su implementovane pomocou TEMPLATE.
+!!! 15. C++ generuje CODE iba tych TEMPLATE FUNCTIONS a TEMPLATE METHODS, ktore su v PROGRAME REALNE POUZITE. Ak napriklad TEMPLATE CLASS definuje 10 METHODS, no pre PARAMETER XXX PROGRAM pouziva iba 4 z nich, tak C++ vygeneruje CODE IBA pre tieto 4 METHODS a pre ostatnych 6 METHODS CODE NIE JE generovany.
+16. CLASSES, STRUCTURES, FUNCTIONS a METHODS ak su vytvorene z TEMPLATES s TYMI ISTYMI TYPE PARAMETERS su EKVIVALENTNE a to aj v pripade pouzitia TYPE ALIASES. Ak TYPE ALIASES refereruju na ten isty TYPE a tento sa pouzije pri TEMPLATE INSTANTIATION, tak vytvorene CLASSES, STRUCTURES, FUNCTIONS a METHODS su IDENTICKE.
+!!! 17. Ak je instancia CLASS TEMPLATE vytvorena pre BASE aj DERIVED CLASSES, tak NIE JE MOZNE VZAJOMNE PRETYPOVAT tieto 2 CLASSES, aj ked BASE a DERIVED CLASSES samozrejme pretypovat je mozne.
+18. C++ dokaze vykonava pre TEMPLATES iba SYNTAKTICKU a JEDNODUCHU SEMATICKU kontrolu. Kompletna kontrola je vykonavana az pri TEMPLATE INSTANTIATION, ked uz su konkretne TYPES dosadene za TYPE PARAMETERS zname.
+19. CLASS TEMPLATES mozu obsahovat nasledujuce MEMBERS.
+   A. VARIABLES.
+   B. CONSTANTS.
+   C. METHODS.
+   D. TYPE ALIASES.
+   E. STATIC VARIABLES.
+   F. STATIC CONSTANTS.
+   G. STATIC METHODS.
+   H. MEMBER TYPES.
+   I. MEMBER TEMPLATES (CLASS, STRUCTURE a FUNCTION TEMPLATES).
+20. TEMPLATE CLASSES a TEMPLATE STRUCTURES NEMOZU mat VIRTUAL METHODS ako TEMPLATE METHODS. Vyzadovalo by si to vyrazne zmeny na strane C++ LINKER, a preto C++ VIRTUAL TEMPLATE METHODS NEPODPORUJE.
+!!! 21. Aj ked TEMPLATE CLASSES a TEMPLATE STRUCTURES mozu mat NESTED CLASSES, silne sa odporuca definovat NESTED CLASS v TEMPLATE CLASS IBA ak NESTED CLASS vyzaduje VSETKY TYPE PARAMETERS z TEMPLATE CLASS. Inak to vedie k nutnosti definovat vsetky TYPE PARAMETERS pri kazdom pouziti NESTED CLASS co moze viest ku CODE BLOATING.
+22. FUNCTION TEMPLATES su FUNCTIONS a OPERATORS, ktore maju TYPE PARAMETERS.
+23. C++ dokaze dedukovat TYPE PARAMETERS pre TEMPLATE FUNCTIONS, ak volanie TEMPLATE FUNCTIONS jednoznacne urcuje za ake TYPES sa maju TYPE PARAMETERS substituovat. V pripade, ze takuto jednoznacnu substituciu NIE JE mozne vykonat, je NUTNE TYPE PARAMETERS definovat EXPLICITNE, inak COMPILER hodi ERROR.
+!!! 24. C++ NEUMOZNUJE dedukciu TYPE PARAMETERS pre TEMPLATE CLASSES.
+!!! 25. C++ pri TYPE PARAMETERS DEDUCTION dokaze rozlisovat ci sa ma volat TEMPLATE, ktora ako PARAMETER pouziva REFERENCE s COPY SEMANTICS, alebo REFERENCE s MOVE SEMANTICS.
+   A. Pre TEMPLATE FUNCTIONS PARAMETERS, ktore su LVALUES sa pri TYPE PARAMETERS DEDUCTION vola verzia TEMPLATE FUNCTION, ktora pouziva REFERENCE s COPY SEMANTICS.
+   B. Pre TEMPLATE FUNCTIONS PARAMETERS, ktore su RVALUES sa pri TYPE PARAMETERS DEDUCTION vola verzia TEMPLATE FUNCTION, ktora pouziva REFERENCE s MOVE SEMANTICS.
+26. C++ umoznuje vykonavat OVERLOADING TEMPLATE FUNCTIONS a TEMPLATE METHODS. Pri OVERLOADING TEMPLATE FUNCTIONS a TEMPLATE METHODS platia nasledujuce pravidla.
+   A. Vzdy sa preferuje TEMPLATE FUNCTION (METHOD), ktora je VIAC SPECIALIZED. To znaci, ze sa vyberie ta TEMPLATE FUNCTION, ktora ma viac TYPE PARAMETERS zhodnym s tymi, ktore boli pri jej volani pozadovane.
+   B. Ak existuje OVERLOADED NON-TEMPLATE verzia FUNCTION, ktora vyhovuje ARGUMENTS pre ktore je volana, preferuje sa tato NON-TEMPLATE FUNCTION.
+   C. Pomocou EXPLICIT QUALIFICATION (kedy su TYPE PARAMETERS urcene v <>) je mozne vzdy presne urcit, ktora verzia TEMPLATE FUNCTION sa bude volat.
+!!!!! 27. SFINAE (SUBSTITUTION FAILURE IS NOT AN ERROR) je mechanizmus umoznujuci najst alternativu spomedzi VIACERYCH OVERLOADED TEMPLATE FUNCTIONS pri TEMPLATE FUNCTION INSTANTION. SFINAE funguje nasedujucim sposobom.
+   A. SFINAE sa pouziva ak v CODE existuje VIACERO OVERLOADED TEMPLATE FUNCTIONS, ktore maju PROTOTYPE vhodny pre TEMPLATE FUNCTION INSTANTION. To znaci, ze v CODE musia byt definovane 2 a viac TEMPLATE FUNCTIONS s ROVNAKYM MENOM, z ktorych C++ musi vybrat tu spravnu.
+   B. Ak CODE niektoru z tychto OVERLOADED TEMPLATE FUNCTIONS, C++ musi najst tu TEMPLATE FUNCTION, ktorej PROTOTYPE zodpoveda ARGUMENTS, ktore CODE pri volani TEMPLATE FUNCTION pouzil.
+   C. C++ pri vyhladavanie vhodnej OVERLOADED TEMPLATE FUNCTION skusa VSETKY TEMPLATE FUNCTIONS, ktore maju ROVNAKE MENO a ROVNAKY POCET PARAMETERS ako je pocet ARGUMENTS s ktorymi CODE volal TEMPLATE FUNCTION.
+   !!! D. Pocas skusania vsetkych OVERLOADED TEMPLATE FUNCTIONS moze C++ narazit na situaciu, ktora vedie ku COMPILATION ERROR. Napriklad pri pokuse o vytvorenie TEMPLATE FUNCTION INSTANCE z TEMPLATE FUNCTION [template<typename TType> void TemplateFunction(typename TType::value_type)] pre TYPE [int] dojde ku COMPILATION ERROR, pretoze TYPE [int] NEMA definovany TYPE [int::value_type]. Avsak pre TYPE [vector<T>] COMPILER CODE AKCEPTUJE, pretoze TYPE TYPE [vector<T>] MA TYPE [vector<T>::value_type].
+   !!!!! E. Vo verziach C++ pred C++ 11 by COMPILER vyhlasil COMPILATION ERROR.
+   !!!!! F. V C++ 11 vsak existuje mechanizmus SFINAE, ktory zabezpeci, ze ak COMPILER pri hladani vhodnej TEMPLATE FUNCTION INSTANCE taku najde (ktora pri INSTANTION NEVEDIE ku COMPILATION ERROR) IGNORUJE VSETKY PREDCHADZAJUCE TEMPLATE FUNCTION INSTANTIONS, ktore viedli k ERROR. To znaci, ze COMPILER ak ma 3 OVERLOADED TEMPLATE FUNCTIONS, pricom prve 2 hodia pri INSTANTION COMPILER ERROR, zatial co 3. ARGUMENTS AKCEPTUJE, tak C++ NEHODI ERROR, ale vyberie 3. OVERLOADED TEMPLATE FUNCTION.
+!!!!! 28. EXTREMNE DOLEZITE. Mechanizmus SFINAE sa aplikuje IBA na PROTOTYPES OVERLOADED TEMPLATE FUNCTIONS, no NIE na ich BODIES. To znaci, ze C++ pri TEMPLATE FUNCTION INSTANTION skontroluje ci PROTOTYP je pre dane TYPE ARGUMENTS korektny a OKAMZITE TUTO OVERLOADED TEMPLATE FUNCTION VYBERIE BEZ OHLADU ci CODE v tele vybratej TEMPLATE FUNCTION s danym TYPE ARGUMENTS nevedie ku COMPILATION ERROR. Samozrejme, pri preklade BODY danej TEMPLATE FUNCTION ak C++ NASLEDNE detekuje COMPILATION ERROR, tak kompilacia skonci hodenim tejto COMPILATION ERROR.
+!!!!! 29. EXTREMNE DOLEZITE. Mechanizmus SFINAE sa NEAPLIKUJE okrem BODY TEMPLATE FUNCTIONS, ani na BODY TEMPLATE METHODS.
+!!! 30. Ak COMPILER pri TEMPLATE INSTANCING hlada vhodnu OVERLOADED TEMPLATE FUNCTION (METHOD) vykonava nasledujuce typy CONVERSIONS.
+   A. COMPILER pre TYPE PARAMETERS vykonava standardne konverzie z POINTERS/REFERENCES na DERIVED TYPES na POINTERS/REFERENCES na BASE TYPES.
+   !!! B. COMPILER pre TYPE PARAMETERS, ktore nie su POINTERS/REFERENCES na CLASSES NEVYKONAVA ZIADNE a to ANI TRIVIALNE KONVERZIE. To znaci, ze COMPILER pri hladani vhodnej OVERLOADED TEMPLATE FUNCTION NEVYKONA ani napriklad konverziu z [int] na [double].
+   C. Pre NON-TYPE PARAMETERS VYKONAVA COMPILER standardne konvzerzie.
+31. C++ umoznuje definovat TEMPLATE ALIASES 2 sposobmi.
+   A. Pouzitim KEYWORD [typedef].
+   B. Pouzitim KEYWORD [using]. Tato SYNTAX bola pridana v C++ 11.
+32. C++ 11 umoznuje pomocou KEYWORD [using] deklarovat TYPE ALIASES. Pre TYPE ALIASES platia nasledujuce vlastnosti.
+   A. SYNTAX TYPE ALIAS je [template<typename T1,...,typename TN> using Alias=typename TEMPLATE<T1,...,TN>].
+   !!! B. TYPE ALIASES NIE su deklaraciou novych TEMPLATES, iba vytvorenim ALIAS pre TYPES generovane z existujucich TEMPLATES.
+   C. TYPE ALIASES mozu byt deklarovane iba v TYPE SCOPE a GLOBAL SCOPE. Nemozu byt vsak deklarovane v telach FUNCTIONS.
+!!! 33. TEMPLATES by VRATANE ich DEFINICII (TEMPLATE BODIES) mali byt VZDY deklarovane v HEADER (.H) FILE a NIKDY nie v .CPP FILE, inak LINKER NEDOKAZE vytvorit .EXE FILE.
+//-------------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------------
+Priklad aplikacie mechanizmu SFINAE.
+
+1. SFINAE sa aplikuje IBA na OVERLOADED TEMPLATE FUNCTIONS a OVERLOADED TEMPLATE METHODS, ktore maju rovnaky pocet PARAMETERS a pri volani ktorych MUSI COMPILER vybrat spravnu verziu. Nasledujuci CODE definuje 2 TEMPLATE FUNCTIONS, ktore su OVERLOADED, pretoze obe maju 2 PARAMETERS.
+
+	template<typename TType>
+	void TemplateOverride(TType, typename TType::value_type)
+	{
+		wprintf_s(L"TEMPLATE FUNCTION 1 CALLED !\n");
+	}
+
+	template<typename TType>
+	void TemplateOverride(TType, TType)
+	{
+		wprintf_s(L"TEMPLATE FUNCTION 2 CALLED !\n");
+	}
+
+2. Nasledujuci riadok CODE zavola OVERLOADED TEMPLATE FUNCTION a COMPILER musi rozhodnut, ktoru z OVERLOADED verzii TEMPLATE FUNCTION zavola.
+
+	TemplateOverride(100,200);
+
+!!! 3. COMPILER pre tento CODE vykona proces hladania vhodnej OVERLOADED TEMPLATE FUNCTION v nasledujucich krokoch.
+   A. COMPILER zisti ci v CODE NEEXISTUJE NON-TEMPLATE FUNCTION TemplateOverride(), ktora by mala 2 PARAMETERS typu [int]. Ak by sa taka v CODE NACHADZALA, COMPILER by OKAMZITE VYBRAL NON-TEMPLATE FUNCTION, pretoze tie maju PREFERENCIU pred TEMPLATE FUNCTIONS.
+   B. Kedze CODE NON-TEMPLATE FUNCTION TemplateOverride() NEOBSAHUJE, COMPILER najde VSETKY TEMPLATES, ktore maju meno TemplateOverride() a maju 2 PARAMETERS. Tomuto kriteriu zodpovedaju obidve OVERLOADED TEMPLATE FUNCTIONS.
+   !!! C. COMPILER zoberie 1. OVERLOADED TEMPLATE FUNCTION [void TemplateOverride(TType, typename TType::value_type)] a skusi vykonat subsituciu ARGUMENTS (100,200) za TYPE PARAMETERS. Kedze vsak TYPE [int] NEMA SUBTYPE [int::value_type], tak SUBSTITUCIA ZLYHA.
+   !!! D. COMPILER zoberie 2. OVERLOADED TEMPLATE FUNCTION [void TemplateOverride(TType, TType)] a skusi vykonat subsituciu ARGUMENTS (100,200) za TYPE PARAMETERS. Tato SUBSITUCIA je VYKONANA KOREKTNE.
+   !!!!! E. Teraz COMPILER aplikuje SFINAE mechanizmus. To znaci, ze hoci substitucia pre 1. TEMPLATE FUNCTION ZLYHALA, tak COMPILER NEGENERUJE ERROR (SUBSITUTION FAILURE IN NOT AN ERROR), ale vyberie 2. TEMPLATE FUNCTION, pre ktoru bola substitucia bola VYKONANA KOREKTNE.
+   !!! F. Ak by C++ mechanizmus SFINAE NEEXISTOVAL, potom by COMPILER pri pokuse o substituciu ARGUMENTS (100,200) pre 1. TEMPLATE FUNCTION hodil COMPILATION ERROR a CODE by NEBOL COMPILED.
+//-------------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------------
+RETURN VALUES v C++ 11.
+
+1. V C++ 11 je mozne RETURN VALUES pre FUNCTIONS definovat 2 sposobmi.
+   A. Klasicky sposob ma SYNTAX [RETURN_TYPE FUNCTION_NAME(PARAMETER_LIST)].
+   B. Novy sposob zavedeny v C++ ma SYNTAX [auto FUNCTION_NAME(PARAMETER_LIST) -> RETURN_TYPE.
+!!! 2. Novy sposob definovania RETURN VALUE umoznuje RETURN_TYPE definovat pomocou noveho OPERATOR decltype(EXPRESSION), kde EXPRESSION je LUBOVOLNA EXPRESSION, ktora je VZDY vyhodnocovana v COMPILE TIME a jej vysledkom je TYPE, ktory nasledne COMPILER pouzije ako RETURN TYPE danej FUNCTION.
+!!!!! 3. Dovodom pre ktory bol novy sposob zavedeny je, ze pri definicii RETURN_TYPE pomocou OPERATOR decltype(EXPRESSION) sa v EXPRESSION mozu nachadzat PARAMETERS z PARAMETER_LIST. Je to preto, lebo definicia RETURN_TYPE sa FYZICKY v CODE nachadza AZ ZA DEKLARACIOU PARAMETERS a teda C++ COMPILER teda v dobe prekladu RETURN_TYPE uz POZNA MENA PARAMETERS z PARAMETER_LIST.
+!!!!! 4. OBROVSKOU VYHODOU je fakt, ze RETURN_TYPE obsahujuci OPERATOR decltype(EXPRESSION) je SUCASTOU FUNCTION PROTOTYPE a teda COMPILER pri hladani vhodnej verzie OVERLOADED TEMPLATE FUNCTION vykona 'EXPRESSION' z OPERATOR decltype(EXPRESSION) v COMPILE TIME. Ak pocas vykonania EXPRESSION dojde ku COMPILER ERROR, tak aplikujuc mechanizmus SFINAE COMPILER NEVRATI COMPILATION ERROR, ale pokracuje vo vyhladavani vhodnej verzie OVERLOADED TEMPLATE FUNCTION skusanim ostatnych OVERLOADED TEMPLATE FUNCTIONS.
+!!!!! 5. Kombinacia novej deklaracie RETURN_TYPE s OPERATOR decltype(EXPRESSION) a mechanizmom SFINAE umoznuje vykonavat rozlicne COMPILE TIME kontroly ako napriklad.
+   A. Zistit ci dany TYPE ma OPERATOR+.
+   B. Zistit ci dany TYPE ma OPERATOR/.
+   C. Zistit ci dany TYPE ma FUNCTION s menom XXX().
+   D. Zistit ci dany TYPE ma FUNCTION s menom YYY().
+//-------------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------------
+Priklad aplikovania mechanizmu SFINAE, novej deklaracie FUNCTION RETURN TYPE na detekciu ci TYPE ma definovany OPERATOR*.
+
+1. CODE definuje nasledujuce OVERLOADED TEMPLATE FUNCTIONS.
+
+	template <typename TType>
+	auto TypeHasOperatorMultiple(TType Value1, TType Value2) -> decltype(Value1*Value2,true)
+	{
+		return(true);
+	}
+
+	template <typename TType1, typename TType2>
+	bool TypeHasOperatorMultiple(TType1, TType2)
+	{
+		return(false);
+	}
+
+2. Ak chce CODE detekovat ci TYPE ma OPERATOR* musi zavolat TEMPLATE FUNCTION TypeHasOperatorMultiple().
+3. Ak CODE chce detekovat OPERATOR* je definovany pre ARGUMENTS (int,int) musi vykonat nasledujuci CODE.
+
+   bool			HasOperatorMultiple=TypeHasOperatorMultiple(100,200);
+
+4. COMPILER pri vyhodnocovani tohto CODE posupuje nasledovne.
+   A. COMPILER zisti, ze existuju 2 TEMPLATE FUNCTION, ktore prijimaju 2 PARAMETERS a maju nazov TypeHasOperatorMultiple().
+   !!!!! B. COMPILER najde z dvojice TEMPLATE FUNCTION s NAJMENSIM POCTOM TYPE PARAMETERS a vykona subsitucii. V tomto priklade je to 1. verzia TEMPLATE FUNCTION.
+   !!!!! C. COMPILER vykona subsituciu ARGUMENTS (100,200). Pocas nej COMPILER v COMPILE TIME vykona EXPRESSION [decltype(Value1*Value2,true)].
+   !!! D. Kedze EXPRESSION [decltype(Value1*Value2,true)] je pre ARGUMENTS (100,200) VALIDNA, tak COMPILER povazuje 1. verzia TEMPLATE FUNCTION za POUZITELNU.
+   !!!!! E. COMPILER nasledne vyberie TEMPLATE FUNCTION s VACSIM poctom POCTOM TYPE PARAMETERS  a vykona subsituciu. V tomto priklade je to 2. verzia TEMPLATE FUNCTION.
+   !!!!! F. COMPILER vykona subsituciu ARGUMENTS (100,200). Kedze tato NEPOUZIVA OPERATOR decltype(EXPRESSION), ale RETURN TYPE je definovany klasickym sposobom COMPILER NEVYKONA ZIADNU EXPRESSION v COMPILE TIME a TEMPLATE FUNCTION okamzite povazuje za POUZITELNU.
+   !!!!! G. Teraz sa COMPILER MUSI ROZHODNUT, ktoru verziu pouzit. Kedze OBE VERZIE VYHOVUJU, tak COMPILER uprednosti TEMPLATE s MENSIM POCTOM TYPE PARAMETERS a teda pouzije 1. verziu TEMPLATE FUNCTION.
+   !!!!! H. Vo vysledku sa teda vola TEMPLATE FUNCTION, ktora vrati hodnotu TRUE.
+5. Ak CODE chce detekovat OPERATOR* je definovany pre ARGUMENTS (string,string) musi vykonat nasledujuci CODE.
+
+   bool			HasOperatorMultiple=TypeHasOperatorMultiple(string("100"),string("200"));
+
+6. COMPILER pri vyhodnocovani tohto CODE posupuje nasledovne.
+   A. COMPILER zisti, ze existuju 2 TEMPLATE FUNCTION, ktore prijimaju 2 PARAMETERS a maju nazov TypeHasOperatorMultiple().
+   !!!!! B. COMPILER najde z dvojice TEMPLATE FUNCTION s NAJMENSIM POCTOM TYPE PARAMETERS a vykona subsitucii. V tomto priklade je to 1. verzia TEMPLATE FUNCTION.
+   !!!!! C. COMPILER vykona subsituciu ARGUMENTS (string("100"),string("200")). Pocas nej COMPILER v COMPILE TIME vykona EXPRESSION [decltype(Value1*Value2,true)].
+   !!!!! D. Kedze EXPRESSION [decltype(Value1*Value2,true)] pre ARGUMENTS (string("100"),string("200")) vrati COMPILATION ERROR, COMPILER aplikuje mechanizmus SFINAE a tuto verziu VYLUCI ako POUZITELNU na volanie.
+   !!! E. COMPILER nasledne vyberie TEMPLATE FUNCTION s VACSIM poctom POCTOM TYPE PARAMETERS  a vykona subsitucii. V tomto priklade je to 2. verzia TEMPLATE FUNCTION.
+   !!!!! F. COMPILER vykona subsituciu ARGUMENTS (string("100"),string("200")). Kedze tato NEPOUZIVA OPERATOR decltype(EXPRESSION), ale RETURN TYPE je definovany klasickym sposobom COMPILER NEVYKONA ZIADNU EXPRESSION v COMPILE TIME a TEMPLATE FUNCTION okamzite povazuje za POUZITELNU.
+   G. Kedze COMPILER nasiel IBA 2. verziu ako pouzitelnu TEMPLATE FUNCTION, pouzije tuto.
+   !!!!! H. Vo vysledku sa teda vola TEMPLATE FUNCTION, ktora vrati hodnotu FALSE.
+!!!!! 7. Jednou z NEVYHOD aplikovania tohto mechanizmu je, ze COMPILER pri TEMPLATE INSTANCING NEROBI IMPLICIT TYPE CONVERSIONS. To znaci, ze TEMPLATE FUNCTION TypeHasOperatorMultiple() pre ARGUMENTS (int,double) vrati FALSE, pretoze COMPILER NEVYKONAVA IMPLICIT TYPE CONVERSIONS a kedze TYPES [int] a [double] su ROZDIELNE, tak COMPILER vyberie 2. verziu TEMPLATE FUNCTION TypeHasOperatorMultiple(). 1. verziu pouzit NEMOZE, pretoze ta predpoklada ROVNAKE TYPES pre OBE PARAMETERS.
+//-------------------------------------------------------------------------------------------------------

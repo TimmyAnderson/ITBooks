@@ -1,0 +1,1233 @@
+//-------------------------------------------------------------------------------------------------------
+1. Solution demonstruje pouzitie STL CONTAINERS.
+2. C++ STANDARD LIBRARY definuje sadu CONTAINERS, ktore su definovane pomocou TEMPLATE CLASSES.
+3. C++ CONTAINERS je mozne rozdelit do 2 kategorii.
+   A. SEQUENCE CONTAINERS umoznuju pristup k ITEMS ako k sekvencii ITEMS.
+   B. ASSOCIATIVE CONTAINERS umoznuju pristup k ITEMS pomocou KEYS.
+4. ASSOCIATIVE CONTAINERS je podla toho ci ich ITEMS su ukladane ako zotriedene, alebo nie je mozne rozdelit do 2 kategorii.
+   A. ORDERED ASSOCIATIVE CONTAINERS ukladaju ITEMS do COLLECTION ako zotriedene.
+   B. UNORDERED ASSOCIATIVE CONTAINERS ukladaju ITEMS do COLLECTION ako nezotriedene.
+5. C++ STANDARD LIBRARY definuje aj sadu CONTAINER ADAPTERS ako je napriklad CLASS [stack<TType>], ktore su WRAPPERS nad inymi CONTAINERS, ktore interne pouzivaju na ulozenie ITEMS.
+6. Niektore CLASSES ako napriklad CLASS [valarray[TType>], alebo CLASS [string] aj ked nie su povazovane za CONTAINERS tak definuju podobny INTERFACE ako CONTAINERS.
+7. C++ definuje nasledujuce CLASSES pre SEQUENCE CONTAINERS.
+   A. CLASS [vector<TItem,TAllocator>].
+   B. CLASS [list<TItem,TAllocator>].
+   C. CLASS [forward_list<TItem,TAllocator>].
+   D. CLASS [deque<TItem,TAllocator>].
+8. C++ definuje nasledujuce CLASSES pre ORDERED ASSOCIATIVE CONTAINERS.
+   A. CLASS [map<TKey,TValue,TCompare,TAllocator>].
+   B. CLASS [multimap<TKey,TValue,TCompare,TAllocator>].
+   C. CLASS [set<TKey,TCompare,TAllocator>].
+   D. CLASS [multiset<TKey,TCompare,TAllocator>].
+9. C++ definuje nasledujuce CLASSES pre UNORDERED ASSOCIATIVE CONTAINERS.
+   A. CLASS [unordered_map<TKey,TValue,THash,TKeyEqual,TAllocator>].
+   B. CLASS [unordered_multimap<TKey,TValue,THash,TKeyEqual,TAllocator>].
+   C. CLASS [unordered_set<TKey,THash,TKeyEqual,TAllocator>].
+   D. CLASS [unordered_multiset<TKey,THash,TKeyEqual,TAllocator>].
+10. C++ definuje nasledujuce CLASSES pre CONTAINER ADAPTERS.
+   A. CLASS [priority_queue<TItem,TContainer,TCompare>].
+   B. CLASS [queue<TItem,TContainer>].
+   C. CLASS [stack<TItem,TContainer>].
+11. C++ definuje nasledujuce kvazi CONTAINERS, ktore obsahuju iba niektore charakteristiky C++ CONTAINERS.
+   A. C-ARRAYS.
+   B. CLASS [array<TItem,N>].
+   C. CLASS [basic_string<TCharacter,TCharacterTraits,TAllocator].
+   D. CLASS [string].
+   E. CLASS [u16string].
+   F. CLASS [u32string].
+   G. CLASS [wstring].
+   H. CLASS [valarray<TType>].
+   I. CLASS [bitset<N>].
+   J. CLASS [vector<bool>].
+12. C++ STANDARD LIBRARY CONTAINERS maju nasledujuce charakteristiky.
+   A. CONTAINERS ukladaju ITEMS ako VALUES. ITEMS su interne bud COPIED, alebo MOVED preto TYPES ukladane do CONTAINERS by mali mat implemetovane COPY CONSTRUCTOR, MOVE CONSTRUCTOR, COPY OPERATOR=, alebo MOVE OPERATOR=. V pripade, ze TYPES su prilis velke a ich kopirovanie by bolo casovo narocne je ITEMS mozne ulozit do CONTAINERS ako POINTERS.
+   B. ITEMS v CONTAINERS maju NEMENNE PORADIE az pokym nie je nad CONTAINERS vykonana operacia, ktora pridava, alebo odstranuje ITEM. To umoznuje prechadzat ITEMS v CONTAINERS pomocou ITERATORS.
+   C. OPERATIONS nad CONTAINERS NIE SU SAFE. To znaci, ze je zodpovednostou CALLERS, aby volali METHODS s validnymi PARAMETERS.
+   D. CONTAINERS standardne negeneruju EXCEPTIONS, ale v pripade, ze METHODS ulozenych ITEMS, ktore volaju CONTAINERS EXCEPTIONS generuju, tak CONTAINERS sa mozu dostat to UNDEFINED STATE.
+!!! 13. C++ STANDARD NEPREDPISUJE ako maju byt jednotlive CONTAINERS implementovane. Predpisuje vsak zoznam OPERATIONS, ktore maju podporovat ako aj ich zlozitost. Jednotlive C++ CONTAINERS su spravidla implementovane nasledujucim sposobom.
+   A. VECTOR je spravidla implementovany ako DYNAMIC ARRAY, ktoreho kapacita sa moze dynamicky predlzovat.
+   B. LIST je spravidla implementovany ako LINKED LIST, ktory okrem LINKS na predchadzajuci a nasledujuci ITEM obsahuje aj celkovy pocet ITEMS v LIST.
+   C. FORWARD LIST je spravidla implementovany ako FORWARD-ONLY LINKED LIST, ktory obsahuje LINKS, kde kazda LINK referuje IBA na NASLEDUJUCI ITEM. FORWARD LIST takisto NEOBSAHUJE pocet ITEMS.
+   D. ORDERED ASSOCIATIVE CONTAINERS su spravidla implementovane ako BALANCED BINARY TREES.
+   E. UNORDERED ASSOCIATIVE CONTAINERS su spravidla implementovane ako HASH TABLES.
+   !!! F. STRING je spravidla implementovany ako DYNAMIC ARRAY obsahujuci CHARACTERS. Implementacia je spravidla velmi podobna VECTOR, aj ked pre kratke STRINGS moze byt implementovana optimalizacia, ktora tieto kratke STRINGS uklada do ARRAY alokovaneho na STACK a az ked dojde k prekroceniu maximalnej dlzky ARRAY, je STRING presunuty na HEAP.
+   G. ARRAYS su implementovane ako SINGLE MEMORY BLOCK alokovany na STACK. ARRAYS teda NEPOUZIVAJU HEAP, ale ukladaju data do STACK.
+!!! 14. TYPES, ktore mozu byt ukladane do C++ CONTAINERS musia splnat nasledujuce podmienky.
+   A. TYPE MUSI byt COPYABLE.
+   B. Ak TYPE podporuje kopirovanie pomocou MOVE SEMANTICS, TYPE MUSI byt MOVEABLE.
+   C. TYPE MUSI byt SWAPPABLE.
+   !!!. D. COPY CONSTRUCTOR, MOVE CONSTRUCTOR, COPY OPERATOR= a MOVE OPERATOR= NESMU hadzat EXCEPTIONS, pretoze inak by mohli dostat ITEMS v CONTAINERS v NEKONZISTENTNOM stave.
+!!! 15. ASSOCIATIVE CONTAINERS vyzaduju, aby KEYS definovali STRICT WEAK ORDERING. STRICT WEAK ORDERING definuje nasledujuce pravidla.
+   A. IRREFLEXIVITY. Musi platit ze [COMPARATOR(X,X)==FALSE].
+   C. ANTISYMMETRY. Musi platit ze [COMPARATOR(X,Y)==!COMPARATOR(Y,X)].
+   D. TRANSITIVITY. Musi platit ze ak [COMPARATOR(X,Y)==TRUE && COMPARATOR(Y,Z)==TRUE] potom aj [COMPARATOR(X,Z)==TRUE].
+   E. TRANSITIVITY OF EQUIVALENCE. EQUIVALENCE je definovana ako [EQUIVALENCE(X,Y)=!(COMPARATOR(X,Y)==TRUE || COMPARATOR(Y,X)==TRUE)], pricom musi platit ze ak [EQUIVALENCE(X,Y)==TRUE && EQUIVALENCE(Y,Z)==TRUE] potom aj [EQUIVALENCE(X,Z)==TRUE].
+16. STANDARDNE ASSOCIATIVE CONTAINERS pouzivaju ako COMPARATOR OPERATOR<.
+17. STANDARDNE ASSOCIATIVE CONTAINERS umonzuje definovat CUSTOM COMPARATOR ak standardny OPERATOR< nevyhovuje.
+18. STANDARDNE COLLECTIONS definuju nasledujuce TYPES.
+   A. TYPE [value_type] urcuje TYPE pre ITEMS ulozene v COLLECTION.
+   B. TYPE [reference] urcuje REFERENCE TYPE pre ITEMS ulozene v COLLECTION.
+   C. TYPE [const_reference] urcuje CONST REFERENCE TYPE pre ITEMS ulozene v COLLECTION.
+   D. TYPE [iterator] urcuje TYPE pre ITERATOR COLLECTION.
+   E. TYPE [const_iterator] urcuje TYPE pre CONST ITERATOR COLLECTION.
+   F. TYPE [reverse_iterator] urcuje TYPE pre REVERSE ITERATOR COLLECTION.
+   G. TYPE [const_reverse_iterator] urcuje TYPE pre CONST REVERSE ITERATOR COLLECTION.
+   H. TYPE [pointer] urcuje POINTER TYPE pre ITEMS ulozene v COLLECTION.
+   I. TYPE [const_pointer] urcuje CONST POINTER TYPE pre ITEMS ulozene v COLLECTION.
+   J. TYPE [size_type] je UNSIGNED TYPE reprezentujuci hodnoty urcujuce velkost a pocet ako je napriklad pocet ITEMS v COLLECTION.
+   K. TYPE [difference_type] je SIGNED TYPE reprezentujuci hodnoty urcujuce rozdiel ako je napriklad rozdiel medzi poziciami dvoch ITEMS v COLLECTION.
+   L. TYPE [key_type] urcuje KEY TYPE ITEMS ulozenych v COLLECTIONS ukladajucich ITEMS na zaklade hodnoty KEY.
+   M. TYPE [mapped_type] urcuje VALUE TYPE ITEMS ulozenych v COLLECTIONS ukladajucich ITEMS na zaklade hodnoty KEY.
+   N. TYPE [key_compare] urcuje TYPE, ktory sa pouziva ako KEY COMPARER v COLLECTIONS ukladajucich ITEMS na zaklade hodnoty KEY.
+   !!! O. TYPE [value_compare] urcuje TYPE, ktory sa pouziva ako VALUE COMPARER v COLLECTIONS ukladajucich ITEMS na zaklade hodnoty KEY. Porovnava IBA hodnoty KEYS. Hodnoty VALUES IGNORUJE.
+   P. TYPE [hasher] obsahuje TYPE pouzivany na vypocet HASH FUNCTION v COLLECTION ukladajucich ITEMS na zaklade HASH hodnoty KEY.
+   Q. TYPE [key_equal] urcuje TYPE pouzity na porovnanie hodnot 2 KEYS v COLLECTIONS ukladajucich ITEMS na zaklade hodnoty KEY.
+   R. TYPE [local_iterator] urcuje TYPE pre ITERATOR pouzivany na prechod ITEMS v ramci jedneho BUCKET v COLLECTIONS, ktore ukladaju ITEMS do BUCKETS. ITERATOR NIE JE MOZNE pouzit na prechod medzi ITEMS v rozlicnych BUCKETS.
+   S. TYPE [const_local_iterator] urcuje TYPE pre CONST ITERATOR pouzivany na prechod ITEMS v ramci jedneho BUCKET v COLLECTIONS, ktore ukladaju ITEMS do BUCKETS. ITERATOR NIE JE MOZNE pouzit na prechod medzi ITEMS v rozlicnych BUCKETS.
+   T. TYPE [node_type] urcuje TYPE pre NODES, ktore su ulozene v COLLECTION.
+   U. TYPE [insert_return_type] urcuje TYPE pouzivany na reprezentaciu vysledku vkladania ITEM do COLLECTION. Obsahuje informaciu ci ITEM bol do COLLECTION vlozeny, poziciu na ktoru bol vlozeny a instanciu CLASS [node_type] obsahuju NODE do ktoreho bol ITEM vlozeny.
+   V. TYPE [allocator_type] urcuje TYPE, ktory sa pouziva ako ALLOCATOR alokujuci MEMORY pre COLLECTION.
+19. STANDARDNE COLLECTIONS definuju nasledujuce typy CONSTRUCTORS.
+   A. CONSTRUCTOR [COLLECTION(void)] predstavuje DEFAULT CONSTRUCTOR, ktory vytvori prazdnu instanciu COLLECTION.
+   B. CONSTRUCTOR [COLLECTION(const TCompareFunction&)] vytvori COLLECTION s CUSTOM COMPARE FUNCTION pouzivanou pre SORTING.
+   C. CONSTRUCTOR [COLLECTION(size_type)] vytvori COLLECTION typu HASH TABLE s aspon 'N' BUCKETS.
+   D. CONSTRUCTOR [COLLECTION(size_type,const THasher&)] vytvori COLLECTION typu HASH TABLE s aspon 'N' BUCKETS a CUSTOM HASH FUNCTION.
+   E. CONSTRUCTOR [COLLECTION(size_type,const THasher&,const TKeyEqual&)] vytvori COLLECTION typu HASH TABLE s aspon 'N' BUCKETS, CUSTOM HASH FUNCTION a CUSTOM KEY EQUAL FUNCTION.
+   F. CONSTRUCTOR [COLLECTION(initializer_list<TType>)] vytvori COLLECTION a naplni ju VALUES z INITIALIZER LIST.
+   G. CONSTRUCTOR [COLLECTION(initializer_list<TType>,const TCompareFunction&)] vytvori COLLECTION s CUSTOM COMPARE FUNCTION pre SORTING a naplni ju VALUES z INITIALIZER LIST.
+   H. CONSTRUCTOR [COLLECTION(initializer_list<TType>,size_type)] vytvori COLLECTION typu HASH TABLE s aspon 'N' BUCKETS a naplni ju VALUES z INITIALIZER LIST.
+   I. CONSTRUCTOR [COLLECTION(initializer_list<TType>,size_type,const THasher&)] vytvori COLLECTION typu HASH TABLE s aspon 'N' BUCKETS a CUSTOM HASH FUNCTION a naplni ju VALUES z INITIALIZER LIST.
+   J. CONSTRUCTOR [COLLECTION(initializer_list<TType>,size_type,const THasher&,const TKeyEqual&)] vytvori COLLECTION typu HASH TABLE s aspon 'N' BUCKETS, CUSTOM HASH FUNCTION a CUSTOM KEY EQUAL FUNCTION a naplni ju VALUES z INITIALIZER LIST.
+   K. CONSTRUCTOR [COLLECTION(const COLLECTION&)] predstavuje COPY CONSTRUCTOR, ktory vytvori kopiu COLLECTION obsahujucu tie iste ITEMS ako povodna COLLECTION.
+   L. CONSTRUCTOR [COLLECTION(COLLECTION&&)] predstavuje MOVE CONSTRUCTOR, ktory presunie ITEMS z povodnej COLLECTION do novej COLLECTION pomocou MOVE SEMANTICS.
+   M. CONSTRUCTOR [COLLECTION(size_type NumberOfItems)] vytvori COLLECTION s 'N' ITEMS, ktore su vytvorene volanim ich DEFUALT CONSTRUCTORS.
+   N. CONSTRUCTOR [COLLECTION(size_type NumberOfItems,const TType&)] vytvori COLLECTION s 'N' ITEMS, ktore su vytvorene ako kopie ITEM, ktory je zaslany ako 2. PARAMETER CONSTRUCTOR.
+   O. CONSTRUCTOR [COLLECTION(TInputIterator,TInputIterator)] vytvori COLLECTION, ktoru nainicializuje ITEMS nachadzaujucimi sa medzi parom ITERATORS.
+   P. CONSTRUCTOR [COLLECTION(TInputIterator,TInputIterator,const TCompareFunction&)] vytvori COLLECTION s CUSTOM COMPARE FUNCTION pouzivanou pre SORTING, ktoru nainicializuje ITEMS nachadzaujucimi sa medzi parom ITERATORS.
+   Q. CONSTRUCTOR [COLLECTION(TInputIterator,TInputIterator,size_type)] vytvori COLLECTION typu HASH TABLE s aspon 'N' BUCKETS, ktoru nainicializuje ITEMS nachadzaujucimi sa medzi parom ITERATORS.
+   R. CONSTRUCTOR [COLLECTION(TInputIterator,TInputIterator,size_type,const THasher&)] vytvori COLLECTION typu HASH TABLE s aspon 'N' BUCKETS a CUSTOM HASH FUNCTION, ktoru nainicializuje ITEMS nachadzaujucimi sa medzi parom ITERATORS.
+   S. CONSTRUCTOR [COLLECTION(TInputIterator,TInputIterator,size_type,const THasher&,const TKeyEqual&)] vytvori COLLECTION typu HASH TABLE s aspon 'N' BUCKETS, CUSTOM HASH FUNCTION a CUSTOM KEY EQUAL FUNCTION, ktoru nainicializuje ITEMS nachadzaujucimi sa medzi parom ITERATORS.
+20. STANDARDNE COLLECTIONS definuju DESTRUCTORS, ktore volaju DESTRUCTORS pre ITEMS ulozne v COLLECTIONS a nasledne uvolnuju MEMORY, ktoru COLLECTIONS pouzivali.
+21. OPERATOR [COLLECTION& operator=(const COLLECTION&)] reprezentuje COPY OPERATOR=, ktory priradzuje do COLLECTION ITEMS z inej COLLECTION.
+22. OPERATOR [COLLECTION& operator=(COLLECTION&&)] reprezentuje MOVE OPERATOR=, ktory priradzuje do COLLECTION ITEMS z inej COLLECTION pomocou MOVE SEMANTICS.
+23. OPERATOR [COLLECTION& operator=(initializer_list<TType>)] priradzuje do COLLECTION ITEMS z INITIALIZER LIST.
+24. METHOD [void assign(initializer_list<TType>)] priradzuje do COLLECTION ITEMS z INITIALIZER LIST.
+25. METHOD [void assign(size_type,const TType&)] priradzuje do COLLECTION 'N' ITEMS, ktore su kopiami VALUES zadanych ako 2. PARAMETER METHOD.
+26. METHOD [void assign(TInputIterator,TInputIterator)] priradzuje do COLLECTION ITEMS z inej COLLECTION, ktora je definovana pomocou paru ITERATORS.
+27. METHOD [bool empty(void) const] vracia informaciu ci COLLECTION je prazdna.
+28. METHOD [size_type size(void) const] vracia pocet ITEMS v COLLECTION.
+29. METHOD [size_type max_size(void) const] vracia maximalny pocet ITEMS, ktore je do COLLECTION mozne ulozit.
+30. METHOD [size_type capacity(void) const] vracia CAPACITY urcujucu pocet ITEMS na ktory je alokovany INTERNY BUFFER COLLECTION.
+31. METHOD [void reserve(size_type)] alokuje INTERNY BUFFER COLLECTION na zadanu CAPACITY. Ak zadana velkost je mensia, alebo rovna aktualnemu poctu ITEMS v COLLECTION, METHOD nerobi nic. METHOD moze hodit EXCEPTION [length_error], ak dojde k pokusu rezervovat vacsi pocet ITEMS ako je definovane METHOD max_size().
+32. METHOD [void resize(size_type)] meni pocet ITEMS v COLLECTION. Ak je novy pocet ITEMS vacsi ako povodny, nove ITEMS su vytvorene volanim DEFAULT CONSTRUCTOR.
+33. METHOD [void resize(size_type,const TType&)] meni pocet ITEMS v COLLECTION. Ak je novy pocet ITEMS vacsi ako povodny, nove ITEMS su vytvorene ako kopie ITEM zadaneho ako PARAMETER.
+34. METHOD [void shrink_to_fit(void)] sa pokusi uvolnit INTERNY BUFFER danej COLLECTION, tak aby mala identicku dlzku ako realny pocet ITEMS v COLLECTION. Tato METHOD je len POZIADAVKA na vykonanie SHRINK, ktora je implementacne zavisla. To znaci, ze v zavislosti od implementacie SHRINK moze, ale aj NEMUSI VYKONAT.
+35. METHOD [void clear(void)] odstranuje vsetky ITEMS z COLLECTION.
+36. METHOD [iterator begin(void)] vracia ITERATOR ukazujuci na PRVY ITEM COLLECTION.
+37. METHOD [const_iterator begin(void) const] vracia CONST ITERATOR ukazujuci na PRVY ITEM COLLECTION.
+38. METHOD [const_iterator cbegin(void) const] vracia CONST ITERATOR ukazujuci na PRVY ITEM COLLECTION.
+39. METHOD [iterator end(void)] vracia ITERATOR ukazujuci hned za POSLEDNY ITEM COLLECTION.
+40. METHOD [const_iterator end(void) const] vracia CONST ITERATOR ukazujuci hned za POSLEDNY ITEM COLLECTION.
+41. METHOD [const_iterator cend(void) const] vracia CONST ITERATOR ukazujuci hned za POSLEDNY ITEM COLLECTION.
+42. METHOD [iterator rbegin(void)] vracia REVERSE ITERATOR ukazujuci na POSLEDNY ITEM COLLECTION.
+43. METHOD [const_iterator rbegin(void) const] vracia CONST REVERSE ITERATOR ukazujuci na POSLEDNY ITEM COLLECTION.
+44. METHOD [const_iterator crbegin(void) const] vracia CONST REVERSE ITERATOR ukazujuci na POSLEDNY ITEM COLLECTION.
+45. METHOD [iterator rend(void)] vracia REVERSE ITERATOR ukazujuci hned pred PRVY ITEM COLLECTION.
+46. METHOD [const_iterator rend(void) const] vracia CONST REVERSE ITERATOR ukazujuci hned pred PRVY ITEM COLLECTION.
+47. METHOD [const_iterator crend(void) const] vracia CONST REVERSE ITERATOR ukazujuci hned pred PRVY ITEM COLLECTION.
+48. METHOD [local_iterator begin(size_type)] vracia LOCAL ITERATOR na PRVY ITEM v danom BUCKET, ktory je identifikovany INDEXOM zadanym ako PARAMETER.
+49. METHOD [const_local_iterator begin(size_type) const] vracia CONST LOCAL ITERATOR na PRVY ITEM v danom BUCKET, ktory je identifikovany INDEXOM zadanym ako PARAMETER.
+50. METHOD [const_local_iterator cbegin(size_type) const] vracia CONST LOCAL ITERATOR na PRVY ITEM v danom BUCKET, ktory je identifikovany INDEXOM zadanym ako PARAMETER.
+51. METHOD [local_iterator end(size_type)] vracia LOCAL ITERATOR odkazujuci jednu poziciu za POSLEDNY ITEM v danom BUCKET, ktory je identifikovany INDEXOM zadanym ako PARAMETER.
+52. METHOD [const_local_iterator end(size_type) const] vracia CONST LOCAL ITERATOR odkazujuci jednu poziciu za POSLEDNY ITEM v danom BUCKET, ktory je identifikovany INDEXOM zadanym ako PARAMETER.
+53. METHOD [const_local_iterator cend(size_type) const] vracia CONST LOCAL ITERATOR odkazujuci jednu poziciu za POSLEDNY ITEM v danom BUCKET, ktory je identifikovany INDEXOM zadanym ako PARAMETER.
+54. METHOD [reference front(void)] vracia REFERENCE na PRVY ITEM v COLLECTION.
+55. METHOD [const_reference front(void) const] vracia REFERENCE na PRVY ITEM v COLLECTION.
+56. METHOD [reference back(void)] vracia REFERENCE na POSLEDNY ITEM v COLLECTION.
+57. METHOD [const_reference back(void) const] vracia REFERENCE na POSLEDNY ITEM v COLLECTION.
+!!! 58. METHOD [reference at(size_type)] vracia REFERENCE na ITEM s INDEX v COLLECTION. METHOD ROBI kontrolu hranic COLLECTION, a v pripade zistenia chybneho pristupu generuje EXCEPTION [out_of_range].
+!!! 59. METHOD [const_reference at(size_type) const] vracia CONST REFERENCE na ITEM s INDEX v COLLECTION. METHOD ROBI kontrolu hranic COLLECTION, a v pripade zistenia chybneho pristupu generuje EXCEPTION [out_of_range].
+!!! 60. METHOD [reference at(key_type)] vracia REFERENCE na ITEM so zadanou hodnotou KEY v COLLECTION. METHOD ROBI kontrolu hranic COLLECTION, a v pripade zistenia chybneho pristupu generuje EXCEPTION [out_of_range].
+!!! 61. METHOD [const_reference at(key_type) const] vracia CONST REFERENCE na ITEM so zadanou hodnotou KEY v COLLECTION. METHOD ROBI kontrolu hranic COLLECTION, a v pripade zistenia chybneho pristupu generuje EXCEPTION [out_of_range].
+!!! 62. OPERATOR [reference operator[](size_type)] vracia REFERENCE na ITEM s INDEX v COLLECTION. METHOD NEROBI kontrolu hranic COLLECTION, a v pripade zistenia chybneho pristupu generuje EXCEPTION [out_of_range].
+!!! 63. OPERATOR [const_reference operator[](size_type)] vracia CONST REFERENCE na ITEM s INDEX v COLLECTION. METHOD NEROBI kontrolu hranic COLLECTION, a v pripade zistenia chybneho pristupu generuje EXCEPTION [out_of_range].
+!!! 64. OPERATOR [TType& operator[](const key_type&)] ak sa ITEM so zadanou hodnoty KEY v COLLECTION NENACHADZA, tak ho prida do COLLECTION. Ak sa ITEM v COLLECTION nachadza, vracia REFERENCE na ITEM so zadanou hodnotou KEY v COLLECTION.
+!!! 65. OPERATOR [TType& operator[](key_type&&)] ak sa ITEM so zadanou hodnoty KEY v COLLECTION NENACHADZA, tak ho prida do COLLECTION pomocou MOVE SEMANTICS. Ak sa ITEM v COLLECTION nachadza, vracia REFERENCE na ITEM so zadanou hodnotou KEY v COLLECTION.
+66. METHOD [void push_front(const TType&)] pridava ITEM na zaciatok COLLECTION pomocou COPY SEMANTICS.
+67. METHOD [void push_front(TType&&)] pridava ITEM na zaciatok COLLECTION pomocou MOVE SEMANTICS.
+68. METHOD [void emplace_front(ARGUMENTS)] pridava ITEM na zaciatok COLLECTION pomocou PLACEMENT NEW. PARAMETERS su FORWARDED do CONSTRUCTOR daneho ITEM volaneho pri pridavani ITEM do COLLECTION.
+69. METHOD [void push_back(const TType&)] pridava ITEM na koniec COLLECTION pomocou COPY SEMANTICS.
+70. METHOD [void push_back(TType&&)] pridava ITEM na koniec COLLECTION pomocou MOVE SEMANTICS.
+71. METHOD [void emplace_back(ARGUMENTS)] pridava ITEM na koniec COLLECTION pomocou PLACEMENT NEW. PARAMETERS su FORWARDED do CONSTRUCTOR daneho ITEM volaneho pri pridavani ITEM do COLLECTION.
+72. METHOD [void pop_front(void)] odstranuje ITEM zo zaciatku COLLECTION.
+73. METHOD [void pop_back(void)] odstranuje ITEM z konca COLLECTION.
+74. METHOD [pair<iterator,bool> insert(const TType&)] pridava novy ITEM do COLLECTION pomocou COPY SEMANTICS. METHOD vracia informaciu o tom ci ITEM bol do COLLECTION pridany ako aj ITERATOR obsahujuci poziciu na ktoru bol pridany.
+75. METHOD [pair<iterator,bool> insert(TType&&)] pridava novy ITEM do COLLECTION pomocou MOVE SEMANTICS. METHOD vracia informaciu o tom ci ITEM bol do COLLECTION pridany ako aj ITERATOR obsahujuci poziciu na ktoru bol pridany.
+76. METHOD [iterator insert(const TType&)] pridava novy ITEM do COLLECTION pomocou COPY SEMANTICS. METHOD vracia ITERATOR obsahujuci poziciu na ktoru bol ITEM do COLLECTION pridany.
+77. METHOD [iterator insert(TType&&)] pridava novy ITEM do COLLECTION pomocou MOVE SEMANTICS. METHOD vracia ITERATOR obsahujuci poziciu na ktoru bol ITEM do COLLECTION pridany.
+78. METHOD [iterator insert(const_iterator,const TType&)] pridava ITEM do COLLECTION pomocou COPY SEMANTICS na poziciu urcenu ITERATOR. METHOD vracia ITERATOR na pridany ITEM.
+79. METHOD [iterator insert(const_iterator,TType&&)] pridava ITEM do COLLECTION pomocou MOVE SEMANTICS na poziciu urcenu ITERATOR. METHOD vracia ITERATOR na pridany ITEM.
+80. METHOD [void insert(initializer_list<TType>)] pridava do COLLECTION ITEMS z INITIALIZER LIST.
+81. METHOD [iterator insert(const_iterator,initializer_list<TType>)] pridava do COLLECTION ITEMS z INITIALIZER LIST na POSITION urcenu ITERATOR. METHOD vracia ITERATOR na poziciu, kde sa vlozil 1. ITEM.
+82. METHOD [iterator insert(const_iterator,size_type,const TType&)] pridava do COLLECTION 'N' ITEMS, ktore vzniknu ako kopie ITEM zadananeho ako posledny PARAMETER. METHOD vracia ITERATOR na poziciu, kde sa vlozil 1. ITEM.
+83. METHOD [iterator insert(TInputIterator,TInputIterator)] pridava do COLLECTION ITEMS, ktore sa nachadzaju medzi parom ITERATORS.
+84. METHOD [iterator insert(const_iterator,TInputIterator,TInputIterator)] pridava do COLLECTION ITEMS, ktore sa nachadzaju medzi parom ITERATORS na POSITION urcenu ITERATOR.
+85. METHOD [pair<iterator,bool> emplace(ARGUMENTS)] pridava ITEM do COLLECTION pomocou PLACEMENT NEW. PARAMETERS METHOD su FORWARDED do CONSTRUCTOR daneho ITEM volaneho pri pridavani ITEM do COLLECTION. METHOD vracia informaciu o tom ci ITEM bol do COLLECTION pridany ako aj ITERATOR obsahujuci poziciu na ktoru bol pridany.
+86. METHOD [iterator emplace(ARGUMENTS)] pridava ITEM do COLLECTION pomocou PLACEMENT NEW. PARAMETERS METHOD su FORWARDED do CONSTRUCTOR daneho ITEM volaneho pri pridavani ITEM do COLLECTION. METHOD vracia ITERATOR obsahujuci poziciu na ktoru bol ITEM do COLLECTION pridany.
+87. METHOD [iterator emplace(const_iterator,ARGUMENTS)] pridava ITEM do COLLECTION pomocou PLACEMENT NEW na poziciu urcenu ITERATOR. PARAMETERS METHOD od 2. PARAMETER su FORWARDED do CONSTRUCTOR daneho ITEM volaneho pri pridavani ITEM do COLLECTION. METHOD vracia ITERATOR obsahujuci poziciu na ktoru bol ITEM do COLLECTION pridany.
+88. METHOD [iterator emplace_hint(const_iterator,ARGUMENTS)] pridava ITEM do COLLECTION pomocou PLACEMENT NEW, pricom 1. PARAMETER reprezenuje ITERATOR sluziaci ako HINT. HINT urcuje poziciu PRED ktorou sa v co najmensej vzdialenosti ma COLLECTION pokusit ITEM ulozit. Ak pozicia odpoveda skutocnej pozicii zlozitost METHOD je O(1), inak je zlozitost O(LOG(N)). PARAMETERS od 2. PARAMETER su FORWARDED do CONSTRUCTOR daneho ITEM volaneho pri pridavani ITEM do COLLECTION. METHOD vracia ITERATOR na poziciu do ktorej bol ITEM vlozeny.
+89. METHOD [size_type erase(const TType&)] odstranuje vsetky ITEMS z COLLECTION, ktorych hodnota je rovna hodnote zadanej v PARAMETER. METHOD vracia pocet odstranenych ITEMS.
+90. METHOD [iterator erase(const_iterator)] odstranuje 1 ITEM na POSITION stanovenej ITERATOR. METHOD vracia ITERATOR na ITEM, ktory nasleduje za ITEM, ktory bol odstraneny.
+91. METHOD [iterator erase(TInputIterator,TInputIterator)] odstranuje ITEMS urcene parom ITERATORS. METHOD vracia ITERATOR na ITEM, ktory nasleduje za poslednym odstranenym ITEM.
+92. OPERATOR [bool operator==(const TItem&,const TItem&)] zistuje ci dve instancie COLLECTION su lexikograficky rovne.
+93. OPERATOR [bool operator!=(const TItem&,const TItem&)] zistuje ci dve instancie COLLECTION su lexikograficky rozne.
+94. OPERATOR [bool operator<(const TItem&,const TItem&)] zistuje ci 1. COLLECTION je lexikograficky mensia ako 2. COLLECTION.
+95. OPERATOR [bool operator<=(const TItem&,const TItem&)] zistuje ci 1. COLLECTION je lexikograficky mensia, alebo rovna ako 2. COLLECTION.
+96. OPERATOR [bool operator>(const TItem&,const TItem&)] zistuje ci 1. COLLECTION je lexikograficky vacsia ako 2. COLLECTION.
+97. OPERATOR [bool operator>=(const TItem&,const TItem&)] zistuje ci 1. COLLECTION je lexikograficky vacsia, alebo rovna ako 2. COLLECTION.
+98. METHOD [void swap(COLLECTION&)] vymiena obsah dvoch instancii COLLECTION vymenou ich vnutornych FIELDS.
+99. FUNCTION [void swap(COLLECTION&,COLLECTION&)] vymiena obsah dvoch instancii COLLECTION vymenou ich vnutornych FIELDS.
+100. METHOD [void remove(const TType&)] odstranuje VSETKY ITEMS, ktore maju rovnaku hodnotu ako hodnota zadana v PARAMETER. Na porovnanie ITEMS sa pouziva OPERATOR==.
+101. METHOD [void remove_if(TUnaryPredicate)] odstranuje VSETKY ITEMS, ktore splnaju PREDICATE zadany ako PARAMETER.
+102. METHOD [void unique(void)] odstranuje za sebou nasledujuce ITEMS, ktore maju ROVNAKU VALUE. Na porovnanie ITEMS sa pouziva OPERATOR==.
+103. METHOD [void unique(TBinaryPredicate)] odstranuje za sebou nasledujuce ITEMS, ktore maju ROVNAKU VALUE. Na porovnanie ITEMS sa pouziva PREDICATE zadany ako PARAMETER.
+104. METHOD [void merge(COLLECTION&)] vybera ITEMS z COLLECTION definovanej ako PARAMETER a uklada ich do COLLECTION pre ktoru bola METHOD volana. Obe COLLECTIONS MUSIA byt SORTED. ITEMS su prenasane pomocou MOVE OPERATION, takze COLLECTION definovana ako PARAMETER je po skonceni volania METHOD PRAZDNA. ITEMS, ktore maju rovnaku hodnotu v SOURCE a DESTINATION COLLECTION su prenesene do DESTINATION COLLECTION pricom su umiestnene az za ITEMS s rovnakou hodnotou, ktore v DESTINATION COLLECTION sa uz nachadzali. Na porovnanie ITEMS sa pouziva OPERATOR<. COLLECTION v 2. PARAMETERI je prenasana cez COPY SEMANTICS.
+105. METHOD [void merge(COLLECTION&&)] vybera ITEMS z COLLECTION definovanej ako PARAMETER a uklada ich do COLLECTION pre ktoru bola METHOD volana. Obe COLLECTIONS MUSIA byt SORTED. ITEMS su prenasane pomocou MOVE OPERATION, takze COLLECTION definovana ako PARAMETER je po skonceni volania METHOD PRAZDNA. ITEMS, ktore maju rovnaku hodnotu v SOURCE a DESTINATION COLLECTION su prenesene do DESTINATION COLLECTION pricom su umiestnene az za ITEMS s rovnakou hodnotou, ktore v DESTINATION COLLECTION sa uz nachadzali. Na porovnanie ITEMS sa pouziva OPERATOR<. COLLECTION v 2. PARAMETERI je prenasana cez MOVE SEMANTICS.
+106. METHOD [void merge(COLLECTION&,TCompareFunction)] vybera ITEMS z COLLECTION definovanej ako PARAMETER a uklada ich do COLLECTION pre ktoru bola METHOD volana. Obe COLLECTIONS MUSIA byt SORTED. ITEMS su prenasane pomocou MOVE OPERATION, takze COLLECTION definovana ako PARAMETER je po skonceni volania METHOD PRAZDNA. ITEMS, ktore maju rovnaku hodnotu v SOURCE a DESTINATION COLLECTION su prenesene do DESTINATION COLLECTION pricom su umiestnene az za ITEMS s rovnakou hodnotou, ktore v DESTINATION COLLECTION sa uz nachadzali. Na porovnanie ITEMS sa pouziva CUSTOM PREDICATE zadany ako PARAMETER. COLLECTION v 2. PARAMETERI je prenasana cez COPY SEMANTICS.
+107. METHOD [void merge(COLLECTION&&,TCompareFunction)] vybera ITEMS z COLLECTION definovanej ako PARAMETER a uklada ich do COLLECTION pre ktoru bola METHOD volana. Obe COLLECTIONS MUSIA byt SORTED. ITEMS su prenasane pomocou MOVE OPERATION, takze COLLECTION definovana ako PARAMETER je po skonceni volania METHOD PRAZDNA. ITEMS, ktore maju rovnaku hodnotu v SOURCE a DESTINATION COLLECTION su prenesene do DESTINATION COLLECTION pricom su umiestnene az za ITEMS s rovnakou hodnotou, ktore v DESTINATION COLLECTION sa uz nachadzali. Na porovnanie ITEMS sa pouziva CUSTOM PREDICATE zadany ako PARAMETER. COLLECTION v 2. PARAMETERI je prenasana cez MOVE SEMANTICS.
+108. METHOD [void sort(void)] vykonava triedenie ITEMS. Na triedenie ITEMS sa pouziva OPERATOR<.
+109. METHOD [void sort(TCompareFunction)] vykonava triedenie ITEMS. Na triedenie ITEMS sa pouziva CUSTOM PREDICATE zadany ako PARAMETER.
+110. METHOD [void reverse(void)] obracia poradie ITEMS v COLLECTION.
+111. METHOD [void splice(const_iterator,COLLECTION&)] vybera vsetky ITEMS z COLLECTION definovanej ako 2. PARAMETER a uklada ich do COLLECTION pre ktory bola METHOD volana PRED poziciu zadanu ITERATOR. ITEMS su prenasane pomocou MOVE OPERATION. COLLECTION v 2. PARAMETERI je prenasana cez COPY SEMANTICS.
+112. METHOD [void splice(const_iterator,COLLECTION&&)] vybera vsetky ITEMS z COLLECTION definovanej ako 2. PARAMETER a uklada ich do COLLECTION pre ktory bola METHOD volana PRED poziciu zadanu ITERATOR. ITEMS su prenasane pomocou MOVE OPERATION. COLLECTION v 2. PARAMETERI je prenasana cez MOVE SEMANTICS.
+113. METHOD [void splice(const_iterator,COLLECTION&,const_iterator)] vybera z COLLECTION definovanej ako 2. PARAMETER ITEM na pozicii definovanej ako 3. PARAMETER a uklada ho do COLLECTION pre ktory bola METHOD volana PRED poziciu zadanu ITERATOR. ITEM je prenasany pomocou MOVE OPERATION. COLLECTION v 2. PARAMETERI je prenasana cez COPY SEMANTICS.
+114. METHOD [void splice(const_iterator,COLLECTION&,const_iterator)] vybera z COLLECTION definovanej ako 2. PARAMETER ITEM na pozicii definovanej ako 3. PARAMETER a uklada ho do COLLECTION pre ktory bola METHOD volana PRED poziciu zadanu ITERATOR. ITEM je prenasany pomocou MOVE OPERATION. COLLECTION v 2. PARAMETERI je prenasana cez MOVE SEMANTICS.
+115. METHOD [void splice(const_iterator,COLLECTION&,const_iterator,const_iterator)] vybera z COLLECTION definovanej ako 2. PARAMETER ITEMS v poziciach definovanych parom ITERATORS ako 3. PARAMETER a 4. PARAMETER a uklada ich do COLLECTION pre ktory bola METHOD volana PRED poziciu zadanu ITERATOR. ITEMS su prenasane pomocou MOVE OPERATION. COLLECTION v 2. PARAMETERI je prenasana cez COPY SEMANTICS.
+116. METHOD [void splice(const_iterator,COLLECTION&&,const_iterator,const_iterator)] vybera z COLLECTION definovanej ako 2. PARAMETER ITEMS v poziciach definovanych parom ITERATORS ako 3. PARAMETER a 4. PARAMETER a uklada ich do COLLECTION pre ktory bola METHOD volana PRED poziciu zadanu ITERATOR. ITEMS su prenasane pomocou MOVE OPERATION. COLLECTION v 2. PARAMETERI je prenasana cez MOVE SEMANTICS.
+117. METHOD [iterator before_begin(void)] vracia ITERATOR ukazujuci PRED PRVY ITEM COLLECTION. METHOD sa pouziva pri vkladani ITEMS na zaciatok COLLECTION. Vratene ITERATORS NESMU BYT DEREFERENCED pretoze NEUKAZUJU na ITEM a ich DEREFERENCING by sposobil RUNTIME ERROR.
+118. METHOD [const_iterator before_begin(void) const] vracia CONST ITERATOR ukazujuci PRED PRVY ITEM COLLECTION. METHOD sa pouziva pri vkladani ITEMS na zaciatok COLLECTION. Vratene ITERATORS NESMU BYT DEREFERENCED pretoze NEUKAZUJU na ITEM a ich DEREFERENCING by sposobil RUNTIME ERROR.
+119. METHOD [const_iterator cbefore_begin(void) const] vracia CONST ITERATOR ukazujuci PRED PRVY ITEM COLLECTION. METHOD sa pouziva pri vkladani ITEMS na zaciatok COLLECTION. Vratene ITERATORS NESMU BYT DEREFERENCED pretoze NEUKAZUJU na ITEM a ich DEREFERENCING by sposobil RUNTIME ERROR.
+120. METHOD [iterator insert_after(const_iterator,const TType&)] pridava ITEM ZA POSITION urcenu ITERATOR. METHOD vracia ITERATOR na vlozeny ITEM. ITEM je vlozeny pomocou COPY SEMANTICS.
+121. METHOD [iterator insert_after(const_iterator,TType&&)] pridava ITEM ZA POSITION urcenu ITERATOR. METHOD vracia ITERATOR na vlozeny ITEM. ITEM je vlozeny pomocou MOVE SEMANTICS.
+122. METHOD [iterator insert_after(const_iterator,size_type,const TType&)] pridava do COLLECTION 'N' ITEMS, ktore vzniknu ako kopie ITEM zadananeho ako posledny PARAMETER. METHOD vracia ITERATOR na POSLEDNY vlozeny ITEM.
+123. METHOD [iterator insert_after(const_iterator,initializer_list<TType>)] pridava VSETKY ITEMS z INITIALIZER LIST ZA POSITION urcenu ITERATOR. METHOD vracia ITERATOR na POSLEDNY vlozeny ITEM.
+124. METHOD [iterator insert_after(const_iterator,TInputIterator,TInputIterator)] pridava ITEMS urcene parom ITERATORS ZA POSITION urcenu ITERATOR. METHOD vracia ITERATOR na POSLEDNY vlozeny ITEM.
+125. METHOD [iterator emplace_after(const_iterator,ARGUMENTS)] pridava ITEM do COLLECTION za poziciu urcenu ITERATOR pomocou PLACEMENT NEW. PARAMETERS METHOD od 2. PARAMETER su FORWARDED do CONSTRUCTOR daneho ITEM volaneho pri pridavani ITEM do COLLECTION. METHOD vracia ITERATOR na pridany ITEM.
+126. METHOD [iterator erase_after(const_iterator)] odstranuje ITEM z COLLECTION nachadzajuci sa ZA ITEM na ktory ukazuje ITERATOR. METHOD vracia ITERATOR na ITEM nachadzajuci sa ZA odstranenym ITEM.
+127. METHOD [iterator erase_after(const_iterator,const_iterator)] odstranuje ITEMS z COLLECTION na ktore odkazuje par ITERATORS. METHOD vracia ITERATOR rovnajuci sa 2. PARAMETRU METHOD.
+128. METHOD [void splice_after(const_iterator,COLLECTION&)] vybera vsetky ITEMS z COLLECTION definovanej ako 2. PARAMETER a uklada ich do COLLECTION pre ktory bola METHOD volana ZA poziciu zadanu ITERATOR. ITEMS su prenasane pomocou MOVE OPERATION. COLLECTION v 2. PARAMETERI je prenasana cez COPY SEMANTICS.
+129. METHOD [void splice_after(const_iterator,COLLECTION&&)] vybera vsetky ITEMS z COLLECTION definovanej ako 2. PARAMETER a uklada ich do COLLECTION pre ktory bola METHOD volana ZA poziciu zadanu ITERATOR. ITEMS su prenasane pomocou MOVE OPERATION. COLLECTION v 2. PARAMETERI je prenasana cez MOVE SEMANTICS.
+130. METHOD [void splice_after(const_iterator,COLLECTION&,const_iterator)] vybera z COLLECTION definovanej ako 2. PARAMETER ITEM na pozicii definovanej ako 3. PARAMETER a uklada ho do COLLECTION pre ktory bola METHOD volana ZA poziciu zadanu ITERATOR. ITEM je prenasany pomocou MOVE OPERATION. COLLECTION v 2. PARAMETERI je prenasana cez COPY SEMANTICS.
+131. METHOD [void splice_after(const_iterator,COLLECTION&,const_iterator)] vybera z COLLECTION definovanej ako 2. PARAMETER ITEM na pozicii definovanej ako 3. PARAMETER a uklada ho do COLLECTION pre ktory bola METHOD volana ZA poziciu zadanu ITERATOR. ITEM je prenasany pomocou MOVE OPERATION. COLLECTION v 2. PARAMETERI je prenasana cez MOVE SEMANTICS.
+132. METHOD [void splice_after(const_iterator,COLLECTION&,const_iterator,const_iterator)] vybera z COLLECTION definovanej ako 2. PARAMETER ITEMS v poziciach definovanych parom ITERATORS ako 3. PARAMETER a 4. PARAMETER a uklada ich do COLLECTION pre ktory bola METHOD volana ZA poziciu zadanu ITERATOR. ITEMS su prenasane pomocou MOVE OPERATION. COLLECTION v 2. PARAMETERI je prenasana cez COPY SEMANTICS.
+133. METHOD [void splice_after(const_iterator,COLLECTION&&,const_iterator,const_iterator)] vybera z COLLECTION definovanej ako 2. PARAMETER ITEMS v poziciach definovanych parom ITERATORS ako 3. PARAMETER a 4. PARAMETER a uklada ich do COLLECTION pre ktory bola METHOD volana ZA poziciu zadanu ITERATOR. ITEMS su prenasane pomocou MOVE OPERATION. COLLECTION v 2. PARAMETERI je prenasana cez MOVE SEMANTICS.
+134. METHOD [size_type count(const TType&) const] vracia pocet ITEMS s danou hodnotou v COLLECTION.
+135. METHOD [iterator find(const TType&)] vracia ITERATOR na ITEM s danou hodnotou v COLLECTION. V pripade, ze ITEM s danou hodnotou v COLLECTION neexistuje, METHOD vracia END ITERATOR.
+136. METHOD [const_iterator find(const TType&) const] vracia ITERATOR na ITEM s danou hodnotou v COLLECTION. V pripade, ze ITEM s danou hodnotou v COLLECTION neexistuje, METHOD vracia END ITERATOR.
+137. METHOD [iterator lower_bound(const TType&)] vracia ITERATOR, ktory odkazuje na PRVY ITEM, ktory NEMA MENSIU HODNOTU ITEM ako zadana hodnota ITEM. Ak COLLECTION NEMA ITEM, ktory ma MENSIU HODNOTU ITEM ako zadana hodnota ITEM, RETURN VALUE ITERATOR odkazuje na END ITERATOR.
+138. METHOD [const_iterator lower_bound(const TType&) const] vracia ITERATOR, ktory odkazuje na PRVY ITEM, ktory NEMA MENSIU HODNOTU ITEM ako zadana hodnota ITEM. Ak COLLECTION NEMA ITEM, ktory ma MENSIU HODNOTU ITEM ako zadana hodnota ITEM, RETURN VALUE ITERATOR odkazuje na END ITERATOR.
+139. METHOD [iterator upper_bound(const TType&)] vracia ITERATOR, ktory odkazuje na PRVY ITEM, ktory ma VACSIU HODNOTU ITEM ako ako zadana hodnota ITEM. Ak COLLECTION NEMA ITEM, ktory ma VACSIU HODNOTU ITEM ako zadana hodnota ITEM, RETURN VALUE ITERATOR odkazuje na END ITERATOR.
+140. METHOD [const_iterator upper_bound(const TType&) const] vracia ITERATOR, ktory odkazuje na PRVY ITEM, ktory ma VACSIU HODNOTU ITEM ako ako zadana hodnota ITEM. Ak COLLECTION NEMA ITEM, ktory ma VACSIU HODNOTU ITEM ako zadana hodnota ITEM, RETURN VALUE ITERATOR odkazuje na END ITERATOR.
+141. METHOD [pair<iterator,iterator> equal_range(const TType&)] vracia ITERATOR PAIR, kde 1. ITERATOR odkazuje na PRVY ITEM, ktory NEMA MENSIU HODNOTU ITEM ako zadana hodnota ITEM a DRUHY ITERATOR odkazuje na PRVY ITEM, ktory ma VACSIU HODNOTU ITEM ako zadana hodnota ITEM. Ak COLLECTION NEMA ITEM, ktory ma MENSIU HODNOTU ITEM ako zadana hodnota ITEM, 1. ITERATOR odkazuje na END ITERATOR. Ak ITEM NEMA ITEM, ktory ma VACSIU HODNOTU ITEM ako zadana hodnota ITEM, 2. ITERATOR odkazuje na END ITERATOR.
+142. METHOD [pair<const_iterator,const_iterator> equal_range(const TType&) const] vracia ITERATOR PAIR, kde 1. ITERATOR odkazuje na PRVY ITEM, ktory NEMA MENSIU HODNOTU ITEM ako zadana hodnota ITEM a DRUHY ITERATOR odkazuje na PRVY ITEM, ktory ma VACSIU HODNOTU ITEM ako zadana hodnota ITEM. Ak COLLECTION NEMA ITEM, ktory ma MENSIU HODNOTU ITEM ako zadana hodnota ITEM, 1. ITERATOR odkazuje na END ITERATOR. Ak ITEM NEMA ITEM, ktory ma VACSIU HODNOTU ITEM ako zadana hodnota ITEM, 2. ITERATOR odkazuje na END ITERATOR.
+143. METHOD [key_compare key_comp(void) const] vracia FUNCTION OBJECT pouzivany ako COMPARER hodnot KEYS v COLLECTION.
+144. METHOD [value_compare value_comp(void) const] vracia FUNCTION OBJECT pouzivany ako COMPARER hodnot VALUES v COLLECTION.
+145. METHOD [key_equal key_eq(void) const] vracia FUNCTION OBJECT, ktory sa pouziva na porovnavanie rovnosti hodnot KEYS v COLLECTION.
+146. METHOD [hasher hash_function(void) const] vracia FUNCTION OBJECT pouzivany ako HASH FUNCTION na vypocet HASH CODE, ktory urcuje do ktoreho BUCKET bude ITEM v COLLECTION ulozeny.
+147. METHOD [float load_factor(void) const] vracia priemerny pocet ITEMS v BUCKETS danej COLLECTION.
+148. METHOD [float max_load_factor(void) const] vracia MAXIMALNY pocet ITEMS, ktore mozu byt v BUCKET ulozene predtym ako dojde k REHASHING celej COLLECTION.
+149. METHOD [void max_load_factor(float)] nastavuje MAXIMALNY pocet ITEMS, ktore mozu byt v BUCKET ulozene predtym ako dojde k REHASHING celej COLLECTION.
+150. METHOD [void rehash(size_type)] vykona REHASH celej COLLECTION, tak aby ITEMS boli rozdelene do poctu BUCKETS, ktory definuje PARAMETER.
+151. METHOD [size_type bucket_count(void) const] vracia pocet BUCKETS v COLLECTION.
+152. METHOD [size_type max_bucket_count(void) const] vracia maximalny pocet BUCKETS, ktore moze COLLECTION obsahovat.
+153. METHOD [size_type bucket(const TType&) const] vracia INDEX na BUCKET v ktorom sa ITEM s danym KEY v COLLECTION nachadza.
+154. METHOD [size_type bucket_size(size_type)] vracia pocet ITEMS v danom BUCKET s INDEXOM zadanym ako PARAMETER, ktory COLLECTION obsahuje.
+155. METHOD [void fill(const TType&)] naplna vsetky ITEMS COLLECTION kopiami VALUES zadanych ako PARAMETER METHOD.
+156. METHOD [TType* data(void)] vracia POINTER na interny C-ARRAY, ktory COLLECTION zapuzdruje.
+157. METHOD [const TType* data(void) const] vracia CONST POINTER na interny C-ARRAY, ktory COLLECTION zapuzdruje.
+158. METHOD [allocator_type get_allocator(void)] vracia instanciu ALLOCATOR, ktora sa pouziva pri alokovani ITEMS danej COLLECTION.
+159. CLASS [vector<TItem,TAllocator>] reprezentuje DYNAMIC ARRAY. Pre CLASS [vector<TItem,TAllocator>] platia nasledujuce fakty.
+   A. VECTOR je definovany v LIBRARY <vector>.
+   B. VECTOR reprezentuje DYNAMIC ARRAY, ktory umoznuje EFEKTIVNE pridavat a odoberat ITEMS z konca VECTOR.
+   C. VECTOR umoznuje v 2. TEMPLATE PARAMETER definovat CUSTOM ALLOCATOR umoznujuci CUSTOM MEMORY MANAGEMENT pri alokacii VECTOR.
+   !!! D. VECTOR spravidla alokuje interny BUFFER pre vacsi pocet ITEMS ako su vo VECTOR realne ulozene. To umoznuje vysoku PERFORMANCE pri pridavani a odstranovani ITEMS z konca VECTOR, pretoze pri pridavani ITEMS, pokial nie je prekrocena kapacita interneho BUFFER, NIE JE NUTNE vykonat casovo narocnu realokaciu. Ta je nutna az ked pri pridavani ITEM je tato kapacita prekrocena.
+   E. VECTOR umoznuje RANDOM ACCESS k jednotlivym ITEMS.
+   F. VECTOR ma vysoku PERFORMANCE pri pridavani a odstranovani ITEMS z konca VECTOR.
+   G. VECTOR ma nizku PERFORMANCE pri pridavani a odstranovani ITEMS zo zaciatku a zo stredu VECTOR.
+   !!!!! H. VECTOR pri realokacii interneho BUFFER NEVOLA COPY OPERATOR= ani MOVE OPERATOR=. ITEMS sa presunu do noveho BUFFER pomocou RAW COPY MEMORY.
+160. CLASS [vector<TItem,TAllocator>] ma nasledujuce MEMBERS.
+   1. CONSTRUCTOR vytvara instanciu VECTOR. OVERLOADED verzia umoznuje alokovat zadany pocet ITEMS, pricom pre tieto ITEMS je volany DEFAULT CONSTRUCTOR.
+   2. DESTRUCTOR uvolnuje instanciu VECTOR ako aj jednotlive ITEMS pre ktore je zavolany ich DESTRUCTOR.
+   3. TYPE [value_type] urcuje TYPE pre ITEMS ulozene vo VECTOR.
+   4. TYPE [allocator_type] urcuje TYPE, ktory sa pouziva ako ALLOCATOR.
+   5. TYPE [size_type] je UNSIGNED TYPE reprezentujuci hodnoty urcujuce velkost a pocet.
+   6. TYPE [difference_type] je SIGNED TYPE reprezentujuci hodnoty urcujuce rozdiel.
+   7. TYPE [reference] urcuje REFERENCE TYPE pre ITEMS ulozene vo VECTOR.
+   8. TYPE [const_reference] urcuje CONST REFERENCE TYPE pre ITEMS ulozene vo VECTOR.
+   9. TYPE [pointer] urcuje POINTER TYPE pre ITEMS ulozene vo VECTOR.
+   10. TYPE [const_pointer] urcuje CONST POINTER TYPE pre ITEMS ulozene vo VECTOR.
+   11. TYPE [iterator] urcuje TYPE pre ITERATOR daneho VECTOR.
+   12. TYPE [const_iterator] urcuje TYPE pre CONST ITERATOR daneho VECTOR.
+   13. TYPE [reverse_iterator] urcuje TYPE pre REVERSE ITERATOR daneho VECTOR.
+   14. TYPE [const_reverse_iterator] urcuje TYPE pre CONST REVERSE ITERATOR daneho VECTOR.
+   15. OPERATOR= priradzuje do VECTOR ITEMS ineho VECTOR. VECTOR obsahuje COPY OPERATOR= aj MOVE OPERATOR= ako aj verziu pre INITIALIZER LIST.
+   16. OPERATOR== zistuje ci dve instancie VECTOR su lexikograficky rovne.
+   17. OPERATOR!= zistuje ci dve instancie VECTOR su lexikograficky rozne.
+   18. OPERATOR< zistuje ci 1. VECTOR je lexikograficky mensi ako 2. VECTOR.
+   19. OPERATOR<= zistuje ci 1. VECTOR je lexikograficky mensi, alebo rovny ako 2. VECTOR.
+   20. OPERATOR> zistuje ci 1. VECTOR je lexikograficky vacsi ako 2. VECTOR.
+   21. OPERATOR>= zistuje ci 1. VECTOR je lexikograficky vacsi, alebo rovny ako 2. VECTOR.
+   !!! 22. OPERATOR[] vracia REFERENCES k ITEMS daneho VECTOR. OPERATOR[] NEROBI kontrolu hranic VECTOR.
+   !!! 23. METHOD at() vracia REFERENCES k ITEMS daneho VECTOR. METHOD vector<TItem,TAllocator>.at() ROBI kontrolu hranic VECTOR, a v pripade zistenia chybneho pristupu generuje EXCEPTION [out_of_range].
+   24. METHOD assign() priradzuje do VECTOR ITEMS ineho CONTAINER, ktory je definovany pomocou paru ITERATORS. OVERLOADED VERSION umoznuje priradit 'N' krat kopiu zadaneho ITEMS, alebo ITEMS z INITIALIZER LIST.
+   25. METHOD get_allocator() vracia instanciu ALLOCATOR, ktora sa pouziva pri alokovani ITEMS daneho VECTOR.
+   26. METHOD front() vracia REFERENCE na PRVY ITEM vo VECTOR.
+   27. METHOD back() vracia REFERENCE na POSLEDNY ITEM vo VECTOR.
+   28. METHOD data() vracia POINTER na interny BUFFER, ktory instancia ARRAY pouziva na ulozenie ITEMS.
+   29. METHOD begin() vracia ITERATOR ukazujuci na PRVY ITEM VECTOR.
+   30. METHOD cbegin() vracia CONST ITERATOR ukazujuci na PRVY ITEM VECTOR.
+   31. METHOD end() vracia ITERATOR ukazujuci hned za POSLEDNY ITEM VECTOR.
+   32. METHOD cend() vracia CONST ITERATOR ukazujuci hned za POSLEDNY ITEM VECTOR.
+   33. METHOD rbegin() vracia REVERSE ITERATOR ukazujuci na POSLEDNY ITEM VECTOR.
+   34. METHOD crbegin() vracia CONST REVERSE ITERATOR ukazujuci na POSLEDNY ITEM VECTOR.
+   35. METHOD rend() vracia REVERSE ITERATOR ukazujuci hned pred PRVY ITEM VECTOR.
+   36. METHOD crend() vracia CONST REVERSE ITERATOR ukazujuci hned pred PRVY ITEM VECTOR.
+   37. METHOD empty() vracia informaciu ci VECTOR je prazdny.
+   38. METHOD size() vracia pocet ITEMS vo VECTOR.
+   39. METHOD max_size() vracia maximalny pocet ITEMS, ktore je do VECTOR mozne ulozit.
+   40. METHOD reserve() alokuje INTERNY BUFFER VECTOR na zadanu CAPACITY. Ak zadana velkost je mensia, alebo rovna aktualnemu poctu ITEMS vo VECTOR, METHOD nerobi nic.
+   41. METHOD capacity() vracia CAPACITY urcujucu pocet ITEMS na ktory je alokovany INTERNY BUFFER VECTOR.
+   !!! 42. METHOD shrink_to_fit() sa pokusi uvolnit INTERNY BUFFER daneho VECTOR, tak aby mal identicku dlzku ako realny pocet ITEMS vo VECTOR. Tato METHOD je len POZIADAVKA na vykonanie SHRINK, ktora je implementacne zavisla. To znaci, ze v zavislosti od implementacie SHRINK moze, ale aj NEMUSI VYKONAT.
+   43. METHOD clear() odstranuje vsetky ITEMS z VECTOR. CAPACITY METHOD NEMENI.
+   44. METHOD insert() pridava 1-N ITEMS PRED stanovenu poziciu vo VECTOR. Pozicie sa urcuju pomocou ITERATORS.
+   45. METHOD emplace() pridava ITEM PRED stanovenu poziciu vo VECTOR pomocou PLACEMENT NEW. PARAMETERS METHOD vector<TItem,TAllocator>.emplace() od 2. PARAMETER su FORWARDED do CONSTRUCTOR daneho ITEM volaneho pri pridavani ITEM do VECTOR.
+   46. METHOD erase() odstranuje 1-N ITEMS na stanovenych poziciach vo VECTOR. Pozicie sa urcuju pomocou ITERATORS.
+   47. METHOD push_back() pridava ITEM na koniec VECTOR.
+   48. METHOD emplace_back() pridava ITEM na koniec VECTOR pomocou PLACEMENT NEW. PARAMETERS METHOD emplace_back() su FORWARDED do CONSTRUCTOR daneho ITEM volaneho pri pridavani ITEM do VECTOR.
+   49. METHOD pop_back() odstranuje 1 ITEM z konca VECTOR.
+   50. METHOD resize() meni pocet ITEMS vo VECTOR na pocet stanoveny PARAMETER METHOD vector<TItem,TAllocator>.resize(). V pripade, ze stanoveny pocet je MENSI ako pocet ITEMS vo VECTOR, dochadza k ostraneniu ITEMS z VECTOR. Ak je stanoveny pocet VACSI ako pocet ITEMS vo VECTOR, dochadza k pridavaniu novych ITEMS do VECTOR, pricom OVERLOADED verzia METHOD vector<TItem,TAllocator>.resize() umoznuje definovat ITEM, ktoreho kopia za priradi za nove ITEMS.
+   51. METHOD swap() vymiena obsah dvoch instancii VECTOR vymenou ich vnutornych FIELDS.
+   52. FUNCTION swap() vymiena obsah dvoch instancii VECTOR vymenou ich vnutornych FIELDS.
+!!! 161. CLASS [vector<TItem,TAllocator>] GARANTUJE, ze ITEMS su ulozene VZDY v KONTINUALNOM BLOKU MEMORY.
+!!! 162. CLASS [vector<TItem,TAllocator>] generuje nasledujuce EXCEPTIONS.
+   A. METHOD vector<TItem>.at() generuje EXCEPTION [out_of_range], ak dojde k pokusu o pristup k ITEM, ktory je OUT OF BOUNDS daneho VECTOR.
+   B. Kazda realokacia MEMORY pri praci s VECTOR moze generovat EXCEPTION [bad_alloc].
+163. Ak OPERATIONS ako su COPY CONSTRUCTOR, MOVE CONSTRUCTOR, COPY OPERATOR= ci MOVE OPERATOR= TYPE 'TItem' pouzitej ako TEMPLATE PARAMETER CLASS [vector<TItem,TAllocator>] mozu hodit EXCEPTION, CLASS [vector<TItem,TAllocator>] poskytuje nasledujuce garancie ako sa bude chovat.
+   A. Ak OPERATIONS volane pri realizovani METHOD vector<TItem>.push_back() hodi EXCEPTION, METHOD vector<TItem>.push_back() NEMA ZIADEN EFEKT.
+   B. METHOD vector<TItem>.pop_back() nikdy nehadze EXCEPTION. Je to preto, lebo velkost VECTOR sa pri odstranovani ITEMS z VECTOR NEMENI a teda ani NEDOCHADZA k realokacii MEMORY.
+   C. METHOD vector<TItem>.swap() a METHOD vector<TItem>.clear() nikdy nehadzu EXCEPTIONS. Je to preto, lebo velkost VECTOR sa pri odstranovani ITEMS z VECTOR NEMENI a teda ani NEDOCHADZA k realokacii MEMORY.
+   D. Ak OPERATIONS volane pri realizovani METHODS CLASS [vector<TItem,TAllocator>] NEHADZU EXCEPTIONS, potom KAZDA METHOD CLASS [vector<TItem,TAllocator>] grantuje, ze bude METHOD vykona pozadovanu cinnost, alebo NEVYKONA VOBEC NIC.
+164. CLASS [list<TType,TAllocator>] reprezentuje DOUBLY LINKED LIST. Pre CLASS [list<TType,TAllocator>] platia nasledujuce fakty.
+   A. LIST je definovany v LIBRARY <list>.
+   !!! B. LIST je implementovany ako DOUBLY LINKED LIST.
+   C. LIST umoznuje v TEMPLATE PARAMETER 'TAllocator' definovat CUSTOM ALLOCATOR umoznujuci CUSTOM MEMORY MANAGEMENT pri alokacii LIST.
+   D. LIST ma FORWARD a BACKWARD ITERATORS. Nema vsak RANDOM ACCESS ITERATORS.
+   E. LIST umoznuje RYCHLE pridavanie a odstranovanie ITEMS ak na ne je k dispozicii ITERATOR. Zlozitost takejto operacie je O(1). Pridavanie a odstranovanie ITEMS nesposobuje neplatnost ITERATORS.
+   F. LIST ma POMALE vyhladavanie ITEMS so zlozitostou O(N).
+   !!!!! G. Velkou VYHODOU LISTS je, ze VSETKY OPERATIONS okrem ASSIGNMENTS a METHOD list<TType,TAllocator>.sort() su ATOMICKE. To znaci, ze bud sa cela OPERATION kompletne vykona, alebo pri vzniku EXCEPTION ostane LIST NEMODIFIKOVANY.
+165. CLASS [list<TType,TAllocator>] ma nasledujuce MEMBERS.
+   1. CONSTRUCTOR vytvara instanciu LIST.
+   2. DESTRUCTOR uvolnuje instanciu LIST ako aj jednotlive ITEMS pre ktore je zavolany ich DESTRUCTOR.
+   3. TYPE [value_type] urcuje VALUE TYPE ITEMS ulozenych vo LIST.
+   4. TYPE [allocator_type] urcuje TYPE, ktory sa pouziva ako ALLOCATOR.
+   5. TYPE [size_type] je UNSIGNED TYPE reprezentujuci hodnoty urcujuce velkost a pocet.
+   6. TYPE [difference_type] je SIGNED TYPE reprezentujuci hodnoty urcujuce rozdiel.
+   7. TYPE [reference] urcuje REFERENCE TYPE pre ITEMS ulozene v LIST.
+   8. TYPE [const_reference] urcuje CONST REFERENCE TYPE pre ITEMS ulozene v LIST.
+   9. TYPE [pointer] urcuje POINTER TYPE pre ITEMS ulozene v LIST.
+   10. TYPE [const_pointer] urcuje CONST POINTER TYPE pre ITEMS ulozene v LIST.
+   11. TYPE [iterator] urcuje TYPE pre ITERATOR daneho LIST.
+   12. TYPE [const_iterator] urcuje TYPE pre CONST ITERATOR daneho LIST.
+   13. TYPE [reverser_iterator] urcuje TYPE pre REVERSE ITERATOR daneho LIST.
+   14. TYPE [const_reverser_iterator] urcuje TYPE pre CONST REVERSE ITERATOR daneho LIST.
+   15. OPERATOR= priradzuje do LIST ITEMS ineho LIST. LIST obsahuje COPY OPERATOR= aj MOVE OPERATOR= ako aj verziu pre INITIALIZER LIST.
+   16. OPERATOR== zistuje ci dve instancie LIST su lexikograficky rovne.
+   17. OPERATOR!= zistuje ci dve instancie LIST su lexikograficky rozne.
+   18. OPERATOR< zistuje ci 1. LIST je lexikograficky mensi ako 2. LIST.
+   19. OPERATOR<= zistuje ci 1. LIST je lexikograficky mensi, alebo rovna ako 2. LIST.
+   20. OPERATOR> zistuje ci 1. LIST je lexikograficky vacsi ako 2. LIST.
+   21. OPERATOR>= zistuje ci 1. LIST je lexikograficky vacsi, alebo rovna ako 2. LIST.
+   22. METHOD get_allocator() vracia instanciu ALLOCATOR, ktora sa pouziva pri alokovani ITEMS daneho LIST.
+   23. METHOD assign() priradzuje do LIST ITEMS ineho CONTAINER, ktory je definovany pomocou paru ITERATORS. OVERLOADED VERSION umoznuje priradzovat do LIST 'N' instancii CONST VALUE ako aj instanciu INITIALIZER LIST.
+   24. METHOD front() vracia REFERENCE na PRVY ITEM v LIST.
+   25. METHOD back() vracia REFERENCE na POSLEDNY ITEM v LIST.
+   26. METHOD begin() vracia ITERATOR ukazujuci na PRVY ITEM LIST.
+   27. METHOD cbegin() vracia CONST ITERATOR ukazujuci na PRVY ITEM LIST.
+   28. METHOD end() vracia ITERATOR ukazujuci hned za POSLEDNY ITEM LIST.
+   29. METHOD cend() vracia CONST ITERATOR ukazujuci hned za POSLEDNY ITEM LIST.
+   30. METHOD rbegin() vracia REVERSE ITERATOR ukazujuci na POSLEDNY ITEM LIST.
+   31. METHOD crbegin() vracia CONST REVERSE ITERATOR ukazujuci na POSLEDNY ITEM LIST.
+   32. METHOD rend() vracia REVERSE ITERATOR ukazujuci hned pred PRVY ITEM LIST.
+   33. METHOD crend() vracia CONST REVERSE ITERATOR ukazujuci hned pred PRVY ITEM LIST.
+   34. METHOD empty() vracia informaciu ci LIST je prazdny.
+   35. METHOD size() vracia pocet ITEMS v LIST.
+   36. METHOD max_size() vracia maximalny pocet ITEMS, ktore je do LIST mozne ulozit.
+   37. METHOD clear() odstranuje vsetky ITEMS z LIST.
+   38. METHOD insert() pridava 1 az 'N' ITEMS do LIST PRED poziciu urcenu ITERATOR. OVERLOADED VERSION METHOD pridavajuca 1 ITEM vracia ITERATOR na pridany ITEM. OVERLOADED VERSION METHOD pridavajuca 'N' ITEMS vracia ITERATOR na prvy vlozeny ITEM.
+   39. METHOD emplace() pridava ITEM do LIST za poziciu urcenu ITERATOR pomocou PLACEMENT NEW. PARAMETERS METHOD list<TType,TAllocator>.emplace() od 2. PARAMETER su FORWARDED do CONSTRUCTOR daneho ITEM volaneho pri pridavani ITEM do LIST. METHOD vracia ITERATOR na pridany ITEM.
+   40. METHOD erase() odstranuje 1 az 'N' ITEMS do LIST. OVERLOADED VERSION METHOD odstranujuca 1 ITEM odstranuje ITEM ZA ITEM na ktory ITERATOR odkazuje a vracia ITERATOR na ITEM, ktory nasleduje za odstranenym ITEM. OVERLOADED VERSION METHOD odstranujuca 'N' ITEMS vracia ITERATOR odkazujuci na ITEM za poslednym odstranenym ITEM.
+   41. METHOD push_front() pridava ITEM na zaciatok LIST.
+   42. METHOD emplace_front() pridava ITEM na zaciatok LIST pomocou PLACEMENT NEW. PARAMETERS METHOD list<TType,TAllocator>.emplace_front() su FORWARDED do CONSTRUCTOR daneho ITEM volaneho pri pridavani ITEM do LIST.
+   43. METHOD pop_front() odstranuje ITEM zo zaciatku LIST.
+   44. METHOD push_back() pridava ITEM na koniec LIST.
+   45. METHOD emplace_back() pridava ITEM na koniec LIST pomocou PLACEMENT NEW. PARAMETERS METHOD list<TType,TAllocator>.emplace_back() su FORWARDED do CONSTRUCTOR daneho ITEM volaneho pri pridavani ITEM do LIST.
+   46. METHOD pop_back() odstranuje ITEM z konca LIST.
+   47. METHOD resize() meni pocet ITEMS v LIST na pocet stanoveny PARAMETER METHOD list<TType,TAllocator>.resize(). V pripade, ze stanoveny pocet je MENSI ako pocet ITEMS v LIST, dochadza k ostraneniu ITEMS z LIST. Ak je stanoveny pocet VACSI ako pocet ITEMS v LIST, dochadza k pridavaniu novych ITEMS do LIST, pricom OVERLOADED verzia METHOD list<TType,TAllocator>.resize() umoznuje definovat ITEM, ktoreho kopia za priradi za nove ITEMS.
+   48. METHOD swap() vymiena obsah dvoch instancii LIST vymenou ich vnutornych FIELDS.
+   !!! 49. METHOD merge() vybera ITEMS z LIST definovaneho ako PARAMETER a uklada ich do LIST pre ktory bola METHOD volana. Obe LISTS MUSIA byt SORTED. OVERLOADED VERSION METHOD umoznuje definovat CUSTOM SORTING CRITERIA. Ak sa nezadaju BY-DEFAULT sa pouziva OPERATOR<. ITEMS su prenasane pomocou MOVE OPERATION, takze LIST definovany ako PARAMETER je po skonceni volania METHOD PRAZDNY. ITEMS, ktore maju rovnaku hodnotu v SOURCE a DESTINATION LIST su prenesene do DESTINATION LIST pricom su umiestnene az za ITEMS s rovnakou hodnotou, ktore v DESTINATION LIST sa uz nachadzali.
+   !!! 50. METHOD splice() vybera ITEMS z LIST definovaneho ako PARAMETER a uklada ich do LIST pre ktory bola METHOD volana PRED poziciu zadanu ITERATOR. LISTS NA ROZDIEL od METHOD list<TType,TAllocator>.merge() NEMUSIA byt SORTED. OVERLOADED VERSION umoznuje definovat ITERATOR PAIR, ktory sa urcuje, ktore ITEMS sa zo SOURCE LIST prenesu. ITEMS su prenasane pomocou MOVE OPERATION.
+   51. METHOD remove() odstranuje VSETKY ITEMS, ktore maju rovnaku hodnotu ako hodnota zadana v PARAMETER METHOD. Na porovnanie ITEMS sa pouziva OPERATOR==.
+   52. METHOD remove_if() odstranuje VSETKY ITEMS, ktore splnaju PREDICATE zadany ako PARAMETER METHOD.
+   53. METHOD reverse() obracia poradie ITEMS v LIST.
+   54. METHOD unique() odstranuje za sebou nasledujuce ITEMS, ktore maju ROVNAKU VALUE. Na porovnanie ITEMS sa pouziva OPERATOR==, pricom OVERLOADED VERSION umoznuje preniest CUSTOM PREDICATE, ktory sa na porovnanie pouzije.
+   55. METHOD sort() vykonava triedenie ITEMS. Na triedenie ITEMS sa pouziva OPERATOR<, pricom OVERLOADED VERSION umoznuje preniest CUSTOM PREDICATE, ktory sa na triedenie pouzije. Poradie ITEMS s rovnakou hodnotou je zachovane.
+   56. FUNCTION swap() vymiena obsah dvoch instancii LIST vymenou ich vnutornych FIELDS.
+166. Kazda realokacia MEMORY pri praci s LIST moze generovat EXCEPTION [bad_alloc]. Ine operacie EXCEPTION negeneruju.
+167. CLASS [forward_list<TType,TAllocator>] reprezentuje SINGLY LINKED LIST. Pre CLASS [forward_list<TType,TAllocator>] platia nasledujuce fakty.
+   A. FORWARD LIST je definovany v LIBRARY <forward_list>.
+   !!! B. FORWARD LIST je implementovany ako SINGLY LINKED LIST.
+   C. FORWARD LIST umoznuje v TEMPLATE PARAMETER 'TAllocator' definovat CUSTOM ALLOCATOR umoznujuci CUSTOM MEMORY MANAGEMENT pri alokacii FORWARD LIST.
+   D. FORWARD LIST je zjednodusenou veziou LIST. Nema ziadnu dodatocnu funkcionalitu oproti LISTS.
+   E. FORWARD LIST ma iba FORWARD ITERATORS. Ine typy ITERATORS FORWARD LIST nepodporuje.
+   F. FORWARD LIST ma minimum funkcionality, pretoze je silne orientovana na vysoku PEFORMANCE a nizke pamatove naroky.
+   G. FORWARD LIST NEMA RANDOM ACCESS k ITEMS a jedina moznost pristupit k lubovolnemu ITEM je iterovat celym FORWARD LIST.
+   H. FORWARD LIST umoznuje RYCHLE pridavanie a odstranovanie ITEMS ak na ne je k dispozicii ITERATOR. Zlozitost takejto operacie je O(1). Pridavanie a odstranovanie ITEMS nesposobuje neplatnost ITERATORS.
+   I. FORWARD LIST ma POMALE vyhladavanie ITEMS so zlozitostou O(N).
+168. CLASS [forward_list<TType,TAllocator>] ma nasledujuce MEMBERS.
+   1. CONSTRUCTOR vytvara instanciu FORWARD LIST.
+   2. DESTRUCTOR uvolnuje instanciu FORWARD LIST ako aj jednotlive ITEMS pre ktore je zavolany ich DESTRUCTOR.
+   3. TYPE [value_type] urcuje VALUE TYPE ITEMS ulozenych vo FORWARD LIST.
+   4. TYPE [allocator_type] urcuje TYPE, ktory sa pouziva ako ALLOCATOR.
+   5. TYPE [size_type] je UNSIGNED TYPE reprezentujuci hodnoty urcujuce velkost a pocet.
+   6. TYPE [difference_type] je SIGNED TYPE reprezentujuci hodnoty urcujuce rozdiel.
+   7. TYPE [reference] urcuje REFERENCE TYPE pre ITEMS ulozene vo FORWARD LIST.
+   8. TYPE [const_reference] urcuje CONST REFERENCE TYPE pre ITEMS ulozene vo FORWARD LIST.
+   9. TYPE [pointer] urcuje POINTER TYPE pre ITEMS ulozene vo FORWARD LIST.
+   10. TYPE [const_pointer] urcuje CONST POINTER TYPE pre ITEMS ulozene vo FORWARD LIST.
+   11. TYPE [iterator] urcuje TYPE pre ITERATOR daneho FORWARD LIST.
+   12. TYPE [const_iterator] urcuje TYPE pre CONST ITERATOR daneho FORWARD LIST.
+   13. OPERATOR= priradzuje do FORWARD LIST ITEMS ineho FORWARD LIST. FORWARD LIST obsahuje COPY OPERATOR= aj MOVE OPERATOR= ako aj verziu pre INITIALIZER LIST.
+   14. OPERATOR== zistuje ci dve instancie FORWARD LIST su lexikograficky rovne.
+   15. OPERATOR!= zistuje ci dve instancie FORWARD LIST su lexikograficky rozne.
+   16. OPERATOR< zistuje ci 1. FORWARD LIST je lexikograficky mensi ako 2. FORWARD LIST.
+   17. OPERATOR<= zistuje ci 1. FORWARD LIST je lexikograficky mensi, alebo rovna ako 2. FORWARD LIST.
+   18. OPERATOR> zistuje ci 1. FORWARD LIST je lexikograficky vacsi ako 2. FORWARD LIST.
+   19. OPERATOR>= zistuje ci 1. FORWARD LIST je lexikograficky vacsi, alebo rovna ako 2. FORWARD LIST.
+   20. METHOD get_allocator() vracia instanciu ALLOCATOR, ktora sa pouziva pri alokovani ITEMS daneho FORWARD LIST.
+   21. METHOD assign() priradzuje do FORWARD LIST ITEMS ineho CONTAINER, ktory je definovany pomocou paru ITERATORS. OVERLOADED VERSION umoznuje priradzovat do FORWARD LIST 'N' instancii CONST VALUE ako aj instanciu INITIALIZER LIST.
+   22. METHOD front() vracia REFERENCE na PRVY ITEM vo FORWARD LIST.
+   23. METHOD before_begin() vracia ITERATOR ukazujuci PRED PRVY ITEM FORWARD LIST. METHOD sa pouziva pri vkladani ITEMS na zaciatok FORWARD LIST. Vratene ITERATORS NESMU BYT DEREFERENCED pretoze NEUKAZUJU na ITEM a ich DEREFERENCING by sposobil RUNTIME ERROR.
+   24. METHOD cbefore_begin() vracia CONST ITERATOR ukazujuci PRED PRVY ITEM FORWARD LIST. METHOD sa pouziva pri vkladani ITEMS na zaciatok FORWARD LIST. Vratene ITERATORS NESMU BYT DEREFERENCED pretoze NEUKAZUJU na ITEM a ich DEREFERENCING by sposobil RUNTIME ERROR.
+   25. METHOD begin() vracia ITERATOR ukazujuci na PRVY ITEM FORWARD LIST.
+   26. METHOD cbegin() vracia CONST ITERATOR ukazujuci na PRVY ITEM FORWARD LIST.
+   27. METHOD end() vracia ITERATOR ukazujuci hned za POSLEDNY ITEM FORWARD LIST.
+   28. METHOD cend() vracia CONST ITERATOR ukazujuci hned za POSLEDNY ITEM FORWARD LIST.
+   29. METHOD empty() vracia informaciu ci FORWARD LIST je prazdny.
+   30. METHOD max_size() vracia maximalny pocet ITEMS, ktore je do FORWARD LIST mozne ulozit.
+   31. METHOD clear() odstranuje vsetky ITEMS z FORWARD LIST.
+   32. METHOD insert_after() pridava 1 az 'N' ITEMS do FORWARD LIST za poziciu urcenu ITERATOR. OVERLOADED VERSION METHOD pridavajuca 1 ITEM vracia ITERATOR na pridany ITEM. OVERLOADED VERSION METHOD pridavajuca 'N' ITEMS vracia ITERATOR na posledny vlozeny ITEM.
+   33. METHOD emplace_after() pridava ITEM do FORWARD LIST za poziciu urcenu ITERATOR pomocou PLACEMENT NEW. PARAMETERS METHOD forward_list<TType,TAllocator>.emplace_after() od 2. PARAMETER su FORWARDED do CONSTRUCTOR daneho ITEM volaneho pri pridavani ITEM do FORWARD LIST. METHOD vracia ITERATOR na pridany ITEM.
+   34. METHOD erase_after() odstranuje 1 az 'N' ITEMS z FORWARD LIST. OVERLOADED VERSION METHOD odstranujuca 1 ITEM odstranuje ITEM ZA ITEM na ktory ITERATOR odkazuje a vracia ITERATOR na ITEM, ktory nasleduje za odstranenym ITEM. OVERLOADED VERSION METHOD odstranujuca 'N' ITEMS vracia ITERATOR zadany ako 2. PARAMETER tejto METHOD.
+   35. METHOD push_front() pridava ITEM na zaciatok FORWARD LIST.
+   36. METHOD emplace_front() pridava ITEM na zaciatok FORWARD LIST pomocou PLACEMENT NEW. PARAMETERS METHOD forward_list<TType,TAllocator>.emplace_front() su FORWARDED do CONSTRUCTOR daneho ITEM volaneho pri pridavani ITEM do FORWARD LIST.
+   37. METHOD pop_front() odstranuje ITEM zo zaciatku FORWARD LIST.
+   38. METHOD resize() meni pocet ITEMS vo FORWARD LIST na pocet stanoveny PARAMETER METHOD forward_list<TType,TAllocator>.resize(). V pripade, ze stanoveny pocet je MENSI ako pocet ITEMS vo FORWARD LIST, dochadza k ostraneniu ITEMS z FORWARD LIST. Ak je stanoveny pocet VACSI ako pocet ITEMS vo FORWARD LIST, dochadza k pridavaniu novych ITEMS do FORWARD LIST, pricom OVERLOADED verzia METHOD forward_list<TType,TAllocator>.resize() umoznuje definovat ITEM, ktoreho kopia za priradi za nove ITEMS.
+   39. METHOD swap() vymiena obsah dvoch instancii FORWARD LIST vymenou ich vnutornych FIELDS.
+   !!! 40. METHOD merge() vybera ITEMS z FORWARD LIST definovaneho ako PARAMETER a uklada ich do FORWARD LIST pre ktory bola METHOD volana. Obe FORWARD LISTS MUSIA byt SORTED. OVERLOADED VERSION METHOD umoznuje definovat CUSTOM SORTING CRITERIA. Ak sa nezadaju BY-DEFAULT sa pouziva OPERATOR<. ITEMS su prenasane pomocou MOVE OPERATION, takze FORWARD LIST definovany ako PARAMETER je po skonceni volania METHOD PRAZDNY. ITEMS, ktore maju rovnaku hodnotu v SOURCE a DESTINATION FORWARD LIST su prenesene do DESTINATION FORWARD LIST pricom su umiestnene az za ITEMS s rovnakou hodnotou, ktore v DESTINATION FORWARD LIST sa uz nachadzali.
+   !!! 41. METHOD splice_after() vybera ITEMS z FORWARD LIST definovaneho ako PARAMETER a uklada ich do FORWARD LIST pre ktory bola METHOD volana ZA poziciu zadanu ITERATOR. FORWARD LISTS NA ROZDIEL od METHOD forward_list<TType,TAllocator>.merge() NEMUSIA byt SORTED. OVERLOADED VERSION umoznuje definovat ITERATOR PAIR, ktory sa urcuje, ktore ITEMS sa zo SOURCE FORWARD LIST prenesu. ITEMS su prenasane pomocou MOVE OPERATION.
+   42. METHOD remove() odstranuje VSETKY ITEMS, ktore maju rovnaku hodnotu ako hodnota zadana v PARAMETER METHOD. Na porovnanie ITEMS sa pouziva OPERATOR==.
+   43. METHOD remove_if() odstranuje VSETKY ITEMS, ktore splnaju PREDICATE zadany ako PARAMETER METHOD.
+   44. METHOD reverse() obracia poradie ITEMS vo FORWARD LIST.
+   45. METHOD unique() odstranuje za sebou nasledujuce ITEMS, ktore maju ROVNAKU VALUE. Na porovnanie ITEMS sa pouziva OPERATOR==, pricom OVERLOADED VERSION umoznuje preniest CUSTOM PREDICATE, ktory sa na porovnanie pouzije.
+   46. METHOD sort() vykonava triedenie ITEMS. Na triedenie ITEMS sa pouziva OPERATOR<, pricom OVERLOADED VERSION umoznuje preniest CUSTOM PREDICATE, ktory sa na triedenie pouzije. Poradie ITEMS s rovnakou hodnotou je zachovane.
+   47. FUNCTION swap() vymiena obsah dvoch instancii FORWARD LIST vymenou ich vnutornych FIELDS.
+!!! 169. METHOD forward_list<TType,TAllocator>.insert_after(), METHOD forward_list<TType,TAllocator>.emplace_after() a METHOD forward_list<TType,TAllocator>.erase_after() NIE JE mozne pouzit s ITERATORS odkazujucimi na koniec FORWARD LIST (vratene pomocou METHOD forward_list<TType,TAllocator>.cend() a METHOD forward_list<TType,TAllocator>.end()), pretoze to vedie k RUNTIME ERROR.
+170. Kazda realokacia MEMORY pri praci s FORWARD LIST moze generovat EXCEPTION [bad_alloc]. Ine operacie EXCEPTION negeneruju.
+171. CLASS [set<TKey,TCompare,TAllocator>] reprezentuje BALANCED BINARY TREE BEZ moznosti OPAKOVANIA ITEMS s rovnakou hodnotou VALUES. Pre CLASS [set<TKey,TCompare,TAllocator>] platia nasledujuce fakty.
+   A. SET je definovana v LIBRARY <set>.
+   !!! B. SET je implementovana ako BALANCED BINARY TREE.
+   C. SETS NEMOZU obsahovat VIACERO ITEMS s TOU ISTOU VALUE.
+   D. ITEMS v SETS su SORTED. Poradie ITEMS je definovane pomocou TEMPLATE PARAMETER 'TCompare'.
+   E. ITEMS MUSIA byt COPYABLE, MOVABLE, EQUATABLE pomocou TEMPLATE PARAMETER 'TCompare'.
+   F. EQUIVALENCE 2 ITEMS 'X' a 'Y' nastava vtedy ak [TCompare(X,Y)==FALSE && TCompare(Y,X)==FALSE]. V takomto pripade je ITEM pri pridavani do SET nepridany, pretoze ho SET uz obsahuje.
+   G. SET umoznuje v TEMPLATE PARAMETER 'TAllocator' definovat CUSTOM ALLOCATOR umoznujuci CUSTOM MEMORY MANAGEMENT pri alokacii SET.
+   !!!!! H. SET ma vysoku PERFORMANCE pri pristupe k ITEMS. Zlozitost pri pristupe k ITEMS je O(LOG(N)).
+   I. SET ma vysoku PERFORMANCE pri pridavani ITEMS.
+   J. SET ma vysoku PERFORMANCE pri odstranovani ITEMS.
+   !!! K. Hodnota ITEM je CONSTANT a NESMIE sa MENIT. Ak je potrebne hodnotu ITEM zmenit, je nutne ITEM odstranit zo SET a ITEM s novou hodnotou znova do SET vlozit.
+172. ITEMS v SET a MULTISET MUSIA byt SORTED pricom SORTING CRITERIA musi splnit nasledujuce podmienky.
+   A. SORTING CRITERIA MUSI byt ANTISYMETRIC. SORTING CRITERIA je ANTISYMETRIC ak plati, ze ak [SORT(X,Y)==TRUE], potom [SORT(Y,X)==FALSE].
+   B. SORTING CRITERIA MUSI byt TRANSITIVE. SORTING CRITERIA je TRANSITIVE ak plati, ze ak [SORT(X,Y)==TRUE && SORT(Y,Z)==TRUE], potom [SORT(X,Z)==TRUE].
+   C. SORTING CRITERIA MUSI byt IRREFLEXIVE. SORTING CRITERIA je IRREFLEXIVE ak plati, ze [SORT(X,X)==FALSE].
+   D. SORTING CRITERIA MUSI splnat TRANSITIVITY OF EQUIVALENCE. SORTING CRITERIA splna TRANSITIVITY OF EQUIVALENCE ak plati, ze ak [SORT(X,Y)==FALSE && SORT(Y,X)==FALSE && SORT(Y,Z)==FALSE && SORT(Z,Y)==FALSE], potom [SORT(X,Z)==FALSE && SORT(Z,X)==FALSE].
+173. CLASS [set<TKey,TCompare,TAllocator>] ma nasledujuce MEMBERS.
+   1. CONSTRUCTOR vytvara instanciu SET.
+   2. DESTRUCTOR uvolnuje instanciu SET ako aj jednotlive ITEMS pre ktore je zavolany ich DESTRUCTOR.
+   3. TYPE [key_type] urcuje KEY TYPE ITEMS ulozenych v SET. KEY TYPE je identicky s VALUE TYPE.
+   4. TYPE [value_type] urcuje VALUE TYPE ITEMS ulozenych v SET. VALUE TYPE je IDENTICKY s KEY TYPE.
+   5. TYPE [size_type] je UNSIGNED TYPE reprezentujuci hodnoty urcujuce velkost a pocet.
+   6. TYPE [difference_type] je SIGNED TYPE reprezentujuci hodnoty urcujuce rozdiel.
+   7. TYPE [key_compare] obsahuje TYPE pouzivany na porovnanie hodnot KEYS. KEYS a VALUES su reprezentovane tym istym TYPE.
+   8. TYPE [value_compare] obsahuje TYPE pouzivany na porovnanie hodnot VALUES. KEYS a VALUES su reprezentovane tym istym TYPE.
+   9. TYPE [allocator_type] urcuje TYPE, ktory sa pouziva ako ALLOCATOR.
+   10. TYPE [reference] urcuje REFERENCE TYPE pre ITEMS ulozene v SET.
+   11. TYPE [const_reference] urcuje CONST REFERENCE TYPE pre ITEMS ulozene v SET.
+   12. TYPE [pointer] urcuje POINTER TYPE pre ITEMS ulozene v SET.
+   13. TYPE [const_pointer] urcuje CONST POINTER TYPE pre ITEMS ulozene v SET.
+   14. TYPE [iterator] urcuje TYPE pre ITERATOR daneho SET.
+   15. TYPE [const_iterator] urcuje TYPE pre CONST ITERATOR danej SET.
+   16. TYPE [reverse_iterator] urcuje TYPE pre REVERSE ITERATOR danej SET.
+   17. TYPE [const_reverse_iterator] urcuje TYPE pre CONST REVERSE ITERATOR danej SET.
+   18. TYPE [node_type] urcuje TYPE pre SET NODE reprezentujuci NODES ulozene v SET.
+   19. TYPE [insert_return_type] urcuje TYPE pouzivany na reprezentaciu vysledku vkladania ITEM do SET. Obsahuje informaciu ci ITEM bol do SET vlozeny a ITERATOR na poziciu na ktoru bol vlozeny.
+   20. OPERATOR= priradzuje do SET ITEMS inej SET. SET obsahuje COPY OPERATOR= aj MOVE OPERATOR= ako aj verziu pre INITIALIZER LIST.
+   21. OPERATOR== zistuje ci dve instancie SET su lexikograficky rovne.
+   22. OPERATOR!= zistuje ci dve instancie SET su lexikograficky rozne.
+   23. OPERATOR< zistuje ci 1. SET je lexikograficky mensia ako 2. SET.
+   24. OPERATOR<= zistuje ci 1. SET je lexikograficky mensia, alebo rovna ako 2. SET.
+   25. OPERATOR> zistuje ci 1. SET je lexikograficky vacsia ako 2. SET.
+   26. OPERATOR>= zistuje ci 1. SET je lexikograficky vacsia, alebo rovna ako 2. SET.
+   27. METHOD get_allocator() vracia instanciu ALLOCATOR, ktora sa pouziva pri alokovani ITEMS danej SET.
+   28. METHOD begin() vracia ITERATOR ukazujuci na PRVY ITEM SET.
+   29. METHOD cbegin() vracia CONST ITERATOR ukazujuci na PRVY ITEM SET.
+   30. METHOD end() vracia ITERATOR ukazujuci hned za POSLEDNY ITEM SET.
+   31. METHOD cend() vracia CONST ITERATOR ukazujuci hned za POSLEDNY ITEM SET.
+   32. METHOD rbegin() vracia REVERSE ITERATOR ukazujuci na POSLEDNY ITEM SET.
+   33. METHOD crbegin() vracia CONST REVERSE ITERATOR ukazujuci na POSLEDNY ITEM SET.
+   34. METHOD rend() vracia REVERSE ITERATOR ukazujuci hned pred PRVY ITEM SET.
+   35. METHOD crend() vracia CONST REVERSE ITERATOR ukazujuci hned pred PRVY ITEM SET.
+   36. METHOD empty() vracia informaciu ci SET je prazdna.
+   37. METHOD size() vracia pocet ITEMS v SET.
+   38. METHOD max_size() vracia maximalny pocet ITEMS, ktore je do SET mozne ulozit.
+   39. METHOD clear() odstranuje vsetky ITEMS z SET.
+   40. METHOD insert() pridava ITEM, alebo NODE do SET. METHOD vracia informaciu o tom ci ITEM bol pridany do SET a poziciu na ktoru bol ITEM vlozeny.
+   41. METHOD emplace() pridava ITEM do SET pomocou PLACEMENT NEW. PARAMETERS METHOD set<TKey,TCompare,TAllocator>.emplace() su FORWARDED do CONSTRUCTOR daneho ITEM volaneho pri pridavani ITEM do SET. METHOD vracia informaciu ci bol ITEM vlozeny ako aj ITERATOR na poziciu do ktorej bol ITEM vlozeny.
+   42. METHOD emplace_hint() pridava ITEM do SET pomocou PLACEMENT NEW, pricom 1. PARAMETER reprezenuje ITERATOR sluziaci ako HINT. HINT urcuje poziciu PRED ktorou sa v co najmensej vzdialenosti ma SET pokusit ITEM ulozit. PARAMETERS METHOD set<TKey,TCompare,TAllocator>.emplace_hint() od 2. PARAMETER su FORWARDED do CONSTRUCTOR daneho ITEM volaneho pri pridavani ITEM do SET. METHOD vracia ITERATOR na poziciu do ktorej bol ITEM vlozeny.
+   43. METHOD erase() odstranuje 1-N ITEMS z SET. Pri odstranovani 1 ITEM SET definuje OVERLOADED verziu, kde sa zadava hodnota ITEM. Ostatne OVERLOADED verzie vyzaduju zadanie 1, alebo 2 ITERATORS. Verzia s 2 ITERATORS umoznuju odstranenie viacerych ITEMS.
+   44. METHOD swap() vymiena obsah dvoch instancii SET vymenou ich vnutornych FIELDS.
+   !!! 45. METHOD extract() odstranuje NODE z SET. NODE je urceny pomocou ITERATOR, alebo VALUE daneho ITEM.
+   !!! 46. METHOD merge() vybera NODES z SET, alebo MULTISET definovanej ako PARAMETER a uklada ich do SET pre ktoru bola METHOD volana. ITEMS, ktore maju rovnaku hodnotu ITEM v SOURCE a DESTINATION SET nie su presunute do DESTINATION SET. METHOD umoznuje efektivne kopirovanie NODES medzi dvoma instanciami SET bez nutnosti vykonat kopiu ITEMS. OVERLOADED verzia umoznuje prenasat NODES z MULTISET.
+   47. METHOD count() vracia pocet ITEMS s danou hodnotou SET.
+   48. METHOD find() vracia ITERATOR na ITEM s danou hodnotou SET.
+   49. METHOD equal_range() vracia ITERATOR PAIR, kde 1. ITERATOR odkazuje na PRVY ITEM, ktory NEMA MENSIU HODNOTU ITEM ako zadana hodnota ITEM a DRUHY ITERATOR odkazuje na PRVY ITEM, ktory ma VACSIU HODNOTU ITEM ako zadana hodnota ITEM. Ak SET NEMA ITEM, ktory ma MENSIU HODNOTU ITEM ako zadana hodnota ITEM, 1. ITERATOR odkazuje na END ITERATOR. Ak ITEM NEMA ITEM, ktory ma VACSIU HODNOTU ITEM ako zadana hodnota ITEM, 2. ITERATOR odkazuje na END ITERATOR.
+   50. METHOD lower_bound() vracia ITERATOR, ktory odkazuje na PRVY ITEM, ktory NEMA MENSIU HODNOTU ITEM ako zadana hodnota ITEM. Ak SET NEMA ITEM, ktory ma MENSIU HODNOTU ITEM ako zadana hodnota ITEM, RETURN VALUE ITERATOR odkazuje na END ITERATOR.
+   51. METHOD upper_bound() vracia ITERATOR, ktory odkazuje na PRVY ITEM, ktory ma VACSIU HODNOTU ITEM ako zadana hodnota ITEM. Ak SET NEMA ITEM, ktory ma VACSIU HODNOTU ITEM ako zadana hodnota ITEM, RETURN VALUE ITERATOR odkazuje na END ITERATOR.
+   52. METHOD key_comp() vracia FUNCTION OBJECT pouzivany ako COMPARER hodnoty KEYS.
+   53. METHOD value_comp() vracia FUNCTION OBJECT pouzivany ako COMPARER hodnoty VALUES. Je identicky s hodnotou, ktoru vracia METHOD set<TKey,TCompare,TAllocator>.key_comp().
+   54. FUNCTION swap() vymiena obsah dvoch instancii SET vymenou ich vnutornych FIELDS.
+174. CLASS [multiset<TKey,TCompare,TAllocator>] reprezentuje BALANCED BINARY TREE S moznostou OPAKOVANIA ITEMS s rovnakou hodnotou VALUES. Pre CLASS [multiset<TKey,TCompare,TAllocator>] platia nasledujuce fakty.
+   A. MULTISET je definovana v LIBRARY <set>.
+   !!! B. MULTISET je implementovana ako BALANCED BINARY TREE.
+   C. MULTISETS MOZU obsahovat VIACERO ITEMS s TOU ISTOU VALUE.
+   D. ITEMS v MULTISETS su SORTED. Poradie ITEMS je definovane pomocou TEMPLATE PARAMETER 'TCompare'.
+   E. ITEMS MUSIA byt COPYABLE, MOVABLE, EQUATABLE pomocou TEMPLATE PARAMETER 'TCompare'.
+   F. EQUIVALENCE 2 ITEMS 'X' a 'Y' nastava vtedy ak [TCompare(X,Y)==FALSE && TCompare(Y,X)==FALSE]. V takomto pripade je ITEM pri pridavani do MULTISET pridany opakovane.
+   !!! G. Poradie ITEMS s rovnakou VALUE je UNDEFINED, ale STABLE. To znaci, ze ITEMS s rovnakou VALUE maju voci sebe NEMENNU POZICIU po pridani do MULTISET.
+   H. MULTISET umoznuje v TEMPLATE PARAMETER 'TAllocator' definovat CUSTOM ALLOCATOR umoznujuci CUSTOM MEMORY MANAGEMENT pri alokacii MULTISET.
+   !!!!! I. MULTISET ma vysoku PERFORMANCE pri pristupe k ITEMS. Zlozitost pri pristupe k ITEMS je O(LOG(N)).
+   J. MULTISET ma vysoku PERFORMANCE pri pridavani ITEMS.
+   K. MULTISET ma vysoku PERFORMANCE pri odstranovani ITEMS.
+   !!! L. Hodnota ITEM je CONSTANT a NESMIE sa MENIT. Ak je potrebne hodnotu ITEM zmenit, je nutne ITEM odstranit z MULTISET a ITEM s novou hodnotou znova do MULTISET vlozit.
+175. CLASS [multiset<TKey,TCompare,TAllocator>] ma nasledujuce MEMBERS.
+   1. CONSTRUCTOR vytvara instanciu MULTISET.
+   2. DESTRUCTOR uvolnuje instanciu MULTISET ako aj jednotlive ITEMS pre ktore je zavolany ich DESTRUCTOR.
+   3. TYPE [key_type] urcuje KEY TYPE ITEMS ulozenych v MULTISET. KEY TYPE je identicky s VALUE TYPE.
+   4. TYPE [value_type] urcuje VALUE TYPE ITEMS ulozenych v MULTISET. VALUE TYPE je IDENTICKY s KEY TYPE.
+   5. TYPE [size_type] je UNSIGNED TYPE reprezentujuci hodnoty urcujuce velkost a pocet.
+   6. TYPE [difference_type] je SIGNED TYPE reprezentujuci hodnoty urcujuce rozdiel.
+   7. TYPE [key_compare] obsahuje TYPE pouzivany na porovnanie hodnot KEYS. KEYS a VALUES su reprezentovane tym istym TYPE.
+   8. TYPE [value_compare] obsahuje TYPE pouzivany na porovnanie hodnot VALUES. KEYS a VALUES su reprezentovane tym istym TYPE.
+   9. TYPE [allocator_type] urcuje TYPE, ktory sa pouziva ako ALLOCATOR.
+   10. TYPE [reference] urcuje REFERENCE TYPE pre ITEMS ulozene v MULTISET.
+   11. TYPE [const_reference] urcuje CONST REFERENCE TYPE pre ITEMS ulozene v MULTISET.
+   12. TYPE [pointer] urcuje POINTER TYPE pre ITEMS ulozene v MULTISET.
+   13. TYPE [const_pointer] urcuje CONST POINTER TYPE pre ITEMS ulozene v MULTISET.
+   14. TYPE [iterator] urcuje TYPE pre ITERATOR daneho MULTISET.
+   15. TYPE [const_iterator] urcuje TYPE pre CONST ITERATOR danej MULTISET.
+   16. TYPE [reverse_iterator] urcuje TYPE pre REVERSE ITERATOR danej MULTISET.
+   17. TYPE [const_reverse_iterator] urcuje TYPE pre CONST REVERSE ITERATOR danej MULTISET.
+   18. TYPE [node_type] urcuje TYPE pre MULTISET NODE reprezentujuci NODES ulozene v MULTISET.
+   19. OPERATOR= priradzuje do MULTISET ITEMS inej MULTISET. MULTISET obsahuje COPY OPERATOR= aj MOVE OPERATOR= ako aj verziu pre INITIALIZER LIST.
+   20. OPERATOR== zistuje ci dve instancie MULTISET su lexikograficky rovne.
+   21. OPERATOR!= zistuje ci dve instancie MULTISET su lexikograficky rozne.
+   22. OPERATOR< zistuje ci 1. MULTISET je lexikograficky mensia ako 2. MULTISET.
+   23. OPERATOR<= zistuje ci 1. MULTISET je lexikograficky mensia, alebo rovna ako 2. MULTISET.
+   24. OPERATOR> zistuje ci 1. MULTISET je lexikograficky vacsia ako 2. MULTISET.
+   25. OPERATOR>= zistuje ci 1. MULTISET je lexikograficky vacsia, alebo rovna ako 2. MULTISET.
+   26. METHOD get_allocator() vracia instanciu ALLOCATOR, ktora sa pouziva pri alokovani ITEMS danej MULTISET.
+   27. METHOD begin() vracia ITERATOR ukazujuci na PRVY ITEM MULTISET.
+   28. METHOD cbegin() vracia CONST ITERATOR ukazujuci na PRVY ITEM MULTISET.
+   29. METHOD end() vracia ITERATOR ukazujuci hned za POSLEDNY ITEM MULTISET.
+   30. METHOD cend() vracia CONST ITERATOR ukazujuci hned za POSLEDNY ITEM MULTISET.
+   31. METHOD rbegin() vracia REVERSE ITERATOR ukazujuci na POSLEDNY ITEM MULTISET.
+   32. METHOD crbegin() vracia CONST REVERSE ITERATOR ukazujuci na POSLEDNY ITEM MULTISET.
+   33. METHOD rend() vracia REVERSE ITERATOR ukazujuci hned pred PRVY ITEM MULTISET.
+   34. METHOD crend() vracia CONST REVERSE ITERATOR ukazujuci hned pred PRVY ITEM MULTISET.
+   35. METHOD empty() vracia informaciu ci MULTISET je prazdna.
+   36. METHOD size() vracia pocet ITEMS v MULTISET.
+   37. METHOD max_size() vracia maximalny pocet ITEMS, ktore je do MULTISET mozne ulozit.
+   38. METHOD clear() odstranuje vsetky ITEMS z MULTISET.
+   39. METHOD insert() pridava ITEM, alebo NODE do MULTISET. METHOD vracia poziciu na ktoru bol ITEM vlozeny.
+   40. METHOD emplace() pridava ITEM do MULTISET pomocou PLACEMENT NEW. PARAMETERS METHOD multiset<TKey,TCompare,TAllocator>.emplace() su FORWARDED do CONSTRUCTOR daneho ITEM volaneho pri pridavani ITEM do MULTISET. METHOD vracia ITERATOR na poziciu do ktorej bol ITEM vlozeny.
+   41. METHOD emplace_hint() pridava ITEM do MULTISET pomocou PLACEMENT NEW, pricom 1. PARAMETER reprezenuje ITERATOR sluziaci ako HINT. HINT urcuje poziciu PRED ktorou sa v co najmensej vzdialenosti ma MULTISET pokusit ITEM ulozit. PARAMETERS METHOD emplace_hint() od 2. PARAMETER su FORWARDED do CONSTRUCTOR daneho ITEM volaneho pri pridavani ITEM do MULTISET. METHOD vracia ITERATOR na poziciu do ktorej bol ITEM vlozeny.
+   42. METHOD erase() odstranuje 1-N ITEMS z MULTISET. Pri odstranovani 1 ITEM MULTISET definuje OVERLOADED verziu, kde sa zadava hodnota ITEM. Ostatne OVERLOADED verzie vyzaduju zadanie 1, alebo 2 ITERATORS. Verzia s 2 ITERATORS umoznuju odstranenie viacerych ITEMS.
+   43. METHOD swap() vymiena obsah dvoch instancii MULTISET vymenou ich vnutornych FIELDS.
+   !!! 44. METHOD extract() odstranuje NODE z MULTISET. NODE je urceny pomocou ITERATOR, alebo VALUE daneho ITEM.
+   !!! 45. METHOD merge() vybera NODES z MULTISET, alebo SET definovanej ako PARAMETER a uklada ich do MULTISET pre ktoru bola METHOD volana. ITEMS, ktore maju rovnaku hodnotu ITEM v SOURCE a DESTINATION MULTISET nie su presunute do DESTINATION MULTISET. METHOD umoznuje efektivne kopirovanie NODES medzi dvoma instanciami MULTISET bez nutnosti vykonat kopiu ITEMS. OVERLOADED verzia umoznuje prenasat NODES zo SET.
+   46. METHOD count() vracia pocet ITEMS s danou hodnotou MULTISET.
+   47. METHOD find() vracia ITERATOR na ITEM s danou hodnotou MULTISET.
+   48. METHOD equal_range() vracia ITERATOR PAIR, kde 1. ITERATOR odkazuje na PRVY ITEM, ktory NEMA MENSIU HODNOTU ITEM ako zadana hodnota ITEM a DRUHY ITERATOR odkazuje na PRVY ITEM, ktory ma VACSIU HODNOTU ITEM ako zadana hodnota ITEM. Ak MULTISET NEMA ITEM, ktory ma MENSIU HODNOTU ITEM ako zadana hodnota ITEM, 1. ITERATOR odkazuje na END ITERATOR. Ak ITEM NEMA ITEM, ktory ma VACSIU HODNOTU ITEM ako zadana hodnota ITEM, 2. ITERATOR odkazuje na END ITERATOR.
+   49. METHOD lower_bound() vracia ITERATOR, ktory odkazuje na PRVY ITEM, ktory NEMA MENSIU HODNOTU ITEM ako zadana hodnota ITEM. Ak MULTISET NEMA ITEM, ktory ma MENSIU HODNOTU ITEM ako zadana hodnota ITEM, RETURN VALUE ITERATOR odkazuje na END ITERATOR.
+   50. METHOD upper_bound() vracia ITERATOR, ktory odkazuje na PRVY ITEM, ktory ma VACSIU HODNOTU ITEM ako zadana hodnota ITEM. Ak MULTISET NEMA ITEM, ktory ma VACSIU HODNOTU ITEM ako zadana hodnota ITEM, RETURN VALUE ITERATOR odkazuje na END ITERATOR.
+   51. METHOD key_comp() vracia FUNCTION OBJECT pouzivany COMPARER ako hodnot KEYS.
+   52. METHOD value_comp() vracia FUNCTION OBJECT pouzivany ako COMPARER hodnot VALUES. Je identicky s hodnotou, ktoru vracia METHOD multiset<TKey,TCompare,TAllocator>.key_comp().
+   53. FUNCTION swap() vymiena obsah dvoch instancii MULTISET vymenou ich vnutornych FIELDS.
+!!! 176. SETS a MULTISETS mozu mat COMPARERS definovane nasledujucimi sposobmi.
+   A. COMPARER zadany ako 2. TEMPLATE PARAMETER SET a MULTISET je vytvoreny zavolanim DEFAULT CONSTRUCTOR. Tento sposob je vhodny vtedy ako COMPARER nie je nutne parameterizovat, pretoze uz v COMPILE TIME je jasne akym sposobom budu ITEMS v SET a MULTISET SORTED.
+   B. COMPARER zadany ako 2. TEMPLATE PARAMETER SET a MULTISET je zaslany ako PARAMETER do CONSTRUCTOR. Tento sposob je vhodny vtedy ako COMPARER je nutne parameterizovat, pretoze az v RUNTIME je jasne akym sposobom budu ITEMS v SET a MULTISET SORTED.
+177. SETS a MULTISETS podporuju COPY CONSTRUCTOR, MOVE CONSTRUCTOR, COPY OPERATOR=, MOVE OPERATOR= a COMPARISON OPERATORS IBA pre SETS a MULTISETS, ktore maju ROVNAKE TYPES, vratane COMPARER. TEMPLATE PARAMETER 'TCompare' MUSI byt IDENTICKY pre obe instancie SET a MULTISET, avsak kazda SET a MULTISET moze pouzivat VLASTNU INSTANCIU TEMPLATE PARAMETER TYPE 'TCompare', ktora moze mat ODLISNE COMPARISION CRITERIA. Pri priradeni sa PRENESIE aj COMPARER z SET, alebo MULTISET na RIGHT SIDE do SET, alebo MULTISET na LEFT SIDE.
+178. SETS a MULTISETS obsahuju BIDIRECTIONAL ITERATORS, no NEOBSAHUJU RANDOM-ACCESS ITERATORS co znaci, ze na SETS a MULTISETS NIE JE mozne pouzit ALGORITHMS, ktore vyzaduju pouzitie RANDOM-ACCESS ITERATORS, ako su ALGORITHMS pre SORTING a ci RANDOM SHUFFLING.
+179. SETS a MULTISETS ITERATORS vracaju TYPE [const TKey] z ktoreho vyplyva, ze VALUES ITEMS pri iterovani NIE JE MOZNE ZMENIT. Nevyhodou CONST KEY je napriklad nemoznost pouzitia niektorych ALGORITHMS, ktore vyzaduju zmenu hodnoty ITEM, ako napriklad ALGORITHM remove(), ktory ITEMS namiesto odstranovanie len premiestnuje kopirovanim.
+180. Kazda realokacia MEMORY pri praci s SET, alebo MULTISET moze generovat EXCEPTION [bad_alloc]. Ine operacie EXCEPTION negeneruju.
+181. CLASS [map<TKey,TValue,TCompare,TAllocator>] reprezentuje BALANCED BINARY TREE BEZ moznosti OPAKOVANIA ITEMS s rovnakou hodnotou KEYS. Pre CLASS [map<TKey,TValue,TCompare,TAllocator>] platia nasledujuce fakty.
+   A. MAP je definovana v LIBRARY <map>.
+   B. MAP je spravidla implementovana ako BALANCED BINARY TREE. Aj ked to STANDARD vyslovene nedefinuje, vyplyva to z narokov na PERFORMANCE.
+   C. MAP ma ako ITEMS instancie CLASS [pair<const TKey,TValue].
+   D. MAP uklada ITEMS v SORTED poradi, ktore je definovane TEMPLATE PARAMETER 'TCompare'. Ak TEMPLATE PARAMETER 'TCompare' nie je definovany, ako DEFAULT sa pouziva STRUCTURE less<TKey>, ktora na porovnavanie pouziva OPERATOR<.
+   E. KEYS pouzivane v MAPS MUSIA byt COPYABLE, MOVABLE a COMPARABLE pomocou TEMPLATE PARAMETER 'TCompare'.
+   F. VALUES pouzivane v MAPS MUSIA byt COPYABLE a MOVABLE.
+   !!! G. MAPS NEMOZU obsahovat VIACERO ITEMS s TYM ISTYM KEY.
+   H. SORTING definovany pomocou TEMPLATE PARAMETER 'TCompare' MUSI implementovat STRICT WEAK ORDERING.
+   I. TEMPLATE PARAMETER 'TCompare' sa okrem urcenia poradia ITEMS v MAP pouziva aj na urcenie ci su 2 ITEMS identicke. Tie su identicke vtedy ak plati, ze [(ITEM_1 COMPARE ITEM_2)==false && (ITEM_2 COMPARE ITEM_1)==false].
+   J. MAP umoznuje v 4. TEMPLATE PARAMETER definovat CUSTOM ALLOCATOR umoznujuci CUSTOM MEMORY MANAGEMENT pri alokacii MAP.
+   !!!!! K. MAP ma vysoku PERFORMANCE pri pristupe k ITEMS pomocou ich KEYS. Priemerna zlozitost pri pristupe k ITEMS je O(LOG(N)). Najhorsia zlozitost (ak je BINARY TREE rozpadnuty a vytvara LIST) je O(N).
+   L. MAP ma nizku PERFORMANCE pri pristupe k ITEMS pomocou ich VALUES.
+   M. MAP ma vysoku PERFORMANCE pri pridavani ITEMS.
+   N. MAP ma vysoku PERFORMANCE pri odstranovani ITEMS podla hodnoty ich KEYS.
+   O. MAP ma nizku PERFORMANCE pri odstranovani ITEMS podla hodnoty ich VALUES.
+   !!! P. Hodnoty KEYS su CONSTANT a NESMU sa MENIT. Ak je potrebne hodnotu KEY zmenit, je nutne ITEM odstranit z MAP a pridat ho znova s modifikovanou hodnotou KEY.
+182. CLASS [map<TKey,TValue,TCompare,TAllocator>] ma nasledujuce MEMBERS.
+   1. CONSTRUCTOR vytvara instanciu MAP.
+   2. DESTRUCTOR uvolnuje instanciu MAP ako aj jednotlive ITEMS pre ktore je zavolany ich DESTRUCTOR.
+   3. INNER CLASS [value_compare] reprezentuje FUNCTION OBJECT s OPERATOR(), ktory sa pouziva na porovnavanie instancii TYPE [map::value_type]. FUNCTION OBJECT porovnava hodnoty KEYS dvojice MAP ITEMS.
+   4. TYPE [key_type] urcuje KEY TYPE ITEMS ulozenych v MAP.
+   5. TYPE [mapped_type] urcuje VALUE TYPE ITEMS ulozenych v MAP.
+   6. TYPE [value_type] urcuje KEY-VALUE PAIR TYPE, ktory reprezentuje ITEMS ulozene v MAP. Ma hodnotu CLASS [pair<const TKey,TValue>].
+   7. TYPE [size_type] je UNSIGNED TYPE reprezentujuci hodnoty urcujuce velkost a pocet.
+   8. TYPE [difference_type] je SIGNED TYPE reprezentujuci hodnoty urcujuce rozdiel.
+   9. TYPE [key_compare] urcuje TYPE, ktory sa pouziva ako KEY COMPARER.
+   10. TYPE [allocator_type] urcuje TYPE, ktory sa pouziva ako ALLOCATOR.
+   11. TYPE [reference] urcuje REFERENCE TYPE pre ITEMS ulozene v MAP.
+   12. TYPE [const_reference] urcuje CONST REFERENCE TYPE pre ITEMS ulozene v MAP.
+   13. TYPE [pointer] urcuje POINTER TYPE pre ITEMS ulozene v MAP.
+   14. TYPE [const_pointer] urcuje CONST POINTER TYPE pre ITEMS ulozene v MAP.
+   15. TYPE [iterator] urcuje TYPE pre ITERATOR danej MAP.
+   16. TYPE [const_iterator] urcuje TYPE pre CONST ITERATOR danej MAP.
+   17. TYPE [reverse_iterator] urcuje TYPE pre REVERSE ITERATOR danej MAP.
+   18. TYPE [const_reverse_iterator] urcuje TYPE pre CONST REVERSE ITERATOR danej MAP.
+   19. TYPE [node_type] urcuje TYPE pre MAP NODE reprezentujuci NODES ulozene v MAP.
+   20. TYPE [insert_return_type] urcuje TYPE pouzivany na reprezentaciu vysledku vkladania ITEM do MAP. Obsahuje informaciu ci ITEM bol do MAP vlozeny, poziciu na ktoru bol vlozeny a instanciu CLASS [node_type] obsahuju NODE do ktoreho bol ITEM vlozeny.
+   21. OPERATOR= priradzuje do MAP ITEMS inej MAP. MAP obsahuje COPY OPERATOR= aj MOVE OPERATOR= ako aj verziu pre INITIALIZER LIST.
+   22. OPERATOR== zistuje ci dve instancie MAP su lexikograficky rovne.
+   23. OPERATOR!= zistuje ci dve instancie MAP su lexikograficky rozne.
+   24. OPERATOR< zistuje ci 1. MAP je lexikograficky mensia ako 2. MAP.
+   25. OPERATOR<= zistuje ci 1. MAP je lexikograficky mensia, alebo rovna ako 2. MAP.
+   26. OPERATOR> zistuje ci 1. MAP je lexikograficky vacsia ako 2. MAP.
+   27. OPERATOR>= zistuje ci 1. MAP je lexikograficky vacsia, alebo rovna ako 2. MAP.
+   !!!!! 28. OPERATOR[] vracia REFERENCE na ITEM danej MAP podla hodnoty jeho KEY. V pripade, ze KEY s danou hodnotou sa v MAP NENACHADZA, ITEM sa do MAP ulozi.
+   !!! 29. METHOD at() vracia REFERENCE na ITEM danej MAP podla hodnoty jeho KEY. Ak ITEM s danym KEY sa v MAP nenachadza, METHOD map<TKey,TValue,TCompare,TAllocator>.at() generuje EXCEPTION [out_of_range].
+   30. METHOD get_allocator() vracia instanciu ALLOCATOR, ktora sa pouziva pri alokovani ITEMS danej MAP.
+   31. METHOD begin() vracia ITERATOR ukazujuci na PRVY ITEM MAP.
+   32. METHOD cbegin() vracia CONST ITERATOR ukazujuci na PRVY ITEM MAP.
+   33. METHOD end() vracia ITERATOR ukazujuci hned za POSLEDNY ITEM MAP.
+   34. METHOD cend() vracia CONST ITERATOR ukazujuci hned za POSLEDNY ITEM MAP.
+   35. METHOD rbegin() vracia REVERSE ITERATOR ukazujuci na POSLEDNY ITEM MAP.
+   36. METHOD crbegin() vracia CONST REVERSE ITERATOR ukazujuci na POSLEDNY ITEM MAP.
+   37. METHOD rend() vracia REVERSE ITERATOR ukazujuci hned pred PRVY ITEM MAP.
+   38. METHOD crend() vracia CONST REVERSE ITERATOR ukazujuci hned pred PRVY ITEM MAP.
+   39. METHOD empty() vracia informaciu ci MAP je prazdna.
+   40. METHOD size() vracia pocet ITEMS v MAP.
+   41. METHOD max_size() vracia maximalny pocet ITEMS, ktore je do MAP mozne ulozit.
+   42. METHOD clear() odstranuje vsetky ITEMS z MAP.
+   43. METHOD insert() pridava ITEM, alebo NODE do MAP. METHOD vracia informaciu o tom ci ITEM bol pridany do MAP a poziciu na ktoru bol ITEM vlozeny.
+   44. METHOD insert_or_assign() pridava ITEM, alebo NODE do MAP, ak KEY v MAP neexistuje. Ak KEY v MAP existuje, zmeni jeho VALUE.
+   45. METHOD emplace() pridava ITEM do MAP pomocou PLACEMENT NEW. PARAMETERS METHOD map<TKey,TValue,TCompare,TAllocator>.emplace() su FORWARDED do CONSTRUCTOR daneho ITEM volaneho pri pridavani ITEM do MAP.
+   46. METHOD emplace_hint() pridava ITEM do MAP pomocou PLACEMENT NEW, pricom 1. PARAMETER reprezenuje ITERATOR sluziaci ako HINT. HINT urcuje poziciu PRED ktorou sa v co najmensej vzdialenosti ma MAP pokusit ITEM ulozit. PARAMETERS METHOD map<TKey,TValue,TCompare,TAllocator>.emplace_hint() od 2. PARAMETER su FORWARDED do CONSTRUCTOR daneho ITEM volaneho pri pridavani ITEM do MAP.
+   47. METHOD try_emplace() pridava ITEM do MAP pomocou PLACEMENT NEW ak ITEMS s danym KEY v MAP NEEXISTUJE. Ak EXISTUJE, METHOD NIC NEROBI. PARAMETERS METHOD map<TKey,TValue,TCompare,TAllocator>.try_emplace() od 2. PARAMETER (v OVERLOADED VERZIA s HINT od 3. PARAMETER) su FORWARDED do CONSTRUCTOR daneho ITEM volaneho pri pridavani ITEM do MAP.
+   48. METHOD erase() odstranuje 1-N ITEMS z MAP. Pri odstranovani 1 ITEM MAP definuje OVERLOADED verziu, kde sa zadava hodnota KEY. Ostatne OVERLOADED verzie vyzaduju zadanie 1, alebo 2 ITERATORS. Verzie s 2 ITERATORS umoznuju odstranenie viacerych ITEMS.
+   49. METHOD swap() vymiena obsah dvoch instancii MAP vymenou ich vnutornych FIELDS.
+   !!! 50. METHOD extract() odstranuje NODE z MAP. NODE je urceny pomocou ITERATOR, alebo KEY.
+   !!! 51. METHOD merge() vybera NODES z MAP, alebo MULTIMAP definovanej ako PARAMETER a uklada ich do MAP pre ktoru bola METHOD volana. ITEMS, ktore maju rovnaku hodnotu KEY v SOURCE a DESTINATION MAP nie su presunute do DESTINATION MAP. METHOD umoznuje efektivne kopirovanie NODES medzi dvoma instanciami MAP bez nutnosti vykonat kopiu ITEMS. OVERLOADED verzia umoznuje prenasat NODES z MULTIMAPS.
+   52. METHOD count() vracia pocet ITEMS s danou hodnotou KEY.
+   53. METHOD find() vracia ITERATOR na ITEM s danou hodnotou KEY.
+   54. METHOD equal_range() vracia ITERATOR PAIR, kde 1. ITERATOR odkazuje na PRVY ITEM, ktory NEMA MENSIU HODNOTU KEY ako zadana hodnota KEY a DRUHY ITERATOR odkazuje na PRVY ITEM, ktory ma VACSIU HODNOTU KEY ako zadana hodnota KEY. Ak MAP NEMA ITEM, ktory ma MENSIU HODNOTU KEY ako zadana hodnota KEY, 1. ITERATOR odkazuje na END ITERATOR. Ak MAP NEMA ITEM, ktory ma VACSIU HODNOTU KEY ako zadana hodnota KEY, 2. ITERATOR odkazuje na END ITERATOR.
+   55. METHOD lower_bound() vracia ITERATOR, ktory odkazuje na PRVY ITEM, ktory NEMA MENSIU HODNOTU KEY ako zadana hodnota KEY. Ak MAP NEMA ITEM, ktory ma MENSIU HODNOTU KEY ako zadana hodnota KEY, RETURN VALUE ITERATOR odkazuje na END ITERATOR.
+   56. METHOD upper_bound() vracia ITERATOR, ktory odkazuje na PRVY ITEM, ktory ma VACSIU HODNOTU KEY ako zadana hodnota KEY. Ak MAP NEMA ITEM, ktory ma VACSIU HODNOTU KEY ako zadana hodnota KEY, RETURN VALUE ITERATOR odkazuje na END ITERATOR.
+   57. METHOD key_comp() vracia FUNCTION OBJECT pouzivany ako KEY COMPARER.
+   58. METHOD value_comp() vracia FUNCTION OBJECT, ktory porovnava ITEMS danej MAP reprezentovane ako instancie CLASS [pair<const TKey,TValue>].
+   59. FUNCTION swap() vymiena obsah dvoch instancii MAP vymenou ich vnutornych FIELDS.
+183. CLASS [multimap<TKey,TValue,TCompare,TAllocator>] reprezentuje BALANCED BINARY TREE s moznostou OPAKOVANIA ITEMS s rovnakou hodnotou KEYS. Pre CLASS [multimap<TKey,TValue,TCompare,TAllocator>] platia nasledujuce fakty.
+   A. MULTIMAP je definovana v LIBRARY <map>.
+   B. MULTIMAP je spravidla implementovana ako BALANCED BINARY TREE. Aj ked to STANDARD vyslovene nedefinuje, vyplyva to z narokov na PERFORMANCE.
+   C. MULTIMAP ma ako ITEMS instancie CLASS [pair<const TKey,TValue].
+   D. MULTIMAP uklada ITEMS v SORTED poradi, ktore je definovane TEMPLATE PARAMETER 'TCompare'. Ak TEMPLATE PARAMETER 'TCompare' nie je definovany, ako DEFAULT sa pouziva STRUCTURE less<TKey>, ktora na porovnavanie pouziva OPERATOR<.
+   E. KEYS pouzivane v MULTIMAPS MUSIA byt COPYABLE, MOVABLE a COMPARABLE pomocou TEMPLATE PARAMETER 'TCompare'.
+   F. VALUES pouzivane v MULTIMAPS MUSIA byt COPYABLE a MOVABLE.
+   !!! G. MULTIMAPS MOZU obsahovat VIACERO ITEMS s TYM ISTYM KEY.
+   !!! H. MULTIMAPS ukladaju ITEMS s ROVNAKYM KEY v RANDOM, ale STABLE ORDER.
+   I. SORTING definovany pomocou TEMPLATE PARAMETER 'TCompare' MUSI implementovat STRICT WEAK ORDERING.
+   J. TEMPLATE PARAMETER 'TCompare' sa okrem urcenia poradia ITEMS v MULTIMAP pouziva aj na urcenie ci su 2 ITEMS identicke. Tie su identicke vtedy ak plati, ze [(ITEM_1 COMPARE ITEM_2)==false && (ITEM_2 COMPARE ITEM_1)==false].
+   K. MULTIMAP umoznuje v 4. TEMPLATE PARAMETER definovat CUSTOM ALLOCATOR umoznujuci CUSTOM MEMORY MANAGEMENT pri alokacii MULTIMAP.
+   !!!!! L. MULTIMAP ma vysoku PERFORMANCE pri pristupe k ITEMS pomocou ich KEYS. Priemerna zlozitost pri pristupe k ITEMS je O(LOG(N)). Najhorsia zlozitost (ak je BINARY TREE rozpadnuty a vytvara LIST) je O(N).
+   M. MULTIMAP ma nizku PERFORMANCE pri pristupe k ITEMS pomocou ich VALUES.
+   N. MULTIMAP ma vysoku PERFORMANCE pri pridavani ITEMS.
+   O. MULTIMAP ma vysoku PERFORMANCE pri odstranovani ITEMS podla hodnoty ich KEYS.
+   P. MULTIMAP ma nizku PERFORMANCE pri odstranovani ITEMS podla hodnoty ich VALUES.
+   !!! Q. Hodnoty KEYS su CONSTANT a NESMU sa MENIT. Ak je potrebne hodnotu KEY zmenit, je nutne ITEM odstranit z MULTIMAP a pridat ho znova s modifikovanou hodnotou KEY.
+184. CLASS [multimap<TKey,TValue,TCompare,TAllocator>] ma nasledujuce MEMBERS.
+   1. CONSTRUCTOR vytvara instanciu MULTIMAP.
+   2. DESTRUCTOR uvolnuje instanciu MULTIMAP ako aj jednotlive ITEMS pre ktore je zavolany ich DESTRUCTOR.
+   3. INNER CLASS [value_compare] reprezentuje FUNCTION OBJECT s OPERATOR(), ktory sa pouziva na porovnavanie instancii TYPE [MULTIMAP::value_type]. FUNCTION OBJECT porovnava hodnoty KEYS dvojice MULTIMAP ITEMS.
+   4. TYPE [key_type] urcuje KEY TYPE ITEMS ulozenych v MULTIMAP.
+   5. TYPE [mapped_type] urcuje VALUE TYPE ITEMS ulozenych v MULTIMAP.
+   6. TYPE [value_type] urcuje KEY-VALUE PAIR TYPE, ktory reprezentuje ITEMS ulozene v MULTIMAP. Ma hodnotu CLASS [pair<const TKey,TValue>].
+   7. TYPE [size_type] je UNSIGNED TYPE reprezentujuci hodnoty urcujuce velkost a pocet.
+   8. TYPE [difference_type] je SIGNED TYPE reprezentujuci hodnoty urcujuce rozdiel.
+   9. TYPE [key_compare] urcuje TYPE, ktory sa pouziva ako KEY COMPARER.
+   10. TYPE [allocator_type] urcuje TYPE, ktory sa pouziva ako ALLOCATOR.
+   11. TYPE [reference] urcuje REFERENCE TYPE pre ITEMS ulozene v MULTIMAP.
+   12. TYPE [const_reference] urcuje CONST REFERENCE TYPE pre ITEMS ulozene v MULTIMAP.
+   13. TYPE [pointer] urcuje POINTER TYPE pre ITEMS ulozene v MULTIMAP.
+   14. TYPE [const_pointer] urcuje CONST POINTER TYPE pre ITEMS ulozene v MULTIMAP.
+   15. TYPE [iterator] urcuje TYPE pre ITERATOR danej MULTIMAP.
+   16. TYPE [const_iterator] urcuje TYPE pre CONST ITERATOR danej MULTIMAP.
+   17. TYPE [reverse_iterator] urcuje TYPE pre REVERSE ITERATOR danej MULTIMAP.
+   18. TYPE [const_reverse_iterator] urcuje TYPE pre CONST REVERSE ITERATOR danej MULTIMAP.
+   19. TYPE [node_type] urcuje TYPE pre MULTIMAP NODE reprezentujuci NODES ulozene v MULTIMAP.
+   20. OPERATOR= priradzuje do MULTIMAP ITEMS inej MULTIMAP. MULTIMAP obsahuje COPY OPERATOR= aj MOVE OPERATOR= ako aj verziu pre INITIALIZER LIST.
+   21. OPERATOR== zistuje ci dve instancie MULTIMAP su lexikograficky rovne.
+   22. OPERATOR!= zistuje ci dve instancie MULTIMAP su lexikograficky rozne.
+   23. OPERATOR< zistuje ci 1. MULTIMAP je lexikograficky mensia ako 2. MULTIMAP.
+   24. OPERATOR<= zistuje ci 1. MULTIMAP je lexikograficky mensia, alebo rovna ako 2. MULTIMAP.
+   25. OPERATOR> zistuje ci 1. MULTIMAP je lexikograficky vacsia ako 2. MULTIMAP.
+   26. OPERATOR>= zistuje ci 1. MULTIMAP je lexikograficky vacsia, alebo rovna ako 2. MULTIMAP.
+   27. METHOD get_allocator() vracia instanciu ALLOCATOR, ktora sa pouziva pri alokovani ITEMS danej MULTIMAP.
+   28. METHOD begin() vracia ITERATOR ukazujuci na PRVY ITEM MULTIMAP.
+   29. METHOD cbegin() vracia CONST ITERATOR ukazujuci na PRVY ITEM MULTIMAP.
+   30. METHOD end() vracia ITERATOR ukazujuci hned za POSLEDNY ITEM MULTIMAP.
+   31. METHOD cend() vracia CONST ITERATOR ukazujuci hned za POSLEDNY ITEM MULTIMAP.
+   32. METHOD rbegin() vracia REVERSE ITERATOR ukazujuci na POSLEDNY ITEM MULTIMAP.
+   33. METHOD crbegin() vracia CONST REVERSE ITERATOR ukazujuci na POSLEDNY ITEM MULTIMAP.
+   34. METHOD rend() vracia REVERSE ITERATOR ukazujuci hned pred PRVY ITEM MULTIMAP.
+   35. METHOD crend() vracia CONST REVERSE ITERATOR ukazujuci hned pred PRVY ITEM MULTIMAP.
+   36. METHOD empty() vracia informaciu ci MULTIMAP je prazdna.
+   37. METHOD size() vracia pocet ITEMS v MULTIMAP.
+   38. METHOD max_size() vracia maximalny pocet ITEMS, ktore je do MULTIMAP mozne ulozit.
+   39. METHOD clear() odstranuje vsetky ITEMS z MULTIMAP.
+   40. METHOD insert() pridava ITEM, alebo NODE do MULTIMAP. METHOD vracia poziciu na ktoru bol ITEM vlozeny.
+   41. METHOD emplace() pridava ITEM do MULTIMAP pomocou PLACEMENT NEW. PARAMETERS METHOD multimap<TKey,TValue,TCompare,TAllocator>.emplace() su FORWARDED do CONSTRUCTOR daneho ITEM volaneho pri pridavani ITEM do MULTIMAP.
+   42. METHOD emplace_hint() pridava ITEM do MULTIMAP pomocou PLACEMENT NEW, pricom 1. PARAMETER reprezenuje ITERATOR sluziaci ako HINT. HINT urcuje poziciu PRED ktorou sa v co najmensej vzdialenosti ma MULTIMAP pokusit ITEM ulozit. PARAMETERS METHOD multimap<TKey,TValue,TCompare,TAllocator>.emplace_hint() od 2. PARAMETER su FORWARDED do CONSTRUCTOR daneho ITEM volaneho pri pridavani ITEM do MULTIMAP.
+   43. METHOD erase() odstranuje 1-N ITEMS z MULTIMAP. Pri odstranovani 1 ITEM MULTIMAP definuje OVERLOADED verziu, kde sa zadava ITERATOR na ITEM, ktory ma byt odstraneny. OVERLOADED verzia s 2 ITERATORS odstranuje vsetky ITEMS medzi tymito ITERATORS. OVERLOADED VERZIA s KEY odstranuje VSETKY ITEMS, ktore maju hodnotu tohto KEY. Tato verzia vracia pocet ITEMS, ktore boli odstranene.
+   44. METHOD swap() vymiena obsah dvoch instancii MULTIMAP vymenou ich vnutornych FIELDS.
+   !!! 45. METHOD extract() odstranuje NODE z MULTIMAP. NODE je urceny pomocou ITERATOR, alebo KEY.
+   !!! 46. METHOD merge() vybera NODES z MULTIMAP, alebo MAP definovanej ako PARAMETER a uklada ich do MULTIMAP pre ktoru bola METHOD volana. ITEMS, ktore maju rovnaku hodnotu KEY v SOURCE a DESTINATION MULTIMAP nie su presunute do DESTINATION MULTIMAP. METHOD umoznuje efektivne kopirovanie NODES medzi dvoma instanciami MULTIMAP bez nutnosti vykonat kopiu ITEMS. OVERLOADED verzia umoznuje prenasat NODES z MAPS.
+   47. METHOD count() vracia pocet ITEMS s danou hodnotou KEY.
+   48. METHOD find() vracia ITERATOR na ITEM s danou hodnotou KEY. Ak sa v MULTIMAP nachadza viacero ITEMS s tym istym KEY, METHOD moze vratit ITERATOR na LUBOVOLNY z nich.
+   49. METHOD equal_range() vracia ITERATOR PAIR, kde 1. ITERATOR odkazuje na PRVY ITEM, ktory NEMA MENSIU HODNOTU KEY ako zadana hodnota KEY a DRUHY ITERATOR odkazuje na PRVY ITEM, ktory ma VACSIU HODNOTU KEY ako zadana hodnota KEY. Ak MULTIMAP NEMA ITEM, ktory ma MENSIU HODNOTU KEY ako zadana hodnota KEY, 1. ITERATOR odkazuje na END ITERATOR. Ak MULTIMAP NEMA ITEM, ktory ma VACSIU HODNOTU KEY ako zadana hodnota KEY, 2. ITERATOR odkazuje na END ITERATOR.
+   50. METHOD lower_bound() vracia ITERATOR, ktory odkazuje na PRVY ITEM, ktory NEMA MENSIU HODNOTU KEY ako zadana hodnota KEY. Ak MULTIMAP NEMA ITEM, ktory ma MENSIU HODNOTU KEY ako zadana hodnota KEY, RETURN VALUE ITERATOR odkazuje na END ITERATOR.
+   51. METHOD upper_bound() vracia ITERATOR, ktory odkazuje na PRVY ITEM, ktory ma VACSIU HODNOTU KEY ako zadana hodnota KEY. Ak MULTIMAP NEMA ITEM, ktory ma VACSIU HODNOTU KEY ako zadana hodnota KEY, RETURN VALUE ITERATOR odkazuje na END ITERATOR.
+   52. METHOD key_comp() vracia FUNCTION OBJECT pouzivany ako KEY COMPARER.
+   53. METHOD value_comp() vracia FUNCTION OBJECT, ktory porovnava ITEMS danej MULTIMAP reprezentovane ako instancie CLASS [pair<const TKey,TValue>].
+   54. FUNCTION swap() vymiena obsah dvoch instancii MULTIMAP vymenou ich vnutornych FIELDS.
+!!! 185. MAPS a MULTIMAPS mozu mat COMPARERS definovane nasledujucimi sposobmi.
+   A. COMPARER zadany ako 3. TEMPLATE PARAMETER MAP a MULTIMAP je vytvoreny zavolanim DEFAULT CONSTRUCTOR. Tento sposob je vhodny vtedy ako COMPARER nie je nutne parameterizovat, pretoze uz v COMPILE TIME je jasne akym sposobom budu ITEMS v MAP a MULTIMAP SORTED.
+   B. COMPARER zadany ako 3. TEMPLATE PARAMETER MAP a MULTIMAP je zaslany ako PARAMETER do CONSTRUCTOR. Tento sposob je vhodny vtedy ako COMPARER je nutne parameterizovat, pretoze az v RUNTIME je jasne akym sposobom budu ITEMS v MAP a MULTIMAP SORTED.
+186. MAPS a MULTIMAPS podporuju COPY CONSTRUCTOR, MOVE CONSTRUCTOR, COPY OPERATOR= a MOVE OPERATOR= IBA pre MAPS a MULTIMAPS, ktore maju ROVNAKE TYPES, vratane COMPARER. COMPARER MUSI byt IDENTICKY pre obe instancie MAP a MULTIMAP, avsak kazda MAP a MULTIMAP moze pouzivat VLASTNU INSTANCIU COMPARER, ktora moze mat ODLISNE COMPARISION CRITERIA. Pri priradeni sa PRENESIE aj COMPARER z MAP, alebo MULTIMAP na RIGHT SIDE do MAP, alebo MULTIMAP na LEFT SIDE.
+187. MAPS a MULTIMAPS obsahuju BIDIRECTIONAL ITERATORS, no NEOBSAHUJU RANDOM-ACCESS ITERATORS co znaci, ze na MAPS a MULTIMAPS NIE JE mozne pouzit ALGORITHMS, ktore vyzaduju pouzitie RANDOM-ACCESS ITERATORS, ako su ALGORITHMS pre SORTING a ci RANDOM SHUFFLING.
+188. MAPS a MULTIMAPS ITERATORS vracaju TYPE [pair<const TKey,TValue>] z ktoreho vyplyva, ze KEY pri iterovani NIE JE MOZNE ZMENIT. Nevyhodou CONST KEY je napriklad nemoznost pouzitia niektorych ALGORITHMS, ktore vyzaduju zmenu hodnoty ITEM vratane KEY, ako napriklad ALGORITHM remove(), ktory ITEMS namiesto odstranovanie len premiestnuje kopirovanim.
+189. OPERATOR map<TKey,TValue,TCompare,TAllocator>.OPERATOR[] zistuje ci ITEM s danym KEY sa nachadza v MAP. Ak ano, OPERATOR map<TKey,TValue,TCompare,TAllocator>.OPERATOR[] vracia REFERENCE na ITEM. Ak nie, OPERATOR map<TKey,TValue,TCompare,TAllocator>.OPERATOR[] pridava ITEM do MAP. Pri pridavani ITEM do MAP OPERATOR map<TKey,TValue,TCompare,TAllocator>.OPERATOR[] vytvori VALUE pridavaneho ITEM pomocou DEFAULT CONSTRUCTOR a az nasledne sa pomocou OPERATOR= do VALUE vytvoreneho ITEM priradi nova hodnota.
+!!! 190. Pouzitie OPERATOR map<TKey,TValue,TCompare,TAllocator>.OPERATOR[] ma nasleldujuce NEVYHODY.
+   A. Pri pridavani ITEMS do MAP OPERATOR map<TKey,TValue,TCompare,TAllocator>.OPERATOR[] pre pridavanu VALUE noveho ITEM vola NAJPRV DEFAULT CONSTRUCTOR a nasledne OPERATOR=. To znizuje vykonnost oproti pouzitiu METHOD map<TKey,TValue,TCompare,TAllocator>.insert().
+   B. Zavolanie OPERATOR map<TKey,TValue,TCompare,TAllocator>.OPERATOR[] pre neexistujuci ITEM VZDY sposobi vlozenie noveho ITEM do MAP. A to aj v pripade, ze OPERATOR map<TKey,TValue,TCompare,TAllocator>.OPERATOR[] je pouzity na RIGHT SIDE danej EXPRESSION.
+191. METHOD map<TKey,TValue,TCompare,TAllocator>.at() vracia hodnotu ITEM pre zadany KEY. Ak sa ITEM s danym KEY v MAP nenachadza, METHOD map<TKey,TValue,TCompare,TAllocator>.at() hodi EXCEPTION [out_of_range].
+192. MAPS generuje nasledujuce EXCEPTIONS.
+   A. METHOD map<TKey,TValue,TCompare,TAllocator>.at() generuje EXCEPTION [out_of_range], ak sa ITEM v MAP nenachadza.
+   B. Kazda realokacia MEMORY pri praci s MAP moze generovat EXCEPTION [bad_alloc].
+193. Kazda realokacia MEMORY pri praci s MULTIMAP moze generovat EXCEPTION [bad_alloc].
+194. CLASS [unordered_set<TKey,THash,TKeyEqual,TAllocator>] reprezentuje HASH SET BEZ moznosti OPAKOVANIA ITEMS s rovnakou hodnotou KEYS. Pre CLASS [unordered_set<TKey,THash,TKeyEqual,TAllocator>] platia nasledujuce fakty.
+   A. UNORDERED SET je definovana v LIBRARY <unordered_set>.
+   !!! B. UNORDERED SET je implementovana ako HASH SET, ktora uklada ITEMS do BUCKETS. BUCKETS su implementovane ako JEDNOSMERNE, alebo OBOJSMERNE LISTS.
+   C. UNORDERED SETS NEMOZU obsahovat VIACERO ITEMS s TYM ISTYM KEY.
+   D. ITEMS v UNORDERED SETS NIE su SORTED. Su ulozene v nedefinovanom poradi co je rozdiel oproti SETS, kde su ITEMS SORTED.
+   E. ITEMS MUSIA byt COPYABLE, MOVABLE, EQUATABLE pomocou TEMPLATE PARAMETER 'TKeyEqual' a HASHABLE pomocou TEMPLATE PARAMETER 'THash'.
+   !!!!! F. ITEMS su ukladane do BUCKETS VYLUCNE podla HASH hodnoty ich VALUES. V pripade, ze pre 2 rozlicne ITEMS HASH FUNCTION vracia TEN ISTY HASH CODE, ITEMS su ukladane do LIST v TOM ISTOM BUCKET.
+   G. TEMPLATE PARAMETER 'THash' reprezentuje HASH FUNCTION, ktora sa pouziva na vypocet HASH VALUES. DEFAULT VALUE je STRUCTURE [hash<TKey>].
+   !!! H. TEMPLATE PARAMETER 'TKeyEqual' reprezentuje EQUATABLE FUNCTION, ktora sa pouziva na urcenie ci 2 KEYS su rovnake. Pouziva sa na vyhladanie ITEM v BUCKET. DEFAULT VALUE je STRUCTURE [equal_to<TKey].
+   I. UNORDERED SET umoznuje v TEMPLATE PARAMETER 'TAllocator' definovat CUSTOM ALLOCATOR umoznujuci CUSTOM MEMORY MANAGEMENT pri alokacii UNORDERED SET.
+   !!!!! J. UNORDERED SET ma vysoku PERFORMANCE pri pristupe k ITEMS. Priemerna zlozitost pri pristupe k ITEMS je O(1). Najhorsia zlozitost (ak HASH TABLE pouziva nedokonalu HASH FUNCTION) je O(N).
+   K. UNORDERED SET ma vysoku PERFORMANCE pri pridavani ITEMS.
+   L. UNORDERED SET ma vysoku PERFORMANCE pri odstranovani ITEMS.
+   !!! M. Hodnota ITEM je CONSTANT a NESMIE sa MENIT. Ak je potrebne hodnotu ITEM zmenit, je nutne ITEM odstranit z UNORDERED SET a pridat ho znova s modifikovanou hodnotou KEY.
+   !!!!! N. Pri pridavani ITEMS do UNORDERED SET pomocou METHOD unordered_set<TKey,THash,TKeyEqual,TAllocator>.insert() moze dojst k prekroceniu hranice urcujucej maximalny pocet ITEMS v BUCKET, ktoru je mozne definovat programovo. Ak je tato hranica prekrocena, UNORDERED SET AUTOMATICKY vykona REHASHING. REHASHING je mozne vykonat aj explicitne volanim METHOD unordered_set<TKey,THash,TKeyEqual,TAllocator>.rehash(), alebo METHOD METHOD unordered_set<TKey,THash,TKeyEqual,TAllocator>.reserve(). Pri REHASING su vsetky ITERATOR INVALID.
+   O. Pri odstranovani ITEMS z UNORDERED SET pomocou METHOD unordered_set<TKey,THash,TKeyEqual,TAllocator>.erase() NIKDY NEDOCHADZA k REHASING.
+   !!!!! P. Pri vyhladavani ITEMS v UNORDERED SET sa NAJPRV pouzije HASH VALUE vypocitana podla TEMPLATE PARAMETER 'THash' na urcenie v ktorom BUCKET sa ITEM nachadza a NASLEDNE sa pomocou TEMPLATE PARAMETER 'TKeyEqual' v danom BUCKET najde hladany ITEM.
+195. CLASS [unordered_set<TKey,THash,TKeyEqual,TAllocator>] ma nasledujuce MEMBERS.
+   1. CONSTRUCTOR vytvara instanciu UNORDERED SET.
+   2. DESTRUCTOR uvolnuje instanciu UNORDERED SET ako aj jednotlive ITEMS pre ktore je zavolany ich DESTRUCTOR.
+   3. TYPE [key_type] urcuje KEY TYPE ITEMS ulozenych v UNORDERED SET.
+   4. TYPE [value_type] urcuje VALUE TYPE ITEMS ulozenych v UNORDERED SET. VALUE TYPE je IDENTICKY s KEY TYPE.
+   5. TYPE [size_type] je UNSIGNED TYPE reprezentujuci hodnoty urcujuce velkost a pocet.
+   6. TYPE [difference_type] je SIGNED TYPE reprezentujuci hodnoty urcujuce rozdiel.
+   7. TYPE [hasher] obsahuje TYPE pouzivany na vypocet HASH FUNCTION daneho KEY.
+   8. TYPE [key_equal] obsahuje TYPE pouzivany na porovnanie hodnot KEYS.
+   9. TYPE [allocator_type] urcuje TYPE, ktory sa pouziva ako ALLOCATOR.
+   10. TYPE [reference] urcuje REFERENCE TYPE pre ITEMS ulozene v UNORDERED SET.
+   11. TYPE [const_reference] urcuje CONST REFERENCE TYPE pre ITEMS ulozene v UNORDERED SET.
+   12. TYPE [pointer] urcuje POINTER TYPE pre ITEMS ulozene v UNORDERED SET.
+   13. TYPE [const_pointer] urcuje CONST POINTER TYPE pre ITEMS ulozene v UNORDERED SET.
+   14. TYPE [iterator] urcuje TYPE pre ITERATOR daneho UNORDERED SET.
+   15. TYPE [const_iterator] urcuje TYPE pre CONST ITERATOR danej UNORDERED SET.
+   16. TYPE [local_iterator] urcuje TYPE pre ITERATOR daneho UNORDERED SET pouzivany na prechod ITEMS v ramci jedneho BUCKET. ITERATOR NIE JE MOZNE pouzit na prechod medzi ITEMS v rozlicnych BUCKETS.
+   17. TYPE [const_local_iterator] urcuje TYPE pre CONST ITERATOR danej UNORDERED SET pouzivany na prechod ITEMS v ramci jedneho BUCKET. ITERATOR NIE JE MOZNE pouzit na prechod medzi ITEMS v rozlicnych BUCKETS.
+   18. TYPE [node_type] urcuje TYPE pre UNORDERED SET NODE reprezentujuci NODES ulozene v UNORDERED SET.
+   19. TYPE [insert_return_type] urcuje TYPE pouzivany na reprezentaciu vysledku vkladania ITEM do UNORDERED SET. Obsahuje informaciu ci ITEM bol do UNORDERED SET vlozeny, poziciu na ktoru bol vlozeny a instanciu CLASS [node_type] obsahuju NODE do ktoreho bol ITEM vlozeny.
+   20. OPERATOR= priradzuje do UNORDERED SET ITEMS inej UNORDERED SET. UNORDERED SET obsahuje COPY OPERATOR= aj MOVE OPERATOR= ako aj verziu pre INITIALIZER LIST.
+   21. OPERATOR== zistuje ci dve instancie UNORDERED SET su lexikograficky rovne.
+   22. OPERATOR!= zistuje ci dve instancie UNORDERED SET su lexikograficky rozne.
+   23. METHOD get_allocator() vracia instanciu ALLOCATOR, ktora sa pouziva pri alokovani ITEMS danej UNORDERED SET.
+   24. METHOD begin() vracia ITERATOR ukazujuci na PRVY ITEM UNORDERED SET. OVERLOADED verzia vracia ITERATOR na PRVY ITEM v danom BUCKET.
+   25. METHOD cbegin() vracia CONST ITERATOR ukazujuci na PRVY ITEM UNORDERED SET. OVERLOADED verzia vracia ITERATOR na PRVY ITEM v danom BUCKET.
+   26. METHOD end() vracia ITERATOR ukazujuci hned za POSLEDNY ITEM UNORDERED SET. OVERLOADED verzia vracia ITERATOR na POSLEDNY ITEM v danom BUCKET.
+   27. METHOD cend() vracia CONST ITERATOR ukazujuci hned za POSLEDNY ITEM UNORDERED SET. OVERLOADED verzia vracia ITERATOR hned za POSLEDNY ITEM v danom BUCKET.
+   28. METHOD empty() vracia informaciu ci UNORDERED SET je prazdna.
+   29. METHOD size() vracia pocet ITEMS v UNORDERED SET.
+   30. METHOD max_size() vracia maximalny pocet ITEMS, ktore je do UNORDERED SET mozne ulozit.
+   31. METHOD clear() odstranuje vsetky ITEMS z UNORDERED SET.
+   32. METHOD insert() pridava ITEM, alebo NODE do UNORDERED SET. METHOD vracia informaciu o tom ci ITEM bol pridany do UNORDERED SET a poziciu na ktoru bol ITEM vlozeny.
+   33. METHOD emplace() pridava ITEM do UNORDERED SET pomocou PLACEMENT NEW. PARAMETERS METHOD unordered_set<TKey,THash,TKeyEqual,TAllocator>.emplace() su FORWARDED do CONSTRUCTOR daneho ITEM volaneho pri pridavani ITEM do UNORDERED SET. METHOD vracia informaciu ci bol ITEM vlozeny ako aj ITERATOR na poziciu do ktorej bol ITEM vlozeny.
+   34. METHOD emplace_hint() pridava ITEM do UNORDERED SET pomocou PLACEMENT NEW, pricom 1. PARAMETER reprezenuje ITERATOR sluziaci ako HINT. HINT urcuje poziciu PRED ktorou sa v co najmensej vzdialenosti ma UNORDERED SET pokusit ITEM ulozit. PARAMETERS METHOD unordered_set<TKey,THash,TKeyEqual,TAllocator>.emplace_hint() od 2. PARAMETER su FORWARDED do CONSTRUCTOR daneho ITEM volaneho pri pridavani ITEM do UNORDERED SET. METHOD vracia ITERATOR na poziciu do ktorej bol ITEM vlozeny.
+   35. METHOD erase() odstranuje 1-N ITEMS z UNORDERED SET. Pri odstranovani 1 ITEM UNORDERED SET definuje OVERLOADED verziu, kde sa zadava hodnota KEY. Ostatne OVERLOADED verzie vyzaduju zadanie 1, alebo 2 ITERATORS. Verzia s 2 ITERATORS umoznuju odstranenie viacerych ITEMS.
+   36. METHOD swap() vymiena obsah dvoch instancii UNORDERED SET vymenou ich vnutornych FIELDS.
+   !!! 37. METHOD extract() odstranuje NODE z UNORDERED SET. NODE je urceny pomocou ITERATOR, alebo KEY.
+   !!! 38. METHOD merge() vybera NODES z UNORDERED SET, alebo UNORDERED MULTISET definovanej ako PARAMETER a uklada ich do UNORDERED SET pre ktoru bola METHOD volana. ITEMS, ktore maju rovnaku hodnotu KEY v SOURCE a DESTINATION UNORDERED SET nie su presunute do DESTINATION UNORDERED SET. METHOD umoznuje efektivne kopirovanie NODES medzi dvoma instanciami UNORDERED SET bez nutnosti vykonat kopiu ITEMS. OVERLOADED verzia umoznuje prenasat NODES z UNORDERED MULTISET.
+   39. METHOD count() vracia pocet ITEMS s danou hodnotou UNORDERED SET.
+   40. METHOD find() vracia ITERATOR na ITEM s danou hodnotou UNORDERED SET.
+   41. METHOD equal_range() vracia ITERATOR PAIR, kde 1. ITERATOR odkazuje na PRVY ITEM, ktory NEMA MENSIU HODNOTU KEY ako zadana hodnota KEY a DRUHY ITERATOR odkazuje na PRVY ITEM, ktory ma VACSIU HODNOTU KEY ako zadana hodnota KEY. Ak UNORDERED SET NEMA ITEM, ktory ma MENSIU HODNOTU KEY ako zadana hodnota KEY, 1. ITERATOR odkazuje na END ITERATOR. Ak UNORDERED SET NEMA ITEM, ktory ma VACSIU HODNOTU KEY ako zadana hodnota KEY, 2. ITERATOR odkazuje na END ITERATOR.
+   42. METHOD bucket_count() vracia pocet BUCKETS v UNORDERED SET.
+   43. METHOD max_bucket_count() vracia maximalny pocet BUCKETS, ktore moze UNORDERED SET obsahovat.
+   44. METHOD bucket_size() vracia pocet ITEMS v danom BUCKET, ktory UNORDERED SET obsahuje.
+   45. METHOD bucket() vracia INDEX na BUCKET v ktorom sa ITEM s danym KEY nachadza.
+   46. METHOD load_factor() vracia priemerny pocet ITEMS v BUCKETS danej UNORDERED SET.
+   47. METHOD max_load_factor() vracia MAXIMALNY pocet ITEMS, ktore mozu byt v BUCKET ulozene predtym ako dojde k REHASHING celej UNORDERED SET. OVERLOADED verzia METHOD max_load_factor() umoznuje nastavit MAXIMALNY pocet ITEMS, ktore mozu byt v BUCKET ulozene predtym ako dojde k REHASHING celej UNORDERED SET.
+   48. METHOD rehash() vykona REHASH celej UNORDERED SET, tak aby ITEMS boli rozdelene do poctu BUCKETS, ktory definuje PARAMETER METHOD rehash().
+   49. METHOD reserve() nastavi pocet BUCKETS na taku hodnotu aby kazdy BUCKET mohol obsahovat aspon pocet ITEMS zadanom v PARAMETERI METHOD reserve(). METHOD reserve() zaroven vykona REHASH celej UNORDERED SET.
+   50. METHOD hash_function() vracia FUNCTION OBJECT pouzivany ako HASH FUNCTION na vypocet HASH CODE, ktory urcuje do ktoreho BUCKET bude ITEM ulozeny.
+   51. METHOD key_eq() vracia FUNCTION OBJECT, ktory sa pouziva na porovnavanie rovnosti hodnot KEYS.
+   52. FUNCTION swap() vymiena obsah dvoch instancii UNORDERED SET vymenou ich vnutornych FIELDS.
+196. CLASS [unordered_multiset<TKey,THash,TKeyEqual,TAllocator>] reprezentuje HASH SET s moznostou OPAKOVANIA ITEMS s rovnakou hodnotou KEYS. Pre CLASS [unordered_multiset<TKey,THash,TKeyEqual,TAllocator>] platia nasledujuce fakty.
+   A. UNORDERED MULTISET je definovana v LIBRARY <unordered_set>.
+   !!! B. UNORDERED MULTISET je implementovana ako HASH SET, ktora uklada ITEMS do BUCKETS. BUCKETS su implementovane ako JEDNOSMERNE, alebo OBOJSMERNE LISTS.
+   C. UNORDERED MULTISETS MOZU obsahovat VIACERO ITEMS s TYM ISTYM KEY.
+   D. ITEMS v UNORDERED MULTISETS NIE su SORTED. Su ulozene v nedefinovanom poradi co je rozdiel oproti MULTISETS, kde su ITEMS SORTED.
+   E. ITEMS MUSIA byt COPYABLE, MOVABLE, EQUATABLE pomocou TEMPLATE PARAMETER 'TKeyEqual' a HASHABLE pomocou TEMPLATE PARAMETER 'THash'.
+   !!!!! F. ITEMS su ukladane do BUCKETS VYLUCNE podla HASH hodnoty ich KEYS. V pripade, ze pre 2 rozlicne ITEMS HASH FUNCTION vracia TEN ISTY HASH CODE, ITEMS su ukladane do LIST v TOM ISTOM BUCKET.
+   G. TEMPLATE PARAMETER 'THash' reprezentuje HASH FUNCTION, ktora sa pouziva na vypocet HASH VALUES. DEFAULT VALUE je STRUCTURE [hash<TKey>].
+   !!! H. TEMPLATE PARAMETER 'TKeyEqual' reprezentuje EQUATABLE FUNCTION, ktora sa pouziva na urcenie ci 2 KEYS su rovnake. Pouziva sa na vyhladanie ITEM v BUCKET. DEFAULT VALUE je STRUCTURE [equal_to<TKey].
+   I. UNORDERED MULTISET umoznuje v TEMPLATE PARAMETER 'TAllocator' definovat CUSTOM ALLOCATOR umoznujuci CUSTOM MEMORY MANAGEMENT pri alokacii UNORDERED MULTISET.
+   !!!!! J. UNORDERED MULTISET ma vysoku PERFORMANCE pri pristupe k ITEMS. Priemerna zlozitost pri pristupe k ITEMS je O(1). Najhorsia zlozitost (ak HASH TABLE pouziva nedokonalu HASH FUNCTION) je O(N).
+   K. UNORDERED MULTISET ma vysoku PERFORMANCE pri pridavani ITEMS.
+   L. UNORDERED MULTISET ma vysoku PERFORMANCE pri odstranovani ITEMS.
+   !!! M. Hodnota ITEM je CONSTANT a NESMIE sa MENIT. Ak je potrebne hodnotu ITEM zmenit, je nutne ITEM odstranit z UNORDERED MULTISET a pridat ho znova s modifikovanou hodnotou KEY.
+   !!!!! N. Pri pridavani ITEMS do UNORDERED MULTISET pomocou METHOD unordered_multiset<TKey,THash,TKeyEqual,TAllocator>.insert() moze dojst k prekroceniu hranice urcujucej maximalny pocet ITEMS v BUCKET, ktoru je mozne definovat programovo. Ak je tato hranica prekrocena, UNORDERED MULTISET AUTOMATICKY vykona REHASHING. REHASHING je mozne vykonat aj explicitne volanim METHOD unordered_multiset<TKey,THash,TKeyEqual,TAllocator>.rehash(), alebo METHOD unordered_multiset<TKey,THash,TKeyEqual,TAllocator>.reserve(). Pri REHASING su vsetky ITERATOR INVALID.
+   O. Pri odstranovani ITEMS z UNORDERED MULTISET pomocou METHOD unordered_multiset<TKey,THash,TKeyEqual,TAllocator>.erase() NIKDY NEDOCHADZA k REHASING.
+   P. Ak UNORDERED MULTISET obsahuje viacero ITEMS s rovnakymi KEYS, pri iterovani ITEMS su tieto ITEMS ulozene za sebou pricom aj po REHASING ostava ich poradie zachovane.
+   !!!!! Q. Pri vyhladavani ITEMS v UNORDERED MULTISET sa NAJPRV pouzije HASH VALUE vypocitana podla TEMPLATE PARAMETER 'THash' na urcenie v ktorom BUCKET sa ITEM nachadza a NASLEDNE sa pomocou TEMPLATE PARAMETER 'TKeyEqual' v danom BUCKET najde hladany ITEM.
+197. CLASS [unordered_multiset<TKey,THash,TKeyEqual,TAllocator>] ma nasledujuce MEMBERS.
+   1. CONSTRUCTOR vytvara instanciu UNORDERED MULTISET.
+   2. DESTRUCTOR uvolnuje instanciu UNORDERED MULTISET ako aj jednotlive ITEMS pre ktore je zavolany ich DESTRUCTOR.
+   3. TYPE [key_type] urcuje KEY TYPE ITEMS ulozenych v UNORDERED MULTISET.
+   4. TYPE [value_type] urcuje VALUE TYPE ITEMS ulozenych v UNORDERED MULTISET. VALUE TYPE je IDENTICKY s KEY TYPE.
+   5. TYPE [size_type] je UNSIGNED TYPE reprezentujuci hodnoty urcujuce velkost a pocet.
+   6. TYPE [difference_type] je SIGNED TYPE reprezentujuci hodnoty urcujuce rozdiel.
+   7. TYPE [hasher] obsahuje TYPE pouzivany na vypocet HASH FUNCTION daneho KEY.
+   8. TYPE [key_equal] obsahuje TYPE pouzivany na porovnanie hodnot KEYS.
+   9. TYPE [allocator_type] urcuje TYPE, ktory sa pouziva ako ALLOCATOR.
+   10. TYPE [reference] urcuje REFERENCE TYPE pre ITEMS ulozene v UNORDERED MULTISET.
+   11. TYPE [const_reference] urcuje CONST REFERENCE TYPE pre ITEMS ulozene v UNORDERED MULTISET.
+   12. TYPE [pointer] urcuje POINTER TYPE pre ITEMS ulozene v UNORDERED MULTISET.
+   13. TYPE [const_pointer] urcuje CONST POINTER TYPE pre ITEMS ulozene v UNORDERED MULTISET.
+   14. TYPE [iterator] urcuje TYPE pre ITERATOR daneho UNORDERED MULTISET.
+   15. TYPE [const_iterator] urcuje TYPE pre CONST ITERATOR danej UNORDERED MULTISET.
+   16. TYPE [local_iterator] urcuje TYPE pre ITERATOR daneho UNORDERED MULTISET pouzivany na prechod ITEMS v ramci jedneho BUCKET. ITERATOR NIE JE MOZNE pouzit na prechod medzi ITEMS v rozlicnych BUCKETS.
+   17. TYPE [const_local_iterator] urcuje TYPE pre CONST ITERATOR danej UNORDERED MULTISET pouzivany na prechod ITEMS v ramci jedneho BUCKET. ITERATOR NIE JE MOZNE pouzit na prechod medzi ITEMS v rozlicnych BUCKETS.
+   18. TYPE [node_type] urcuje TYPE pre UNORDERED MULTISET NODE reprezentujuci NODES ulozene v UNORDERED MULTISET.
+   19. OPERATOR= priradzuje do UNORDERED MULTISET ITEMS inej UNORDERED MULTISET. UNORDERED MULTISET obsahuje COPY OPERATOR= aj MOVE OPERATOR= ako aj verziu pre INITIALIZER LIST.
+   20. OPERATOR== zistuje ci dve instancie UNORDERED MULTISET su lexikograficky rovne.
+   21. OPERATOR!= zistuje ci dve instancie UNORDERED MULTISET su lexikograficky rozne.
+   22. METHOD get_allocator() vracia instanciu ALLOCATOR, ktora sa pouziva pri alokovani ITEMS danej UNORDERED MULTISET.
+   23. METHOD begin() vracia ITERATOR ukazujuci na PRVY ITEM UNORDERED MULTISET. OVERLOADED verzia vracia ITERATOR na PRVY ITEM v danom BUCKET.
+   24. METHOD cbegin() vracia CONST ITERATOR ukazujuci na PRVY ITEM UNORDERED MULTISET. OVERLOADED verzia vracia ITERATOR na PRVY ITEM v danom BUCKET.
+   25. METHOD end() vracia ITERATOR ukazujuci hned za POSLEDNY ITEM UNORDERED MULTISET. OVERLOADED verzia vracia ITERATOR na POSLEDNY ITEM v danom BUCKET.
+   26. METHOD cend() vracia CONST ITERATOR ukazujuci hned za POSLEDNY ITEM UNORDERED MULTISET. OVERLOADED verzia vracia ITERATOR hned za POSLEDNY ITEM v danom BUCKET.
+   27. METHOD empty() vracia informaciu ci UNORDERED MULTISET je prazdna.
+   28. METHOD size() vracia pocet ITEMS v UNORDERED MULTISET.
+   29. METHOD max_size() vracia maximalny pocet ITEMS, ktore je do UNORDERED MULTISET mozne ulozit.
+   30. METHOD clear() odstranuje vsetky ITEMS z UNORDERED MULTISET.
+   31. METHOD insert() pridava ITEM, alebo NODE do UNORDERED MULTISET. METHOD vracia ITERATOR na poziciu na ktoru bol ITEM vlozeny.
+   32. METHOD emplace() pridava ITEM do UNORDERED MULTISET pomocou PLACEMENT NEW. PARAMETERS METHOD unordered_multiset<TKey,THash,TKeyEqual,TAllocator>.emplace() su FORWARDED do CONSTRUCTOR daneho ITEM volaneho pri pridavani ITEM do UNORDERED MULTISET. METHOD vracia ITERATOR na poziciu do ktorej bol ITEM vlozeny.
+   33. METHOD emplace_hint() pridava ITEM do UNORDERED MULTISET pomocou PLACEMENT NEW, pricom 1. PARAMETER reprezenuje ITERATOR sluziaci ako HINT. HINT urcuje poziciu PRED ktorou sa v co najmensej vzdialenosti ma UNORDERED MULTISET pokusit ITEM ulozit. PARAMETERS METHOD unordered_multiset<TKey,THash,TKeyEqual,TAllocator>.emplace_hint() od 2. PARAMETER su FORWARDED do CONSTRUCTOR daneho ITEM volaneho pri pridavani ITEM do UNORDERED MULTISET. METHOD vracia ITERATOR na poziciu do ktorej bol ITEM vlozeny.
+   34. METHOD erase() odstranuje 1-N ITEMS z UNORDERED MULTISET. Pri odstranovani 1 ITEM UNORDERED MULTISET definuje OVERLOADED verziu, kde sa zadava hodnota KEY. Ostatne OVERLOADED verzie vyzaduju zadanie 1, alebo 2 ITERATORS. Verzia s 2 ITERATORS umoznuju odstranenie viacerych ITEMS.
+   35. METHOD swap() vymiena obsah dvoch instancii UNORDERED MULTISET vymenou ich vnutornych FIELDS.
+   !!! 36. METHOD extract() odstranuje NODE z UNORDERED MULTISET. NODE je urceny pomocou ITERATOR, alebo KEY.
+   !!! 37. METHOD merge() vybera NODES z UNORDERED MULTISET, alebo UNORDERED SET definovanej ako PARAMETER a uklada ich do UNORDERED MULTISET pre ktoru bola METHOD volana. ITEMS, ktore maju rovnaku hodnotu KEY v SOURCE a DESTINATION UNORDERED MULTISET nie su presunute do DESTINATION UNORDERED MULTISET. METHOD umoznuje efektivne kopirovanie NODES medzi dvoma instanciami UNORDERED MULTISET bez nutnosti vykonat kopiu ITEMS. OVERLOADED verzia umoznuje prenasat NODES z UNORDERED SET.
+   38. METHOD count() vracia pocet ITEMS s danou hodnotou UNORDERED MULTISET.
+   39. METHOD find() vracia ITERATOR na ITEM s danou hodnotou UNORDERED MULTISET.
+   40. METHOD equal_range() vracia ITERATOR PAIR, kde 1. ITERATOR odkazuje na PRVY ITEM, ktory NEMA MENSIU HODNOTU KEY ako zadana hodnota KEY a DRUHY ITERATOR odkazuje na PRVY ITEM, ktory ma VACSIU HODNOTU KEY ako zadana hodnota KEY. Ak UNORDERED MULTISET NEMA ITEM, ktory ma MENSIU HODNOTU KEY ako zadana hodnota KEY, 1. ITERATOR odkazuje na END ITERATOR. Ak UNORDERED MULTISET NEMA ITEM, ktory ma VACSIU HODNOTU KEY ako zadana hodnota KEY, 2. ITERATOR odkazuje na END ITERATOR.
+   41. METHOD bucket_count() vracia pocet BUCKETS v UNORDERED MULTISET.
+   42. METHOD max_bucket_count() vracia maximalny pocet BUCKETS, ktore moze UNORDERED MULTISET obsahovat.
+   43. METHOD bucket_size() vracia pocet ITEMS v danom BUCKET, ktory UNORDERED MULTISET obsahuje.
+   44. METHOD bucket() vracia INDEX na BUCKET v ktorom sa ITEM s danym KEY nachadza.
+   45. METHOD load_factor() vracia priemerny pocet ITEMS v BUCKETS danej UNORDERED MULTISET.
+   46. METHOD max_load_factor() vracia MAXIMALNY pocet ITEMS, ktore mozu byt v BUCKET ulozene predtym ako dojde k REHASHING celej UNORDERED MULTISET. OVERLOADED verzia METHOD max_load_factor() umoznuje nastavit MAXIMALNY pocet ITEMS, ktore mozu byt v BUCKET ulozene predtym ako dojde k REHASHING celej UNORDERED MULTISET.
+   47. METHOD rehash() vykona REHASH celej UNORDERED MULTISET, tak aby ITEMS boli rozdelene do poctu BUCKETS, ktory definuje PARAMETER METHOD rehash().
+   48. METHOD reserve() nastavi pocet BUCKETS na taku hodnotu aby kazdy BUCKET mohol obsahovat aspon pocet ITEMS zadanom v PARAMETERI METHOD reserve(). METHOD reserve() zaroven vykona REHASH celej UNORDERED MULTISET.
+   49. METHOD hash_function() vracia FUNCTION OBJECT pouzivany ako HASH FUNCTION na vypocet HASH CODE, ktory urcuje do ktoreho BUCKET bude ITEM ulozeny.
+   50. METHOD METHOD key_eq() vracia FUNCTION OBJECT, ktory sa pouziva na porovnavanie rovnosti hodnot KEYS.
+   51. FUNCTION swap() vymiena obsah dvoch instancii UNORDERED MULTISET vymenou ich vnutornych FIELDS.
+198. CLASS [unordered_map<TKey,TValue,THash,TKeyEqual,TAllocator>] reprezentuje HASH TABLE BEZ moznosti OPAKOVANIA ITEMS s rovnakou hodnotou KEYS. Pre CLASS [unordered_map<TKey,TValue,THash,TKeyEqual,TAllocator>] platia nasledujuce fakty.
+   A. UNORDERED MAP je definovana v LIBRARY <unordered_map>.
+   !!! B. UNORDERED MAP je implementovana ako HASH TABLE, ktora uklada ITEMS do BUCKETS. BUCKETS su implementovane ako JEDNOSMERNE, alebo OBOJSMERNE LISTS.
+   C. UNORDERED MAPS NEMOZU obsahovat VIACERO ITEMS s TYM ISTYM KEY.
+   D. ITEMS v UNORDERED MAPS NIE su SORTED. Su ulozene v nedefinovanom poradi co je rozdiel oproti MAPS, kde su ITEMS SORTED.
+   E. UNORDERED MAP ma ako ITEMS instancie CLASS [pair<const TKey,TValue].
+   F. KEYS pouzivane v MAPS MUSIA byt COPYABLE, MOVABLE, EQUATABLE pomocou TEMPLATE PARAMETER 'TKeyEqual' a HASHABLE pomocou TEMPLATE PARAMETER 'THash'.
+   G. VALUES pouzivane v MAPS MUSIA byt COPYABLE a MOVABLE.
+   !!!!! H. ITEMS su ukladane do BUCKETS VYLUCNE podla HASH hodnoty ich KEYS. V pripade, ze pre 2 rozlicne ITEMS HASH FUNCTION vracia TEN ISTY HASH CODE, ITEMS su ukladane do LIST v TOM ISTOM BUCKET.
+   I. TEMPLATE PARAMETER 'THash' reprezentuje HASH FUNCTION, ktora sa pouziva na vypocet HASH VALUES. DEFAULT VALUE je STRUCTURE [hash<TKey>].
+   !!! J. TEMPLATE PARAMETER 'TKeyEqual' reprezentuje EQUATABLE FUNCTION, ktora sa pouziva na urcenie ci 2 KEYS su rovnake. Pouziva sa na vyhladanie ITEM v BUCKET. DEFAULT VALUE je STRUCTURE [equal_to<TKey].
+   K. UNORDERED MAP umoznuje v TEMPLATE PARAMETER 'TAllocator' definovat CUSTOM ALLOCATOR umoznujuci CUSTOM MEMORY MANAGEMENT pri alokacii UNORDERED MAP.
+   !!!!! L. UNORDERED MAP ma vysoku PERFORMANCE pri pristupe k ITEMS pomocou ich KEYS. Priemerna zlozitost pri pristupe k ITEMS je O(1). Najhorsia zlozitost (ak HASH TABLE pouziva nedokonalu HASH FUNCTION) je O(N).
+   M. UNORDERED MAP ma nizku PERFORMANCE pri pristupe k ITEMS pomocou ich VALUES.
+   N. UNORDERED MAP ma vysoku PERFORMANCE pri pridavani ITEMS.
+   O. UNORDERED MAP ma vysoku PERFORMANCE pri odstranovani ITEMS podla hodnoty ich KEYS.
+   P. UNORDERED MAP ma nizku PERFORMANCE pri odstranovani ITEMS podla hodnoty ich VALUES.
+   !!! Q. Hodnoty KEYS su CONSTANT a NESMU sa MENIT. Ak je potrebne hodnotu KEY zmenit, je nutne ITEM odstranit z UNORDERED MAP a pridat ho znova s modifikovanou hodnotou KEY.
+   !!!!! R. Pri pridavani ITEMS do UNORDERED MAP pomocou METHOD unordered_map<TKey,TValue,THash,TKeyEqual,TAllocator>.insert() moze dojst k prekroceniu hranice urcujucej maximalny pocet ITEMS v BUCKET, ktoru je mozne definovat programovo. Ak je tato hranica prekrocena, UNORDERED MAP AUTOMATICKY vykona REHASHING. REHASHING je mozne vykonat aj explicitne volanim METHOD unordered_map<TKey,TValue,THash,TKeyEqual,TAllocator>.rehash(), alebo METHOD unordered_map<TKey,TValue,THash,TKeyEqual,TAllocator>.reserve(). Pri REHASING su vsetky ITERATOR INVALID.
+   S. Pri odstranovani ITEMS z UNORDERED MAP pomocou METHOD unordered_map<TKey,TValue,THash,TKeyEqual,TAllocator>.erase() NIKDY NEDOCHADZA k REHASING.
+   !!!!! T. Pri vyhladavani ITEMS v UNORDERED MAP sa NAJPRV pouzije HASH VALUE vypocitana podla TEMPLATE PARAMETER 'THash' na urcenie v ktorom BUCKET sa ITEM nachadza a NASLEDNE sa pomocou TEMPLATE PARAMETER 'TKeyEqual' v danom BUCKET najde hladany ITEM.
+199. CLASS [unordered_map<TKey,TValue,THash,TKeyEqual,TAllocator>] ma nasledujuce MEMBERS.
+   1. CONSTRUCTOR vytvara instanciu UNORDERED MAP.
+   2. DESTRUCTOR uvolnuje instanciu UNORDERED MAP ako aj jednotlive ITEMS pre ktore je zavolany ich DESTRUCTOR.
+   3. TYPE [key_type] urcuje KEY TYPE ITEMS ulozenych v UNORDERED MAP.
+   4. TYPE [mapped_type] urcuje VALUE TYPE ITEMS ulozenych v UNORDERED MAP.
+   5. TYPE [value_type] urcuje VALUE TYPE ITEMS ulozenych v UNORDERED MAP. Ma hodnotu CLASS [pair<const TKey,TValue>].
+   6. TYPE [size_type] je UNSIGNED TYPE reprezentujuci hodnoty urcujuce velkost a pocet.
+   7. TYPE [difference_type] je SIGNED TYPE reprezentujuci hodnoty urcujuce rozdiel.
+   8. TYPE [hasher] obsahuje TYPE pouzivany na vypocet HASH FUNCTION daneho KEY.
+   9. TYPE [key_equal] obsahuje TYPE pouzivany na porovnanie hodnot KEYS.
+   10. TYPE [allocator_type] urcuje TYPE, ktory sa pouziva ako ALLOCATOR.
+   11. TYPE [reference] urcuje REFERENCE TYPE pre ITEMS ulozene v UNORDERED MAP.
+   12. TYPE [const_reference] urcuje CONST REFERENCE TYPE pre ITEMS ulozene v UNORDERED MAP.
+   13. TYPE [pointer] urcuje POINTER TYPE pre ITEMS ulozene v UNORDERED MAP.
+   14. TYPE [const_pointer] urcuje CONST POINTER TYPE pre ITEMS ulozene v UNORDERED MAP.
+   15. TYPE [iterator] urcuje TYPE pre ITERATOR daneho UNORDERED MAP.
+   16. TYPE [const_iterator] urcuje TYPE pre CONST ITERATOR danej UNORDERED MAP.
+   17. TYPE [local_iterator] urcuje TYPE pre ITERATOR daneho UNORDERED MAP pouzivany na prechod ITEMS v ramci jedneho BUCKET. ITERATOR NIE JE MOZNE pouzit na prechod medzi ITEMS v rozlicnych BUCKETS.
+   18. TYPE [const_local_iterator] urcuje TYPE pre CONST ITERATOR danej UNORDERED MAP pouzivany na prechod ITEMS v ramci jedneho BUCKET. ITERATOR NIE JE MOZNE pouzit na prechod medzi ITEMS v rozlicnych BUCKETS.
+   19. TYPE [node_type] urcuje TYPE pre UNORDERED MAP NODE reprezentujuci NODES ulozene v UNORDERED MAP.
+   20. TYPE [insert_return_type] urcuje TYPE pouzivany na reprezentaciu vysledku vkladania ITEM do UNORDERED MAP. Obsahuje informaciu ci ITEM bol do UNORDERED MAP vlozeny, poziciu na ktoru bol vlozeny a instanciu CLASS [node_type] obsahuju NODE do ktoreho bol ITEM vlozeny.
+   21. OPERATOR= priradzuje do UNORDERED MAP ITEMS inej UNORDERED MAP. UNORDERED MAP obsahuje COPY OPERATOR= aj MOVE OPERATOR= ako aj verziu pre INITIALIZER LIST.
+   22. OPERATOR== zistuje ci dve instancie UNORDERED MAP su lexikograficky rovne.
+   23. OPERATOR!= zistuje ci dve instancie UNORDERED MAP su lexikograficky rozne.
+   !!!!! 24. OPERATOR[] vracia REFERENCE na ITEM danej UNORDERED MAP podla hodnoty jeho KEY. V pripade, ze KEY s danou hodnotou sa v UNORDERED MAP NENACHADZA, ITEM sa do UNORDERED MAP ulozi.
+   !!! 25. METHOD at() vracia REFERENCE na ITEM danej UNORDERED MAP podla hodnoty jeho KEY. Ak ITEM s danym KEY sa v UNORDERED MAP nenachadza, METHOD unordered_map<TKey,TValue,THash,TKeyEqual,TAllocator>.at() generuje EXCEPTION [out_of_range].
+   26. METHOD get_allocator() vracia instanciu ALLOCATOR, ktora sa pouziva pri alokovani ITEMS danej UNORDERED MAP.
+   27. METHOD begin() vracia ITERATOR ukazujuci na PRVY ITEM UNORDERED MAP. OVERLOADED verzia vracia ITERATOR na PRVY ITEM v danom BUCKET.
+   28. METHOD cbegin() vracia CONST ITERATOR ukazujuci na PRVY ITEM UNORDERED MAP. OVERLOADED verzia vracia ITERATOR na PRVY ITEM v danom BUCKET.
+   29. METHOD end() vracia ITERATOR ukazujuci hned za POSLEDNY ITEM UNORDERED MAP. OVERLOADED verzia vracia ITERATOR na POSLEDNY ITEM v danom BUCKET.
+   30. METHOD cend() vracia CONST ITERATOR ukazujuci hned za POSLEDNY ITEM UNORDERED MAP. OVERLOADED verzia vracia ITERATOR hned za POSLEDNY ITEM v danom BUCKET.
+   31. METHOD empty() vracia informaciu ci UNORDERED MAP je prazdna.
+   32. METHOD size() vracia pocet ITEMS v UNORDERED MAP.
+   33. METHOD max_size() vracia maximalny pocet ITEMS, ktore je do UNORDERED MAP mozne ulozit.
+   34. METHOD clear() odstranuje vsetky ITEMS z UNORDERED MAP.
+   35. METHOD insert() pridava ITEM, alebo NODE do UNORDERED MAP. METHOD vracia informaciu o tom ci ITEM bol pridany do UNORDERED MAP a poziciu na ktoru bol ITEM vlozeny.
+   36. METHOD insert_or_assign() pridava ITEM, alebo NODE do UNORDERED MAP, ak KEY v UNORDERED MAP neexistuje. Ak KEY v UNORDERED MAP existuje, zmeni jeho VALUE.
+   37. METHOD emplace() pridava ITEM do UNORDERED MAP pomocou PLACEMENT NEW. PARAMETERS METHOD unordered_map<TKey,TValue,THash,TKeyEqual,TAllocator>.emplace() su FORWARDED do CONSTRUCTOR daneho ITEM volaneho pri pridavani ITEM do UNORDERED MAP. METHOD vracia informaciu o tom ci ITEM bol pridany do UNORDERED MAP a poziciu na ktoru bol ITEM vlozeny.
+   38. METHOD emplace_hint() pridava ITEM do UNORDERED MAP pomocou PLACEMENT NEW, pricom 1. PARAMETER reprezenuje ITERATOR sluziaci ako HINT. HINT urcuje poziciu PRED ktorou sa v co najmensej vzdialenosti ma UNORDERED MAP pokusit ITEM ulozit. PARAMETERS METHOD unordered_map<TKey,TValue,THash,TKeyEqual,TAllocator>.emplace_hint() od 2. PARAMETER su FORWARDED do CONSTRUCTOR daneho ITEM volaneho pri pridavani ITEM do UNORDERED MAP. METHOD vracia ITERATOR na poziciu na ktoru bol ITEM vlozeny.
+   39. METHOD try_emplace() pridava ITEM do UNORDERED MAP pomocou PLACEMENT NEW ak ITEMS s danym KEY v UNORDERED MAP NEEXISTUJE. Ak EXISTUJE, METHOD NIC NEROBI. PARAMETERS METHOD unordered_map<TKey,TValue,THash,TKeyEqual,TAllocator>.try_emplace() od 2. PARAMETER (v OVERLOADED VERZIA s HINT od 3. PARAMETER) su FORWARDED do CONSTRUCTOR daneho ITEM volaneho pri pridavani ITEM do UNORDERED MAP.
+   40. METHOD erase() odstranuje 1-N ITEMS z UNORDERED MAP. Pri odstranovani 1 ITEM UNORDERED MAP definuje OVERLOADED verziu, kde sa zadava hodnota KEY. Ostatne OVERLOADED verzie vyzaduju zadanie 1, alebo 2 ITERATORS. Verzia s 2 ITERATORS umoznuju odstranenie viacerych ITEMS.
+   41. METHOD swap() vymiena obsah dvoch instancii UNORDERED MAP vymenou ich vnutornych FIELDS.
+   !!! 42. METHOD extract() odstranuje NODE z UNORDERED MAP. NODE je urceny pomocou ITERATOR, alebo KEY.
+   !!! 43. METHOD merge() vybera NODES z UNORDERED MAP, alebo UNORDERED MULTIMAP definovanej ako PARAMETER a uklada ich do UNORDERED MAP pre ktoru bola METHOD volana. ITEMS, ktore maju rovnaku hodnotu KEY v SOURCE a DESTINATION UNORDERED MAP nie su presunute do DESTINATION UNORDERED MAP. METHOD umoznuje efektivne kopirovanie NODES medzi dvoma instanciami UNORDERED MAP bez nutnosti vykonat kopiu ITEMS. OVERLOADED verzia umoznuje prenasat NODES z UNORDERED MULTIMAP.
+   44. METHOD count() vracia pocet ITEMS s danou hodnotou UNORDERED MAP.
+   45. METHOD find() vracia ITERATOR na ITEM s danou hodnotou UNORDERED MAP.
+   46. METHOD equal_range() vracia ITERATOR PAIR, kde 1. ITERATOR odkazuje na PRVY ITEM, ktory NEMA MENSIU HODNOTU KEY ako zadana hodnota KEY a DRUHY ITERATOR odkazuje na PRVY ITEM, ktory ma VACSIU HODNOTU KEY ako zadana hodnota KEY. Ak UNORDERED MAP NEMA ITEM, ktory ma MENSIU HODNOTU KEY ako zadana hodnota KEY, 1. ITERATOR odkazuje na END ITERATOR. Ak UNORDERED MAP NEMA ITEM, ktory ma VACSIU HODNOTU KEY ako zadana hodnota KEY, 2. ITERATOR odkazuje na END ITERATOR.
+   47. METHOD bucket_count() vracia pocet BUCKETS v UNORDERED MAP.
+   48. METHOD max_bucket_count() vracia maximalny pocet BUCKETS, ktore moze UNORDERED MAP obsahovat.
+   49. METHOD bucket_size() vracia pocet ITEMS v danom BUCKET, ktory UNORDERED MAP obsahuje.
+   50. METHOD bucket() vracia INDEX na BUCKET v ktorom sa ITEM s danym KEY nachadza.
+   51. METHOD load_factor() vracia priemerny pocet ITEMS v BUCKETS danej UNORDERED MAP.
+   52. METHOD max_load_factor() vracia MAXIMALNY pocet ITEMS, ktore mozu byt v BUCKET ulozene predtym ako dojde k REHASHING celej UNORDERED MAP. OVERLOADED verzia METHOD max_load_factor() umoznuje nastavit MAXIMALNY pocet ITEMS, ktore mozu byt v BUCKET ulozene predtym ako dojde k REHASHING celej UNORDERED MAP.
+   53. METHOD rehash() vykona REHASH celej UNORDERED MAP, tak aby ITEMS boli rozdelene do poctu BUCKETS, ktory definuje PARAMETER METHOD rehash().
+   54. METHOD reserve() nastavi pocet BUCKETS na taku hodnotu aby kazdy BUCKET mohol obsahovat aspon pocet ITEMS zadanom v PARAMETERI METHOD reserve(). METHOD reserve() zaroven vykona REHASH celej UNORDERED MAP.
+   55. METHOD hash_function() vracia FUNCTION OBJECT pouzivany ako HASH FUNCTION na vypocet HASH CODE, ktory urcuje do ktoreho BUCKET bude ITEM ulozeny.
+   56. METHOD key_eq() vracia FUNCTION OBJECT, ktory sa pouziva na porovnavanie rovnosti hodnot KEYS.
+   57. FUNCTION swap() vymiena obsah dvoch instancii UNORDERED MAP vymenou ich vnutornych FIELDS.
+200. CLASS [unordered_multimap<TKey,TValue,THash,TKeyEqual,TAllocator>] reprezentuje HASH TABLE s moznostou OPAKOVANIA ITEMS s rovnakou hodnotou KEYS. Pre CLASS [unordered_multimap<TKey,TValue,THash,TKeyEqual,TAllocator>] platia nasledujuce fakty.
+   A. UNORDERED MULTIMAP je definovana v LIBRARY <unordered_map>.
+   !!! B. UNORDERED MULTIMAP je implementovana ako HASH TABLE, ktora uklada ITEMS do BUCKETS. BUCKETS su implementovane ako JEDNOSMERNE, alebo OBOJSMERNE LISTS.
+   !!! C. UNORDERED MULTIMAPS MOZU obsahovat VIACERO ITEMS s TYM ISTYM KEY.
+   D. ITEMS v UNORDERED MULTIMAPS NIE su SORTED. Su ulozene v nedefinovanom poradi co je rozdiel oproti MULTIMAPS, kde su ITEMS SORTED.
+   E. UNORDERED MULTIMAP ma ako ITEMS instancie CLASS [pair<const TKey,TValue].
+   F. KEYS pouzivane v MULTIMAPS MUSIA byt COPYABLE, MOVABLE, EQUATABLE pomocou TEMPLATE PARAMETER 'TKeyEqual' a HASHABLE pomocou TEMPLATE PARAMETER 'THash'.
+   G. VALUES pouzivane v MULTIMAPS MUSIA byt COPYABLE a MOVABLE.
+   !!!!! H. ITEMS su ukladane do BUCKETS VYLUCNE podla HASH hodnoty ich KEYS. V pripade, ze pre 2 rozlicne ITEMS HASH FUNCTION vracia TEN ISTY HASH CODE, ITEMS su ukladane do LIST v TOM ISTOM BUCKET.
+   I. TEMPLATE PARAMETER 'THash' reprezentuje HASH FUNCTION, ktora sa pouziva na vypocet HASH VALUES. DEFAULT VALUE je STRUCTURE [hash<TKey>].
+   !!! J. TEMPLATE PARAMETER 'TKeyEqual' reprezentuje EQUATABLE FUNCTION, ktora sa pouziva na urcenie ci 2 KEYS su rovnake. Pouziva sa na vyhladanie ITEM v BUCKET. DEFAULT VALUE je STRUCTURE [equal_to<TKey].
+   K. UNORDERED MULTIMAP umoznuje v TEMPLATE PARAMETER 'TAllocator' definovat CUSTOM ALLOCATOR umoznujuci CUSTOM MEMORY MANAGEMENT pri alokacii UNORDERED MULTIMAP.
+   !!!!! L. UNORDERED MULTIMAP ma vysoku PERFORMANCE pri pristupe k ITEMS pomocou ich KEYS. Priemerna zlozitost pri pristupe k ITEMS je O(1). Najhorsia zlozitost (ak HASH TABLE pouziva nedokonalu HASH FUNCTION) je O(N).
+   M. UNORDERED MULTIMAP ma nizku PERFORMANCE pri pristupe k ITEMS pomocou ich VALUES.
+   N. UNORDERED MULTIMAP ma vysoku PERFORMANCE pri pridavani ITEMS.
+   O. UNORDERED MULTIMAP ma vysoku PERFORMANCE pri odstranovani ITEMS podla hodnoty ich KEYS.
+   P. UNORDERED MULTIMAP ma nizku PERFORMANCE pri odstranovani ITEMS podla hodnoty ich VALUES.
+   !!! Q. Hodnoty KEYS su CONSTANT a NESMU sa MENIT. Ak je potrebne hodnotu KEY zmenit, je nutne ITEM odstranit z UNORDERED MULTIMAP a pridat ho znova s modifikovanou hodnotou KEY.
+   !!!!! R. Pri pridavani ITEMS do UNORDERED MULTIMAP pomocou METHOD unordered_multimap<TKey,TValue,THash,TKeyEqual,TAllocator>.insert() moze dojst k prekroceniu hranice urcujucej maximalny pocet ITEMS v BUCKET, ktoru je mozne definovat programovo. Ak je tato hranica prekrocena, UNORDERED MULTIMAP AUTOMATICKY vykona REHASHING. REHASHING je mozne vykonat aj explicitne volanim METHOD unordered_multimap<TKey,TValue,THash,TKeyEqual,TAllocator>.rehash(), alebo METHOD unordered_multimap<TKey,TValue,THash,TKeyEqual,TAllocator>.reserve(). Pri REHASING su vsetky ITERATOR INVALID.
+   S. Pri odstranovani ITEMS z UNORDERED MULTIMAP pomocou METHOD unordered_multimap<TKey,TValue,THash,TKeyEqual,TAllocator>.erase() NIKDY NEDOCHADZA k REHASING.
+   T. Ak UNORDERED MULTIMAP obsahuje viacero ITEMS s rovnakymi KEYS, pri iterovani ITEMS su tieto ITEMS ulozene za sebou pricom aj po REHASING ostava ich poradie zachovane.
+   !!!!! U. Pri vyhladavani ITEMS v UNORDERED MULTIMAP sa NAJPRV pouzije HASH VALUE vypocitana podla TEMPLATE PARAMETER 'THash' na urcenie v ktorom BUCKET sa ITEM nachadza a NASLEDNE sa pomocou TEMPLATE PARAMETER 'TKeyEqual' v danom BUCKET najde hladany ITEM.
+201. CLASS [unordered_multimap<TKey,TValue,THash,TKeyEqual,TAllocator>] ma nasledujuce MEMBERS.
+   1. CONSTRUCTOR vytvara instanciu UNORDERED MULTIMAP.
+   2. DESTRUCTOR uvolnuje instanciu UNORDERED MULTIMAP ako aj jednotlive ITEMS pre ktore je zavolany ich DESTRUCTOR.
+   3. TYPE [key_type] urcuje KEY TYPE ITEMS ulozenych v UNORDERED MULTIMAP.
+   4. TYPE [mapped_type] urcuje VALUE TYPE ITEMS ulozenych v UNORDERED MULTIMAP.
+   5. TYPE [value_type] urcuje VALUE TYPE ITEMS ulozenych v UNORDERED MULTIMAP. Ma hodnotu CLASS [pair<const TKey,TValue>].
+   6. TYPE [size_type] je UNSIGNED TYPE reprezentujuci hodnoty urcujuce velkost a pocet.
+   7. TYPE [difference_type] je SIGNED TYPE reprezentujuci hodnoty urcujuce rozdiel.
+   8. TYPE [hasher] obsahuje TYPE pouzivany na vypocet HASH FUNCTION daneho KEY.
+   9. TYPE [key_equal] obsahuje TYPE pouzivany na porovnanie hodnot KEYS.
+   10. TYPE [allocator_type] urcuje TYPE, ktory sa pouziva ako ALLOCATOR.
+   11. TYPE [reference] urcuje REFERENCE TYPE pre ITEMS ulozene v UNORDERED MULTIMAP.
+   12. TYPE [const_reference] urcuje CONST REFERENCE TYPE pre ITEMS ulozene v UNORDERED MULTIMAP.
+   13. TYPE [pointer] urcuje POINTER TYPE pre ITEMS ulozene v UNORDERED MULTIMAP.
+   14. TYPE [const_pointer] urcuje CONST POINTER TYPE pre ITEMS ulozene v UNORDERED MULTIMAP.
+   15. TYPE [iterator] urcuje TYPE pre ITERATOR daneho UNORDERED MULTIMAP.
+   16. TYPE [const_iterator] urcuje TYPE pre CONST ITERATOR danej UNORDERED MULTIMAP.
+   17. TYPE [local_iterator] urcuje TYPE pre ITERATOR daneho UNORDERED MULTIMAP pouzivany na prechod ITEMS v ramci jedneho BUCKET. ITERATOR NIE JE MOZNE pouzit na prechod medzi ITEMS v rozlicnych BUCKETS.
+   18. TYPE [const_local_iterator] urcuje TYPE pre CONST ITERATOR danej UNORDERED MULTIMAP pouzivany na prechod ITEMS v ramci jedneho BUCKET. ITERATOR NIE JE MOZNE pouzit na prechod medzi ITEMS v rozlicnych BUCKETS.
+   19. TYPE [node_type] urcuje TYPE pre UNORDERED MULTIMAP NODE reprezentujuci NODES ulozene v UNORDERED MULTIMAP.
+   20. OPERATOR= priradzuje do UNORDERED MULTIMAP ITEMS inej UNORDERED MULTIMAP. UNORDERED MULTIMAP obsahuje COPY OPERATOR= aj MOVE OPERATOR= ako aj verziu pre INITIALIZER LIST.
+   21. OPERATOR== zistuje ci dve instancie UNORDERED MULTIMAP su lexikograficky rovne.
+   22. OPERATOR!= zistuje ci dve instancie UNORDERED MULTIMAP su lexikograficky rozne.
+   23. METHOD get_allocator() vracia instanciu ALLOCATOR, ktora sa pouziva pri alokovani ITEMS danej UNORDERED MULTIMAP.
+   24. METHOD begin() vracia ITERATOR ukazujuci na PRVY ITEM UNORDERED MULTIMAP. OVERLOADED verzia vracia ITERATOR na PRVY ITEM v danom BUCKET.
+   25. METHOD cbegin() vracia CONST ITERATOR ukazujuci na PRVY ITEM UNORDERED MULTIMAP. OVERLOADED verzia vracia ITERATOR na PRVY ITEM v danom BUCKET.
+   26. METHOD end() vracia ITERATOR ukazujuci hned za POSLEDNY ITEM UNORDERED MULTIMAP. OVERLOADED verzia vracia ITERATOR na POSLEDNY ITEM v danom BUCKET.
+   27. METHOD cend() vracia CONST ITERATOR ukazujuci hned za POSLEDNY ITEM UNORDERED MULTIMAP. OVERLOADED verzia vracia ITERATOR hned za POSLEDNY ITEM v danom BUCKET.
+   28. METHOD empty() vracia informaciu ci UNORDERED MULTIMAP je prazdna.
+   29. METHOD size() vracia pocet ITEMS v UNORDERED MULTIMAP.
+   30. METHOD max_size() vracia maximalny pocet ITEMS, ktore je do UNORDERED MULTIMAP mozne ulozit.
+   31. METHOD clear() odstranuje vsetky ITEMS z UNORDERED MULTIMAP.
+   32. METHOD insert() pridava ITEM, alebo NODE do UNORDERED MULTIMAP. METHOD vracia ITERATOR na poziciu na ktoru bol ITEM vlozeny.
+   33. METHOD emplace() pridava ITEM do UNORDERED MULTIMAP pomocou PLACEMENT NEW. PARAMETERS METHOD unordered_multimap<TKey,TValue,THash,TKeyEqual,TAllocator>.emplace() su FORWARDED do CONSTRUCTOR daneho ITEM volaneho pri pridavani ITEM do UNORDERED MULTIMAP. METHOD vracia ITERATOR na poziciu na ktoru bol ITEM vlozeny.
+   34. METHOD emplace_hint() pridava ITEM do UNORDERED MULTIMAP pomocou PLACEMENT NEW, pricom 1. PARAMETER reprezenuje ITERATOR sluziaci ako HINT. HINT urcuje poziciu PRED ktorou sa v co najmensej vzdialenosti ma UNORDERED MULTIMAP pokusit ITEM ulozit. PARAMETERS METHOD unordered_multimap<TKey,TValue,THash,TKeyEqual,TAllocator>.emplace_hint() od 2. PARAMETER su FORWARDED do CONSTRUCTOR daneho ITEM volaneho pri pridavani ITEM do UNORDERED MULTIMAP. METHOD vracia ITERATOR na poziciu na ktoru bol ITEM vlozeny.
+   35. METHOD erase() odstranuje 1-N ITEMS z UNORDERED MULTIMAP. Pri odstranovani 1 ITEM UNORDERED MULTIMAP definuje OVERLOADED verziu, kde sa zadava hodnota KEY. Ostatne OVERLOADED verzie vyzaduju zadanie 1, alebo 2 ITERATORS. Verzia s 2 ITERATORS umoznuju odstranenie viacerych ITEMS.
+   36. METHOD swap() vymiena obsah dvoch instancii UNORDERED MULTIMAP vymenou ich vnutornych FIELDS.
+   !!! 37. METHOD extract() odstranuje NODE z UNORDERED MULTIMAP. NODE je urceny pomocou ITERATOR, alebo KEY.
+   !!! 38. METHOD merge() vybera NODES z UNORDERED MULTIMAP, alebo UNORDERED MAP definovanej ako PARAMETER a uklada ich do UNORDERED MULTIMAP pre ktoru bola METHOD volana. ITEMS, ktore maju rovnaku hodnotu KEY v SOURCE a DESTINATION UNORDERED MULTIMAP nie su presunute do DESTINATION UNORDERED MULTIMAP. METHOD umoznuje efektivne kopirovanie NODES medzi dvoma instanciami UNORDERED MULTIMAP bez nutnosti vykonat kopiu ITEMS. OVERLOADED verzia umoznuje prenasat NODES z UNORDERED MAP.
+   39. METHOD count() vracia pocet ITEMS s danou hodnotou UNORDERED MULTIMAP.
+   40. METHOD find() vracia ITERATOR na ITEM s danou hodnotou UNORDERED MULTIMAP.
+   41. METHOD equal_range() vracia ITERATOR PAIR, kde 1. ITERATOR odkazuje na PRVY ITEM, ktory NEMA MENSIU HODNOTU KEY ako zadana hodnota KEY a DRUHY ITERATOR odkazuje na PRVY ITEM, ktory ma VACSIU HODNOTU KEY ako zadana hodnota KEY. Ak UNORDERED MULTIMAP NEMA ITEM, ktory ma MENSIU HODNOTU KEY ako zadana hodnota KEY, 1. ITERATOR odkazuje na END ITERATOR. Ak UNORDERED MULTIMAP NEMA ITEM, ktory ma VACSIU HODNOTU KEY ako zadana hodnota KEY, 2. ITERATOR odkazuje na END ITERATOR.
+   42. METHOD bucket_count() vracia pocet BUCKETS v UNORDERED MULTIMAP.
+   43. METHOD max_bucket_count() vracia maximalny pocet BUCKETS, ktore moze UNORDERED MULTIMAP obsahovat.
+   44. METHOD bucket_size() vracia pocet ITEMS v danom BUCKET, ktory UNORDERED MULTIMAP obsahuje.
+   45. METHOD bucket() vracia INDEX na BUCKET v ktorom sa ITEM s danym KEY nachadza.
+   46. METHOD load_factor() vracia priemerny pocet ITEMS v BUCKETS danej UNORDERED MULTIMAP.
+   47. METHOD max_load_factor() vracia MAXIMALNY pocet ITEMS, ktore mozu byt v BUCKET ulozene predtym ako dojde k REHASHING celej UNORDERED MULTIMAP. OVERLOADED verzia METHOD max_load_factor() umoznuje nastavit MAXIMALNY pocet ITEMS, ktore mozu byt v BUCKET ulozene predtym ako dojde k REHASHING celej UNORDERED MULTIMAP.
+   48. METHOD rehash() vykona REHASH celej UNORDERED MULTIMAP, tak aby ITEMS boli rozdelene do poctu BUCKETS, ktory definuje PARAMETER METHOD rehash().
+   49. METHOD reserve() nastavi pocet BUCKETS na taku hodnotu aby kazdy BUCKET mohol obsahovat aspon pocet ITEMS zadanom v PARAMETERI METHOD reserve(). METHOD reserve() zaroven vykona REHASH celej UNORDERED MULTIMAP.
+   50. METHOD hash_function() vracia FUNCTION OBJECT pouzivany ako HASH FUNCTION na vypocet HASH CODE, ktory urcuje do ktoreho BUCKET bude ITEM ulozeny.
+   51. METHOD key_eq() vracia FUNCTION OBJECT, ktory sa pouziva na porovnavanie rovnosti hodnot KEYS.
+   52. FUNCTION swap() vymiena obsah dvoch instancii UNORDERED MULTIMAP vymenou ich vnutornych FIELDS.
+!!! 202. Ak je pre UNORDERED COLLECTIONS LOAD FACTOR nastaveny na VIAC ako 1, tak v JEDNOM BUCKET moze byt VIACERO ITEMS, ktore su ulozene v LINKED LIST. Ak je LOAD FACTOR nastaveny na 1, alebo menej ako 1, tak v kazdom BUCKET moze byt MAXIMALNE 1 ITEM.
+!!!!! 203. V pripade, ze sa pouziva ZLA HASH FUNCTION, ktora napriklad vracia iba 10 HASH VALUES, tak ITEMS budu zaradene iba do 10 BUCKETS, aj ked COLLECTION moze mat vytvorenych omnoho VIAC BUCKETS. Tieto BUCKETS vsak budu PRAZDNE.
+!!! 204. Ak UNORDERED COLLECTIONS definuju CUSTOM EQUATABLE FUNCTIONS tak spravidla je nutne pouzit aj CUSTOM HASH FUNCTION, pricom pre ITEMS pre ktore CUSTOM EQUATABLE FUNCTION vracia TRUE by CUSTOM HASH FUNCTION mala vratit tu istu HASH VALUE.
+205. Pre UNORDERED COLLECTIONS OPERATOR== a OPERATOR!= v najhorsom pripade mozu mat zlozitost O(N*N).
+!!! 206. Pre UNORDERED COLLECTIONS OPERATOR= moze byt pouzity iba na UNORDERED COLLECTIONS ROVNAKEHO TYPU, vratane HASH FUNCTION a EQUATABLE FUNCTION. Pri aplikacii OPERATOR= dochadza aj k vymene HASH FUNCTION a EQUATABLE FUNCTION.
+207. UNORDERED MAPS a UNORDERED MULTIMAPS ITERATORS vracaju TYPE [pair<const TKey,TValue>] z ktoreho vyplyva, ze KEY pri iterovani NIE JE MOZNE ZMENIT. Nevyhodou CONST KEY je napriklad nemoznost pouzitia niektorych ALGORITHMS, ktore vyzaduju zmenu hodnoty ITEM vratane KEY, ako napriklad ALGORITHM remove(), ktory ITEMS namiesto odstranovanie len premiestnuje kopirovanim.
+208. OPERATOR unordered_map<TKey,TValue,THash,TKeyEqual,TAllocator>.OPERATOR[] zistuje ci ITEM s danym KEY sa nachadza v UNORDERED MAP. Ak ano, OPERATOR unordered_map<TKey,TValue,THash,TKeyEqual,TAllocator>.OPERATOR[] vracia REFERENCE na ITEM. Ak nie, OPERATOR unordered_map<TKey,TValue,THash,TKeyEqual,TAllocator>.OPERATOR[] pridava ITEM do UNORDERED MAP. Pri pridavani ITEM do UNORDERED MAP OPERATOR unordered_map<TKey,TValue,THash,TKeyEqual,TAllocator>.OPERATOR[] vytvori VALUE pridavaneho ITEM pomocou DEFAULT CONSTRUCTOR a az nasledne sa pomocou OPERATOR= do VALUE vytvoreneho ITEM priradi nova hodnota.
+!!! 209. Pouzitie OPERATOR unordered_map<TKey,TValue,THash,TKeyEqual,TAllocator>.OPERATOR[] ma nasleldujuce NEVYHODY.
+   A. Pri pridavani ITEMS do UNORDERED MAP OPERATOR unordered_map<TKey,TValue,THash,TKeyEqual,TAllocator>.OPERATOR[] pre pridavanu VALUE noveho ITEM vola NAJPRV DEFAULT CONSTRUCTOR a nasledne OPERATOR=. To znizuje vykonnost oproti pouzitiu METHOD unordered_map<TKey,TValue,THash,TKeyEqual,TAllocator>.insert().
+   B. Zavolanie OPERATOR unordered_map<TKey,TValue,THash,TKeyEqual,TAllocator>.OPERATOR[] pre neexistujuci ITEM VZDY sposobi vlozenie noveho ITEM do UNORDERED MAP. A to aj v pripade, ze OPERATOR unordered_map<TKey,TValue,THash,TKeyEqual,TAllocator>.OPERATOR[] je pouzity na RIGHT SIDE danej EXPRESSION.
+210. METHOD unordered_map<TKey,TValue,THash,TKeyEqual,TAllocator>.at() vracia hodnotu ITEM pre zadany KEY. Ak sa ITEM s danym KEY v UNORDERED MAP nenachadza, METHOD unordered_map<TKey,TValue,THash,TKeyEqual,TAllocator>.at() hodi EXCEPTION [out_of_range].
+211. UNORDERED COLLECTIONS generuju nasledujuce EXCEPTIONS.
+   A. METHOD unordered_map<TKey,TValue,THash,TKeyEqual,TAllocator>.at().at() generuje EXCEPTION [out_of_range], ak sa ITEM v UNORDERED MAP nenachadza.
+   B. Kazda realokacia MEMORY pri praci s UNORDERED COLLECTIONS moze generovat EXCEPTION [bad_alloc].
+212. CLASS [deque<TItem,TAllocator>] reprezentuje DOUBLE ENDED QUEUE. Pre CLASS [deque<TItem,TAllocator>] platia nasledujuce fakty.
+   A. DEQUEUE je definovana v LIBRARY <deque>.
+   B. DEQUEUE reprezentuje DOUBLE ENDED QUEUE, ktora umoznuje EFEKTIVNE pridavat a odoberat ITEMS zo zaciatku a konca DEQUEUE.
+   C. DEQUEUE umoznuje v 2. TEMPLATE PARAMETER definovat CUSTOM ALLOCATOR umoznujuci CUSTOM MEMORY MANAGEMENT pri alokacii DEQUEUE.
+   !!!!! D. DEQUEUE je interne reprezentovana ako 2 DIMENSIONAL ARRAY, kde kazdy ROW obsahuje MEMORY BLOCK umoznujuci ulozit 'N' ITEMS. Prvy a posledny MEMORY BLOCK maju spravidla mensi pocet ako 'N' ITEMS a az ked sa naplnia, je pridany novy MEMORY BLOCK do DEQUEUE.
+   !!!!! E. Pristup k ITEMS v DEQUEUE je o MALICKO POMALSI ako v pripade VECTOR, pretoze su nutne DVOJNASOBNE DEREFERENCOVANIE POINTER. PRVYM DEREFERENCOVANIM sa urci MEMORY BLOCK v ktorom sa ITEM nachadza a DRUHYM DEREFERENCOVANIM sa urci ITEM v MEMORY BLOCK.
+   !!! F. DEQUEUE na rozdiel od VECTOR NEGARANTUJE, ze ITEMS su ulozene v KONTINUALNOM MEMORY BLOCK.
+   !!! G. DEQUEUE umoznuje RANDOM ACCESS k jednotlivym ITEMS. ITERATOR je vsak implementovany ako STRUCTURE a nie iba ako obycajny POINTER ako je to v pripade VECTORS.
+   H. DEQUEUE ma vysoku PERFORMANCE pri pridavani a odstranovani ITEMS zo zaciatku a konca DEQUEUE.
+   I. DEQUEUE ma nizku PERFORMANCE pri pridavani a odstranovani ITEMS zo zo stredu DEQUEUE.
+   J. Po pridani, alebo odstraneni ITEM zo stredu DEQUEUE (mimo zaciatku a konca) su VSETKY ITERATORS, REFERENCES a POINTERS NEPLATNE.
+213. CLASS [deque<TItem,TAllocator>] ma nasledujuce MEMBERS.
+   1. CONSTRUCTOR vytvara instanciu DEQUEUE. OVERLOADED VERSIONS umoznuju alokovat zadany pocet ITEMS, pricom pre tieto ITEMS je volany DEFAULT CONSTRUCTOR, alebo sa vytvoria kopie zadaneho ITEM.
+   2. DESTRUCTOR uvolnuje instanciu DEQUEUE ako aj jednotlive ITEMS pre ktore je zavolany ich DESTRUCTOR.
+   3. TYPE [value_type] urcuje TYPE pre ITEMS ulozene vo DEQUEUE.
+   4. TYPE [allocator_type] urcuje TYPE, ktory sa pouziva ako ALLOCATOR.
+   5. TYPE [size_type] je UNSIGNED TYPE reprezentujuci hodnoty urcujuce velkost a pocet.
+   6. TYPE [difference_type] je SIGNED TYPE reprezentujuci hodnoty urcujuce rozdiel.
+   7. TYPE [reference] urcuje REFERENCE TYPE pre ITEMS ulozene v DEQUEUE.
+   8. TYPE [const_reference] urcuje CONST REFERENCE TYPE pre ITEMS ulozene v DEQUEUE.
+   9. TYPE [pointer] urcuje POINTER TYPE pre ITEMS ulozene v DEQUEUE.
+   10. TYPE [const_pointer] urcuje CONST POINTER TYPE pre ITEMS ulozene v DEQUEUE.
+   11. TYPE [iterator] urcuje TYPE pre ITERATOR danej DEQUEUE.
+   12. TYPE [const_iterator] urcuje TYPE pre CONST ITERATOR danej DEQUEUE.
+   13. TYPE [reverse_iterator] urcuje TYPE pre REVERSE ITERATOR danej DEQUEUE.
+   14. TYPE [const_reverse_iterator] urcuje TYPE pre CONST REVERSE ITERATOR danej DEQUEUE.
+   15. OPERATOR= priradzuje do DEQUEUE ITEMS inej DEQUEUE. DEQUEUE obsahuje COPY OPERATOR= aj MOVE OPERATOR= ako aj verziu pre INITIALIZER LIST.
+   16. OPERATOR== zistuje ci dve instancie DEQUEUE su lexikograficky rovne.
+   17. OPERATOR!= zistuje ci dve instancie DEQUEUE su lexikograficky rozne.
+   18. OPERATOR< zistuje ci 1. DEQUEUE je lexikograficky mensia ako 2. DEQUEUE.
+   19. OPERATOR<= zistuje ci 1. DEQUEUE je lexikograficky mensia, alebo rovna ako 2. DEQUEUE.
+   20. OPERATOR> zistuje ci 1. DEQUEUE je lexikograficky vacsia ako 2. DEQUEUE.
+   21. OPERATOR>= zistuje ci 1. DEQUEUE je lexikograficky vacsia, alebo rovna ako 2. DEQUEUE.
+   !!! 22. OPERATOR[] vracia REFERENCES k ITEMS danej DEQUEUE. OPERATOR[] NEROBI kontrolu hranic DEQUEUE.
+   !!! 23. METHOD at() vracia REFERENCES k ITEMS danej DEQUEUE. METHOD deque<TItem,TAllocator>.at() ROBI kontrolu hranic DEQUEUE, a v pripade zistenia chybneho pristupu generuje EXCEPTION [out_of_range].
+   24. METHOD assign() priradzuje do DEQUEUE ITEMS ineho CONTAINER, ktory je definovany pomocou paru ITERATORS. OVERLOADED VERSION umoznuje priradit 'N' krat kopiu zadaneho ITEMS, alebo ITEMS z INITIALIZER LIST.
+   25. METHOD get_allocator() vracia instanciu ALLOCATOR, ktora sa pouziva pri alokovani ITEMS danej DEQUEUE.
+   26. METHOD front() vracia REFERENCE na PRVY ITEM v DEQUEUE.
+   27. METHOD back() vracia REFERENCE na POSLEDNY ITEM v DEQUEUE.
+   28. METHOD begin() vracia ITERATOR ukazujuci na PRVY ITEM DEQUEUE.
+   29. METHOD cbegin() vracia CONST ITERATOR ukazujuci na PRVY ITEM DEQUEUE.
+   30. METHOD end() vracia ITERATOR ukazujuci hned za POSLEDNY ITEM DEQUEUE.
+   31. METHOD cend() vracia CONST ITERATOR ukazujuci hned za POSLEDNY ITEM DEQUEUE.
+   32. METHOD rbegin() vracia REVERSE ITERATOR ukazujuci na POSLEDNY ITEM DEQUEUE.
+   33. METHOD crbegin() vracia CONST REVERSE ITERATOR ukazujuci na POSLEDNY ITEM DEQUEUE.
+   34. METHOD rend() vracia REVERSE ITERATOR ukazujuci hned pred PRVY ITEM DEQUEUE.
+   35. METHOD crend() vracia CONST REVERSE ITERATOR ukazujuci hned pred PRVY ITEM DEQUEUE.
+   36. METHOD empty() vracia informaciu ci DEQUEUE je prazdna.
+   37. METHOD size() vracia pocet ITEMS vo DEQUEUE.
+   38. METHOD max_size() vracia maximalny pocet ITEMS, ktore je do DEQUEUE mozne ulozit.
+   !!! 39. METHOD shrink_to_fit() sa pokusi uvolnit INTERNU MEMORY, ktoru pouziva DEQUEUE, tak aby mala identicku dlzku ako realny pocet ITEMS v DEQUEUE. Tato METHOD je len POZIADAVKA na vykonanie SHRINK, ktora je implementacne zavisla. To znaci, ze v zavislosti od implementacie SHRINK moze, ale aj NEMUSI VYKONAT.
+   40. METHOD clear() odstranuje vsetky ITEMS z DEQUEUE.
+   41. METHOD insert() pridava 1-N ITEMS PRED stanovenu poziciu v DEQUEUE. Pozicie sa urcuju pomocou ITERATORS.
+   42. METHOD emplace() pridava ITEM PRED stanovenu poziciu v DEQUEUE pomocou PLACEMENT NEW. PARAMETERS METHOD deque<TItem,TAllocator>.emplace() od 2. PARAMETER su FORWARDED do CONSTRUCTOR daneho ITEM volaneho pri pridavani ITEM do DEQUEUE.
+   43. METHOD erase() odstranuje 1-N ITEMS na stanovenych poziciach v DEQUEUE. Pozicie sa urcuju pomocou ITERATORS.
+   44. METHOD push_front() pridava ITEM na zaciatok DEQUEUE.
+   45. METHOD emplace_front() pridava ITEM na zaciatok DEQUEUE pomocou PLACEMENT NEW. PARAMETERS METHOD emplace_back() su FORWARDED do CONSTRUCTOR daneho ITEM volaneho pri pridavani ITEM do DEQUEUE.
+   46. METHOD pop_front() odstranuje 1 ITEM zo zaciatku DEQUEUE.
+   47. METHOD push_back() pridava ITEM na koniec DEQUEUE.
+   48. METHOD emplace_back() pridava ITEM na koniec DEQUEUE pomocou PLACEMENT NEW. PARAMETERS METHOD emplace_back() su FORWARDED do CONSTRUCTOR daneho ITEM volaneho pri pridavani ITEM do DEQUEUE.
+   49. METHOD pop_back() odstranuje 1 ITEM z konca DEQUEUE.
+   50. METHOD resize() meni pocet ITEMS v DEQUEUE na pocet stanoveny PARAMETER METHOD deque<TItem,TAllocator>.resize(). V pripade, ze stanoveny pocet je MENSI ako pocet ITEMS v DEQUEUE, dochadza k ostraneniu ITEMS z DEQUEUE. Ak je stanoveny pocet VACSI ako pocet ITEMS v DEQUEUE, dochadza k pridavaniu novych ITEMS do DEQUEUE, pricom OVERLOADED verzia METHOD deque<TItem,TAllocator>.resize() umoznuje definovat ITEM, ktoreho kopia za priradi za nove ITEMS.
+   51. METHOD swap() vymiena obsah dvoch instancii DEQUEUE vymenou ich vnutornych FIELDS.
+   52. FUNCTION swap() vymiena obsah dvoch instancii DEQUEUE vymenou ich vnutornych FIELDS.
+!!! 214. CLASS [deque<TItem,TAllocator>] generuje nasledujuce EXCEPTIONS.
+   A. METHOD deque<TItem>.at() generuje EXCEPTION [out_of_range], ak dojde k pokusu o pristup k ITEM, ktory je OUT OF BOUNDS danej DEQUEUE.
+   B. Kazda realokacia MEMORY pri praci s DEQUEUE moze generovat EXCEPTION [bad_alloc].
+215. C++ definuje niekolko CONTAINERS ADAPTERS, ktore su WRAPPER CLASSES nad CONTAINERS, poskytujuc speficke operacie pre tieto CONTAINERS ADAPTERS.
+216. C++ definuje nasledujuce CONTAINERS ADAPTERS.
+   A. CLASS [priority_queue<TItem,TContainer,TCompare>].
+   B. CLASS [queue<TItem,TContainer>].
+   C. CLASS [stack<TItem,TContainer>].
+217. CLASS [priority_queue<TItem,TContainer,TCompare>] reprezentuje PRIORITY COLLECTION. Pre CLASS [priority_queue<TItem,TContainer,TCompare>] platia nasledujuce fakty.
+   A. PRIORITY QUEUE je definovana v LIBRARY <queue>.
+   B. PRIORITY QUEUE reprezentuje PRIORITY COLLECTION, ktorej ITEMS su SORTED podla ITEM VALUE.
+   !!!! C. PRIORITY QUEUE obsahuje ako MEMBER COLLECTION, ktoru zapuzdruje. To znamena, ze DESTRUCTOR PRIORITY QUEUE uvolnuje VSETKY ITEMS UNDERLYING COLLECTION.
+   D. PRIORITY QUEUE v 2. TEMPLATE PARAMETER definuje COLLECTION, ktoru PRIORITY QUEUE obaluje. DEFAULT VALUE je CLASS [vector<TItem,TAllocator>].
+   E. PRIORITY QUEUE v 3. TEMPLATE PARAMETER COMPARER, ktory sa pouziva na urcenie PRIORITY ITEMS v PRIORITY QUEUE. Dvojice ITEMS v PRIORITY QUEUE je identicka vtedy ak plati, ze [(ITEM_1 COMPARE ITEM_2)==false && (ITEM_2 COMPARE ITEM_1)==false]. DEFAULT VALUE je STRUCTURE less<TKey>, ktora na porovnavanie pouziva OPERATOR<.
+   !!!!! F. ITEMS su pridavane do PRIORITY QUEUE na zaklade svojej PRIORITY, pricom operacia PUSH vklada podla hodnoty PRIORITY daneho ITEM. Zlozitost operacie je O(LOG(N)).
+   !!!!! G. ITEMS su odstranovane z PRIORITY QUEUE na zaklade svojej PRIORITY, pricom operacia POP vybera ITEM s NAJVYSSHOU PRIORITOU. Zlozitost operacie je O(LOG(N)).
+   !!!!! H. ZASADNOU poziadavkou na COLLECTION, ktoru PRIORITY QUEUE obaluje je existencia METHOD front(), METHOD push_back(), METHOD pop_back() a ZAROVEN COLLECTION MUSI podporovat RANDOM ACCESS ITERATOR.
+   I. PRIORITY QUEUE nedefinuje poradie ITEMS s rovnakou PRIORITOU.
+   !!! J. PRIORITY QUEUE pouziva HEAP ALGORITHMS z C++ ALGORITHMS.
+218. CLASS [priority_queue<TItem,TContainer,TCompare>] ma nasledujuce MEMBERS.
+   A. CONSTRUCTOR vytvara instanciu PRIORITY QUEUE a vnutorne ako MEMBER vytvara instanciu COLLECTION, ktoru PRIORITY QUEUE obaluje. OVERLOADED VERSION umoznuje definovat CUSTOM ALLOCATOR, ktory UNDERLYING COLLECTION bude pouzivat.
+   B. DESTRUCTOR uvolnuje instanciu PRIORITY QUEUE ako aj jednotlive ITEMS pre ktore je zavolany ich DESTRUCTOR.
+   C. TYPE [container_type] urcuje TYPE COLLECTION, ktoru PRIORITY QUEUE obaluje.
+   D. TYPE [value_compare] urcuje TYPE COMPARER, ktory sa pouziva na urcenie PRIORITY jednotlivych ITEMS.
+   E. TYPE [value_type] urcuje TYPE pre ITEMS ulozene vo PRIORITY QUEUE.
+   F. TYPE [size_type] je UNSIGNED TYPE reprezentujuci hodnoty urcujuce velkost a pocet.
+   G. TYPE [reference] urcuje REFERENCE TYPE pre ITEMS ulozene v PRIORITY QUEUE.
+   H. TYPE [const_pointer] urcuje CONST POINTER TYPE pre ITEMS ulozene v PRIORITY QUEUE.
+   I. FIELD [c] obsahuje COLLECTION, ktory PRIORITY QUEUE obaluje.
+   J. FIELD [comp] obsahuje instanciu COMPARER, ktory sa pouziva na urcenie PRIORITY jednotlivych ITEMS.
+   K. OPERATOR= priradzuje do PRIORITY QUEUE ITEMS inej PRIORITY QUEUE. PRIORITY QUEUE obsahuje COPY OPERATOR= a MOVE OPERATOR=.
+   L. METHOD push() pridava ITEM na do PRIORITY QUEUE na zaklade PRIORITY vkladaneho ITEM.
+   M. METHOD emplace() pridava ITEM na do PRIORITY QUEUE na zaklade PRIORITY vkladaneho ITEM pomocou PLACEMENT NEW. PARAMETERS METHOD emplace() su FORWARDED do CONSTRUCTOR daneho ITEM volaneho pri pridavani ITEM do PRIORITY QUEUE.
+   N. METHOD pop() odstranuje ITEM s NAJVYSSOU PRIORITOU z PRIORITY QUEUE.
+   O. METHOD top() vracia CONST REFERENCE na ITEM s NAJVYSSOU PRIORITOU v PRIORITY QUEUE.
+   P. METHOD empty() vracia informaciu ci je PRIORITY QUEUE prazdna.
+   Q. METHOD size() vracia pocet ITEMS v PRIORITY QUEUE.
+   R. METHOD swap() vymiena obsah dvoch instancii PRIORITY QUEUE vymenou ich vnutornych FIELDS.
+   S. FUNCTION swap() vymiena obsah dvoch instancii PRIORITY QUEUE vymenou ich vnutornych FIELDS.
+219. CLASS [queue<TItem,TContainer>] reprezentuje SINGLE ENDED QUEUE. Pre CLASS [queue<TItem,TContainer>] platia nasledujuce fakty.
+   A. QUEUE je definovana v LIBRARY <queue>.
+   B. QUEUE reprezentuje SINGLE ENDED QUEUE s FIFO pristupom.
+   !!!! C. QUEUE obsahuje ako MEMBER COLLECTION, ktoru zapuzdruje. To znamena, ze DESTRUCTOR QUEUE uvolnuje VSETKY ITEMS UNDERLYING COLLECTION.
+   D. QUEUE v 2. TEMPLATE PARAMETER definuje COLLECTION, ktoru QUEUE obaluje. DEFAULT VALUE je CLASS [deque<TItem,TAllocator>].
+   E. ITEMS su pridavane iba na koniec QUEUE.
+   F. ITEMS su odstranovane iba zo zaciatku QUEUE.
+   !!!!! G. ZASADNOU poziadavkou na COLLECTION, ktoru QUEUE obaluje je existencia METHOD back(), METHOD front(), METHOD push_back() a METHOD pop_front().
+220. CLASS [queue<TItem,TContainer>] ma nasledujuce MEMBERS.
+   A. CONSTRUCTOR vytvara instanciu QUEUE a vnutorne ako MEMBER vytvara instanciu COLLECTION, ktoru QUEUE obaluje. OVERLOADED VERSION umoznuje definovat CUSTOM ALLOCATOR, ktory UNDERLYING COLLECTION bude pouzivat.
+   B. DESTRUCTOR uvolnuje instanciu QUEUE ako aj jednotlive ITEMS pre ktore je zavolany ich DESTRUCTOR.
+   C. TYPE [container_type] urcuje TYPE COLLECTION, ktoru QUEUE obaluje.
+   D. TYPE [value_type] urcuje TYPE pre ITEMS ulozene vo QUEUE.
+   E. TYPE [size_type] je UNSIGNED TYPE reprezentujuci hodnoty urcujuce velkost a pocet.
+   F. TYPE [reference] urcuje REFERENCE TYPE pre ITEMS ulozene v QUEUE.
+   G. TYPE [const_pointer] urcuje CONST POINTER TYPE pre ITEMS ulozene v QUEUE.
+   H. FIELD [c] obsahuje COLLECTION, ktory QUEUE obaluje.
+   I. OPERATOR= priradzuje do QUEUE ITEMS inej QUEUE. QUEUE obsahuje COPY OPERATOR= a MOVE OPERATOR=.
+   J. OPERATOR== zistuje ci dve instancie QUEUE su lexikograficky rovne.
+   K. OPERATOR!= zistuje ci dve instancie QUEUE su lexikograficky rozne.
+   L. OPERATOR< zistuje ci 1. QUEUE je lexikograficky mensia ako 2. QUEUE.
+   M. OPERATOR<= zistuje ci 1. QUEUE je lexikograficky mensia, alebo rovna ako 2. QUEUE.
+   N. OPERATOR> zistuje ci 1. QUEUE je lexikograficky vacsia ako 2. QUEUE.
+   O. OPERATOR>= zistuje ci 1. QUEUE je lexikograficky vacsia, alebo rovna ako 2. QUEUE.
+   P. METHOD push() pridava ITEM na koniec QUEUE.
+   Q. METHOD emplace() pridava ITEM na koniec QUEUE pomocou PLACEMENT NEW. PARAMETERS METHOD emplace() su FORWARDED do CONSTRUCTOR daneho ITEM volaneho pri pridavani ITEM do QUEUE.
+   R. METHOD pop() odstranuje ITEM zo zaciatku QUEUE.
+   S. METHOD front() vracia REFERENCE na ITEM na zaciatku QUEUE. Tento ITEM je ako prvy odstraneny z QUEUE.
+   T. METHOD back() vracia REFERENCE na ITEM na konci QUEUE. Tento ITEM je ako ITEM, ktory bol ako posledny vlozdeny do QUEUE.
+   U. METHOD empty() vracia informaciu ci je QUEUE prazdna.
+   V. METHOD size() vracia pocet ITEMS v QUEUE.
+   W. METHOD swap() vymiena obsah dvoch instancii QUEUE vymenou ich vnutornych FIELDS.
+   X. FUNCTION swap() vymiena obsah dvoch instancii QUEUE vymenou ich vnutornych FIELDS.
+221. CLASS [stack<TItem,TContainer>] reprezentuje STACK. Pre CLASS [stack<TItem,TContainer>] platia nasledujuce fakty.
+   A. STACK je definovana v LIBRARY <stack>.
+   B. STACK reprezentuje STACK s LIFO pristupom.
+   !!!! C. STACK obsahuje ako MEMBER COLLECTION, ktoru zapuzdruje. To znamena, ze DESTRUCTOR STACK uvolnuje VSETKY ITEMS UNDERLYING COLLECTION.
+   D. STACK v 2. TEMPLATE PARAMETER definuje COLLECTION, ktoru STACK obaluje. DEFAULT VALUE je CLASS [deque<TItem,TAllocator>].
+   E. ITEMS su pridavane iba na koniec STACK.
+   F. ITEMS su odstranovane iba z konca STACK.
+   !!!!! G. ZASADNOU poziadavkou na COLLECTION, ktoru STACK obaluje je existencia METHOD back(), METHOD push_back() a METHOD pop_back().
+222. CLASS [stack<TItem,TContainer>] ma nasledujuce MEMBERS.
+   A. CONSTRUCTOR vytvara instanciu STACK a vnutorne ako MEMBER vytvara instanciu COLLECTION, ktoru STACK obaluje. OVERLOADED VERSION umoznuje definovat CUSTOM ALLOCATOR, ktory UNDERLYING COLLECTION bude pouzivat.
+   B. DESTRUCTOR uvolnuje instanciu STACK ako aj jednotlive ITEMS pre ktore je zavolany ich DESTRUCTOR.
+   C. TYPE [container_type] urcuje TYPE COLLECTION, ktoru STACK obaluje.
+   D. TYPE [value_type] urcuje TYPE pre ITEMS ulozene vo STACK.
+   E. TYPE [size_type] je UNSIGNED TYPE reprezentujuci hodnoty urcujuce velkost a pocet.
+   F. TYPE [reference] urcuje REFERENCE TYPE pre ITEMS ulozene v STACK.
+   G. TYPE [const_pointer] urcuje CONST POINTER TYPE pre ITEMS ulozene v STACK.
+   H. FIELD [c] obsahuje COLLECTION, ktory STACK obaluje.
+   I. OPERATOR= priradzuje do STACK ITEMS inom STACK. STACK obsahuje COPY OPERATOR= a MOVE OPERATOR=.
+   J. OPERATOR== zistuje ci dve instancie STACK su lexikograficky rovne.
+   K. OPERATOR!= zistuje ci dve instancie STACK su lexikograficky rozne.
+   L. OPERATOR< zistuje ci 1. STACK je lexikograficky mensi ako 2. STACK.
+   M. OPERATOR<= zistuje ci 1. STACK je lexikograficky mensi, alebo rovny ako 2. STACK.
+   N. OPERATOR> zistuje ci 1. STACK je lexikograficky vacsi ako 2. STACK.
+   O. OPERATOR>= zistuje ci 1. STACK je lexikograficky vacsi, alebo rovny ako 2. STACK.
+   P. METHOD push() pridava ITEM na koniec STACK.
+   Q. METHOD emplace() pridava ITEM na koniec STACK pomocou PLACEMENT NEW. PARAMETERS METHOD emplace() su FORWARDED do CONSTRUCTOR daneho ITEM volaneho pri pridavani ITEM do STACK.
+   R. METHOD pop() odstranuje ITEM zo zaciatku STACK.
+   S. METHOD top() vracia REFERENCE na ITEM na koniec STACK. Tento ITEM bol ako posledny pridany do STACK a ako prvy bude odstraneny zo STACK.
+   T. METHOD empty() vracia informaciu ci je STACK prazdny.
+   U. METHOD size() vracia pocet ITEMS v STACK.
+   V. METHOD swap() vymiena obsah dvoch instancii STACK vymenou ich vnutornych FIELDS.
+   W. FUNCTION swap() vymiena obsah dvoch instancii STACK vymenou ich vnutornych FIELDS.
+//-------------------------------------------------------------------------------------------------------

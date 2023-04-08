@@ -1,0 +1,828 @@
+//-------------------------------------------------------------------------------------------------------
+1. Solution demonstruje pouzitie INPUT a OUTPUT STREAMS v C++.
+2. STREAM je v IO LIBRARY definovany ako C++ OBJECT, ktory reprezentuje tok CHARACTERS. Pre STREAMS platia nasledujuce fakty.
+   A. OUTPUT je interpretovany ako tok dat DO STREAMU.
+   B. INPUT je interpretovany ako tok dat ZO STREAMU.
+   C. IO LIBRARY definuje GLOBAL OBJECTS, ktore reprezentuju STANDARD IO STREAMS.
+   D. STREAMS su definovane ako TEMPLATES, ktore maju ako TEMPLATE PARAMETER CHARACTER TYPE urcujuci TYPE CHARACTERS nad ktorymi pracuju.
+3. C++ IO LIBRARY definuje nasledujuce GLOBAL OBJECTS, ktore reprezentuju STANDARD IO STREAMS.
+   A. CLASS [cin] reprezentuje STANDARD INPUT STREAM, ktory obaluje C STREAM [stdin].
+   B. CLASS [cout] reprezentuje STANDARD OUTPUT STREAM, ktory obaluje C STREAM [stdout].
+   C. CLASS [cerr] reprezentuje STANDARD OUTPUT ERROR STREAM, ktory obaluje C STREAM [stderr]. Vystup z CLASS [cerr] NIE JE BUFFERED.
+   D. CLASS [clog] reprezentuje ERROR STREAM, ktory JE BUFFERED. Tento OBJECT NEMA analogiu v C STREAMS.
+4. C++ IO LIBRARY definuje nasledujuce OPERATORS pre citanie a zapis dat do STREAMS.
+   A. OPERATOR>> cita data zo STREAM.
+   B. OPERATOR<< zapisuje data do STREAM.
+5. C++ IO LIBRARY definuje mnozstvo MANIPULATORS, ktore umoznuju ovplyvnovat cinnost STREAMS. Pre MANIPULATORS platia nasledujuce fakty.
+   A. MANIPULATORS umoznuju zmenit format dat, ktore menit format dat, ktore su citane a zapisovane do STREAMS.
+   B. MANIPULATORS umoznuju vykonat rozlicne IO OPERATIONS nad STREAMS.
+6. C++ IO LIBRARY definuje nasledujuce zakladne CLASSES.
+   A. CLASS [ios_base] definuje zakladne PROPERTIES STREAMU, ktore su NEZAVISLE na type CHARACTERS a CHARACTER TRAITS nad ktorymi STREAM pracuje. CLASS [ios_base] obsahuje informacie o STREAM STATE a FORMATTING FLAGS.
+   B. CLASS [basic_ios<TCharacter,TTraits>] definuje zakladne PROPERTIES STREAMU, ktore su ZAVISLE na type CHARACTERS a CHARACTER TRAITS nad ktorymi STREAM pracuje. CLASS [basic_ios<TCharacter,TTraits>] obsahuje STREAM BUFFER. STREAM BUFFER je instancia CLASS DERIVED z CLASS [basic_streambuf<TCharacter,TTraits>], ktora vykonava IO OPERATIONS nad specifikovanym STORE.
+   C. CLASS [basic_istream<TCharacter,TTraits>] definuje zakladne INPUT OPERATIONS, ktore je mozne vykonavat nad STREAMS.
+   D. CLASS [basic_ostream<TCharacter,TTraits>] definuje zakladne OUTPUT OPERATIONS, ktore je mozne vykonavat nad STREAMS.
+   E. CLASS [basic_iostream<TCharacter,TTraits>] definuje zakladne INPUT OPERATIONS a OUTPUT OPERATIONS, ktore je mozne vykonavat nad STREAMS.
+   F. CLASS [basic_streambuf<TCharacter,TTraits>] reprezentuje KLUCOVU CLASS IO LIBRARY. CLASS [basic_streambuf<TCharacter,TTraits>] definuje ZAKLADNY INTERFACE pre INPUT OPERATIONS a OUTPUT OPERATIONS, ktore je potrebne pre dany DATA STORE implementovat, aby nad nim bolo mozne realizovat STREAM OPERATIONS.
+!!!!! 7. C++ IO LIBRARY je postavena na nasledujucich principoch.
+   A. C++ IO LIBRARY rozdeluje INPUT a OUTPUT OPERATIONS a na FORMATTING OPERATIONS.
+   !!! B. INPUT a OUTPUT OPERATIONS su implementovane v STREAM BUFFERS. STREAM BUFFERS su DERIVED z CLASS [basic_streambuf<TCharacter,TTraits>].
+   !!! C. FORMATTING OPERATIONS su implementovane vo FORMATTERS. FORMATTERS su DERIVED z CLASS [basic_ios<TCharacter,TTraits>].
+   !!!!! D. STREAM BUFFERS predstavuju ABSTRAKCIU DATA STORES. Implementuju LOW LEVEL INPUT a OUTPUT OPERATIONS nad danym DATA STORE ako napriklad STRING ci FILE.
+   !!! E. STREAM BUFFERS NEOBSAHUJU ZIADNE FORMATTING OPERATIONS. FORMATTING OPERATIONS su implementovane vo FORMATTERS.
+   !!! F. Prepojenie medzi FORMATTERS a STREAM BUFFERS je realizovane tak, ze FORMATTERS obsahuju FIELD reprezentujuci STREAM BUFFER nad ktorym dany FORMATTER pracuje.
+   !!!!! G. Ak je potrebne podporit novy STREAM BUFFER (DATA STORE), staci implementovat CUSTOM CLASS, ktora bude DERIVED z CLASS [basic_streambuf<TCharacter,TTraits>]. Vdaka STRIKTNEMU oddeleniu medzi STREAM BUFFERS a FORMATTERS je potom na novy STREAM BUFFER mozne okamzite aplikovat implementovane FORMATTERS.
+8. Na citanie dat z INPUT STREAMS sa v IO LIBRARY pouziva OPERATOR>>. Pre OPERATOR>> platia nasledujuce fakty.
+   A. OPERATOR>> reprezentuje mechanizmus umoznujuci citat data z INPUT STREAMS.
+   B. Ako 1. PARAMETER OPERATOR>> definuje instanciu CLASS [basic_istream<TCharacter,TTraits>]. Instancia CLASS [basic_istream<TCharacter,TTraits>] reprezentuje INPUT STREAM z ktoreho sa citaju data.
+   C. Ako 2. PARAMETER OPERATOR>> definuje OBJECT, ktory ma byt nacitany zo STREAM. STANDARD LIBRARY definuje OPERATOR>> pre vsetky PRIMITIVE TYPES aj viacere TYPES C++ STANDARD LIBRARY.
+   D. Ako RETURN VALUE OPERATOR>> definuje instanciu CLASS [basic_istream<TCharacter,TTraits>]. Vratenie instancie CLASS [basic_istream<TCharacter,TTraits>] umoznuje OPERATOR CHAINING.
+9. Na zapis dat do OUTPUT STREAMS sa v IO LIBRARY pouziva OPERATOR<<. Pre OPERATOR<< platia nasledujuce fakty.
+   A. OPERATOR<< reprezentuje mechanizmus umoznujuci zapisovat data do OUTPUT STREAMS.
+   B. Ako 1. PARAMETER OPERATOR<< definuje instanciu CLASS [basic_ostream<TCharacter,TTraits>]. Instancia CLASS [basic_ostream<TCharacter,TTraits>] reprezentuje OUTPUT STREAM do ktoreho sa zapisuju data.
+   C. Ako 2. PARAMETER OPERATOR<< definuje OBJECT, ktory ma byt zapisany do STREAM. STANDARD LIBRARY definuje OPERATOR<< pre vsetky PRIMITIVE TYPES aj viacere TYPES C++ STANDARD LIBRARY.
+   D. Ako RETURN VALUE OPERATOR<< definuje instanciu CLASS [basic_ostream<TCharacter,TTraits>]. Vratenie instancie CLASS [basic_ostream<TCharacter,TTraits>] umoznuje OPERATOR CHAINING.
+10. C++ STREAMS su STATEFUL OBJECTS. Pre C++ STREAM STATES platia nasledujuce fakty.
+   A. C++ STREAM STATES reprezentuje PUBLIC STATE daneho STREAM. Obsahuje informaciu o tom ci STREAM je v korektnom, alebo chybnom stave a ci chyba je nefatalna, alebo fatalna.
+   B. C++ STREAM STATES su definovane ako CONSTANTS v CLASS [ios_base]. TYPE C++ STREAM STATES je PLATFORM DEPENDENT.
+   C. C++ STREAM STATES su reprezentovane ako FLAGS, a preto C++ STREAM moze v danom case nadobudat naraz VIACERO STATES.
+   !!!!! D. C++ STREAM BUFFERS NIE SU STATEFUL OBJECTS. Iba C++ STREAMS su STATEFUL OBJECTS.
+   E. C++ STREAM STATE je definovany ako FIELD v CLASS [basic_ios<TCharacter,TTraits>].
+   !!! F. Ak je STREAM v niektorom z ERROR STATES, potom pre uspesne vykonanie nasledujucej IO OPERATION (ak STREAM uplne nezlyhal) je nutne EXPLICITNE zmenit STREAM STATE volanim METHOD basic_ios<TCharacter,TTraits>::clear().
+11. C++ STREAM definuju nasledujuce STATE BIT.
+   A. CONSTANT [ios_base::goodbit] reprezentuje korektny STATE daneho STREAM.
+   B. CONSTANT [ios_base::eofbit] reprezentuje priznak dosiahnutia KONCA daneho STREAM.
+   C. CONSTANT [ios_base::failbit] reprezentuje priznak urcujuci ZLYHANIE POSLEDNEJ IO OPERATION.
+   D. CONSTANT [ios_base::badbit] reprezentuje priznak urcujuci FATALNE ZLYHANIE C++ STREAM.
+12. Pre C++ STREAM STATE [ios_base::goodbit] platia nasledujuce fakty.
+   A. CONSTANT [ios_base::goodbit] reprezentuje korektny STATE daneho STREAM.
+   B. CONSTANT [ios_base::goodbit] je definovany na hodnotu 0.
+13. Pre C++ STREAM STATE [ios_base::eofbit] platia nasledujuce fakty.
+   A. CONSTANT [ios_base::eofbit] reprezentuje priznak dosiahnutia KONCA daneho STREAM.
+   !!! B. CONSTANT [ios_base::eofbit] je nastaveny AZ POTOM co doslo k prvemu pokusu o nacitanie BYTES PO POKUSE o NACITANIE BYTES zo STREAMU, ktory UZ DOSIAHOL svoj KONIEC. To znaci, ze CONSTANT [ios_base::eofbit] je nastavena po vykonanie PRVEJ IO OPERATION PO DOSIAHNUTI KONCA STREAM.
+14. Pre C++ STREAM STATE [ios_base::failbit] platia nasledujuce fakty.
+   A. CONSTANT [ios_base::failbit] reprezentuje priznak urcujuci ZLYHANIE POSLEDNEJ IO OPERATION.
+   B. CONSTANT [ios_base::failbit] znamena, ze STREAM je v NON-FATAL ERROR.
+   C. CONSTANT [ios_base::failbit] je nastaveny pri FORMATTING ERRORS, alebo pri dosiahnuti KONCA STREAM, ked je nastaveny taktiez CONSTANT [ios_base::eofbit].
+   D. CONSTANT [ios_base::failbit] je nastaveni pri dosiahnuti KONCA STREAM, ked je nastaveny takisto CONSTANT [ios_base::eofbit]. Dovodom je fakt, ze CONSTANT [ios_base::eofbit] je nastavena az PO VYKONANI PRVEJ OPERATION PO DOSIAHNUTI KONCA STREAM, no a kedze tato OPERATION nemoze nacitat ziadne data je logicky vyhodnotena ako ZLYHANIE IO OPERATION, a preto je nastavena CONSTANT [ios_base::failbit].
+15. Pre C++ STREAM STATE [ios_base::eofbit] platia nasledujuce fakty.
+   A. CONSTANT [ios_base::badbit] reprezentuje priznak urcujuci FATALNE ZLYHANIE C++ STREAM.
+   B. CONSTANT [ios_base::badbit] je nastaveny napriklad pri pokuse presunut poziciu C++ STREAM pred zaciatok, alebo za koniec C++ STREAM.
+16. C++ STREAMS definuju nasledujuce OPERATORS, ktorymi je mozne zistovat ci STREAM je v NON-ERROR STATE.
+   A. OPERATOR BOOL() vracia TRUE, ak STREAM NIE je v STATE [ios_base::failbit] ani v STATE [ios_base::badbit]. Inak vracia FALSE.
+   B. OPERATOR! vracia TRUE, ak STREAM je v STATE [ios_base::failbit], alebo v STATE [ios_base::badbit]. Inak vracia TRUE.
+17. C++ STREAMS podporuju hadzanie EXCEPTIONS pri zmene C++ STREAM STATES. Pre EXCEPTIONS v C++ STREAMS platia nasledujuce fakty.
+   A. EXCEPTIONS NIE su zapnute BY-DEFAULT a je ich nutne EXPLICITNE POVOLIT volanim METHOD basic_ios<TCharacter,TTraits>::exceptions().
+   B. EXCEPTIONS su hodene ak je detekovany C++ STREAM STATE, pre ktory ma STREAM generovat EXCEPTIONS.
+   C. EXCEPTIONS NIE SU generovane, ak C++ STREAM STATE je nastaveny na VALUE [ios_base::goodbit].
+   !!! D. Volanie METHOD basic_ios<TCharacter,TTraits>::exceptions() generuje EXCEPTION ak nastavovany C++ EXCEPTION STATE uz JE NASTAVENY pre dany STREAM.
+   E. EXCEPTIONS generovane z C++ STREAMS su TYPE [ios_base::failure], ktory je DERIVED z CLASS [system_error].
+   !!!!! F. Obrovskou NEVYHODOU pouzitia EXCEPTION v C++ STREAM je fakt, ze C++ STREAM STATE [ios_base::failbit] aj po dosiahnuti END OF FILE. Je to preto, lebo END OF FILE je detekovany az po vykonani IO OPERATION PO dosiahnuti END OF FILE, takze IO OPERATION, ktora detekovala END OF FILE zaroven aj ZLYHA a je nastaveny C++ STREAM STATE [ios_base::failbit]. Dosledkom tohto faktu je ze EXCEPTIONS su hodene AJ pri dosiahnuti END OF FILE (ak bol C++ STREAM STATE [ios_base::failbit] nastaveny na generovanie EXCEPTIONS), aj ked k ERROR NEDOSLO. Vysledok je nutnost testovat ci EXCEPTION bola generovana kvoli ERROR, alebo kvoli dosiahnutiu END OF FILE volanim METHOD basic_ios<TCharacter,TTraits>::eof().
+   !!!!! G. Podpora EXCEPTIONS v C++ STREAMS je vo vseobecnosti TAK MIZERNA, ze je lepsie je ich VOBEC NEPOUZIVAT.
+18. C++ STREAMS podporuju 2 typy IO OPERATIONS.
+   A. FORMATTED IO OPERATIONS reprezentuju citanie a zapis FORMATTED OBJECTS do STREAMS. Su vykonavane pomocou OPERATOR<< a OPERATOR>>. OPERATOR<< vykonava SKIPPING WHITE CHARACTERS.
+   B. UNFORMATTED IO OPERATIONS reprezentuju citanie a zapis CHAR ARRAYS do STREAMS. Su vykonavane pomocou METHODS STREAM OBJECTS. Pri citani CHAR ARRAYS sa NEVYKONAVA SKIPPING WHITE CHARACTERS.
+19. C++ STREAMS implementuju IO OPERATIONS nasledujucim sposobom.
+   A. Pred vykonanim IO OPERATION sa vytvori SENTRY OBJECT, do ktoreho sa cez CONSTRUCTOR zada C++ STREAM.
+   B. SENTRY OBJECT v CONSTRUCTOR vykona vsetky PRE-PROCESSING OPERATIONS ako je SKIP WHITESPACES, synchronizacia ci kontrola stavu C++ STREAM.
+   C. Nad C++ STREAM sa vykona pozadovana IO OPERATION.
+   D. SENTRY OBJECT v CONSTRUCTOR vykona vsetky POST-PROCESSING OPERATIONS ako je kontrola stavu C++ STREAM ci uvolnenie LOCKS, alebo RESOURCES.
+!!! 20. Vsetky IO OPERATIONS vykonavane priamo nad STREAM BUFFERS by mali explicitne vytvarat SENTRY OBJECTS.
+21. MANIPULATORS umoznuju ovplyvnit vykonavanie IO OPERATIONS nad C++ STREAMS. Pre MANIPULATORS platia nasledujuce fakty.
+   A. MANIPULATORS mozu ovplyvnovat ako budu data formatovane pri citani a zapisovani do C++ STREAMS, kedy dojde k FLUSH pri zapise, vkladat NEW LINES, alebo odstranovat WHITE SPACES, vkladat cas ci penazne VALUES.
+   B. MANIPULATORS su definovane v LIBRARY <ios>, LIBRARY <istream>, LIBRARY <ostream> a LIBRARY <iomanip>.
+   C. MANIPULATORS mozu byt PARAMETRICKE, alebo BEZPARAMETRICKE.
+   !!! D. MANIPULATORS su interne implementovane ako TEMPLATE FUNCTIONS. To, ze ich je mozne volat pomocou OPERATOR<< a OPERATOR>> je dane tym, ze C++ definuje OVERLOADED VERSIONS tychto OPERATORS, ktore prijimaju ako PARAMETERS POINTER na FUNCTION, ktory nasledne volaju.
+   !!! E. BEZPARAMETRICKE MANIPULATORS maju PROTOTYPE [STREAM& MANIPULTATOR(STREAM&)]. PARAMETRICKE MANIPULATORS NEMAJU definovany PROTOTYPE a ten je implementacne zavisly.
+   !!!!! F. Tym, ze MANIPULATORS su implementovane ako FUNCTIONS je ich mozne volat pomocou FUNCTION CALL SYNTAX.
+   G. BEZPARAMETRICKE CUSTOM MANIPULATORS su implementovane ako TEMPLATE FUNCTIONS.
+   H. PARAMETRICKE CUSTOM MANIPULATORS su spravidla implementovane ako TEMPLATE CLASSES a TEMPLATE OPERATOR<<, alebo TEMPLATE OPERATOR<<, ktory prijima ako PARAMETER instanciu PARAMETRICKEHO CUSTOM MANIPULATOR.
+22. Pre FORMATTING v C++ STREAMS platia nasledujuce fakty.
+   A. CLASS [ios_base], ktora je BASE CLASS pre vsetky C++ STREAMS obsahuje vsetky formatovacie nastavenia, ktore C++ STREAMS podporuju.
+   B. FORMAT, ktory ma C++ STREAM pouzit je vyjadreny seriou FLAGS, ktore je mozne citat a nastavovat volanim METHODS CLASS [ios_base].
+   C. FLAGS su rozdelene do kategorii, ktore je mozne osobitne nastavovat.
+   D. C++ definuje MANIPULATOR setiosflags() a MANIPULATOR resetiosflags(), ktore umoznuju nastavovat FLAGS aj pomocou pouzitia OPERATOR<< a OPERATOR>>.
+   E. Hodnoty FLAGS je mozne nastavovat aj pouzitim specializovanych MANIPULATORS (napr. hex, alebo dec), ktore interne zmenia nastavenia FLAGS v C++ danom STREAM.
+   F. METHOD basic_ios::copyfmt() umoznuje nakopirovat FORMATTING FLAGS z jedneho C++ STREAM do ineho C++ STREAM.
+23. C++ STREAMS podporuju vyvolavanie USER DEFINED CALLBACKS pri rozlicnych EVENTS, ktore moze C++ STREAM generovat. Pre USER DEFINED CALLBACKS platia nasledujuce fakty.
+   A. USER DEFINED CALLBACKS su zaregistrovane pre dany STREAM volanim METHOD ios_base::register_callback().
+   B. USER DEFINED CALLBACKS su volane v OPACNOM PORADI v akom boli zaregistrovane volanim METHOD register_callback().
+   C. Ak sa v USER DEFINED zavola METHOD register_callback(), novo zaregistrovany USER DEFINED CALLBACK sa zavola az pre dalsi EVENT. 
+   D. Ak je USER DEFINED CALLBACK zaregistrovany VIACKRAT, zavola sa VIACKRAT.
+   !!! E. USER DEFINED CALLBACKS NEMOZU byt ODREGISTROVANE.
+   !!! F. USER DEFINED CALLBACKS NESMU hadzat EXCEPTIONS.
+   G. TYPE [ios_base::event_callback] reprezentuje TYPE pre USER DEFINED CALLBACKS.
+24. TYPE [ios_base::event_callback] reprezentuje TYPE pre USER DEFINED CALLBACKS. TYPE [ios_base::event_callback] ma nasledujuci PROTOTYPE.
+   A. 1. PARAMETER TYPE [ios_base::event] urcuje type EVENTU.
+   B. 2. PARAMETER TYPE [ios_base&] obsahuje REFERENCE na STREAM pre ktory je USER DEFINED CALLBACK zavolany.
+   C. 3. PARAMETER TYPE [int] obsahuje USER DEFINED VALUE, ktora sa zaslala v METHOD ios_base::register_callback().
+   D. RETURN VALUE je TYPE [void].
+25. MEMBER ENUM [ios_base::event] reprezentuje identifikator typu EVENTU, ktory je volany po zaregistrovani USER DEFINED CALLBACK pomocou METHOD ios_base::register_callback(). MEMBER ENUM [ios_base::event] ma nasledujuce MEMBERS.
+   A. VALUE [erase_event] reprezentuje EVENT, ktory je volany z DESTRUCTOR CLASS [ios_base], alebo z METHOD basic_ios::copyfmt().
+   B. VALUE [imbue_event] reprezentuje EVENT, ktory je volany z METHOD ios_base::imbue().
+   C. VALUE [copyfmt_event] reprezentuje EVENT, ktory je volany z METHOD basic_ios::copyfmt().
+!!! 26. C++ USER DEFINED CALLBACKS sa pouzivaju pri vymazavani a vytvarani DEEP COPY CUSTOM DATA TYPE [void*], ktore su asociovane s C++ STREAMS.
+27. C++ STREAMS podporuje INTERNATIONALIZATION. Pre INTERNATIONALIZATION platia nasledujuce fakty.
+   A. INTERNATIONALIZATION je realizovana pomocou CLASS [locale], ktorej instanciu je mozne zaslat do C++ STREAM.
+   B. METHOD ios_base::imbue() nastavuje LOCALE pre C++ STREAM.
+   C. METHOD ios_base::getloc() cita LOCALE nastaveny pre C++ STREAM.
+28. Implementacia IO OPERATIONS nad C++ STREAMS pre CUSTOM CLASSES vyzaduje implementaciu nasledujucich OPERATORS.
+   A. Pre citanie instancii CUSTOM CLASSES z C++ STREAM je nutne implementovat NON-MEMBER OPERATOR>> s PROTOTYPE [istream& operator>>(istream& Stream, CUSTOM_CLASS& Object)].
+   B. Pre zapis instancii CUSTOM CLASSES do C++ STREAM je nutne implementovat NON-MEMBER OPERATOR<< s PROTOTYPE [ostream& operator<<(ostream& Stream, const CUSTOM_CLASS& Object)].
+29. Ak CUSTOM CLASS sa nachadza v CLASS HIERARCHY ju implementaciu IO OPERATIONS pre citanie a zapis instancie CUSTOM CLASSES z C++ STREAMS nutne vykonat nasledujucim sposobom.
+   A. BASE CLASS v CLASS HIERARCHY musia definovat PUBLIC VIRTUAL METHODS pre citanie a zapis svojich FIELDS do C++ STREAM. V pripade, ze BASE CLASS nie je ABSTRACT, tak PUBLIC VIRTUAL METHODS implementuju aj realne citanie a zapis dat, inak su deklarovane ako PURE VIRTUAL.
+   B. BASE CLASS definuje OPERATOR>> a OPERATOR<<, ktore volaju PUBLIC VIRTUAL METHODS BASE CLASS.
+   C. DERIVED CLASSES implementuju OVERLOADED PUBLIC VIRTUAL METHODS pre citanie a zapis svojich FIELDS do C++ STREAM.
+   !!! D. DERIVED CLASSES uz NEIMPLEMENTUJU OPERATOR>> a OPERATOR<<. Pri vykonani IO OPERATIONS sa volaju OPERATOR>> a OPERATOR<< BASE CLASS.
+!!! 30. Pre implementaciu OPERATOR<< a OPERATOR>> platia nasledujuce odporucania.
+   A. Pri implementacii OPERATOR<< ak CLASS ma viacero FIELDS je vhodne OPERATOR>> implementovat tak, ze interne pouzije STRING STREAM do ktoreho vykona zapis svojich FIELDS a az obsah STRING STREAM zapise do C++ STREAM. Tento mechanizmus umoznuje vyporiadat sa s FORMATTING FLAG [width], ktory je po PRVOM volanie OPERATOR<< AUTOMATICKY nastaveny na 0 a teda pri opakovanom volani OPERATOR<< nad C++ STREAM by sa aplikoval iba na jeho prve volanie.
+   B. OPERATOR<< a OPERATOR>> je vhodne implementovat ako TEMPLATE OPERATOR s CHARACTER TYPE ako TEMPLATE PARAMETER. Takato implementacia umoznuje citanie a zapis pre rozlicne typy CHARACTERS.
+31. C++ STREAMS umoznuju ukladat CUSTOM DATA priamo do C++ STREAM OBJECTS. Pre CUSTOM DATA asociavane s C++ STREAMS platia nasledujuce fakty.
+   A. CUSTOM DATA mozu byt TYPE [int] a TYPE [void*].
+   B. CUSTOM DATA su ulozene ako ARRAYS v CLASS [ios_base].
+   C. Pristup ku CUSTOM DATA je vykonavany prostrednictvom METHOD ios_base::iword() a METHOD ios_base::pword().
+   !!! D. Pri pristupe ku CUSTOM DATA sa pouziva INDEX, ktory je vygenerovany volanim STATIC METHOD ios_base::xalloc(). STATIC METHOD ios_base::xalloc() je THREAD SAFE METHODS, ktora generuje UNIKATNY INDEX pomocou ktoreho je mozne pristupovat ku CUSTOM DATA v kazdej instancii C++ STREAM OBJECT.
+   !!! E. Platnost dat v CUSTOM DATA konci PRVYM VOLANIM METHOD ios_base::iword(), alebo METHOD ios_base::pword(). Preto by CUSTOM DATA NEMALI byt trvalo ukladane do inych VARIABLES.
+   F. CUSTOM DATA sa primarne pouzivaju na prenos FORMATTING DATA medzi MANIPULATORS a IO OPERATIONS pre dany C++ STREAM.
+   !!!!! G. METHOD ios_base::copyfmt() vykonava kopiu FORMAT FLAGS, VRATANE CUSTOM DATA ARRAYS. To sposobuje PROBLEM, pretoze tie iste CUSTOM DATA mozu byt v vdaka tomu SHARED medzi VIACERYMI INSTANCIAMI C++ STREAMS. Riesenim je pouzitie USER DEFINED CALLBACKS v C++ STREAMS, ktore su volane pri volani METHOD ios_base::copyfmt() a umoznuju vytvorit DEEP COPY FORMATTING OBJECTS ulozenych v CUSTOM DATA ARRAYS. Pomocou USER DEFINED CALLBACKS je mozne CUSTOM DATA aj odstranit pri odstranovani instancie C++ STREAM.
+32. CUSTOM DATA sa v C++ STREAMS pouzivaju nasledujucim sposobom.
+   A. Pre CUSTOM DATA sa volanim STATIC METHOD ios_base::xalloc() vytvori UNIKATNY INDEX, ktory sa pouzije na pristup k CUSTOM DATA. Tento INDEX MUSI BYT UNIKATNY a to znamena, ze pre kazde CUSTOM DATA sa STATIC METHOD ios_base::xalloc() vola IBA RAZ.
+   B. CUSTOM MANIPULATORS pouzivaju vygenerovany INDEX na zapis CUSTOM DATA do CUSTOM DATA ARRAY daneho C++ STREAM.
+   C. IO OPERATIONS pouzivaju vygenerovany INDEX na citanie CUSTOM DATA zo CUSTOM DATA ARRAY daneho C++ STREAM.
+   !!!!! D. Ak CUSTOM DATA obsahuju OBJECTS, je nutne implementovat USER DEFINED CALLBACKS, ktore vytvoria DEEP COPY tychto OBJECTS pri volani METHOD ios_base::copyfmt() a odstrania CUSTOM DATA pri odstranovani instancie C++ STREAM.
+33. C++ STREAMS mozu byt vzajomne zviazane (TIED). Pre TIED C++ STREAMS platia nasledujuce fakty.
+   A. Ak je STREAM 1 TIED s OUTPUT STREAM 2, potom obsah STREAM 2 je FLUSHED PRED KAZDOU IO OPERATION vykonanou nad STREAM 1.
+   B. TIED STREAMS sa pouzivaju na to, aby obsah OUTPUT STREAM (napriklad vypis textu na konzolu) bol vypisany VZDY pred citanim dat zo STREAM (z klavesnice).
+   !!! C. STREAM moze byt TIED IBA s OUTPUT STREAM.
+   D. S danym STREAM moze byt TIED iba 1 STREAM, no tento TIED STREAM moze byt TIED s inym STREAM.
+   E. STREAMS TYING sa vykonava volanim METHOD basic_ios<TCharacter,TTraits>::tie().
+   F. STREAMS UNTYING je mozne vykonat volanim METHOD basic_ios<TCharacter,TTraits>::tie() s hodnotou PARAMETER NULLPTR.
+   !!!!! G. STREAMS TYING neznamena, ze OBSAH STREAM je presmerovany do TIED STREAM, ale iba tolko, ze pred vykonanim KAZDEJ IO OPERATION nad STREAM je volany FLUSH nad TIED STREAM.
+   !!! H. Pri starte PROGRAMU su AUTOMATICKY TIED STREAM [cin] so STREAM [cout] a STREAM [wcin] so STREAM [wcout].
+34. C++ STREAMS mozu byt REDIRECTED, aby pracovali nad zadanymi STREAM BUFFERS. Pre C++ STREAM REDIRECTION platia nasledujuce fakty.
+   A. C++ STREAM BUFFER moze byt asociovany s VIACERYMI STREAMS. To znaci, ze viacero rozlicnych STREAMS moze pristupovat k tomu istemu STREAM BUFFER. STREAM vsak moze pristupovat iba k 1 STREAM BUFFER.
+   B. Kazdy STREAM pristupujuci k tomu istemu STREAM BUFFER moze mat specificky nastavene FORMATTING FLAGS a teda citat a zapisovat data do STREAM s rozlicnym formatovanim.
+   C. To nad ktorym STREAM BUFFER pracuje STREAM je mozne zadat v CONSTRUCTOR daneho STREAM.
+   D. METHOD basic_ios<TCharacter,TTraits>::rdbuf() umoznuje asociovat dany STREAM BUFFER so STREAM.
+   !!! E. Pouzitie 1 STREAM BUFFER vo viacerych STREAMS ma oproti pouzitiu viacerych STREAM BUFFERS s viacerymi STREAMS tu vyhodu, ze ak sa pouziva iba 1 STREAM BUFFER, tak IO OPERATIONS su vykonavane SYNCHRONNE v poradi v akom boli zadane a nemozu sa predbehnut. Pri pouziti rozlicnych STREAM BUFFERS nad tym istym DATA STORE moze dojst k zmene poradia vykonania IO OPERATIONS nad DATA STORE.
+   !!! F. STREAM BUFFERS, ktore dany STREAM sam nealokoval, ale pomocou CONSTRUCTOR, alebo METHOD basic_ios<TCharacter,TTraits>::rdbuf() bol s danym STREAM ASOCIOVANY NIE JE v DESTRUCTOR daneho STREAM UVOLNENY. Uvolnene su IBA STREAM BUFFERS, ktore boli AUTOMATICKY vytvorene instanciu STREAM OBJECT.
+35. Pre CLASS [basic_streambuf<TCharacter,TTraits>] platia nasledujuce fakty.
+   !!!!! A. CLASS [basic_streambuf<TCharacter,TTraits>] reprezentuje KLUCOVU CLASS IO LIBRARY. CLASS [basic_streambuf<TCharacter,TTraits>] definuje ZAKLADNY INTERFACE pre INPUT OPERATIONS a OUTPUT OPERATIONS, ktore je potrebne pre dany DATA STORE implementovat, aby nad nim bolo mozne realizovat STREAM OPERATIONS.
+   B. CLASS [basic_streambuf<TCharacter,TTraits>] riadi INPUT a OUTPUT OPERATIONS nad CHARACTER SEQUENCES.
+   C. CLASS [basic_streambuf<TCharacter,TTraits>] poskytuje pristup ku CONTROLLED CHARACTER SEQUENCE, ktora reprezentuje BUFFER. BUFFER je pouzivany pri vykonavani INPUT a OUTPUT OPERATIONS. CONTROLLED CHARACTER SEQUENCE umoznuje vykonavat BUFFERING INPUT a OUTPUT OPERATIONS.
+   D. CLASS [basic_streambuf<TCharacter,TTraits>] poskytuje pristup ku ASSOCIATED CHARACTER SEQUENCE, ktora sa pre INPUT OPERATIONS nazyva SOURCE a pre OUTPUT OPERATIONS sa nazyva SINK. ASSOCIATED CHARACTER SEQUENCE reprezentuje ABSTRAKCIU na ENTITOU na ktorou CLASS [basic_streambuf<TCharacter,TTraits>]. Abstrakcia moze reprezentovat FILE, TCP SOCKET, SERIAL PORT, ale aj MEMORY OBJECT ako napriklad CLASS [vector<TType>].
+   !!! E. CONTROLLED CHARACTER SEQUENCE reprezentuje BUFFERED SUBSEQUENCE nad ASSOCIATED CHARACTER SEQUENCE. Sluzi na vykonavanie BUFFERING IO OPERATIONS. STATE CONTROLLED CHARACTER SEQUENCE obsahuje BEGINNING POINTER, NEXT POINTER a END POINTER.
+   F. BEGINNING POINTER CONTROLLED CHARACTER SEQUENCE ukazuje na PRVY ELEMENT ASSOCIATED CHARACTER SEQUENCE, ktory je namapovany do CONTROLLED CHARACTER SEQUENCE.
+   G. NEXT POINTER CONTROLLED CHARACTER SEQUENCE ukazuje na NASLEDUJUCI ELEMENT ASSOCIATED CHARACTER SEQUENCE na ktorym bude vykonana nasledujuce INPUT, alebo OUTPUT OPERATION.
+   H. END POINTER CONTROLLED CHARACTER SEQUENCE ukazuje 1 POSITION za POSLEDNY ELEMENT ASSOCIATED CHARACTER SEQUENCE, ktory je namapovany do CONTROLLED CHARACTER SEQUENCE.
+   I. CLASS [basic_streambuf<TCharacter,TTraits>] podporuje vykonavanie INPUT OPERATIONS, OUTPUT OPERATIONS a INPUT aj OUTPUT OPERATIONS. CLASS [basic_streambuf<TCharacter,TTraits>] preto obsahuje 2 pary BEGINNING POINTERS, NEXT POINTERS a END POINTERS.
+   !!! J. CLASS [basic_streambuf<TCharacter,TTraits>] sluzi ako BASE CLASS pre vytvaranie DERIVED CLASSES, ktore vykonavaju BUFFERING nad specifickymi STREAMS.
+   K. TEMPLATE PARAMETER 'TCharacter' reprezentuje TYPE CHARACTERS nad ktorymi CLASS [basic_streambuf<TCharacter,TTraits>] pracuje.
+   L. TEMPLATE PARAMETER 'TTraits' reprezentuje CHARACTERS TRAITS pre dany CHARACTER TYPE. DEFAULT VALUE tohto TEMPLATE PARAMETER je CLASS [char_traits<TCharacter>].
+   M. CLASS [basic_streambuf<TCharacter,TTraits>] je definovana v LIBRARY <streambuf>.
+   N. STANDARD LIBRARY definuje TYPEDEF [streambuf] ako TYPE [basic_streambuf<char,char_traits<char>>].
+   O. STANDARD LIBRARY definuje TYPEDEF [wstreambuf] ako TYPE [basic_streambuf<wchar_t,char_traits<wchar_t>>].
+36. CLASS [basic_streambuf<TCharacter,TTraits>] ma nasledujuce MEMBERS.
+   1. CONSTRUCTOR vytvara instanciu CLASS [basic_streambuf<TCharacter,TTraits>]. CLASS [basic_streambuf<TCharacter,TTraits>] definuje PROTECTED DEFAULT CONSTRUCTOR a PROTECTED COPY CONSTRUCTOR.
+   2. DESTRUCTOR uvolnuje instanciu CLASS [basic_streambuf<TCharacter,TTraits>]. DESTRUCTOR je definovany ako VIRTUAL DESTRUCTOR.
+   3. TYPE [char_type] reprezentuje TYPE CHARACTERS nad ktorymi CLASS [basic_streambuf<TCharacter,TTraits>] pracuje.
+   4. TYPE [traits_type] reprezentuje CHARACTER TRAITS pre CHARACTERS nad ktorymi CLASS [basic_streambuf<TCharacter,TTraits>] pracuje.
+   5. TYPE [int_type] urcuje NUMERIC TYPE ktorym je mozne vyjadrit vsetky CHARACTERS, vratane EOF CHARACTER.
+   6. TYPE [off_type] urcuje TYPE, ktory sa pouziva na vyjadrenie STREAM OFFSET.
+   7. TYPE [pos_type] urcuje TYPE, ktory sa pouziva na vyjadrenie STREAM POSITION.
+   8. OPERATOR= je definovany ako DELETED FUNCTION.
+   9. VIRTUAL PROTECTED METHOD imbue() nastavuje LOCALE pre STREAM BUFFER.
+   10. VIRTUAL PROTECTED METHOD setbuf() nahradza interny BUFFER pouzivany STREAM BUFFER za CUSTOM BUFFER. METHOD sluzi na to, aby mohla byt OVERRIDDEN. BASE VERSION METHOD basic_streambuf<TCharacter,TTraits>::setbuf() NEOBSAHUJE ZIADEN CODE.
+   11. VIRTUAL PROTECTED METHOD seekoff() nastavuje CURRENT RELATIVE POSITION daneho STREAM BUFFER POSITION INDICATOR. METHOD umoznuje nastavit ci sa ma menit POSITION v STREAM pre INPUT, OUTPUT, alebo BOTH SEQUENCES. METHOD sluzi na to, aby mohla byt OVERRIDDEN. BASE VERSION METHOD basic_streambuf<TCharacter,TTraits>::seekoff() NEOBSAHUJE ZIADEN CODE.
+   12. VIRTUAL PROTECTED METHOD seekpos() nastavuje CURRENT ABSOLUTE POSITION daneho STREAM BUFFER POSITION INDICATOR. METHOD umoznuje nastavit ci sa ma menit POSITION v STREAM pre INPUT, OUTPUT, alebo BOTH SEQUENCES. METHOD sluzi na to, aby mohla byt OVERRIDDEN. BASE VERSION METHOD basic_streambuf<TCharacter,TTraits>::seekpos() NEOBSAHUJE ZIADEN CODE.
+   13. VIRTUAL PROTECTED METHOD sync() synchronizuje obsah CONTROLLED CHARACTER SEQUENCES s ASSOCIATED CHARACTER SEQUENCES. Inak povedane vykona FLUSH INPUT a OUTPUT BUFFERS, tak aby vsetky IO OPERATIONS, ktore nad nimi mali byt vykonane data, ktore mali byt nacitane a zapisane z HW DEVICES do INPUT a OUTPUT BUFFERS boli nacitane a zapisane. Ako RETURN VALUE METHOD vracia hodnotu TYPE [int] urcujucu ci FLUSHING prebehol uspesne, alebo zlyhal. METHOD sluzi na to, aby mohla byt OVERRIDDEN. BASE VERSION METHOD basic_streambuf<TCharacter,TTraits>::sync() NEOBSAHUJE ZIADEN CODE.
+   14. VIRTUAL PROTECTED METHOD showmanyc() vracia ODHADOVANY POCET CHARACTERS, ktore sa nachadzaju v INPUT ASSOCIATED CHARACTER SEQUENCE. METHOD sluzi na to, aby mohla byt OVERRIDDEN. BASE VERSION METHOD basic_streambuf<TCharacter,TTraits>::showmanyc() NEOBSAHUJE ZIADEN CODE a iba vracia VALUE 0.
+   15. VIRTUAL PROTECTED METHOD underflow() zabezpecuje nacitanie 1 CHARACTER z INPUT ASSOCIATED CHARACTER SEQUENCE. To znaci, ze nacita 1 CHARACTER z HW DEVICE, ktory vrati ako RETURN VALUE. Ak nacitane ZLYHALO, vracia VALUE [TTraits::eof]. METHOD sluzi na to, aby mohla byt OVERRIDDEN. BASE VERSION METHOD basic_streambuf<TCharacter,TTraits>::underflow() NEOBSAHUJE ZIADEN CODE a iba vracia VALUE [TTraits::eof].
+   16. VIRTUAL PROTECTED METHOD uflow() zabezpecuje nacitanie 1 CHARACTER z INPUT ASSOCIATED CHARACTER SEQUENCE a zaroven posuva poziciu STREAM BUFFER POSITION INDICATOR. To znaci, ze nacita 1 CHARACTER z HW DEVICE, ktory vrati ako RETURN VALUE, pricom posuva poziciu STREAM BUFFER POSITION INDICATOR. Ak nacitane ZLYHALO, vracia VALUE [TTraits::eof]. METHOD sluzi na to, aby mohla byt OVERRIDDEN. BASE VERSION METHOD basic_streambuf<TCharacter,TTraits>::underflow() NEOBSAHUJE ZIADEN CODE a iba vracia VALUE, ktoru vracia METHOD basic_streambuf<TCharacter,TTraits>::underflow().
+   17. VIRTUAL PROTECTED METHOD xsgetn() nacitava pozadovany pocet CHARACTERS z INPUT CONTROLLED CHARACTER SEQUENCE a v pripade, ze INPUT CONTROLLED CHARACTER SEQUENCE neobsahuje pozadovany pocet CHARACTERS, tieto su nacitane pomocou METHOD basic_streambuf<TCharacter,TTraits>::uflow() su nacitane z INPUT ASSOCIATED CHARACTER SEQUENCE. CHARACTERS su ukladane do zadaneho ARRAY. METHOD vracia pocet nacitanych CHARACTERS. METHOD sluzi na to, aby mohla byt OVERRIDDEN.
+   18. VIRTUAL PROTECTED METHOD xsputn() zapisuje CHARACTERS do OUTPUT CONTROLLED CHARACTER SEQUENCE volanim METHOD basic_streambuf<TCharacter,TTraits>::sputc(). METHOD vracia pocet zapisanych CHARACTERS. METHOD sluzi na to, aby mohla byt OVERRIDDEN.
+   19. VIRTUAL PROTECTED METHOD overflow() zabezpecuje zapisanie 1 CHARACTER z OUTPUT ASSOCIATED CHARACTER SEQUENCE. To znaci, ze zapise 1 CHARACTER do HW DEVICE. V pripade uspechu METHOD vracia VALUE, ktore NIE JE ROVNA VALUE [TTraits::eof]. Ak zapis ZLYHAL, vracia VALUE [TTraits::eof]. METHOD sluzi na to, aby mohla byt OVERRIDDEN. BASE VERSION METHOD basic_streambuf<TCharacter,TTraits>::overflow() NEOBSAHUJE ZIADEN CODE a iba vracia VALUE [TTraits::eof].
+   20. VIRTUAL PROTECTED METHOD pbackfail() vracia zadany CHARACTER spat do INPUT CONTROLLED CHARACTER SEQUENCE. METHOD zaroven moze modifikovat obsah INPUT ASSOCIATED CHARACTER SEQUENCE. METHOD sluzi na to, aby mohla byt OVERRIDDEN. BASE VERSION METHOD basic_streambuf<TCharacter,TTraits>::pbackfail() NEOBSAHUJE ZIADEN CODE a iba vracia VALUE [TTraits::eof].
+   21. PROTECTED METHOD swap() vymiena obsah dvoch instancii CLASS [basic_streambuf<TCharacter,TTraits>].
+   22. PROTECTED METHOD eback() vracia POINTER na PRVY CHARACTER v INPUT CONTROLLED CHARACTER SEQUENCE.
+   23. PROTECTED METHOD gptr() vracia POINTER na CURRENT POSITION CHARACTER v INPUT CONTROLLED CHARACTER SEQUENCE.
+   24. PROTECTED METHOD egptr() vracia POINTER na 1 POSITION za POSLEDNYM CHARACTER v INPUT CONTROLLED CHARACTER SEQUENCE.
+   25. PROTECTED METHOD pbase() vracia POINTER na PRVY CHARACTER v OUTPUT CONTROLLED CHARACTER SEQUENCE.
+   26. PROTECTED METHOD pptr() vracia POINTER na CURRENT POSITION CHARACTER v OUTPUT CONTROLLED CHARACTER SEQUENCE.
+   27. PROTECTED METHOD epptr() vracia POINTER na 1 POSITION za POSLEDNYM CHARACTER v OUTPUT CONTROLLED CHARACTER SEQUENCE.
+   28. PROTECTED METHOD gbump() preskoci zadany pocet CHARACTERS v INPUT CONTROLLED CHARACTER SEQUENCE inkrementaciou hodnoty POINTER. METHOD NEROBI kontrolu ci nedoslo k preteceniu rozsahu INPUT CONTROLLED CHARACTER SEQUENCE.
+   29. PROTECTED METHOD pbump() preskoci zadany pocet CHARACTERS v OUTPUT CONTROLLED CHARACTER SEQUENCE inkrementaciou hodnoty POINTER. METHOD NEROBI kontrolu ci nedoslo k preteceniu rozsahu OUTPUT CONTROLLED CHARACTER SEQUENCE.
+   30. PROTECTED METHOD setg() nastavuje POINTERS odkazujucich na ZACIATOK, CURRENT POSITION a KONIEC INPUT CONTROLLED CHARACTER SEQUENCE.
+   31. PROTECTED METHOD setp() nastavuje POINTERS odkazujucich na ZACIATOK, CURRENT POSITION a KONIEC OUTPUT CONTROLLED CHARACTER SEQUENCE.
+   32. METHOD puimbue() nastavuje LOCALE pre STREAM BUFFER. Interne vola METHOD imbue().
+   33. METHOD getloc() vracia LOCALE, ktory je v STREAM BUFFER nastaveny.
+   34. METHOD pusetbuf() nahradza interny BUFFER pouzivany STREAM BUFFER za CUSTOM BUFFER. Interne vola METHOD setbuf().
+   35. METHOD puseekoff() nastavuje CURRENT RELATIVE POSITION daneho STREAM BUFFER POSITION INDICATOR. METHOD umoznuje nastavit ci sa ma menit POSITION v STREAM pre INPUT, OUTPUT, alebo BOTH SEQUENCES. Interne vola METHOD seekoff().
+   36. METHOD puseekpos() nastavuje CURRENT ABSOLUTE POSITION daneho STREAM BUFFER POSITION INDICATOR. METHOD umoznuje nastavit ci sa ma menit POSITION v STREAM pre INPUT, OUTPUT, alebo BOTH SEQUENCES. Interne vola METHOD seekpos().
+   37. METHOD pusync() synchronizuje obsah CONTROLLED CHARACTER SEQUENCES s ASSOCIATED CHARACTER SEQUENCES. Inak povedane vykona FLUSH INPUT a OUTPUT BUFFERS, tak aby vsetky IO OPERATIONS, ktore nad nimi mali byt vykonane data, ktore mali byt nacitane a zapisane z HW DEVICES do INPUT a OUTPUT BUFFERS boli nacitane a zapisane. Ako RETURN VALUE METHOD vracia hodnotu TYPE [int] urcujucu ci FLUSHING prebehol uspesne, alebo zlyhal. Interne vola METHOD sync().
+   38. METHOD sgetn() nacitava pozadovany pocet CHARACTERS z INPUT CONTROLLED CHARACTER SEQUENCE a v pripade, ze INPUT CONTROLLED CHARACTER SEQUENCE neobsahuje pozadovany pocet CHARACTERS, tieto su nacitane pomocou METHOD basic_streambuf<TCharacter,TTraits>::uflow() su nacitane z INPUT ASSOCIATED CHARACTER SEQUENCE. CHARACTERS su ukladane do zadaneho ARRAY. METHOD vracia pocet nacitanych CHARACTERS. Interne vola METHOD xsgetn().
+   39. METHOD sputn() zapisuje CHARACTERS do OUTPUT CONTROLLED CHARACTER SEQUENCE volanim METHOD basic_streambuf<TCharacter,TTraits>::sputc(). METHOD vracia pocet zapisanych CHARACTERS. Interne vola METHOD xsputn().
+   40. METHOD snextc() zvysuje hodnotu CURRENT POSITION pre INPUT CONTROLLED CHARACTER SEQUENCE o 1 POSITION a nacita 1 CHARACTER volanim METHOD sbumpc(). Ako RETURN VALUE vracia VALUE nacitaneho CHARACTER, alebo VALUE [TTraits::eof], ak citanie zlyhalo.
+   41. METHOD sbumpc() nacitva 1 CHARACTER z INPUT CONTROLLED CHARACTER SEQUENCE a inkrementuje CURRENT POSITION o 1 POSITION. Ako RETURN VALUE vracia VALUE nacitaneho CHARACTER, alebo VALUE [TTraits::eof], ak citanie zlyhalo.
+   42. METHOD sgetc() nacitva 1 CHARACTER z INPUT CONTROLLED CHARACTER SEQUENCE BEZ INKREMENTACIE CURRENT POSITION. Ako RETURN VALUE vracia VALUE CURRENT POSITION CHARACTER, alebo VALUE [TTraits::eof], ak citanie zlyhalo.
+   43. METHOD sputc() zapisuje 1 CHARACTER do OUTPUT CONTROLLED CHARACTER SEQUENCE a inkrementuje CURRENT POSITION o 1 POSITION. Ako RETURN VALUE vracia VALUE zapisaneho CHARACTER, alebo VALUE [TTraits::eof], ak zapis zlyhal.
+   44. METHOD sputbackc() vrati zadany CHARACTER spat do INPUT CONTROLLED CHARACTER SEQUENCE. Ak zadany CHARACTER sa zhoduje s CHARACTER na 1 POSITION pred CURRENT POSITION, potom METHOD iba dekrementuje CURRENT POSITION. Inak sa vola METHOD pbackfail(). Ako RETURN VALUE METHOD vracia CHARACTER na ktory ukazuje CURRENT POINTER, alebo RETURN VALUE METHOD pbackfail(), ak METHOD sputbackc() zlyhala.
+   45. METHOD sungetc() dekrementuje CURRENT POSITION INPUT CONTROLLED CHARACTER SEQUENCE o 1 POSITION, ak CURRENT POSITION NEUKAZUJE na ZACIATOK INPUT CONTROLLED CHARACTER SEQUENCE. Inak vola METHOD pbackfail(). Ako RETURN VALUE METHOD vracia CHARACTER na ktory ukazuje CURRENT POINTER, alebo RETURN VALUE METHOD pbackfail(), ak METHOD sungetc() zlyhala.
+   46. METHOD in_avail() vracia POCET CHARACTERS v INPUT CONTROLLED CHARACTER SEQUENCE.
+37. Pre STREAM BUFFER INPUT ITERATORS platia nasledujuce fakty.
+   A. Pri iterovani cez ITEMS su data namiesto z COLLECTIONS ITEMS citane zo STREAM BUFFERS.
+   B. INPUT STREAM BUFFER ITERATORS pracuju nad STREAM BUFFERS a pri iterovani citaju data zo STREAM BUFFERS.
+   C. INPUT STREAM BUFFER ITERATORS su implementovane ako instancie CLASS [istreambuf_iterator<TCharacter,TTraits>].
+   D. STREAM BUFFER z ktoreho ma INPUT STREAM BUFFER ITERATOR citat je zadany v CONSTRUCTOR INPUT STREAM BUFFER ITERATOR.
+38. CLASS [istreambuf_iterator<TCharacter,TTraits>] ma nasledujuce MEMBERS.
+   A. CONSTRUCTOR vytvara novu instanciu INPUT STREAM BUFFER ITERATOR. Ako PARAMETER sa zadava INPUT STREAM, alebo STREAM BUFFER nad ktorym ma INPUT STREAM BUFFER ITERATOR pracovat.
+   B. DESTRUCTOR uvolnuje vsetky RESOURCES asociovane s INPUT STREAM BUFFER ITERATOR.
+   C. TYPE [char_type] urcuje CHARACTER TYPE, ktory sa definuje ake typy CHARACTERS sa pouziju pri citani ITEMS z INPUT STREAM BUFFER.
+   D. TYPE [traits_type] urcuje TYPE TRAITS, ktore INPUT STREAM BUFFER ITERATORS pouziva.
+   E. TYPE [int_type] urcuje NUMERIC TYPE ktorym je mozne vyjadrit vsetky CHARACTERS, vratane EOF CHARACTER.
+   F. TYPE [streambuf_type] urcuje TYPE STREAM BUFFER, ktory INPUT STREAM BUFFER ITERATOR pouziva.
+   G. TYPE [istream_type] urcuje TYPE INPUT STREAM, ktory INPUT STREAM BUFFER ITERATOR pouziva.
+   H. TYPE [value_type] obsahuje TYPE [TCharacter].
+   I. TYPE [difference_type] obsahuje TYPE [TTraits::off_type].
+   J. TYPE [pointer] nedefinovany, no spravidla obsahuje TYPE [TCharacter*].
+   K. TYPE [reference] obsahuje TYPE [TCharacter].
+   L. TYPE [iterator_category] urcuje TYPE ITERATOR CATEGORY daneho ITERATOR. Obsahuje TYPE [input_iterator_tag].
+   M. OPERATOR* cita 1 CHARACTER zo STREAM BUFFER. Ak STREAM BUFFER dosiahol END OF STREAM, operacia je UNDEFINED.
+   N. OPERATOR++ inkrementuje hodnotu INPUT STREAM BUFFER ITERATOR. Ak STREAM BUFFER dosiahol END OF STREAM, operacia je UNDEFINED.
+   O. ++OPERATOR inkrementuje hodnotu INPUT STREAM BUFFER ITERATOR. Ak STREAM BUFFER dosiahol END OF STREAM, operacia je UNDEFINED.
+   P. OPERATOR== vracia informaciu ci 2 INPUT STREAM BUFFER ITERATORS su rovne.
+   Q. OPERATOR!= vracia informaciu ci 2 INPUT STREAM BUFFER ITERATORS su rozne.
+   R. METHOD equal() vracia informaciu ci 2 INPUT STREAM BUFFER ITERATORS su obe platne, alebo neplatne.
+39. Pre STREAM BUFFER OUTPUT ITERATORS platia nasledujuce fakty.
+   A. Pri iterovani cez ITEMS su data namiesto do COLLECTIONS ITEMS zapisovane do STREAM BUFFERS.
+   B. OUTPUT STREAM BUFFER ITERATORS pracuju nad STREAM BUFFERS a pri iterovani zapisuju data do STREAM BUFFERS.
+   C. OUTPUT STREAM BUFFER ITERATORS su implementovane ako instancie CLASS [ostreambuf_iterator<TCharacter,TTraits>].
+   D. STREAM BUFFER do ktoreho ma OUTPUT STREAM BUFFER ITERATOR zapisovat je zadany v CONSTRUCTOR OUTPUT STREAM BUFFER ITERATOR.
+40. CLASS [ostreambuf_iterator<TCharacter,TTraits>] ma nasledujuce MEMBERS.
+   A. CONSTRUCTOR vytvara novu instanciu OUTPUT STREAM BUFFER ITERATOR. Ako PARAMETER sa zadava OUTPUT STREAM, alebo STREAM BUFFER nad ktorym ma OUTPUT STREAM BUFFER ITERATOR pracovat.
+   B. DESTRUCTOR uvolnuje vsetky RESOURCES asociovane s OUTPUT STREAM BUFFER ITERATOR.
+   C. TYPE [char_type] urcuje CHARACTER TYPE, ktory sa definuje ake typy CHARACTERS sa pouziju pri zapise ITEMS do OUTPUT STREAM BUFFER.
+   D. TYPE [traits_type] urcuje TYPE TRAITS, ktore OUTPUT STREAM BUFFER ITERATORS pouziva.
+   E. TYPE [streambuf_type] urcuje TYPE STREAM BUFFER, ktory OUTPUT STREAM BUFFER ITERATOR pouziva.
+   F. TYPE [ostream_type] urcuje TYPE OUTPUT STREAM, ktory OUTPUT STREAM BUFFER ITERATOR pouziva.
+   G. TYPE [value_type] obsahuje TYPE [void].
+   H. TYPE [difference_type] obsahuje TYPE [void].
+   I. TYPE [pointer] obsahuje TYPE [void].
+   J. TYPE [reference] obsahuje TYPE [void].
+   K. TYPE [iterator_category] urcuje TYPE ITERATOR CATEGORY daneho ITERATOR. Obsahuje TYPE [output_iterator_tag].
+   L. OPERATOR= zapisuje CHARACTER do STREAM BUFFER.
+   M. OPERATOR* je EMPTY OPERATION.
+   N. OPERATOR++ je EMPTY OPERATION.
+   O. ++OPERATOR je EMPTY OPERATION.
+   P. METHOD failed() vracia TRUE, ak STREAM BUFFER dosiahol END OF STREAM.
+41. C++ IO LIBRARY umoznuje definovat CUSTOM STREAM BUFFERS. Pre CUSTOM STREAM BUFFERS platia nasledujuce fakty.
+   A. Definovanie CUSTOM STREAM BUFFERS umoznuje aplikovat C++ STREAMS na ine DATA STORES ako je napriklad TCP SOCKETS, alebo SERIAL LINKS.
+   B. C++ IO LIBRARY definuje BASE CLASS [basic_streambuf<TCharacter,TTraits>], ktora sluzi ako BASE CLASS pre CUSTOM STREAM BUFFERS.
+42. Pre implementaciu CUSTOM INPUT STREAM BUFFER platia nasledujuce fakty.
+   !!! A. CUSTOM INPUT STREAM BUFFER moze, alebo NEMUSI implementovat interny BUFFERING CHARACTERS. Ak CUSTOM INPUT STREAM BUFFER IMPLEMENTUJE interny BUFFERING, tak MUSI pouzivat 3 POINTERS, ktore definuju rozsah interneho BUFFER v STREAM BUFFER.
+   B. POINTER 'EBACK', ktory vracia PROTECTED METHOD basic_streambuf<TCharacter,TTraits>::eback() urcuje POINTER na PRVY CHARACTER v internom BUFFER daneho BUFFER STREAM.
+   C. POINTER 'GPTR', ktory vracia PROTECTED METHOD basic_streambuf<TCharacter,TTraits>::gptr() urcuje POINTER na CURRENT POSITION CHARACTER v internom BUFFER daneho BUFFER STREAM.
+   D. POINTER 'EGPTR', ktory vracia PROTECTED METHOD basic_streambuf<TCharacter,TTraits>::egptr() urcuje POINTER na 1 POSITION za POSLEDNYM CHARACTER v internom BUFFER daneho BUFFER STREAM.
+   !!! E. Pri pouziti interneho BUFFER, CHARACTERS v POLOOTVORENOM RANGE <EBACK,GPTR) su CHARACTERS, ktore boli nacitane z DATA STORE do interneho STREAM BUFFER, ale este NEBOLI PROGRAMOM vycitane z INPUT STREAM BUFFER.
+   F. METHOD basic_streambuf<TCharacter,TTraits>::sgetc() nacitava 1 CHARACTER z INPUT STREAM BUFFER, BEZ inkrementacie POINTER GPTR. Ak bol cely interny BUFFER daneho STREAM BUFFER uz PROGRAMOM nacitany, METHOD basic_streambuf<TCharacter,TTraits>::sgetc() vola METHOD basic_streambuf<TCharacter,TTraits>::underflow(), ktora nacita CHARACTER z DATA STORE a ulozi ho do INPUT STREAM BUFFER.
+   G. METHOD basic_streambuf<TCharacter,TTraits>::sbumpc() umoznuje nacitat 1 CHARACTER z INPUT STREAM BUFFER a zaroven inkrementuje POINTER GPTR. Ak bol cely interny BUFFER daneho STREAM BUFFER uz PROGRAMOM nacitany, METHOD basic_streambuf<TCharacter,TTraits>::sbumpc() vola METHOD basic_streambuf<TCharacter,TTraits>::uflow(), ktora nacita CHARACTER z DATA STORE a ulozi ho do INPUT STREAM BUFFER.
+   !!! H. METHOD basic_streambuf<TCharacter,TTraits>::sgetn() umoznuje citat viacero CHARACTERS z INPUT STREAM BUFFER. Ak PROGRAM nacital CELY OBSAH interneho BUFFER daneho STREAM BUFFER, METHOD basic_streambuf<TCharacter,TTraits>::sgetn() vola METHOD basic_streambuf<TCharacter,TTraits>::xsgetn(), nacitava zadany pocet CHARACTERS z DATA STORE a uklada ich do INPUT STREAM BUFFER. Standardna implementacia METHOD basic_streambuf<TCharacter,TTraits>::xsgetn() zavola METHOD basic_streambuf<TCharacter,TTraits>::sbumpc() pre pocet CHARACTERS, ktore maju byt nacitane. Implementacia METHOD basic_streambuf<TCharacter,TTraits>::xsgetn() je OPTIONAL, no je vhodna ak DATA STORE umoznuje efektivne citanie viacero CHARACTERS z DATA STORE.
+   !!! I. INPUT STREAM BUFFER NEMUSI implementovat BUFFERING a vsetky CHARACTERS nacitane zo STREAM BUFFERS mozu byt OKAMZITE citane z DATA STORE. Vypnutie BUFFERING pre INPUT STREAM BUFFER sa realizuje tak, ze METHOD basic_streambuf<TCharacter,TTraits>::eback(), METHOD basic_streambuf<TCharacter,TTraits>::gptr() a METHOD basic_streambuf<TCharacter,TTraits>::egptr() vracaju VALUE NULLPTR.
+   J. POINTER 'EBACK' urcuje aj posledny CHARACTER, ktory moze byt VRATENY SPAT do INPUT STREAM BUFFER volanim METHOD basic_streambuf<TCharacter,TTraits>::sputbackc(), alebo METHOD basic_streambuf<TCharacter,TTraits>::sungetc().
+   !!! K. Ak (GPTR==EBACK) a teda do INPUT STREAM BUFFER NIE JE MOZNE vratit spat CHARACTER, METHOD basic_streambuf<TCharacter,TTraits>::sputbackc(), alebo METHOD basic_streambuf<TCharacter,TTraits>::sungetc() volaju METHOD basic_streambuf<TCharacter,TTraits>::pbackfail(), ktora umoznuje tuto situaciu osetrit v zavislosti na implementacii CUSTOM INPUT STREAM BUFFER.
+43. INPUT STREAM BUFFER implementuje citanie CHARACTERS z DATA STORE do interneho BUFFER nasledujucim sposobom.
+   A. CHARACTER sa zo STREAM BUFFER cita volanim METHOD basic_streambuf<TCharacter,TTraits>::sgetc(), alebo METHOD basic_streambuf<TCharacter,TTraits>::sbumpc().
+   !!! B. METHOD basic_streambuf<TCharacter,TTraits>::sbumpc() najprv skontroluje ci plati (GPTR==EGPTR).
+   !!! C. Ak (GPTR!=EGPTR), CHARACTER sa nacita z pozicie (*GPTR) interneho BUFFER a zaroven INKREMENTUJE (GPTR++).
+   !!!!! D. Ak (GPTR==EGPTR), zavola sa METHOD basic_streambuf<TCharacter,TTraits>::uflow(), ktorej ulohou je nacitat aspon 1 CHARACTER zo DATA STORE a ulozit ho do interneho BUFFER daneho STREAM BUFFER.
+   E. Standardna implementacia METHOD basic_streambuf<TCharacter,TTraits>::uflow() vola METHOD basic_streambuf<TCharacter,TTraits>::underflow() na nacitanie 1 CHARACTER z DATA STORE.
+   F. Ulohou CUSTOM INPUT STREAM BUFFER je implementovat METHOD basic_streambuf<TCharacter,TTraits>::underflow() a METHOD basic_streambuf<TCharacter,TTraits>::uflow(), aby nacitali CHARACTER z DATA STORE a ulozili ich do interneho BUFFER daneho STREAM BUFFER.
+   !!!!! G. Ak sa na citanie CHARACTERS zo STREAM BUFFER pouziva METHOD basic_streambuf<TCharacter,TTraits>::sgetn() a plati, ze (GPTR==EGPTR), zavola sa METHOD basic_streambuf<TCharacter,TTraits>::xsgetn(), ktora nacita zadany pocet CHARACTERS z DATA STORE a ulozi ich do interneho BUFFER daneho STREAM BUFFER.
+44. Pre implementaciu CUSTOM OUTPUT STREAM BUFFER platia nasledujuce fakty.
+   !!! A. CUSTOM OUTPUT STREAM BUFFER moze, alebo NEMUSI implementovat interny BUFFERING CHARACTERS. Ak CUSTOM OUTPUT STREAM BUFFER IMPLEMENTUJE interny BUFFERING, tak MUSI pouzivat 3 POINTERS, ktore definuju rozsah interneho BUFFER v STREAM BUFFER.
+   B. POINTER 'PBASE', ktory vracia PROTECTED METHOD basic_streambuf<TCharacter,TTraits>::pbase() urcuje POINTER na PRVY CHARACTER v internom BUFFER daneho BUFFER STREAM.
+   C. POINTER 'PPTR', ktory vracia PROTECTED METHOD basic_streambuf<TCharacter,TTraits>::pptr() urcuje POINTER na CURRENT POSITION CHARACTER v internom BUFFER daneho BUFFER STREAM.
+   D. POINTER 'EPPTR', ktory vracia PROTECTED METHOD basic_streambuf<TCharacter,TTraits>::epptr() urcuje POINTER na 1 POSITION za POSLEDNYM CHARACTER v internom BUFFER daneho BUFFER STREAM.
+   !!! E. Pri pouziti interneho BUFFER, CHARACTERS v POLOOTVORENOM RANGE <PBASE,PPTR) su CHARACTERS, ktore boli zapisane do interneho BUFFER daneho STREAM BUFFER, ale NEBOLI ulozene (FLUSHED) do DATA STORE.
+   F. METHOD basic_streambuf<TCharacter,TTraits>::sputc() zapisuje 1 CHARACTER z OUTPUT STREAM BUFFER do DATA STORE. Ak je interny BUFFER daneho STREAM BUFFER plny, METHOD basic_streambuf<TCharacter,TTraits>::sputc() vola METHOD basic_streambuf<TCharacter,TTraits>::overflow(), ktora zapise CHARACTER z interneho BUFFER daneho STREAM BUFFER do DATA STORE.
+   !!! G. METHOD basic_streambuf<TCharacter,TTraits>::sputn() umoznuje zapisovat viacero CHARACTERS do OUTPUT STREAM BUFFER. Ak je interny BUFFER daneho STREAM BUFFER plny, METHOD basic_streambuf<TCharacter,TTraits>::sputn() zavola METHOD basic_streambuf<TCharacter,TTraits>::xsputn(), ktora zapisuje zadany pocet CHARACTERS do DATA STORE, cim sa uvolnuje priestor v internom BUFFER daneho STREAM BUFFER. Standardna implementacia METHOD basic_streambuf<TCharacter,TTraits>::xsputn() vola METHOD basic_streambuf<TCharacter,TTraits>::sputc() zadany pocet CHARACTERS. Implementacia METHOD basic_streambuf<TCharacter,TTraits>::xsputn() je OPTIONAL, no je vhodna ak DATA STORE umoznuje efektivny zapis viacero CHARACTERS z interneho BUFFER daneho STREAM BUFFER do DATA STORE.
+   !!! H. OUTPUT STREAM BUFFER NEMUSI implementovat BUFFERING a vsetky CHARACTERS zapisane do STREAM BUFFERS mozu byt OKAMZITE zaslane do DATA STORE. Vypnutie BUFFERING pre OUTPUT STREAM BUFFER sa realizuje tak, ze METHOD basic_streambuf<TCharacter,TTraits>::pbase(), METHOD basic_streambuf<TCharacter,TTraits>::pptr() a METHOD basic_streambuf<TCharacter,TTraits>::epptr() vracaju VALUE NULLPTR.
+   !!!!! I. KLUCOVOU METHOD, ktoru CUSTOM OUTPUT STREAM BUFFER musi implementovat je METHOD basic_streambuf<TCharacter,TTraits>::overflow(). METHOD basic_streambuf<TCharacter,TTraits>::overflow() realizuje zapis CHARACTERS z interneho BUFFER daneho STREAM BUFFER do DATA STORE.
+   !!!!! J. Ak DATA STORE umoznuje optimalnejsi zapis pola CHARACTERS, CUSTOM OUTPUT STREAM BUFFER by mal implementovat METHOD basic_streambuf<TCharacter,TTraits>::xsputn(). Tato METHOD je volana METHOD basic_streambuf<TCharacter,TTraits>::sputn(), ak je interny BUFFER v danom STREAM BUFFER uz plny a je nutne vlozit CHARACTERS z interneho BUFFER daneho STREAM BUFFER do DATA STORE.
+45. INPUT STREAM BUFFER implementuje zapisovanie CHARACTERS do STREAM BUFFERS nasledujucim sposobom.
+   A. CHARACTER sa do STREAM BUFFER zapisuje volanim METHOD basic_streambuf<TCharacter,TTraits>::sputc().
+   !!! B. METHOD basic_streambuf<TCharacter,TTraits>::sputc() najprv skontroluje ci plati (PBASE==EPPTR).
+   !!! C. Ak (PBASE!=EPPTR), CHARACTER sa zapise na poziciu (*PPTR) interneho BUFFER a zaroven INKREMENTUJE (PPTR++).
+   !!!!! D. Ak (PBASE==EPPTR), zavola sa METHOD basic_streambuf<TCharacter,TTraits>::overflow(), ktorej ulohou je zapisat aspon 1 CHARACTER z interneho BUFFER do DATA STORE.
+   E. Standardna implementacia METHOD basic_streambuf<TCharacter,TTraits>::overflow() vracia END OF FILE, ktory indikuje, ze do DATA STORE NIE JE MOZNE ZAPISAT DALSIE CHARACTERS.
+   F. Ulohou CUSTOM OUTPUT STREAM BUFFER je implementovat METHOD basic_streambuf<TCharacter,TTraits>::overflow(), aby zapisala CHARACTER interneho BUFFER daneho STREAM BUFFER do DATA STORE.
+   !!!!! G. Ak sa na zapis CHARACTERS do STREAM BUFFER pouziva METHOD basic_streambuf<TCharacter,TTraits>::sputn() a plati, ze (PBASE==EPPTR) zavola sa METHOD basic_streambuf<TCharacter,TTraits>::xsputn(), ktora zapise zadany pocet CHARACTERS z interneho BUFFER daneho STREAM BUFFER do DATA STORE.
+46. Pre CLASS [ios_base] platia nasledujuce fakty.
+   A. CLASS [ios_base] definuje zakladne PROPERTIES STREAMU, ktore su NEZAVISLE na type CHARACTERS a CHARACTER TRAITS nad ktorymi STREAM pracuje.
+   B. CLASS [ios_base] obsahuje STATE INFORMATION o stave STREAMU.
+   C. CLASS [ios_base] obsahuje CONTROL INFORMATION o formatovani dat a pouziti LOCALE v STREAME.
+   D. CLASS [ios_base] obsahuje PRIVATE STORAGE na ulozenie lubovolnych dat TYPE [long] a TYPE [void*].
+   E. CLASS [ios_base] obsahuje CALLBACKS, ktore mozu byt vyvolavane z METHODS CLASS [ios_base].
+   F. CLASS [ios_base] zakladna BASE CLASS pre INPUT OUTPUT STREAM LIBRARY v C++ z ktorej ostatne CLASSES su DERIVED.
+   G. CLASS [ios_base] je definovana v LIBRARY <ios>.
+47. CLASS [ios_base] ma nasledujuce MEMBERS.
+   1. CONSTRUCTOR vytvara instanciu CLASS [ios_base]. CLASS [ios_base] definuje DEFAULT CONSTRUCTOR. COPY CONSTRUCTOR je definovany ako DELETED FUNCTION.
+   2. DESTRUCTOR uvolnuje instanciu CLASS [ios_base]. DESTRUCTOR je definovany ako VIRTUAL DESTRUCTOR.
+   3. MEMBER CLASS [ios_base::Init] sa pouziva na inicializaciu DEFAULT C++ STREAMS. CLASS [ios_base::Init] pocita pocet vytvorenych instancii DEFAULT C++ STREAMS. Pri vytvoreni prvej instancie STREAM inicializuje DEFAULT C++ STREAMS. Pri uvolneni poslednej instancie STREAM robi FLUSH nespracovanych dat DEFAULT C++ STREAMS.
+   4. MEMBER CLASS [ios_base::failure] reprezentuje EXCEPTION OBJECT, ktory je hodeny pri ERROR v INPUT OUTPUT STREAM LIBRARY.
+   5. MEMBER ENUM [ios_base::event] reprezentuje identifikator typu EVENTU, ktory je volany po zaregistrovani USER DEFINED CALLBACK pomocou METHOD ios_base::register_callback().
+   6. TYPEDEF [ios_base::event_callback] reprezentuje TYPE pre USER DEFINED CALLBACK.
+   7. STATIC CONST EXPRESSION [ios_base::app] urcuje, ze pozicia v STREAM sa pred kazdym zapisom presunie na koniec STREAM.
+   8. STATIC CONST EXPRESSION [ios_base::binary] urcuje, ze sa STREAM ma otvorit ako BINARY STREAM.
+   9. STATIC CONST EXPRESSION [ios_base::in] urcuje, ze sa STREAM ma otvorit na citanie.
+   10. STATIC CONST EXPRESSION [ios_base::out] urcuje, ze sa STREAM ma otvorit na zapis.
+   11. STATIC CONST EXPRESSION [ios_base::trunc] urcuje, ze sa obsah STREAM ma pri otvoreni vymazat.
+   12. STATIC CONST EXPRESSION [ios_base::ate] urcuje, ze pozicia v STREAM sa pri otvoreni presunie na koniec STREAMU.
+   13. STATIC CONST EXPRESSION [ios_base::dec] urcuje, ze INTEGER VALUES su reprezentovane ako DECIMAL VALUES.
+   14. STATIC CONST EXPRESSION [ios_base::oct] urcuje, ze INTEGER VALUES su reprezentovane ako OCTET VALUES.
+   15. STATIC CONST EXPRESSION [ios_base::hex] urcuje, ze INTEGER VALUES su reprezentovane ako HEXADECIMAL VALUES.
+   16. STATIC CONST EXPRESSION [ios_base::basefield] obsahuje BIT MASK pre maskovanie VALUES pri nastavovani formatu INTEGER VALUES.
+   17. STATIC CONST EXPRESSION [ios_base::left] urcuje, ze pri PADDINGU sa maju CHARACTERS pridavat zlava.
+   18. STATIC CONST EXPRESSION [ios_base::right] urcuje, ze pri PADDINGU sa maju CHARACTERS pridavat sprava.
+   19. STATIC CONST EXPRESSION [ios_base::internal] urcuje, ze pri PADDINGU sa maju CHARACTERS pridavat na specificku poziciu.
+   20. STATIC CONST EXPRESSION [ios_base::adjustfield] obsahuje BIT MASK pre maskovanie VALUES pri nastavovani formatu PADDINGU.
+   21. STATIC CONST EXPRESSION [ios_base::scientific] urcuje, ze FLOATING POINT VALUES su reprezentovane v SCIENTIFIC formate.
+   22. STATIC CONST EXPRESSION [ios_base::fixed] urcuje, ze FLOATING POINT VALUES su reprezentovane v FIXED formate.
+   23. STATIC CONST EXPRESSION [ios_base::floatfield] obsahuje BIT MASK pre maskovanie VALUES pri nastavovani formatu FLOATING POINT VALUES.
+   24. STATIC CONST EXPRESSION [ios_base::boolalpha] urcuje, ze BOOLEAN VALUES sa budu citat a zapisovat v NUMERIC formate.
+   25. STATIC CONST EXPRESSION [ios_base::showbase] urcuje, ci sa pri citani a zapise NUMERIC VALUES ma pouzivat PREFIX oznacujuci numericku sustavu v ktorej je INTEGER VALUE vyjadrena.
+   26. STATIC CONST EXPRESSION [ios_base::showpoint] urcuje, ci sa pri citani a zapise FLOATING POINT VALUES ma vzdy zapisovat DECIMAL POINT.
+   27. STATIC CONST EXPRESSION [ios_base::showpos] urcuje, ci sa pri citani a zapise KLADNYCH NUMERIC VALUES za zapisovat aj KLADNE ZNAMNIENKO.
+   28. STATIC CONST EXPRESSION [ios_base::skipws] urcuje, ci sa pri citani VALUES zo STREAMU maju ignorovat WHITE SPACES.
+   29. STATIC CONST EXPRESSION [ios_base::unitbuf] urcuje, ci sa po kazdom zapise do STREAMU ma spravit FLUSH.
+   30. STATIC CONST EXPRESSION [ios_base::uppercase] urcuje, ze pri zapise do STREAMU sa maju nahradit LOWERCASE CHARACTERS za UPPERCASE CHARACTERS.
+   31. STATIC CONST EXPRESSION [ios_base::goodbit] indikuje, ze STREAM je v korektnom stave.
+   32. STATIC CONST EXPRESSION [ios_base::badbit] indikuje, ze STREAM sa dostal do NEOPRAVITELNEJ ERROR.
+   33. STATIC CONST EXPRESSION [ios_base::failbit] indikuje, ze INPUT, alebo OUTPUT operacia zlyhala.
+   34. STATIC CONST EXPRESSION [ios_base::eofbit] indikuje, ze pri citani STREAMU sa dosiahol jeho koniec.
+   35. STATIC CONST EXPRESSION [ios_base::beg] urcuje, ze pri SEEK OPERATION sa ma vykonat od ZACIATKU STREAMU.
+   36. STATIC CONST EXPRESSION [ios_base::end] urcuje, ze pri SEEK OPERATION sa ma vykonat od KONCA STREAMU.
+   37. STATIC CONST EXPRESSION [ios_base::cur] urcuje, ze pri SEEK OPERATION sa ma vykonat od AKTUALNEJ POZICIE STREAMU.
+   38. STATIC METHOD xalloc() je THREAD SAFE METHOD vracajuci unikatny INDEX, ktory moze byt pouzity pri pristupe k PRIVATE STORAGE reprezentovany PRIVATE FIELDS TYPE [long] a TYPE [void*]. METHOD xalloc() nealokuje MEMORY. METHOD xalloc() interne inkrementuje PRIVATE STATIC FIELD obsahujuci COUNTER.
+   39. STATIC METHOD sync_with_stdio() nastavuje ci STANDARD C++ STREAMS su synchronizovane so STANDARD C STREAM po vykonani kazdej IO OPERATION.
+   40. METHOD flags() umoznuju citat a nastavovat hodnoty FLAGS daneho STREAMU.
+   41. METHOD setf() nastavuje, alebo odstranuje formatovacie FLAGS.
+   42. METHOD unsetf() odstranuje formatovacie FLAGS.
+   43. METHOD precision() umoznuju citat a nastavovat PRECISION FLOATING POINT citanych a zapisovanych do STREAMU.
+   44. METHOD width() umoznuju citat a nastavovat MINIMUM WIDTH urcujucu minimalnu dlzku VALUES zapisovanych do STREAMU.
+   45. METHOD imbue() nastavuje LOCALE pre STREAM.
+   46. METHOD getloc() cita LOCALE nastaveny pre STREAM.
+   47. METHOD iword() alokuje MEMORY pre PRIVATE STORAGE TYPE [long] a vrati REFERENCE na alokovanu MEMORY. REFERENCE je validna iba do volania dalsej METHOD CLASS [ios_base].
+   48. METHOD pword() alokuje MEMORY pre PRIVATE STORAGE TYPE [void*] a vrati REFERENCE na alokovanu MEMORY. REFERENCE je validna iba do volania dalsej METHOD CLASS [ios_base].
+   !!! 49. METHOD register_callback() zaregistruje USER DEFINED CALLBACKS, ktore su volane ako EVENTS v METHOD ios_base::imbue(), METHOD basic_ios::copyfmt() a DESTRUCTOR CLASS [ios_base].
+48. MEMBER CLASS [ios_base::Init] sa pouziva na inicializaciu DEFAULT C++ STREAMS. CLASS [ios_base::Init] pocita pocet vytvorenych instancii DEFAULT C++ STREAMS. Pri vytvoreni prvej instancie STREAM inicializuje DEFAULT C++ STREAMS. Pri uvolneni poslednej instancie STREAM urobi FLUSH nespracovanych dat do DEFAULT C++ STREAMS. MEMBER CLASS [ios_base::Init] ma nasledujuce MEMBERS.
+   A. CONSTRUCTOR zistuje ci sa vytvorila PRVA instancia STREAM. Ak ano, inicializuje DEFAULT C++ STREAMS.
+   B. DESTRUCTOR zistuje ci sa uvolnila POSLEDNA instancia STREAM. Ak ano, urobi FLUSH nespracovanych dat do DEFAULT C++ STREAMS.
+49. MEMBER CLASS [ios_base::failure] reprezentuje EXCEPTION OBJECT, ktory je hodeny pri ERROR v INPUT OUTPUT STREAM LIBRARY. MEMBER CLASS [ios_base::failure] je DERIVED z CLASS [system_error]. MEMBER CLASS [ios_base::failure] ma nasledujuce MEMBERS.
+   A. CONSTRUCTOR vytvara instanciu CLASS [ios_base::failure] pri nastaveni ERROR STRING a ERROR CODE.
+   B. DESTRUCTOR uvolnuje instanciu CLASS [ios_base::failure]. DESTRUCTOR je VIRTUAL.
+   C. METHOD code() vracia hodnotu TYPE [error_code] reprezentujucu PLAFTORM DEPENDENT ERROR CODE.
+   D. METHOD what() vracia textovu reprezentaciu ERROR.
+50. Pre CLASS [basic_ios<TCharacter,TTraits>] platia nasledujuce fakty.
+   A. CLASS [basic_ios<TCharacter,TTraits>] definuje zakladne PROPERTIES STREAMU, ktore su ZAVISLE na type CHARACTERS a CHARACTER TRAITS nad ktorymi STREAM pracuje.
+   !!!!! B. CLASS [basic_ios<TCharacter,TTraits>] obsahuje STREAM BUFFER. STREAM BUFFER je instancia CLASS DERIVED z CLASS [basic_streambuf<TCharacter,TTraits>], ktora vykonava IO OPERATIONS nad specifikovanym STORE.
+   C. CLASS [basic_ios<TCharacter,TTraits>] poskytuje mechanizmus pre komunikaciu s OBJECTS, ktore implementuju CLASS [basic_streambuf<TCharacter,TTraits>].
+   !!! D. Viacero instancii CLASS [basic_ios<TCharacter,TTraits>] moze referovat na 1 instanciu CLASS [basic_streambuf<TCharacter,TTraits>].
+   E. CLASS [basic_ios<TCharacter,TTraits>] je DERIVED z CLASS [ios_base].
+   F. TEMPLATE PARAMETER 'TCharacter' reprezentuje TYPE CHARACTERS nad ktorymi CLASS [basic_ios<TCharacter,TTraits>] pracuje.
+   G. TEMPLATE PARAMETER 'TTraits' reprezentuje CHARACTERS TRAITS pre dany CHARACTER TYPE. DEFAULT VALUE tohto TEMPLATE PARAMETER je CLASS [char_traits<TCharacter>].
+   H. CLASS [basic_ios<TCharacter,TTraits>] je definovana v LIBRARY <ios>.
+   I. STANDARD LIBRARY definuje TYPEDEF [ios] ako TYPE [basic_ios<char,char_traits<char>>].
+   J. STANDARD LIBRARY definuje TYPEDEF [wios] ako TYPE [basic_ios<wchar_t,char_traits<wchar_t>>].
+51. CLASS [basic_ios<TCharacter,TTraits>] ma nasledujuce MEMBERS.
+   1. CONSTRUCTOR vytvara instanciu CLASS [basic_ios<TCharacter,TTraits>]. CLASS [basic_ios<TCharacter,TTraits>] definuje PROTECTED DEFAULT CONSTRUCTOR a EXPLICIT CONSTRUCTOR s PARAMETER TYPE [basic_streambuf<TCharacter,TTraits>]. COPY CONSTRUCTOR je definovany ako DELETED FUNCTION.
+   2. DESTRUCTOR uvolnuje instanciu CLASS [basic_ios<TCharacter,TTraits>]. DESTRUCTOR je definovany ako VIRTUAL DESTRUCTOR.
+   3. TYPE [char_type] reprezentuje TYPE CHARACTERS nad ktorymi CLASS [basic_ios<TCharacter,TTraits>] pracuje.
+   4. TYPE [traits_type] reprezentuje CHARACTER TRAITS pre CHARACTERS nad ktorymi CLASS [basic_ios<TCharacter,TTraits>] pracuje.
+   5. TYPE [int_type] urcuje NUMERIC TYPE ktorym je mozne vyjadrit vsetky CHARACTERS, vratane EOF CHARACTER.
+   6. TYPE [off_type] urcuje TYPE, ktory sa pouziva na vyjadrenie STREAM OFFSET.
+   7. TYPE [pos_type] urcuje TYPE, ktory sa pouziva na vyjadrenie STREAM POSITION.
+   8. OPERATOR= je definovany ako DELETED FUNCTION.
+   9. OPERATOR! vracia TRUE, ak STREAM je v ERROR STATE. Inak vrati FALSE. STREAM je v ERROR STATE, ak je nastaveny BAD BIT, alebo FAIL BIT.
+   10. OPERATOR BOOL() vracia TRUE, ak STREAM je v korektnom STATE. Inak vrati FALSE. STREAM je korektnom state, ak nie je nastaveny BAD BIT, ani FAIL BIT.
+   11. PROTECTED METHOD init() nastavi asociovany STREAM BUFFER na hodnotu zadaneho PARAMETER a inicializuje INTERNAL STATE CLASS [basic_ios<TCharacter,TTraits>]. METHOD sa vola z CONSTRUCTORS DERIVED CLASSES.
+   12. PROTECTED METHOD move() nahradi interny STATE CLASS [basic_ios<TCharacter,TTraits>] za inu instanciu CLASS [basic_ios<TCharacter,TTraits>] s vynimkou asociovaneho STREAM BUFFER. METHOD je volana z MOVE CONSTRUCTORS DERIVED CLASSES.
+   13. PROTECTED METHOD swap() nahradi interny STATE CLASS [basic_ios<TCharacter,TTraits>] za inu instanciu CLASS [basic_ios<TCharacter,TTraits>] s vynimkou asociovaneho STREAM BUFFER.
+   14. PROTECTED METHOD set_rdbuf() nastavi asociovany STREAM BUFFER za iny STREAM BUFFER bez zmeny hodnoty ERROR STATE. METHOD je volana z MOVE CONSTRUCTORS DERIVED CLASSES.
+   15. METHOD good() vracia TRUE, ak posledna IO OPERATION prebehla uspesne. Inak vracia FALSE.
+   16. METHOD eof() vracia TRUE, ak asociovany STREAM je v EOF STATE a teda STATE ma nastaveny BIT [ios_base::eofbit] na TRUE. Inak vracia FALSE.
+   !!! 17. METHOD fail() vracia TRUE, ak asociovany STREAM je v ERROR STATE a teda STATE ma nastaveny BIT [ios_base::failbit], alebo BIT [ios_base::badbit] na TRUE. Inak vracia FALSE.
+   18. METHOD bad() vracia TRUE, ak asociovany STREAM je vo FATAL ERROR STATE a teda STATE ma nastaveny BIT [ios_base::badbit] na TRUE. Inak vracia FALSE.
+   19. METHOD rdstate() vracia hodnoty STATE BITS aktualneho STREAMU.
+   20. METHOD setstate() nastavuje hodnoty STATE BITS aktualneho STREAMU.
+   21. METHOD clear() modifikuje hodnoty STATE BITS aktualneho STREAMU.
+   22. METHOD copyfmt() vykonava nasledujuce kroky. Zavola USER CALLBACKS zaregistrovane METHOD ios_base::register_callback() pricom ako 1. PARAMETER sa zada VALUE [erase_event]. Nasledne kopiruje MEMBER OBJECTS z ineho OBJECT s vynimkou STATE BITS, asociovaneho STREAM BUFFER a EXCEPTION MASK. Nasledne zavola USER CALLBACKS zaregistrovane METHOD ios_base::register_callback() pricom ako 1. PARAMETER sa zada VALUE [copyfmt_event]. Nakoniec nakopiruje EXCEPTION MASK z ineho OBJECT.
+   23. METHOD fill() vracia aktualny FILL CHARACTER. OVERLOADED VERSION nastavuje novy FILL CHARACTER a vracia ako RETURN VALUE povodny FILL CHARACTER.
+   24. METHOD exceptions() vracia aktualnu EXCEPTION MASK. OVERLOADED VERSION nastavuje novu EXCEPTION MASK a vracia ako RETURN VALUE povodnu EXCEPTION MASK.
+   25. METHOD imbue() nastavuje LOCALE pre instanciu OBJECT a nastavi LOCALE na asociovanom STREAM BUFFER.
+   !!! 26. METHOD rdbuf() vracia STREAM BUFFER asociovany so STREAM. OVERLOADED VERSION nastavuje novy STREAM BUFFER, pricom ERROR STATE je vymazany volanim METHOD clear(). METHOD ako RETURN VALUE vracia povodny STREAM BUFFER.
+   27. METHOD tie() vracia asociovany TIED STREAM. TIED STREAM je OUTPUT STREAM, ktory je synchronizovany so STREAM BUFFER. OVERLOADED VERSION nastavuje novy TIED STREAM a ako RETURN VALUE vracia povodny TIED STREAM.
+   28. METHOD narrow() konvertuje LOCALE SPECIFIC CHARACTER na jeho standardny ekvivalent. Ak konverziu nie je mozne vykonat, ako RETRUN VALUE sa vracia 2. PARAMETER METHOD.
+   29. METHOD widen() konvertuje standardny ekvivalent CHARACTER na jeho LOCALE SPECIFIC VCERSION.
+52. Pre CLASS [basic_istream<TCharacter,TTraits>] platia nasledujuce fakty.
+   A. CLASS [basic_istream<TCharacter,TTraits>] definuje zakladne INPUT OPERATIONS, ktore je mozne vykonavat nad STREAMS.
+   B. CLASS [basic_istream<TCharacter,TTraits>] implementuje INPUT OPERATIONS nad CHARACTER SEQUENCES. CLASS podporuje vykonavanie FORMATTED aj UNFORMATTED INPUT OPERATIONS.
+   C. CLASS [basic_istream<TCharacter,TTraits>] je VIRTUALLY DERIVED z CLASS [basic_ios<TCharacter,TTraits>].
+   D. TEMPLATE PARAMETER 'TCharacter' reprezentuje TYPE CHARACTERS nad ktorymi CLASS [basic_istream<TCharacter,TTraits>] pracuje.
+   E. TEMPLATE PARAMETER 'TTraits' reprezentuje CHARACTERS TRAITS pre dany CHARACTER TYPE. DEFAULT VALUE tohto TEMPLATE PARAMETER je CLASS [char_traits<TCharacter>].
+   F. CLASS [basic_istream<TCharacter,TTraits>] je definovana v LIBRARY <istream>.
+   G. STANDARD LIBRARY definuje TYPEDEF [istream] ako TYPE [basic_istream<char,char_traits<char>>].
+   H. STANDARD LIBRARY definuje TYPEDEF [wistream] ako TYPE [basic_istream<wchar_t,char_traits<wchar_t>>].
+53. CLASS [basic_istream<TCharacter,TTraits>] ma nasledujuce MEMBERS.
+   A. CONSTRUCTOR vytvara instanciu CLASS [basic_istream<TCharacter,TTraits>]. CLASS [basic_streambuf<TCharacter,TTraits>] definuje CONSTRUCTOR s PARAMETER TYPE [basic_streambuf<TCharacter,TTraits>] a PROTECTED COPY CONSTRUCTOR, ktory je DELETED a PROTECTED MOVE CONSTRUCTOR.
+   B. DESTRUCTOR uvolnuje instanciu CLASS [basic_istream<TCharacter,TTraits>]. DESTRUCTOR je definovany ako VIRTUAL DESTRUCTOR. DESTUCTOR NEVYKONAVA ZIADNE OPERATIONS nad UNDERLYING STREAM BUFFERS. To je ulohou DERIVED CLASSES.
+   C. INNER CLASS [basic_istream<TCharacter,TTraits>::sentry] sluzi na vykonanie CUSTOM OPERATIONS pocas volania KAZDEJ MEMBER FUNCTION CLASS [basic_istream<TCharacter,TTraits>]. Instancia INNER CLASS [basic_istream<TCharacter,TTraits>::sentry] pri KAZDOM VOLANI MEMBER FUNCTION CLASS [basic_istream<TCharacter,TTraits>]. CONSTRUCTOR pripravi INPUT STREAM na vykonanie INPUT OPERATION. Sucastou CONSTRUCTOR je kontrola stavu STREAM, vykonanie TIE OPERATIONS, odstranenie WHITE SPACES a vsetkych dalsich CUSTOM OPERATIONS. V DESTRUCTOR, ktory je volany po vykonani INPUT OPERATION sa vykonava BUFFER CUSTOM CLEANUP uvolnujuci alokovane RESOURCES. Kedze instancia INNER CLASS [basic_istream<TCharacter,TTraits>::sentry] je vytvarana lokalne, DESTRUCTOR je volany aj pri vzniku EXCEPTION.
+   D. TYPE [char_type] reprezentuje TYPE CHARACTERS nad ktorymi CLASS [basic_istream<TCharacter,TTraits>] pracuje.
+   E. TYPE [traits_type] reprezentuje CHARACTER TRAITS pre CHARACTERS nad ktorymi CLASS [basic_istream<TCharacter,TTraits>] pracuje.
+   F. TYPE [int_type] urcuje NUMERIC TYPE ktorym je mozne vyjadrit vsetky CHARACTERS, vratane EOF CHARACTER.
+   G. TYPE [off_type] urcuje TYPE, ktory sa pouziva na vyjadrenie STREAM OFFSET.
+   H. TYPE [pos_type] urcuje TYPE, ktory sa pouziva na vyjadrenie STREAM POSITION.
+   I. OPERATOR= kopiruje obsah instancie CLASS [basic_istream<TCharacter,TTraits>]. CLASS [basic_istream<TCharacter,TTraits>] definuje PROTECTED DELETED COPY OPERATOR= a PROTECTED MOVE OPERATOR=.
+   J. OPERATOR>> cita FORMATTED DATA zo STREAM. CLASS [basic_istream<TCharacter,TTraits>] definuje OPERATOR>> pre vsetky PRIMITIVE TYPES, CONST VOID POINTER, CLASS [basic_streambuf<TCharacter,TTraits>] a MANIPULATORS.
+   K. GLOBAL OPERATOR<< cita FORMATTED DATA zo STREAM.
+   L. METHOD get() cita CHARACTER, alebo CHARACTERS ako UNFORMATTED DATA z INPUT STREAM. Ak STREAM dosiahol koniec, vracia EOF CHARACTER. OVERLOADED VERSIONS umoznuju speficikovat pocet CHARACTERS, ktore maju byt nacitane ako aj DELIMITER CHARACTER, ktory urcuje kedy sa ma citanie ukoncit. DELIMITER CHARACTER NIE JE ULOZENY do BUFFER, a ani NIE JE NACITANY zo STREAM.
+   M. METHOD peek() cita CHARACTER ako UNFORMATTED DATA z INPUT STREAM bez toho, aby doslo k inkrementacii INPUT STREAM POSITION. Nacitany CHARACTER ostava v INPUT STREAM a je nacitany pri dalsej INPUT OPERATION.
+   !!! N. METHOD unget() vracia CHARACTER nacitany ako UNFORMATTED DATA z INPUT STREAM spat do INPUT STREAM dekementaciu INPUT STREAM POSITION.
+   !!! O. METHOD putback() vracia zadany CHARACTER ako UNFORMATTED DATA do INPUT STREAM.
+   P. METHOD getline() cita CHARACTERS ako UNFORMATTED DATA z INPUT STREAM az po vyskyt DELIMITER CHARACTER, alebo dosiahnutie zadaneho poctu CHARACTERS. DELIMITER CHARACTER NIE JE ULOZENY do BUFFER, ale JE NACITANY zo STREAM.
+   Q. METHOD ignore() cita CHARACTERS ako UNFORMATTED DATA z INPUT STREAM az po vyskyt zadaneho DELIMITER CHARACTER, alebo dosiahnutie zadaneho poctu CHARACTERS. CHARACTERS su ingorovane a teda NIE SU ukladane do BUFFER.
+   R. METHOD read() cita zadany pocet CHARACTERS ako UNFORMATTED DATA z INPUT STREAM.
+   !!! S. METHOD readsome() cita zadany pocet CHARACTERS ako UNFORMATTED DATA z BUFFER nad INPUT STREAM bez toho, aby data boli realne docitavane z ASSOCIATED DATA STORE. METHOD readsome() je mozne pouzit pri citani CHARACTERS z DEVICES ako je KEYBOARD, kedy sa nacitaju iba tie CHARACTERS, ktore boli vlozene pricom sa NECAKA na vlozenie dalsich co by v pripade KEYBOARD znamenalo blokovanie citania az kym USER nazada dalsie CHARACTERS.
+   !!! T. METHOD gcount() vracia pocet CHARACTERS, ktore boli nacitane z INPUT STREAM pri POSLEDNEJ UNFORMATTED INPUT OPERATION.
+   U. METHOD tellp() vracia poziciu v INPUT STREAM.
+   V. METHOD seekp() nastavuje poziciu v INPUT STREAM.
+   W. METHOD flush() synchronizuje INPUT STREAM s ASSOCIATED DATA STORE.
+   X. METHOD swap() vymiena obsah vsetky DATA MEMBERS CLASS [basic_istream<TCharacter,TTraits>].
+54. CLASS [basic_istream<TCharacter,TTraits>::sentry] sa pouziva na pripravu INPUT STREAM na vykonanie INPUT OPERATION a uvolnenie RESOURCES po jej vykonani. Ma nasledujuce MEMBERS.
+   A. CONSTRUCTOR vytvara instanciu CLASS [basic_istream<TCharacter,TTraits>::sentry]. CONSTRUCTOR pripravi INPUT STREAM na vykonanie INPUT OPERATION.
+   B. DESTRUCTOR uvolnuje instanciu CLASS [basic_istream<TCharacter,TTraits>::sentry]. DESTRUCTOR uvolni alokovane RESOURCES, eventualne vykona FLUSH INPUT STREAM.
+   C. OPERATOR= je definovany ako DELETED FUNCTION.
+   D. OPERATOR BOOL() vracia informaciu ci priprava INPUT OPERATION bola uspesna.
+55. Pre CLASS [basic_ostream<TCharacter,TTraits>] platia nasledujuce fakty.
+   A. CLASS [basic_ostream<TCharacter,TTraits>] definuje zakladne OUTPUT OPERATIONS, ktore je mozne vykonavat nad STREAMS.
+   B. CLASS [basic_ostream<TCharacter,TTraits>] implementuje OUTPUT OPERATIONS nad CHARACTER SEQUENCES. CLASS podporuje vykonavanie FORMATTED aj UNFORMATTED OUTPUT OPERATIONS.
+   C. CLASS [basic_ostream<TCharacter,TTraits>] je VIRTUALLY DERIVED z CLASS [basic_ios<TCharacter,TTraits>].
+   D. TEMPLATE PARAMETER 'TCharacter' reprezentuje TYPE CHARACTERS nad ktorymi CLASS [basic_ostream<TCharacter,TTraits>] pracuje.
+   E. TEMPLATE PARAMETER 'TTraits' reprezentuje CHARACTERS TRAITS pre dany CHARACTER TYPE. DEFAULT VALUE tohto TEMPLATE PARAMETER je CLASS [char_traits<TCharacter>].
+   F. CLASS [basic_ostream<TCharacter,TTraits>] je definovana v LIBRARY <ostream>.
+   G. STANDARD LIBRARY definuje TYPEDEF [ostream] ako TYPE [basic_ostream<char,char_traits<char>>].
+   H. STANDARD LIBRARY definuje TYPEDEF [wostream] ako TYPE [basic_ostream<wchar_t,char_traits<wchar_t>>].
+56. CLASS [basic_ostream<TCharacter,TTraits>] ma nasledujuce MEMBERS.
+   A. CONSTRUCTOR vytvara instanciu CLASS [basic_ostream<TCharacter,TTraits>]. CLASS [basic_streambuf<TCharacter,TTraits>] definuje CONSTRUCTOR s PARAMETER TYPE [basic_streambuf<TCharacter,TTraits>] a PROTECTED COPY CONSTRUCTOR, ktory je DELETED a PROTECTED MOVE CONSTRUCTOR.
+   B. DESTRUCTOR uvolnuje instanciu CLASS [basic_ostream<TCharacter,TTraits>]. DESTRUCTOR je definovany ako VIRTUAL DESTRUCTOR. DESTUCTOR NEVYKONAVA ZIADNE OPERATIONS nad UNDERLYING STREAM BUFFERS. To je ulohou DERIVED CLASSES.
+   C. INNER CLASS [basic_ostream<TCharacter,TTraits>::sentry] sluzi na vykonanie CUSTOM OPERATIONS pocas volania KAZDEJ MEMBER FUNCTION CLASS [basic_ostream<TCharacter,TTraits>]. Instancia INNER CLASS [basic_ostream<TCharacter,TTraits>::sentry] pri KAZDOM VOLANI MEMBER FUNCTION CLASS [basic_ostream<TCharacter,TTraits>]. CONSTRUCTOR pripravi OUTPUT STREAM na vykonanie OUTPUT OPERATION. Sucastou CONSTRUCTOR je kontrola stavu STREAM, vykonanie TIE OPERATIONS a vsetkych dalsich CUSTOM OPERATIONS. V DESTRUCTOR, ktory je volany po vykonani OUTPUT OPERATION sa vykonava BUFFER FLUSH a CUSTOM CLEANUP uvolnujuci alokovane RESOURCES. Kedze instancia INNER CLASS [basic_ostream<TCharacter,TTraits>::sentry] je vytvarana lokalne, DESTRUCTOR je volany aj pri vzniku EXCEPTION.
+   D. TYPE [char_type] reprezentuje TYPE CHARACTERS nad ktorymi CLASS [basic_ostream<TCharacter,TTraits>] pracuje.
+   E. TYPE [traits_type] reprezentuje CHARACTER TRAITS pre CHARACTERS nad ktorymi CLASS [basic_ostream<TCharacter,TTraits>] pracuje.
+   F. TYPE [int_type] urcuje NUMERIC TYPE ktorym je mozne vyjadrit vsetky CHARACTERS, vratane EOF CHARACTER.
+   G. TYPE [off_type] urcuje TYPE, ktory sa pouziva na vyjadrenie STREAM OFFSET.
+   H. TYPE [pos_type] urcuje TYPE, ktory sa pouziva na vyjadrenie STREAM POSITION.
+   I. OPERATOR= kopiruje obsah instancie CLASS [basic_ostream<TCharacter,TTraits>]. CLASS [basic_ostream<TCharacter,TTraits>] definuje PROTECTED DELETED COPY OPERATOR= a PROTECTED MOVE OPERATOR=.
+   J. OPERATOR<< zapisuje FORMATTED DATA do STREAM. CLASS [basic_ostream<TCharacter,TTraits>] definuje OPERATOR<< pre vsetky PRIMITIVE TYPES, CONST VOID POINTER, CLASS [basic_streambuf<TCharacter,TTraits>] a MANIPULATORS.
+   K. GLOBAL OPERATOR<< cita FORMATTED DATA zo STREAM.
+   L. METHOD put() vklada CHARACTER ako UNFORMATTED DATA do OUTPUT STREAM.
+   M. METHOD write() vklada CHARACTERS ako UNFORMATTED DATA do OUTPUT STREAM.
+   N. METHOD tellp() vracia poziciu v OUTPUT STREAM.
+   O. METHOD seekp() nastavuje poziciu v OUTPUT STREAM.
+   P. METHOD flush() zapisuje CHARACTERS z OUTPUT STREAM, ktore este neboli zapisane do ASSOCIATED DATA STORE.
+   Q. METHOD swap() vymiena obsah vsetky DATA MEMBERS CLASS [basic_ostream<TCharacter,TTraits>].
+57. CLASS [basic_ostream<TCharacter,TTraits>::sentry] sa pouziva na pripravu OUTPUT STREAM na vykonanie OUTPUT OPERATION a uvolnenie RESOURCES po jej vykonani. Ma nasledujuce MEMBERS.
+   A. CONSTRUCTOR vytvara instanciu CLASS [basic_ostream<TCharacter,TTraits>::sentry]. CONSTRUCTOR pripravi OUTPUT STREAM na vykonanie OUTPUT OPERATION.
+   B. DESTRUCTOR uvolnuje instanciu CLASS [basic_ostream<TCharacter,TTraits>::sentry]. DESTRUCTOR uvolni alokovane RESOURCES, eventualne vykona FLUSH OUTPUT STREAM.
+   C. OPERATOR= je definovany ako DELETED FUNCTION.
+   D. OPERATOR BOOL() vracia informaciu ci priprava OUTPUT OPERATION bola uspesna.
+58. Pre CLASS [basic_iostream<TCharacter,TTraits>] platia nasledujuce fakty.
+   A. CLASS [basic_iostream<TCharacter,TTraits>] definuje zakladne INPUT OPERATIONS a OUTPUT OPERATIONS, ktore je mozne vykonavat nad STREAMS.
+   B. CLASS [basic_iostream<TCharacter,TTraits>] implementuje INPUT OPERATIONS a OUTPUT OPERATIONS nad CHARACTER SEQUENCES. CLASS podporuje vykonavanie FORMATTED aj UNFORMATTED INPUT OPERATIONS a OUTPUT OPERATIONS.
+   C. CLASS [basic_iostream<TCharacter,TTraits>] je VIRTUALLY DERIVED z CLASS [basic_istream<TCharacter,TTraits>] a CLASS [basic_ostream<TCharacter,TTraits>].
+   D. TEMPLATE PARAMETER 'TCharacter' reprezentuje TYPE CHARACTERS nad ktorymi CLASS [basic_iostream<TCharacter,TTraits>] pracuje.
+   E. TEMPLATE PARAMETER 'TTraits' reprezentuje CHARACTERS TRAITS pre dany CHARACTER TYPE. DEFAULT VALUE tohto TEMPLATE PARAMETER je CLASS [char_traits<TCharacter>].
+   F. CLASS [basic_iostream<TCharacter,TTraits>] je definovana v LIBRARY <istream>.
+   G. STANDARD LIBRARY definuje TYPEDEF [iostream] ako TYPE [basic_iostream<char,char_traits<char>>].
+   H. STANDARD LIBRARY definuje TYPEDEF [wiostream] ako TYPE [basic_iostream<wchar_t,char_traits<wchar_t>>].
+59. CLASS [basic_iostream<TCharacter,TTraits>] ma nasledujuce MEMBERS.
+   A. CONSTRUCTOR vytvara instanciu CLASS [basic_iostream<TCharacter,TTraits>]. CLASS [basic_streambuf<TCharacter,TTraits>] definuje CONSTRUCTOR s PARAMETER TYPE [basic_streambuf<TCharacter,TTraits>] a PROTECTED COPY CONSTRUCTOR, ktory je DELETED a PROTECTED MOVE CONSTRUCTOR.
+   B. DESTRUCTOR uvolnuje instanciu CLASS [basic_istream<TCharacter,TTraits>]. DESTRUCTOR je definovany ako VIRTUAL DESTRUCTOR. DESTUCTOR NEVYKONAVA ZIADNE OPERATIONS nad UNDERLYING STREAM BUFFERS. To je ulohou DERIVED CLASSES.
+   C. OPERATOR= kopiruje obsah instancie CLASS [basic_iostream<TCharacter,TTraits>]. CLASS [basic_iostream<TCharacter,TTraits>] definuje PROTECTED DELETED COPY OPERATOR= a PROTECTED MOVE OPERATOR=.
+   D. METHOD swap() vymiena obsah vsetky DATA MEMBERS CLASS [basic_iostream<TCharacter,TTraits>].
+60. Pre CLASS [basic_stringbuf<TCharacter,TTraits,TAllocator>] platia nasledujuce fakty.
+   A. CLASS [basic_stringbuf<TCharacter,TTraits,TAllocator>] je definovana v LIBRARY <sstream>.
+   B. TEMPLATE PARAMETER 'TCharacter' reprezentuje TYPE CHARACTERS nad ktorymi CLASS [basic_stringbuf<TCharacter,TTraits,TAllocator>] pracuje.
+   C. TEMPLATE PARAMETER 'TTraits' reprezentuje CHARACTERS TRAITS pre dany CHARACTER TYPE. DEFAULT VALUE tohto TEMPLATE PARAMETER je CLASS [char_traits<TCharacter>].
+   D. TEMPLATE PARAMETER 'TAllocator' reprezentuje ALLOCATOR pouzivany CLASS [basic_stringbuf<TCharacter,TTraits,TAllocator>]. DEFAULT VALUE tohto TEMPLATE PARAMETER je CLASS [allocator<TCharacter>].
+   E. CLASS [basic_stringbuf<TCharacter,TTraits,TAllocator>] je DERIVED z CLASS [basic_streambuf<TCharacter,TTraits>].
+   !!! F. CLASS [basic_stringbuf<TCharacter,TTraits,TAllocator>] implementuje STREAM BUFFER nad STRING, ktory je ulozeny v MEMORY. Interne CLASS [basic_stringbuf<TCharacter,TTraits>] obsahuje instanciu CLASS [basic_string<TCharacter,TTraits,TAllocator>] nad ktorym STREAM BUFFER pracuje. Instancia CLASS [basic_stringbuf<TCharacter,TTraits,TAllocator>] zaroven obsahuje aj STATE DATA urcujuce STATE STREAMU.
+   G. STANDARD LIBRARY definuje TYPEDEF [stringbuf] ako TYPE [basic_stringbuf<char,char_traits<char>,allocator<char>>].
+   H. STANDARD LIBRARY definuje TYPEDEF [wstringbuf] ako TYPE [basic_stringbuf<wchar_t,char_traits<wchar_t>,allocator<wchar_t>>].
+61. Pre CLASS [basic_stringbuf<TCharacter,TTraits,TAllocator>] platia nasledujuce fakty.
+   A. CONSTRUCTOR vytvara instanciu CLASS [basic_stringbuf<TCharacter,TTraits,TAllocator>]. CLASS [basic_stringbuf<TCharacter,TTraits,TAllocator>] definuje DELETED COPY CONSTRUCTOR a MOVE CONSTRUCTOR ako aj CONSTRUCTOR umoznujuci specifikovat STRING, z ktoreho sa ma STRING BUFFER pri inicializacii naplnit.
+   B. DESTRUCTOR uvolnuje instanciu CLASS [basic_stringbuf<TCharacter,TTraits,TAllocator>]. DESTRUCTOR je definovany ako VIRTUAL DESTRUCTOR.
+   C. TYPE [char_type] reprezentuje TYPE CHARACTERS nad ktorymi CLASS [basic_stringbuf<TCharacter,TTraits,TAllocator>] pracuje.
+   D. TYPE [traits_type] reprezentuje CHARACTER TRAITS pre CHARACTERS nad ktorymi CLASS [basic_stringbuf<TCharacter,TTraits,TAllocator>] pracuje.
+   E. TYPE [int_type] urcuje NUMERIC TYPE ktorym je mozne vyjadrit vsetky CHARACTERS, vratane EOF CHARACTER.
+   F. TYPE [off_type] urcuje TYPE, ktory sa pouziva na vyjadrenie STREAM OFFSET.
+   G. TYPE [pos_type] urcuje TYPE, ktory sa pouziva na vyjadrenie STREAM POSITION.
+   H. TYPE [allocator_type] urcuje ALLOCATOR TYPE, pouzivany CLASS [basic_stringbuf<TCharacter,TTraits,TAllocator>].
+   I. OPERATOR= vykonava kopiu instancie CLASS [basic_stringbuf<TCharacter,TTraits,TAllocator>]. CLASS [basic_stringbuf<TCharacter,TTraits,TAllocator>] definuje DELETED COPY OPERATOR= a MOVE OPERATOR=.
+   J. VIRTUAL PROTECTED METHOD underflow() zabezpecuje nacitanie 1 CHARACTER z INPUT ASSOCIATED CHARACTER SEQUENCE. To znaci, ze nacita 1 CHARACTER zo STRING BUFFER, ktory vrati ako RETURN VALUE. Ak nacitane ZLYHALO, vracia VALUE [TTraits::eof].
+   K. VIRTUAL PROTECTED METHOD pbackfail() vracia zadany CHARACTER spat do INPUT CONTROLLED CHARACTER SEQUENCE. METHOD zaroven moze modifikovat obsah INPUT ASSOCIATED CHARACTER SEQUENCE.
+   L. VIRTUAL PROTECTED METHOD overflow() zabezpecuje zapisanie 1 CHARACTER z OUTPUT ASSOCIATED CHARACTER SEQUENCE. To znaci, ze zapise 1 CHARACTER do HW DEVICE. V pripade uspechu METHOD vracia VALUE, ktore NIE JE ROVNA VALUE [TTraits::eof]. Ak zapis ZLYHAL, vracia VALUE [TTraits::eof].
+   M. VIRTUAL PROTECTED METHOD setbuf() nahradza interny BUFFER pouzivany STREAM BUFFER za CUSTOM BUFFER.
+   N. VIRTUAL PROTECTED METHOD seekoff() nastavuje CURRENT RELATIVE POSITION daneho STREAM BUFFER POSITION INDICATOR. METHOD umoznuje nastavit ci sa ma menit POSITION v STREAM pre INPUT, OUTPUT, alebo BOTH SEQUENCES.
+   O. VIRTUAL PROTECTED METHOD seekpos() nastavuje CURRENT ABSOLUTE POSITION daneho STREAM BUFFER POSITION INDICATOR. METHOD umoznuje nastavit ci sa ma menit POSITION v STREAM pre INPUT, OUTPUT, alebo BOTH SEQUENCES.
+   P. METHOD swap() vymiena obsah dvoch instancii CLASS [basic_stringbuf<TCharacter,TTraits,TAllocator>].
+   Q. METHOD str() vracia a nastavuje STRING, ktory reprezentuje interny BUFFER CLASS [basic_stringbuf<TCharacter,TTraits,TAllocator>].
+   R. FUNCTION swap() vymiena obsah dvoch instancii CLASS [basic_stringbuf<TCharacter,TTraits,TAllocator>].
+62. Pre CLASS [basic_istringstream<TCharacter,TTraits,TAllocator>] platia nasledujuce fakty.
+   A. CLASS [basic_istringstream<TCharacter,TTraits,TAllocator>] je definovana v LIBRARY <sstream>.
+   B. TEMPLATE PARAMETER 'TCharacter' reprezentuje TYPE CHARACTERS nad ktorymi CLASS [basic_istringstream<TCharacter,TTraits,TAllocator>] pracuje.
+   C. TEMPLATE PARAMETER 'TTraits' reprezentuje CHARACTERS TRAITS pre dany CHARACTER TYPE. DEFAULT VALUE tohto TEMPLATE PARAMETER je CLASS [char_traits<TCharacter>].
+   D. TEMPLATE PARAMETER 'TAllocator' reprezentuje ALLOCATOR pouzivany CLASS [basic_istringstream<TCharacter,TTraits,TAllocator>]. DEFAULT VALUE tohto TEMPLATE PARAMETER je CLASS [allocator<TCharacter>].
+   E. CLASS [basic_istringstream<TCharacter,TTraits,TAllocator>] je DERIVED z CLASS [basic_istream<TCharacter,TTraits>].
+   F. CLASS [basic_istringstream<TCharacter,TTraits,TAllocator>] implementuje INPUT OPERATIONS nad CHARACTER SEQUENCES v STRING BUFFER. CLASS podporuje vykonavanie FORMATTED aj UNFORMATTED INPUT OPERATIONS.
+   !!!!! G. CLASS [basic_istringstream<TCharacter,TTraits,TAllocator>] obaluje instanciu CLASS [basic_stringbuf<TCharacter,TTraits,TAllocator>] a poskytuje nad nou HIGH LEVEL INTERFACE definovany CLASS [basic_istream<TCharacter,TTraits>].
+   H. STANDARD LIBRARY definuje TYPEDEF [istringstream] ako TYPE [basic_istringstream<char,char_traits<char>,allocator<char>>].
+   I. STANDARD LIBRARY definuje TYPEDEF [wistringstream] ako TYPE [basic_istringstream<wchar_t,char_traits<wchar_t>,allocator<wchar_t>>].
+63. Pre CLASS [basic_istringstream<TCharacter,TTraits,TAllocator>] platia nasledujuce fakty.
+   A. CONSTRUCTOR vytvara instanciu CLASS [basic_istringstream<TCharacter,TTraits,TAllocator>]. CLASS [basic_istringstream<TCharacter,TTraits,TAllocator>] definuje MOVE CONSTRUCTOR ako aj CONSTRUCTOR umoznujuci specifikovat STRING, z ktoreho sa ma STRING BUFFER pri inicializacii naplnit.
+   B. TYPE [char_type] reprezentuje TYPE CHARACTERS nad ktorymi CLASS [basic_istringstream<TCharacter,TTraits,TAllocator>] pracuje.
+   C. TYPE [traits_type] reprezentuje CHARACTER TRAITS pre CHARACTERS nad ktorymi CLASS [basic_istringstream<TCharacter,TTraits,TAllocator>] pracuje.
+   D. TYPE [int_type] urcuje NUMERIC TYPE ktorym je mozne vyjadrit vsetky CHARACTERS, vratane EOF CHARACTER.
+   E. TYPE [off_type] urcuje TYPE, ktory sa pouziva na vyjadrenie STREAM OFFSET.
+   F. TYPE [pos_type] urcuje TYPE, ktory sa pouziva na vyjadrenie STREAM POSITION.
+   G. TYPE [allocator_type] urcuje ALLOCATOR TYPE, pouzivany CLASS [basic_istringstream<TCharacter,TTraits,TAllocator>].
+   H. OPERATOR= vykonava kopiu instancie CLASS [basic_istringstream<TCharacter,TTraits,TAllocator>]. CLASS [basic_istringstream<TCharacter,TTraits,TAllocator>] definuje MOVE OPERATOR=.
+   I. METHOD swap() vymiena obsah dvoch instancii CLASS [basic_istringstream<TCharacter,TTraits,TAllocator>].
+   J. METHOD rdbuf() vracia POINTER na interny BUFFER reprezentovatny CLASS [basic_stringbuf<TCharacter,TTraits,TAllocator>].
+   K. METHOD str() vracia a nastavuje STRING, ktory reprezentuje interny BUFFER CLASS [basic_istringstream<TCharacter,TTraits,TAllocator>].
+   L. FUNCTION swap() vymiena obsah dvoch instancii CLASS [basic_istringstream<TCharacter,TTraits,TAllocator>].
+64. Pre CLASS [basic_ostringstream<TCharacter,TTraits,TAllocator>] platia nasledujuce fakty.
+   A. CLASS [basic_ostringstream<TCharacter,TTraits,TAllocator>] je definovana v LIBRARY <sstream>.
+   B. TEMPLATE PARAMETER 'TCharacter' reprezentuje TYPE CHARACTERS nad ktorymi CLASS [basic_ostringstream<TCharacter,TTraits,TAllocator>] pracuje.
+   C. TEMPLATE PARAMETER 'TTraits' reprezentuje CHARACTERS TRAITS pre dany CHARACTER TYPE. DEFAULT VALUE tohto TEMPLATE PARAMETER je CLASS [char_traits<TCharacter>].
+   D. TEMPLATE PARAMETER 'TAllocator' reprezentuje ALLOCATOR pouzivany CLASS [basic_ostringstream<TCharacter,TTraits,TAllocator>]. DEFAULT VALUE tohto TEMPLATE PARAMETER je CLASS [allocator<TCharacter>].
+   E. CLASS [basic_ostringstream<TCharacter,TTraits,TAllocator>] je DERIVED z CLASS [basic_ostream<TCharacter,TTraits>].
+   F. CLASS [basic_ostringstream<TCharacter,TTraits,TAllocator>] implementuje OUTPUT OPERATIONS nad CHARACTER SEQUENCES v STRING BUFFER. CLASS podporuje vykonavanie FORMATTED aj UNFORMATTED INPUT OPERATIONS.
+   !!!!! G. CLASS [basic_ostringstream<TCharacter,TTraits,TAllocator>] obaluje instanciu CLASS [basic_stringbuf<TCharacter,TTraits,TAllocator>] a poskytuje nad nou HIGH LEVEL INTERFACE definovany CLASS [basic_ostream<TCharacter,TTraits>].
+   H. STANDARD LIBRARY definuje TYPEDEF [ostringstream] ako TYPE [basic_ostringstream<char,char_traits<char>,allocator<char>>].
+   I. STANDARD LIBRARY definuje TYPEDEF [wostringstream] ako TYPE [basic_ostringstream<wchar_t,char_traits<wchar_t>,allocator<wchar_t>>].
+65. Pre CLASS [basic_ostringstream<TCharacter,TTraits,TAllocator>] platia nasledujuce fakty.
+   A. CONSTRUCTOR vytvara instanciu CLASS [basic_ostringstream<TCharacter,TTraits,TAllocator>]. CLASS [basic_ostringstream<TCharacter,TTraits,TAllocator>] definuje MOVE CONSTRUCTOR ako aj CONSTRUCTOR umoznujuci specifikovat STRING, z ktoreho sa ma STRING BUFFER pri inicializacii naplnit.
+   B. TYPE [char_type] reprezentuje TYPE CHARACTERS nad ktorymi CLASS [basic_ostringstream<TCharacter,TTraits,TAllocator>] pracuje.
+   C. TYPE [traits_type] reprezentuje CHARACTER TRAITS pre CHARACTERS nad ktorymi CLASS [basic_ostringstream<TCharacter,TTraits,TAllocator>] pracuje.
+   D. TYPE [int_type] urcuje NUMERIC TYPE ktorym je mozne vyjadrit vsetky CHARACTERS, vratane EOF CHARACTER.
+   E. TYPE [off_type] urcuje TYPE, ktory sa pouziva na vyjadrenie STREAM OFFSET.
+   F. TYPE [pos_type] urcuje TYPE, ktory sa pouziva na vyjadrenie STREAM POSITION.
+   G. TYPE [allocator_type] urcuje ALLOCATOR TYPE, pouzivany CLASS [basic_ostringstream<TCharacter,TTraits,TAllocator>].
+   H. OPERATOR= vykonava kopiu instancie CLASS [basic_ostringstream<TCharacter,TTraits,TAllocator>]. CLASS [basic_ostringstream<TCharacter,TTraits,TAllocator>] definuje MOVE OPERATOR=.
+   I. METHOD swap() vymiena obsah dvoch instancii CLASS [basic_ostringstream<TCharacter,TTraits,TAllocator>].
+   J. METHOD rdbuf() vracia POINTER na interny BUFFER reprezentovatny CLASS [basic_stringbuf<TCharacter,TTraits,TAllocator>].
+   K. METHOD str() vracia a nastavuje STRING, ktory reprezentuje interny BUFFER CLASS [basic_ostringstream<TCharacter,TTraits,TAllocator>].
+   L. FUNCTION swap() vymiena obsah dvoch instancii CLASS [basic_ostringstream<TCharacter,TTraits,TAllocator>].
+66. Pre CLASS [basic_stringstream<TCharacter,TTraits,TAllocator>] platia nasledujuce fakty.
+   A. CLASS [basic_stringstream<TCharacter,TTraits,TAllocator>] je definovana v LIBRARY <sstream>.
+   B. TEMPLATE PARAMETER 'TCharacter' reprezentuje TYPE CHARACTERS nad ktorymi CLASS [basic_stringstream<TCharacter,TTraits,TAllocator>] pracuje.
+   C. TEMPLATE PARAMETER 'TTraits' reprezentuje CHARACTERS TRAITS pre dany CHARACTER TYPE. DEFAULT VALUE tohto TEMPLATE PARAMETER je CLASS [char_traits<TCharacter>].
+   D. TEMPLATE PARAMETER 'TAllocator' reprezentuje ALLOCATOR pouzivany CLASS [basic_stringstream<TCharacter,TTraits,TAllocator>]. DEFAULT VALUE tohto TEMPLATE PARAMETER je CLASS [allocator<TCharacter>].
+   E. CLASS [basic_stringstream<TCharacter,TTraits,TAllocator>] je DERIVED z CLASS [basic_iostream<TCharacter,TTraits>].
+   F. CLASS [basic_stringstream<TCharacter,TTraits,TAllocator>] implementuje INPUT OPERATIONS a OUTPUT OPERATIONS nad CHARACTER SEQUENCES v STRING BUFFER. CLASS podporuje vykonavanie FORMATTED aj UNFORMATTED INPUT OPERATIONS a OUTPUT OPERATIONS.
+   !!!!! G. CLASS [basic_stringstream<TCharacter,TTraits,TAllocator>] obaluje instanciu CLASS [basic_stringbuf<TCharacter,TTraits,TAllocator>] a poskytuje nad nou HIGH LEVEL INTERFACE definovany CLASS [basic_iostream<TCharacter,TTraits>].
+   H. STANDARD LIBRARY definuje TYPEDEF [stringstream] ako TYPE [basic_stringstream<char,char_traits<char>,allocator<char>>].
+   I. STANDARD LIBRARY definuje TYPEDEF [wstringstream] ako TYPE [basic_stringstream<wchar_t,char_traits<wchar_t>,allocator<wchar_t>>].
+67. Pre CLASS [basic_stringstream<TCharacter,TTraits,TAllocator>] platia nasledujuce fakty.
+   A. CONSTRUCTOR vytvara instanciu CLASS [basic_stringstream<TCharacter,TTraits,TAllocator>]. CLASS [basic_stringstream<TCharacter,TTraits,TAllocator>] definuje MOVE CONSTRUCTOR ako aj CONSTRUCTOR umoznujuci specifikovat STRING, z ktoreho sa ma STRING BUFFER pri inicializacii naplnit.
+   B. TYPE [char_type] reprezentuje TYPE CHARACTERS nad ktorymi CLASS [basic_stringstream<TCharacter,TTraits,TAllocator>] pracuje.
+   C. TYPE [traits_type] reprezentuje CHARACTER TRAITS pre CHARACTERS nad ktorymi CLASS [basic_stringstream<TCharacter,TTraits,TAllocator>] pracuje.
+   D. TYPE [int_type] urcuje NUMERIC TYPE ktorym je mozne vyjadrit vsetky CHARACTERS, vratane EOF CHARACTER.
+   E. TYPE [off_type] urcuje TYPE, ktory sa pouziva na vyjadrenie STREAM OFFSET.
+   F. TYPE [pos_type] urcuje TYPE, ktory sa pouziva na vyjadrenie STREAM POSITION.
+   G. TYPE [allocator_type] urcuje ALLOCATOR TYPE, pouzivany CLASS [basic_stringstream<TCharacter,TTraits,TAllocator>].
+   H. OPERATOR= vykonava kopiu instancie CLASS [basic_stringstream<TCharacter,TTraits,TAllocator>]. CLASS [basic_stringstream<TCharacter,TTraits,TAllocator>] definuje MOVE OPERATOR=.
+   I. METHOD swap() vymiena obsah dvoch instancii CLASS [basic_stringstream<TCharacter,TTraits,TAllocator>].
+   J. METHOD rdbuf() vracia POINTER na interny BUFFER reprezentovatny CLASS [basic_stringbuf<TCharacter,TTraits,TAllocator>].
+   K. METHOD str() vracia a nastavuje STRING, ktory reprezentuje interny BUFFER CLASS [basic_stringstream<TCharacter,TTraits,TAllocator>].
+   L. FUNCTION swap() vymiena obsah dvoch instancii CLASS [basic_stringstream<TCharacter,TTraits,TAllocator>].
+68. Pre CLASS [basic_filebuf<TCharacter,TTraits>] platia nasledujuce fakty.
+   A. CLASS [basic_filebuf<TCharacter,TTraits>] je definovana v LIBRARY <fstream>.
+   B. TEMPLATE PARAMETER 'TCharacter' reprezentuje TYPE CHARACTERS nad ktorymi CLASS [basic_filebuf<TCharacter,TTraits>] pracuje.
+   C. TEMPLATE PARAMETER 'TTraits' reprezentuje CHARACTERS TRAITS pre dany CHARACTER TYPE. DEFAULT VALUE tohto TEMPLATE PARAMETER je CLASS [char_traits<TCharacter>].
+   D. CLASS [basic_filebuf<TCharacter,TTraits>] je DERIVED z CLASS [basic_streambuf<TCharacter,TTraits>].
+   !!! E. CLASS [basic_filebuf<TCharacter,TTraits>] implementuje STREAM BUFFER nad FILE, ktory je ulozeny vo FILE SYSTEM.
+   !!!!! F. CLASS [basic_filebuf<TCharacter,TTraits>] NEUMOZNUJE automaticke prepinanie medzi READ a WRITE OPERATIONS. Pred zmenou medzi READ a WRITE OPERATIONS je VZDY nutne vykonat SEEK OPERATION na nastavenie spravnej pozicie vo FILE STREAM.
+   G. STANDARD LIBRARY definuje TYPEDEF [filebuf] ako TYPE [basic_filebuf<char,char_traits<char>>].
+   H. STANDARD LIBRARY definuje TYPEDEF [wfilebuf] ako TYPE [basic_filebuf<wchar_t,char_traits<wchar_t>>].
+69. Pre CLASS [basic_filebuf<TCharacter,TTraits>] platia nasledujuce fakty.
+   A. CONSTRUCTOR vytvara instanciu CLASS [basic_filebuf<TCharacter,TTraits>]. CLASS [basic_filebuf<TCharacter,TTraits>] definuje DEFAULT CONSTRUCTOR, DELETED COPY CONSTRUCTOR a MOVE CONSTRUCTOR.
+   !!! B. DESTRUCTOR uzatvara otvoreny FILE volanim METHOD close() a zaroven uvolnuje instanciu CLASS [basic_filebuf<TCharacter,TTraits>]. V pripade, ze METHOD close() hodi EXCEPTION, EXCEPTION je ignorovana. DESTRUCTOR je definovany ako VIRTUAL DESTRUCTOR.
+   C. TYPE [char_type] reprezentuje TYPE CHARACTERS nad ktorymi CLASS [basic_filebuf<TCharacter,TTraits>] pracuje.
+   D. TYPE [traits_type] reprezentuje CHARACTER TRAITS pre CHARACTERS nad ktorymi CLASS [basic_filebuf<TCharacter,TTraits>] pracuje.
+   E. TYPE [int_type] urcuje NUMERIC TYPE ktorym je mozne vyjadrit vsetky CHARACTERS, vratane EOF CHARACTER.
+   F. TYPE [off_type] urcuje TYPE, ktory sa pouziva na vyjadrenie STREAM OFFSET.
+   G. TYPE [pos_type] urcuje TYPE, ktory sa pouziva na vyjadrenie STREAM POSITION.
+   H. OPERATOR= vykonava kopiu instancie CLASS [basic_filebuf<TCharacter,TTraits>]. CLASS [basic_filebuf<TCharacter,TTraits>] definuje DELETED COPY OPERATOR= a MOVE OPERATOR=.
+   I. VIRTUAL PROTECTED METHOD showmanyc() vracia ODHADOVANY POCET CHARACTERS, ktore sa nachadzaju v INPUT ASSOCIATED CHARACTER SEQUENCE.
+   J. VIRTUAL PROTECTED METHOD underflow() zabezpecuje nacitanie 1 CHARACTER z INPUT ASSOCIATED CHARACTER SEQUENCE. To znaci, ze nacita 1 CHARACTER z HW DEVICE, ktory vrati ako RETURN VALUE. Ak nacitane ZLYHALO, vracia VALUE [TTraits::eof].
+   K. VIRTUAL PROTECTED METHOD uflow() zabezpecuje nacitanie 1 CHARACTER z INPUT ASSOCIATED CHARACTER SEQUENCE a zaroven posuva poziciu STREAM BUFFER POSITION INDICATOR. To znaci, ze nacita 1 CHARACTER z HW DEVICE, ktory vrati ako RETURN VALUE, pricom posuva poziciu STREAM BUFFER POSITION INDICATOR. Ak nacitane ZLYHALO, vracia VALUE [TTraits::eof].
+   L. VIRTUAL PROTECTED METHOD pbackfail() vracia zadany CHARACTER spat do INPUT CONTROLLED CHARACTER SEQUENCE. METHOD zaroven moze modifikovat obsah INPUT ASSOCIATED CHARACTER SEQUENCE.
+   M. VIRTUAL PROTECTED METHOD overflow() zabezpecuje zapisanie 1 CHARACTER z OUTPUT ASSOCIATED CHARACTER SEQUENCE. To znaci, ze zapise 1 CHARACTER do HW DEVICE. V pripade uspechu METHOD vracia VALUE, ktore NIE JE ROVNA VALUE [TTraits::eof]. Ak zapis ZLYHAL, vracia VALUE [TTraits::eof].
+   N. VIRTUAL PROTECTED METHOD setbuf() nahradza interny BUFFER pouzivany STREAM BUFFER za CUSTOM BUFFER.
+   O. VIRTUAL PROTECTED METHOD seekoff() nastavuje CURRENT RELATIVE POSITION daneho STREAM BUFFER POSITION INDICATOR. METHOD umoznuje nastavit ci sa ma menit POSITION v STREAM pre INPUT, OUTPUT, alebo BOTH SEQUENCES.
+   P. VIRTUAL PROTECTED METHOD seekpos() nastavuje CURRENT ABSOLUTE POSITION daneho STREAM BUFFER POSITION INDICATOR. METHOD umoznuje nastavit ci sa ma menit POSITION v STREAM pre INPUT, OUTPUT, alebo BOTH SEQUENCES.
+   Q. VIRTUAL PROTECTED METHOD sync() synchronizuje obsah CONTROLLED CHARACTER SEQUENCES s ASSOCIATED CHARACTER SEQUENCES. Inak povedane vykona FLUSH INPUT a OUTPUT BUFFERS, tak aby vsetky IO OPERATIONS, ktore nad nimi mali byt vykonane data, ktore mali byt nacitane a zapisane z HW DEVICES do INPUT a OUTPUT BUFFERS boli nacitane a zapisane. Ako RETURN VALUE METHOD vracia hodnotu TYPE [int] urcujucu ci FLUSHING prebehol uspesne, alebo zlyhal.
+   R. VIRTUAL PROTECTED METHOD imbue() nastavuje LOCALE pre STREAM BUFFER.
+   S. METHOD swap() vymiena obsah dvoch instancii CLASS [basic_filebuf<TCharacter,TTraits>].
+   T. METHOD open() otvara zadany FILE. METHOD umoznuje specifikovat ci FILE bude otvoreny na READ, WRITE, alebo READ a WRITE.
+   U. METHOD close() vykona FLUSH BUFFERS a nasledne uzatvara FILE.
+   V. METHOD is_open() vracia informaciu o tom ci FILE je otvoreny, alebo nie.
+   W. FUNCTION swap() vymiena obsah dvoch instancii CLASS [basic_filebuf<TCharacter,TTraits>].
+70. Pre CLASS [basic_ifstream<TCharacter,TTraits>] platia nasledujuce fakty.
+   A. CLASS [basic_ifstream<TCharacter,TTraits>] je definovana v LIBRARY <fstream>.
+   B. TEMPLATE PARAMETER 'TCharacter' reprezentuje TYPE CHARACTERS nad ktorymi CLASS [basic_ifstream<TCharacter,TTraits>] pracuje.
+   C. TEMPLATE PARAMETER 'TTraits' reprezentuje CHARACTERS TRAITS pre dany CHARACTER TYPE. DEFAULT VALUE tohto TEMPLATE PARAMETER je CLASS [char_traits<TCharacter>].
+   D. CLASS [basic_ifstream<TCharacter,TTraits>] je DERIVED z CLASS [basic_istream<TCharacter,TTraits>].
+   E. CLASS [basic_ifstream<TCharacter,TTraits>] implementuje INPUT OPERATIONS nad CHARACTER SEQUENCES vo FILE. CLASS podporuje vykonavanie FORMATTED aj UNFORMATTED INPUT OPERATIONS.
+   !!!!! F. CLASS [basic_ifstream<TCharacter,TTraits>] obaluje instanciu CLASS [basic_filebuf<TCharacter,TTraits>] a poskytuje nad nou HIGH LEVEL INTERFACE definovany CLASS [basic_istream<TCharacter,TTraits>].
+   G. STANDARD LIBRARY definuje TYPEDEF [ifstream] ako TYPE [basic_ifstream<char,char_traits<char>>].
+   H. STANDARD LIBRARY definuje TYPEDEF [wifstream] ako TYPE [basic_ifstream<wchar_t,char_traits<wchar_t>>].
+71. Pre CLASS [basic_ifstream<TCharacter,TTraits>] platia nasledujuce fakty.
+   A. CONSTRUCTOR vytvara instanciu CLASS [basic_ifstream<TCharacter,TTraits>]. CLASS [basic_ifstream<TCharacter,TTraits>] definuje DELETED COPY CONSTRUCTOR, MOVE CONSTRUCTOR ako aj CONSTRUCTOR specifikujuci PATH k FILE na ktorym ma CLASS [basic_ifstream<TCharacter,TTraits>] pracovat. CONSTRUCTOR AUTOMATICKY otvara FILE, a preto je nutne hned skontrolovat ci FILE bol skutocne otvoreny.
+   !!! B. DESTRUCTOR uzatvara otvoreny FILE a zaroven uvolnuje instanciu CLASS [basic_ifstream<TCharacter,TTraits>].
+   C. TYPE [char_type] reprezentuje TYPE CHARACTERS nad ktorymi CLASS [basic_ifstream<TCharacter,TTraits>] pracuje.
+   D. TYPE [traits_type] reprezentuje CHARACTER TRAITS pre CHARACTERS nad ktorymi CLASS [basic_ifstream<TCharacter,TTraits>] pracuje.
+   E. TYPE [int_type] urcuje NUMERIC TYPE ktorym je mozne vyjadrit vsetky CHARACTERS, vratane EOF CHARACTER.
+   F. TYPE [off_type] urcuje TYPE, ktory sa pouziva na vyjadrenie STREAM OFFSET.
+   G. TYPE [pos_type] urcuje TYPE, ktory sa pouziva na vyjadrenie STREAM POSITION.
+   H. OPERATOR= vykonava kopiu instancie CLASS [basic_ifstream<TCharacter,TTraits>]. CLASS [basic_ifstream<TCharacter,TTraits>] definuje MOVE OPERATOR=.
+   I. METHOD swap() vymiena obsah dvoch instancii CLASS [basic_ifstream<TCharacter,TTraits>].
+   J. METHOD rdbuf() vracia POINTER na interny BUFFER reprezentovatny CLASS [basic_filebuf<TCharacter,TTraits>].
+   K. METHOD open() otvara zadany FILE. METHOD umoznuje specifikovat ci FILE bude otvoreny na READ, WRITE, alebo READ a WRITE.
+   L. METHOD close() vykona FLUSH BUFFERS a nasledne uzatvara FILE.
+   M. METHOD is_open() vracia informaciu o tom ci FILE je otvoreny, alebo nie.
+   N. FUNCTION swap() vymiena obsah dvoch instancii CLASS [basic_ifstream<TCharacter,TTraits>].
+72. Pre CLASS [basic_ofstream<TCharacter,TTraits>] platia nasledujuce fakty.
+   A. CLASS [basic_ofstream<TCharacter,TTraits>] je definovana v LIBRARY <fstream>.
+   B. TEMPLATE PARAMETER 'TCharacter' reprezentuje TYPE CHARACTERS nad ktorymi CLASS [basic_ofstream<TCharacter,TTraits>] pracuje.
+   C. TEMPLATE PARAMETER 'TTraits' reprezentuje CHARACTERS TRAITS pre dany CHARACTER TYPE. DEFAULT VALUE tohto TEMPLATE PARAMETER je CLASS [char_traits<TCharacter>].
+   D. CLASS [basic_ofstream<TCharacter,TTraits>] je DERIVED z CLASS [basic_ostream<TCharacter,TTraits>].
+   E. CLASS [basic_ofstream<TCharacter,TTraits>] implementuje OUTPUT OPERATIONS nad CHARACTER SEQUENCES vo FILE. CLASS podporuje vykonavanie FORMATTED aj UNFORMATTED OUTPUT OPERATIONS.
+   !!!!! F. CLASS [basic_ofstream<TCharacter,TTraits>] obaluje instanciu CLASS [basic_filebuf<TCharacter,TTraits>] a poskytuje nad nou HIGH LEVEL INTERFACE definovany CLASS [basic_ostream<TCharacter,TTraits>].
+   G. STANDARD LIBRARY definuje TYPEDEF [ofstream] ako TYPE [basic_ofstream<char,char_traits<char>>].
+   H. STANDARD LIBRARY definuje TYPEDEF [wofstream] ako TYPE [basic_ofstream<wchar_t,char_traits<wchar_t>>].
+73. Pre CLASS [basic_ofstream<TCharacter,TTraits>] platia nasledujuce fakty.
+   A. CONSTRUCTOR vytvara instanciu CLASS [basic_ofstream<TCharacter,TTraits>]. CLASS [basic_ofstream<TCharacter,TTraits>] definuje DELETED COPY CONSTRUCTOR, MOVE CONSTRUCTOR ako aj CONSTRUCTOR specifikujuci PATH k FILE na ktorym ma CLASS [basic_ofstream<TCharacter,TTraits>] pracovat. CONSTRUCTOR AUTOMATICKY otvara FILE, a preto je nutne hned skontrolovat ci FILE bol skutocne otvoreny.
+   !!! B. DESTRUCTOR uzatvara otvoreny FILE a zaroven uvolnuje instanciu CLASS [basic_ofstream<TCharacter,TTraits>].
+   C. TYPE [char_type] reprezentuje TYPE CHARACTERS nad ktorymi CLASS [basic_ofstream<TCharacter,TTraits>] pracuje.
+   D. TYPE [traits_type] reprezentuje CHARACTER TRAITS pre CHARACTERS nad ktorymi CLASS [basic_ofstream<TCharacter,TTraits>] pracuje.
+   E. TYPE [int_type] urcuje NUMERIC TYPE ktorym je mozne vyjadrit vsetky CHARACTERS, vratane EOF CHARACTER.
+   F. TYPE [off_type] urcuje TYPE, ktory sa pouziva na vyjadrenie STREAM OFFSET.
+   G. TYPE [pos_type] urcuje TYPE, ktory sa pouziva na vyjadrenie STREAM POSITION.
+   H. OPERATOR= vykonava kopiu instancie CLASS [basic_ofstream<TCharacter,TTraits>]. CLASS [basic_ofstream<TCharacter,TTraits>] definuje MOVE OPERATOR=.
+   I. METHOD swap() vymiena obsah dvoch instancii CLASS [basic_ofstream<TCharacter,TTraits>].
+   J. METHOD rdbuf() vracia POINTER na interny BUFFER reprezentovatny CLASS [basic_filebuf<TCharacter,TTraits>].
+   K. METHOD open() otvara zadany FILE. METHOD umoznuje specifikovat ci FILE bude otvoreny na READ, WRITE, alebo READ a WRITE.
+   L. METHOD close() vykona FLUSH BUFFERS a nasledne uzatvara FILE.
+   M. METHOD is_open() vracia informaciu o tom ci FILE je otvoreny, alebo nie.
+   N. FUNCTION swap() vymiena obsah dvoch instancii CLASS [basic_ofstream<TCharacter,TTraits>].
+74. Pre CLASS [basic_fstream<TCharacter,TTraits>] platia nasledujuce fakty.
+   A. CLASS [basic_fstream<TCharacter,TTraits>] je definovana v LIBRARY <fstream>.
+   B. TEMPLATE PARAMETER 'TCharacter' reprezentuje TYPE CHARACTERS nad ktorymi CLASS [basic_fstream<TCharacter,TTraits>] pracuje.
+   C. TEMPLATE PARAMETER 'TTraits' reprezentuje CHARACTERS TRAITS pre dany CHARACTER TYPE. DEFAULT VALUE tohto TEMPLATE PARAMETER je CLASS [char_traits<TCharacter>].
+   D. CLASS [basic_fstream<TCharacter,TTraits>] je DERIVED z CLASS [basic_iostream<TCharacter,TTraits>].
+   E. CLASS [basic_fstream<TCharacter,TTraits>] implementuje INPUT OPERATIONS a OUTPUT OPERATIONS nad CHARACTER SEQUENCES vo FILE. CLASS podporuje vykonavanie FORMATTED aj UNFORMATTED INPUT OPERATIONS a OUTPUT OPERATIONS.
+   !!!!! F. CLASS [basic_fstream<TCharacter,TTraits>] obaluje instanciu CLASS [basic_filebuf<TCharacter,TTraits>] a poskytuje nad nou HIGH LEVEL INTERFACE definovany CLASS [basic_iostream<TCharacter,TTraits>].
+   !!!!! G. METHOD basic_fstream<TCharacter,TTraits>::tellg() a METHOD basic_fstream<TCharacter,TTraits>::tellp() VZDY vo FILE STREAMS TAKMER VZDY vracia TU ISTU POSITION. Jedinou vynimkou je ked READ STREAM dosiahne END OF FILE, kedy METHOD METHOD basic_fstream<TCharacter,TTraits>::tellg() vracia VALUE -1, zatial co METHOD METHOD basic_fstream<TCharacter,TTraits>::tellp() vracia POINTER za POSLEDNY CHARACTER.
+   G. STANDARD LIBRARY definuje TYPEDEF [fstream] ako TYPE [basic_fstream<char,char_traits<char>>].
+   H. STANDARD LIBRARY definuje TYPEDEF [wfstream] ako TYPE [basic_fstream<wchar_t,char_traits<wchar_t>>].
+75. Pre CLASS [basic_fstream<TCharacter,TTraits>] platia nasledujuce fakty.
+   A. CONSTRUCTOR vytvara instanciu CLASS [basic_fstream<TCharacter,TTraits>]. CLASS [basic_fstream<TCharacter,TTraits>] definuje DELETED COPY CONSTRUCTOR, MOVE CONSTRUCTOR ako aj CONSTRUCTOR specifikujuci PATH k FILE na ktorym ma CLASS [basic_fstream<TCharacter,TTraits>] pracovat. CONSTRUCTOR AUTOMATICKY otvara FILE, a preto je nutne hned skontrolovat ci FILE bol skutocne otvoreny.
+   !!! B. DESTRUCTOR uzatvara otvoreny FILE a zaroven uvolnuje instanciu CLASS [basic_fstream<TCharacter,TTraits>].
+   C. TYPE [char_type] reprezentuje TYPE CHARACTERS nad ktorymi CLASS [basic_fstream<TCharacter,TTraits>] pracuje.
+   D. TYPE [traits_type] reprezentuje CHARACTER TRAITS pre CHARACTERS nad ktorymi CLASS [basic_fstream<TCharacter,TTraits>] pracuje.
+   E. TYPE [int_type] urcuje NUMERIC TYPE ktorym je mozne vyjadrit vsetky CHARACTERS, vratane EOF CHARACTER.
+   F. TYPE [off_type] urcuje TYPE, ktory sa pouziva na vyjadrenie STREAM OFFSET.
+   G. TYPE [pos_type] urcuje TYPE, ktory sa pouziva na vyjadrenie STREAM POSITION.
+   H. OPERATOR= vykonava kopiu instancie CLASS [basic_fstream<TCharacter,TTraits>]. CLASS [basic_fstream<TCharacter,TTraits>] definuje MOVE OPERATOR=.
+   I. METHOD swap() vymiena obsah dvoch instancii CLASS [basic_fstream<TCharacter,TTraits>].
+   J. METHOD rdbuf() vracia POINTER na interny BUFFER reprezentovatny CLASS [basic_filebuf<TCharacter,TTraits>].
+   K. METHOD open() otvara zadany FILE. METHOD umoznuje specifikovat ci FILE bude otvoreny na READ, WRITE, alebo READ a WRITE.
+   L. METHOD close() vykona FLUSH BUFFERS a nasledne uzatvara FILE.
+   M. METHOD is_open() vracia informaciu o tom ci FILE je otvoreny, alebo nie.
+   N. FUNCTION swap() vymiena obsah dvoch instancii CLASS [basic_fstream<TCharacter,TTraits>].
+76. FUNCTION iostream_category() vracia REFERENCE na CLASS [error_category], ktora reprezentuje ERROR CATEGORY pre IO ERRORS.
+77. ENUM [io_errc] definuje ERROR CODES pre IO ERRORS. Obsahuje jedinu VALUE [stream].
+78. TYPEDEF [streamoff] reprezentuje INTEGER TYPE pouzivany na reprezentovanie OFFSETS v IO STREAMS. TYPE musi mat dostatocnu velkost, aby nim bolo mozne vyjadrit maximalnu dlzku FILE, ktoru dany OS podporuje.
+79. TYPEDEF [streamsize] reprezentuje INTEGER TYPE pouzivany na reprezentovanie maximalneho poctu BYTES, ktory moze byt pocas IO OPERATION preneseny.
+80. Pre CLASS [fpos<State>] platia nasledujuce fakty.
+   A. CLASS [fpos<State>] je definovana v LIBRARY <ios>.
+   B. TEMPLATE PARAMETER 'TCharacter' reprezentuje TYPE SHIFT STATE, ktory sa pouziva pri konverziach medzi BYTE a MULTIBYTE CHARACTERS.
+   C. CLASS [fpos<State>] reprezentuje ABSOLUTE POSITION v STREAM.
+   D. STANDARD LIBRARY definuje TYPEDEF [streampos] ako TYPE [fpos<char_traits<char>::state_type>].
+   E. STANDARD LIBRARY definuje TYPEDEF [wstreampos] ako TYPE [fpos<char_traits<wchar_t>::state_type>].
+   F. STANDARD LIBRARY definuje TYPEDEF [u16streampos] ako TYPE [fpos<char_traits<char16_t>::state_type>].
+   G. STANDARD LIBRARY definuje TYPEDEF [u32streampos] ako TYPE [fpos<char_traits<char32_t>::state_type>].
+81. Pre CLASS [fpos<State>] platia nasledujuce fakty.
+   A. CONSTRUCTOR vytvara instanciu CLASS [fpos<State>]. CLASS [fpos<State>] definuje COSTRUCTOR s PARAMETER [int] a CONSTRUCTOR s PARAMETER [streamoff].
+   B. OPERATOR streamoff() konvertuje hodnotu ABSOLUTE POSITION v STREAM na VALUE TYPE [streamoff].
+   C. OPERATOR== porovnava ci dvojica instancii CLASS [fpos<State>] je ROVNA.
+   D. OPERATOR!= porovnava ci dvojica instancii CLASS [fpos<State>] je ROZNA.
+   E. OPERATOR+ SCITAVA hodnotu ABSOLUTE POSITION v STREAM a VALUE TYPE [streamoff].
+   F. OPERATOR- ODCITAVA od hodnoty ABSOLUTE POSITION v STREAM VALUE TYPE [streamoff]. OVERLOADED VERSION odcitava dve hodnoty ABSOLUTE POSITION v STREAM vyjadrene instanciami CLASS [fpos<State>].
+   G. OPERATOR+= SCITAVA hodnotu ABSOLUTE POSITION v STREAM a VALUE TYPE [streamoff].
+   H. OPERATOR-= ODCITAVA od hodnoty ABSOLUTE POSITION v STREAM VALUE TYPE [streamoff].
+   I. METHOD state() vracia a nastavuje hodnotu SHIFT STATE pre ABSOLUTE POSITION v STREAM. SHIFT STATE sa pouziva pri konverziach medzi BYTE a MULTIBYTE CHARACTERS.
+82. C++ IO LIBRARY definuje skupinu FUNCTIONS, ktore funguju ako MANIPULATORS. MANIPULATORS su HELPER FUNCTIONS, ktore sluzia na formatovanie a riadenie INPUT OPERATIONS a OUTPUT OPERATIONS pomocou OPERATOR<< a OPERATOR>>.
+83. C++ IO LIBRARY definuje nasledujuce MANIPULATORS.
+   1. MANIPULATOR [boolalpha] definovany v LIBRARY <ios> zapina konverziu BOOLEAN VALUES na STRING VALUES.
+   2. MANIPULATOR [noboolalpha] definovany v LIBRARY <ios> vypina konverziu BOOLEAN VALUES na STRING VALUES.
+   3. MANIPULATOR [showbase] definovany v LIBRARY <ios> zapina vkladanie NUMERIC BASES do STREAMS pri praci s NUMERIC VALUES.
+   4. MANIPULATOR [noshowbase] definovany v LIBRARY <ios> vypina vkladanie NUMERIC BASES do STREAMS pri praci s NUMERIC VALUES.
+   5. MANIPULATOR [showpoint] definovany v LIBRARY <ios> zapina bezpodmienecne vkladanie DECIMAL POINT CHARACTER pri praci s FLOATING POINT VALUES. MANIPULATOR sa aplikuje IBA na OUTPUT STREAMS.
+   6. MANIPULATOR [noshowpoint] definovany v LIBRARY <ios> vypina bezpodmienecne vkladanie DECIMAL POINT CHARACTER pri praci s FLOATING POINT VALUES. MANIPULATOR sa aplikuje IBA na OUTPUT STREAMS.
+   7. MANIPULATOR [showpos] definovany v LIBRARY <ios> zapina vkladanie KLADNEHO ZNAMIENKA do STREAMS pri praci s KLADNYMI NUMERIC VALUES. MANIPULATOR sa aplikuje IBA na OUTPUT STREAMS.
+   8. MANIPULATOR [noshowpos] definovany v LIBRARY <ios> vypina vkladanie KLADNEHO ZNAMIENKA do STREAMS pri praci s KLADNYMI NUMERIC VALUES. MANIPULATOR sa aplikuje IBA na OUTPUT STREAMS.
+   9. MANIPULATOR [skipws] definovany v LIBRARY <ios> zapina preskakovanie WHITESPACE CHARACTERS pri praci so STREAMS. MANIPULATOR sa aplikuje IBA na INPUT STREAMS.
+   10. MANIPULATOR [noskipws] definovany v LIBRARY <ios> vypina preskakovanie WHITESPACE CHARACTERS pri praci so STREAMS. MANIPULATOR sa aplikuje IBA na INPUT STREAMS.
+   11. MANIPULATOR [uppercase] definovany v LIBRARY <ios> zapina konverziu ALPHABETIC CHARACTERS obsiahnutych v NUMERIC VALUES (HEXADECIMAL, SCIENTIFIC zapis FLOATING POINT VALUES) pri praci s NUMERIC VALUES. MANIPULATOR sa aplikuje IBA na OUTPUT STREAMS.
+   12. MANIPULATOR [nouppercase] definovany v LIBRARY <ios> vypina konverziu ALPHABETIC CHARACTERS obsiahnutych v NUMERIC VALUES (HEXADECIMAL, SCIENTIFIC zapis FLOATING POINT VALUES) pri praci s NUMERIC VALUES. MANIPULATOR sa aplikuje IBA na OUTPUT STREAMS.
+   13. MANIPULATOR [unitbuf] definovany v LIBRARY <ios> zapina automaticky FLUSHING po kazdej IO OPERATION nad STREAM. MANIPULATOR sa aplikuje IBA na OUTPUT STREAMS.
+   14. MANIPULATOR [nounitbuf] definovany v LIBRARY <ios> vypina automaticky FLUSHING po kazdej IO OPERATION nad STREAM. MANIPULATOR sa aplikuje IBA na OUTPUT STREAMS.
+   15. MANIPULATOR [internal] definovany v LIBRARY <ios> urcuje, ze FILL CHARACTERS sa maju pridavat INTERNE v ramci NUMERIC VALUE. INTERNE umiestnenie znamena medzi NUMERIC BASE a VALUE, ZNAMIENKOM a VALUE, alebo CURRENCY IDENTIFIER a VALUE. MANIPULATOR sa aplikuje IBA na OUTPUT STREAMS.
+   16. MANIPULATOR [left] definovany v LIBRARY <ios> urcuje, ze FILL CHARACTERS sa maju pridavat NALAVO od NUMERIC VALUE. MANIPULATOR sa aplikuje IBA na OUTPUT STREAMS.
+   17. MANIPULATOR [right] definovany v LIBRARY <ios> urcuje, ze FILL CHARACTERS sa maju pridavat NAPRAVO od NUMERIC VALUE. MANIPULATOR sa aplikuje IBA na OUTPUT STREAMS.
+   18. MANIPULATOR [dec] definovany v LIBRARY <ios> urcuje, ze pre INTEGER VALUES sa ma pouzivat DECIMAL NUMERIC BASE.
+   19. MANIPULATOR [hex] definovany v LIBRARY <ios> urcuje, ze pre INTEGER VALUES sa ma pouzivat HEXADECIMAL NUMERIC BASE.
+   20. MANIPULATOR [oct] definovany v LIBRARY <ios> urcuje, ze pre INTEGER VALUES sa ma pouzivat OCTAL NUMERIC BASE.
+   21. MANIPULATOR [fixed] definovany v LIBRARY <ios> urcuje, ze pre FLOATING POINT VALUES sa ma pouzivat FIXED FORMAT.
+   22. MANIPULATOR [scientific] definovany v LIBRARY <ios> urcuje, ze pre FLOATING POINT VALUES sa ma pouzivat SCIENTIFIC FORMAT.
+   23. MANIPULATOR [hexfloat] definovany v LIBRARY <ios> urcuje, ze pre FLOATING POINT VALUES sa ma pouzivat HEXADECIMAL FORMAT.
+   24. MANIPULATOR [defaultfloat] definovany v LIBRARY <ios> urcuje, ze pre FLOATING POINT VALUES sa ma pouzivat DEFAULT FORMAT.
+   25. MANIPULATOR [ws] definovany v LIBRARY <istream> zapina preskakovanie WHITESPACE CHARACTERS pri praci so STREAMS. MANIPULATOR sa aplikuje IBA na INPUT STREAMS.
+   26. MANIPULATOR [ends] definovany v LIBRARY <ostream> vklada do STREAM NULL CHARACTER ('\0'). MANIPULATOR sa aplikuje IBA na OUTPUT STREAMS.
+   27. MANIPULATOR [flush] definovany v LIBRARY <ostream> vykonava FLUSH OUTPUT STREAM. MANIPULATOR sa aplikuje IBA na OUTPUT STREAMS.
+   28. MANIPULATOR [endl] definovany v LIBRARY <ostream> vklada do STREAM NEW LINE CHARACTER. MANIPULATOR sa aplikuje IBA na OUTPUT STREAMS.
+   29. MANIPULATOR [resetiosflags] definovany v LIBRARY <iomanip> odstranuje FORMATTING FLAGS podla definovanej MASKY, ktory boli nastavene pre dany STREAM.
+   30. MANIPULATOR [setiosflags] definovany v LIBRARY <iomanip> nastavuje FORMATTING FLAGS podla definovanej MASKY na danom STREAM.
+   31. MANIPULATOR [setbase] definovany v LIBRARY <iomanip> nastavuje NUMERIC BASE pre NUMERIC VALUES, ktore sa citaju a ukladaju do STREAM.
+   32. MANIPULATOR [setfill] definovany v LIBRARY <iomanip> nastavuje FILL CHARACTER pre NUMERIC VALUES, ktore sa citaju a ukladaju do STREAM. MANIPULATOR sa aplikuje IBA na OUTPUT STREAMS.
+   33. MANIPULATOR [setprecision] definovany v LIBRARY <iomanip> nastavuje PRECISION pre FLOATIN POINT VALUES, ktore sa citaju a ukladaju do STREAM.
+   34. MANIPULATOR [setw] definovany v LIBRARY <iomanip> nastavuje WIDTH pre NUMERIC VALUES, ktore sa citaju a ukladaju do STREAM.
+   35. MANIPULATOR [get_money] definovany v LIBRARY <iomanip> parsuje EXPRESSION ako MONEY VALUE. MANIPULATOR sa aplikuje IBA na INPUT STREAMS.
+   36. MANIPULATOR [put_money] definovany v LIBRARY <iomanip> konvertuje MONEY VALUE na TEXT VALUE. MANIPULATOR sa aplikuje IBA na OUTPUT STREAMS.
+   37. MANIPULATOR [get_time] definovany v LIBRARY <iomanip> parsuje EXPRESSION ako TIME VALUE. MANIPULATOR sa aplikuje IBA na INPUT STREAMS.
+   38. MANIPULATOR [put_time] definovany v LIBRARY <iomanip> konvertuje TIME VALUE na TEXT VALUE. MANIPULATOR sa aplikuje IBA na OUTPUT STREAMS.
+   39. MANIPULATOR [quoted] definovany v LIBRARY <iomanip> umoznuje citanie a zapis TEXT VALUES uzatvorenych pomocou CUSTOM SEPARATORS a pridavanie CUSTOM SEPARATORS okolo TEXT VALUES.
+84. STREAM ITERATORS su ITERATORS ADAPTERS, ktore iteruju nad STREAMS. C++ STANDARD LIBRARY podporuje nasledujuce typy STREAM ITERATORS.
+   A. INPUT STREAM ITERATORS pracuju nad INPUT STREAMS a pri iterovani citaju data z INPUT STREAMS.
+   B. OUTPUT STREAM ITERATORS pracuju nad OUTPUT STREAMS a pri iterovani zapisuju data do OUTPUT STREAMS.
+   C. STREAM BUFFER ITERATORS pracuju nad STREAM BUFFERS a pri iterovani citaju a zapisuju data do STREAM BUFFERS.
+85. Pre INPUT STREAM ITERATORS platia nasledujuce fakty.
+   A. Pri iterovani cez ITEMS su data namiesto z COLLECTIONS citane z INPUT STREAMS.
+   B. INPUT STREAM ITERATORS su implementovane ako instancie CLASS [istream_iterator<TType,TChar,TTraits,TDistance>]. TEMPLATE PARAMETER 'TType' CLASS [istream_iterator<TType,TChar,TTraits,TDistance>] urcuje TYPE dat, ktore sa z INPUT STREAM budu citat.
+   C. INPUT STREAM z ktoreho ma INPUT STREAM ITERATOR citat je zadany v CONSTRUCTOR INPUT STREAM ITERATOR.
+   !!! D. Klucovou operaciou INPUT STREAM ITERATORS je OPERATOR*, ktory vykonava citanie z INPUT STREAM volanim OPERATOR>> daneho STREAM.
+   !!!!! E. Na indikaciu konca INPUT STREAM, alebo chyby pri citani INPUT STREAM sa pouziva EMPTY INPUT STREAM ITERATOR, ktory sa vytvara pomocou DEFAULT CONSTRUCTOR. Po KAZDOM citanie dat zo STREAM je NUTNE pomocou OPERATOR==, alebo OPERATOR!= zistit ci INPUT STREAM ITERATOR nie je identicky s EMPTY INPUT STREAM ITERATOR. Ak ano, potom to znamena, ze bud pri citanie doslo k ERROR, alebo sa dosiahol koniec INPUT STREAM.
+   !!! F. OPERATOR== a OPERATOR!= urcuju ci su dve INPUT STREAM ITERATORS rovne. Rovne su vtedy ked z OBOCH INPUT STREAM ITERATORS je mozne citat data, alebo ak z OBOCH  INPUT STREAM ITERATORS data citat nie je mozne, pre ERROR, alebo dosiahnutie konca INPUT STREAM.
+86. CLASS [istream_iterator<TType,TChar,TTraits,TDistance>] ma nasledujuce MEMBERS.
+   A. DEFAULT CONSTRUCTOR vytvara EMPTY INPUT STREAM ITERATOR, ktory sluzi ako indikator vzniku ERROR, alebo dosiahnutia konca INPUT STREAM.
+   B. CONSTRUCTOR vytvara novu instanciu INPUT STREAM ITERATOR. Ako PARAMETER sa zadava INPUT STREAM nad ktorym ma INPUT STREAM ITERATOR pracovat.
+   C. DESTRUCTOR uvolnuje vsetky RESOURCES asociovane s INPUT STREAM ITERATOR.
+   D. TYPE [char_type] urcuje CHARACTER TYPE, ktory sa definuje ake typy CHARACTERS sa pouziju pri citani ITEMS z INPUT STREAMS.
+   E. TYPE [traits_type] urcuje TYPE TRAITS, ktore INPUT STREAM ITERATOR pouziva.
+   F. TYPE [istream_type] urcuje TYPE INPUT STREAM, ktory INPUT STREAM ITERATOR pouziva.
+   G. TYPE [value_type] urcuje TYPE, ktory sa cita z INPUT STREAM. Je rovny s TEMPLATE PARAMETER 'TType'.
+   H. TYPE [difference_type] urcuje TYPE, ktory sa pouziva na vyjadrenie vzdialenosti medzi 2 POSITIONS INPUT STREAM ITERATOR. Je rovny s TEMPLATE PARAMETER 'TDistance'.
+   I. TYPE [pointer] obsahuje CONST POINTER na TYPE, ktory sa cita z INPUT STREAM. Obsahuje TYPE [const TType*].
+   J. TYPE [reference] obsahuje CONST REFERENCE na TYPE, ktory sa cita z INPUT STREAM. Obsahuje TYPE [const TType&].
+   K. TYPE [iterator_category] urcuje TYPE ITERATOR CATEGORY daneho ITERATOR.
+   !!!!! L. OPERATOR* vracia CONST REFERENCE na ITEM nacitany z INPUT STREAM. OPERATOR* v pripade, ze nacitany ITEM je uz ulozeny v INTERNAL VARIABLE vracia tento, a ak nie je, pouziva na citanie OPERATOR>>, ktory vola nad INPUT STREAM.
+   !!!!! M. OPERATOR-> vracia CONST POINTER na MEMBER ITEM nacitaneho z INPUT STREAM. OPERATOR-> v pripade, ze nacitany ITEM je uz ulozeny v INTERNAL VARIABLE vracia tento, a ak nie je, pouziva na citanie OPERATOR>>, ktory vola nad INPUT STREAM.
+   !!! N. OPERATOR++ cita ITEM z INPUT STREAM volanim OPERATOR>> a uklada ho do svojej internej premennej.
+   O. ++OPERATOR cita ITEM z INPUT STREAM volanim OPERATOR>> a uklada ho do svojej internej premennej.
+   P. OPERATOR== vracia informaciu ci 2 INPUT STREAM ITERATORS su rovne. INPUT STREAM ITERATORS su rovne ak z oboch je mozne citat ITEMS, alebo obe su rovne EMPTY INPUT STREAM ITERATOR.
+   Q. OPERATOR!= vracia informaciu ci 2 INPUT STREAM ITERATORS su rozne. INPUT STREAM ITERATORS su rozne ak z jedneho INPUT STREAM ITERATOR je mozne citat ITEMS, zatial co druhy je EMPTY INPUT STREAM ITERATOR.
+87. Pre OUTPUT STREAM ITERATORS platia nasledujuce fakty.
+   A. Pri iterovani cez ITEMS su data namiesto do COLLECTIONS zapisovane do OUTPUT STREAMS.
+   B. OUTPUT STREAM ITERATORS su implementovane ako instancie CLASS [ostream_iterator<TType,TChar,TTraits>]. TEMPLATE PARAMETER 'TType' CLASS [ostream_iterator<TType,TChar,TTraits>] urcuje TYPE dat, ktore sa do OUTPUT STREAM budu zapisovat.
+   C. OUTPUT STREAM do ktoreho ma OUTPUT STREAM ITERATOR zapisovat je zadany v CONSTRUCTOR OUTPUT STREAM ITERATOR.
+   !!! D. Klucovou operaciou OUTPUT STREAM ITERATORS je OPERATOR=, ktory vykonava zapis do OUTPUT STREAM volanim OPERATOR<< daneho STREAM.
+88. CLASS [ostream_iterator<TType,TChar,TTraits>] ma nasledujuce MEMBERS.
+   A. CONSTRUCTOR vytvara novu instanciu OUTPUT STREAM ITERATOR. Ako PARAMETER sa zadava OUTPUT STREAM nad ktorym ma OUTPUT STREAM ITERATOR pracovat. OVERLOADED VERSION obsahuje aj 2. PARAMETER definujuci STRING, ktory sa pouzije ako SEPARATOR oddelujucimi ITEMS pri zapise do OUTPUT STREAM.
+   B. DESTRUCTOR uvolnuje vsetky RESOURCES asociovane s OUTPUT STREAM ITERATOR.
+   C. TYPE [char_type] urcuje CHARACTER TYPE, ktory sa definuje ake typy CHARACTERS sa pouziju pri zapise ITEMS do OUTPUT STREAMS.
+   D. TYPE [traits_type] urcuje TYPE TRAITS, ktore OUTPUT STREAM ITERATOR pouziva.
+   E. TYPE [ostream_type] urcuje TYPE OUTPUT STREAM, ktory OUTPUT STREAM ITERATOR pouziva.
+   F. TYPE [value_type] obsahuje TYPE [void].
+   G. TYPE [difference_type] obsahuje TYPE [void].
+   H. TYPE [pointer] obsahuje TYPE [void].
+   I. TYPE [reference] obsahuje TYPE [void].
+   J. TYPE [iterator_category] urcuje TYPE ITERATOR CATEGORY daneho ITERATOR.
+   !!!!! K. OPERATOR= vklada NOVY ITEM do OUTPUT STREAM volanim jej OPERATOR<< a pripade aj volanim OPERATOR<< na pridanie SEPARATOR, ak bol definovany.
+   L. OPERATOR* je EMPTY OPERATION.
+   M. OPERATOR++ je EMPTY OPERATION.
+   N. ++OPERATOR je EMPTY OPERATION.
+89. BY-DEFAULT, STANDARD C++ STREAMS su SYNCHRONIZED so STANDARD C STREAMS. Zrusenie, alebo opatovne nastavenie SYNCHRONIZATION je mozne vykonat volanim FUNCTION sync_with_stdio(). FUNCTION sync_with_stdio() je vsak NUTNE volat PRED vykonanim PRVEJ IO OPERATION nad STANDARD C++ STREAMS, inak jej chovanie je PLATFORM DEPENDENT.
+!!!!! 90. C++ STREAMS su relativne POMALE. Ak je potrebna vyssia rychlost je lepsie bud pouzivat priamo STREAM BUFFERS, alebo C++ STREAMS vobec NEPOUZIVAT.
+//-------------------------------------------------------------------------------------------------------

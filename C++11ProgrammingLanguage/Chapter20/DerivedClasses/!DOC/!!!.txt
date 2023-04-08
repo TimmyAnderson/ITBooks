@@ -1,0 +1,102 @@
+//-----------------------------------------------------------------------------
+1. Solution demonstruje pouzitie DERIVED CLASSES v C++.
+2. CLASS INHERITANCE je mozne aplikovat 2 sposobmi.
+   A. IMPLEMENTATION INHERITANCE je aplikacia CLASS INHERITANCE, ked DERIVED CLASS ziskava z BASE CLASS implementovane FIELDS a METHODS, ktore moze pouzivat.
+   B. INTERFACE INHERITANCE je aplikacia CLASS INHERITANCE, ked BASE CLASSES su INTERFACES (CLASSES bez FIELDS a iba s PURE VIRTUAL METHODS), ktore definuju logicky CONTRACT. CONTRACT predpisuje ake METHODS musi DERIVED CLASS implementovat, aby mohla byt reprezentovana danym INTERFACE.
+3. IMPLEMENTATION INHERITANCE je oznacovana aj ako RUN TIME POLYMORPHISM. TEMPLATES su potom oznacovane ako COMPILE TIME POLYMORPHISM.
+4. Ak CLASS 'CDerived' je DERIVED z CLASS 'CBase', potom CLASS 'CDerived' obsahuje VSETKY FIELDS, METHODS a OPERATORS CLASS 'CBase'.
+!!! 5. CLASS INHERITANCE NEZVYSUJE naroky na MEMORY. To znaci, ze ak CLASS 'CDerived' je DERIVED z CLASS 'CBase', potom SIZEOF CLASS 'CDerived' je prosty sucet FIELDS z CLASS 'CBase' a CLASS 'CDerived'. Pri pouziti VIRTUAL METHODS a VIRTUAL INHERITANCE su vsak pridavane aj dalsie skryte FIELDS, a preto velkost takychto CLASSES je VYSSIA ako prosty sucet velkosti FIELDS v DERIVED CLASS a vsetkych BASE CLASSES.
+6. POINTERS na DERIVED CLASS mozu byt IMPLICITNE pretypovane na POINTERS na BASE CLASSES.
+7. REFERENCES na DERIVED CLASS mozu byt IMPLICITNE pretypovane na REFERENCES na BASE CLASSES.
+8. DERIVED CLASSES mozu pristupovat iba k PUBLIC a PROTECTED MEMBERS BASE CLASS. Pristup k PRIVATE MEMBERS BASE CLASS z DERIVED CLASS NIE JE mozny.
+9. Pri CLASS INHERITANCE je poradie volania CONSTRUCTORS a DESTRUCTORS nasledujuce.
+   A. CONSTRUCTORS su volane od MOST BASE CLASS k MOST DERIVED CLASS.
+   B. DESTRUCTORS su volane od MOST DERIVED CLASS k MOST BASE CLASS.
+!!!!! 10. Pri CLASS INHERITANCE by BASE CLASS mal VZDY DESTRUCTOR definovat ako VIRTUAL DESTRUCTOR, aby sa pri uvolnovani OBJECT z MEMORY zavolal DESTRUCTOR MOST DERIVED CLASS. Pri NEPOUZITI VIRTUAL DESTRUCTORS, ak je OBJECT pretypovany na BASE CLASS, tak sa zavola DESTRUCTOR BASE CLASS, ktory uz NEZAVOLA DESTRUCTOR DERIVED CLASS cim moze dojst k MEMORY LEAKS.
+11. DERIVED CLASS pokial nie je oznacena KEYWORD [final] moze byt sama BASE CLASS voci inej DERIVED CLASS.
+12. VIRTUAL METHODS su METHODS BASE CLASSES, ktore v DERIVED CLASSES mozu byt OVERRIDDEN. Pri pristupe k OBJECTS pomocou POINTERS, alebo REFERENCES C++ zavola OVERRIDDEN METHOD z MOST DERIVED CLASS. Tento mechanizmus sa nazyva POLYMORPHISM.
+!!! 13. POLYMORPHISM sa aplikuje IBA pri pouziti POINTER na OBJECT a REFERENCE na OBJECT. Pri pouziti samotneho OBJECT sa POLYMORFIZMUS NEAPLIKUJE, pretoze sa volaju METHODS definovane priamo v DERIVED CLASS.
+14. VIRTUAL METHODS sa oznacuju pomocou KEYWORD [virtual].
+15. PURE VIRTUAL METHODS sa oznacuju SYNTAXOU [=0] za deklaraciou METHOD. Pre PURE VIRTUAL METHODS platia nasledujuce fakty.
+   A. Ak CLASS obsahuje aspon 1 PURE VIRTUAL METHOD, CLASS je ABSTRACT CLASS, z ktorej NEMOZU byt vytvorene instancie.
+   B. Ak je CLASS DERIVED z ABSTRACT CLASS, tak MUSI vykonat OVERRIDING VSETKYCH PURE VIRTUAL METHODS, inak aj DERIVED CLASS bude ABSTRACT CLASS, z ktorej nie je mozne vytvarat instancie.
+   !!!!! C. PURE VIRTUAL METHOD MOZE mat BODY. Takato METHOD potom moze byt volana z DERIVED CLASSES. C++ vsak NEDOVOLUJE, aby BODY bolo definovane v .H FILE a MUSI byt definovane v CPP FILE.
+   D. DESTRUCTOR moze byt tiez PURE VIRTUAL.
+!!!!! 16. VIRTUAL CLASS je CLASS, ktory ma ASPON 1 VIRTUAL METHOD, alebo VIRTUAL DESTRUCTOR. Takato CLASS obsahuje SKRYTY POINTER, ktory odkazuje na VIRTUAL METHOD TABLE. VIRTUAL METHOD TABLE pouziva C++ pri vyhladani, ktory METHOD pri aplikacii POLYMORPHISM ma pouzit. C++ pri volani METHOD pouziva POINTER na VIRTUAL METHOD TABLE a INDEX urcujuci, ktoru VIRTUAL METHOD ma volat. Vysledkom je POINTER na VIRTUAL METHOD, ktora sa ma zavolat.
+17. Pouzitie VIRTUAL METHODS prinasa nasledujuce PERFORMANCE HITS.
+   A. CLASS, ktora ma aspon 1 VIRTUAL METHOD (vratane VIRTUAL DESTRUCTOR) je dlzia o POINTER SIZE. POINTER reprezentuje POINTER na VIRTUAL METHOD TABLE.
+   B. Volanie VIRTUAL METHODS je o nieco POMALSIE ako volanie NON-VIRTUAL METHODS, pretoze pri volani VIRTUAL METHODS je nutne urcit ADDRESS VIRTUAL METHOD, ktora sa urcuje scitanim hodnoty POINTER na VIRTUAL METHOD TABLE a INDEXU urcujuceho volanu VIRTUAL METHOD. To vyzaduje vykonanie operacie DEREFERENCE a ADD, a preto je volanie VIRTUAL METHODS pomalsie.
+!!! 18. Ak CLASS obsahuje VIRTUAL METHODS tak je VHODNE, aby jej DESTRUCTOR bol VIRTUAL. VIRTUAL DESTRUCTOR zabezpecuje, ze pri odstranovani OBJECT z MEMORY, ak bol pretypovany na BASE CLASS sa zavola DESTRUCTOR pre DERIVED CLASS. Ak by DESTRUCTOR NEBOL VIRTUAL tak by sa pri likvidacii DERIVED OBJECT pretypovaneho na BASE OBJECT volal IBA DESTRUCTOR pre BASE OBJECT a DESTRUCTOR pre DERIVED OBJECT by sa NEVOLAL.
+!!! 19. V CONSTRUCTORS a DESTRUCTORS je SILNE NEDOPORUCOVANE volat VIRTUALNE METHODS, pretoze v CONSTRUCTORS a DESTRUCTORS TYPES NIE SU kompletne skontruovane (CONSTRUCTORS), alebo uz su ciastocne uvolnene (DESTRUCTORS) a volanie VIRTUAL METHOD NEMUSI byt POLYMORPHIC.
+!!!!! 20. OPERATOR:: RUSI POLYMORFIZMUS. VIRTUAL METODA, ktora je zavola cez OPERATOR:: je volana NEPOLYMORFNE. Napriklad CODE [Derived.CExplicitQualificationBase1::Overridden()] vola METHOD NEPOLYMORFNE, kedze OPERATOR:: RUSI POLYMORFIZMUS.
+21. KEYWORD [override] sluzi na oznacenie OVERRIDDEN METHODS. Pre pouzitie KEYWORD [override] platia nasledujuce zasady.
+   A. KEYWORD [override] je mozne aplikovat IBA na METHODS, ktore boli OVERRIDDEN z BASE CLASS. Nie je ho mozne aplikovat ma VIRTUAL METHODS v BASE CLASSES.
+   B. KEYWORD [override] sa zadava na KONCI DEKLARACIE danej METHOD ako uplne posledna cast deklaracie.
+   !!! C. KEYWORD [override] NIE JE sucastou PROTOTYPE a preto sa NESMIE uvadzat v CPP suboroch, ako je tomu napriklad v pripade KEYWORD [const].
+   D. Cely zmysel KEYWORD [override] je zvysenie citatelnosti CODE. Umoznuje COMPILER odhalit METHODS, ktore v skutocnosti NEBOLI OVERRIDDEN a boli nespravne oznacene KEYWORD [override]. Pre taketo METHODS COMPILER vygeneruje ERROR.
+22. KEYWORD [final] sluzi oznacenie VIRTUAL METHODS, alebo CLASSES, ktore NEMOZU byt OVERRIDDEN. Pre pouzitie KEYWORD [final] platia nasledujuce zasady.
+   A. KEYWORD [final] aplikovany na VIRTUAL METHOD znamena, ze METHOD NEMOZE byt v DERIVED CLASSES OVERRIDDEN.
+   B. KEYWORD [final] aplikovany na CLASS znamena, ze CLASS NEMOZE sluzit ako BASE CLASS.
+   !!! C. KEYWORD [final] NIE JE sucastou PROTOTYPE a preto sa NESMIE uvadzat v CPP suboroch, ako je tomu napriklad v pripade KEYWORD [const].
+!!!!! 23. C++ NEUMOZNUJE METHOD OVERLOADING medzi VIACERYMI CLASSES. METHOD s ROVNAKYM MENO, ale ODLISNYM PROTOTYPE v DERIVED CLASS vykona HIDING rovnako pomenovanej METHOD v BASE CLASS. To znaci, ze ak CLASS 'CBase' definuje METHOD [void Test(int)] a DERIVED CLASS 'CDerived' definuje METHOD [void Test(double)], CODE [Derived.Test(100)] zavola METHOD CDerived::Test(double) z DERIVED CLASS s PARAMETER TYPE 'double' a nie typovo viac vyhovujucu METHOD CBase::Test(int), pretoze tato bola HIDDEN METHOD CDerived::Test(double). METHOD HIDING plati aj pre ROZNY POCET PARAMETERS. To znaci, ze METHOD CDerived::Method(DOUBLE) vykona HIDING METHOD CBase::Method(INT,INT) a to aj NAPRIEK TOMU, ze obe METHODS maju ROZLICNY POCET PARAMETERS.
+!!!!! 24. Ak DERIVED CLASS vykonava HIDING ROVNAKO POMENOVANEJ METHOD z BASE CLASS, METHOD z BASE CLASS je mozne do DERIVED CLASS vytiahnut pomocou SYNTAXE [using CBase::Method], ktora sa vlozi do tela DERIVED CLASS. ACCESS RIGHTS takejto vytiahnutej METHOD urcuje umiestnenie USING KEYWORD a nie ACCESS RIGHTS BASE METHOD.
+!!! 25. C++ pomocou SYNTAXE [using CBase::CBase] umoznuje v DERIVED CLASSES zdedit BASE CLASS CONSTRUCTORS. Do DERIVED CLASS su presunute VSETKY CONSTRUCTORS zo zadanej BASE CLASS.
+!!!!! 26. C++ umoznuje COVARIANCE RETURN VALUES pre VIRTUALNE METHODS. Znamena to, ze ak CLASS 'CBase' ma VIRTUAL METHOD [virtual CBase& XXX(void)], tak CLASS 'CDerived' moze mat VIRTUAL METHOD [virtual CDerived& XXX(void) override]. To znamena, ze RETURN VALUE OVERRIDDEN METHOD moze byt POINTER/REFERENCE na DERIVED CLASS namiesto POINTER/REFERENCE na BASE CLASS ako to definovala VIRTUAL METHOD v BASE CLASS.
+27. C++ NEPODPORUJE VIRTUAL CONSTRUCTORS, pretoze pri vytvarani instancie TYPE je NUTNE poznat konkretny TYPE co je v rozpore v filozofiou VIRTUAL METHODS.
+28. ACCESS CONTROL v CLASSES urcuje, kto moze k CLASS MEMBERS pristupovat. C++ definuje nasledujuce ACCESS CONTROLS.
+   A. PRIVATE. K PRIVATE MEMBERS moze pristupovat iba CLASS, ktora ich deklarovala a vsetky CLASSES, METHODS a FUNCTIONS, ktore su oznacene KEYWORD [friend].
+   B. PROTECTED. K PROTECTED MEMBERS moze pristupovat iba CLASS, ktora ich deklarovala, vsetky CLASSES, METHODS a FUNCTIONS, ktore su oznacene KEYWORD [friend] a vsetky DERIVED CLASSES, ktore su DERIVED s ACCESS RIGHT PUBLIC, alebo PROTECTED.
+   C. PUBLIC. K PUBLIC MEMBERS mozu pristupovat hocikto. Prisup k nim nie je nijako limitovany.
+29. CLASSES maju ako DEFUALT ACCESS RIGHT PRIVATE.
+30. STRUCTURES maju ako DEFUALT ACCESS RIGHT PUBLIC.
+!!! 31. C++ moze prehodit poradie FIELDS v CLASS, ak nie su deklarovane v jednom ACCESS RIGHT BLOCK. To znamena, ze ak FIELD 'MField1' a FIELD 'MField2' su deklarovane v inych ACCESS RIGHT BLOCKS, C++ negarantuje v akom poradi budu FIELDS ulozene v CLASS.
+32. ACCESS CONTROL moze byt okrem MEMBERS aplikovany aj pri INHERITANCE. C++ definuje nasledujuce ACCESS CONTROL pre CLASS INHERITANCE.
+   A. PRIVATE.
+   B. PROTECTED.
+   C. PUBLIC.
+33. Pre PRIVATE INHERITANCE platia nasledujuce fakty.
+   A. K PRIVATE MEMBERS BASE CLASSES DERIVED CLASSES pristupovatnemozu .
+   B. K PROTECTED a PUBLIC MEMBERS BASE CLASSES mozu pristupovat iba METHODS DERIVED CLASSES a FRIENDS BASE CLASSES (FRIEND CLASSES, FRIEND METHODS, FRIEND FUNCTIONS).
+   C. CONVERSIONS POINTER/REFERENCE DERIVED CLASSES na POINTER/REFERENCE BASE CLASSES je mozne robit IBA v METHODS DERIVED CLASSES a FRIENDS BASE CLASSES (FRIEND CLASSES, FRIEND METHODS, FRIEND FUNCTIONS).
+34. Pre PROTECTED INHERITANCE platia nasledujuce fakty.
+   A. K PRIVATE MEMBERS BASE CLASSES DERIVED CLASSES pristupovatnemozu .
+   B. K PROTECTED a PUBLIC MEMBERS BASE CLASSES mozu pristupovat iba METHODS DERIVED CLASSES, FRIENDS BASE CLASSES (FRIEND CLASSES, FRIEND METHODS, FRIEND FUNCTIONS), DERIVED CLASSES a FRIENDS DERIVED CLASSES (FRIEND CLASSES, FRIEND METHODS, FRIEND FUNCTIONS).
+   C. CONVERSIONS POINTER/REFERENCE DERIVED CLASSES na POINTER/REFERENCE BASE CLASSES je mozne robit IBA v METHODS DERIVED CLASSES, FRIENDS BASE CLASSES (FRIEND CLASSES, FRIEND METHODS, FRIEND FUNCTIONS), DERIVED CLASSES a FRIENDS DERIVED CLASSES (FRIEND CLASSES, FRIEND METHODS, FRIEND FUNCTIONS).
+35. Pre PROTECTED INHERITANCE platia nasledujuce fakty.
+   A. K PRIVATE MEMBERS BASE CLASSES DERIVED CLASSES pristupovatnemozu .
+   B. K PROTECTED MEMBERS BASE CLASSES mozu pristupovat iba METHODS DERIVED CLASSES, FRIENDS BASE CLASSES (FRIEND CLASSES, FRIEND METHODS, FRIEND FUNCTIONS), DERIVED CLASSES a FRIENDS DERIVED CLASSES (FRIEND CLASSES, FRIEND METHODS, FRIEND FUNCTIONS).
+   C. K PUBLIC MEMBERS BASE CLASSES moze pristupovat hocikto.
+   D. CONVERSIONS POINTER/REFERENCE DERIVED CLASSES na POINTER/REFERENCE BASE CLASSES moze robit hocikto.
+36. Ak sa pri INHERITANCE EXPLICITNE NEURCI ACCESS CONTROL, tak plati, ze CLASSES maju DEFAULT PRIVATE ACCESS a STRUCTS maju DEFAULT PUBLIC ACCESS.
+!!! 37. Medzi OUTER CLASSES a INNER CLASSES z hladiska ACCESS CONTROL platia nasledujuce fakty.
+   A. OUTER CLASSES NEMOZU pristupovat k PRIVATE a PROTECTED MEMBERS INNER CLASSES.
+   !!! B. INNER CLASSES MOZU pristupovat k PRIVATE a PROTECTED MEMBERS OUTER CLASSES ako keby PRIVATE a PROTECTED MEMBERS boli deklarovane ako PUBLIC.
+!!!!! 38. Pomocou SYNTAXE [CBase::PROTECTED_MEMBER] je mozne v DERIVED CLASS spristupnit PROTECTED MEMBERS z BASE CLASSES. Pomocou SYNTAXE [CBase::PROTECTED_MEMBER] je mozne spristupnit v DERIVED CLASSES aj PUBLIC a PROTECTED MEMBERS z BASE CLASS, ktora bola DERIVED pomocou PROTECTED ci PRIVATE INHERITANCE. PRIVATE METHODS z BASE CLASS NIE JE mozne pomocou tejto SYNTAXE spristupnit, pretoze su pre DERIVED CLASSES nepristupne.
+39. POINTERS na MEMBER VARIABLES su specialne typy POINTERS pomocou ktorych je mozne odkazovat na FIELDS danej CLASS. Pre POINTERS na MEMBER VARIABLES platia tieto vlastnosti.
+   A. Pomocou POINTERS na MEMBER VARIABLES je mozne vytvorit na POINTERS na FIELDS daneho OBJECT.
+   !!!!! B. POINTERS na MEMBER VARIABLES su interne implementovane ako INDEXES v ramci CLASSES. Tieto POINTERS MOZU byt prenesene do inych ADDRESS SPACES.
+   C. Ak je OBJECT reprezentovany cez VARIABLE, ktora JE typu OBJECT, k VALUES FIELDS na ktore odkazuju POINTERS na MEMBER VARIABLES je mozne pristupovat pomocou OPERATOR.*.
+   D. Ak je OBJECT reprezentovany cez VARIABLE, ktora JE typu POINTER na OBJECT, k VALUES FIELDS na ktore odkazuju POINTERS na MEMBER VARIABLES je mozne pristupovat pomocou OPERATOR->*.
+   !!! E. POINTERS na MEMBER VARIABLES NEMOZU byt priradene do VARIABLES TYPE [void*].
+   F. POINTERS na MEMBER VARIABLES MOZU byt obsahovat VALUE [nullptr].
+   !!! G. POINTERS na MEMBER VARIABLES NEMOZU referovat na STATIC FIELDS, kedze tie nie su sucastou instancii referovanej CLASS.
+   H. POINTERS na MEMBER VARIABLES mozu odkazovat iba do tie FIELDS na ktore ma dany CODE ACCESS RIGHT.
+40. POINTERS na MEMBER FUNCTIONS su specialne typy POINTERS pomocou ktorych je mozne odkazovat na METHODS a OPERATORS danej CLASS. Pre POINTERS na MEMBER FUNCTIONS platia tieto vlastnosti.
+   A. Pomocou POINTERS na MEMBER FUNCTIONS je mozne vytvorit na POINTERS na METHODS a POINTERS na OPERATORS.
+   !!! B. POINTERS na NON-VIRTUAL METHODS su implementovane ako KLASICKE POINTERS odkazujuce na MEMORY ADDRESS. Tieto POINTERS NEMOZU byt prenesene do inych ADDRESS SPACES.
+   !!! C. POINTERS na VIRTUAL METHODS su implementovane ako INDEXES vo VIRTUAL METHOD TABLE. Tieto POINTERS MOZU byt prenesene do inych ADDRESS SPACES.
+   D. Ak je OBJECT reprezentovany cez VARIABLE, ktora JE typu OBJECT, volanie MEMBER FUNCTIONS na ktore odkazuju POINTERS na MEMBER FUNCTIONS je mozne pristupovat pomocou OPERATOR.*.
+   E. Ak je OBJECT reprezentovany cez VARIABLE, ktora JE typu POINTER na OBJECT, volanie MEMBER FUNCTIONS na ktore odkazuju POINTERS na MEMBER FUNCTIONS je mozne pristupovat pomocou OPERATOR->*.
+   !!! F. POINTERS na MEMBER FUNCTIONS NEMOZU byt priradene do VARIABLES TYPE [void*].
+   G. POINTERS na MEMBER FUNCTIONS MOZU byt obsahovat VALUE [nullptr].
+   !!! H. POINTERS na MEMBER FUNCTIONS NEMOZU referovat na STATIC METHODS, kedze tie nie su sucastou instancii referovanej CLASS.
+   I. POINTERS na MEMBER FUNCTIONS mozu odkazovat iba na tie METHODS na ktore ma dany CODE ACCESS RIGHT.
+   !!! J. POINTERS na MEMBER FUNCTIONS podporuju INHERITANCE. Ak sa POINTER na MEMBER odkazuje na VIRTUAL METHOD, a je volany POINTER, alebo REFERENCE, tak sa tato METHODS zavola POLYMORFNE.
+!!!!! 41. POINTERS na MEMBERS su implementovane SPECIFICKY podla toho na aky typ MEMBER referuju.
+   A. POINTERS na FIELDS su implementovane ako INDEXES v ramci CLASSES. Tieto POINTERS MOZU byt prenesene do inych ADDRESS SPACES.
+   B. POINTERS na NON-VIRTUAL METHODS su implementovane ako KLASICKE POINTERS odkazujuce na MEMORY ADDRESS. Tieto POINTERS NEMOZU byt prenesene do inych ADDRESS SPACES.
+   C. POINTERS na VIRTUAL METHODS su implementovane ako INDEXES vo VIRTUAL METHOD TABLE. Tieto POINTERS MOZU byt prenesene do inych ADDRESS SPACES.
+!!! 42. Pri CLASS INHERITANCE sa na POINTERS na MEMBERS aplikuje CONTRAVARIANCE, pre ktoru platia nasledujuce fakty.
+   A. Do POINTERS na MEMBERS referujucich na DERIVED CLASSES je mozne priradzovat MEMBERS z BASE CLASSES, pretoze DERIVED CLASSES obsahuju VSETKY MEMBERS BASE CLASSES a tak NEHROZI ze by POINTER referoval na NEEXISTUJUCI MEMBER.
+   !!! B. Do POINTERS na MEMBERS referujucich na BASE CLASSES NIE JE mozne priradit MEMBERS z DERIVED CLASSES. Je to dosledok toho, ze POINTER na MEMBER odkazujuci na DERIVED CLASS moze odkazovat na MEMBER, ktory v BASE CLASS NIE JE DEFINOVANY a ak by sa umoznilo toto priradenie, POINTER by odkazoval na NEEXISTUJUCI MEMBER.
+//-----------------------------------------------------------------------------

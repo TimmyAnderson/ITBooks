@@ -1,0 +1,78 @@
+//-----------------------------------------------------------------------------
+1. Solution demonstruje EXCEPTIONS v C++.
+2. EXCEPTIONS je mechanizmus, ktory umoznuje efektivny ERROR HANDLING v C++.
+3. EXCEPTIONS zabezpecuje jednoduchu implementaciu RESOURCE ACQUISITION IS INITIALIZATION (RAII).
+4. EXCEPTIONS v C++ su definovane nasledujucimi KEYWORDS.
+   A. KEYWORD [try] definuje TRY BLOCK, ktory obsahuje CODE, ktory moze hodit EXCEPTION.
+   B. KEYWORD [catch] definuje CATCH BLOCK, ktory obsahuje CODE, ktory bude spusteny v pripade vzniku EXCEPTION.
+   C. KEYWORD [throw] sposobuje hodenie EXCEPTION.
+5. EXCEPTION OBJECT, ktory je hodeny pomocou KEYWORD [throw] obsahuje dodatocne informacie o EXCEPTION. Je definovany ako LUBOVOLNY DATA TYPE. Ako EXCEPTIONS je teda mozne pouzit PRIMITIVE TYPES, STRUCTURES, ENUMS i CLASSES.
+!!! 6. Ako EXCEPTION OBJECT sa odporuca pouzivat VZDY CLASS, ktory je definovany za ucelom pouzitia ako EXCEPTION OBJECT.
+!!! 7. EXCEPTIONS mozu byt THROWN v CALLED METHOD a CAUGHT v CALLER METHOD. Tym padom EXCEPTIONS mozu byt spracovane v inej METHOD v akej boli THROWN.
+8. CODE [catch(const EXCEPTION_TYPE& ExceptionObject)] definuje BLOCK, ktory spracuje EXCEPTION OBJECT TYPE 'EXCEPTION_TYPE', pricom EXCEPTION OBJECT je pristupny pomocou VARIABLE 'ExceptionObject'.
+9. EXCEPTION OBJECTS MOZU byt DERIVED.
+!!!!! 10. CATCH BLOCKS MUSIA byt zoradene podla INHERITANCE HIERARCHY. To znamena, ze ako PRVE MUSIA byt MOST DERIVED EXCEPTION OBJECT TYPES a ako posledny musi byt BASE EXCEPTION OBJECT TYPE.
+!!! 11. UNHANDLED EXCEPTIONS, ktore nie su zachytene v ziadnom CATCH BLOCK sposobia PROGRAM TERMINATION volanim FUNCTION [[[noreturn]] void terminate(void) noexcept].
+12. EXCEPTIONS mozu byt implementovane rovnako efektivne ako tradicny ERROR HANDLING.
+13. Oznacenie METHODS pomocou KEYWORD [noexcept] moze zvysit efektivnost generovaneho CODE.
+14. METHODS C++ STANDARD LIBRARY poskytuju jednu z nasledujucich garancii.
+   A. BASIC GUARANTEE. Kazda METHOD C++ STANDARD LIBRARY poskytuje garanciu, ze pri vzniku EXCEPTION nedoslo k MEMORY LEAK a DO OBJECT, ktory generoval EXCEPTION moze byt ASSIGNED iny OBJECT, alebo OBJECT moze byt bezpecne DESTROYED.
+   B. STRONG GUARANTEE. Niektore METHODS C++ STANDARD LIBRARY poskytuju garanciu, ze budu uspesne vykonaju OPERATION, alebo pri vzniku EXCEPTION nedojde k ziadnej zmene, ako keby sa METHOD nezavolala.
+   C. NOEXCEPT GUARANTEE. METHODS C++ STANDARD LIBRARY oznacene KEYWORD [noexcept] poskytuju garanciu, ze NIKDY nehodia EXCEPTION.
+15. V pripade, ze v METHOD dojde k vzniku EXCEPTION, ktora nie je v METHOD HANDLED, skor nez beh PROGRAMU vstupi do CALLER METHOD, su zavolane vsetky DESTRUCTORS LOCAL OBJECTS.
+!!! 16. C++ NEPODPORUJE pri EXCEPTION HANDLING FINALLY BLOCKS.
+!!!!! 17. DESTRUCTORS NIKDY NESMU hodit EXCEPTION.
+!!! 18. STACK UNWINDING je proces pri ktorom je EXCEPTION hodena v CALLED METHOD presuvana do CALLER METHODS az kym sa nenajde METHOD, ktora ma CATCH HANDLER spracuvajuci danu EXCEPTION. Pre STACK UNWINDING platia nasledujuce fakty.
+   A. Pri presune EXCEPTION OBJECT medzi METHODS je pouzivana COPY OPERATION, alebo MOVE OPERATION EXCEPTION OBJECT.
+   !!! B. Ak pri presune EXCEPTION OBJECT medzi METHODS je pouzivana MOVE OPERATION, je NUTNE implementovat MOVE CONSTRUCTOR a hoci to nie je nutne, odporuca sa vzdy implementovat aj MOVE OPERATOR=.
+   C. Pri STACK UNWINDING su pre LOCAL OBJECTS jednotlivych METHODS, ktore nespracovali danu EXCEPTION volane DESTRUCTORS, takze OBJECTS su korektne uvolnene z MEMORY.
+   D. C++ moze optimalizovat kopirovanie EXCEPTION OBJECTS.
+!!! 19. R-VALUE REFERENCES [CLASS&&] NIE JE mozne pouzivat v CATCH BLOCKS.
+!!! 20. METHODS mozu byt oznacene pomocou KEYWORD [noexcept]. Pre KEYWORD [noexcept] platia nasledujuce fakty.
+   A. METHOD oznacena KEYWORD [noexcept] NESMIE hodit EXCEPTION. V pripade, ze hodi, PROGRAM je OKAMZITE TERMINATED volanim FUNCTION [[[noreturn]] void terminate(void) noexcept].
+   !!! B. KEYWORD [noexcept] moze obsahovat COMPILE TIME CONSTANT urcujucu ci dana METHOD moze hodit EXCEPTION (VALUE [false]), alebo dana METHOD NEMOZE hodit EXCEPTION (VALUE [true]).
+   !!!!! C. KEYWORD [noexcept] moze obsahovat OPERATOR [noexcept(EXPRESSION)]. Tento OPERATOR v COMPILE TIME zisti ci EXPRESSION 'EXPRESSION' moze hodit EXCEPTION kontrolou ci METHODS volane v EXPRESSION 'EXPRESSION' su oznacene pomocou KEYWORD [noexcept]. OPERATOR vsak nepozera do CODE EXPRESSION 'EXPRESSION' ci naozaj volane METHODS EXCEPTIONS nehadzu.
+21. Pre zachytavanie EXCEPTIONS ak v THROW bola hodena EXCEPTION TYPE 'EXCEPTION_THROW' a v CATCH BLOCK je EXCEPTION TYPE 'EXCEPTION_CATCH' platia nasledujuce pravidla.
+   A. CATCH BLOCK je volany, ak EXCEPTION TYPE 'EXCEPTION_CATCH' je zhodny s EXCEPTION TYPE 'EXCEPTION_THROW'.
+   B. CATCH BLOCK je volany, ak EXCEPTION TYPE 'EXCEPTION_CATCH' je PUBLIC BASE TYPE voci EXCEPTION TYPE 'EXCEPTION_THROW'.
+   C. CATCH BLOCK je volany, ak EXCEPTION TYPE 'EXCEPTION_CATCH' aj EXCEPTION TYPE 'EXCEPTION_THROW' su POINTER TYPES a zaroven oba POINTERS odkazuju na TEN ISTY TYPE.
+   D. CATCH BLOCK je volany, ak EXCEPTION TYPE 'EXCEPTION_CATCH' aj EXCEPTION TYPE 'EXCEPTION_THROW' su POINTER TYPES a zaroven EXCEPTION TYPE 'EXCEPTION_CATCH' je PUBLIC BASE TYPE voci EXCEPTION TYPE 'EXCEPTION_THROW'.
+   E. CATCH BLOCK je volany, ak EXCEPTION TYPE 'EXCEPTION_CATCH' aj EXCEPTION TYPE 'EXCEPTION_THROW' su REFERENCE TYPES a zaroven obe REFERENCES odkazuju na TEN ISTY TYPE.
+   F. CATCH BLOCK je volany, ak EXCEPTION TYPE 'EXCEPTION_CATCH' aj EXCEPTION TYPE 'EXCEPTION_THROW' su REFERENCE TYPES a zaroven EXCEPTION TYPE 'EXCEPTION_CATCH' je PUBLIC BASE TYPE voci EXCEPTION TYPE 'EXCEPTION_THROW'.
+   !!! G. CATCH BLOCK je volany, ak vtedy, ak sa EXCEPTION TYPE 'EXCEPTION_CATCH' a EXCEPTION TYPE 'EXCEPTION_THROW' lisia iba v MODIFIER [const].
+   H. CATCH BLOCK je volany, ak predstavuje UNIVERZALNY CATCH BLOCK definovany pomocou SYNTAXE [catch(...)].
+!!!!! 22. EXCEPTIONS zachytavane pomocou POINTER TYPES je nutne MANUALNE ODSTRANIT z MEMORY.
+23. EXCEPTIONS mozu byt RETHROWN. Pre RETHROW EXCEPTIONS platia nasledujuce fakty.
+   A. KEYWORD [rethrow] BEZ PARAMETERS vykonava RETHROW aktualnej EXCEPTION.
+   !!! B. KEYWORD [rethrow] je mozne pouzit IBA ak existuje AKTUALNE SPRACOVAVANA EXCEPTION ci uz priamo v CATCH BLOCK, alebo v METHOD, ktora je z CATCH BLOCK volana.
+   !!!!! C. Ak sa KEYWORD [rethrow] pouzije, ak NIE JE AKTUALNE SPRACOVAVANA ziadna EXCEPTION, dojde k PROGRAM TERMINATION volanim FUNCTION [[[noreturn]] void terminate(void) noexcept].
+24. Pomocou KEYWORD [catch(...)] je mozne zachytit uplne hocijaky EXCEPTION TYPE. Pre pouzitie KEYWORD [catch(...)] platia nasledujuce pravidla.
+   A. Pomocou KEYWORD [catch(...)] je mozne zachytit uplne hocijaky EXCEPTION TYPE, vratane PRIMITIVE TYPES.
+   B. KEYWORD [catch(...)] neumoznuje v CATCH BLOCK ziskat ziadne podrobnosti o EXCEPTION.
+   C. Typickym prikladom pouzitia KEYWORD [catch(...)] je uvolnenie RESOURCES, ktora dana METHOD alokovala a nasledne je EXCEPTION v CATCH BLOCK znova RETHROWN, aby ju mohla zachytit niektora z CALLER METHODS.
+!!! 25. Jeden TRY BLOCK moze obsahovat viacero CATCH BLOCKS, kde kazdy CATCH BLOCK MUSI mat iny EXCEPTION OBJECT TYPE.
+26. C++ podporuje FUNCTION TRY BLOCKS. Pre FUNCTION TRY BLOCKS platia nasledujuce fakty.
+   A. FUNCTION TRY BLOCKS je FUNCTION, ktorej CELE BODY je tvorene TRY BLOCK a lubovolnym poctom CATCH BLOCKS.
+   B. Vyznam FUNCTION TRY BLOCKS pri beznych FUNCTIONS je nulovy. V podstate je to iba ina SYNTAX.
+   !!! C. FUNCTION TRY BLOCKS je mozne pouzit na CONSTRUCTORS a DESTRUCTORS. Taketo FUNCTION TRY BLOCKS potom mozu zachytavat EXCEPTIONS hodene BASE CLASSES CONSTRUCTORS a BASE CLASSES DESTRUCTORS (aj ked DESTRUCTORS by EXCEPTIONS NEMALI HADZAT) ako aj EXCEPTIONS, ktore su hodene MEMBER INITIALIZERS a MEMBER UNINITIALIZERS.
+   !!!!! D. EXCEPTIONS zachytene FUNCTION TRY BLOCKS v CONSTRUCTORS a DESTRUCTORS uz NEMMOZU byt USPESNE SPRACOVANE, pretoze OBJECT moze byt v INVALID STATE. Jedinym riesenim je vykonat EXCEPTION RETHROW.
+27. C++ vola FUNCTION [[[noreturn]] void terminate(void) noexcept] v nasledujucich pripadoch.
+   A. EXCEPTION je UNHANDLED.
+   B. METHOD oznacena KEYWORD [noexcept] hodila EXCEPTION.
+   C. Ak DESTRUCTOR pocas STACK UNWINDING hodi EXCEPTION.
+   D. Ak CODE pouzity pri propagacii EXCEPTION pocas STACK UNWINDING (napriklad COPY CONSTRUCTOR) hodi EXCEPTION.
+   E. Ak sa hodi EXCEPTION pomocou BEZPARAMETRICKEHO KEYWORD [throw], ked ziadna EXCEPTION nie je spracovavana.
+   F. Ak INITIALIZER STATICALLY ALLOCATED OBJECT, alebo THREAD-LOCAL OBJECT hodil EXCEPTION.
+   G. Ak DESTRUCTOR STATICALLY ALLOCATED OBJECT, alebo THREAD-LOCAL OBJECT hodil EXCEPTION.
+   H. Ak CALLBACK FUNCTION registrovana pomocou FUNCTION [int atexit(void (*CALLBACK)(void))] hodi EXCEPTION.
+28. FUNCTION [[[noreturn]] void terminate(void) noexcept] v pripade vzniku PROGRAM TERMINATION vola TERMINATE HANDLER. Pre TERMINATE HANDLER platia nasledujuce fakty.
+   A. TERMINATE HANDLER je TYPE [void (*terminate_handler)(void)].
+   B. DEFAULT TERMINATE HANDLER vola FUNCTION [[[noreturn]] void abort(void) noexcept], ktora ukonci PROGRAM.
+   C. PROGRAM moze nastavit CUSTOM TERMINATE HANDLER volanim FUNCTION [terminate_handler set_terminate(terminate_handler CALLBACK) noexcept]. FUNCTION vracia ako RETURN VALUE povodny TERMINATE HANDLER.
+   !!! D. CODE TERMINATE HANDLER NESMIE SKONCIT, inak C++ vola FUNCTION [[[noreturn]] void abort(void) noexcept]. Riesenim je na konci TERMINATE HANDLER zavolat FUNCTION [[[noreturn]] void abort(void) noexcept], alebo FUNCTION [[[noreturn]] void exit(int ExitCode)] pre zaslanie ERROR CODE do OPERATION SYSTEM.
+29. Ci sa pri PROGRAM TERMINATION zavolaju DESTRUCTORS je IMPLEMENTATION SPECIFIC.
+!!! 30. Ak lubovolny THREAD hodi UNHANDLED EXCEPTION, PROGRAM je TERMINATED volanim FUNCTION [[[noreturn]] void terminate(void) noexcept].
+31. EXCEPTIONS je mozne prenasat medzi THREADS nasledujucimi sposobom.
+   A. V CATCH BLOCK THREAD 1 pomocou FUNCTION [current_exception()] sa ziska instancia CLASS [exception_ptr]. Tuto FUNCTION je mozne volat v CATCH BLOCKS. Ak sa vola mimo CATCH BLOCKS vracia prazdnu instanciu CLASS [exception_ptr].
+   B. V THREAD 2 sa pomocou FUNCTION [rethrow_exception()] vykonava RETHROW EXCEPTION pre instanciu CLASS [exception_ptr].
+//-----------------------------------------------------------------------------

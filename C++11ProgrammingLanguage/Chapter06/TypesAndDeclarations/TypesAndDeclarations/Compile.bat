@@ -1,0 +1,1 @@
+g++-9 -m64 -std=c++2a -pthread -fexceptions -pedantic -Wall -Wextra -o Program.exe MyDebug.cpp TypesAndDeclarations.cpp

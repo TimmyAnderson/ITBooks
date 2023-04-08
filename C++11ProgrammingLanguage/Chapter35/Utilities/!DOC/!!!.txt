@@ -1,0 +1,263 @@
+//-------------------------------------------------------------------------------------------------------
+1. Solution demonstruje pouzitie pomocnych UTILITES definovanych C++ STANDARD LIBRARY.
+!!! 2. Na pracu s casom C++ definuje CHRONO LIBRARY. CHRONO LIBRARY NIE JE DATE-TIME LIBRARY. Jej hlavnym cielom je praca s CASOVYMI ROZDIELMI. Aj preto NEOBSAHUJE operacie na pracu s casom ako napriklad pricitanie mesiacov ci rokov. Pre tieto operacie je nutne vykona CUSTOM IMPLEMENTATION.
+3. C++ definuje 2 sposobi prace s casom.
+   A. Standardne C FUNCTIONS pre pracu s casom.
+   B. CHRONO LIBRARY definovanu vo FILE [chrono] a NAMEPSACE [std::chrono].
+4. CHRONO LIBRARY definuje nasledujuce pojmy.
+   A. DURATION. DURATION je casovu dobu vyjadrenu poctom TICKS, kde TICK je vyjadreny casovou jednotkou. TICK napriklad moze byt HODINA ci MILISEKUNDA. DURATION potom urcuje casovu dobu. Napriklad DEN ako DURATION je vyjadreny v jednotkach SUKUNDA obsahuje 86400 TICKS.
+   B. EPOCH. EPOCH je pociatocny bod od ktoreho sa pocita cas. Typickym prikladom EPOCH je [00:00:00-1.1.1970.], alebo [00:00:00-1.1.1601.].
+   C. TIMEPOINT. TIMEPOINT reprezentuje konkretny cas. Je to kombinacia EPOCH+DURATION. Napriklad cas [10:30:00-1.1.2001.] pri pouziti EPOCH [00:00:00-1.1.2001.] ma DURATION 630 sekundovych TICKS.
+   D. CLOCK. CLOCK definuje hodnotu EPOCH a TICK. CHRONO LIBRARY umoznuje definovat rozlicne typy CLOCK (kombinacie definicii EPOCH a TICK).
+!!! 5. DURATION v C++ reprezentuje TEMPLATE CLASS [duration<TType,TPeriod>]. TYPE PARAMETERS maju nasledujuci vyznam.
+   A. TYPE PARAMETER [TType] urcuje NUMERIC TYPE v ktorom budu reprezentovane TICKS. Typickym prikladom su TYPES [int] a [double].
+   !!!!! B. TYPE PARAMETER [TPeriod] urcuje velkost TICK v SEKUNDACH. Urcuje sa pomocou CLASS [ratio<N,D>]. Napriklad TYPE [ratio<10,1000>] urcuje, ze 1 TICK bude predstavovat 10 MILISEKUND.
+6. CLASS [duration<TType,TPeriod>] ma nasledujuce MEMBERS.
+   1. TYPE [duration<TType,TPeriod>::rep] obsahuje TYPE z TYPE PARAMETER [TType]. Urcuje TYPE v ktorom su TICKS reprezentovane.
+   2. TYPE [duration<TType,TPeriod>::period] obsahuje TYPE z TYPE PARAMETER [TPeriod]. Urcuje jednotku v zlomku SEKUND, ktory vyjadruje hodnotu 1 TICK.
+   3. CONSTRUCTOR inicializuje instanciu CLASS [duration<TType,TPeriod>]. CLASS definuje aj COPY CONSTRUCTOR.
+   4. OPERATOR= implementuje operaciu priradenia instancie DURATION do inej instancie.
+   5. OPERATOR+ realizuje funkcnost UNARNEHO OPERATOR+.
+   6. OPERATOR- realizuje funkcnost UNARNEHO OPERATOR-.
+   7. OPERATOR+ realizuje funkcnost UNARNEHO OPERATOR+.
+   8. OPERATOR- realizuje funkcnost UNARNEHO OPERATOR-.
+   9. OPERATOR++ realizuje funkcnost UNARNEHO OPERATOR++.
+   10. OPERATOR-- realizuje funkcnost UNARNEHO OPERATOR--.
+   11. OPERATOR+ realizuje funkcnost BINARNEHO OPERATOR+. OPERATOR je mozne aplikovat IBA medzi 2 instanciami DURATION, ktore mozu mat ODLISNE RATIO.
+   12. OPERATOR- realizuje funkcnost BINARNEHO OPERATOR-. OPERATOR je mozne aplikovat IBA medzi 2 instanciami DURATION, ktore mozu mat ODLISNE RATIO.
+   !!! 13. OPERATOR* realizuje funkcnost BINARNEHO OPERATOR*. OPERATOR je mozne aplikovat IBA medzi DURATION a NUMERIC TYPE.
+   !!! 14. OPERATOR/ realizuje funkcnost BINARNEHO OPERATOR/. OPERATOR je mozne aplikovat iba medzi DURATION a NUMERIC TYPE, alebo medzi 2 DURATIONS, kedy je vysledkom NUMERIC TYPE reprezentujuci pocet TICKS.
+   15. OPERATOR% realizuje funkcnost BINARNEHO OPERATOR%. OPERATOR je mozne aplikovat medzi ROZLICNYMI typmi DURATIONS a medzi DURATION a NUMERIC TYPE reprezentujucim pocet TICKS.
+   16. OPERATOR+= realizuje funkcnost BINARNEHO OPERATOR+=. OPERATOR je mozne aplikovat IBA medzi 2 instanciami DURATION, ktore mozu mat ODLISNE RATIO.
+   17. OPERATOR-= realizuje funkcnost BINARNEHO OPERATOR-=. OPERATOR je mozne aplikovat IBA medzi 2 instanciami DURATION, ktore mozu mat ODLISNE RATIO.
+   !!! 18. OPERATOR*= realizuje funkcnost BINARNEHO OPERATOR*=. OPERATOR je mozne aplikovat IBA medzi DURATION a NUMERIC TYPE.
+   !!! 19. OPERATOR/= realizuje funkcnost BINARNEHO OPERATOR/=. OPERATOR je mozne aplikovat iba medzi DURATION a NUMERIC TYPE, alebo medzi 2 DURATIONS, kedy je vysledkom NUMERIC TYPE reprezentujuci pocet TICKS.
+   20. OPERATOR%= realizuje funkcnost BINARNEHO OPERATOR%=. OPERATOR je mozne aplikovat medzi ROZLICNYMI typmi DURATIONS a medzi DURATION a NUMERIC TYPE reprezentujucim pocet TICKS.
+   21. OPERATOR== realizuje funkcnost BINARNEHO OPERATOR==. OPERATOR je mozne aplikovat medzi ROZLICNYMI typmi DURATIONS.
+   22. OPERATOR!= realizuje funkcnost BINARNEHO OPERATOR!=. OPERATOR je mozne aplikovat medzi ROZLICNYMI typmi DURATIONS.
+   23. OPERATOR< realizuje funkcnost BINARNEHO OPERATOR<. OPERATOR je mozne aplikovat medzi ROZLICNYMI typmi DURATIONS.
+   24. OPERATOR<= realizuje funkcnost BINARNEHO OPERATOR<=. OPERATOR je mozne aplikovat medzi ROZLICNYMI typmi DURATIONS.
+   25. OPERATOR> realizuje funkcnost BINARNEHO OPERATOR>. OPERATOR je mozne aplikovat medzi ROZLICNYMI typmi DURATIONS.
+   26. OPERATOR>= realizuje funkcnost BINARNEHO OPERATOR>=. OPERATOR je mozne aplikovat medzi ROZLICNYMI typmi DURATIONS.
+   !!! 27. METHOD count() vracia pocet TICKS.
+   28. STATIC METHOD min() vracia minimalnu hodnotu, ktoru je moznu pomocou CLASS [duration<TType,TPeriod>] vyjadrit.
+   29. STATIC METHOD max() vracia maximalnu hodnotu, ktoru je moznu pomocou CLASS [duration<TType,TPeriod>] vyjadrit.
+   30. STATIC METHOD zero() vracia nulovu DURATION.
+   !!! 31. TEMPLATE FUNCTION duration_cast<duration<TType2,TPeriod2>>(duration<TType1,TPeriod1>) realizuje STRATOVU KONVERZIU z DURATION TYPU [duration<TType1,TPeriod1>] na DURATION TYPU [duration<TType2,TPeriod2>]. Konverzia je STRATOVA, co znaci, ze ak hodnota, ktoru nie je mozne po konverzii vyjadrit TYPE [duration<TType2,TPeriod2>] je odseknuta.
+!!! 7. CLASS [duration<TType,TPeriod>] umoznuje vykonavat MATEMATICKE OPERACIE medzi ROZNYMI TYPMI DURATIONS. Vysledkom tychto operacii je DURATION, ktory je NAJVACSIM SPOLOCNYM DELITELOM oboch DURATIONS nad ktorymi bola vykonana matematicka operacia.
+!!! 8. CLASS [duration<TType,TPeriod>] umoznuje aplikovat POROVNAVACIE OPERATORS medzi ROZNYMI TYPMI DURATIONS.
+!!! 9. CLASS [duration<TType,TPeriod>] umoznuje vykonavat IMPLICITNE KONVERZIE medzi ROZNYMI TYPMI DURATIONS ak NEDOCHADZA k strate presnosti. Pri strate presnosti je KONVERZIU NUTNE vykonat pomocou FUNCTION TEMPLATE duration_cast<duration<TType2,TPeriod2>>(duration<TType1,TPeriod1>).
+10. C++ definuje nasledujuce ALIASES pre CLASS [duration<TType,TPeriod>].
+   A. TYPE [nanoseconds] reprezentuje DURATION v nanosekundach.
+   B. TYPE [microseconds] reprezentuje DURATION v mikrosekundach.
+   C. TYPE [miliseconds] reprezentuje DURATION v milisekundach.
+   D. TYPE [seconds] reprezentuje DURATION v sekundach.
+   E. TYPE [minutes] reprezentuje DURATION v minutach.
+   F. TYPE [hours] reprezentuje DURATION v hodinach.
+11. CLASS [time_point<TClock,TDuration>] reprezentuje TIME POINT. Ma nasledujuce MEMBERS.
+   A. TYPE [clock] vracia TYPE CLOCK z ktoreho bol TIME POINT vytvoreny.
+   B. TYPE [duration] vracia TYPE DURATION, ktory pouziva CLOCK z ktoreho bol TIME POINT vytvoreny.
+   C. TYPE [rep] vracia TYPE reprezentujuci TICKS, ktory pouziva CLOCK z ktoreho bol TIME POINT vytvoreny.
+   D. TYPE [period] vracia TYPE reprezentujuci periodu TICK, ktory pouziva CLOCK z ktoreho bol TIME POINT vytvoreny.
+   E. CONSTRUCTOR inicializuje instanciu CLASS [time_point<TClock,TDuration>]. CLASS definuje aj COPY CONSTRUCTOR.
+   F. OPERATOR+ realizuje funkcnost BINARNEHO OPERATOR+. OPERATOR je mozne aplikovat medzi TIME POINT a DURATION.
+   G. OPERATOR- realizuje funkcnost BINARNEHO OPERATOR-. OPERATOR je mozne aplikovat medzi 2 instanciami TIME POINT ako aj medzi TIME POINT a DURATION.
+   H. OPERATOR+= realizuje funkcnost BINARNEHO OPERATOR+=. OPERATOR je mozne aplikovat TIME POINT a DURATION.
+   I. OPERATOR-= realizuje funkcnost BINARNEHO OPERATOR-=. OPERATOR je mozne aplikovat TIME POINT a DURATION.
+   J. OPERATOR== realizuje funkcnost BINARNEHO OPERATOR==.
+   K. OPERATOR!= realizuje funkcnost BINARNEHO OPERATOR!=.
+   L. OPERATOR< realizuje funkcnost BINARNEHO OPERATOR<.
+   M. OPERATOR<= realizuje funkcnost BINARNEHO OPERATOR<=.
+   N. OPERATOR> realizuje funkcnost BINARNEHO OPERATOR>.
+   O. OPERATOR>= realizuje funkcnost BINARNEHO OPERATOR>=.
+   P. METHOD time_since_epoch() vracia DURATION od EPOCH daneho CLOCK.
+   Q. STATIC METHOD min() vracia minimalnu hodnotu, ktoru je moznu pomocou CLASS [time_point<TClock,TDuration>] vyjadrit.
+   R. STATIC METHOD max() vracia maximalnu hodnotu, ktoru je moznu pomocou CLASS [time_point<TClock,TDuration>] vyjadrit.
+   !!! S. TEMPLATE FUNCTION time_point_cast<duration<TType,TPeriod>>(time_point<TClock,TDuration>) realizuje STRATOVU KONVERZIU z DURATION TYPU [time_point<TClock1,TDuration1>] na DURATION TYPU [time_point<TClock2,TDuration2>]. Konverzia je STRATOVA, co znaci, ze ak hodnota, ktoru nie je mozne po konverzii vyjadrit TYPE [time_point<TClock2,TDuration2>] je odseknuta.
+!!! 12. CLASS [time_point<TClock,TDuration>] umoznuje vykonavat IMPLICITNE KONVERZIE medzi ROZNYMI TYPMI TIME POINTS ak NEDOCHADZA k strate presnosti. Pri strate presnosti je KONVERZIU NUTNE vykonat pomocou FUNCTION TEMPLATE time_point_cast<duration<TType,TPeriod>>(time_point<TClock,TDuration>).
+13. CLOCK je CONCEPT, ktory definuje ake MEMBERS ma CLASS definovat, aby mohla byt povazovana za CLOCK. CONCEPT CLOCK vyzaduje, aby CLASS definovala nasledujuce MEMBERS.
+   A. TYPE [CLOCK::duration] musi vratit DURATION TYPE. Spravidla vracia TYPE [duration<TType,TPeriod>].
+   B. TYPE [CLOCK::rep] musi vratit TYPE reprezentujuci TICKS. TYPE by mal byt ekvivalentny s TYPE [CLOCK::duration::rep].
+   C. TYPE [CLOCK::period] musi vratit TYPE reprezentujuci periodu TICK. TYPE by mal byt ekvivalentny s TYPE [CLOCK::duration::period]. Spravidla je to TYPE [ratio<N,D>].
+   D. TYPE [CLOCK::timepoint] musi vratit TYPE reprezentujuci TIMEPOINT. Spravidla sa jedna o TYPE [time_point<TClock,TDuration>].
+   E. STATIC FIELD [CLOCK::is_steady] by mal vratit TRUE, ak je CLOCK STEADY. STEADY CLOCK je CLOCK, ktoreho hodnota je NEZAVISLA na zmene systemoveho casu. To znaci, ze jeho hodnota neustale narasta, bez ohladu na zmenu DAYLIGHT SAVING TIME ci zmenu casu systemovych hodin.
+   F. STATIC METHOD [CLOCK::now()] vracia instanciu [CLOCK::timepoint] obsahujucu aktualny cas.
+14. C++ definuje 3 typy CLOCKS.
+   A. CLASS [system_clock] reprezentuje hodiny systemoveho casu. Systemovy cas sa NIE JE STEADY a teda sa moze skokovito menit zmenou DAYLIGHT SAVING TIME, alebo pri zmene casu systemovych hodin. CLASS obsahuje METHODS system_clock::to_time_t() a system_clock::from_time_t() umoznujuce konverzie z C TIME TYPE [time_t] pouzivaneho v C TIME FUNCTIONS.
+   B. CLASS [high_resolution_clock] reprezentuje hodiny s vysokou presnostou. Spravidla NIE JE STEADY, aj ked moze byt. Zavisi to od platformy.
+   C. CLASS [steady_clock] reprezentuje STEADY CLOCK. STEADY CLOCK je CLOCK, ktoreho hodnota je NEZAVISLA na zmene systemoveho casu. To znaci, ze jeho hodnota neustale narasta, bez ohladu na zmenu DAYLIGHT SAVING TIME ci zmenu casu systemovych hodin.
+15. C++ STANDARD LIBRARY definuje niekolko TIME TRAITS.
+   A. STRUCTURE [treat_as_floating_point<TTimeRepresentation>] umoznuje urcit ci je mozne medzi 2 rozlicnymi DURATION TYPES vykonat IMPLICIT CONVERSION. Ak [treat_as_floating_point<TTimeRepresentation>::value] ma hodnotu TRUE, tak je MOZNE vykonat IMPLICIT CONVERSION, inak je nutne pouzit EXPLICIT CONVERSION.
+   B. STRUCTURE [duration_values<TTimeRepresentation>] poskytuje 3 CONSTANSTS [duration_values<TTimeRepresentation>::min()], [duration_values<TTimeRepresentation>::max()] a [duration_values<TTimeRepresentation>::zero()], ktore umoznuju urcit minimalnu, maximalnu a nulovu hodnotu REPRESENTATION pouzitej na reprezentaciu TIME.
+   C. STRUCTURE [common_type<TDuration1,TDuration2>] poskytuje vo FIELD [common_type<TDuration1,TDuration2>::type] TYPE, ktorym je mozne vyjadrit hodnotu v DURATION 'TDuration1' a DURATION 'TDuration2' BEZ STRATY PRESNOSTI.
+   D. STRUCTURE [common_type<TTimePoint1,TTimePoint2>] poskytuje vo FIELD [common_type<TTimePoint1,TTimePoint2>::type] TYPE, ktorym je mozne vyjadrit hodnotu v TIME POINT 'TTimePoint1' a TIME POINT 'TTimePoint2' BEZ STRATY PRESNOSTI. Obe TIMEPOINTS MUSIA byt definovane v TOM ISTOM CLOCK.
+16. CLASS [ratio<N,D>] umoznuje reprezenovat zlomky. CLASS [ratio<N,D>] ma nasledujuce MEMBERS.
+   A. TYPE [ratio<N,D>::type] vracia TYPE danej CLASS.
+   B. CONSTEXPR FIELD [ratio<N,D>::num] obsahuje hodnotu NASOBITELA zlomku.
+   C. CONSTEXPR FIELD [ratio<N,D>::den] obsahuje hodnotu DELITELA zlomku.
+!!!!! 17. Z CLASS [ratio<N,D>] NEMA ZMYSEL vytvarat INSTANCIE. Pouziva sa ako definicia TYPE, ktory vdaka svojim CONSTANTS definuje zlomok. Pre CLASS [ratio<N,D>] NIE SU DEFINOVANE ZIADNE OPERATIONS ani METHODS. Jediny vyznam je pouzitie samotneho TYPE.
+!!! 18. CLASS [ratio<N,D>] v COMPILE TIME AUTOMATICKY vykonava vykratenie zlomku, takze jeho FIELDS uz obsahuju tieto vykratene hodnoty.
+!!! 19. C++ definuje sadu TEMPLATES, ktore umoznuju vykonavat zakladne matematicke operacie a porovnania nad CLASS [ratio<N,D>]. Vysledkom tychto operacii je NOVY TYPE vyjadruci hodnotu noveho zlomoku, alebo vysledok porovnavacieho operatora. C++ definuje tieto TEMPLATES.
+   A. TEMPLATE ratio_add<R1,R2> vykonava sucet CLASS [ratio<N1,D1>] a CLASS [ratio<N2,D2>].
+   B. TEMPLATE ratio_subtract<R1,R2> vykonava sucet CLASS [ratio<N1,D1>] a CLASS [ratio<N2,D2>].
+   C. TEMPLATE ratio_multiply<R1,R2> vykonava sucet CLASS [ratio<N1,D1>] a CLASS [ratio<N2,D2>].
+   D. TEMPLATE ratio_divide<R1,R2> vykonava sucet CLASS [ratio<N1,D1>] a CLASS [ratio<N2,D2>].
+   E. TEMPLATE ratio_equal<R1,R2> porovnava ci su CLASS [ratio<N1,D1>] a CLASS [ratio<N2,D2>] obsahuju zhodne hodnoty.
+   F. TEMPLATE ratio_equal<R1,R2> porovnava ci CLASS [ratio<N1,D1>] a CLASS [ratio<N2,D2>] obsahuju rozdielne hodnoty.
+   G. TEMPLATE ratio_less<R1,R2> porovnava ci CLASS [ratio<N1,D1>] obsahuje mensiu hodnotu ako CLASS [ratio<N2,D2>].
+   H. TEMPLATE ratio_less_equal<R1,R2> porovnava ci CLASS [ratio<N1,D1>] obsahuje mensiu, alebo rovnu hodnotu ako CLASS [ratio<N2,D2>].
+   I. TEMPLATE ratio_greater<R1,R2> porovnava ci CLASS [ratio<N1,D1>] obsahuje vacsiu hodnotu ako CLASS [ratio<N2,D2>].
+   J. TEMPLATE ratio_greater_equal<R1,R2> porovnava ci CLASS [ratio<N1,D1>] obsahuje vacsiu, alebo rovnu hodnotu ako CLASS [ratio<N2,D2>].
+20. CLASS [ratio<N,D>] obsahuje nasledujuce ALIASES, ktore umoznuju jednoducho vyjadrit casto pouzivane zlomky.
+   A. ALIAS [yocto] reprezentuje CLASS [ratio<1,1000000000000000000000000>]. Je definovana iba ako to TYPE [intmax_t] umoznuje.
+   B. ALIAS [zepto] reprezentuje CLASS [ratio<1,1000000000000000000000>]. Je definovana iba ako to TYPE [intmax_t] umoznuje.
+   C. ALIAS [atto] reprezentuje CLASS [ratio<1,1000000000000000000>].
+   D. ALIAS [femto] reprezentuje CLASS [ratio<1,1000000000000000>].
+   E. ALIAS [pico] reprezentuje CLASS [ratio<1,1000000000000>].
+   F. ALIAS [nano] reprezentuje CLASS [ratio<1,1000000000>].
+   G. ALIAS [micro] reprezentuje CLASS [ratio<1,1000000>].
+   H. ALIAS [milli] reprezentuje CLASS [ratio<1,1000>].
+   I. ALIAS [centi] reprezentuje CLASS [ratio<1,100>].
+   J. ALIAS [deci] reprezentuje CLASS [ratio<1,10>].
+   K. ALIAS [deca] reprezentuje CLASS [ratio<10,1>].
+   L. ALIAS [hecto] reprezentuje CLASS [ratio<100,1>].
+   M. ALIAS [kilo] reprezentuje CLASS [ratio<1000,1>].
+   N. ALIAS [mega] reprezentuje CLASS [ratio<1000000,1>].
+   O. ALIAS [giga] reprezentuje CLASS [ratio<1000000000,1>].
+   P. ALIAS [tera] reprezentuje CLASS [ratio<1000000000000,1>].
+   Q. ALIAS [peta] reprezentuje CLASS [ratio<1000000000000000,1>].
+   R. ALIAS [exa] reprezentuje CLASS [ratio<1000000000000000000,1>].
+   S. ALIAS [zetta] reprezentuje CLASS [ratio<1000000000000000000000,1>. Je definovana iba ako to TYPE [intmax_t] umoznuje.
+   T. ALIAS [yotta] reprezentuje CLASS [ratio<1000000000000000000000000,1>. Je definovana iba ako to TYPE [intmax_t] umoznuje.
+21. C++ STANDARD LIBRARY v LIBRARY <type_traits> definuje mnozstvo TYPE TRAITS, ktore umoznuju pracovat s TYPES v COMPILE TIME. TYPE TRAITS sa vyuzivaju v METAPROGRAMMING.
+22. C++ definuje nasledujuce typy TYPE TRAITS.
+   1. TYPE TRAIT [is_void<T>] urcuje ci TYPE 'T' je VOID TYPE.
+   2. TYPE TRAIT [is_integral<T>] urcuje ci TYPE 'T' je INTEGER TYPE. Sem patri aj TYPE [char] ci TYPE [bool].
+   3. TYPE TRAIT [is_floating_point<T>] urcuje ci TYPE 'T' je FLOATING POINT TYPE.
+   4. TYPE TRAIT [is_arithmetic<T>] urcuje ci TYPE 'T' je ARITHMETIC TYPE. Sem patri INTEGER a FLOATIN POINT TYPES, ako aj TYPE [char] ci TYPE [bool].
+   5. TYPE TRAIT [is_signed<T>] urcuje ci TYPE 'T' je SIGNED ARITHMETIC TYPE.
+   6. TYPE TRAIT [is_unsigned<T>] urcuje ci TYPE 'T' je UNSIGNED ARITHMETIC TYPE.
+   7. TYPE TRAIT [is_const<T>] urcuje ci TYPE 'T' ma modifikator CONST.
+   8. TYPE TRAIT [is_volatile<T>] urcuje ci TYPE 'T' ma modifikator VOLATILE.
+   9. TYPE TRAIT [is_array<T>] urcuje ci TYPE 'T' je ARRAY TYPE.
+   10. TYPE TRAIT [is_enum<T>] urcuje ci TYPE 'T' je ENUM TYPE.
+   11. TYPE TRAIT [is_union<T>] urcuje ci TYPE 'T' je UNION TYPE.
+   12. TYPE TRAIT [is_class<T>] urcuje ci TYPE 'T' je CLASS TYPE, alebo STRUCTURE TYPE.
+   13. TYPE TRAIT [is_function<T>] urcuje ci TYPE 'T' je FUNCTION TYPE.
+   14. TYPE TRAIT [is_reference<T>] urcuje ci TYPE 'T' je REFERENCE TYPE. Akceptuje LVALUE REFERENCE TYPE aj RVALUE REFERENCE TYPE.
+   15. TYPE TRAIT [is_lvalue_reference<T>] urcuje ci TYPE 'T' je LVALUE REFERENCE TYPE.
+   16. TYPE TRAIT [is_rvalue_reference<T>] urcuje ci TYPE 'T' je RVALUE REFERENCE TYPE.
+   17. TYPE TRAIT [is_pointer<T>] urcuje ci TYPE 'T' je POINTER TYPE. Akceptuje aj FUNTION POINTER TYPE, ale NIE POINTER TYPES na NON-STATIC MEMBERS.
+   18. TYPE TRAIT [is_member_pointer<T>] urcuje ci TYPE 'T' je POINTER TYPE na NON-STATIC MEMBER. Akceptuje aj POINTER TYPES na NON-STATIC FIELDS a POINTER TYPES na NON-STATIC METHODS.
+   19. TYPE TRAIT [is_member_object_pointer<T>] urcuje ci TYPE 'T' je POINTER TYPE na NON-STATIC FIELD.
+   20. TYPE TRAIT [is_member_function_pointer<T>] urcuje ci TYPE 'T' je POINTER TYPE na NON-STATIC METHOD.
+   21. TYPE TRAIT [is_fundamental<T>] urcuje ci TYPE 'T' je FUNDAMENTAL TYPE. FUNDAMENTAL TYPS su vsetky INTEGER TYPES vratane TYPE [char] a TYPE [bool], FLOATING POINT TYPES, TYPE [void] a TYPE [nullptr_t].
+   22. TYPE TRAIT [is_scalar<T>] urcuje ci TYPE 'T' je SCALAR TYPE. SCALAR TYPS su vsetky INTEGER TYPES vratane TYPE [char] a TYPE [bool], FLOATING POINT TYPES, ENUM TYPES, POINTER TYPES, MEMBER POINTER TYPES,  TYPE [void] a TYPE [nullptr_t].
+   23. TYPE TRAIT [is_object<T>] urcuje ci TYPE 'T' je LUBOVOLNY TYPE okrem REFERENCE TYPES, FUNCTION TYPES a TYPE [void].
+   24. TYPE TRAIT [is_compound<T>] urcuje ci TYPE 'T' je niektory z TYPES ARRAY TYPE, ENUM TYPE, UNION TYPE, CLASS TYPE, FUNCTION TYPE, REFERENCE TYPE, alebo POINTER TYPE.
+   25. TYPE TRAIT [is_trivial<T>] urcuje ci TYPE 'T' TRIVIAL TYPE. TRIVIAL TYPES su SCALAR TYPES, alebo ARRAY SCALAR TYPES.
+   26. TYPE TRAIT [is_trivially_copyable<T>] urcuje ci TYPE 'T' je COPYABLE SCALAR TYPE, alebo ARRAY COPYABLE SCALAR TYPE.
+   27. TYPE TRAIT [is_standard_layout<T>] urcuje ci TYPE 'T' je STANDARD LAYOUT SCALAR TYPE, alebo ARRAY STANDARD LAYOUT SCALAR TYPE.
+   28. TYPE TRAIT [is_pod<T>] urcuje ci TYPE 'T' je PLAIN OLD DATA TYPE. PLAIN OLD DATA TYPES su TYPES, ktore je mozne kompirovat pomocou FUNCTION memcopy().
+   29. TYPE TRAIT [is_literal_type<T>] urcuje ci TYPE 'T' je LITERAL TYPE. LITERAL TYPES su SCALAR TYPES, REFERENCE TYPES, CLASS TYPES, alebo ARRAY SCALAR TYPES, ARRAY REFERENCE TYPES a ARRAY CLASS TYPES.
+   30. TYPE TRAIT [is_empty<T>] urcuje ci TYPE 'T' je EMPTY. EMPTY TYPE je TYPE, ktory NEMA MEMBERS ani VIRTUAL MEMBER FUNCTIONS ani VIRTUAL BASE CLASSES.
+   31. TYPE TRAIT [is_polymorphic<T>] urcuje ci TYPE 'T', ktory ma aspon 1 VIRTUAL METHOD, alebo DERIVED VIRTUAL METHOD.
+   32. TYPE TRAIT [is_abstract<T>] urcuje ci TYPE 'T', ktory ma aspon 1 PURE VIRTUAL METHOD.
+   33. TYPE TRAIT [has_virtual_destructor<T>] urcuje ci TYPE 'T' ma VIRTUAL DESTRUCTOR.
+   34. TYPE TRAIT [is_default_constructible<T>] urcuje ci TYPE 'T' ma DEFAULT CONSTRUCTOR.
+   35. TYPE TRAIT [is_copy_constructible<T>] urcuje ci TYPE 'T' ma COPY CONSTRUCTOR.
+   36. TYPE TRAIT [is_move_constructible<T>] urcuje ci TYPE 'T' ma MOVE CONSTRUCTOR.
+   37. TYPE TRAIT [is_copy_assignable<T>] urcuje ci TYPE 'T' ma OPERATOR= s COPY SEMANTICS.
+   38. TYPE TRAIT [is_move_assignable<T>] urcuje ci TYPE 'T' ma OPERATOR= s MOVE SEMANTICS.
+   39. TYPE TRAIT [is_destructible<T>] urcuje ci TYPE 'T' ma PUBLIC DESTRUCTOR, ktory NIE JE DELETED DESTRUCTOR.
+   40. TYPE TRAIT [is_trivially_default_constructible<T>] urcuje ci TYPE 'T' ma TRIVIAL DEFAULT CONSTRUCTOR. TRIVIAL CONSTRUCTOR je CONSTRUCTOR, ktory ma IBA TRIVIALNE CONSTRUCTS. TRIVIAL CONSTRUCTOR NESMIE hodit EXCEPTION.
+   41. TYPE TRAIT [is_trivially_copy_constructible<T>] urcuje ci TYPE 'T' ma TRIVIAL COPY CONSTRUCTOR. TRIVIAL CONSTRUCTOR je CONSTRUCTOR, ktory ma IBA TRIVIALNE CONSTRUCTS. TRIVIAL CONSTRUCTOR NESMIE hodit EXCEPTION.
+   42. TYPE TRAIT [is_trivially_move_constructible<T>] urcuje ci TYPE 'T' ma TRIVIAL MOVE CONSTRUCTOR. TRIVIAL CONSTRUCTOR je CONSTRUCTOR, ktory ma IBA TRIVIALNE CONSTRUCTS. TRIVIAL CONSTRUCTOR NESMIE hodit EXCEPTION.
+   43. TYPE TRAIT [is_trivially_copy_assignable<T>] urcuje ci TYPE 'T' ma TRIVIAL OPERATOR= s COPY SEMANTICS. TRIVIAL OPERATOR= je OPERATOR=, ktory ma IBA TRIVIALNE CONSTRUCTS. TRIVIAL OPERATOR= NESMIE hodit EXCEPTION.
+   44. TYPE TRAIT [is_trivially_move_assignable<T>] urcuje ci TYPE 'T' ma TRIVIAL OPERATOR= s MOVE SEMANTICS. TRIVIAL OPERATOR= je OPERATOR=, ktory ma IBA TRIVIALNE CONSTRUCTS. TRIVIAL OPERATOR= NESMIE hodit EXCEPTION.
+   45. TYPE TRAIT [is_trivially_destructible<T>] urcuje ci TYPE 'T' ma TRIVIAL DESTRUCTOR. TRIVIAL DESTRUCTOR je DESTRUCTOR, ktory ma IBA TRIVIALNE CONSTRUCTS. TRIVIAL DESTRUCTOR NESMIE hodit EXCEPTION.
+   46. TYPE TRAIT [is_nothrow_default_constructible<T>] urcuje ci TYPE 'T' ma  DEFAULT CONSTRUCTOR, ktory NEHADZE EXCEPTIONS.
+   47. TYPE TRAIT [is_nothrow_copy_constructible<T>] urcuje ci TYPE 'T' ma  COPY CONSTRUCTOR, ktory NEHADZE EXCEPTIONS.
+   48. TYPE TRAIT [is_nothrow_move_constructible<T>] urcuje ci TYPE 'T' ma  MOVE CONSTRUCTOR, ktory NEHADZE EXCEPTIONS.
+   49. TYPE TRAIT [is_nothrow_copy_assignable<T>] urcuje ci TYPE 'T' ma  OPERATOR= s COPY SEMANTICS, ktory NEHADZE EXCEPTIONS.
+   50. TYPE TRAIT [is_nothrow_move_assignable<T>] urcuje ci TYPE 'T' ma  OPERATOR= s MOVE SEMANTICS, ktory NEHADZE EXCEPTIONS.
+   51. TYPE TRAIT [is_nothrow_destructible<T>] urcuje ci TYPE 'T' ma  DESTRUCTOR, ktory NEHADZE EXCEPTIONS.
+   52. TYPE TRAIT [is_same<T1,T2>] urcuje ci su TYPE 'T1' a TYPE 'T2' IDENTICKE. Za identicke sa povazuju aj ALIASES vytvorene pomocou TYPEDEF a USING. CONST a VOLATILE TYPES NIE SU povazovane za IDENTICKE TYPES z NON-CONST a NON-VOLATILE TYPES.
+   53. TYPE TRAIT [is_base_of<B,D>] urcuje ci TYPE 'B' je BASE CLASS TYPE 'D'. Akceptuju aj sa TYPES, ktore su DERIVED cez PRIVATE a PROTECTED MODIFIERS.
+   54. TYPE TRAIT [is_convertible<T1,T2>] urcuje ci TYPE 'T1' je konvertovatelny na TYPE 'T2'. Akceptuju aj sa konverzie na TYPES, ktore su DERIVED cez PRIVATE a PROTECTED MODIFIERS a takisto CUSTOM CONVERSIONS si CUSTOM NON-EXPLICIT CONSTRUCTORS.
+   55. TYPE TRAIT [is_constructible<T,TTypes>] urcuje ci TYPE 'T' je mozne vytvorit volanim CONSTRUCTOR, ktory ma PARAMETERS 'TTypes'.
+   56. TYPE TRAIT [is_trivially_constructible<T,TTypes>] urcuje ci TYPE 'T' je mozne TRIVIALNE (BEZ vykonania CONVERSIONS) vytvorit volanim CONSTRUCTOR, ktory ma PARAMETERS 'TTypes'.
+   57. TYPE TRAIT [is_nothrow_constructible<T,TTypes>] urcuje ci TYPE 'T' je mozne vytvorit volanim CONSTRUCTOR, ktory ma PARAMETERS 'TTypes', pricom tento CONSTRUCTOR NEHADZE EXCEPTIONS.
+   58. TYPE TRAIT [is_assignable<T1,T2>] urcuje ci do TYPE 'T1' je mozne priradit TYPE 'T2'. Akceptuju aj CUSTOM CONVERSIONS si CUSTOM NON-EXPLICIT CONSTRUCTORS.
+   59. TYPE TRAIT [is_trivially_assignable<T1,T2>] urcuje ci do TYPE 'T1' je mozne TRIVIALNE (BEZ vykonania CONVERSIONS) priradit TYPE 'T2'.
+   60. TYPE TRAIT [is_nothrow_assignable<T1,T2>] urcuje ci do TYPE 'T1' je mozne priradit TYPE 'T2' bez toho, aby doslo k hodeniu EXCEPTION. Akceptuju aj CUSTOM CONVERSIONS si CUSTOM NON-EXPLICIT CONSTRUCTORS.
+   61. TYPE TRAIT [uses_allocator<T,TAlloc>] urcuje ci TYPE 'TAlloc' je mozne konverovat na TYPE 'T::allocator_type'.
+   62. TYPE TRAIT [remove_const<T>] odstranuje z TYPE 'T' CONST MODIFIER.
+   63. TYPE TRAIT [remove_volatile<T>] odstranuje z TYPE 'T' VOLATILE MODIFIER.
+   64. TYPE TRAIT [remove_cv<T>] odstranuje z TYPE 'T' CONST a VOLATILE MODIFIERS.
+   65. TYPE TRAIT [add_const<T>] pridava do TYPE 'T' CONST MODIFIER.
+   66. TYPE TRAIT [add_volatile<T>] pridava do TYPE 'T' VOLATILE MODIFIER.
+   67. TYPE TRAIT [add_cv<T>] pridava do TYPE 'T' CONST a VOLATILE MODIFIERS.
+   68. TYPE TRAIT [make_signed<T>] zmeni TYPE 'T' na SIGNED TYPE.
+   69. TYPE TRAIT [make_unsigned<T>] zmeni TYPE 'T' na UNSIGNED TYPE.
+   70. TYPE TRAIT [remove_reference<T>] odstranuje z REFERENCE TYPE 'T' REFERENCE MODIFIER.
+   71. TYPE TRAIT [add_lvalue_reference<T>] pridava do TYPE 'T' RVALUE REFERENCE MODIFIER.
+   72. TYPE TRAIT [add_rvalue_reference<T>] pridava do TYPE 'T' LVALUE REFERENCE MODIFIER.
+   73. TYPE TRAIT [remove_pointer<T>] odstranuje z TYPE 'T' POINTER MODIFIER.
+   74. TYPE TRAIT [add_pointer<T>] pridava do TYPE 'T' POINTER MODIFIER.
+   75. TYPE TRAIT [rank<T>] vracia POCET DIMENSIONS ak je TYPE 'T' ARRAY. Ak TYPE 'T' nie je ARRAY, vracia hodnotu 0.
+   76. TYPE TRAIT [extent<T,Index>] vracia POCET ITEMS v DIMENSION 'Index' ak je TYPE 'T' ARRAY. Ak TYPE 'T' nie je ARRAY, alebo nema DIMENSION 'Index' vracia hodnotu 0.
+   77. TYPE TRAIT [remove_extent<T>] odstrani 1. DIMENSION z TYPE 'T' je TYPE 'T' ARRAY. Ak TYPE 'T' nie je ARRAY, vracia TYPE 'T'.
+   78. TYPE TRAIT [remove_all_extents<T>] odstrani VSETKY DIMENSIONS z TYPE 'T' je TYPE 'T' ARRAY. Ak TYPE 'T' nie je ARRAY, vracia TYPE 'T'.
+   79. TYPE TRAIT [underlying_type<T>] vracia PRIMITIVE TYPE, ktorym je vyjadreny ENUM TYPE 'T'.
+   80. TYPE TRAIT [decay<T>] ak je TYPE 'T' LVALUE, zmeni ho na RVALUE, ak je TYPE 'T' REFERENCE zmeni ho na BY-VALUE TYPE, ak je TYPE 'T' ARRAY, zmeni ho na POINTER, ak je TYPE 'T' FUNCTION, zmeni ho na POINTER na FUNCTION a ak ma TYPE 'T' CONST, alebo VOLATILE MODIFIER, tak vracia TYPE BEZ tychto MODIFIERS.
+   !!! 81. TYPE TRAIT [enable_if<B,T>] vracia v ALIAS 'type' TYPE 'T' ak podmienka 'B' je rovna TRUE, alebo ak podmienka 'B' je rovna FALSE, ALIAS 'type' NEDEFINUJE. Pouziva sa pri aplikacii SFINAE mechanizmu.
+   82. TYPE TRAIT [conditional<B,T1,T2>] vracia v ALIAS 'type' TYPE 'T1' ak podmienka 'B' je rovna TRUE, alebo ak podmienka 'B' je rovna FALSE, vracia v ALIAS 'type' TYPE 'T2'.
+   83. TYPE TRAIT [common_type<TTypes...>] vracia zo vsetkych TYPES 'TTypes' ten TYPE na ktory je KAZDY DALSI TYPE mozne KONVERTOVAT. Do uvahy sa beru aj CUSTOM CONVERSIONS. Ak takyto TYPE NEEXISTUJE, COMPILER generuje ERROR. TYPE TRAITS dokaze najst spolocny TYPE aj pre CUSTOM TYPES ak su v dedicskej hierarchii.
+   84. TYPE TRAIT [result_of<TFunctionObject(TArgTypes...)>] vracia RETURN TYPE FUNCTION OBJECT 'TFunctionObject', ktora ma PARAMETERS 'TArgTypes'.
+   85. TYPE TRAIT [alignment_of<T>] vracia ALIGNMENT TYPE 'T'. Je to EKVIVALENT OPERATOR [alignof(T)].
+   86. TYPE TRAIT [aligned_storage<Length,Alignment>] vracia TYPE o MINIMALNEJ DLZKE 'Length' BYTES s ALIGNMENT delitelnym hodnotou 'Alignment'.
+   87. TYPE TRAIT [aligned_union<Length,TTypes>] vracia UNION TYPE o MINIMALNEJ DLZKE 'Length' z ktoreho je mozne skonstruovat UNION TYPE obsahujucim TYPES 'Types'.
+   !!!!! 88. TYPE TRAIT [declval<T>] konvertuje TYPE 'T' na jeho RVALUE REFERENCE TYPE. RETURN TYPE z TYPE TRAIT sa NESMIE POUZIVAT v CODE, ktory je EVALUATED. TYPE TRAIT je mozne pouzit napriklad s KEYWORD decltype(), alebo v KEYWORD noexcept().
+!!! 23. Viacere TYPE TRAITS ako napriklad [is_destructible<T>] NEROBIA ACCESS CHECKING a chovaju sa ako keby boli volane z NON-MEMBER FUNCTION MIMO daneho TYPE. To znaci, ze ak ma TYPE definovany PRIVATE DESTRUCTOR, tak vyhodnotia TYPE ako keby NEMAL definovany DESTRUCTOR a to AJ ked je TYPE TRAIT [is_destructible<T>] volany v METHOD daneho TYPE.
+24. Pre konverziu LVAUES na RVALUES C++ definuje nasledujuce TEMPLATES FUNCTION.
+   A. TEMPLATE FUNCTION move<T>() vykonava konverziu z LVALUE REFERENCE na RVALUE REFERENCE. Ak TYPE 'T' NEMA definovany MOVE CONTSTRUCTOR, tak TEMPLATE FUNCTION move<T>() vracia LVALUE REFERENCE.
+   B. TEMPLATE FUNCTION move_if_noexcept<T>() vykonava konverziu z LVALUE na RVALUE REFERENCE v pripade, ze TYPE 'T' ma definovany MOVE CONSTRUCTOR, ktory je oznaceny ako NOEXCEPT, alebo ak NAME definovany COPY CONSTRUCTOR. Ak MOVE CONSTRUCTOR s NOEXCEPT TYPE 'T' NEMA definovany, tak TEMPLATE FUNCTION move_if_noexcept<T>() vracia LVALUE REFERENCE.
+   C. TEMPLATE FUNCTION forward<T>() vykonava konverziu z REFERENCE na RVALUE REFERENCE pokial REFERENCE NIE JE LVALUE REFERENCE. Ak TYPE 'T' je LVALUE REFERENCE, tak TEMPLATE FUNCTION forward<T>() vracia LVALUE REFERENCE.
+!!! 25. C++ pre REFERENCES definuje REFERENCE COLLAPSING RULES, ktore definuju ako C++ modifujue REFERENCES na REFERENCES.
+   A. COPY REFERENCE na COPY REFERENCE je C++ modifikovana na COPY REFERENCE.
+   B. COPY REFERENCE na MOVE REFERENCE je C++ modifikovana na COPY REFERENCE.
+   C. MOVE REFERENCE na COPY REFERENCE je C++ modifikovana na COPY REFERENCE.
+   !!! D. MOVE REFERENCE na MOVE REFERENCE je C++ modifikovana na MOVE REFERENCE.
+26. TEMPLATE FUNCTION swap<T>() vymiena hodnoty 2 VARIABLES. Platia pre nu nasledujuce zasady.
+   A. TEMPLATE FUNCTION swap<T>() vymiena obsah 2 VARIABLES.
+   B. TEMPLATE FUNCTION swap<T>() podporuje vymenu 2 ARRAYS.
+   C. TEMPLATE FUNCTION swap<T>() NEPODPORUJE vymenu VARIABLES ak niektora z VARIABLES je RVALUE.
+27. NAMESPACE [std::rel_ops] obsahuje OVERLOADED OPERATORS, ktore umoznuju implementovat vsetky COMPARISION OPERATORS pre CUSTOM CLASSES, ktore implementuju CUSTOM OPERATORS OPERATOR< a OPERATOR==. NAMESPACE [std::rel_ops] obsahuje nasledujuce OPERATORS.
+   A. OPERATOR!= urcuje ci VALUE1!=VALUE2.
+   B. OPERATOR> urcuje ci VALUE1>VALUE2.
+   C. OPERATOR<= urcuje ci VALUE1<=VALUE2.
+   D. OPERATOR>= urcuje ci VALUE1>=VALUE2.
+!!! 28. NEVYHODOU OPERATORS v NAMESPACE [std::rel_ops], ze pri pouziti USING NAMESPACE na GLOBAL SCOPE dojde k NAMESPACE POLLUTION. Vdaka tomu moze C++ CHYBNE aplikovat OPERATORS z NAMESPACE [std::rel_ops] aj na tieto CLASSES, kde to nebolo zamyslane a sposobit tak COMPILATION ERRORS.
+29. CLASS [type_info] v LIBRARY <typeinfo> poskytuje informacie o TYPE. CLASS [type_info] definuje nasledujuce MEMBERS.
+   !!! A. CONSTRUCTOR vytvora instanciu CLASS [type_info]. CONSTRUCTOR je DELETED, pretoze instancie CLASS [type_info] moze vytvara IBA COMPILER.
+   B. DESTRUCTOR odstranuje instanciu CLASS [type_info]. DESTRUCTOR je VIRTUAL.
+   C. OPERATOR= je DELETED, pretoze instancie CLASS [type_info] NIE JE MOZNE KOPIROVAT.
+   C. OPERATOR== urcuje ci pre 2 instancie CLASS [type_info] plati, ze VALUE1==VALUE2.
+   D. OPERATOR!= urcuje ci pre 2 instancie CLASS [type_info] plati, ze VALUE1!=VALUE2.
+   !!! E. METHOD type_info::before() vracia informaciu ci jedna instancia CLASS [type_info] sa nachadza pred druhou. Poradie urcuje COMPILER a moze sa pri kazdom spusteni PROGRAMU MENIT.
+   !!! F. METHOD type_info::hash_code() vracia HASH CODE danej instancie CLASS [type_info]. Zaroven plati, ze HASH CODES pre identicke instancie CLASS [type_info] su ROVNAKE. Hodnoty HASH CODES sa vsak mozu pri kazdom spusteni PROGRAMU MENIT.
+   !!! G. METHOD type_info::name() vracia STRING NAME TYPE, ktory instancia CLASS [type_info]. NAME NEMUSI byt UNIKATNY ani pre rozlicne TYPES.
+30. CLASS [type_index] v LIBRARY <typeindex> je WRAPPER nad CLASS [type_info]. INSTANCIA CLASS reprezentuje HASH CODE daneho TYPE. Pozor NIE INSTANCIE daneho TYPE, ale samotneho TYPE. Instanciu CLASS [type_index] je mozne pouzit ako KEY v CONTAINERS ako napriklad MAPS. CLASS [type_index] definuje nasledujuce MEMBERS.
+   !!! A. CONSTRUCTOR vytvora instanciu CLASS [type_index] z instancie CLASS [type_info] ziskanej pomocou OPERATOR typeid().
+   B. DESTRUCTOR odstranuje instanciu CLASS [type_index].
+   C. OPERATOR= vykonava priradenie jednej instancie CLASS [type_index] do druhej.
+   D. OPERATOR== urcuje ci pre 2 instancie CLASS [type_index] plati, ze VALUE1==VALUE2.
+   E. OPERATOR!= urcuje ci pre 2 instancie CLASS [type_index] plati, ze VALUE1!=VALUE2.
+   F. OPERATOR< urcuje ci pre 2 instancie CLASS [type_index] plati, ze VALUE1<VALUE2.
+   G. OPERATOR> urcuje ci pre 2 instancie CLASS [type_index] plati, ze VALUE1>VALUE2.
+   H. OPERATOR<= urcuje ci pre 2 instancie CLASS [type_index] plati, ze VALUE1<=VALUE2.
+   I. OPERATOR>= urcuje ci pre 2 instancie CLASS [type_index] plati, ze VALUE1>=VALUE2.
+   J. METHOD type_index::hash_code() vracia hodnotu METHOD type_info::hash() pre INSTANCE CLASS [type_info], ktoru instance CLASS [type_index] obaluje.
+   K. METHOD type_index::name() vracia hodnotu METHOD type_info::name() pre INSTANCE CLASS [type_info], ktoru instance CLASS [type_index] obaluje.
+//-------------------------------------------------------------------------------------------------------

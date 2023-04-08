@@ -1,0 +1,881 @@
+//-----------------------------------------------------------------------------
+1. Solution demonstruje implementaciu CONCURRENCY a UTILITY CLASSES v C++.
+2. V C++ sa RESOURCES alokuju a uvolnuju nasledujucim sposobom.
+   A. RESOURCES je reprezentovana C++ CLASS.
+   B. V CONSTRUCTOR RESOURCE CLASS sa alokuje dany RESOURCE.
+   C. V DESTRUCTOR RESOURCE CLASS sa uvolnuje alokovany RESOURCE.
+   !!! D. Vyhodou tohto mechanizmu je, ze aj pri vzniku EXCEPTION je RESOURCE VZDY UVOLNENY.
+3. C++ podporuje 2 typy SMART POINTERS.
+   A. SHARED SMART POINTERS realizuju funkcionalitu REFERENCE COUNTING a umoznuju, aby POINTER, ktory obsahuju bol pouzity viackrat v rozlicnych CONTEXTS. OBJECT, ktory SHARED SMART POINTER obsahuje je ODSTRANENY z MEMORY, ak je POSLEDNA INSTANCIA SHARED SMART POINTER uvolnena. SHARED SMART POINTER je reprezentovany CLASS [shared_ptr<T>].
+   B. UNIQUE SMART POINTERS obaluju POINTER, ktory sa pouziva iba v 1 CONTEXT. Po uvolneni instancie UNIQUE SMART POINTER je uvolneny aj OBJECT na ktory sa UNIQUE SMART POINTER referuje. UNIQUE SMART POINTER je reprezentovany CLASS [unique_ptr<T>].
+4. Pre SHARED SMART POINTERS platia nasledujuce fakty.
+   A. SHARED SMART POINTER je reprezentovany CLASS [shared_ptr<T>].
+   !!!!! B. CLASS [shared_ptr<T>] NEVLASTNI exkluzivne dany OBJECT, ale umoznuje, aby OBJECT na ktory POINTER referuje bol SHARED medzi VIACERYMI INSTANCIAMI CLASS [shared_ptr<T>] a bol odstraneny, az ked sa uvolni z MEMORY POSLEDNA INSTANCIA CLASS [shared_ptr<T>], ktora referuje na dany OBJECT.
+   !!! C. CLASS [shared_ptr<T>] teda reprezentuje semantiku REFERENCE COUNTING ako COM OBJECTS, pricom ak COUNTER klesne na 0, tak je OBJECT na ktory instancie CLASS [shared_ptr<T>] referovali uvolneny z MEMORY.
+   D. CLASS [shared_ptr<T>] umoznuje definovat CUSTOM DELETE FUNCTION, ktora sa zavola pri uvolnovani OBJECT na ktory instancie CLASS [shared_ptr<T>] referovali z MEMORY.
+   !!! E. Standardne CLASS [shared_ptr<T>] predpoklada, ze OBJECT bol alokovany pomocou OPERATOR NEW a bez definovania CUSTOM DELETE FUNCTION sa pre OBJECT vola OPERATOR DELETE.
+   !!!!! F. Ak CLASS [shared_ptr<T>] obsahuje ARRAY alokovany pomocou OPERATOR NEW[], tak je NEVYHNUTNE definovat CUSTOM DELETE FUNCTION, ktora namiesto standardneho OPERATOR DELETE pouzije OPERATOR DELETE[].
+5. CLASS [shared_ptr<T>] ma nasledujuce MEMBERS.
+   A. CONSTRUCTOR vytvara instanciu CLASS [shared_ptr<T>], inkrementuje REFERENCE COUNTER a priradzuje do nej POINTER na OBJECT. CONSTRUCTOR umoznuje zadat aj CUSTOM DELETE FUNCTION, ktora sa bude volat NAMIESTO OPERATOR DELETE, ked REFERENCE COUNTER klesne na hondotu 0.
+   B. DESTRUCTOR dekrementuje REFERENCE COUNTER a uvolnuje instanciu CLASS [shared_ptr<T>]. Ak hodnota REFERENCE COUNTER klesne na 0, tak DESTRUCTOR vola bud standardny OPERATOR DELETE, alebo ak je zadefinovana na CUSTOM DELETE FUNCTION, ktora ma za ulohu odstranit OBJECT z MEMORY.
+   C. OPERATOR= umoznuje priradit instanciu jednej CLASS [shared_ptr<T>] do inej. OPERATOR= NEUMOZNUJE priradit PRIAMO POINTER na OBJECT do instancie CLASS [shared_ptr<T>]. Na to je potrebne pouzit METHOD shared_ptr<T>.reset().
+   D. OPERATOR* vykonava POINTER DEREFERENCING. Chova sa ako OPERATOR* pre STANDARDNE POINTERS.
+   E. OPERATOR-> vykonava POINTER DEREFERENCING. Chova sa ako OPERATOR-> pre STANDARDNE POINTERS.
+   E. OPERATOR== porovnava ci 2 instancie CLASS [shared_ptr<T>] referuju na ten isty OBJECT.
+   F. OPERATOR!= porovnava ci 2 instancie CLASS [shared_ptr<T>] referuju na ten rozny OBJECT.
+   G. OPERATOR< porovnava ci 1. instancia CLASS [shared_ptr<T>] je MENSIA ako druha instancia CLASS [shared_ptr<T>].
+   H. OPERATOR<= porovnava ci 1. instancia CLASS [shared_ptr<T>] je MENSIA, alebo ROVNA ako druha instancia CLASS [shared_ptr<T>].
+   I. OPERATOR> porovnava ci 1. instancia CLASS [shared_ptr<T>] je VACSIA ako druha instancia CLASS [shared_ptr<T>].
+   J. OPERATOR>= porovnava ci 1. instancia CLASS [shared_ptr<T>] je VACSIA, alebo ROVNA ako druha instancia CLASS [shared_ptr<T>].
+   K. OPERATOR<< zapise hodnotu POINTER do OUTPUT STREAM.
+   L. OPERATOR BOOL vracia hodnotu TRUE, ak instancia CLASS [shared_ptr<T>] referuje na OBJECT, alebo FALSE, ak instancia CLASS [shared_ptr<T>] nereferuje na ziadny OBJECT.
+   M. METHOD shared_ptr<T>.reset() umoznuje zrusit referovanie instancie CLASS [shared_ptr<T>] na OBJECT.
+   N. METHOD shared_ptr<T>.swap() umoznuje vzajomne si vymenit POINTERS na OBJECTS na ktore referuju 2 instancie CLASS [shared_ptr<T>].
+   !!! O. METHOD shared_ptr<T>.get() vracia POINTER OBJECT, ktory obsahuje instancia CLASS [shared_ptr<T>].
+   !!! P. METHOD shared_ptr<T>.use_count() vracia aktualnu hodnotu REFERENCE COUNTER.
+   Q. METHOD shared_ptr<T>.unique() vracia TRUE, ak REFERENCE COUNTER obsahuje hodnotu 1, inak vracia FALSE.
+   R. METHOD shared_ptr<T>.owner_before() vracia informacia ci jedna instancia CLASS [shared_ptr<T>] sa nachadza pred inou v IMPLEMENTATION DEFINED ORDER.
+6. FUNCTION get_deleter() vracia CUSTOM DELETE FUNCTION, ktora bola priradena danej instancii CLASS [shared_ptr<T>].
+!!! 7. FUNCTION make_shared() vytvara instanciu CLASS [shared_ptr<T>]. FUNCTION je EFEKTIVNEJSIM sposobom vytvarania SHARED SMART POINTERS, pretoze ALOKACIA MEMORY sa vykonava IBA RAZ, kde MEMORY alokovana na HEAP obsahuje okrem samotnej instancie OBJECT aj REFERENCE COUNTER, ktory pocitat pocet instancii CLASS [shared_ptr<T>].
+8. FUNCTION allocate_shared() je analogiou FUNCTION make_shared(), ktora vsak ako 1. PARAMETER prijima ALLOCATOR OBJECT.
+9. C++ obsahuje nasledujuce konverzne TEMPLATE FUNCTIONS, ktore umoznuju aplikovat konverzne OPERATORS na instancie CLASS [shared_ptr<T>].
+   A. FUNCTION dynamic_pointer_cast<T1,T2>() aplikuje OPERATOR [dynamic_cast<T>()] na instanciu CLASS [shared_ptr<T2>], pricom vracia instanciu CLASS [shared_ptr<T1>].
+   B. FUNCTION static_pointer_cast<T1,T2>() aplikuje OPERATOR [static_cast<T>()] na instanciu CLASS [shared_ptr<T2>], pricom vracia instanciu CLASS [shared_ptr<T1>].
+   C. FUNCTION const_pointer_cast<T1,T2>() aplikuje OPERATOR [const_cast<T>()] na instanciu CLASS [shared_ptr<T2>], pricom vracia instanciu CLASS [shared_ptr<T1>].
+!!!!! 10. Pri alokacii ARRAYS pomocou CLASS [shared_ptr<T>] je NEVYHNUTNE definovat CUSTOM DELETE FUNCTION v ktorej je NUTNE zavolat OPERATOR DELETE[].
+!!! 11. CLASS [shared_ptr<T>] NIE JE mozne pouzit, ak TYPE PARAMETER 'T' je ARRAY. Pre takyto CODE hodi COMPILER ERROR.
+!!!!! 12. CUSTOM DELETE FUNCTION NESMIE hodit EXCEPTION, inak je chovanie CLASS [shared_ptr<T>] UNDEFINED.
+!!!!! 13. Nevyhodou CLASS [shared_ptr<T>] je v tom, ze v pripade CYCLIC REFERENCES NEDOJDE k uvolnenie OBJECTS, pretoze 2 instancie CLASS [shared_ptr<T>] si vzajomne budu drzat COUNTER na hodnote 1 a tym padom ich DESTRUCTOR NEUVOLNI. Riesenim je pouzitie CLASS [weak_ptr<T>].
+14. Pre UNIQUE SMART POINTERS platia nasledujuce fakty.
+   A. UNIQUE SMART POINTER je reprezentovany CLASS [unique_ptr<T>].
+   !!!!! B. CLASS [unique_ptr<T>] EXKLUZIVNE VLASTNI dany OBJECT, co znamena, ze vo svojom DESTRUCTOR OBJECT UVOLNUJE z MEMORY.
+   C. CLASS [unique_ptr<T>] umoznuje definovat CUSTOM DELETE FUNCTION, ktora sa zavola pri uvolnovani OBJECT na ktory instancia CLASS [unique_ptr<T>] referovala z MEMORY.
+   !!! D. Standardne CLASS [unique_ptr<T>] predpoklada, ze OBJECT bol alokovany pomocou OPERATOR NEW a bez definovania CUSTOM DELETE FUNCTION sa pre OBJECT vola OPERATOR DELETE.
+   !!!!! E. CLASS [unique_ptr<T>] ma definovanu TEMPLATE SPECIALIZATION pre ARRAYS, ktora namiesto standardneho OPERATOR DELETE pouziva na uvolnovanie OBJECT, ktory instancia CLASS [unique_ptr<T>] obaluje OPERATOR DELETE[].
+15. CLASS [unique_ptr<T>] ma nasledujuce MEMBERS.
+   A. CONSTRUCTOR vytvara instanciu CLASS [unique_ptr<T>] pricom do svojho FIELD ulozi POINTER na OBJECT vlozeny ako PARAMETER.
+   B. DESTRUCTOR UVOLNUJE OBJECT na ktory referoval POINTER ulozeny ako FIELD v instancii CLASS [unique_ptr<T>]. Standardne DESTRUCTOR vola OPERATOR DELETE, ale v pripade, ze v CONSTRUCTOR bola zadana aj CUSTOM DELETE FUNCTION, zavola sa tato namiesto OPERATOR DELETE.
+   !!! C. OPERATOR= umoznuje priradit instanciu jednej CLASS [unique_ptr<T>] do inej. OPERATOR= funguje IBA pre RVALUES. Priradzovanie LVALUES NIE JE PODPOROVANE a COMPILER pri pokuse priradit LVALUE hodi ERROR. OPERATOR= NEUMOZNUJE priradit PRIAMO POINTER na OBJECT do instancie CLASS [unique_ptr<T>]. Na to je potrebne pouzit METHOD unique_ptr<T>.reset().
+   D. OPERATOR* vykonava POINTER DEREFERENCING. Chova sa ako OPERATOR* pre STANDARDNE POINTERS.
+   E. OPERATOR-> vykonava POINTER DEREFERENCING. Chova sa ako OPERATOR-> pre STANDARDNE POINTERS.
+   E. OPERATOR== porovnava ci 2 instancie CLASS [unique_ptr<T>] referuju na ten isty OBJECT.
+   F. OPERATOR!= porovnava ci 2 instancie CLASS [unique_ptr<T>] referuju na ten rozny OBJECT.
+   G. OPERATOR< porovnava ci 1. instancia CLASS [unique_ptr<T>] je MENSIA ako druha instancia CLASS [unique_ptr<T>].
+   H. OPERATOR<= porovnava ci 1. instancia CLASS [unique_ptr<T>] je MENSIA, alebo ROVNA ako druha instancia CLASS [unique_ptr<T>].
+   I. OPERATOR> porovnava ci 1. instancia CLASS [unique_ptr<T>] je VACSIA ako druha instancia CLASS [unique_ptr<T>].
+   J. OPERATOR>= porovnava ci 1. instancia CLASS [unique_ptr<T>] je VACSIA, alebo ROVNA ako druha instancia CLASS [unique_ptr<T>].
+   K. OPERATOR BOOL vracia hodnotu TRUE, ak instancia CLASS [unique_ptr<T>] referuje na OBJECT, alebo FALSE, ak instancia CLASS [unique_ptr<T>] nereferuje na ziadny OBJECT.
+   !!! L. OPERATOR[] je definovany iba pre ARRAY verzie CLASS [unique_ptr<T>] a umoznuje indexovany pristup k ARRAY na ktore referuje instancia CLASS [unique_ptr<T>].
+   !!!!! M. METHOD unique_ptr<T>.reset() UVOLNUJE umoznuje OBJECT na ktory referovala instancia CLASS [unique_ptr<T>]. METHOD vola pre dany OBJECT bud OPERATOR DELETE, alebo ak je definovana, tak CUSTOM DELETE FUNCTION.
+   !!! N. METHOD unique_ptr<T>.release() rusi REFEROVANIE instancie CLASS [unique_ptr<T>] na OBJECT. OBJECT sa NA ROZDIEL od FUNCTION unique_ptr<T>.reset() NEUVOLNUJE a je ho NUTNE UVOLNIT EXPLICITNE. FUNCTION ako RETURN VALUE vracia POINTER na OBJECT na ktory instancia CLASS [unique_ptr<T>] referovala.
+   O. METHOD unique_ptr<T>.swap() umoznuje vzajomne si vymenit POINTERS na OBJECTS na ktore referuju 2 instancie CLASS [unique_ptr<T>].
+   P. METHOD unique_ptr<T>.get_deleter() vracia CUSTOM DELETE FUNCTION, ktora bola priradena danej instancii CLASS [unique_ptr<T>].
+   !!!!! Q. METHOD unique_ptr<T>.get() vracia POINTER na OBJECT na ktory instancia CLASS [unique_ptr<T>] referuje.
+!!! 16. FUNCTION make_unique() vytvara instanciu CLASS [unique_ptr<T>].
+!!!!! 17. CLASS [unique_ptr<T>] podporuje IBA MOVE CONSTRUCTOR a OPERATOR= pre MOVE SEMANTICS. COPY CONSTRUCTOR, ani OPERATOR= pre COPY SEMANTICS NIE JE PODPOROVANA, aby sa zabranilo situaciam, kedy by viac ako 1 instancia CLASS [unique_ptr<T>] referovala na TEN ISTY OBJECT, co by viedlo k VIACNASOBNEMU volaniu DESTRUCTOR pre tento OBJECT a tym padom aj k MEMORY ACCESS ERROR.
+!!!!! 18. NEEXISTENCIA OPERATOR= pre COPY SEMANTICS, ako aj NEEXISTENCIA COPY CONSTRUCTOR znamena, ze instanciu CLASS [unique_ptr<T>] NIE JE MOZNE PRENASAT ako PARAMETERS FUNCTIONS inak ako pouzitim MOVE SEMANTICS, ktora sposobi, ze povodna instancia CLASS [unique_ptr<T>] nastavi svoju hodnotu na NULL a referovany OBJECT uvolni az instancia CLASS [unique_ptr<T>] pouzita ako ARGUMENT volanej FUNCTION. DESTRUCTOR daneho OBJECT sa potom zavola na konci volanej FUNCTION.
+!!!!! 19. KLUCOVOU VYHODOU CLASS [unique_ptr<T>] je, ze umoznuje BEZPECNYM SPOSOBOM, aby FUNCTIONS vracali alokovany OBJECT, ktory same alokovali. Ako RETURN VALUE sa pouzije [unique_ptr<T>], ktory sposobi, ze OBJECT ALOKOVANY vo VOLANEJ FUNCTION bude VZDY UVOLNENY.
+!!! 20. CLASS [unique_ptr<T>] je mozne vyuzit v CLASSES namiesto POINTERS, ak tieto CLASSES alokuju vo svojich CONSTRUCTORS OBJECTS, ktore je nutne v DESTRUCTORS uvolnit. Vdaka pouzitiu CLASS [unique_ptr<T>] su tieto OBJECTS uvolnovane AUTOMATICKY.
+!!!!! 21. OBROVSKOU VYHODOU pouzitia CLASS [unique_ptr<T>] ako CLASS FIELDS je, ze ak v CONSTRUCTOR pri inicializacii tychto CLASS FIELDS typu [unique_ptr<T>] dojde k hodeniu EXCEPTION, potom C++ AUTOMATICKY zavola DESTRUCTORS pre TIE FIELDS, ktore boli do chvile hodenia EXCEPTION USPESNE VYTVORENE. Tym je mozne predist neprijemnym MEMORY LEAKS.
+!!! 22. C++ poskytuje TEMPLATE SPECIALIZATION CLASS [unique_ptr<T>] pre ARRAYS. Pre tuto SPECIALIZATION platia nasledujuce fakty.
+   A. Pri deklaracii instancie CLASS [unique_ptr<T>] je nutne pouzit []. To znaci, ze je potrebne definovat instanciu pomocou CODE [unique_ptr<T[]>].
+   B. SPECIALIZATION pouziva OPERATOR DELETE[] namiesto OPERATOR DELETE.
+   !!! C. SPECIALIZATION NEDEFINUJE OPERATOR* a OPERATOR->.
+   D. SPECIALIZATION definuje OPERATOR[] pomocou ktoreho je mozne pristupovat k ITEMS daneho ARRAY. Tento OPERATOR vsak NEKONTROLUJE prekrocenie medzi ARRAY. Ak k nemu dojde, chovanie je UNDEFINED.
+23. V pripade, ze uvolnenie OBJECT, ktory je obaleny instanciou CLASS [unique_ptr<T>] potrebuje pri svojom uvolneni vykonat nejaku dodatocnu CUSTOM CINNOST, ktoru nie je vhodne umiestnit do DESTRUCTOR daneho OBJECT, je mozne definovat CUSTOM DELETE FUNCTION. Pre CUSTOM DELETE FUNCTION platia nasledujuce pravidla.
+   A. TYPE CUSTOM DELETE FUNCTION sa MUSI EXPLICITNE definovat ako 2. TYPE PARAMETER CLASS [unique_ptr<T>].
+   !!!!! B. Kedze volanie CUSTOM DELETE FUNCTION NAHRADZUJE volanie standardnych OPERATOR DELETE a OPERATOR DELETE[] MUSI CUSTOM DELETE FUNCTION jeden z tychto OPERATORS ZVOLAT, aby doslo k uvolneniu OBJECT, ktory obaluje instancia CLASS [unique_ptr<T>].
+   !!! C. CUSTOM DELETE FUNCTION NESMIE hodit EXCEPTION, inak je cinnost CLASS [unique_ptr<T>] UNDEFINED.
+   D. CUSTOM DELETE FUNCTION MUSI mat ako PARAMETER POINTER, ktory instancia CLASS [unique_ptr<T>] obaluje.
+   !!! E. Ako CUSTOM DELETE FUNCTION je VYHODNEJSIE pouzivat FUNCTOR, alebo LAMBDA EXPRESSION namiesto klasickych FUNCTIONS, pretoze tie dokaze C++ lepsie optimalizovat.
+24. CLASS [unique_ptr<T>] na ROZDIEL od CLASS [shared_ptr<T>] NEMA ZIADEN MEMORY OVERHEAD a jeho velkost v MEMORY je rovnaka ako velkost POINTER.
+25. TASK reprezentuje logicku entitu, ktora moze bezat paralelne voci inym TASKS.
+26. THREAD je SYSTEM LEVEL reprezentacia TASK.
+27. TASKS v C++ bezia v ramci 1 PROCESS a zdielaju spolocny ADDRESS SPACE.
+28. CONCURRENCY v C++ je realizovana nasledujucimi castami.
+   A. MEMORY MODEL definuje pravidla, ktore C++ dodrzuje pri pristupe k MEMORY.
+   B. Podpora C++ pre LOCK-FREE PROGRAMMING.
+   C. THREAD LIBRARY pre realizaciu LOW-LEVEL CONCURRENCY PROGRAMMING. Sem patria CLASSES [thread], CLASS [condition_variable] a CLASS [mutex].
+   D. TASK SUPPORT LIBRARY pre realizaciu HIGH-LEVEL CONCURRENCY PROGRAMMING. Sem patria CLASSES [future<T>], CLASS [promise<T>], CLASS [packaged_task<R,...ARGS>] a FUNCTION async().
+29. C++ definuje CLASS [thread], ktory reprezentuje THREAD v C++. CLASS THREAD ma nasledujuce MEMBERS.
+   A. CONSTRUCTOR vytvara instanciu CLASS [thread].
+   B. DESTRUCTOR uvolnuje instanciu CLASS [thread].
+   C. TYPE [thread::native_handle_type] definuje TYPE, ktory sa pouziva na reprezentaciu NATIVE THREADS.
+   D. TYPE [thread::id] definuje TYPE, ktory reprezentuje THREAD ID.
+   E. OPERATOR= umoznuje priradit instanciu CLASS [thread] do inej.
+   F. STATIC METHOD thread::hardware_concurrency() vracia pocet THREADS, ktore je na danom SYSTEME mozne paralelne vykonat. Hodnota 0 znamena, ze nie je mozne urcit kolko THREADS moze paralelne bezat.
+   G. METHOD thread::joinable() vracia TRUE, ak THREAD je JOINABLE. Inak vracia METHOD hodnotu FALSE.
+   H. METHOD thread::get_id() vracia ID daneho THREAD.
+   I. METHOD thread::native_handle() vracia NATIVE HANDLE daneho THREAD.
+   !!! J. METHOD thread::join() zablokuje CURRENT THREAD az kym THREAD neskonci svoj beh.
+   !!! K. METHOD thread::detach() odpoji THREAD od CLASS [thread]. Ak THREAD bezi, stane sa BACKGROUND THREAD, ktory v pripade, ze skonci MAIN THREAD je OKAMZITE UKONCENY.
+   L. METHOD thread::swap() vymeni medzi 2 instanciami CLASS [thread] ich NATIVE HANDLES cim si instancie CLASS [thread] vymenia svoje THREADS.
+30. CLASS [thread::id] reprezentuje THREAD ID a ma nasledujuce MEMBERS.
+   A. CONSTRUCTOR vytvara instanciu CLASS [thread::id].
+   B. OPERATOR== porovnava ci su 2 THREAD IDs rovne.
+   C. OPERATOR!= porovnava ci su 2 THREAD IDs rozne.
+   D. OPERATOR< porovnava ci su 1. THREAD ID je mensi ako 2. THREAD ID.
+   E. OPERATOR<= porovnava ci su 1. THREAD ID je mensi, alebo rovny ako 2. THREAD ID.
+   F. OPERATOR> porovnava ci su 1. THREAD ID je vacsi ako 2. THREAD ID.
+   G. OPERATOR>= porovnava ci su 1. THREAD ID je vacsi, alebo rovny ako 2. THREAD ID.
+   H. OPERATOR<< zapise do STREAM THREAD ID.
+31. Pre CLASS [thread] platia nasledujuce fakty.
+   A. THREAD sa SPUSTI OKAMZITE po vytvoreni instancie CLASS [thread]. Ak SYSTEM nema dost RESOURCES na spustenie THREAD, CONSTRUCTOR hodi EXCEPTION [system_error].
+   B. CODE daneho THREADU moze byt LUBOVOLNY CALLABLE OBJECT. Ku CALLABLE OBJECTS patria FUNCTIONS, METHODS, CLASSES s OPERATOR() a LAMBDA FUNCTIONS.
+   !!! C. Ak THREAD hodi UNHANDLED EXCEPTION je PROCESS OKAMZITE UKONCENY volanim FUNCTION terminate(). Ak je nutne EXCEPTIONS preniest medzi THREADS je to nutne vykonat MANUALNE pomocou CLASS [exception_ptr].
+   !!!!! D. Platnost instancie CLASS [thread] MUSI drzat pokym THREAD nie je UKONCENY, alebo pokial sa nezavola METHOD thread::detach(), ktora odpoji THREAD od instancie CLASS [thread] a THREAD sa tym stane BACKGROUND THREAD.
+   !!!!! E. Ak sa pre THREAD zavola METHOD thread::detach(), THREAD sa stane BACKGROUND THREAD. Pre BACKGROUND THREADS plati, ze ak MAIN THREAD SKONCI, tak su BACKGROUND THREADS OKAMZITE UKONCENE.
+   F. Pomocou METHOD thread::join() je mozne pockat kym THREAD NESKONCI. To ci je mozne METHOD thread::join() volat je mozne zistit volanim METHOD thread::joinable().
+   !!!!! G. Ak sa zavola DESTRUCTOR pre THREAD pre ktory sa NEVOLALA METHOD thread::join(), ani METHOD thread::detach(), DESTRUCTOR vykona OKAMZITY PROGRAM TERMINATION volanim FUNCTION terminate().
+!!! 32. Ak su BACKGROUND THREADS pri skonceni MAIN THREAD TERMINATED, dochadza k MEMORY LEAKS, kedze instancie CLASS [thread] NIE SU KOREKTNE UVOLNENE. To vsak nie je zasadny problem pretoze PROCESS bol skoncenim MAIN THREAD a vykonanim TERMINATION vsetkych BACKGROUND THREADS ukonceny.
+!!!!! 33. ZASADNOU NEVYHODOU BACKGROUND THREADS je fakt, ze pre GLOBAL a STATIC OBJECTS mozu byt DESTRUCTORS volane SKOR ako su BACKGROUND THREADS TERMINATED. V pripade, ze BACKGROUND THREADS k takymto GLOBAL a STATIC OBJECTS pristupuju, moze to viest k PADU PROGRAMU. Tento problem moze byt rieseny 2 sposobmi.
+   A. Zabezpecit v CODE, aby pred skoncenim MAIN THREAD boli VSETKY BACKGROUND THREADS ukoncene. Toto je mozne docielit napriklad pomocou MUTEXES ci CONDITIONAL VARIABLES.
+   !!! B. Ukoncit MAIN THREAD volanim FUNCTION quick_exit(). FUNCTION quick_exit() na ROZDIEL od ukoncenia MAIN THREAD skoncenim FUNCTION main() ci volanim FUNCTION exit() UKONCI PROCESS BEZ TOHO, aby sa pre GLOBAL a STATIC OBJECTS volali ich DESTRUCTORS.
+34. THREAD ID reprezentovany CLASS [thread::id] je mozne ziskat nasledujucimi sposobmi.
+   A. FUNCTION this_thread::get_id() vracia THREAD ID CURRENT THREAD.
+   B. METHOD thread::get_id() vracia ID THREAD reprezentovaneho instanciu CLASS [thread].
+35. Nad THREAD ID je mozne vykonat IBA POROVNANIE, alebo ho zapisat do OUTPUT STREAM pomocou OPERATOR<<.
+!!! 36. Po skonceni THREAD uz NIE JE MOZNE ZISKAT THREAD ID.
+37. Ak viacero THREAD potrebuju pristupovat k tym istym RESOURCES je NUTNE pouzit SYNCHRONIZATION. C++ definuje 2 zakladne prostriedky pre vykonanie SYNCHRONIZATION.
+   A. MUTEX je VARIABLE, ktora umoznuje vykonat EXCLUSIVE ACCESS k RESOURCES.
+   B. CONDITIONAL VARIABLES je VARIABLE, ktora umoznuje synchronizovat riadenie PROGRAMU medzi viacerymi THREADS. Aj ked CONDITIONAL VARIABLES nie su priamo urcene na realizaciu SYNCHRONIZATION, je ich mozne na SYNCHRONIZATION pouzit.
+38. MUTEX moze byt v danom case vlastneny IBA 1 THREAD. Nad MUTEX je mozne vykonat nasledujuce OPERATIONS.
+   A. ACQUIRE je OPERATION pri ktorej sa THREAD pokusi ziskat MUTEX. V pripade, ze MUTEX je priradeny inemu THREAD, OPERATION ACQUIRE moze (v zavislosti od typu MUTEX) sposobit THREAD BLOCKING.
+   B. RELEASE je OPERATION pri ktorej THREAD, ktory vlastni MUTEX ho uvolni. Pri uvolneni su THREADS, ktore cakaju na uvolnenie MUTEX prebudene z THREAD BLOCKING a mozu sa pokusit ziskat MUTEX.
+39. CLASS [mutex] reprezentuje NON-RECURSIVE MUTEX. Ma nasledujuce MEMBERS.
+   A. CONSTRUCTOR vytvara instanciu CLASS [mutex].
+   B. DESTRUCTOR uvolnuje instanciu CLASS [mutex]. DESTRUCTOR sa NESMIE volat, ak THREAD vlastni LOCK, inak je chovanie NEDEFINOVANE (moze dojst k PADU PROGRAMU).
+   C. TYPE [mutex::native_handle_type] definuje TYPE NATIVE HANDLE, ktory reprezentuje dany MUTEX.
+   D. METHOD mutex::lock() ziska LOCK pre CURRENT THREAD. Ak sa LOCK NEPODARILO ziskat, METHOD hodi EXCEPTION [system_error] pricom LOCK CURRENT THREAD NEBOL prideleny. Ak CURRENT THREAD zavola METHOD OPAKOVANE, chovanie je NEDEFINOVANE (moze dojst k DEADLOCK).
+   E. METHOD mutex::unlock() uvolnuje LOCK ziskany CURRENT THREAD.
+   !!! F. METHOD mutex::try_lock() sa pokusi ziskat LOCK pre CURRENT THREAD. Ak sa LOCK podari ziskat METHOD vracia TRUE, inak vracia FALSE. Ak sa METHOD zavola pre THREAD, ktory vlastni LOCK, je chovanie NEDEFINOVANE (moze dojst k DEADLOCK).
+   G. METHOD mutex::native_handle() reprezentujuci MUTEX.
+40. CLASS [timed_mutex] reprezentuje NON-RECURSIVE MUTEX s podporou TIMED WAITS. Ma nasledujuce MEMBERS.
+   A. CONSTRUCTOR vytvara instanciu CLASS [timed_mutex].
+   B. DESTRUCTOR uvolnuje instanciu CLASS [timed_mutex]. DESTRUCTOR sa NESMIE volat, ak THREAD vlastni LOCK, inak je chovanie NEDEFINOVANE (moze dojst k PADU PROGRAMU).
+   C. TYPE [timed_mutex::native_handle_type] definuje TYPE NATIVE HANDLE, ktory reprezentuje dany MUTEX.
+   D. METHOD timed_mutex::lock() ziska LOCK pre CURRENT THREAD. Ak sa LOCK NEPODARILO ziskat, METHOD hodi EXCEPTION [system_error] pricom LOCK CURRENT THREAD NEBOL prideleny. Ak CURRENT THREAD zavola METHOD OPAKOVANE, chovanie je NEDEFINOVANE (moze dojst k DEADLOCK).
+   E. METHOD timed_mutex::unlock() uvolnuje LOCK ziskany CURRENT THREAD.
+   !!! F. METHOD timed_mutex::try_lock() sa pokusi ziskat LOCK pre CURRENT THREAD. Ak sa LOCK podari ziskat METHOD vracia TRUE, inak vracia FALSE. Ak sa METHOD zavola pre THREAD, ktory vlastni LOCK, je chovanie NEDEFINOVANE (moze dojst k DEADLOCK).
+   !!! G. METHOD timed_mutex::try_lock_for() sa pokusi ziskat LOCK pre CURRENT THREAD pocas definovanej DURATION. Ak sa LOCK podari ziskat METHOD vracia TRUE, inak vracia FALSE. Ak sa METHOD zavola pre THREAD, ktory vlastni LOCK, je chovanie NEDEFINOVANE (moze dojst k DEADLOCK). METHOD pouziva na urcenie DURATION STEADY CLOCK, a preto je immuna voci zmenam SYSTEM TIME ci zmene DAYLIGHT SAVING TIME.
+   !!! H. METHOD timed_mutex::try_lock_until() sa pokusi ziskat LOCK pre CURRENT THREAD az po dobu kym nanastane stanoveny TIMEPOINT. Ak sa LOCK podari ziskat METHOD vracia TRUE, inak vracia FALSE. Ak sa METHOD zavola pre THREAD, ktory vlastni LOCK, je chovanie NEDEFINOVANE (moze dojst k DEADLOCK). METHOD pouziva na urcenie TIMEPOINT NON-STEADY CLOCK, a preto NIE je immuna voci zmenam SYSTEM TIME ci zmene DAYLIGHT SAVING TIME.
+   I. METHOD timed_mutex::native_handle() reprezentujuci MUTEX.
+41. CLASS [recursive_mutex] reprezentuje RECURSIVE MUTEX. Ma nasledujuce MEMBERS.
+   A. CONSTRUCTOR vytvara instanciu CLASS [recursive_mutex].
+   B. DESTRUCTOR uvolnuje instanciu CLASS [recursive_mutex]. DESTRUCTOR sa NESMIE volat, ak THREAD vlastni LOCK, inak je chovanie NEDEFINOVANE (moze dojst k PADU PROGRAMU).
+   C. TYPE [recursive_mutex::native_handle_type] definuje TYPE NATIVE HANDLE, ktory reprezentuje dany MUTEX.
+   D. METHOD recursive_mutex::lock() ziska LOCK pre CURRENT THREAD. Ak sa LOCK NEPODARILO ziskat, METHOD hodi EXCEPTION [system_error] pricom LOCK CURRENT THREAD NEBOL prideleny. Ak CURRENT THREAD zavola METHOD OPAKOVANE, zvysi sa INTERNAL RECURSIVE COUNTER o 1.
+   E. METHOD recursive_mutex::unlock() znizuje INTERNAL RECURSIVE COUNTER o 1. Ak INTERNAL RECURSIVE COUNTER klesne na 0 je LOCK uvolneny.
+   !!! F. METHOD recursive_mutex::try_lock() sa pokusi ziskat LOCK pre CURRENT THREAD. Ak sa LOCK podari ziskat METHOD vracia TRUE, inak vracia FALSE. Ak CURRENT THREAD zavola METHOD OPAKOVANE, zvysi sa INTERNAL RECURSIVE COUNTER o 1.
+   G. METHOD recursive_mutex::native_handle() reprezentujuci MUTEX.
+42. CLASS [recursive_timed_mutex] reprezentuje RECURSIVE MUTEX s podporou TIMED WAITS. Ma nasledujuce MEMBERS.
+   A. CONSTRUCTOR vytvara instanciu CLASS [recursive_timed_mutex].
+   B. DESTRUCTOR uvolnuje instanciu CLASS [recursive_timed_mutex]. DESTRUCTOR sa NESMIE volat, ak THREAD vlastni LOCK, inak je chovanie NEDEFINOVANE (moze dojst k PADU PROGRAMU).
+   C. TYPE [recursive_timed_mutex::native_handle_type] definuje TYPE NATIVE HANDLE, ktory reprezentuje dany MUTEX.
+   D. METHOD recursive_timed_mutex::lock() ziska LOCK pre CURRENT THREAD. Ak sa LOCK NEPODARILO ziskat, METHOD hodi EXCEPTION [system_error] pricom LOCK CURRENT THREAD NEBOL prideleny. Ak CURRENT THREAD zavola METHOD OPAKOVANE, zvysi sa INTERNAL RECURSIVE COUNTER o 1.
+   E. METHOD recursive_timed_mutex::unlock() znizuje INTERNAL RECURSIVE COUNTER o 1. Ak INTERNAL RECURSIVE COUNTER klesne na 0 je LOCK uvolneny.
+   !!! F. METHOD recursive_timed_mutex::try_lock() sa pokusi ziskat LOCK pre CURRENT THREAD. Ak sa LOCK podari ziskat METHOD vracia TRUE, inak vracia FALSE. Ak CURRENT THREAD zavola METHOD OPAKOVANE, zvysi sa INTERNAL RECURSIVE COUNTER o 1.
+   !!! G. METHOD recursive_timed_mutex::try_lock_for() sa pokusi ziskat LOCK pre CURRENT THREAD pocas definovanej DURATION. Ak sa LOCK podari ziskat METHOD vracia TRUE, inak vracia FALSE. Ak CURRENT THREAD zavola METHOD OPAKOVANE, zvysi sa INTERNAL RECURSIVE COUNTER o 1. METHOD pouziva na urcenie DURATION STEADY CLOCK, a preto je immuna voci zmenam SYSTEM TIME ci zmene DAYLIGHT SAVING TIME.
+   !!! H. METHOD recursive_timed_mutex::try_lock_until() sa pokusi ziskat LOCK pre CURRENT THREAD az po dobu kym nanastane stanoveny TIMEPOINT. Ak sa LOCK podari ziskat METHOD vracia TRUE, inak vracia FALSE. Ak CURRENT THREAD zavola METHOD OPAKOVANE, zvysi sa INTERNAL RECURSIVE COUNTER o 1. METHOD pouziva na urcenie TIMEPOINT NON-STEADY CLOCK, a preto NIE je immuna voci zmenam SYSTEM TIME ci zmene DAYLIGHT SAVING TIME.
+   I. METHOD recursive_timed_mutex::native_handle() reprezentujuci MUTEX.
+43. CLASS [lock_guard<TMutex>] reprezentuje MUTEX WRAPPER umoznujuci realizovat CRITICAL SECTION. Ma nasledujuce MEMBERS.
+   !!! A. CONSTRUCTOR vytvara instanciu CLASS [lock_guard<TMutex>] a zaroven vola METHOD TMutex::lock(). METHOD moze hodit EXCEPTIONS, ktoru hadze METHOD TMutex::lock(). OVERLOADED verzia CONSTRUCTOR prijma DUMMY PARAMETER TYPU [adopt_lock_t]. Tato verzia CONSTRUCTOR ocakava, ze CURRENT THREAD uz DRZI LOCK a sama LOCK NEZISKAVA. Pouziva sa v spojitosti s TRY_LOCK METHODS, ktore ak ziskaju LOCK, potom je potrebne pouzit tuto verziu CONSTRUCTOR.
+   B. DESTRUCTOR uvolnuje instanciu CLASS [lock_guard<TMutex>] a zaroven vola METHOD TMutex::unlock().
+   C. TYPE [lock_guard<TMutex>::mutex_type] definuje TYPE MUTEX, ktory je asociovany s danou instanciu CLASS [lock_guard<TMutex>].
+44. CLASS [unique_lock<TMutex>] reprezentuje vseobecny MUTEX WRAPPER umoznujuci realizovat CRITICAL SECTION. Poskytuje METHODS na umoznujuce cakat na ziskanie LOCK a je MOVABLE. Ma nasledujuce MEMBERS.
+   A. CONSTRUCTOR vytvara instanciu CLASS [unique_lock<TMutex>] a zaroven vola METHOD TMutex::lock(). METHOD moze hodit EXCEPTIONS, ktoru hadze METHOD TMutex::lock().
+   B. DESTRUCTOR uvolnuje instanciu CLASS [unique_lock<TMutex>] a zaroven vola METHOD TMutex::unlock().
+   C. TYPE [lock_guard<TMutex>::mutex_type] definuje TYPE MUTEX, ktory je asociovany s danou instanciu CLASS [unique_lock<TMutex>].
+   D. OPERATOR= realizujuci MOVE SEMANTICS umoznuje priradit instanciu CLASS [unique_lock<TMutex>] do inej.
+   E. OPERATOR BOOL() vracia TRUE, ak MUTEX je asociovany s instanciu CLASS [lock_guard<TMutex>], inak vracia FALSE.
+   F. METHOD lock_guard<TMutex>::lock() zavola LOCK METHOD pre asociovany MUTEX. METHOD hadze EXCEPTIONS, ktore hodi LOCK METHOD daneho MUTEX.
+   G. METHOD lock_guard<TMutex>::unlock() zavola UNLOCK METHOD pre asociovany MUTEX. METHOD hadze EXCEPTIONS, ktore hodi LOCK METHOD daneho MUTEX.
+   !!! H. METHOD lock_guard<TMutex>::try_lock() sa pokusi ziskat LOCK pre CURRENT THREAD. Ak sa LOCK podari ziskat METHOD vracia TRUE, inak vracia FALSE.
+   !!! I. METHOD lock_guard<TMutex>::try_lock_for() sa pokusi ziskat LOCK pre CURRENT THREAD pocas definovanej DURATION. Ak sa LOCK podari ziskat METHOD vracia TRUE, inak vracia FALSE.
+   !!! J. METHOD lock_guard<TMutex>::try_lock_until() sa pokusi ziskat LOCK pre CURRENT THREAD az po dobu kym nanastane stanoveny TIMEPOINT. Ak sa LOCK podari ziskat METHOD vracia TRUE, inak vracia FALSE.
+   K. METHOD lock_guard<TMutex>::swap() vymeni medzi 2 instanciami CLASS [lock_guard<TMutex>] ich INTERNAL STATES.
+   L. METHOD lock_guard<TMutex>::release() zrusi asociaciu medzi instanciu CLASS [lock_guard<TMutex>] a s nim asociovanym MUTEX.
+   M. METHOD lock_guard<TMutex>::mutex() vracia POINTER na MUTEX asociovany s instanciu CLASS [lock_guard<TMutex>].
+   N. METHOD lock_guard<TMutex>::owns_lock() vracia TRUE, ak MUTEX je asociovany s instanciu CLASS [lock_guard<TMutex>], inak vracia FALSE.
+45. CLASS [unique_lock<TMutex>] ma 3 typy CONSTRUCTORS, ktore ovplyvnuju jej spravanie.
+   A. CONSTRUCTOR s PARAMETER TYPE [duration<T>] caka zadany cas na ziskanie LOCK.
+   B. CONSTRUCTOR s PARAMETER TYPE [try_to_lock_t] skontroluje ci je LOCK volny, a ak ano, tak ho ziska. Ak nie, neziska ho a co je mozne overit volanim METHOD lock_guard<TMutex>::owns_lock().
+   C. CONSTRUCTOR s PARAMETER TYPE [defer_lock_t] NEZISKA LOCK. Tento CONSTRUCTOR sa pouziva vtedy ak je pomocou FUNCTION lock(), alebo FUNCTION try_lock() potrebne ziskat VIACERO LOCKS.
+!!!!! 46. C++ definuje FUNCTIONS, ktore umoznuju vykonat LOCK nad roznymi MUTEXTS, pricom realizuju algoritmus detekcie DEADLOCK.
+   A. FUNCTION lock() vykonava LOCK vsetkych zadanych LOCKABLE OBJECTS (MUTEXES). Ak niektory z LOCKABLE OBJECT pri ACQUIRE, alebo RELEASE hodi EXCEPTION, FUNCTION lock() vykona RELEASE na vsetky uz LOCKED LOCKABLE OBJECTS.
+   B. FUNCTION try_lock() vykonava LOCK vsetkych zadanych LOCKABLE OBJECTS (MUTEXES). Ak niektory z LOCKABLE OBJECT pri ACQUIRE, alebo RELEASE hodi EXCEPTION, FUNCTION try_lock() vykona RELEASE na vsetky uz LOCKED LOCKABLE OBJECTS. Ako RETURN VALUE vracia bud -1 ak vsetky LOCKS boli uspesne ACQUIRED, alebo INDEX LOCK, ktory nemohol byt ACQUIRED.
+47. C++ poskytuje HIGH LEVEL API na vykonavanie a spracovavanie ASYNCHRONOUS TASKS. C++ poskytuje nasledujuce ELEMENTS.
+   !!! A. FUNCTION async() vytvara zo zadanych FUNCTIONS TASKS, ktore su spustane ASYNCHRONNE v SEPARATNYCH THREADS. FUNCTION async() je JEDINY SPOSOB akym HIGH LEVEL API vytvara nove TASKS.
+   !!!!! B. CLASS [promise<T>] reprezentuje HANDLE na SHARED STATE, ktory sa pouziva na ULOZENIE vysledku TASK medzi viacerymi THREADS. TASK RESULT moze byt RETURN VALUE, alebo EXCEPTION, ktoru dany TASK vygeneruje. CLASS NEVYTVARA nove TASKS iba sluzi na ULOZENIE TASK RESULT.
+   !!!!! C. CLASS [future<T>] reprezentuje HANDLE na SHARED STATE, ktory sa pouziva na ZISKANIE vysledku TASK medzi viacerymi THREADS. TASK RESULT moze byt RETURN VALUE, alebo EXCEPTION, ktoru dany TASK vygeneruje. CLASS NEVYTVARA nove TASKS iba sluzi na ZISKANIE TASK RESULT.
+   D. CLASS [shared_future<T>] reprezentuje verziu CLASS [future<T>], ktora na rozdiel od CLASS [future<T>] umoznuje OPAKOVANIE ZISKANIE TASK RESULT medzi viacerymi THREADS.
+   E. CLASS [packaged_task<T>] obsahuje PAIR CLASS [promise<T>] a CLASS [future<T>], ktore ZDIELAJU TEN ISTY SHARED STATE.
+48. SHARED STATE je OBJECT, ktory je prenasany medzi TASKS. Obsahuje nasledujuce data.
+   A. TASK RESULT reprezentujuci bud RETURN VALUE ak TASK skoncil uspesne, alebo EXCEPTION ak TASK zlyhal.
+   B. READY BIT, ktory urcuje ci TASK RESULT moze byt nacitana pomocou instancie CLASS [future<T>].
+   C. MUTABLE EXCLUSION DATA ako napriklad CONDITIONAL VARIABLE, ktory umoznuje synchronizovany pristup k TASK RESULT a zaroven umoznuje vykonat THREAD BLOCKING v pripade, ze TASK RESULT este nebol vykonavanym TASK nastaveny.
+   D. REFERENCE COUNTER, ktory urcuje kedy je mozne SHARED STATE uvolnit z MEMORY.
+   !!!!! E. CALLBACK FUNCTION, ktora sa SPUSTI v pripade, ze sa CALLER pokusi ziskat TASK RESULT daneho SHARED STATE. TASK moze bezat v SEPARATNOM THREAD, alebo v CURRENT THREAD v zavislosti od toho ako bol TASK vytvoreny.
+49. Nad SHARED STATE je mozne vykonat nasledujuce OPERATIONS.
+   A. CONSTRUCTION vytvori instanciu SHARED STATE.
+   B. RELEASE znizi stav REFERENCE COUNTER, pricom ak ten dosiahne 0, tak je instancia SHARED STATE uvolnena z MEMORY.
+   !!! C. MAKE READY nastavi READY BIT na TRUE cim sa indikuje, ze TASK RESULT daneho SHARED STATE je pristupna. Zaroven sa UKONCI THREAD BLOCKING tych THREADS, ktore cakali na TASK RESULT.
+   !!! D. ABANDON je pouzita ak do SHARED STATE NIE JE MOZNE ulozit TASK RESULT. V tomto pripade sa do TASK RESULT ulozi EXCEPTION [future_error] s ERROR CODE [broken_promise].
+50. Pre SHARED STATE platia nasledujuce pravidla.
+   !!!!! A. SHARED STATE je INTERNY OBJECT, ktory je SHARED medzi PAIR tvoreny CLASS [promise<T>] a CLASS [future<T>]. Tieto CLASSES su iba HANDLERS, ktore umoznuju pristupovat k ZDIELANEMU SHARED STATE.
+   !!! B. Dve rozlicne PAIRS tvorene CLASS [promise<T>] a CLASS [future<T>] pristupuju k ROZDIELNYM SHARED STATES. Iba RELATED PAIR CLASS [promise<T>] a CLASS [future<T>] pristupuje k TOMU ISTEMU SHARED STATE.
+   !!!!! C. CLASS [future<T>] NACITAVA TASK RESULT (RETURN VALUE, alebo EXCEPTION) zo SHARED STATE. Ak TASK RESULT NIE JE DOSTUPNY, pretoze TASK este NESKONCIL, CLASS [future<T>] vykona THREAD BLOCKING, az kym TASK nezapise TASK RESULT do SHARED STATE. V zavislosti od pouzitej METHOD CLASS [promise<T>] to moze byt pocas behu TASK, alebo az na jeho konci.
+   !!!!! D. CLASS [promise<T>] UKLADA TASK RESULT (RETURN VALUE, alebo EXCEPTION) do SHARED STATE. Zaroven, ak na TASK RESULT caka instancia CLASS [future<T>], tak CLASS [promise<T>] takyto BLOCKED THREAD PREBUDI, aby TASK RESULT mohol spracovat.
+   E. Ak chcu 2 THREADS pristupovat k tomu istemu SHARED STATE, musia zdielat tu istu instanciu CLASS [promise<T>].
+   !!! F. Do SHARED STATE je mozne ulozit bud 1 RETURN VALUE, alebo 1 EXCEPTION. Ak uz je RETURN VALUE, alebo EXCEPTION nastavena, NIE JE MOZNE ju pre tu istu instanciu CLASS [promise<T>] nastavit znova. Pri pokuse o zavolanie METHODS CLASS [promise<T>] pre nastavenie RETURN VALUE, alebo EXCEPTION po predchadzajucom nastaveni TASK RESULT tieto METHODS hodia EXCEPTION [promise_already_satisfied].
+   !!! G. Pomocou METHOD promise<T>::get_future() je mozne ziskat instanciu CLASS [future<T>], ktora umoznuje pockat (zablokovat CALLER THREAD), az kym TASK RESULT do SHARED STATE v instancii CLASS [promise<T>] nebude nastaveny. METHOD promise<T>::get_future() vsak NEVYTVARA THREAD, iba poskytuje THREAD BLOCKING MECHANISM, ktory vykona THREAD BLOCKING az pokym TASK RESULT nebude nastaveny.
+   !!! H. Nastavenie TASK RESULT pomocou METHODS CLASS [promise<T>] je mozne vykonat tak, ze BUD je OKAMZITE SIGNALIZED do THREADS, ktore na TASK RESULT daneho SHARED STATE cakaju vykonavanim THREAD BLOCKING, alebo tak, ze SIGNALIZATION prebehne az ked TASK, ktory SHARED STATE nastavil SKONCI.
+!!! 51. SHARED STATE moze byt SIGNALIZED 2 sposobmi.
+   A. Pomocou METHOD promise<T>::set_value() a METHOD promise<T>::set_exception() je nastavenie RETURN VALUE, alebo EXCEPTION vykonane tak, ze toto nastavenie je OKAMZITE SIGNALIZED do CALLER THREAD (instancie CLASS [promise<T>]), ktory caka na nastavenie SHARED STATE. CALLER THREAD, ktory je v WAIT STATE cakajuc na SHARED STATE je OKAMZITE SPUSTENY a mozne pokracovat v cinnosti. THREAD, ktory SHARED STATE nastavil DALEJ POKRACUJE vo SVOJEJ CINNOSTI.
+   B. Pomocou METHOD promise<T>::set_value_at_thread_exit() a METHOD promise<T>::set_exception_at_thread_exit() je nastavenie RETURN VALUE, alebo EXCEPTION vykonane tak, ze toto nastavenie je NIE JE OKAMZITE SIGNTALIZED do CALLER THREAD (instancie CLASS [promise<T>]), ale SIGNALIZATION prebehne AZ po UKONCENI TASK, ktory SHARED STATE nastavil.
+52. CLASS [promise<T>] ma nasledujuce MEMBERS.
+   A. CONSTRUCTOR vytvara instanciu CLASS [promise<T>].
+   B. DESTRUCTOR uvolnuje instanciu CLASS [promise<T>].
+   C. OPERATOR= umoznuje priradit instanciu CLASS [promise<T>] do inej. Implementuje sa IBA MOVE OPERATOR=. COPY OPERATOR= NIE JE PODPOROVANY.
+   D. METHOD promise<T>::swap() vymiena SHARED STATE medzi 2 instanciami CLASS [promise<T>].
+   !!! E. METHOD promise<T>::set_value() uklada RESULT do SHARED STATE a zaroven nastavi CLASS [promise<T>] do SIGNALIZED STATE co znaci, ze ak iny THREAD vytvoril instanciu CLASS [future<T>] a caka na nastavenie SHARED STATE, tak tento THREAD je UNBLOCKED a moze spracovat RESULT. Pri pokuse o volanie tejto METHOD, ked uz SHARED STATE raz BOL NASTAVENY, METHOD hodi EXCEPTION [promise_already_satisfied].
+   !!! F. METHOD promise<T>::set_exception() uklada EXCEPTION do SHARED STATE a zaroven nastavi CLASS [promise<T>] do SIGNALIZED STATE co znaci, ze ak iny THREAD vytvoril instanciu CLASS [future<T>] a caka na nastavenie SHARED STATE, tak tento THREAD je UNBLOCKED a moze spracovat EXCEPTION v CATCH BLOCK. Pri pokuse o volanie tejto METHOD, ked uz SHARED STATE raz BOL NASTAVENY, METHOD hodi EXCEPTION [promise_already_satisfied]. Pri pokuse o volanie tejto METHOD, ked uz SHARED STATE raz BOL NASTAVENY, METHOD hodi EXCEPTION [promise_already_satisfied].
+   !!! G. METHOD promise<T>::set_value_at_thread_exit() uklada RESULT do SHARED STATE pricom vsak NENASTAVI CLASS [promise<T>] do SIGNALIZED STATE. CLASS [promise<T>] je SIGNALIZED az ked sa CURRENT THREAD UKONCI.
+   !!! H. METHOD promise<T>::set_exception_at_thread_exit() uklada EXCEPTION do SHARED STATE pricom vsak NENASTAVI CLASS [promise<T>] do SIGNALIZED STATE. CLASS [promise<T>] je SIGNALIZED az ked sa CURRENT THREAD UKONCI.
+   !!!!! I. METHOD promise<T>::get_future() vracia instanciu CLASS [future<T>] pomocou ktorej je mozne pockat kym PROMISE nebude nastaveny RESULT, alebo EXCEPTION. METHOD NEPUSTA NOVY THREAD. Instancia CLASS [future<T>] sluzi iba na to, aby mohol byt CURRENT THREAD BLOCKED, az kym v SHARED STATE nebude nastavena VALUE, alebo EXCEPTION.
+53. CLASS [promise<T>] sa typicky pouziva nasledujucim sposobom.
+   A. Vytvori sa instancia CLASS [promise<T>], ktora sa BY-REFERENCE zasle ako PARAMETER do WORKER THREAD.
+   B. WORKER THREAD ASYNCHRONNE vykonava svoj CODE.
+   !!! C. CALLER THREAD zavola METHOD promise<T>::get_future() na ziskanie instancie CLASS [future<T>].
+   !!! D. CALLER THREAD dalej vykonava svoju cinnost, az do chvile kym od WORKER THREAD nepotrebuje RESULT jeho CODE. Vtedy zavola METHOD future<T>::get() pre instanciu CLASS [future<T>] ziskanu z instancie CLASS [promise<T>].
+   !!! E. Ak WORKER THREAD dokonci svoj vypocet, zavola METHOD promise<T>::set_value(), alebo METHOD promise<T>::set_exception_at_thread_exit() na ulozenie RESULT do SHARED STATE. Ak THREAD hodil EXCEPTION, tato EXCEPTION sa do SHARED STATE ulozi volanim METHOD promise<T>::set_exception(), alebo METHOD promise<T>::set_exception_at_thread_exit().
+   F. CALLER THREAD, ktory zavolal METHOD future<T>::get() je UNBLOCKED a moze spracovat RESULT, alebo EXCEPTION, ktoru WORKER THREAD vratil.
+!!!!! 54. CLASS [packaged_task<T>] reprezentuje PAIR CLASS [promise<T>] a CLASS [future<T>], ktore ZDIELAJU SPOLOCNY SHARED STATE. CLASS [packaged_task<T>] (rovnako ako CLASS [future<T>] a CLASS [promise<T>]) na ROZDIEL od FUNCTION async() NEVYKONAVA ASYNCHRONNE SPUSTANIE TASK CODE, ale iba poskytuje prostriedky na ulozenie a citanie SHARED STATE a SYNCHRONNE spustenie TASK CODE. CLASS [packaged_task<T>] teda NIKDY NEVYTVARA vlastne THREADS a ani NIKDY NESPUSAT ASYNCHRONNE svoj CODE. CLASS je mozne pouzit [packaged_task<T>] pre implementaciu CUSTOM THREAD POOLS. CLASS [packaged_task<T>] sa pouziva nasledujucim sposobom.
+   A. V CONSTRUCTOR sa do instancie CLASS [packaged_task<T>] zadava CALLBACK FUNCTION, ktora reprezentuje TASK CODE.
+   !!!!! B. Kedze CLASS [packaged_task<T>] NEVYTVARA vlastne THREADS, tak sa spravidla instancia CLASS [packaged_task<T>] ako REFERENCE prenasa do MANUALNE VYTORENEHO THREAD.
+   !!!!! C. CUSTOM THREAD MUSI zavola packaged_task<T>::OPERATOR(), aby SPUSTIL TASK CODE.
+   !!! D. Ak FUNCTION reprezentujuca TASK CODE vrati RETURN VALUE, alebo ak FUNCTION hodila EXCEPTION tak tento TASK RESULT CLASS [packaged_task<T>] AUTOMATICKY ulozi ako TASK RESULT do interneho SHARED STATE, ktory spravuje CLASS [packaged_task<T>].
+   !!! E. THREAD, ktory vytvoril instanciu CLASS [packaged_task<T>] zavola METHOD packaged_task<T>::get_future(), ktora vracia instanciu CLASS [future<T>], ktora umoznuje pristupit k TASK RESULT ulozenom v SHARED STATE instancie CLASS [packaged_task<T>].
+   !!!!! F. METHOD future<T>::get() instancie CLASS [future<T>] ziskanej volanim METHOD packaged_task<T>::get_future() SKONTROLUJE ci bol TASK RESULT nastaveny. Ak ano, tak OKAMZITE SKONCI a ako RETURN VALUE vrati RETURN VALUE TASK RESULT, alebo v pripade, ze TASK skoncil hodenim EXCEPTION, tak hodi EXCEPTION ulozenu v TASK RESULT. V pripade, ze TASK este neskoncil, tak METHOD future<T>::get() sposobi THREAD BLOCKING CURRENT THREAD, az kym TASK RESULT v SEKUNDARNOM THREAD nebude nastaveny.
+55. CLASS [packaged_task<T>] ma nasledujuce MEMBERS.
+   A. CONSTRUCTOR vytvara instanciu CLASS [packaged_task<T>], pricom ako ARGUMENT sa zadava CALLBACK FUNCTION, ktora reprezentuje TASK CODE. Ziaden THREAD sa NEVYTVARA.
+   B. DESTRUCTOR uvolnuje instanciu CLASS [packaged_task<T>].
+   C. OPERATOR= umoznuje priradit instanciu CLASS [packaged_task<T>] do inej.
+   !!! D. OPERATOR() SYNCHRONNE spusta vykonavanie CODE daneho TASK. Kedze CODE daneho TASK je spustany SYNCHRONNE, tato METHOD sa spravidla vola v CUSTOM THREAD, ktory vsak CODE musi MANUALNE vytvorit.
+   !!! E. packaged_task<T>::make_ready_at_thread_exit() SYNCHRONNE spusta vykonavanie CODE daneho TASK pricom jeho RESULT, alebo EXCEPTION bude pristupna az ked CURRENT THREAD SKONCI. Kedze CODE daneho TASK je spustany SYNCHRONNE, tato METHOD sa spravidla vola v CUSTOM THREAD, ktory vsak CODE musi MANUALNE vytvorit.
+   F. METHOD packaged_task<T>::swap() vymiena INTERNAL STATE medzi 2 instanciami CLASS [packaged_task<T>].
+   G. METHOD packaged_task<T>::valid() vracia TRUE, ak TASK ma k dispozicii SHARED STATE. Inak vrati hodnotu FALSE.
+   !!! H. METHOD packaged_task<T>::get_future() vracia instanciu CLASS [future<T>] pomocou ktorej je mozne SPUSTIT TASK CODE a pockat kym TASK CODE nevrati TASK RESULT.
+   I. METHOD packaged_task<T>::reset() umoznuje vykonat RESET SHARED STATE, ktory bol v TASK ulozeny.
+56. CLASS [future<T>] ma nasledujuce MEMBERS.
+   A. CONSTRUCTOR vytvara instanciu CLASS [future<T>].
+   B. DESTRUCTOR uvolnuje instanciu CLASS [future<T>]. V pripade, ze TASK este bezi, DESTRUCTOR pocka na jeho skoncenie vykonanim CURRENT THREAD BLOCKING.
+   C. OPERATOR= umoznuje priradit instanciu CLASS [future<T>] do inej.
+   D. METHOD future<T>::share() konvertuje instanciu CLASS [future<T>] na instanciu CLASS [shared_future<T>].
+   !!!!! E. METHOD future<T>::get() vracia VYSLEDOK TASK. Ak TASK este NEBOL SPUSTENY, tak ho SPUSTI a pocka na jeho skoncenie. Ak TASK hodil EXCEPTION, potom METHOD hodi tuto EXCEPTION.
+   F. METHOD future<T>::valid() vracia TRUE, ak TASK UKONCIL svoju CINNOST. Inak vrati hodnotu FALSE.
+   G. METHOD future<T>::wait() vykona THREAD BLOCKING pokym TASK neskonci svoju cinnost.
+   H. METHOD future<T>::wait_for() zablokuje CURRENT THREAD pokym TASK neskonci svoju cinnost, alebo pokym neexpiruje DURATION. Kedze FUNCTION pouziva STEADY CLOCK, je cas NEZAVISLY na zmene SYSTEM TIME ci DAYLIGHT SAVING TIME.
+   I. METHOD future<T>::wait_until() zablokuje CURRENT THREAD pokym TASK neskonci svoju cinnost, alebo pokym nenastane stanoveny TIMEPOINT. Kedze FUNCTION NEPOUZIVA STEADY CLOCK, je cas ZAVISLY na zmene SYSTEM TIME ci DAYLIGHT SAVING TIME.
+57. Pomocou ENUM [launch], ktory je zaslany ako PARAMETER do CONSTRUCTOR CLASS [future<T>] je mozne zmenit chovanie TASK. ENUM [launch] ma nasledujuce hodnoty.
+   A. VALUE [launch::async] prinuti TASK k OKAMZITEMU START v CONSTRUCTOR CLASS [future<T>]. Ak SYSTEM nema RESOURCES na spustenie TASK, CONSTRUCTOR hodi EXCEPTION [system_error].
+   B. VALUE [launch::deferred] prinuti TASK, aby sa NESPUSTIL, az kym sa nezavola METHOD future<T>::get(). Tato VALUE sa vyuziva vtedy, ak je napriklad nutne spustit iba 1 z viacerych TASKS a to, ktory sa spusti zavisi od CONDITION v CODE.
+!!! 58. Ak pre spusteny TASK sa NEZAVOLA METHOD future<T>::get(), potom DESTRUCTOR CLASS [future<T>] sposobi THREAD BLOCKING CURRENT THREAD, az kym TASK neskonci.
+!!! 59. Ak sa pre TASK vytvoreny s VALUE [launch::deferred] NEZAVOLA METHOD future<T>::get(), potom sa TASK NIKDY NESPUSTI a DESTRUCTOR CLASS [future<T>] NEVYKONA THREAD BLOCKING, ale jednoducho iba okamzite uvolni instanciu CLASS [future<T>] a skonci.
+!!! 60. METHOD future<T>::get() je mozne pre danu instanciu CLASS [future<T>] volat IBA RAZ. Pri opakovanom pokuse zavolat METHOD future<T>::get() je vysledok volania NEDEFINOVANE. To ci METHOD future<T>::get() je pre instanciu CLASS [future<T>] volat je mozne zistit volanim METHOD CLASS future<T>::valid().
+61. METHOD future<T>::wait() vykonava nasledujucu cinnost.
+   A. Ak TASK nebol este spusteny, tak ho spusti.
+   B. METHOD ZABLOKUJE CALLING THREAD, az pokym TASK neskonci.
+   !!! C. Na rozdiel od METHOD future<T>::get() METHOD future<T>::wait() NEVRACIA RETURN VALUE volaneho TASK.
+   !!!!! D. Na rozdiel od METHOD future<T>::get() METHOD future<T>::wait() NEHODI EXCEPTION, ak nahodou TASK hodil UNHANDLED EXCEPTION. Tato EXCEPTION bude jednoducho IGNOROVANA.
+   !!! F. Po zavolani METHOD future<T>::wait() je TASK STALE VALIDNY a STALE je mozne pren zavolat METHOD future<T>::get().
+   !!! G. METHOD NIE JE mozne zavolat ked TASK NIE JE VALIDNY, teda po zavolani METHOD future<T>::get().
+   !!! H. METHOD je mozne zavolat IBA ak je TASK VALIDNY, teda PRED zavolanim METHOD future<T>::get().
+62. METHOD future<T>::wait_for() vykonava nasledujucu cinnost.
+   A. METHOD zablokuje CALLING THREAD na zadany cas, alebo pokym TASK neskonci.
+   !!! B. Cas je zadany ako TIMEOUT, ktory pouziva STEADY CLOCK a teda NIE JE ZAVISLY na zmene SYSTEM TIME ci DAYLIGHT SAVING TIME.
+   C. METHOD NESPUSTA TASK, ak TASK nebol spusteny. Toto je ROZDIEL oproti METHOD future<T>::wait().
+   D. Ak TASK bol skonceny pocas stanoveneho casu METHOD vracia VALUE [future_status::ready].
+   E. Ak TASK NESKONCIL pocas stanoveneho casu, pretoze NEBOL SPUSTENY METHOD vracia VALUE [future_status::deferred].
+   F. Ak TASK NESKONCIL pocas stanoveneho casu, pretoze STALE BEZI METHOD vracia VALUE [future_status::timeout].
+   !!!!! G. Na rozdiel od METHOD future<T>::get() METHOD NEHODI EXCEPTION, ak nahodou TASK hodil UNHANDLED EXCEPTION. Tato EXCEPTION bude jednoducho IGNOROVANA.
+   !!! H. Po zavolani METHOD future<T>::wait() je TASK STALE VALIDNY a STALE je mozne pren zavolat METHOD future<T>::get().
+   !!! I. METHOD je mozne zavolat IBA ak je TASK VALIDNY, teda PRED zavolanim METHOD future<T>::get().
+63. METHOD future<T>::wait_until() vykonava nasledujucu cinnost.
+   A. METHOD zablokuje CALLING THREAD na zadany cas, alebo pokym TASK neskonci.
+   !!! B. Cas je zadany ako TIMEPOINT, ktory sa musi naplnit, aby expiroval. METHOD pouziva NON-STEADY CLOCK, ktory JE ZAVISLY na zmene SYSTEM TIME ci DAYLIGHT SAVING TIME.
+   C. METHOD NESPUSTA TASK, ak TASK nebol spusteny. Toto je ROZDIEL oproti METHOD future<T>::wait().
+   D. Ak TASK bol skonceny pocas stanoveneho casu METHOD vracia VALUE [future_status::ready].
+   E. Ak TASK NESKONCIL pocas stanoveneho casu, pretoze NEBOL SPUSTENY METHOD vracia VALUE [future_status::deferred].
+   F. Ak TASK NESKONCIL pocas stanoveneho casu, pretoze STALE BEZI METHOD vracia VALUE [future_status::timeout].
+   !!!!! G. Na rozdiel od METHOD future<T>::get() METHOD NEHODI EXCEPTION, ak nahodou TASK hodil UNHANDLED EXCEPTION. Tato EXCEPTION bude jednoducho IGNOROVANA.
+   !!! H. Po zavolani METHOD future<T>::wait() je TASK STALE VALIDNY a STALE je mozne pren zavolat METHOD future<T>::get().
+   !!! I. METHOD je mozne zavolat IBA ak je TASK VALIDNY, teda PRED zavolanim METHOD future<T>::get().
+64. SHARED FUTURES (instancie CLASS [shared_future<T>]) su TASKS, ktorych METHODS shared_future<T>::get() je mozne NA ROZDIEL od METHOD future<T>::get() volat VIACKRAT. SHARED FUTURES sa pouzivaju vtedy, ak viacero FUTURES potrebuje ziskat vysledok SHARED FUTURE. Tieto FUTURES volaju METHOD future<T>::get(), ktora vrati TEN ISTY VYSLEDOK v kazdej FUTURE.
+!!! 65. Instancie CLASS [shared_future<T>], ktore su vytvorene z TOHO ISTEHO OBJECT [future<T>] ZDIELAJU TEN ISTY SHARED STATE.
+66. CLASS [shared_future<T>] ma nasledujuce MEMBERS.
+   A. CONSTRUCTOR vytvara instanciu CLASS [shared_future<T>].
+   B. DESTRUCTOR uvolnuje instanciu CLASS [shared_future<T>].
+   C. OPERATOR= umoznuje priradit instanciu CLASS [shared_future<T>] do inej.
+   !!!!! D. METHOD get() vracia VYSLEDOK TASK. Ak TASK este NEBOL SPUSTENY, tak ho SPUSTI a pocka na jeho skoncenie. Ak TASK hodil EXCEPTION, potom METHOD hodi tuto EXCEPTION. METHOD je mozne volat aj OPAKOVANE. V pripade, ze METHOD vracia OBJECT, tak ho vracia ako CONST REFERENCE, aby NEBOLA NUTNA SYNCHRONIZACIA pristupu k nemu. Ak tento OBJECT je nutne modifikovat, je nutne prenho vytvori CUSTOM SYNCHRONIZATION.
+   E. METHOD valid() vracia TRUE, ak TASK UKONCIL svoju CINNOST. Inak vrati hodnotu FALSE.
+   F. METHOD wait() vykona THREAD BLOCKING pokym TASK neskonci svoju cinnost.
+   G. METHOD wait_for() zablokuje CURRENT THREAD pokym TASK neskonci svoju cinnost, alebo pokym neexpiruje DURATION. Kedze FUNCTION pouziva STEADY CLOCK, je cas NEZAVISLY na zmene SYSTEM TIME ci DAYLIGHT SAVING TIME.
+   H. METHOD wait_until() zablokuje CURRENT THREAD pokym TASK neskonci svoju cinnost, alebo pokym nenastane stanoveny TIMEPOINT. Kedze FUNCTION NEPOUZIVA STEADY CLOCK, je cas ZAVISLY na zmene SYSTEM TIME ci DAYLIGHT SAVING TIME.
+67. Pre FUNCTION async() platia nasledujuce pravidla.
+   A. CODE, ktory ma TASK vykonat sa definuje ako CALLABLE OBJECT. Ku CALLABLE OBJECTS patria FUNCTIONS, METHODS, CLASSES s OPERATOR() a LAMBDA FUNCTIONS.
+   B. RETURN VALUE FUNCTION async() je instancia CLASS [future<TReturnValue>], kde TYPE [TReturnValue] reprezentuje RETURN VALUE, ktoru TASK vracia. Ak TASK nevracia ZIADNU RETURN VALUE, potom FUNCTION async() vracia instanciu CLASS [future<void>].
+   !!! C. Volanie FUNCTION async() NEZNAMENA AUTOMATICKE SPUSTENIE TASK CODE. Ak SYSTEM nema dostatocne RESOURCES, C++ moze posunut spustenie TASK na neskor.
+   D. FUNCTION async() okrem CALLABLE OBJECT prijima aj PARAMETERS, ktore su prenesene do TASK CALLBACK FUNCTION.
+   !!!!! F. Ak CODE, ktory zavolal FUNCTION async() potrebuje ziskat vysledok TASK, MUSI zavolat METHOD future<TReturnValue>.get(), ktora bud vrati RETURN VALUE TASK, alebo EXCEPTION, ak TASK hodil EXCEPTION.
+   !!! G. Ak sa pouziva METHOD ako CALLBACK FUNCTION, je NUTNE ako 2. PARAMETER preniest THIS OBJECT.
+   !!! H. Vytvorena instancia CLASS [future<T>] pouziva REFERENCE COUNTING na SHARED STATE. Ak REFERENCE COUNTER klesne na 0, SHARED STATE je uvolneny z MEMORY.
+   !!!!! I. FUNCTION async() implementuje THREAD POOL. Pri jej volanie sa NEMUSI NUTNE vytvorit NOVY THREAD, ale FUNCTION async() sa moze rozhodnut pouzit EXISTUJUCI THREAD z INTERNEHO THREAD POLL.
+68. CLOCK je CONCEPT, ktory definuje ake MEMBERS ma CLASS definovat, aby mohla byt povazovana za CLOCK. CONCEPT CLOCK vyzaduje, aby CLASS definovala nasledujuce MEMBERS.
+   A. TYPE [CLOCK::duration] musi vratit DURATION TYPE. Spravidla vracia TYPE [duration<TType,TPeriod>].
+   B. TYPE [CLOCK::rep] musi vratit TYPE reprezentujuci TICKS. TYPE by mal byt ekvivalentny s TYPE [CLOCK::duration::rep].
+   C. TYPE [CLOCK::period] musi vratit TYPE reprezentujuci periodu TICK. TYPE by mal byt ekvivalentny s TYPE [CLOCK::duration::period]. Spravidla je to TYPE [ratio<N,D>].
+   D. TYPE [CLOCK::timepoint] musi vratit TYPE reprezentujuci TIMEPOINT. Spravidla sa jedna o TYPE [time_point<TClock,TDuration>].
+   E. STATIC FIELD [CLOCK::is_steady] by mal vratit TRUE, ak je CLOCK STEADY. STEADY CLOCK je CLOCK, ktoreho hodnota je NEZAVISLA na zmene systemoveho casu. To znaci, ze jeho hodnota neustale narasta, bez ohladu na zmenu DAYLIGHT SAVING TIME ci zmenu casu systemovych hodin.
+   F. STATIC METHOD [CLOCK::now()] vracia instanciu [CLOCK::timepoint] obsahujucu aktualny cas.
+69. C++ definuje 3 typy CLOCKS.
+   A. CLASS [system_clock] reprezentuje hodiny systemoveho casu. Systemovy cas sa NIE JE STEADY a teda sa moze skokovito menit zmenou DAYLIGHT SAVING TIME, alebo pri zmene casu systemovych hodin. CLASS obsahuje METHODS system_clock::to_time_t() a system_clock::from_time_t() umoznujuce konverzie z C TIME TYPE [time_t] pouzivaneho v C TIME FUNCTIONS.
+   B. CLASS [high_resolution_clock] reprezentuje hodiny s vysokou presnostou. Spravidla NIE JE STEADY, aj ked moze byt. Zavisi to od platformy.
+   C. CLASS [steady_clock] reprezentuje STEADY CLOCK. STEADY CLOCK je CLOCK, ktoreho hodnota je NEZAVISLA na zmene systemoveho casu. To znaci, ze jeho hodnota neustale narasta, bez ohladu na zmenu DAYLIGHT SAVING TIME ci zmenu casu systemovych hodin.
+70. CLASS [time_point<TClock,TDuration>] reprezentuje TIME POINT. Ma nasledujuce MEMBERS.
+   A. TYPE [clock] vracia TYPE CLOCK z ktoreho bol TIME POINT vytvoreny.
+   B. TYPE [duration] vracia TYPE DURATION, ktory pouziva CLOCK z ktoreho bol TIME POINT vytvoreny.
+   C. TYPE [rep] vracia TYPE reprezentujuci TICKS, ktory pouziva CLOCK z ktoreho bol TIME POINT vytvoreny.
+   D. TYPE [period] vracia TYPE reprezentujuci periodu TICK, ktory pouziva CLOCK z ktoreho bol TIME POINT vytvoreny.
+   E. CONSTRUCTOR inicializuje instanciu CLASS [time_point<TClock,TDuration>]. CLASS definuje aj COPY CONSTRUCTOR.
+   F. OPERATOR+ realizuje funkcnost BINARNEHO OPERATOR+. OPERATOR je mozne aplikovat medzi TIME POINT a DURATION.
+   G. OPERATOR- realizuje funkcnost BINARNEHO OPERATOR-. OPERATOR je mozne aplikovat medzi 2 instanciami TIME POINT ako aj medzi TIME POINT a DURATION.
+   H. OPERATOR+= realizuje funkcnost BINARNEHO OPERATOR+=. OPERATOR je mozne aplikovat TIME POINT a DURATION.
+   I. OPERATOR-= realizuje funkcnost BINARNEHO OPERATOR-=. OPERATOR je mozne aplikovat TIME POINT a DURATION.
+   J. OPERATOR== realizuje funkcnost BINARNEHO OPERATOR==.
+   K. OPERATOR!= realizuje funkcnost BINARNEHO OPERATOR!=.
+   L. OPERATOR< realizuje funkcnost BINARNEHO OPERATOR<.
+   M. OPERATOR<= realizuje funkcnost BINARNEHO OPERATOR<=.
+   N. OPERATOR> realizuje funkcnost BINARNEHO OPERATOR>.
+   O. OPERATOR>= realizuje funkcnost BINARNEHO OPERATOR>=.
+   P. METHOD time_since_epoch() vracia DURATION od EPOCH daneho CLOCK.
+   Q. STATIC METHOD min() vracia minimalnu hodnotu, ktoru je moznu pomocou CLASS [time_point<TClock,TDuration>] vyjadrit.
+   R. STATIC METHOD max() vracia maximalnu hodnotu, ktoru je moznu pomocou CLASS [time_point<TClock,TDuration>] vyjadrit.
+   !!! S. TEMPLATE FUNCTION time_point_cast<duration<TType,TPeriod>>(time_point<TClock,TDuration>) realizuje STRATOVU KONVERZIU z DURATION TYPU [time_point<TClock1,TDuration1>] na DURATION TYPU [time_point<TClock2,TDuration2>]. Konverzia je STRATOVA, co znaci, ze ak hodnota, ktoru nie je mozne po konverzii vyjadrit TYPE [time_point<TClock2,TDuration2>] je odseknuta.
+!!! 71. CLASS [time_point<TClock,TDuration>] umoznuje vykonavat IMPLICITNE KONVERZIE medzi ROZNYMI TYPMI TIME POINTS ak NEDOCHADZA k strate presnosti. Pri strate presnosti je KONVERZIU NUTNE vykonat pomocou FUNCTION TEMPLATE time_point_cast<duration<TType,TPeriod>>(time_point<TClock,TDuration>).
+!!!!! 72. CHRONO LIBRARY NIE JE DATE-TIME LIBRARY. Jej hlavnym cielom je praca s CASOVYMI ROZDIELMI. Aj preto NEOBSAHUJE operacie na pracu s casom ako napriklad pricitanie mesiacov ci rokov. Pre tieto operacie je nutne vykona CUSTOM IMPLEMENTATION.
+!!! 73. DURATION v C++ reprezentuje TEMPLATE CLASS [duration<TType,TPeriod>]. TYPE PARAMETERS maju nasledujuci vyznam.
+   A. TYPE PARAMETER [TType] urcuje NUMERIC TYPE v ktorom budu reprezentovane TICKS. Typickym prikladom su TYPES [int] a [double].
+   !!!!! B. TYPE PARAMETER [TPeriod] urcuje velkost TICK v SEKUNDACH. Urcuje sa pomocou CLASS [ratio<N,D>]. Napriklad TYPE [ratio<10,1000>] urcuje, ze 1 TICK bude predstavovat 10 MILISEKUND.
+74. CLASS [duration<TType,TPeriod>] ma nasledujuce MEMBERS.
+   1. TYPE [duration<TType,TPeriod>::rep] obsahuje TYPE z TYPE PARAMETER [TType]. Urcuje TYPE v ktorom su TICKS reprezentovane.
+   2. TYPE [duration<TType,TPeriod>::period] obsahuje TYPE z TYPE PARAMETER [TPeriod]. Urcuje jednotku v zlomku SEKUND, ktory vyjadruje hodnotu 1 TICK.
+   3. CONSTRUCTOR inicializuje instanciu CLASS [duration<TType,TPeriod>]. CLASS definuje aj COPY CONSTRUCTOR.
+   4. OPERATOR= implementuje operaciu priradenia instancie DURATION do inej instancie.
+   5. OPERATOR+ realizuje funkcnost UNARNEHO OPERATOR+.
+   6. OPERATOR- realizuje funkcnost UNARNEHO OPERATOR-.
+   7. OPERATOR+ realizuje funkcnost UNARNEHO OPERATOR+.
+   8. OPERATOR- realizuje funkcnost UNARNEHO OPERATOR-.
+   9. OPERATOR++ realizuje funkcnost UNARNEHO OPERATOR++.
+   10. OPERATOR-- realizuje funkcnost UNARNEHO OPERATOR--.
+   11. OPERATOR+ realizuje funkcnost BINARNEHO OPERATOR+. OPERATOR je mozne aplikovat IBA medzi 2 instanciami DURATION, ktore mozu mat ODLISNE RATIO.
+   12. OPERATOR- realizuje funkcnost BINARNEHO OPERATOR-. OPERATOR je mozne aplikovat IBA medzi 2 instanciami DURATION, ktore mozu mat ODLISNE RATIO.
+   !!! 13. OPERATOR* realizuje funkcnost BINARNEHO OPERATOR*. OPERATOR je mozne aplikovat IBA medzi DURATION a NUMERIC TYPE.
+   !!! 14. OPERATOR/ realizuje funkcnost BINARNEHO OPERATOR/. OPERATOR je mozne aplikovat iba medzi DURATION a NUMERIC TYPE, alebo medzi 2 DURATIONS, kedy je vysledkom NUMERIC TYPE reprezentujuci pocet TICKS.
+   15. OPERATOR% realizuje funkcnost BINARNEHO OPERATOR%. OPERATOR je mozne aplikovat medzi ROZLICNYMI typmi DURATIONS a medzi DURATION a NUMERIC TYPE reprezentujucim pocet TICKS.
+   16. OPERATOR+= realizuje funkcnost BINARNEHO OPERATOR+=. OPERATOR je mozne aplikovat IBA medzi 2 instanciami DURATION, ktore mozu mat ODLISNE RATIO.
+   17. OPERATOR-= realizuje funkcnost BINARNEHO OPERATOR-=. OPERATOR je mozne aplikovat IBA medzi 2 instanciami DURATION, ktore mozu mat ODLISNE RATIO.
+   !!! 18. OPERATOR*= realizuje funkcnost BINARNEHO OPERATOR*=. OPERATOR je mozne aplikovat IBA medzi DURATION a NUMERIC TYPE.
+   !!! 19. OPERATOR/= realizuje funkcnost BINARNEHO OPERATOR/=. OPERATOR je mozne aplikovat iba medzi DURATION a NUMERIC TYPE, alebo medzi 2 DURATIONS, kedy je vysledkom NUMERIC TYPE reprezentujuci pocet TICKS.
+   20. OPERATOR%= realizuje funkcnost BINARNEHO OPERATOR%=. OPERATOR je mozne aplikovat medzi ROZLICNYMI typmi DURATIONS a medzi DURATION a NUMERIC TYPE reprezentujucim pocet TICKS.
+   21. OPERATOR== realizuje funkcnost BINARNEHO OPERATOR==. OPERATOR je mozne aplikovat medzi ROZLICNYMI typmi DURATIONS.
+   22. OPERATOR!= realizuje funkcnost BINARNEHO OPERATOR!=. OPERATOR je mozne aplikovat medzi ROZLICNYMI typmi DURATIONS.
+   23. OPERATOR< realizuje funkcnost BINARNEHO OPERATOR<. OPERATOR je mozne aplikovat medzi ROZLICNYMI typmi DURATIONS.
+   24. OPERATOR<= realizuje funkcnost BINARNEHO OPERATOR<=. OPERATOR je mozne aplikovat medzi ROZLICNYMI typmi DURATIONS.
+   25. OPERATOR> realizuje funkcnost BINARNEHO OPERATOR>. OPERATOR je mozne aplikovat medzi ROZLICNYMI typmi DURATIONS.
+   26. OPERATOR>= realizuje funkcnost BINARNEHO OPERATOR>=. OPERATOR je mozne aplikovat medzi ROZLICNYMI typmi DURATIONS.
+   !!! 27. METHOD count() vracia pocet TICKS.
+   28. STATIC METHOD min() vracia minimalnu hodnotu, ktoru je moznu pomocou CLASS [duration<TType,TPeriod>] vyjadrit.
+   29. STATIC METHOD max() vracia maximalnu hodnotu, ktoru je moznu pomocou CLASS [duration<TType,TPeriod>] vyjadrit.
+   30. STATIC METHOD zero() vracia nulovu DURATION.
+   !!! 31. TEMPLATE FUNCTION duration_cast<duration<TType2,TPeriod2>>(duration<TType1,TPeriod1>) realizuje STRATOVU KONVERZIU z DURATION TYPU [duration<TType1,TPeriod1>] na DURATION TYPU [duration<TType2,TPeriod2>]. Konverzia je STRATOVA, co znaci, ze ak hodnota, ktoru nie je mozne po konverzii vyjadrit TYPE [duration<TType2,TPeriod2>] je odseknuta.
+!!! 75. CLASS [duration<TType,TPeriod>] umoznuje vykonavat MATEMATICKE OPERACIE medzi ROZNYMI TYPMI DURATIONS. Vysledkom tychto operacii je DURATION, ktory je NAJVACSIM SPOLOCNYM DELITELOM oboch DURATIONS nad ktorymi bola vykonana matematicka operacia.
+!!! 76. CLASS [duration<TType,TPeriod>] umoznuje aplikovat POROVNAVACIE OPERATORS medzi ROZNYMI TYPMI DURATIONS.
+!!! 77. CLASS [duration<TType,TPeriod>] umoznuje vykonavat IMPLICITNE KONVERZIE medzi ROZNYMI TYPMI DURATIONS ak NEDOCHADZA k strate presnosti. Pri strate presnosti je KONVERZIU NUTNE vykonat pomocou FUNCTION TEMPLATE duration_cast<duration<TType2,TPeriod2>>(duration<TType1,TPeriod1>).
+78. C++ definuje nasledujuce ALIASES pre CLASS [duration<TType,TPeriod>].
+   A. TYPE [nanoseconds] reprezentuje DURATION v nanosekundach.
+   B. TYPE [microseconds] reprezentuje DURATION v mikrosekundach.
+   C. TYPE [miliseconds] reprezentuje DURATION v milisekundach.
+   D. TYPE [seconds] reprezentuje DURATION v sekundach.
+   E. TYPE [minutes] reprezentuje DURATION v minutach.
+   F. TYPE [hours] reprezentuje DURATION v hodinach.
+79. TYPE FUNCTIONS su FUNCTIONS, ktore maju ako PARAMETER TYPE a su EVALUATED v COMPILE TIME. TYPE FUNCTIONS umoznuju testovat rozlicne vlastnosti TYPES na zaklade ktorych sa moze menit funkcnost PROGRAMU.
+80. STRUCTURE [iterator_traits<TIterator>] popisuje TYPES, ktore dany ITERATOR pouziva. C++ STANDARD LIBRARY definuje pre kazdy ITERATOR SPECIALIZATION, ktora definuje konkretne TYPES pre dany ITERATOR. STRUCTURE [iterator_traits<TIterator>] ma nasledujuce MEMBERS.
+   A. TYPE [iterator_category] je TYPE urcujuci akej je CATEGORY dany ITERATOR.
+   B. TYPE [difference_type] urcuje TYPE, ktory ITERATOR pouziva na vyjadrenie rozdielu v POSITIONS medzi ITERATORS.
+   C. TYPE [value_type] urcuje TYPE ITEMS cez, ktore ITERATOR pri iterovani prechadza.
+   D. TYPE [reference] urcuje REFERENCE na TYPE ITEMS cez, ktore ITERATOR pri iterovani prechadza.
+   E. TYPE [pointer] urcuje POINTER na TYPE ITEMS cez, ktore ITERATOR pri iterovani prechadza.
+81. TYPE TRAITS je skupina TEMPLATES (spravidla TEMPLATE CLASSES s pretazenym OPERATOR()) umoznujuca testovat TYPES na existenciu rozlicnych TYPE PROPERTIES. Pomocou TYPE TRAITS je napriklad mozne zistit ci TYPE ma definovane nasledujuce PROPERTIES.
+   A. Ci je TYPE INTEGER TYPE.
+   B. Ci je TYPE FLOAT TYPE.
+   C. Ci ma TYPE DEFAULT CONSTRUCTOR.
+   D. Ci ma TYPE definovany FIELD 'XXX'.
+   E. Ci ma TYPE definovanu METHOD YYY().
+   F. Ci ma TYPE definovany OPERATOR+.
+   G. Ci je TYPE 'X' BASE TYPE k TYPE 'Y'.
+   H. Ci je TYPE POINTER TYPE.
+   I. Modifikovat TYPE pridanim CONST.
+   J. Modifikovat TYPE na POINTER TYPE.
+   K. Modifikovat POINTER TYPE na TYPE.
+   L. Zmenit SIGNED INTEGER TYPE na UNSIGNED INTEGER TYPE.
+   M. Zistit pocet DIMESTIONS ak je TYPE ARRAY.
+82. C++ definuje mnozstvo TYPE TRAITS v HEADER <type_traits>, pricom s vyuzitim METAPROGRAMMING je mozne definovat CUSTOM TYPE TRAITS.
+83. C++ definuje nasledujuce typy TYPE TRAITS.
+   1. TYPE TRAIT [is_void<T>] urcuje ci TYPE 'T' je VOID TYPE.
+   2. TYPE TRAIT [is_integral<T>] urcuje ci TYPE 'T' je INTEGER TYPE. Sem patri aj TYPE [char] ci TYPE [bool].
+   3. TYPE TRAIT [is_floating_point<T>] urcuje ci TYPE 'T' je FLOATING POINT TYPE.
+   4. TYPE TRAIT [is_arithmetic<T>] urcuje ci TYPE 'T' je ARITHMETIC TYPE. Sem patri INTEGER a FLOATIN POINT TYPES, ako aj TYPE [char] ci TYPE [bool].
+   5. TYPE TRAIT [is_signed<T>] urcuje ci TYPE 'T' je SIGNED ARITHMETIC TYPE.
+   6. TYPE TRAIT [is_unsigned<T>] urcuje ci TYPE 'T' je UNSIGNED ARITHMETIC TYPE.
+   7. TYPE TRAIT [is_const<T>] urcuje ci TYPE 'T' ma modifikator CONST.
+   8. TYPE TRAIT [is_volatile<T>] urcuje ci TYPE 'T' ma modifikator VOLATILE.
+   9. TYPE TRAIT [is_array<T>] urcuje ci TYPE 'T' je ARRAY TYPE.
+   10. TYPE TRAIT [is_enum<T>] urcuje ci TYPE 'T' je ENUM TYPE.
+   11. TYPE TRAIT [is_union<T>] urcuje ci TYPE 'T' je UNION TYPE.
+   12. TYPE TRAIT [is_class<T>] urcuje ci TYPE 'T' je CLASS TYPE, alebo STRUCTURE TYPE.
+   13. TYPE TRAIT [is_function<T>] urcuje ci TYPE 'T' je FUNCTION TYPE.
+   14. TYPE TRAIT [is_reference<T>] urcuje ci TYPE 'T' je REFERENCE TYPE. Akceptuje LVALUE REFERENCE TYPE aj RVALUE REFERENCE TYPE.
+   15. TYPE TRAIT [is_lvalue_reference<T>] urcuje ci TYPE 'T' je LVALUE REFERENCE TYPE.
+   16. TYPE TRAIT [is_rvalue_reference<T>] urcuje ci TYPE 'T' je RVALUE REFERENCE TYPE.
+   17. TYPE TRAIT [is_pointer<T>] urcuje ci TYPE 'T' je POINTER TYPE. Akceptuje aj FUNTION POINTER TYPE, ale NIE POINTER TYPES na NON-STATIC MEMBERS.
+   18. TYPE TRAIT [is_member_pointer<T>] urcuje ci TYPE 'T' je POINTER TYPE na NON-STATIC MEMBER. Akceptuje aj POINTER TYPES na NON-STATIC FIELDS a POINTER TYPES na NON-STATIC METHODS.
+   19. TYPE TRAIT [is_member_object_pointer<T>] urcuje ci TYPE 'T' je POINTER TYPE na NON-STATIC FIELD.
+   20. TYPE TRAIT [is_member_function_pointer<T>] urcuje ci TYPE 'T' je POINTER TYPE na NON-STATIC METHOD.
+   21. TYPE TRAIT [is_fundamental<T>] urcuje ci TYPE 'T' je FUNDAMENTAL TYPE. FUNDAMENTAL TYPS su vsetky INTEGER TYPES vratane TYPE [char] a TYPE [bool], FLOATING POINT TYPES, TYPE [void] a TYPE [nullptr_t].
+   22. TYPE TRAIT [is_scalar<T>] urcuje ci TYPE 'T' je SCALAR TYPE. SCALAR TYPS su vsetky INTEGER TYPES vratane TYPE [char] a TYPE [bool], FLOATING POINT TYPES, ENUM TYPES, POINTER TYPES, MEMBER POINTER TYPES,  TYPE [void] a TYPE [nullptr_t].
+   23. TYPE TRAIT [is_object<T>] urcuje ci TYPE 'T' je LUBOVOLNY TYPE okrem REFERENCE TYPES, FUNCTION TYPES a TYPE [void].
+   24. TYPE TRAIT [is_compound<T>] urcuje ci TYPE 'T' je niektory z TYPES ARRAY TYPE, ENUM TYPE, UNION TYPE, CLASS TYPE, FUNCTION TYPE, REFERENCE TYPE, alebo POINTER TYPE.
+   25. TYPE TRAIT [is_trivial<T>] urcuje ci TYPE 'T' TRIVIAL TYPE. TRIVIAL TYPES su SCALAR TYPES, alebo ARRAY SCALAR TYPES.
+   26. TYPE TRAIT [is_trivially_copyable<T>] urcuje ci TYPE 'T' je COPYABLE SCALAR TYPE, alebo ARRAY COPYABLE SCALAR TYPE.
+   27. TYPE TRAIT [is_standard_layout<T>] urcuje ci TYPE 'T' je STANDARD LAYOUT SCALAR TYPE, alebo ARRAY STANDARD LAYOUT SCALAR TYPE.
+   28. TYPE TRAIT [is_pod<T>] urcuje ci TYPE 'T' je PLAIN OLD DATA TYPE. PLAIN OLD DATA TYPES su TYPES, ktore je mozne kompirovat pomocou FUNCTION memcopy().
+   29. TYPE TRAIT [is_literal_type<T>] urcuje ci TYPE 'T' je LITERAL TYPE. LITERAL TYPES su SCALAR TYPES, REFERENCE TYPES, CLASS TYPES, alebo ARRAY SCALAR TYPES, ARRAY REFERENCE TYPES a ARRAY CLASS TYPES.
+   30. TYPE TRAIT [is_empty<T>] urcuje ci TYPE 'T' je EMPTY. EMPTY TYPE je TYPE, ktory NEMA MEMBERS ani VIRTUAL MEMBER FUNCTIONS ani VIRTUAL BASE CLASSES.
+   31. TYPE TRAIT [is_polymorphic<T>] urcuje ci TYPE 'T', ktory ma aspon 1 VIRTUAL METHOD, alebo DERIVED VIRTUAL METHOD.
+   32. TYPE TRAIT [is_abstract<T>] urcuje ci TYPE 'T', ktory ma aspon 1 PURE VIRTUAL METHOD.
+   33. TYPE TRAIT [has_virtual_destructor<T>] urcuje ci TYPE 'T' ma VIRTUAL DESTRUCTOR.
+   34. TYPE TRAIT [is_default_constructible<T>] urcuje ci TYPE 'T' ma DEFAULT CONSTRUCTOR.
+   35. TYPE TRAIT [is_copy_constructible<T>] urcuje ci TYPE 'T' ma COPY CONSTRUCTOR.
+   36. TYPE TRAIT [is_move_constructible<T>] urcuje ci TYPE 'T' ma MOVE CONSTRUCTOR.
+   37. TYPE TRAIT [is_copy_assignable<T>] urcuje ci TYPE 'T' ma OPERATOR= s COPY SEMANTICS.
+   38. TYPE TRAIT [is_move_assignable<T>] urcuje ci TYPE 'T' ma OPERATOR= s MOVE SEMANTICS.
+   39. TYPE TRAIT [is_destructible<T>] urcuje ci TYPE 'T' ma PUBLIC DESTRUCTOR, ktory NIE JE DELETED DESTRUCTOR.
+   40. TYPE TRAIT [is_trivially_default_constructible<T>] urcuje ci TYPE 'T' ma TRIVIAL DEFAULT CONSTRUCTOR. TRIVIAL CONSTRUCTOR je CONSTRUCTOR, ktory ma IBA TRIVIALNE CONSTRUCTS. TRIVIAL CONSTRUCTOR NESMIE hodit EXCEPTION.
+   41. TYPE TRAIT [is_trivially_copy_constructible<T>] urcuje ci TYPE 'T' ma TRIVIAL COPY CONSTRUCTOR. TRIVIAL CONSTRUCTOR je CONSTRUCTOR, ktory ma IBA TRIVIALNE CONSTRUCTS. TRIVIAL CONSTRUCTOR NESMIE hodit EXCEPTION.
+   42. TYPE TRAIT [is_trivially_move_constructible<T>] urcuje ci TYPE 'T' ma TRIVIAL MOVE CONSTRUCTOR. TRIVIAL CONSTRUCTOR je CONSTRUCTOR, ktory ma IBA TRIVIALNE CONSTRUCTS. TRIVIAL CONSTRUCTOR NESMIE hodit EXCEPTION.
+   43. TYPE TRAIT [is_trivially_copy_assignable<T>] urcuje ci TYPE 'T' ma TRIVIAL OPERATOR= s COPY SEMANTICS. TRIVIAL OPERATOR= je OPERATOR=, ktory ma IBA TRIVIALNE CONSTRUCTS. TRIVIAL OPERATOR= NESMIE hodit EXCEPTION.
+   44. TYPE TRAIT [is_trivially_move_assignable<T>] urcuje ci TYPE 'T' ma TRIVIAL OPERATOR= s MOVE SEMANTICS. TRIVIAL OPERATOR= je OPERATOR=, ktory ma IBA TRIVIALNE CONSTRUCTS. TRIVIAL OPERATOR= NESMIE hodit EXCEPTION.
+   45. TYPE TRAIT [is_trivially_destructible<T>] urcuje ci TYPE 'T' ma TRIVIAL DESTRUCTOR. TRIVIAL DESTRUCTOR je DESTRUCTOR, ktory ma IBA TRIVIALNE CONSTRUCTS. TRIVIAL DESTRUCTOR NESMIE hodit EXCEPTION.
+   46. TYPE TRAIT [is_nothrow_default_constructible<T>] urcuje ci TYPE 'T' ma  DEFAULT CONSTRUCTOR, ktory NEHADZE EXCEPTIONS.
+   47. TYPE TRAIT [is_nothrow_copy_constructible<T>] urcuje ci TYPE 'T' ma  COPY CONSTRUCTOR, ktory NEHADZE EXCEPTIONS.
+   48. TYPE TRAIT [is_nothrow_move_constructible<T>] urcuje ci TYPE 'T' ma  MOVE CONSTRUCTOR, ktory NEHADZE EXCEPTIONS.
+   49. TYPE TRAIT [is_nothrow_copy_assignable<T>] urcuje ci TYPE 'T' ma  OPERATOR= s COPY SEMANTICS, ktory NEHADZE EXCEPTIONS.
+   50. TYPE TRAIT [is_nothrow_move_assignable<T>] urcuje ci TYPE 'T' ma  OPERATOR= s MOVE SEMANTICS, ktory NEHADZE EXCEPTIONS.
+   51. TYPE TRAIT [is_nothrow_destructible<T>] urcuje ci TYPE 'T' ma  DESTRUCTOR, ktory NEHADZE EXCEPTIONS.
+   52. TYPE TRAIT [is_same<T1,T2>] urcuje ci su TYPE 'T1' a TYPE 'T2' IDENTICKE. Za identicke sa povazuju aj ALIASES vytvorene pomocou TYPEDEF a USING. CONST a VOLATILE TYPES NIE SU povazovane za IDENTICKE TYPES z NON-CONST a NON-VOLATILE TYPES.
+   53. TYPE TRAIT [is_base_of<B,D>] urcuje ci TYPE 'B' je BASE CLASS TYPE 'D'. Akceptuju aj sa TYPES, ktore su DERIVED cez PRIVATE a PROTECTED MODIFIERS.
+   54. TYPE TRAIT [is_convertible<T1,T2>] urcuje ci TYPE 'T1' je konvertovatelny na TYPE 'T2'. Akceptuju aj sa konverzie na TYPES, ktore su DERIVED cez PRIVATE a PROTECTED MODIFIERS a takisto CUSTOM CONVERSIONS si CUSTOM NON-EXPLICIT CONSTRUCTORS.
+   55. TYPE TRAIT [is_constructible<T,TTypes>] urcuje ci TYPE 'T' je mozne vytvorit volanim CONSTRUCTOR, ktory ma PARAMETERS 'TTypes'.
+   56. TYPE TRAIT [is_trivially_constructible<T,TTypes>] urcuje ci TYPE 'T' je mozne TRIVIALNE (BEZ vykonania CONVERSIONS) vytvorit volanim CONSTRUCTOR, ktory ma PARAMETERS 'TTypes'.
+   57. TYPE TRAIT [is_nothrow_constructible<T,TTypes>] urcuje ci TYPE 'T' je mozne vytvorit volanim CONSTRUCTOR, ktory ma PARAMETERS 'TTypes', pricom tento CONSTRUCTOR NEHADZE EXCEPTIONS.
+   58. TYPE TRAIT [is_assignable<T1,T2>] urcuje ci do TYPE 'T1' je mozne priradit TYPE 'T2'. Akceptuju aj CUSTOM CONVERSIONS si CUSTOM NON-EXPLICIT CONSTRUCTORS.
+   59. TYPE TRAIT [is_trivially_assignable<T1,T2>] urcuje ci do TYPE 'T1' je mozne TRIVIALNE (BEZ vykonania CONVERSIONS) priradit TYPE 'T2'.
+   60. TYPE TRAIT [is_nothrow_assignable<T1,T2>] urcuje ci do TYPE 'T1' je mozne priradit TYPE 'T2' bez toho, aby doslo k hodeniu EXCEPTION. Akceptuju aj CUSTOM CONVERSIONS si CUSTOM NON-EXPLICIT CONSTRUCTORS.
+   61. TYPE TRAIT [uses_allocator<T,TAlloc>] urcuje ci TYPE 'TAlloc' je mozne konverovat na TYPE 'T::allocator_type'.
+   62. TYPE TRAIT [remove_const<T>] odstranuje z TYPE 'T' CONST MODIFIER.
+   63. TYPE TRAIT [remove_volatile<T>] odstranuje z TYPE 'T' VOLATILE MODIFIER.
+   64. TYPE TRAIT [remove_cv<T>] odstranuje z TYPE 'T' CONST a VOLATILE MODIFIERS.
+   65. TYPE TRAIT [add_const<T>] pridava do TYPE 'T' CONST MODIFIER.
+   66. TYPE TRAIT [add_volatile<T>] pridava do TYPE 'T' VOLATILE MODIFIER.
+   67. TYPE TRAIT [add_cv<T>] pridava do TYPE 'T' CONST a VOLATILE MODIFIERS.
+   68. TYPE TRAIT [make_signed<T>] zmeni TYPE 'T' na SIGNED TYPE.
+   69. TYPE TRAIT [make_unsigned<T>] zmeni TYPE 'T' na UNSIGNED TYPE.
+   70. TYPE TRAIT [remove_reference<T>] odstranuje z REFERENCE TYPE 'T' REFERENCE MODIFIER.
+   71. TYPE TRAIT [add_lvalue_reference<T>] pridava do TYPE 'T' RVALUE REFERENCE MODIFIER.
+   72. TYPE TRAIT [add_rvalue_reference<T>] pridava do TYPE 'T' LVALUE REFERENCE MODIFIER.
+   73. TYPE TRAIT [remove_pointer<T>] odstranuje z TYPE 'T' POINTER MODIFIER.
+   74. TYPE TRAIT [add_pointer<T>] pridava do TYPE 'T' POINTER MODIFIER.
+   75. TYPE TRAIT [rank<T>] vracia POCET DIMENSIONS ak je TYPE 'T' ARRAY. Ak TYPE 'T' nie je ARRAY, vracia hodnotu 0.
+   76. TYPE TRAIT [extent<T,Index>] vracia POCET ITEMS v DIMENSION 'Index' ak je TYPE 'T' ARRAY. Ak TYPE 'T' nie je ARRAY, alebo nema DIMENSION 'Index' vracia hodnotu 0.
+   77. TYPE TRAIT [remove_extent<T>] odstrani 1. DIMENSION z TYPE 'T' je TYPE 'T' ARRAY. Ak TYPE 'T' nie je ARRAY, vracia TYPE 'T'.
+   78. TYPE TRAIT [remove_all_extents<T>] odstrani VSETKY DIMENSIONS z TYPE 'T' je TYPE 'T' ARRAY. Ak TYPE 'T' nie je ARRAY, vracia TYPE 'T'.
+   79. TYPE TRAIT [underlying_type<T>] vracia PRIMITIVE TYPE, ktorym je vyjadreny ENUM TYPE 'T'.
+   80. TYPE TRAIT [decay<T>] ak je TYPE 'T' LVALUE, zmeni ho na RVALUE, ak je TYPE 'T' REFERENCE zmeni ho na BY-VALUE TYPE, ak je TYPE 'T' ARRAY, zmeni ho na POINTER, ak je TYPE 'T' FUNCTION, zmeni ho na POINTER na FUNCTION a ak ma TYPE 'T' CONST, alebo VOLATILE MODIFIER, tak vracia TYPE BEZ tychto MODIFIERS.
+   !!! 81. TYPE TRAIT [enable_if<B,T>] vracia v ALIAS 'type' TYPE 'T' ak podmienka 'B' je rovna TRUE, alebo ak podmienka 'B' je rovna FALSE, ALIAS 'type' NEDEFINUJE. Pouziva sa pri aplikacii SFINAE mechanizmu.
+   82. TYPE TRAIT [conditional<B,T1,T2>] vracia v ALIAS 'type' TYPE 'T1' ak podmienka 'B' je rovna TRUE, alebo ak podmienka 'B' je rovna FALSE, vracia v ALIAS 'type' TYPE 'T2'.
+   83. TYPE TRAIT [common_type<TTypes...>] vracia zo vsetkych TYPES 'TTypes' ten TYPE na ktory je KAZDY DALSI TYPE mozne KONVERTOVAT. Do uvahy sa beru aj CUSTOM CONVERSIONS. Ak takyto TYPE NEEXISTUJE, COMPILER generuje ERROR. TYPE TRAITS dokaze najst spolocny TYPE aj pre CUSTOM TYPES ak su v dedicskej hierarchii.
+   84. TYPE TRAIT [result_of<TFunctionObject(TArgTypes...)>] vracia RETURN TYPE FUNCTION OBJECT 'TFunctionObject', ktora ma PARAMETERS 'TArgTypes'.
+   85. TYPE TRAIT [alignment_of<T>] vracia ALIGNMENT TYPE 'T'. Je to EKVIVALENT OPERATOR [alignof(T)].
+   86. TYPE TRAIT [aligned_storage<Length,Alignment>] vracia TYPE o MINIMALNEJ DLZKE 'Length' BYTES s ALIGNMENT delitelnym hodnotou 'Alignment'.
+   87. TYPE TRAIT [aligned_union<Length,TTypes>] vracia UNION TYPE o MINIMALNEJ DLZKE 'Length' z ktoreho je mozne skonstruovat UNION TYPE obsahujucim TYPES 'Types'.
+   !!!!! 88. TYPE TRAIT [declval<T>] konvertuje TYPE 'T' na jeho RVALUE REFERENCE TYPE. RETURN TYPE z TYPE TRAIT sa NESMIE POUZIVAT v CODE, ktory je EVALUATED. TYPE TRAIT je mozne pouzit napriklad s KEYWORD decltype(), alebo v KEYWORD noexcept().
+84. STRUCTURE [pair<T1,T2>] reprezentuje PAIR. Ma nasledujuce MEMBERS.
+   A. FIELD [first] obsahuje 1. VALUE.
+   B. FIELD [second] obsahuje 2. VALUE.
+   C. FIELD [first_type] obsahuje TYPE 1. VALUE.
+   D. FIELD [second_type] obsahuje TYPE 2. VALUE.
+   E. CONSTRUCTOR umoznuje aj standardne CONVERSIONS.
+   F. OPERATOR= umoznuje priradenie jedneho PAIR do druheho. Ma aj MOVE SEMANTICS a umoznuje standardne CONVERSIONS.
+   G. OPERATOR== porovnava ci su 2 PAIRS rovne.
+   H. OPERATOR!= porovnava ci su 2 PAIRS rozne.
+   I. OPERATOR< porovnava ci su 1. PAIR je mensi ako 2. PAIR. Porovnavaju sa FIELDS [first] a ak su rovnake, tak aj FIELDS [second].
+   J. OPERATOR<= porovnava ci su 1. PAIR je mensi, alebo rovny ako 2. PAIR. Porovnavaju sa FIELDS [first] a ak su rovnake, tak aj FIELDS [second].
+   K. OPERATOR> porovnava ci su 1. PAIR je vacsi ako 2. PAIR. Porovnavaju sa FIELDS [first] a ak su rovnake, tak aj FIELDS [second].
+   L. OPERATOR>= porovnava ci su 1. PAIR je vacsi, alebo rovny ako 2. PAIR. Porovnavaju sa FIELDS [first] a ak su rovnake, tak aj FIELDS [second].
+   M. METHOD swap() vymiena hodnoty oboch FIELDS medzi 2 PAIRS.
+85. FUNCTION get<INDEX>() pre PAIR vracia hodnotu FIELD s indexom 'INDEX'.
+86. CLASS [tuple_size<pair<T1,T2>>] vracia pocet ITEMS v PAIR, ktory je vzdy rovny hodnode 2.
+87. CLASS [tuple_element<INDEX,pair<T1,T2>>] vracia TYPE FIELD s indexom 'INDEX'.
+!!! 88. STRUCTURE [pair<T1,T2>] ma specialny CONSTRUCTOR, ktory ako 1. PARAMETER prijima TYPE [piecewise_construct] a ako dalsie 2 PARAMETERS prijima dvojicu CLASS [tuple<T...>]. CONSTRUCTOR pre OBE TUPLES ROZBALI ich na FIELDS a pre tieto vola VARIADIC CONSTRUCTORS pre TYPE PARAMETER 'T1' a TYPE PARAMETER 'T2'.
+89. FUNCTION make_pair() umoznuje vytvorit PAIR bez toho aby sa EXPLICITNE definovali jeho TYPES. TYPES ci COMPILER odvodi z PARAMETERS FUNCTION make_pair().
+!!! 90. FUNCTION make_pair() spolu s FUNCTIONS ref() ci cref() umoznuju urcit ci COMPILER ma pre TYPE PARAMETER daneho PAIR generovat REFERENCES na VALUES namiesto VALUES.
+!!!!! 91. STRUCTURE [pair<T1,T2>] moze v TYPE PARAMETERS 'T1' a 'T2' obsahovat aj REFERENCES.
+92. VARIADIC TEMPLATE CLASS [tuple<T...>] reprezentuje TUPLE. Ma nasledujuce MEMBERS.
+   A. CONSTRUCTOR umoznuje aj standardne CONVERSIONS. CLASS ma aj EXPLICIT CONSTRUCTOR, ktory moze preberat lubovolny pocet VALUES. Tento CONSTRUCTOR je mozne vyuzit pri vytvarani TUPLES cez INITIALIZER LISTS.
+   B. OPERATOR= umoznuje priradenie jedneho TUPLE do druheho. Ma aj MOVE SEMANTICS a umoznuje standardne CONVERSIONS.
+   C. OPERATOR== porovnava ci su 2 TUPLES rovne.
+   D. OPERATOR!= porovnava ci su 2 TUPLES rozne.
+   E. OPERATOR< porovnava ci su 1. TUPLE je mensi ako 2. TUPLE. FIELDS sa porovnavaju v poradi zlava doprava.
+   F. OPERATOR<= porovnava ci su 1. TUPLE je mensi, alebo rovny ako 2. TUPLE. FIELDS sa porovnavaju v poradi zlava doprava.
+   G. OPERATOR> porovnava ci su 1. TUPLE je vacsi ako 2. TUPLE. FIELDS sa porovnavaju v poradi zlava doprava.
+   H. OPERATOR>= porovnava ci su 1. TUPLE je vacsi, alebo rovny ako 2. TUPLE. FIELDS sa porovnavaju v poradi zlava doprava.
+   I. METHOD swap() vymiena hodnoty vsetkych FIELDS medzi 2 TUPLES.
+93. FUNCTION get<INDEX>() pre TUPLE vracia hodnotu FIELD s indexom 'INDEX'.
+94. CLASS [tuple_size<tuple<T...>>] vracia pocet ITEMS v TUPLE.
+95. CLASS [tuple_element<INDEX,tuple<T...>>] vracia TYPE FIELD s indexom 'INDEX'.
+96. FUNCTION make_tuple() umoznuje vytvorit TUPLE bez toho aby sa EXPLICITNE definovali jeho TYPES. TYPES ci COMPILER odvodi z PARAMETERS FUNCTION make_tuple().
+!!! 97. FUNCTION make_tuple() spolu s FUNCTIONS ref() ci cref() umoznuju urcit ci COMPILER ma pre TYPE PARAMETERS daneho TUPLE generovat REFERENCES na VALUES namiesto VALUES.
+!!!!! 98. CLASS [tuple<T...>] moze v TYPE PARAMETERS mat aj REFERENCES.
+!!! 99. FUNCTION tie() vytvara instanciu CLASS [tuple<T...>], kde zo VSETKYCH TYPE PARAMETERS spravi REFERENCES. Vdaka tomu je mozne modifikovat povodne hodnoty na ktore sa TUPLE FIELDS referuju.
+100. FUNCTION tuple_cat() vytvara instanciu TUPLE z VIACERYCH TUPLES, ktore su zadane ako PARAMETERS, pricom vytvoreny TUPLE ma vsetky FIELDS zo vsetkych TUPLES zadanych ako PARAMETERS.
+101. Instanciu CLASS [pair<T1,T2>] je mozne priradit do instancie CLASS [tuple<T...>], ktora ma 2 FIELDS.
+102. REGULAR EXPRESSIONS v C++ podporuju vykonavanie nasledujucich operacii.
+   A. MATCH. Pri tejto operacii ci REGULAR EXPRESSION PATTERN zodpoveda CELEMU vstupnemu STRING.
+   B. SEARCH. Pri tejto operacii sa zistuje ci vo vstupnost STRINGU sa nachadza nejaky SUBSTRING, ktory zodpoveda REGULAR EXPRESSION PATTERN.
+   C. TOKENIZE. Pri tejto operacii je vstupny STRING rozdeleny do jednotlivych TOKENS na zaklade aplikacie REGULAR EXPRESSION PATTERN.
+   D. REPLACE. Pri tejto operacii su vo vstupnom STRINGU sekvencie CHARACTERS najdene pomocou REGULAR EXPRESSION PATTERN nahradene inymi sekvenciami CHARACTERS.
+103. REGULAR EXPRESSION LIBRARY definuje viacero REGULAR EXPRESSION GRAMMARS, ktore sa lisia v presnosti a rychlosti vykonavania operacii pre REGULAR EXPRESSIONS.
+104. REGULAR EXPRESSIONS su definovane v LIBRARY <regex>.
+105. CLASS [basic_regex<TCharacter,TTraits>] poskytuje vseobecny FRAMEWORK pre intepretaciu REGULAR EXPRESSIONS. Pre [basic_regex<TCharacter,TTraits>] platia nasledujuce fakty.
+   !!! A. CLASS [basic_regex<TCharacter,TTraits>] v CONSTRUCTOR vykonava COMPILATION zadaneho REGULAR EXPRESSION.
+   B. CLASS [basic_regex<TCharacter,TTraits>] interne funguje ako STATE MACHINE, ktora prechadza zadany STRING a hlada v nom REGULAR EXPRESSION MATCHES.
+   C. CLASS [basic_regex<TCharacter,TTraits>] podporuje viacero REGULAR EXPRESSION GRAMMARS.
+106. CLASS [basic_regex<TCharacter,TTraits>] poskytuje vseobecny FRAMEWORK pre ukladanie REGULAR EXPRESSIONS. Ma nasledujuce MEMBERS.
+   A. CONSTRUCTOR vytvara instanciu REGULAR EXPRESSION. OVERLOADED VERSIONS reprezentuju COPY a MOVE CONSTRUCTORS, ako aj umoznuju vytvorit instanciu REGULAR EXPRESSION so STRINGS ci definovat CUSTOM REGULAR EXPRESSION GRAMMAR.
+   B. DESTRUCTOR uvolnuje instanciu REGULAR EXPRESSION a vsetky s nou asociovane RESOURCES.
+   C. TYPE [value_type] urcuje TYPE pre CHARACTERS REGULAR EXPRESSION.
+   D. TYPE [traits_type] urcuje TYPE pre TYPE TRAITS REGULAR EXPRESSION.
+   E. TYPE [string_type] urcuje TYPE pre STRINGS REGULAR EXPRESSION.
+   F. TYPE [locale_type] urcuje TYPE pre LOCALE REGULAR EXPRESSION.
+   G. TYPE [flag_type] urcuje TYPE pre FLAGS REGULAR EXPRESSION.
+   H. CONSTANT [basic_regex::icase] urcuje ze porovnavanie CHARACTERS sa vykonava bez prihladania na ich CASE.
+   I. CONSTANT [basic_regex::nosubs] urcuje ze pri vyhodnocovani REGULAR EXPRESSION sa do REGULAR EXPRESSION MATCH RESULTS NEUKLADAJU REGULAR EXPRESSION SUBMATCHES.
+   J. CONSTANT [basic_regex::optimize] urcuje ze vykonavanie REGULAR EXPRESSION MATCHING ma byt rychlejsie na ukor pomalsieho vytvarania REGULAR EXPRESSION PARSER.
+   K. CONSTANT [basic_regex::collate] urcuje ze vykonavanie REGULAR EXPRESSION MATCHING ma byt LOCALE SENSITIVE.
+   L. CONSTANT [basic_regex::multiline] urcuje ze vykonavanie REGULAR EXPRESSION MATCHING ma respektovat NEW LINES ak je pouzita EMCAScript REGULAR EXPRESSION GRAMMAR.
+   M. CONSTANT [basic_regex::ECMAScript] urcuje pouzitie REGULAR EXPRESSION GRAMMAR, ktora je kompatibilna s EXTENDED EMCAScript REGULAR EXPRESSION GRAMMAR.
+   N. CONSTANT [basic_regex::basic] urcuje pouzitie REGULAR EXPRESSION GRAMMAR, ktora je kompatibilna s POSIX REGULAR EXPRESSION GRAMMAR.
+   O. CONSTANT [basic_regex::extended] urcuje pouzitie REGULAR EXPRESSION GRAMMAR, ktora je kompatibilna s EXTENDED POSIX REGULAR EXPRESSION GRAMMAR.
+   P. CONSTANT [basic_regex::awk] urcuje pouzitie REGULAR EXPRESSION GRAMMAR, ktora je kompatibilna s REGULAR EXPRESSION GRAMMAR pouzivanou v PROGRAME AWK.
+   Q. CONSTANT [basic_regex::grep] urcuje pouzitie REGULAR EXPRESSION GRAMMAR, ktora je kompatibilna s REGULAR EXPRESSION GRAMMAR pouzivanou v PROGRAME GREP.
+   R. CONSTANT [basic_regex::egrep] urcuje pouzitie REGULAR EXPRESSION GRAMMAR, ktora je kompatibilna s REGULAR EXPRESSION GRAMMAR pouzivanou v PROGRAME GREP s nastavenym FLAG -E.
+   S. OPERATOR= priradzuje do REGULAR EXPRESSION inu instanciu REGULAR EXPRESSION. OVERLOADED VERSIONS umoznuju pouzit MOVE SEMANTICS a vytvarat instanciu REGULAR EXPRESSION zo STRINGS ci INITIALIZER LISTS.
+   T. METHOD assign() priradzuje do REGULAR EXPRESSION inu instanciu REGULAR EXPRESSION. OVERLOADED VERSIONS umoznuju pouzit MOVE SEMANTICS, vytvarat instanciu REGULAR EXPRESSION zo STRINGS ci INITIALIZER LISTS a definovat CUSTOM REGULAR EXPRESSION GRAMMAR.
+   !!! U. METHOD mark_count() vracia pocet MARKED SUBEXPRESSIONS v danej REGULAR EXPRESSION. SUBEXPRESSIONS su casti REGULAR EXPRESSION PATTERN uzatvorene v zatvorkach (). Tieto SUBEXPRESSIONS vo forme REGULAR EXPRESSION SUBMATCHES su zaradzovane do REGULAR EXPRESSION MATCH RESULTS.
+   V. METHOD flags() vracia SYNTAX FLAGS danej instancie REGULAR EXPRESSION.
+   W. METHOD locale() vracia LOCALE danej instancie REGULAR EXPRESSION.
+   X. METHOD imbue() nastavuje LOCALE danej instancie REGULAR EXPRESSION.
+   Y. METHOD swap() vymiena obsah dvoch instancii REGULAR EXPRESSION vymenou ich vnutornych FIELDS.
+   Z. FUNCTION swap() vymiena obsah dvoch instancii REGULAR EXPRESSION vymenou ich vnutornych FIELDS.
+107. Pre CLASS [basic_regex<TCharacter,TTraits>] definuje C++ nasledujuce TEMPLATE SPECIALIZATIONS.
+   A. CLASS [regex] predstavuje TEMPLATE SPECIALIZATION CLASS [basic_regex<TCharacter,TTraits>] pre TYPE [char].
+   B. CLASS [wregex] predstavuje TEMPLATE SPECIALIZATION CLASS [basic_regex<TCharacter,TTraits>] pre TYPE [wchar_t].
+108. FUNCTION regex_match() vykonava REGULAR EXPRESSION MATCHING, kedy sa zistuje ci CELY vstupny STRING zodpoveda REGULAR EXPRESSION PATTERN. Pre FUNCTION regex_match() platia nasledujuce fakty.
+   A. FUNCTION regex_match() zistuje ci CELY vstupny STRING zodpoveda REGULAR EXPRESSION PATTERN.
+   B. OVERLOADED VERSIONS FUNCTION regex_match() umoznuju zadat vstupny STRING vo formate C-STRING, WC-STRING, [string], [wstring] a BIDIRECTIONAL ITERATOR PAIR na CHARACTER SEQUENCE.
+   C. Kazda OVERLOADED VERSION FUNCTION regex_match() ma ako PARAMETER TYPE [basic_regex<TCharacter,TTraits>], ktora reprezentuje REGULAR EXPRESSION PATTERN.
+   D. Kazda OVERLOADED VERSION FUNCTION regex_match() ma ako PARAMETER TYPE [match_flag_type], ktorym je mozne vykonat CUSTOMIZATION REGULAR EXPRESSION MATCHING.
+   !!! E. Niektore OVERLOADED VERSIONS FUNCTION regex_match() maju ako PARAMETER TYPE [match_results<TIterator,TAllocator>], ktory obsahuje podrobne vysledky REGULAR EXPRESSION MATCHING.
+   F. RETURN VALUE regex_match() urcuje ci REGULAR EXPRESSION MATCH bol najdeny, alebo nie.
+109. FUNCTION regex_search() vykonava REGULAR EXPRESSION SEARCHING, kedy sa zistuje ci CAST vstupneho STRINGU zodpoveda REGULAR EXPRESSION PATTERN. Pre FUNCTION regex_search() platia nasledujuce fakty.
+   A. FUNCTION regex_search() zistuje ci CAST vstupneho STRINGU zodpoveda REGULAR EXPRESSION PATTERN.
+   B. OVERLOADED VERSIONS FUNCTION regex_search() umoznuju zadat vstupny STRING vo formate C-STRING, WC-STRING, [string], [wstring] a BIDIRECTIONAL ITERATOR PAIR na CHARACTER SEQUENCE.
+   C. Kazda OVERLOADED VERSION FUNCTION regex_search() ma ako PARAMETER TYPE [basic_regex<TCharacter,TTraits>], ktora reprezentuje REGULAR EXPRESSION PATTERN.
+   D. Kazda OVERLOADED VERSION FUNCTION regex_search() ma ako PARAMETER TYPE [match_flag_type], ktorym je mozne vykonat CUSTOMIZATION REGULAR EXPRESSION SEARCHING.
+   !!! E. Niektore OVERLOADED VERSIONS FUNCTION regex_search() maju ako PARAMETER TYPE [match_results<TIterator,TAllocator>], ktory obsahuje podrobne vysledky REGULAR EXPRESSION SEARCHING.
+   F. RETURN VALUE regex_search() urcuje ci REGULAR EXPRESSION SEARCH bol uspesny, alebo nie.
+110. CLASS [match_results<TIterator,TAllocator>] reprezentuje vysledok REGULAR EXPRESSION MATCHING. Ma nasledujuce MEMBERS.
+   1. CONSTRUCTOR vytvara instanciu REGULAR EXPRESSION RESULTS. OVERLOADED VERSIONS reprezentuju COPY a MOVE CONSTRUCTORS.
+   2. DESTRUCTOR uvolnuje instanciu REGULAR EXPRESSION RESULTS a vsetky s nou asociovane RESOURCES.
+   3. TYPE [allocator_type] urcuje TYPE, ktory sa pouziva ako ALLOCATOR.
+   4. TYPE [value_type] urcuje TYPE pre SUBMATCHES ulozene v REGULAR EXPRESSION RESULTS. Je nastaveny na TYPE [sub_match<TBidirectionalIterator>].
+   5. TYPE [const_reference] urcuje CONST REFERENCE TYPE pre SUBMATCHES ulozene v REGULAR EXPRESSION RESULTS.
+   6. TYPE [reference] urcuje REFERENCE TYPE pre SUBMATCHES ulozene v REGULAR EXPRESSION RESULTS.
+   7. TYPE [const_iterator] urcuje TYPE pre CONST ITERATOR daneho REGULAR EXPRESSION RESULTS.
+   8. TYPE [iterator] urcuje TYPE pre ITERATOR daneho REGULAR EXPRESSION RESULTS.
+   9. TYPE [difference_type] je SIGNED TYPE reprezentujuci hodnoty urcujuce rozdiel.
+   10. TYPE [size_type] je UNSIGNED TYPE reprezentujuci hodnoty urcujuce velkost a pocet.
+   11. TYPE [char_type] urcuje TYPE pre CHARACTERS REGULAR EXPRESSION RESULTS.
+   12. TYPE [string_type] urcuje TYPE pre STRINGS REGULAR EXPRESSION RESULTS.
+   13. OPERATOR= priradzuje do REGULAR EXPRESSION RESULTS inu instanciu REGULAR EXPRESSION RESULTS. OVERLOADED VERSION umoznuje pouzit MOVE SEMANTICS.
+   14. OPERATOR== zistuje ci dve instancie REGULAR EXPRESSION RESULTS su lexikograficky rovne.
+   15. OPERATOR!= zistuje ci dve instancie REGULAR EXPRESSION RESULTS su lexikograficky rozne.
+   !!! 16. OPERATOR[] vracia CONST REFERENCE na SUBMATCH s danym INDEXOM. Pre INDEX 0 vracia CONST REFERENCE na SUBMATCH reprezentujuci MATCH celeho REGULAR EXPRESSION. Pre INDEX <1,size()) vracia CONST REFERENCE na SUBMATCH s danym INDEXOM. Pre INDEX VACSI ako size() vracia CONST REFERENCE na UNMATCHED SUBMATCH.
+   17. METHOD get_allocator() vracia instanciu ALLOCATOR asociovana s instaciou REGULAR EXPRESSION RESULTS.
+   18. METHOD ready() vracia informaciu ci instancia REGULAR EXPRESSION RESULTS obsahuje vysledky REGULAR EXPRESSION MATCHING.
+   !!! 19. METHOD empty() vracia informaciu ci REGULAR EXPRESSION MATCHING bol uspesny.
+   20. METHOD size() vracia pocet SUBMATCHES v instancii REGULAR EXPRESSION RESULTS.
+   21. METHOD max_size() vracia maximalny pocet SUBMATCHES, ktore je v instancii REGULAR EXPRESSION RESULT mozne ulozit.
+   !!! 22. METHOD length() vracia dlzku SUBMATCH s danym INDEXOM. Pre INDEX 0 vracia dlzku SUBMATCH reprezentujucu MATCH celeho REGULAR EXPRESSION. Pre INDEX <1,size()) vracia dlzku SUBMATCH s danym INDEXOM. Pre INDEX VACSI ako size() vracia dlzku UNMATCHED SUBMATCH.
+   !!! 23. METHOD position() vracia poziciu SUBMATCH s danym INDEXOM. Pre INDEX 0 vracia poziciu SUBMATCH reprezentujucu MATCH celeho REGULAR EXPRESSION. Pre INDEX <1,size()) vracia poziciu SUBMATCH s danym INDEXOM. Pre INDEX VACSI ako size() vracia poziciu UNMATCHED SUBMATCH.
+   !!! 24. METHOD str() vracia STRING SUBMATCH s danym INDEXOM. Pre INDEX 0 vracia STRING SUBMATCH reprezentujuci MATCH celeho REGULAR EXPRESSION. Pre INDEX <1,size()) vracia STRING SUBMATCH s danym INDEXOM. Pre INDEX VACSI ako size() vracia STRING UNMATCHED SUBMATCH.
+   25. METHOD prefix() vracia CONST ITERATOR na SUBMATCH reprezentujuci PREFIX od zaciatku prehladavaneho STRING az po najdeny MATCH.
+   26. METHOD sufix() vracia CONST ITERATOR na SUBMATCH reprezentujuci POSTFIX od konca najdeneho MATCH az po koniec prehladavaneho STRING.
+   27. METHOD begin() vracia ITERATOR ukazujuci na PRVY SUBMATCH.
+   28. METHOD cbegin() vracia CONST ITERATOR ukazujuci na PRVY SUBMATCH.
+   29. METHOD end() vracia ITERATOR ukazujuci hned za POSLEDNY SUBMATCH.
+   30. METHOD cend() vracia CONST ITERATOR ukazujuci hned za POSLEDNY SUBMATCH.
+   31. METHOD format() nastavuje FORMAT s ktorym sa budu vypisovat instancia REGULAR EXPRESSION RESULTS na OUTPUT. METHOD pouziva SPECIALNU SYNTAX na vytvorenie STRINGU reprezentujuceho jednotlive SUBMATCHES REGULAR EXPRESSION MATCH RESULTS.
+   32. METHOD swap() vymiena obsah dvoch instancii REGULAR EXPRESSION RESULTS vymenou ich vnutornych FIELDS.
+   33. FUNCTION swap() vymiena obsah dvoch instancii REGULAR EXPRESSION RESULTS vymenou ich vnutornych FIELDS.
+!!!!! 111. Pre REGULAR EXPRESSION SUBMATCHES platia nasledujuce fakty.
+   A. REGULAR EXPRESSION SUBMATCH je fragment z celeho REGULAR EXPRESSION MATCH. Teda jedna sa o fragment z celeho STRING, ktory bol pomocou REGULAR EXPRESSION najdeny.
+   !!! B. REGULAR EXPRESSION SUBMATCH sa vytvara pre KAZDY PAR OBLYCH ZATVORIEK () v PATTERN STRINGU. To znaci, ze napriklad REGULAR EXPRESSION [((AAA)(BBB))] bude mat 3 SUBMATCHES [(AAA)], [(BBB)] a [((AAA)(BBB))].
+112. Pre CLASS [match_results<TIterator,TAllocator>] definuje C++ nasledujuce TEMPLATE SPECIALIZATIONS.
+   A. CLASS [csub_match] predstavuje TEMPLATE SPECIALIZATION CLASS [match_results<TIterator,TAllocator>] pre TYPE [const char*].
+   B. CLASS [wcsub_match] predstavuje TEMPLATE SPECIALIZATION CLASS [match_results<TIterator,TAllocator>] pre TYPE [const wchar_t*].
+   C. CLASS [ssub_match] predstavuje TEMPLATE SPECIALIZATION CLASS [match_results<TIterator,TAllocator>] pre TYPE [string::const_iterator].
+   D. CLASS [wssub_match] predstavuje TEMPLATE SPECIALIZATION CLASS [match_results<TIterator,TAllocator>] pre TYPE [wstring::const_iterator].
+113. CLASS [sub_match<TIterator>] reprezentuje REGULAR EXPRESSION SUBMATCH. Je DERIVED z CLASS [pair<TIterator,TIterator>]. Ma nasledujuce MEMBERS.
+   A. CONSTRUCTOR vytvara instanciu REGULAR EXPRESSION SUBMATCH.
+   B. TYPE [iterator] urcuje TYPE pre ITERATOR daneho REGULAR EXPRESSION SUBMATCH.
+   C. TYPE [value_type] urcuje TYPE pre VALUES REGULAR EXPRESSION SUBMATCH.
+   D. TYPE [difference_type] je SIGNED TYPE reprezentujuci hodnoty urcujuce rozdiel.
+   E. TYPE [string_type] urcuje TYPE pre STRINGS REGULAR EXPRESSION SUBMATCH.
+   !!! F. FIELD [first] obsahuje BEGIN ITERATOR SUBMATCH v ramci celeho STRING.
+   !!! G. FIELD [second] obsahuje END ITERATOR SUBMATCH v ramci celeho STRING.
+   H. OPERATOR== zistuje ci dve instancie REGULAR EXPRESSION SUBMATCH su lexikograficky rovne.
+   I. OPERATOR!= zistuje ci dve instancie REGULAR EXPRESSION SUBMATCH su lexikograficky rozne.
+   J. OPERATOR< zistuje ci 1. REGULAR EXPRESSION SUBMATCH je lexikograficky mensi ako 2. REGULAR EXPRESSION SUBMATCH.
+   K. OPERATOR<= zistuje ci 1. REGULAR EXPRESSION SUBMATCH je lexikograficky mensi, alebo rovny ako 2. REGULAR EXPRESSION SUBMATCH.
+   L. OPERATOR> zistuje ci 1. REGULAR EXPRESSION SUBMATCH je lexikograficky vacsi ako 2. REGULAR EXPRESSION SUBMATCH.
+   M. OPERATOR>= zistuje ci 1. REGULAR EXPRESSION SUBMATCH je lexikograficky vacsi, alebo rovny ako 2. REGULAR EXPRESSION SUBMATCH.
+   N. OPERATOR< zapisuje textovu reprezentaciu REGULAR EXPRESSION SUBMATCH do OUTPUT STREAM.
+   O. OPERATOR string_type() vracia textovu reprezentaciu REGULAR EXPRESSION SUBMATCH do STRING.
+   P. METHOD length() vracia dlzku REGULAR EXPRESSION SUBMATCH.
+   Q. METHOD str() vracia textovu reprezentaciu REGULAR EXPRESSION SUBMATCH.
+   R. METHOD compare() porovnava dvojicu instancii REGULAR EXPRESSION SUBMATCH. OVERLOADED VERSIONS umoznuju porovnavat instanciu REGULAR EXPRESSION SUBMATCH voci STRING a C-STRING.
+114. C++ STANDARD LIBRARY definuje v LIBRARY <cmath> C-FUNCTIONS, ktore realizuju matematicke operacie implementovane v C, akurat su zapuzdrene v NAMESPACE [std].
+115. CLASS [complex<TType] reprezentuje COMPLEX NUMBER. Pre CLASS [complex<TType] platia nasledujuce fakty.
+   A. CLASS [complex<TType] je definovany v LIBRARY <complex>.
+   B. CLASS [complex<TType] ma definovane SPECIALIZATIONS pre TYPE [float], TYPE [double] a TYPE [long double].
+   C. CLASS [complex<TType] definuje IMPLICIT CONVERSIONS ak NEDOCHADZA k strate presnosti. Ak DOCHADZA k strate presnosti, je nutne pouzit EXPLICIT CONVERSIONS.
+   D. CLASS [complex<TType] NEMA DEFINOVANE OPERATOR<, OPERATOR<=, OPERATOR> a OPERATOR>=, pretoze nie je jednoznacne definovane kedy je COMPLEX NUMBER mensi ci vacsi ako iny COMPLEX NUMBER.
+   E. CLASS [complex<TType] definuje OPERATOR<< a OPERATOR>>, ktore reprezenuju COMPLEX NUMBERS v tvare [(REAL_PART,IMAGINARY_PART)], kde obycajne zatvorky su sucastou SYNTAXE.
+116. CLASS [complex<TType] ma nasledujuce MEMBERS.
+   1. TYPE [value_type] urcuje TYPE v ktorom su reprezentovane COMPLEX NUMBERS. Je zhodny s TEMPLATE PARAMETER 'TType'.
+   2. CONSTRUCTOR vytvara instanciu COMPLEX NUMBER.
+   3. OPERATOR= priradzuje jednu instanciu COMPLEX NUMBER do druhej.
+   4. OPERATOR+= aplikuje BINARY OPERATOR+= nad dvojicou COMPLEX NUMBERS, alebo nad COMPLEX NUMBER a skalarnou VALUE.
+   5. OPERATOR-= aplikuje BINARY OPERATOR-= nad dvojicou COMPLEX NUMBERS, alebo nad COMPLEX NUMBER a skalarnou VALUE.
+   6. OPERATOR*= aplikuje BINARY OPERATOR*= nad dvojicou COMPLEX NUMBERS, alebo nad COMPLEX NUMBER a skalarnou VALUE.
+   7. OPERATOR/= aplikuje BINARY OPERATOR/= nad dvojicou COMPLEX NUMBERS, alebo nad COMPLEX NUMBER a skalarnou VALUE.
+   8. OPERATOR+ aplikuje UNARY OPERATOR+ nad COMPLEX NUMBER.
+   9. OPERATOR- aplikuje UNARY OPERATOR- nad COMPLEX NUMBER.
+   10. OPERATOR+ aplikuje BINARY OPERATOR+ nad dvojicou COMPLEX NUMBERS, alebo nad COMPLEX NUMBER a skalarnou VALUE.
+   11. OPERATOR- aplikuje BINARY OPERATOR- nad dvojicou COMPLEX NUMBERS, alebo nad COMPLEX NUMBER a skalarnou VALUE.
+   12. OPERATOR* aplikuje BINARY OPERATOR* nad dvojicou COMPLEX NUMBERS, alebo nad COMPLEX NUMBER a skalarnou VALUE.
+   13. OPERATOR/ aplikuje BINARY OPERATOR/ nad dvojicou COMPLEX NUMBERS, alebo nad COMPLEX NUMBER a skalarnou VALUE.
+   14. OPERATOR== zistuje ci je dvojica COMPLEX NUMBERS ROVNA, alebo ci COMPLEX NUMBER je ROVNE skalarnej VALUE.
+   15. OPERATOR!= zistuje ci je dvojica COMPLEX NUMBERS ROZNA, alebo ci COMPLEX NUMBER je ROZNE skalarnej VALUE.
+   16. OPERATOR<< vykonava SERIALIZATION COMPLEX NUMBER do STREAM.
+   17. OPERATOR>> vykonava DESERIALIZATION COMPLEX NUMBER zo STREAM.
+   18. OPERATOR""if reprezentuje LITERAL IMAGINARNEJ ZLOZKY pre CLASS [complex<float>].
+   19. OPERATOR""i reprezentuje LITERAL IMAGINARNEJ ZLOZKY pre CLASS [complex<double>].
+   20. OPERATOR""il reprezentuje LITERAL IMAGINARNEJ ZLOZKY pre CLASS [complex<long double>].
+   21. METHOD real() umoznuje citat a zapisovat REALNU ZLOZKU COMPLEX NUMBER.
+   22. METHOD imag() umoznuje citat a zapisovat IMAGINARNU ZLOZKU COMPLEX NUMBER.
+   23. FUNCTION real() vracia REALNU ZLOZKU COMPLEX NUMBER.
+   24. FUNCTION imag() vracia IMAGINARNU ZLOZKU COMPLEX NUMBER.
+   25. FUNCTION abs() vracia MAGNITUDE COMPLEX NUMBER.
+   26. FUNCTION arg() vracia PHASE ANGLE COMPLEX NUMBER v RADIANOCH.
+   27. FUNCTION norm() vracia SQUARED MAGNITUDE COMPLEX NUMBER.
+   28. FUNCTION conj() vracia COMPLEX COJUGATE COMPLEX NUMBER. Pri COMPLEX COJUGATE sa obracia znamienko IMAGINARNEJ ZLOZKY COMPLEX NUMBER.
+   29. FUNCTION proj() vracia PROJECTION COMPLEX NUMBER na RIEMANN SQUARE.
+   30. FUNCTION polar() vytvara COMPLEX NUMBER z MAGNITUDE a PHASE ANGLE.
+   31. FUNCTION exp() aplikuje C-FUNCTION exp() nad COMPLEX NUMBER.
+   32. FUNCTION log() aplikuje C-FUNCTION log() nad COMPLEX NUMBER.
+   33. FUNCTION log10() aplikuje C-FUNCTION log() nad COMPLEX NUMBER.
+   34. FUNCTION pow() aplikuje C-FUNCTION pow() nad COMPLEX NUMBER.
+   35. FUNCTION sqrt() aplikuje C-FUNCTION sqrt() nad COMPLEX NUMBER.
+   36. FUNCTION sin() aplikuje C-FUNCTION sin() nad COMPLEX NUMBER.
+   37. FUNCTION cos() aplikuje C-FUNCTION cos() nad COMPLEX NUMBER.
+   38. FUNCTION tan() aplikuje C-FUNCTION tan() nad COMPLEX NUMBER.
+   39. FUNCTION asin() aplikuje C-FUNCTION asin() nad COMPLEX NUMBER.
+   40. FUNCTION acos() aplikuje C-FUNCTION acos() nad COMPLEX NUMBER.
+   41. FUNCTION atan() aplikuje C-FUNCTION atan() nad COMPLEX NUMBER.
+   42. FUNCTION sinh() aplikuje C-FUNCTION sinh() nad COMPLEX NUMBER.
+   43. FUNCTION cosh() aplikuje C-FUNCTION cosh() nad COMPLEX NUMBER.
+   44. FUNCTION tanh() aplikuje C-FUNCTION tanh() nad COMPLEX NUMBER.
+   45. FUNCTION asinh() aplikuje C-FUNCTION asinh() nad COMPLEX NUMBER.
+   46. FUNCTION acosh() aplikuje C-FUNCTION acosh() nad COMPLEX NUMBER.
+   47. FUNCTION atanh() aplikuje C-FUNCTION atanh() nad COMPLEX NUMBER.
+117. C++ STANDARD LIBRARY v LIBRARY <random> definuje CLASSES, ktore umoznuju generovanie RANDOM VALUES.
+!!! 118. Generovanie RANDOM VALUES je vykonavane 3 elementami.
+   A. RANDOM ENGINES su zodpovedne za generovanie UNSIGNED VALUES, ktore su UNIFORMNE DISTRIBUOVANE v zadanom RANGE. RANDOM ENGINES su implementovane ako STATEFUL FUNCTION OBJECTS.
+   B. RANDOM ENGINE ADAPTORS modifikuju VALUES generovane RANDOM ENGINES, aby tieto ziskali niektore specificke vlastnosti nahodnosti.
+   C. DISTRIBUTIONS transfromuju VALUES generovane RANDOM ENGINES do RANDOM VALUES na zaklade matematickej DISTRIBUTION, ktora moze byt lineralna, alebo aj nelinearna. DISTRIBUTIONS su implementovane ako FUNCTION OBJECTS.
+!!!!! 119. Technicky vzate, uz RANDOM ENGINES generuju RANDOM VALUES. No aplikaciou DISTRIBUTIONS je mozne vygenerovanu RANDOM VALUE dalej modifikovat podla kriterii stanovenych pouzitou DISTRIBUTION. Napriklad je mozne stanovit, aby RANDOM VALUES boli iba z urciteho rozsahu, alebo boli NEROVNOMERNE distribuovane.
+120. RANDOM ENGINES maju nasledovne MEMBERS.
+   A. TYPE [result_type] urcuje TYPE reprezentujuci TYPE VALUE, ktoru vracia dany RANDOM ENGINE. TYPE je VZDY UNSIGNED INTEGER TYPE.
+   B. DEFAULT CONSTRUCTOR vytvara instanciu RANDOM ENGINE s DEFAULT hodnotou SEED.
+   C. CONSTRUCTOR vytvara instanciu RANDOM ENGINE s nastavenou hodnotou SEED.
+   D. COPY CONSTRUCTOR vytvara kopiu RANDOM ENGINE s rovnakou hodnotou FIELDS ako povodna instancia RANDOM ENGINE.
+   E. OPERATOR== zistuje ci dve instancie RANDOM ENGINE su rovne. Ak su instancie ROVNE, potom nasledujuce RANDOM VALUES budu ROVNE.
+   F. OPERATOR!= zistuje ci dve instancie RANDOM ENGINE su rozne. Ak su instancie ROZNE, potom nasledujuce RANDOM VALUES budu ROZNE.
+   G. OPERATOR<< zapise do STREAM interne FIELDS RANDOM ENGINE, ktore je mozne vyuzit pri SERIALIZATION danej RANDOM ENGINE.
+   H. OPERATOR>> nacita zo STREAM interne FIELDS RANDOM ENGINE, ktore je mozne vyuzit pri DESERIALIZATION danej RANDOM ENGINE.
+   !!! I. OPERATOR() vygeneruje novu RANDOM VALUE, ktora je z UZATVORENEHO INTERVALU <MINIMUM_VALUE,MAXIMUM_VALUE>.
+   J. METHOD min() vracia MINIMALNU VALUE (MINIMUM_VALUE), ktoru RANDOM ENGINE moze generovat.
+   K. METHOD max() vracia MAXIMALNU VALUE (MAXIMUM_VALUE), ktoru RANDOM ENGINE moze generovat.
+   L. METHOD discard() zmeni STATE RANDOM ENGINGE, tak aby preskocil nasledujucich 'N' RANDOM VALUES. METHOD discard() moze byt optimalnejsia ako opakovane volanie OPERATOR().
+   M. METHOD seed() nastavit hodnotu SEED na stanovenu VALUE. OVERLOADED VERSION METHOD umoznuje nastavit hodnotu SEED na DEFAULT VALUE.
+121. DISTRIBUTIONS maju nasledovne MEMBERS.
+   A. DEFAULT CONSTRUCTOR vytvara instanciu DISTRIBUTION.
+   B. CONSTRUCTOR vytvara DISTRIBUTION s nastavenym vstupnym PARAMETER TYPE [param_type]. OVERLOADED CONSTRUCTOR umoznuje parametrizovat DISTRIBUTION pomocou sady PARAMETERS.
+   C. TYPE [param_type] urcuje TYPE reprezentujuci vstupny PARAMETER do DISTRIBUTION.
+   D. TYPE [result_type] urcuje TYPE reprezentujuci TYPE VALUE, ktoru vracia dana DISTRIBUTION. TYPE [return_type] je zadavany ako TEMPLATE PARAMETER danej DISTRIBUTION.
+   E. OPERATOR== zistuje ci dve instancie DISTRIBUTION su rovne. Ak su instancie ROVNE, potom nasledujuce RANDOM VALUES budu ROVNE.
+   F. OPERATOR!= zistuje ci dve instancie DISTRIBUTION su rozne. Ak su instancie ROZNE, potom nasledujuce RANDOM VALUES budu ROZNE.
+   G. OPERATOR<< zapise do STREAM interne FIELDS DISTRIBUTION, ktore je mozne vyuzit pri SERIALIZATION danej DISTRIBUTION.
+   H. OPERATOR>> nacita zo STREAM interne FIELDS DISTRIBUTION, ktore je mozne vyuzit pri DESERIALIZATION danej DISTRIBUTION.
+   !!! I. OPERATOR() vygeneruje pre RANDOM ENGINE zadany ako PARAMETER novu RANDOM VALUE. OVERLOADED VERSION umoznuje zadat VSTUPNY PARAMETER.
+   J. METHOD reset() vykona RESET internych FIELDS do DEFAULT VALUES.
+   K. METHOD param() vracia hodnotu VSTUPNEHO PARAMETER danej DISTRIBUTION. OVERLOADED VERSION umoznuje NASTAVIT hodnotu VSTUPNEHO PARAMETER danej DISTRIBUTION.
+   L. METHOD min() vracia MINIMALNU VALUE, ktoru DISTRIBUTION moze generovat.
+   M. METHOD max() vracia MAXIMALNU VALUE, ktoru DISTRIBUTION moze generovat.
+   N. METHODS PARAMS() je skupina METHODS, ktore vracaju hodnoty PARAMETERS danej DISTRIBUTION.
+122. RANDOM VALUES sa generuju nasledujucim sposobom.
+   A. Vytvori sa instancia zvoleneho RANDOM ENGINE.
+   B. Vytvori sa instancia zvolenej DISTRIBUTION.
+   C. Na vygenerovanie RANDOM NUMBER sa zavola OPERATOR() instancie DISTRIBUTION, ktory ma ako PARAMETER instanciu RANDOM ENGINE.
+123. Pre VALARRAYS platia nasledujuce fakty.
+   A. VALARRAYS su definovane v LIBRARY <valarray>.
+   A. VALARRAYS reprezentuju 1 DIMENZIONALNE ARRAYS NUMBERIC VALUES s pociatocnym INDEXOM 0.
+   B. VALARRAYS umoznuju aplikovat standardne matamaticke OPERATORS nad instanciami VALARRAYS a tym padom vykonavat komplexne matematicke vyrazy poliami NUMBERIC VALUES.
+   C. VALARRAYS umoznuju pri rozlicnych CPU ARCHITECTURES rozlicne typy OPTIMALIZATIONS. Napriklad VEKTOROVE CPU umoznuju vykonat OPERATIONS nad viacerymi ITEMS VALARRAYS v 1 CPU INSTRUCTION, ak bola implementacia VALARRAY na tuto CPU ARCHITECTURE optimalizovana.
+   !!! D. Velkou vyhodnou VALARRAYS je NEPOUZIVANIE TEMPORARY VARIABLES pri realizacii komplexnych matematickych operacii ako je napriklad EXPRESSION [Z=A*X*X+B*X+C]. Taketo EXPRESSIONS je mozne realizovat pomocou VALARRAYS BEZ TOHO, aby pri realizovani jednotlivych SUBEXPRESSIONS dochadzalo k vytvaraniu TEMPORARY VALARRAYS. Celu EXPRESSION je mozne realizovat nad 1 instanciu VALARRAY.
+   E. VALARRAYS umoznuju implementovat aj MATRICES ako VALARRAYS obsahujuce dalsie VALARRAYS.
+124. CLASS [valarray<TType>] umoznuje vykonavat matematicke operacie nad COLLECTION NUMERIC VALUES. Ma nasledujuce MEMBERS.
+   1. TYPE [value_type] urcuje TYPE jednotlivych ITEMS. Je zhodny s TEMPLATE PARAMETER 'TType'.
+   2. CONSTRUCTOR vytvara instanciu VALARRAY. V CONSTRUCTOR sa zadava pocet ITEMS VALARRAY. OVERLOADED verzie CONSTRUCTOR umoznuju vytvorit instancie VALARRAY aj zo SLICES ci ARRAYS.
+   3. DESTRUCTOR uvolnuje vsetky RESOURCES asociovane s instanciu VALARRAY.
+   4. OPERATOR= priradzuje jednu instanciu CLASS VALARRAY do druhej. OVERLOADED verzie OPERATOR= umoznuju priradit do instancie VALARRAY aj instancie SLICES ci ARRAYS.
+   !!! 5. OPERATOR[] umoznuje pristupit k ITEMS vo VALARRAY. OVERLOADED verzie OPERATOR[] umoznuju vytvorit z VALARRAY SLICES.
+   6. OPERATOR+ aplikuje UNARY OPERATOR+ nad vsetkymi ITEMS vo VALARRAY.
+   7. OPERATOR- aplikuje UNARY OPERATOR- nad vsetkymi ITEMS vo VALARRAY.
+   8. OPERATOR~ aplikuje UNARY OPERATOR~ (BITOVA NEGACIA) nad vsetkymi ITEMS vo VALARRAY.
+   !!! 9. OPERATOR! aplikuje UNARY OPERATOR! (LOGICKA NEGACIA) nad vsetkymi ITEMS vo VALARRAY. RETURN VALUE je instancia CLASS [valarray<bool>] obsahujuca vysledky pre jednotlive ITEMS.
+   10. OPERATOR+= aplikuje BINARY OPERATOR+= nad vsetkymi ITEMS vo VALARRAY. Ako PARAMETER moze byt instancia VALARRAY, alebo VALUE. Obe instancie VALARRAY MUSIA mat ROVANKU VELKOST, inak je chovanie UNDEFINED.
+   11. OPERATOR-= aplikuje BINARY OPERATOR-= nad vsetkymi ITEMS vo VALARRAY. Ako PARAMETER moze byt instancia VALARRAY, alebo VALUE. Obe instancie VALARRAY MUSIA mat ROVANKU VELKOST, inak je chovanie UNDEFINED.
+   12. OPERATOR*= aplikuje BINARY OPERATOR*= nad vsetkymi ITEMS vo VALARRAY. Ako PARAMETER moze byt instancia VALARRAY, alebo VALUE. Obe instancie VALARRAY MUSIA mat ROVANKU VELKOST, inak je chovanie UNDEFINED.
+   13. OPERATOR/= aplikuje BINARY OPERATOR/= nad vsetkymi ITEMS vo VALARRAY. Ako PARAMETER moze byt instancia VALARRAY, alebo VALUE. Obe instancie VALARRAY MUSIA mat ROVANKU VELKOST, inak je chovanie UNDEFINED.
+   14. OPERATOR%= aplikuje BINARY OPERATOR%= nad vsetkymi ITEMS vo VALARRAY. Ako PARAMETER moze byt instancia VALARRAY, alebo VALUE. Obe instancie VALARRAY MUSIA mat ROVANKU VELKOST, inak je chovanie UNDEFINED.
+   15. OPERATOR&= aplikuje BINARY OPERATOR&= nad vsetkymi ITEMS vo VALARRAY. Ako PARAMETER moze byt instancia VALARRAY, alebo VALUE. Obe instancie VALARRAY MUSIA mat ROVANKU VELKOST, inak je chovanie UNDEFINED.
+   16. OPERATOR|= aplikuje BINARY OPERATOR|= nad vsetkymi ITEMS vo VALARRAY. Ako PARAMETER moze byt instancia VALARRAY, alebo VALUE. Obe instancie VALARRAY MUSIA mat ROVANKU VELKOST, inak je chovanie UNDEFINED.
+   17. OPERATOR^= aplikuje BINARY OPERATOR^= nad vsetkymi ITEMS vo VALARRAY. Ako PARAMETER moze byt instancia VALARRAY, alebo VALUE. Obe instancie VALARRAY MUSIA mat ROVANKU VELKOST, inak je chovanie UNDEFINED.
+   18. OPERATOR<<= aplikuje BINARY OPERATOR<<= nad vsetkymi ITEMS vo VALARRAY. Ako PARAMETER moze byt instancia VALARRAY, alebo VALUE. Obe instancie VALARRAY MUSIA mat ROVANKU VELKOST, inak je chovanie UNDEFINED.
+   19. OPERATOR>>= aplikuje BINARY OPERATOR>>= nad vsetkymi ITEMS vo VALARRAY. Ako PARAMETER moze byt instancia VALARRAY, alebo VALUE. Obe instancie VALARRAY MUSIA mat ROVANKU VELKOST, inak je chovanie UNDEFINED.
+   20. OPERATOR+ aplikuje BINARY OPERATOR+ nad vsetkymi ITEMS vo VALARRAY. Ako PARAMETER moze byt instancia VALARRAY, alebo VALUE. Obe instancie VALARRAY MUSIA mat ROVANKU VELKOST, inak je chovanie UNDEFINED.
+   21. OPERATOR- aplikuje BINARY OPERATOR- nad vsetkymi ITEMS vo VALARRAY. Ako PARAMETER moze byt instancia VALARRAY, alebo VALUE. Obe instancie VALARRAY MUSIA mat ROVANKU VELKOST, inak je chovanie UNDEFINED.
+   22. OPERATOR* aplikuje BINARY OPERATOR* nad vsetkymi ITEMS vo VALARRAY. Ako PARAMETER moze byt instancia VALARRAY, alebo VALUE. Obe instancie VALARRAY MUSIA mat ROVANKU VELKOST, inak je chovanie UNDEFINED.
+   23. OPERATOR/ aplikuje BINARY OPERATOR/ nad vsetkymi ITEMS vo VALARRAY. Ako PARAMETER moze byt instancia VALARRAY, alebo VALUE. Obe instancie VALARRAY MUSIA mat ROVANKU VELKOST, inak je chovanie UNDEFINED.
+   24. OPERATOR% aplikuje BINARY OPERATOR% nad vsetkymi ITEMS vo VALARRAY. Ako PARAMETER moze byt instancia VALARRAY, alebo VALUE. Obe instancie VALARRAY MUSIA mat ROVANKU VELKOST, inak je chovanie UNDEFINED.
+   25. OPERATOR& aplikuje BINARY OPERATOR& nad vsetkymi ITEMS vo VALARRAY. Ako PARAMETER moze byt instancia VALARRAY, alebo VALUE. Obe instancie VALARRAY MUSIA mat ROVANKU VELKOST, inak je chovanie UNDEFINED.
+   26. OPERATOR| aplikuje BINARY OPERATOR| nad vsetkymi ITEMS vo VALARRAY. Ako PARAMETER moze byt instancia VALARRAY, alebo VALUE. Obe instancie VALARRAY MUSIA mat ROVANKU VELKOST, inak je chovanie UNDEFINED.
+   27. OPERATOR^ aplikuje BINARY OPERATOR^ nad vsetkymi ITEMS vo VALARRAY. Ako PARAMETER moze byt instancia VALARRAY, alebo VALUE. Obe instancie VALARRAY MUSIA mat ROVANKU VELKOST, inak je chovanie UNDEFINED.
+   28. OPERATOR<< aplikuje BINARY OPERATOR<< nad vsetkymi ITEMS vo VALARRAY. Ako PARAMETER moze byt instancia VALARRAY, alebo VALUE. Obe instancie VALARRAY MUSIA mat ROVANKU VELKOST, inak je chovanie UNDEFINED.
+   29. OPERATOR>> aplikuje BINARY OPERATOR>> nad vsetkymi ITEMS vo VALARRAY. Ako PARAMETER moze byt instancia VALARRAY, alebo VALUE. Obe instancie VALARRAY MUSIA mat ROVANKU VELKOST, inak je chovanie UNDEFINED.
+   !!! 30. OPERATOR&& aplikuje BINARY OPERATOR&& nad vsetkymi ITEMS vo VALARRAY. Ako PARAMETER moze byt instancia VALARRAY, alebo VALUE. Obe instancie VALARRAY MUSIA mat ROVANKU VELKOST, inak je chovanie UNDEFINED. RETURN VALUE je instancia CLASS [valarray<bool>] obsahujuca vysledky pre jednotlive ITEMS.
+   !!! 31. OPERATOR|| aplikuje BINARY OPERATOR|| nad vsetkymi ITEMS vo VALARRAY. Ako PARAMETER moze byt instancia VALARRAY, alebo VALUE. Obe instancie VALARRAY MUSIA mat ROVANKU VELKOST, inak je chovanie UNDEFINED. RETURN VALUE je instancia CLASS [valarray<bool>] obsahujuca vysledky pre jednotlive ITEMS.
+   !!! 32. OPERATOR== zistuje, ktore ITEMS dvojice VALARRAYS su rovne. RETURN VALUE je instancia CLASS [valarray<bool>] obsahujuca vysledky pre jednotlive ITEMS.
+   !!! 33. OPERATOR!= zistuje, ktore ITEMS dvojice VALARRAYS su rozne. RETURN VALUE je instancia CLASS [valarray<bool>] obsahujuca vysledky pre jednotlive ITEMS.
+   !!! 34. OPERATOR< zistuje, ktore ITEMS 1. instacie VALARRAY su mensie ako ITEMS 2. instancie VALARRAY. RETURN VALUE je instancia CLASS [valarray<bool>] obsahujuca vysledky pre jednotlive ITEMS.
+   !!! 35. OPERATOR<= zistuje, ktore ITEMS 1. instacie VALARRAY su mensie, alebo rovne ako ITEMS 2. instancie VALARRAY. RETURN VALUE je instancia CLASS [valarray<bool>] obsahujuca vysledky pre jednotlive ITEMS.
+   !!! 36. OPERATOR> zistuje, ktore ITEMS 1. instacie VALARRAY su vacsie ako ITEMS 2. instancie VALARRAY. RETURN VALUE je instancia CLASS [valarray<bool>] obsahujuca vysledky pre jednotlive ITEMS.
+   !!! 37. OPERATOR>= zistuje, ktore ITEMS 1. instacie VALARRAY su vacsie, alebo rovne ako ITEMS 2. instancie VALARRAY. RETURN VALUE je instancia CLASS [valarray<bool>] obsahujuca vysledky pre jednotlive ITEMS.
+   38. METHOD swap() vymiena obsah 2 instancii VALARRAY.
+   39. METHOD size() vracia pocet ITEMS vo VALARRAY.
+   40. METHOD resize() meni pocet ITEMS vo VALARRAY. V pripade, ze pocet ITEMS je MENSI ako zadany pocet ITEMS, nove ITEMS su vytvorene ako kopia ITEM zadaneho ako PARAMETER METHOD.
+   41. METHOD sum() vracia sucet hodnot vsetkych ITEMS vo VALARRAY.
+   42. METHOD min() vracia ITEM s MINIMALNOU VALUE.
+   43. METHOD max() vracia ITEM s MAXIMALNOU VALUE.
+   44. METHOD shift() vykonava POSUNUTIE INDEXOV ITEMS. Posun je mozne vykonat OBOJSMERNE.
+   45. METHOD cshift() vykonava CYKLICKE POSUNUTIE INDEXOV ITEMS. Posun je mozne vykonat OBOJSMERNE.
+   46. METHOD apply() umoznuje pre KAZDY ITEM zavolat CALLBACK FUNCTION, ktora vrati NOVU HODNOTU ITEM.
+   47. FUNCTION swap() vymiena obsah 2 instancii VALARRAY.
+   48. FUNCTION begin() vracia ITERATOR na prvy ITEM VALARRAY.
+   49. FUNCTION end() vracia ITERATOR jednu poziciu za posledny ITEM VALARRAY.
+   50. FUNCTION abs() aplikuje C-FUNCTION abs() nad vsetkymi ITEMS vo VALARRAY.
+   51. FUNCTION exp() aplikuje C-FUNCTION exp() nad vsetkymi ITEMS vo VALARRAY.
+   52. FUNCTION log() aplikuje C-FUNCTION log() nad vsetkymi ITEMS vo VALARRAY.
+   53. FUNCTION log10() aplikuje C-FUNCTION log() nad vsetkymi ITEMS vo VALARRAY.
+   54. FUNCTION pow() aplikuje C-FUNCTION pow() nad vsetkymi ITEMS vo VALARRAY.
+   55. FUNCTION sqrt() aplikuje C-FUNCTION sqrt() nad vsetkymi ITEMS vo VALARRAY.
+   56. FUNCTION sin() aplikuje C-FUNCTION sin() nad vsetkymi ITEMS vo VALARRAY.
+   57. FUNCTION cos() aplikuje C-FUNCTION cos() nad vsetkymi ITEMS vo VALARRAY.
+   58. FUNCTION tan() aplikuje C-FUNCTION tan() nad vsetkymi ITEMS vo VALARRAY.
+   59. FUNCTION asin() aplikuje C-FUNCTION asin() nad vsetkymi ITEMS vo VALARRAY.
+   60. FUNCTION acos() aplikuje C-FUNCTION acos() nad vsetkymi ITEMS vo VALARRAY.
+   61. FUNCTION atan() aplikuje C-FUNCTION atan() nad vsetkymi ITEMS vo VALARRAY.
+   62. FUNCTION atan2() aplikuje C-FUNCTION atan2() nad vsetkymi ITEMS vo VALARRAY.
+   63. FUNCTION sinh() aplikuje C-FUNCTION sinh() nad vsetkymi ITEMS vo VALARRAY.
+   64. FUNCTION cosh() aplikuje C-FUNCTION cosh() nad vsetkymi ITEMS vo VALARRAY.
+   65. FUNCTION tanh() aplikuje C-FUNCTION tanh() nad vsetkymi ITEMS vo VALARRAY.
+125. TEMPLATE CLASS [numeric_limits<T>] obsahuje MEMBERS, ktory popisuju rozlicne vlastnosti NUMERIC TYPES. TEMPLATE CLASS [numeric_limits<T>] je SPECIALIZED pre vsetky BUILT-IN NUMERIC TYPES definovane v C++. Pre CUSTOM NUMERIC TYPES je mozne definovat CUSTOM SPECIALIZATION.
+126. CLASS [numeric_limits<T>] ma nasledujuce MEMBERS.
+   !!! 1. FIELD numeric_limits<T>.is_specialized vracia TRUE, ak pre TYPE 'T' existuje TEMPLATE SPECIALIZATION CLASS [numeric_limits<T>].
+   2. FIELD numeric_limits<T>.is_signed vracia TRUE, ak TYPE 'T' je SIGNED TYPE.
+   3. FIELD numeric_limits<T>.is_integer vracia TRUE, ak TYPE 'T' je INTEGER TYPE.
+   4. FIELD numeric_limits<T>.is_exact vracia TRUE, ak TYPE 'T' pouziva exaktnu reprezentaciu.
+   5. FIELD numeric_limits<T>.has_infinity vracia TRUE, ak FLOAT TYPE 'T' dokaze reprezentovat nekonecno. Ma zmysel iba pre FLOAT TYPES.
+   6. FIELD numeric_limits<T>.has_quiet_NaN vracia TRUE, ak FLOAT TYPE 'T' dokaze reprezentovat QUIET NAN hodnotu. Ma zmysel iba pre FLOAT TYPES.
+   7. FIELD numeric_limits<T>.has_signaling_NaN vracia TRUE, ak FLOAT TYPE 'T' dokaze reprezentovat SIGNALING NAN hodnotu. Ma zmysel iba pre FLOAT TYPES.
+   8. FIELD numeric_limits<T>.has_denorm vracia ENUM hodnotu urcujucu ci FLOAT TYPE 'T' podporuje normalizaciu. Ma zmysel iba pre FLOAT TYPES.
+   9. FIELD numeric_limits<T>.has_denorm_loss vracia TRUE, ak FLOAT TYPE 'T' detekuje stratu presnosti. Ma zmysel iba pre FLOAT TYPES.
+   10. FIELD numeric_limits<T>.round_style vracia ENUM hodnotu urcujucu sposob zaokruhlovania FLOAT TYPE 'T'. Ma zmysel iba pre FLOAT TYPES.
+   11. FIELD numeric_limits<T>.is_iec559 vracia TRUE ak TYPE 'T' reprezentuje FLOAT TYPE.
+   12. FIELD numeric_limits<T>.is_bounded vracia TRUE, ak pomocou TYPE 'T' je mozne vyjadrit konecny pocet hodnot.
+   13. FIELD numeric_limits<T>.is_modulo vracia informaciu ci TYPE 'T' pri OVERFLOW pouziva operaciu MODULO na zarovnanie cisla do intervalu pre TYPE 'T'.
+   14. FIELD numeric_limits<T>.digits vracia maximalny pocet cislic, ktore je pre TYPE 'T' pouzit, aby nedoslo k zmene hodnoty.
+   15. FIELD numeric_limits<T>.digits10 vracia maximalny pocet cislic, ktore je pri zaklade 10 pre TYPE 'T' pouzit, aby nedoslo k zmene hodnoty. Napriklad pre BYTE je tato hodnota 2, pretoze iba 2 ciferne hodnoty hodnoty <0,99> je mozne danym TYPE vyjadrit bez zmeny hodnoty. Hodnoty s 3 cislami, ako naprikolad 999 nie je mozne v BYTE vyjadrit, bez zmeny hodnoty, pretoze dojde k preteceniu.
+   !!! 16. FIELD numeric_limits<T>.max_digits10 vracia maximalny pocet cislic, ktore su pri desiatkovej ciselnej sustave potrebne na ulozenie lubovolnej hodnoty pre TYPE 'T'. Hodnota sa vyuziva pri SERIALIZATION/DESERIALIZATION. Ma zmysel iba pre FLOAT TYPES.
+   17. FIELD numeric_limits<T>.radix vracia ciselnu sustavu v ktorej je vyjadreny TYPE 'T'.
+   18. FIELD numeric_limits<T>.min_exponent vracia najmensi zaporny exponent pri zaklade, ktory TYPE 'T' pouziva, ktory este dava validnu FLOAT VALUE. Ma zmysel iba pre FLOAT TYPES.
+   19. FIELD numeric_limits<T>.min_exponent10 vracia najmensi zaporny exponent pri zaklade 10 pre TYPE 'T', ktory este dava validnu FLOAT VALUE. Ma zmysel iba pre FLOAT TYPES.
+   20. FIELD numeric_limits<T>.max_exponent vracia najvacsi exponent pri zaklade, ktory TYPE 'T' pouziva, ktory este dava validnu FLOAT VALUE. Ma zmysel iba pre FLOAT TYPES.
+   21. FIELD numeric_limits<T>.max_exponent10 vracia najvacsi exponent pri zaklade 10, ktory pre TYPE 'T' este dava validnu FLOAT VALUE. Ma zmysel iba pre FLOAT TYPES.
+   22. FIELD numeric_limits<T>.traps vracia TRUE pre vsetky TYPES 'T' ak TYPES maju aspon jednu hodnotu, ktora pri vykonavani EXPRESSION moze sposobit TRAP (HW EXCEPTION na CPU).
+   23. FIELD numeric_limits<T>.tinyness_before vracia TRUE pre vsetky FLOAT TYPES 'T' ak TYPES vykonavaju na konci vypoctu EXPRESSION kontrolu na UNDERFLOW, predtym nez vykonaju ROUNDING.
+   24. METHOD numeric_limits<T>.min() vracia najmensi mozny prirastok hodnoty, ktoru je mozne vyjadrit TYPOM 'T'. Pre FLOAT TYPES je to VZDY KLADNA HODNOTA, pretoze udava MINIMALNY PRIRASTOK a nie ABSOLUTNU MINIMALNU HODNOTU.
+   25. METHOD numeric_limits<T>.lowest() vracia ABSOLUTNU MINIMALNU hodnotu TYPU 'T'.
+   26. METHOD numeric_limits<T>.max() vracia ABSOLUTNU MAXIMALNU hodnotu TYPU 'T'.
+   27. METHOD numeric_limits<T>.epsilon() vracia EPSILON vyjadreny ako rozdiel medzi hodnotou 1.0 a najblizsou vyssou hodnotou, ktoru je mozne vyjadrit TYPOM 'T'. Ma zmysel iba pre FLOAT TYPES.
+   28. METHOD numeric_limits<T>.round_error() vracia najvacsiu moznu chybu zaokruhlenia pre TYPE 'T'. Ma zmysel iba pre FLOAT TYPES.
+   29. METHOD numeric_limits<T>.infinity() vracia nekonecnu hodnotu pre TYPE 'T'. Ma zmysel iba pre FLOAT TYPES.
+   30. METHOD numeric_limits<T>.quiet_NaN() vracia QUIET NAN hodnotu pre TYPE 'T'. Ma zmysel iba pre FLOAT TYPES.
+   31. METHOD numeric_limits<T>.signaling_NaN() vracia SIGNALING NAN hodnotu pre TYPE 'T'. Ma zmysel iba pre FLOAT TYPES.
+   32. METHOD numeric_limits<T>.denorm_min() vracia minimalnu kladnu denormalizovanu hodnotu pre TYPE 'T'. Ma zmysel iba pre FLOAT TYPES.
+!!! 127. METHODS CLASS [numeric_limits<T>] su deklarovane ako CONSTEXPR, co znaci, ze ich RETURN VALUE je mozne pouzit napriklad aj pri deklaracii velkosti ARRAYS.
+//-----------------------------------------------------------------------------

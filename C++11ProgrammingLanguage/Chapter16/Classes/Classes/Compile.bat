@@ -1,0 +1,1 @@
+g++-8 -m64 -std=c++17 -pthread -fexceptions -pedantic -Wall -Wextra -o Program.exe MyDebug.cpp Classes.cpp CConstructors.cpp CInClassInitializers.cpp CInClassMethods.cpp CStaticFieldsAndMethods.cpp COuterNestedClasses.cpp

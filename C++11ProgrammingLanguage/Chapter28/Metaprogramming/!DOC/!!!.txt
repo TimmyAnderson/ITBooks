@@ -1,0 +1,316 @@
+//-------------------------------------------------------------------------------------------------------
+1. Solution demonstruje METAPROGRAMMING v C++.
+2. METAPROGRAMING je COMPILE TYPE PROGRAMMING, ktore vyuziva konstrukty ako CLASSES ci FUNCTIONS na vytvaranie novych TYPES v COMPILE TYPE.
+!!! 3. Zasadnym atributom METAPROGRAMING je, ze realizuje ALGORITMUS v COMPILE TIME a jeho vysledkom je bud novy TYPE, FUNCTION, alebo vypocitana VALUE (COMPILE TIME CONSTANT).
+!!! 4. GENERIC PROGRAMMING je ROZDIELNY oproti METAPROGRAMING, ze NEREALIZUJE ALGORITMUS v COMPILE TIME, iba vyuziva TEMPLATES na generovanie novych TYPES a FUNCTIONS. Pri METAPROGRAMMING je vsak realizovany COMPILE TIME ALGORITHM, ktoreho vysledkom je novy TYPE, FUNCTION, alebo VALUE, ktory je mozne pouzit v RUN TIME.
+5. METAPROGRAMMING ma viacero urovni zlozitosti v ktorych je mozne vytvarat METAPROGRAMS.
+   A. Ziaden COMPILE TIME ALGORITHM, iba vyuzivanie TEMPLATES na prenost TYPES ako ARGUMENTS. Tento typ programovanie v podstate ani nie je METAPROGRAMMING, ale GENERIC PROGRAMMING.
+   B. Jednoduchy COMPILE TIME ALGORITHM, ktory nepouziva podmienky, ani cykly.
+   C. COMPILE TIME ALGORITHM, ktory pouziva COMPILE TIME CONDITIONS, ako napriklad COMPILE TIME 'IF'.
+   !!! D. COMPILE TIME ALGORITHM, ktory pouziva COMPILE TIME CYCLES, spravidla vo forme RECURSION. Sem patria VARIADIC TEMPLATES.
+!!! 6. TYPE FUNCTION je konstukt METAPROGRAMING pre ktory platia nasledujuce fakty.
+   !!! A. TYPE FUNCTIONS su vyratavane v COMPILE TIME.
+   B. TYPE FUNCTIONS podobne ako klasicke FUNCTIONS moze prijimat 0-M PARAMETERS a mat 0-N RETURN VALUES.
+   !!!!! C. TYPE FUNCTION je spravidla deklarovana v C++ ako CUSTOM TEMPLATE TYPE (STRUCTURE, alebo CLASS).
+   !!! D. INPUT PARAMETERS TYPE FUNCTIONS su TEMPLATE PARAMETERS.
+   !!! E. OUTPUT PARAMETERS TYPE FUNCTIONS su TYPES, alebo VALUES, ktore su pristupne ako MEMBERS generovaneho TYPE.
+   F. INPUT aj OUTPUT PARAMETERS mozu byt bud TYPES (vratane FUNCTION), alebo CONSTANT VALUES.
+7. KEYWORD [sizeof()] je mozne povazovat za TYPE FUNCTION, pretoze je vypocitavana v COMPILE TIME, pricom INPUT PARAMETER je TYPE a OUTPUT PARAMETER je CONSTANT VALUE obsahujuca pocet BYTES, ktory dany TYPE zabera v MEMORY.
+8. KEYWORD [decltype()] je tiez mozne povazovat za TYPE FUNCTION pretoze pre dany EXPRESSION vracia jeho TYPE.
+9. Vacsina standardych TYPE FUNCTIONS je deklarovana v HEADER [type_traits], pricom platia nasledujuce konvencie.
+   A. Ak TYPE FUNCTION vracia TYPE potom je tento TYPE zvycajne pomenovany ako [type].
+   B. Ak TYPE FUNCTION vracia VALUE potom je tento TYPE zvycajne pomenovany ako [value].
+10. Aj ked METAPROGRAMMING ma svoje vyhody, pri prehnanom pouziti moze viest k vyrazne casovo narocnejsej kompilacii.
+11. C++ 11 umoznuje pomocou KEYWORD [using] deklarovat TYPE ALIASES. Pre TYPE ALIASES platia nasledujuce vlastnosti.
+   A. SYNTAX TYPE ALIAS je [template<typename T1,...,typename TN> using Alias=typename TEMPLATE<T1,...,TN>].
+   !!! B. TYPE ALIASES NIE su deklaraciou novych TEMPLATES, iba vytvorenim ALIAS pre TYPES generovane z existujucich TEMPLATES.
+   C. TYPE ALIASES mozu byt deklarovane iba v TYPE SCOPE a GLOBAL SCOPE. Nemozu byt vsak deklarovane v telach FUNCTIONS.
+!!! 12. C++ 11 definuje v HEADER [type_traits] subor TYPE PREDICATES. TYPE PREDICATE su TEMPLATE STRUCTURES, ktore umoznuju vykonat rozlicne testy nad TEMPLATE TYPE PARAMETERS. HEADER [type_traits] obsahuje nasledujuce TEMPLATE STRUCTURES.
+   1. TEMPLATE STRUCTURE [integral_constant<TType,TType Value>] definuje INTEGRAL CONSTANT daneho TYPE.
+   2. TEMPLATE STRUCTURE [true_type] definuje hodnotu TRUE. Pouziva sa ako BASE CLASS pre ine TYPE PREDICATES a je DERIVED zo STRUCTURE [integral_constant<bool,true>].
+   3. TEMPLATE STRUCTURE [false_type] definuje hodnotu FALSE. Pouziva sa ako BASE CLASS pre ine TYPE PREDICATES a je DERIVED zo STRUCTURE [integral_constant<bool,false>].
+   4. TEMPLATE STRUCTURE [is_void<TType>] kontroluje ci TYPE [TType] je VOID.
+   5. TEMPLATE STRUCTURE [is_null_pointer<TType>] kontroluje ci TYPE [TType] je [std::nullptr].
+   6. TEMPLATE STRUCTURE [is_integral<TType>] kontroluje ci TYPE [TType] je INTEGRAL TYPE.
+   7. TEMPLATE STRUCTURE [is_floating_point<TType>] kontroluje ci TYPE [TType] je FLOATING POINT TYPE.
+   8. TEMPLATE STRUCTURE [is_array<TType>] kontroluje ci TYPE [TType] je ARRAY TYPE.
+   9. TEMPLATE STRUCTURE [is_enum<TType>] kontroluje ci TYPE [TType] je ENUM TYPE.
+   10. TEMPLATE STRUCTURE [is_union<TType>] kontroluje ci TYPE [TType] je UNION TYPE.
+   11. TEMPLATE STRUCTURE [is_class<TType>] kontroluje ci TYPE [TType] je CLASS TYPE.
+   12. TEMPLATE STRUCTURE [is_function<TType>] kontroluje ci TYPE [TType] je FUNCTION TYPE.
+   13. TEMPLATE STRUCTURE [is_pointer<TType>] kontroluje ci TYPE [TType] je POINTER TYPE.
+   14. TEMPLATE STRUCTURE [is_lvalue<TType>] kontroluje ci TYPE [TType] je LVALUE TYPE.
+   15. TEMPLATE STRUCTURE [is_rvalue<TType>] kontroluje ci TYPE [TType] je RVALUE TYPE.
+   16. TEMPLATE STRUCTURE [is_member_object_pointer<TType>] kontroluje ci TYPE [TType] je NON-STATIC MEMBER OBJECT TYPE.
+   17. TEMPLATE STRUCTURE [is_member_function_pointer<TType>] kontroluje ci TYPE [TType] je NON-STATIC MEMBER FUNCTION TYPE.
+   18. TEMPLATE STRUCTURE [is_fundamental<TType>] kontroluje ci TYPE [TType] je FUNDAMENTAL (PRIMITIVE) TYPE. Medzi FUNDAMENTAL TYPES NEPATRIA POINTERS ani REFERENCES.
+   19. TEMPLATE STRUCTURE [is_arithmetic<TType>] kontroluje ci TYPE [TType] je ARITHMETIC TYPE.
+   20. TEMPLATE STRUCTURE [is_scalar<TType>] kontroluje ci TYPE [TType] je SCALAR TYPE.
+   21. TEMPLATE STRUCTURE [is_object<TType>] kontroluje ci TYPE [TType] je OBJECT TYPE. Medzi OBJECT TYPES patria SCALAR TYPES, CLASSES, UNIONS a ARRAY TYPES.
+   22. TEMPLATE STRUCTURE [is_compound<TType>] kontroluje ci TYPE [TType] je COMPOUND TYPE. Medzi COMPOUND TYPES patria ARRAYS, FUNCTIONS, OBJECT POINTERS, FUNCTION POINTERS, MEMBER OBJECT POINTERS, MEMBER FUNCTION POINTERS, REFERENCES, CLASSES, UNIONS and ENUMS.
+   23. TEMPLATE STRUCTURE [is_reference<TType>] kontroluje ci TYPE [TType] je REFERENCE TYPE.
+   24. TEMPLATE STRUCTURE [is_member_pointer<TType>] kontroluje ci TYP [TType]E je NON-STATIC MEMBER OBJECT TYPE, alebo NON-STATIC MEMBER FUNCTION TYPE.
+   25. TEMPLATE STRUCTURE [is_const<TType>] kontroluje ci TYPE [TType] je CONST TYPE.
+   26. TEMPLATE STRUCTURE [is_volatile<TType>] kontroluje ci TYPE [TType] je VOLATILE TYPE.
+   27. TEMPLATE STRUCTURE [is_trivial<TType>] kontroluje ci TYPE [TType] je TRIVIAL TYPE. TRIVIAL TYPES su SCALAR TYPES, ktore su TRIVIALLY COPYABLE, alebo ARRAYS.
+   28. TEMPLATE STRUCTURE [is_trivially_copyable<TType>] kontroluje ci TYPE [TType] je TRIVIALLY COPYABLE TYPE.
+   29. TEMPLATE STRUCTURE [is_standard_layout<TType>] kontroluje ci TYPE [TType] ma STANDARD LAYOUT.
+   30. TEMPLATE STRUCTURE [is_pod<TType>] kontroluje ci TYPE [TType] je PLAIN OLD DATA TYPE.
+   31. TEMPLATE STRUCTURE [is_literal_type<TType>] kontroluje ci TYPE [TType] je LITERAL TYPE.
+   32. TEMPLATE STRUCTURE [is_empty<TType>] kontroluje ci TYPE [TType] je EMPTY TYPE, ktory nema ziadne NON-STATIC DATA MEMBERS.
+   33. TEMPLATE STRUCTURE [is_polymorphic<TType>] kontroluje ci TYPE [TType] je POLYMORPHIC TYPE. POLYMORPHIC TYPE musi mat aspon 1 VIRTUAL FUNCTION.
+   34. TEMPLATE STRUCTURE [is_abstract<TType>] kontroluje ci TYPE [TType] ma ABSTRACT TYPE. ABSTRACT TYPE musi mat aspon 1 PURE VIRTUAL FUNCTION.
+   35. TEMPLATE STRUCTURE [is_signed<TType>] kontroluje ci TYPE [TType] je SIGNED ARITHMETIC TYPE.
+   36. TEMPLATE STRUCTURE [is_unsigned<TType>] kontroluje ci TYPE [TType] je UNSIGNED ARITHMETIC TYPE.
+   37. TEMPLATE STRUCTURE [is_constructible<TType,typename... TArgs>] kontroluje ci TYPE [TType] ma CONSTRUCTOR s PARAMETERS [TArgs].
+   38. TEMPLATE STRUCTURE [is_trivially_constructible<TType,typename... TArgs>] kontroluje ci TYPE [TType] ma CONSTRUCTOR s PARAMETERS [TArgs] a zaroven CONSTRUCTOR nevola vo svojom CODE ziadnu NON-TRIVIAL OPERATION.
+   39. TEMPLATE STRUCTURE [is_nothrow_constructible<TType,typename... TArgs>] kontroluje ci TYPE [TType] ma CONSTRUCTOR s PARAMETERS [TArgs], ktory je oznaceny KEYWORD [noexcept].
+   40. TEMPLATE STRUCTURE [is_default_constructible<TType>] kontroluje ci TYPE [TType] ma DEFAULT CONSTRUCTOR.
+   41. TEMPLATE STRUCTURE [is_trivially_default_constructible<TType>] kontroluje ci TYPE [TType] ma DEFAULT CONSTRUCTOR a zaroven CONSTRUCTOR nevola vo svojom CODE ziadnu NON-TRIVIAL OPERATION.
+   42. TEMPLATE STRUCTURE [is_nothrow_default_constructible<TType>] kontroluje ci TYPE [TType] ma DEFAULT CONSTRUCTOR, ktory je oznaceny KEYWORD [noexcept].
+   43. TEMPLATE STRUCTURE [is_copy_constructible<TType>] kontroluje ci TYPE [TType] ma COPY CONSTRUCTOR.
+   44. TEMPLATE STRUCTURE [is_trivially_copy_constructible<TType>] kontroluje ci TYPE [TType] ma COPY CONSTRUCTOR a zaroven CONSTRUCTOR nevola vo svojom CODE ziadnu NON-TRIVIAL OPERATION.
+   45. TEMPLATE STRUCTURE [is_nothrow_copy_constructible<TType>] kontroluje ci TYPE [TType] ma COPY CONSTRUCTOR, ktory je oznaceny KEYWORD [noexcept].
+   46. TEMPLATE STRUCTURE [is_move_constructible<TType>] kontroluje ci TYPE [TType] ma MOVE CONSTRUCTOR.
+   47. TEMPLATE STRUCTURE [is_trivially_move_constructible<TType>] kontroluje ci TYPE [TType] ma MOVE CONSTRUCTOR a zaroven CONSTRUCTOR nevola vo svojom CODE ziadnu NON-TRIVIAL OPERATION.
+   48. TEMPLATE STRUCTURE [is_nothrow_move_constructible<TType>] kontroluje ci TYPE [TType] ma MOVE CONSTRUCTOR, ktory je oznaceny KEYWORD [noexcept].
+   49. TEMPLATE STRUCTURE [is_assignable<TType,TOtherType>] kontroluje ci TYPE [TType] ma OPERATOR= pre TYPE [TOtherType].
+   50. TEMPLATE STRUCTURE [is_trivially_assignable<TType,TOtherType>] kontroluje ci TYPE [TType] ma OPERATOR= pre TYPE [TOtherType] a zaroven OPERATOR= nevola vo svojom CODE ziadnu NON-TRIVIAL OPERATION.
+   51. TEMPLATE STRUCTURE [is_nothrow_assignable<TType,TOtherType>] kontroluje ci TYPE [TType] ma OPERATOR= pre TYPE [TOtherType], ktory je oznaceny KEYWORD [noexcept].
+   52. TEMPLATE STRUCTURE [is_copy_assignable<TType>] kontroluje ci TYPE [TType] ma OPERATOR= s COPY SEMANTICS.
+   53. TEMPLATE STRUCTURE [is_trivially_copy_assignable<TType>] kontroluje ci TYPE [TType] ma OPERATOR= s COPY SEMANTICS a zaroven OPERATOR= nevola vo svojom CODE ziadnu NON-TRIVIAL OPERATION.
+   54. TEMPLATE STRUCTURE [is_nothrow_copy_assignable<TType>] kontroluje ci TYPE [TType] ma OPERATOR= s COPY SEMANTICS, ktory je oznaceny KEYWORD [noexcept].
+   55. TEMPLATE STRUCTURE [is_move_assignable<TType>] kontroluje ci TYPE [TType] ma OPERATOR= s MOVE SEMANTICS.
+   56. TEMPLATE STRUCTURE [is_trivially_move_assignable<TType>] kontroluje ci TYPE [TType] ma OPERATOR= s MOVE SEMANTICS a zaroven OPERATOR= nevola vo svojom CODE ziadnu NON-TRIVIAL OPERATION.
+   57. TEMPLATE STRUCTURE [is_nothrow_move_assignable<TType>] kontroluje ci TYPE [TType] ma OPERATOR= s MOVE SEMANTICS, ktory je oznaceny KEYWORD [noexcept].
+   58. TEMPLATE STRUCTURE [is_destructible<TType>] kontroluje ci TYPE [TType] ma DESTRUCTOR. Pre REFERENCE TYPES vracia hodnotu FALSE.
+   59. TEMPLATE STRUCTURE [is_trivially_destructible<TType>] kontroluje ci TYPE [TType] ma DESTRUCTOR a zaroven DESTRUCTOR nevola vo svojom CODE ziadnu NON-TRIVIAL OPERATION. Pre REFERENCE TYPES vracia hodnotu FALSE.
+   60. TEMPLATE STRUCTURE [is_nothrow_destructible<TType>] kontroluje ci TYPE [TType] ma DESTRUCTOR, ktory je oznaceny KEYWORD [noexcept]. Pre REFERENCE TYPES vracia hodnotu FALSE.
+   61. TEMPLATE STRUCTURE [has_virtual_destructor<TType>] kontroluje ci TYPE [TType] ma VIRTUAL DESTRUCTOR.
+   62. TEMPLATE STRUCTURE [alignment_of<TType>] vracia ALIGNMENT TYPE [TType].
+   63. TEMPLATE STRUCTURE [rank<TType>] vracia pocet dimenzii TYPE [TType]. Pre NON-ARRAY TYPES vracia hodnotu 0.
+   64. TEMPLATE STRUCTURE [extent<TType,unsigned int Dimension>] vracia pocet ITEMS pre DIMENSION [Dimension] TYPE [TType]. Pre NON-ARRAY TYPES vracia hodnotu 0.
+   65. TEMPLATE STRUCTURE [is_same<TType1,TType2>] vracia informaciu ci TYPES [TType1] a [TType2] su rovnake.
+   66. TEMPLATE STRUCTURE [is_base_of<TBase,TDerived>] vracia informaciu ci TYPES [TBase] je BASE TYPE TYPE [TDerived].
+   67. TEMPLATE STRUCTURE [is_convertible<TType1,TType2>] vracia informaciu ci TYPES [TType1] je implicitne konvertovatelny na TYPE [TType2].
+   68. TEMPLATE STRUCTURE [add_cv<TType>] konvertuje TYPE na [TType] na [const volatile TType].
+   69. TEMPLATE STRUCTURE [add_const<TType>] konvertuje TYPE na [TType] na [const TType].
+   70. TEMPLATE STRUCTURE [add_volatile<TType>] konvertuje TYPE na [TType] na [volatile TType].
+   71. TEMPLATE STRUCTURE [remove_cv<TType>] konvertuje TYPE [const volatile TType] na [TType].
+   72. TEMPLATE STRUCTURE [remove_const<TType>] konvertuje TYPE [const TType] na [TType].
+   73. TEMPLATE STRUCTURE [remove_volatile<TType>] konvertuje TYPE [volatile TType] na [TType].
+   74. TEMPLATE STRUCTURE [add_pointer<TType>] konvertuje TYPE [TType] na [TType*].
+   75. TEMPLATE STRUCTURE [remove_pointer<TType>] konvertuje TYPE [TType*] na [TType].
+   76. TEMPLATE STRUCTURE [add_lvalue_reference<TType>] konvertuje TYPE [TType] na LVALUE [TType&].
+   77. TEMPLATE STRUCTURE [add_lvalue_reference<TType>] konvertuje TYPE [TType] na RVALUE [TType&].
+   78. TEMPLATE STRUCTURE [remove_reference<TType>] konvertuje TYPE [TType&] na [TType].
+   79. TEMPLATE STRUCTURE [make_signed<TType>] konvertuje TYPE [TType] na SIGNED TYPE.
+   80. TEMPLATE STRUCTURE [make_unsigned<TType>] konvertuje TYPE [TType] na UNSIGNED TYPE.
+   81. TEMPLATE STRUCTURE [remove_extent<TType>] konvertuje TYPE [TType] ak je MULTIDIMENSIONAL ARRAY na TYPE bez 1. DIMENSION.
+   82. TEMPLATE STRUCTURE [remove_all_extents<TType>] konvertuje TYPE [TType] ak je MULTIDIMENSIONAL ARRAY na TYPE bez vsetkych DIMENSIONS.
+   83. TEMPLATE STRUCTURE [aligned_storage<size_t Length,size_t Align>] vracia PLAIN OLD DATA TYPE, ktory ma minimalne dlzku [Length] a ALIGNMENT [Align].
+   84. TEMPLATE STRUCTURE [aligned_union<size_t Length,typename... TTypes>] vracia PLAIN OLD DATA TYPE, ktory ma minimalne dlzku [Length], pricom maximalna dlzka je dostatocna na to, aby ulozila, ktorykolvek TYPE z TYPES [TTypes].
+   85. TEMPLATE STRUCTURE [decay<TType>] vracia TYPE [TType] po aplikovani LVALUE-TO-REVALUE, ARRAY-TO-POINTER, FUNCTION-TO-POINTER konverziach a po odstraneni konstruktov [const] a [volatile].
+   86. TEMPLATE STRUCTURE [enable_if<bool Condition,TType>] vracia TYPE [TType] ak [Condition] je TRUE. Inak vracia VOID.
+   87. TEMPLATE STRUCTURE [conditional<bool Condition,TType1,TType2>] vracia TYPE [TType1] ak [Condition] je TRUE, inak vracia [TType2].
+   88. TEMPLATE STRUCTURE [common_type<typename... TTypes>] vracia TYPE na ktory je mozne konvertovat kazdy z TYPES v [TTypes].
+   89. TEMPLATE STRUCTURE [underlying_type<TType>] vracia UNDERLYING TYPE pre ENUMERATION TYPE [TType].
+   90. TEMPLATE STRUCTURE [result_of<TType>] vracia RETURN TYPE FUNCTOR TYPE [TType].
+   91. TEMPLATE STRUCTURE [result_of<TType,typename... TArguments>] vracia RETURN TYPE FUNCTOR TYPE [TType], ktoreho OPERATOR() ma ARGUMENTS [TArguments].
+13. TYPE TRAITS su TYPE FUNCTIONS (TEMPLATE CLASSES), ktore vracaju 1-N TYPES. TYPE TRAITS na rozdiel od beznych TYPE FUNCTIONS sa odkazuju na sadu ALIASES v inych TEMPLATES, pre ktore tam vytvaraju akysi TYPE INTERFACE. Typickym prikladom TYPE TRAITS je type [template<Iterator> iterator_traits], ktory definuje nasledujuce ALIASES pre VSETKY STL COLLECTIONS.
+   A. ALIAS [difference_type] referuje na ALIAS [Iterator::difference_type] urcujuci TYPE, ktory vznikne pri odcitani dvoch instancii TYPE [Iterator].
+   B. ALIAS [value_type] referuje na ALIAS [Iterator::value_type] urcujuci TYPE, ktory vznikne po aplikovani OPERATOR* na TYPE [Iterator].
+   C. ALIAS [pointer_type] referuje na ALIAS [Iterator::pointer_type] urcujuci TYPE, ktory vznikne po aplikovani OPERATOR& na TYPE [Iterator].
+   D. ALIAS [reference_type] referuje na ALIAS [Iterator::reference_type] urcujuci TYPE, ktory vznikne po konverzii TYPE [Iterator] na REFERENCE.
+   E. ALIAS [iterator_category] referuje na ALIAS [Iterator::iterator_category] urcujuci typ daneho [Iterator].
+!!! 14. Aj ked TYPE TRAITS su velmi casto pouzivane v STL, v C++ 11 ich je mozne nahradit pouzitim KEYWORDS [auto] a [decltype()].
+!!! 15. Pouzitie TYPE TRAITS vedie k TAZKO CITATELNEMU CODE, a preto je ich pouzitie lepsie obmedzit.
+!!! 16. V METAPROGRAMMING pri pouziti C++ TEMPLATES NIE JE mozne realizovat ITERATION, avsak na spracovanie kolekcie dat je mozne realizovat RECURSION. RECURSION sa pomocou TEMPLATES realizuje nasledujucim sposobom.
+   A. Definuje sa TEMPLATE, ktora ma aspon 1 INTEGER PARAMETER. Tato TEMPLATE MUSI volat TEMPLATE s hondotou INTEGER PARAMETER (X-1), kde 'X' je hodnota INTEGER PARAMETER v aktualnej TEMPLATE. Tato TEMPLATE reprezentuje ITERATION STEP danej RECURSION.
+   B. Definuje sa TEMPLATE SPECIALIZATION, ktora za INTEGER PARAMETER ma dosadenu konkretnu hodnotu (casto 0), ktora je TERMINAL VALUE celej ITERATION. Tato TEMPLATE SPECIALIZATION reprezentuje TERMINAL STEP danej RECURSION.
+!!! 17. TEMPLATE RECURSION je mozne aplikovat na TEMPLATE CLASSES aj TEMPLATE FUNCTIONS.
+18. C++ STANDARD LIBRARY poskytuje TYPE FUNCTION (TEMPLATE CLASS) [enable_if<bool Condition,TType>], ktora vracia v MEMBER [type] hodnotu [TType], ak je hodnota [Condition] TRUE, alebo VOID, ak je hodnota [Condition] FALSE. Vdaka SFINAE je mozne TYPE FUNCTION [enable_if<bool Condition,TType>] pouzit na obmedzenie, ktore TEMPLATE FUNCTION a TEMPLATE METHODS budu pre dany TYPE [TType] definovane. TYPE FUNCTION [enable_if<bool Condition,TType>] je mozne aplikovat 3 sposobmi.
+   A. TYPE FUNCTION [enable_if<bool Condition,TType>] je mozne aplikovat na RETURN VALUES. Napriklad CODE [template<typename TType> enable_if<is_class<TType>::value,TType>::type XXX(void)] prinuti C++ generovat FUNCTION XXX() IBA ak TYPE [TType] je CLASS.
+   B. TYPE FUNCTION [enable_if<bool Condition,TType>] je mozne aplikovat na PARAMETERS. Napriklad CODE [template<typename TType> void XXX(enable_if<is_class<TType>::value,TType>::type Parameter)] prinuti C++ generovat FUNCTION XXX() IBA ak TYPE [TType] je CLASS.
+   C. TYPE FUNCTION [enable_if<bool Condition,TType>] je mozne aplikovat na TYPE PARAMETERS. Napriklad CODE [template<typename TType,typename Temp=enable_if<is_class<TType>::value,TType>::type> void XXX(void)] prinuti C++ generovat FUNCTION XXX() IBA ak TYPE [TType] je CLASS. TYPE PARAMETER 'Temp' je pomocnym TYPE PARAMETER, ktory sa v CODE nevyuziva.
+!!! 19. Mechanizmus fungovania TYPE FUNCTION [enable_if<bool Condition,TType>] je mozne opisat v nasledujucich krokoch.
+   A. TYPE FUNCTION [enable_if<bool Condition,TType>] ak je [Condition] rovna TRUE vytvara TYPE, ktory ma ALIAS [type] nastaveny na [TType]. Ak je [Condition] rovna FALSE, tak vytvara TYPE, ktory je PRAZDNY a NEMA ZIADEN ALIAS [type].
+   B. Ak TEMPLATE FUNCTION, alebo TEMPLATE METHOD pouzije [enable_if<bool Condition,TType>], tak pri jej volani C++ dosadi za [TType] konkretny TYPE ARGUMENT. Ak je [Condition] rovna TRUE, tak EXPRESSION [enable_if<is_class<TType>::value,TType>::type] vrati hodnotu [TType] a volanie TEMPLATE FUNCTION/METHOD sa korektne skompiluje.
+   !!!!! C. Ak vsak [Condition] rovna FALSE, tak tak EXPRESSION [enable_if<is_class<TType>::value,TType>::type] vrati COMPILATION ERROR. Kedze sa aplikuje mechanizmus SFINAE, COMPILER to NEPOVAZUJE za ERROR a jednoducho oznaci volanu TEMPLATE FUNCTION\METHOD za NEEXISTUJUCU, ako keby VOBEC NEBOLA DEFINOVANA. Pokial neexistuje ina kompatibilna TEMPLATE FUNCTION/METHOD, tak COMPILER hodi ERROR oznamujuci, ze volana TEMPLATE FUNCTION/METHOD NEEXISTUJE.
+   !!! D. Pokial sa dana TEMPLATE FUNCTION, alebo TEMPLATE METHOD vobec nepouzije, tak sa z nej negeneruje CODE a tym padom nedochadza ku COMPILATION ERROR.
+!!! 20. TYPE FUNCTION [enable_if<bool Condition,TType>], kedze interne vyuziva mechanizmus SFINAE je mozne vyuzit IBA na 
+21. METAPROGRAMMING a SFINAE je mozne vyuzit na deklarovanie TYPE FUNCTIONS, ktore otestuju ci INPUT TYPE ma definovanu konkretnu FUNCTION ci OPERATOR.
+22. VARIADIC TEMPLATES su TEMPLATES, ktore maju variabilny pocet TYPE PARAMETERS.
+23. C++ podporuje definicie VARIADIC TEMPLATE CLASSES, VARIADIC TEMPLATE STRUCTURES, VARIADIC TEMPLATE METHODS a VARIADIC TEMPLATE FUNCTIONS.
+!!! 24. VARIADIC TEMPLATES sa v C++ spracovavaju pomocou RECURSION. Ta vyzaduje definovanie nasledujucich elementov.
+   A. Definovanie ELEMENTU (CLASS, STRUCTURE, METHOD, FUNCTION), ktory spracovava RECURSION FINAL STEP.
+   B. Definovanie ELEMENTU (CLASS, STRUCTURE, METHOD, FUNCTION), ktory spracovava RECURSION RECURSIVE STEP.
+   !!! C. Z ELEMENTU, ktory spracovava RECURSION RECURSIVE STEP je nutne REKURZIVNE volat ELEMENT, az kym nebude zavolany ELEMENT pre RECURSION FINAL STEP.
+   !!!!! D. Pocas vykonavania REKURZIE je postupne ODSTRANOVANY VZDY 1. TYPE PARAMETER, pricom ELEMENT (CLASS, STRUCTURE, METHOD, FUNCTION) tento TYPE PARAMETER spracuje pred vykonanim dalsej REKURZIE.
+   E. Proces pri ktorom sa v REKURZII odstranuje vzdy 1. TYPE PARAMETER sa nazyva TYPE PARAMETER PEEL OFF.
+!!! 25. VARIADIC TEMPLATES sa deklaruju pomocou KEYWORD [...]. KEYWORD [...] ma vo VARIADIC TEMPLATES 2 vyznamy.
+   A. Ak sa KEYWORD [...] nachadza NALAVO od TYPE PARAMETER NAME, tak reprezentuje DEKLARACIU TYPE PARAMETER PACK. TYPE PARAMETER PACK reprezentuje VARIABILNY POCET TYPE PARAMETERS danej VARIADIC TEMPLATE, ktore su zbalene do JEDNEHO NAME.
+   B. Ak sa KEYWORD [...] nachadza NAPRAVO od TYPE PARAMETER NAME, tak C++ TYPE PARAMETER PACK ROZBALI na jednotlive TYPE PARAMETERS do EXPRESSION [TYPE_PARAMETER_1,TYPE_PARAMETER_2,...,TYPE_PARAMETER_N], kde hodnoty 'TYPE_PARAMETER_X' su hodnotami TYPE PARAMETERS.
+26. Jednoduche rozbalenie TYPE PARAMETER PACK funguje nasledujucim sposobom.
+   A. Definuje sa VARIADIC TEMPLATE FUNCTION [template<typename...TItems> void XXX(TItems... Items)].
+   B. Definuje sa VARIADIC TEMPLATE FUNCTION [template<typename...TItems> void YYY(TItems... Items)].
+   C. FUNCTION XXX() obsahuje CODE [YYY(Items...)], ktorym sa vola FUNCTION YYY().
+   !!!!! D. Ak TYPE PARAMETER PACK [Items] obsahuje hodnoty (true,100,L"ABC"), C++ volanie FUNCTION YYY() zmeni na CODE [YYY<bool,int,wstring>(true,100,wstring(L"ABC"))].
+!!! 27. TYPE PARAMETER PACKS je mozne rozbalit AJ KED SU SUCASTOU EXPRESSIONS.
+   A. Definuje sa VARIADIC TEMPLATE FUNCTION [template<typename...TItems> void XXX(TItems... Items)].
+   B. Definuje sa VARIADIC TEMPLATE FUNCTION [template<typename...TItems> void YYY(TItems... Items)].
+   !!! C. FUNCTION XXX() obsahuje CODE [YYY((Items++)...)], ktorym sa vola FUNCTION YYY(), pricom sa jednotlive TYPE PARAMETER v TYPE PARAMETER PACK INKREMENTUJU.
+   !!!!! D. Ak TYPE PARAMETER PACK [Items] obsahuje hodnoty (10,20.2,30.4), C++ volanie FUNCTION YYY() zmeni na CODE [YYY<int,double,double>(11,21.2,31.4)].
+   !!!!! E. Z uvedeneho vyplyva, ze ak k rozbaleniu TYPE PARAMETER PACK dochadza v EXPRESSION, tak C++ VYKONA danu EXPRESSION pre KAZDY TYPE PARAMETER z TYPE PARAMETER PACK. To znaci, ze EXPRESSION [SOME_EXPRESSION(Items...)] C++ zmeni na CODE [SOME_EXPRESSION(TYPE_PARAMETER_1),SOME_EXPRESSION(TYPE_PARAMETER_2),...,SOME_EXPRESSION(TYPE_PARAMETER_N)].
+   !!!!! F. Ak sa v EXPRESSION pouzije aj nazov TYPE PARAMETER PACK, tak C++ ho rozbali na jednotlive TYPES, ktore TYPE PARAMETER PACK obsahuje. Napriklad EXPRESSION [(TTypeParameters) Items...] C++ zmeni na CODE [(TYPE_1) TYPE_PARAMETER_1,(TYPE_2) TYPE_PARAMETER_2,...,(TYPE_N) TYPE_PARAMETER_N].
+!!!!! 28. TYPE PARAMETER PACK je mozne rozbalit IBA v CODE, ktory umoznuje spracovat 'N' PARAMETERS. Nasledujuci zoznam uvadza priklady, kedy je rozbalenie TYPE PARAMETER PACK mozne vykonat.
+   A. FUNCTION ARGUMENT LIST.
+   B. TEMPLATE ARGUMENT LIST.
+   C. BASE SPECIFIER LIST.
+   D. BASE, alebo MEMBER INITIALIZER LIST.
+   E. INITIALIZER LIST.
+   F. OPERATOR [sizeof...]. OPERATOR [sizeof...] vracia pocet ITEMS v TYPE PARAMETER PACK.
+!!!!! 29. TYPE PARAMETER PACK NIE JE mozne rozbalit vzdy. Nasledujuci zoznam uvadza priklady, kedy je rozbalenie TYPE PARAMETER PACK NIE JE mozne vykonat.
+   A. Pri definicii VARIABLIES. Kedze TYPE PARAMETER PACK reprezentuje viacero VALUES, definovanie VARIABLE typu TYPE PARAMETER PACK by znamenalo vznik VIACERYCH VARIABLES, a preto to C++ nepovoluje.
+   B. Pri definicii FIELDS. Kedze TYPE PARAMETER PACK reprezentuje viacero VALUES, definovanie FIELD typu TYPE PARAMETER PACK by znamenalo vznik VIACERYCH FIELDS, a preto to C++ nepovoluje.
+   C. V RETURN VALUES. Kedze TYPE PARAMETER PACK reprezentuje viacero VALUES, definovanie RETURN VALUE typu TYPE PARAMETER PACK by znamenalo, ze FUNCTION ci METHOD by musela vratia VIACERO VALUES, co vsak v C++ NIE JE MOZNE.
+!!! 30. TYPE PARAMETER PACKS (napriklad [TTypes]) je aj bez ROZBALENIA mozne pouzit napriklad v nasledujucich situaciach.
+   !!! A. Na definiciu TYPE PARAMETERS TEMPLATES, ktore VARIADIC TEMPLATE vola. Napriklad CODE [SomeTemplateFunction<TTypes>(TypeParameters...)] C++ transformuje na CODE [SomeTemplateFunction<TYPE_1,TYPE_2,...,TYPE_N>(TYPE_PARAMETER_1,TYPE_PARAMETER_2,...,TYPE_PARAMETER_N)].
+   !!!!! B. Pri vykonavani CASTING. Napriklad CODE [SomeTemplateFunction((TTypes) TypeParameters)] C++ transformuje na CODE [SomeTemplateFunction((TYPE_1) TypeParameter_1,(TYPE_2) TypeParameter_2,...,(TYPE_N) TypeParameter_N)]. To znaci, ze KAZDY TYPE PARAMETER z TYPE PARAMETER je pretypovany na SVOJ VLASTNY TYPE (co samozrejme nie je potrebne) a nasledne je zavolana VARIADIC TEMPLATE FUNCTION SomeTemplateFunction().
+31. Standardna implementacia VARIADIC TEMPLATE FUNCTIONS/METHODS sa sklada z nasledujucich ELEMENTOV.
+   A. Implementacia NON-TEMPLATE FUNCTION/METHOD, ktora nema TYPE PARAMETERS. Tato NON-TEMPLATE FUNCTION/METHOD reprezentuje RECURSION FINAL STEP.
+   B. Implementacia VARIADIC TEMPLATE FUNCTION/METHOD, ktora ma 1 TYPE PARAMETER a 1 TYPE PARAMETER PACK. TYPE PARAMETER reprezentuje rozbaleny TYPE PARAMETER, ktory bol PEELED OFF, zatial co TYPE PARAMETER PACK reprezentuje ostatne TYPE PARAMETERS, ktore este neboli rozbalene.
+   !!! C. VARIADIC TEMPLATE FUNCTION/METHOD musi vo svojom CODE REKURZIVNE volat samu seba, az kym nie je zavolana NON-TEMPLATE FUNCTION/METHOD, ktora REUKURZIU ukonci.
+32. Standardna implementacia VARIADIC TEMPLATE CLASS/STRUCTURES sa sklada z nasledujucich ELEMENTOV.
+   A. Implementacia VARIADIC TEMPLATE CLASS/STRUCTURE, ktora TYPE PARAMETER PACK. Tato TEMPLATE CLASS/STRUCTURE okrem definicie samotnej VARIADIC TEMPLATE reprezentuje aj RECURSION FINAL STEP.
+   !!! B. Implementacia VARIADIC TEMPLATE CLASS/STRUCTURE SPECIALIZATION, ktora ma ma 1 TYPE PARAMETER a 1 TYPE PARAMETER PACK. TYPE PARAMETER reprezentuje rozbaleny TYPE PARAMETER, ktory bol PEELED OFF, zatial co TYPE PARAMETER PACK reprezentuje ostatne TYPE PARAMETERS, ktore este neboli rozbalene.
+   !!!!! C. VARIADIC TEMPLATE CLASS/STRUCTURE SPECIALIZATION by zaroven MUSI BYT DERIVED z VARIADIC TEMPLATE CLASS/STRUCTURE definovanej v 1. kroku. To umozni METHODS tejto SPECIALIZATION spracovat jednotlive TYPE PARAMETERS z TYPE PARAMETER PACK.
+   !!!!! D. VARIADIC TEMPLATE CLASS/STRUCTURE SPECIALIZATION by zaroven MALA MAT FIELD typu TYPE PARAMETER. Tento FIELD sluzi na ulozenie uz rozbaleneho TYPE PARAMETER z TYPE PARAMETER PACK. BASE CLASSES/STRUCTURES potom budu obsahovat ostatne TYPE PARAMETERS z TYPE PARAMETER PACK.
+!!! 33. Ak METHOD vo VARIADIC CLASS/STRUCTURE chce spracovat vsetky TYPE PARAMETERS z TYPE PARAMETER PACK, musi vykonat nasledujuce kroky.
+   A. Vo VARIADIC TEMPLATE CLASS/STRUCTURE je nutne definovat tuto METHOD, ktora spracovava RECURSION FINAL STEP.
+   !!! B. Vo VARIADIC TEMPLATE CLASS/STRUCTURE SPECIALIZATION je nutne definovat tuto METHOD, ktora spracovava rozbaleny TYPE PARAMETER a REKURZIVNE vola SAMU SEBA pre svoje BASE CLASSES/STRUCTURES.
+   !!! C. Postupnym volanim METHOD pre vsetky BASE CLASSES/STRUCTURES moze METHOD spracovat VSETKY rozbalene TYPE PARAMETERS z TYPE PARAMETER PACK.
+   D. Na konci REKURZIE sa vola METHOD z VARIADIC TEMPLATE CLASS/STRUCTURE, ktora REKURZIU ukonci.
+34. VARIADIC TEMPLATE FUNCTIONS je mozne vyuzit na volanie inych FUNCTIONS, ktorych pocet PARAMETERS nie je znamy. Pomocou TEMPLATE FUNCTION forward<TType>() a pouzitia MOVE SEMANTICS je mozne dosiahnut to, ze VALUES sa pri volani inych FUNCTIONS NEBUDU KOPIROVAT, ale budu MOVED.
+35. STANDARD C++ LIBRARY definuje VARIADIC TEMPLATE CLASS [tuple<>], ktora umoznuje ukladat 1-N VALUES.
+36. GLOBAL FUNCTION std::get<Index>(tuple<>& Tuple) vracia ITEM s INDEXOM [Index] daneho TUPLE.
+!!!!! 37. Ak je NON-VARIADIC TEMPLATE FUNCTION a VARIADIC TEMPLATE FUNCTION vzajomne OVERLOADED, pricom obe poctom a PARAMETER TYPES VYHOVOJU, tak C++ z nich vybera nasledujucim sposobom.
+   A. Ak pre NON-VARIADIC TEMPLATE FUNCTION je aspon pre 1 PARAMETER NUTNA AKAKOLVEK CONVERSION, tak C++ vyberie VARIADIC TEMPLATE FUNCTION.
+   B. Ak pre NON-VARIADIC TEMPLATE FUNCTION NIE JE PRE ZIADEN PARAMETER NUTNA CONVERSION, tak C++ vyberie NON-VARIADIC TEMPLATE FUNCTION.
+//-------------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------------
+Priklad VARIADIC TEMPLATE CLASS.
+
+1. Je nutne definovat TEMPLATE CLASS [CVariadicTemplate], ktora reprezentuje VARIADIC TEMPLATE. TYPE PARAMETER [TItems] reprezentuje PARAMETER PACK.
+
+	template<typename... TItems>
+	class CVariadicTemplate
+	{
+	};
+
+!!! 2. Je nutne definovat TEMPLATE CLASS SPECALIZATION. Platia pre nu nasledujuce pravidla.
+   A. MUSI byt DERIVED z VARIADIC TEMPLATE definovanej vyssie, aby mohla byt realizovana COMPILE-TIME RECURSION umoznujuca spracovavat TYPE PARAMETERS ulozene v PARAMETER PACK.
+   B. MUSI mat TYPE PARAMETER [TFirstItem], ktory reprezentuje 1. TYPE PARAMETER z PARAMETER PACK celej VARIADIC TEMPLATE. Vdaka nemu je mozne vykonat PEEL-OFF jednotlivych TYPE PARAMETERS ulozenych v PARAMETER PACK.
+   C. Mal by mat FIELD typu [TFirstItem], ktory reprezentuje hodnotu 1. TYPE PARAMETER z PARAMETER PACK celej VARIADIC TEMPLATE.
+
+	template<typename TFirstItem, typename... TOtherItems>
+	class CVariadicTemplate<TFirstItem,TOtherItems...> : private CVariadicTemplate<TOtherItems...>
+	{
+		TFirstItem												MValue;
+	};
+
+3. Pre CODE [CVariadicTemplate<bool,int,wstring>] potom C++ generuje nasledujuci CODE.
+
+	// !!! Prazdna NON-TEMPLATE CLASS.
+	struct CVariadicTemplate
+	{
+	};
+
+	// !!! TEMPLATE CLASS pre 3. TYPE PARAMETER.
+	struct CVariadicTemplate<wstring> : private CVariadicTemplate
+	{
+		wstring													MValue;
+	};
+
+	// !!! TEMPLATE CLASS pre 2. TYPE PARAMETER.
+	struct CVariadicTemplate<int,wstring> : private CVariadicTemplate<wstring>
+	{
+		int														MValue;
+	};
+
+	// !!! TEMPLATE CLASS pre 1. TYPE PARAMETER.
+	struct CVariadicTemplate<bool,int,wstring> : private CVariadicTemplate<int,wstring>
+	{
+		bool													MValue;
+	};
+//-------------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------------
+Priklad EXPRESSIONS v OPERATOR [...].
+
+1. Definuje sa NON-TEMPLATE FUNCTION, ktora ukoncuje COMPILE-TIME RECURSION.
+
+	void PrintVariadicTemplateFunction(void)
+	{
+	}
+
+2. Definuje sa VARIADIC TEMPLATE FUNCTION, ktora vypisuje vsetky TYPE PARAMETERS z TYPE PARAMETER PACK.
+
+	template<typename TType, typename... TTypes>
+	void PrintVariadicTemplateFunction(TType FirstTypeParameter, TTypes... OtherTypeParameters)
+	{
+		wcout << L" [" << FirstTypeParameter << L"]";
+
+		PrintVariadicTemplateFunction(OtherTypeParameters...);
+	}
+
+3. Definuje sa VARIADIC TEMPLATE FUNCTION, ktora vykonava EXPRESSION [++TypeParameters...].
+
+	template<typename... TTypes>
+	void IncrementTest(TTypes... TypeParameters)
+	{
+		PrintVariadicTemplateFunction(++TypeParameters...);
+	}
+
+4. Definuje sa VARIADIC TEMPLATE FUNCTION, ktora vykonava EXPRESSION [(TypeParameters+Addition)...].
+
+	template<typename... TTypes>
+	void AdditionTest1(int Addition, TTypes... TypeParameters)
+	{
+		PrintVariadicTemplateFunction((TypeParameters+Addition)...);
+	}
+
+5. Definuje sa VARIADIC TEMPLATE FUNCTION, ktora vykonava EXPRESSION [(TypeParameters+(++Addition))...].
+
+	template<typename... TTypes>
+	void AdditionTest2(int Addition, TTypes... TypeParameters)
+	{
+		PrintVariadicTemplateFunction((TypeParameters+(++Addition))...);
+	}
+
+!!! 5. Pri pokuse zavolat FUNCTION [IncrementTest(10,20,30)] C++ zavola FUNCTION PrintVariadicTemplateFunction() s hodnotami [PrintVariadicTemplateFunction(11,21,31)].
+!!! 6. Pri pokuse zavolat FUNCTION [AdditionTest1(10,100,200,300)] C++ zavola FUNCTION PrintVariadicTemplateFunction() s hodnotami [PrintVariadicTemplateFunction(110,210,310)].
+!!!!! 7. Pri pokuse zavolat FUNCTION [AdditionTest2(10,100,200,300)] C++ zavola FUNCTION PrintVariadicTemplateFunction() s hodnotami [PrintVariadicTemplateFunction(113,213,313)] a NIE s hodnotami [PrintVariadicTemplateFunction(110,210,310)].
+
+8. Definuje sa NON-VARIADIC TEMPLATE FUNCTION, ktora scitava 2 VALUES.
+
+	template<typename TType>
+	TType AddValues(TType Value1, TType Value2)
+	{
+		TType													Result=Value1+Value2;
+
+		return(Result);
+	}
+
+9. Definuje sa VARIADIC TEMPLATE FUNCTION, ktora vykonava EXPRESSION [(AddValues<TType>(Value,Values))...].
+
+	template<typename TType, typename... TTypes>
+	void VariadicTemplatesAddValues(TType Value, TTypes... Values)
+	{
+		PrintVariadicTemplateFunction(&Prefix,&Postfix,(AddValues<TType>(Value,Values))...);
+	}
+
+!!!!! 10. Pri pokuse zavolat FUNCTION [VariadicTemplatesAddValues(10,100,200,300)], C++ zavola 3 KRAT TEMPLATE FUNCTION AddValues() s hodnotami (110,210,310) a RETURN VALUES tychto volani su nasledne odoslane do FUNCTION PrintVariadicTemplateFunction().
+!!!!! 11. Ako je z predchadzajuceho prikladu vidiet, C++ zoberie CELY EXPRESSION pred KEYWORD [...] (v tomto pripade [AddValues<TType>(Value,Values)]) a VYKONA ho pre KAZDY TYPE PARAMETER z TYPE PARAMETER PACK (v tomto pripade [Values]).
+//-------------------------------------------------------------------------------------------------------

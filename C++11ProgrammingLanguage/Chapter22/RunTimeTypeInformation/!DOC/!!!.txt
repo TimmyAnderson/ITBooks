@@ -1,0 +1,66 @@
+//-----------------------------------------------------------------------------
+1. Solution demonstruje pouzitie RUN TIME TYPE INFORMATION v C++.
+2. RUN TIME TYPE INFORMATION JE MECHANIZMUS C++, ktory poskytuje nasledujuce funkcionality.
+   A. Umoznuje vykonavat CONVERSIONS POINTERS referujucich na BASE CLASSES na POINTERS referujucich na DERIVED CLASSES. Ak takato CONVERSION nie je mozna, CONVERSION vracia NULL POINTER.
+   B. Umoznuje vykonavat CONVERSIONS REFERENCES referujucich na BASE CLASSES na REFERENCES referujucich na DERIVED CLASSES. Ak takato CONVERSION nie je mozna, CONVERSION hodi EXCEPTION [bad_cast].
+   C. Umoznuje ziskat informacie na aky TYPE dany POINTER, alebo REFERENCE referuje.
+3. OPERATOR [dynamic_cast<TType>(Expression)] vykonava CONVERSION EXPRESSION 'Expression' na TYPE 'TType'. Pre OPERATOR [dynamic_cast<TType>(Expression)] platia nasledujuce fakty.
+   A. DYNAMIC CAST OPERATORS umoznuju UPCAST CONVERSIONS, kde POINTERS/REFERENCES na DERIVED CLASSES su CONVERTED na POINTERS/REFERENCES na BASE CLASSES. Tieto typy CONVERSIONS su vykonavane v COMPILE TIME.
+   !!! B. DYNAMIC CAST OPERATORS umoznuju DOWNCAST CONVERSIONS, kde POINTERS/REFERENCES na BASE CLASSES su CONVERTED na POINTERS/REFERENCES na DERIVED CLASSES. Tieto typy CONVERSIONS su vykonavane v RUN TIME, kde dochadza ku kontrole ci pozadovanu CONVERSION je mozne vykonat.
+   C. Pri POINTER CONVERSIONS ak CONVERSION NIE JE MOZNE vykonat, tak DYNAMIC CAST OPERATOR vracia NULL POINTER.
+   !!! D. Pri REFERENCE CONVERSIONS ak CONVERSION NIE JE MOZNE vykonat, tak DYNAMIC CAST OPERATOR hadze EXCEPTION [bad_cast].
+   !!! E. DYNAMIC CAST OPERATORS vyzaduju, aby EXPRESSION 'Expression' reprezentovala POINTER/REFERENCE na POLYMORPHIC TYPE. POLYMORPHIC TYPE je TYPE, ktory ma aspon 1 VIRTUAL METHOD, alebo ma VIRTUAL DESTRUCTOR.
+   !!!!! F. DYNAMIC CAST OPERATORS vsak NEVYZADUJU, aby TYPE 'TType' reprezentoval POINTER/REFERENCE na POLYMORPHIC TYPE. TARGET TYPE moze byt aj NON-POLYMORPHIC TYPE.
+   !!! G. DYNAMIC CAST OPERATORS vykonaju uspesnu CONVERSION IBA ak je CONVERSION JEDNOZNACNA. Ak CONVERSION jednoznacna nie je CONVERSION ZLYHA vratenim NULL POINTER, alebo EXCEPTION [bad_cast]. K NEJEDNOZNACNEJ CONVERSION dochadza pri CONVERSION z DERIVED CLASS na BASE CLASS, ak sa k BASE CLASS da dostat ROZNYMI CESTAMI v CLASS HIERARCHY.
+   !!! H. DYNAMIC CAST OPERATORS umoznuju CONVERSIONS na POINTERS TYPE [void*]. Vysledkom takejto CONVERSION je ADDRESS na zaciatok OBJECT.
+   !!! I. DYNAMIC CAST OPERATORS umoznuju CONVERSIONS iba ak k TYPE 'TType' ma EXPRESSION 'Expression' ACCESS RIGHT.
+   J. DYNAMIC CAST OPERATORS umoznuju CONVERSIONS NULL POINTERS. Vysledkom takychto CONVERSIONS je NULL POINTER.
+!!!!! 4. Interne su DYNAMIC CAST OPERATORS implementovane ulozenim TYPE INFORMATION do VIRTUAL METHOD TABLE. DYNAMIC CAST OPERATORS porovnavaju TYPE INFORMATION na zaklade coho sa urcuje ci CONVERSION je mozne vykonat.
+5. OPERATOR [dynamic_cast<TType>(Expression)] vykonava CONVERSION EXPRESSION 'Expression' na TYPE 'TType'. Pre OPERATOR [static_cast<TType>(Expression)] platia nasledujuce fakty.
+   A. STATIC CAST OPERATORS umoznuju UPCAST aj DOWNCAST CONVERSIONS pricom vsak CONVERSIONS su vykonavane v COMPILE TIME BEZ kontroly v RUN TIME ci je pozadovana CONVERSION mozna.
+   !!! B. STATIC CAST OPERATORS pre CONVERSIONS, ktore NIE SU MOZNE, generuje COMPILER ERROR.
+   C. STATIC CAST OPERATORS NEVYZADUJU, aby EXPRESSION 'Expression' reprezentovala POINTER/REFERENCE na POLYMORPHIC TYPE.
+   !!! D. DYNAMIC CAST OPERATORS umoznuju CONVERSIONS iba ak k TYPE 'TType' ma EXPRESSION 'Expression' ACCESS RIGHT.
+   E. DYNAMIC CAST OPERATORS NEUMOZNUJU CONST a VOLATILE CONVERSIONS. Na tieto CONVERSIONS je nutne pouzit CONST CAST CONVERSIONS [const_cast<TType>(Expression)].
+6. V CONSTRUCTORS vytarane TYPES este NIE SU PLNE VYTVORENE, a preto volanie VIRTUAL METHODS ci DYNAMIC CAST OPERATOR moze viest k nekorektnym vysledkom, ked sa zavola ina ako ocakavana VIRTUAL METHOD ci CASTING vrati neocakavany TYPE. Preto sa v CONSTRUCTORS NEDOPORUCUJE volat VIRTUAL METHODS, ani pouzivat DYNAMIC CAST OPERATOR.
+7. V DESTRUCTORS likvidovane TYPES su uz CIASTOCNE ZLIKVIDOVANE, a preto volanie VIRTUAL METHODS ci DYNAMIC CAST OPERATOR moze viest k nekorektnym vysledkom, ked sa zavola ina ako ocakavana VIRTUAL METHOD ci CASTING vrati neocakavany TYPE. Preto sa v DESTRUCTORS NEDOPORUCUJE volat VIRTUAL METHODS, ani pouzivat DYNAMIC CAST OPERATOR.
+8. OPERATOR [typeid()] sluzi na zistenie TYPE INFORMATION o danom TYPE, alebo EXPRESSION. Pre OPERATOR TYPEID platia nasledujuce fakty.
+   A. OPERATOR TYPEID vracia instanciu CLASS [type_info], ktora obsahuje informacie o TYPE INFORMATION.
+   B. OPERATOR TYPEID umoznuje ziskavat TYPE INFORMATION pre VALUE TYPES, POINTER TYPES a REFERENCE TYPES.
+   !!! C. Volanie OPERATOR TYPEID pre NON-POLYMORFIC TYPE, CONSTANT, alebo PRIMITIVE TYPE je vyhodnoteny uz v COMPILE TIME a v RUNTIME NIE JE VYHODNOCOVANY.
+   !!! D. C++ NEGARANTUJE, ze pre JEDEN TYPE bude existovat IBA JEDNA INSTANCIA CLASS [type_info], preto na porovnanie 2 instancii CLASS [type_info] je potrebne pouzit OPERATOR==, ktory CLASS [type_info] implementuje.
+   E. Pri pokuse zistit TYPE INFORMATION pre REFERENCE, ktore referuje na NULL POINTER je generovana EXCEPTION typu [bad_typeid].
+   !!!!! F. POLYMORFNE zistenie TYPE INFORMATION sa realizuje iba ak sa do TYPEID zasle VALUE TYPE. Ak sa zasle POINTER TYPE, tak OPERATOR TYPEID vrati TYPE INFORMATION o POINTER TYPE, ktory je vyhodnoteny v COMPILE TIME. To znamena, ze ak sa do OPERATOR TYPEID zasle POINTER na NON-POLYMORFIC BASE TYPE, ktory referuje na DERIVED CLASS, OPERATOR TYPEID vrati TYPE INFORMATION o POINTER na NON-POLYMORFIC BASE TYPE a NIE na DERIVED TYPE. Riesenim je aplikovat DEREFERENCE OPERATOR* a ziskat tak VALUE TYPE pre ktory OPERATOR TYPEID vrati KOREKTNY TYPE INFORMATION o DERIVED TYPE. Pre REFERENCES je TYPE INFORMATION vyhodnocovana spravne a OPERATOR TYPEID vrati TYPE INFORMATION o DERIVED TYPE.
+   G. METHOD type_info::before() je mozne pouzit na implementaciu COMPARE OPERATORS, ktore su nevyhnutne ak sa ma instancia CLASS [type_info] pouzit ako KEY do ASSOCIATIVE CONTAINERS. Alternativou je pouzit CLASS [type_index].
+   H. METHOD type_info::hash_code() vracia HASH CODE, ktory je mozne pouzit ako KEY do UNORDERED ASSOCIATIVE CONTAINERS.
+9. OPERATOR TYPEID vracia instanciu CLASS [type_info], ktora obsahuje informacie o TYPE INFORMATION. OPERATOR [typeid()] je mozne pouzit nasledujucimi sposobmi.
+   A. OPERATOR [typeid(Type)] vracia instanciu CLASS [type_info] pre TYPE 'Type'. TYPE 'Type' MUSI byt KOMPLETNE DEFINOVANY TYPE.
+   B. OPERATOR [typeid(Expression)] vracia instanciu CLASS [type_info] pre EXPRESSION 'Expression'. EXPRESSION 'Expression' MUSI referovat na KOMPLETNE DEFINOVANY TYPE. Ak EXPRESSION 'Expression' obsahuje NULL POINTER, OPERATOR [typeid()] hodi EXCEPTION [bad_typeid].
+!!! 10. OPERATOR TYPEID moze byt vykonavany v COMPILE TIME, alebo v RUNTIME. Platia pritom nasledujuce pravidla.
+   A. OPERATOR TYPEID pre PRIMITIVE TYPES je VZDY vykonavany v COMPILE TIME.
+   !!!!! B. OPERATOR TYPEID pre POINTERS BEZ OHLADU na to ci ukazuju na POLYMORPHIC, alebo NON-POLYMORPHIC TYPES sa VZDY vykonavaju v COMPILE TIME.
+   !!! C. OPERATOR TYPEID pre NON-POLYMORPHIC TYPES je VZDY vykonavany v COMPILE TIME.
+   !!!!! D. OPERATOR TYPEID pre POLYMORPHIC TYPES je ak TYPE NIE JE POINTER, je vykonavany v RUN TIME. To znamena, ze sa aplikuju pravidla POLYMORPHISM co znaci, ze  pripade, ak REFERENCE odkazuje na DERIVED CLASS, tak OPERATOR TYPEID vrati TYPE INFORMATION pre DERIVED CLASS.
+11. CLASS [type_info] v LIBRARY <typeinfo> poskytuje informacie o TYPE. CLASS [type_info] definuje nasledujuce MEMBERS.
+   !!! A. CONSTRUCTOR vytvora instanciu CLASS [type_info]. CONSTRUCTOR je DELETED, pretoze instancie CLASS [type_info] moze vytvara IBA COMPILER.
+   B. DESTRUCTOR odstranuje instanciu CLASS [type_info]. DESTRUCTOR je VIRTUAL.
+   C. OPERATOR= je DELETED, pretoze instancie CLASS [type_info] NIE JE MOZNE KOPIROVAT.
+   C. OPERATOR== urcuje ci pre 2 instancie CLASS [type_info] plati, ze VALUE1==VALUE2.
+   D. OPERATOR!= urcuje ci pre 2 instancie CLASS [type_info] plati, ze VALUE1!=VALUE2.
+   !!! E. METHOD type_info::before() vracia informaciu ci jedna instancia CLASS [type_info] sa nachadza pred druhou. Poradie urcuje COMPILER a moze sa pri kazdom spusteni PROGRAMU MENIT.
+   !!! F. METHOD type_info::hash_code() vracia HASH CODE danej instancie CLASS [type_info]. Zaroven plati, ze HASH CODES pre identicke instancie CLASS [type_info] su ROVNAKE. Hodnoty HASH CODES sa vsak mozu pri kazdom spusteni PROGRAMU MENIT.
+   !!! G. METHOD type_info::name() vracia STRING NAME TYPE, ktory instancia CLASS [type_info]. NAME NEMUSI byt UNIKATNY ani pre rozlicne TYPES.
+12. CLASS [type_index] v LIBRARY <typeindex> je WRAPPER nad CLASS [type_info]. INSTANCIA CLASS reprezentuje HASH CODE daneho TYPE. Pozor NIE INSTANCIE daneho TYPE, ale samotneho TYPE. Instanciu CLASS [type_index] je mozne pouzit ako KEY v CONTAINERS ako napriklad MAPS. CLASS [type_index] definuje nasledujuce MEMBERS.
+   !!! A. CONSTRUCTOR vytvora instanciu CLASS [type_index] z instancie CLASS [type_info] ziskanej pomocou OPERATOR typeid().
+   B. DESTRUCTOR odstranuje instanciu CLASS [type_index].
+   C. OPERATOR= vykonava priradenie jednej instancie CLASS [type_index] do druhej.
+   D. OPERATOR== urcuje ci pre 2 instancie CLASS [type_index] plati, ze VALUE1==VALUE2.
+   E. OPERATOR!= urcuje ci pre 2 instancie CLASS [type_index] plati, ze VALUE1!=VALUE2.
+   F. OPERATOR< urcuje ci pre 2 instancie CLASS [type_index] plati, ze VALUE1<VALUE2.
+   G. OPERATOR> urcuje ci pre 2 instancie CLASS [type_index] plati, ze VALUE1>VALUE2.
+   H. OPERATOR<= urcuje ci pre 2 instancie CLASS [type_index] plati, ze VALUE1<=VALUE2.
+   I. OPERATOR>= urcuje ci pre 2 instancie CLASS [type_index] plati, ze VALUE1>=VALUE2.
+   J. METHOD type_index::hash_code() vracia hodnotu METHOD type_info::hash() pre INSTANCE CLASS [type_info], ktoru instance CLASS [type_index] obaluje.
+   K. METHOD type_index::name() vracia hodnotu METHOD type_info::name() pre INSTANCE CLASS [type_info], ktoru instance CLASS [type_index] obaluje.
+13. RUN TIME TYPE INFORMATION ma pomerne vysoky PERFORMANCE HIT, a preto by sa mala pouzivat iba v nevyhnutnych pripadoch.
+//-----------------------------------------------------------------------------

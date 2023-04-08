@@ -1,0 +1,403 @@
+//-----------------------------------------------------------------------------
+1. Solution demonstruje OPERATOR OVERLOADING SPECIAL OPERATORS v C++.
+2. OPERATOR[] umonzuje indexovy pristup k ITEMS, ktore obsahuje CUSTOM TYPE. Pre OPERATOR[] platia nasledujuce fakty.
+   A. OPERATOR[] je BINARNY OPERATOR.
+   B. Ako PARAMETER OPERATOR[] moze by LUBOVOLNY TYPE co umoznuje napriklad indexaciu na zaklade hodnot STRINGS.
+   C. OPERATOR[] MUSI byt implementovany ako MEMBER METHOD.
+3. OPERATOR() umoznuje aplikovat FUNCTION CALL SYNTAX na CUSTOM TYPES. Pre OPERATOR() platia nasledujuce fakty.
+   A. OPERATOR() je BINARNY OPERATOR, ktory ma ako PARAMETER zadany PARAMETER LIST so zoznamom PARAMETERS, ktore sa pouziju pri volani OPERATOR().
+   B. OPERATOR() MUSI byt implementovany ako MEMBER METHOD.
+   C. OPERATOR() sa pouziva na implementovanie FUNCTION OBJECTS co su CLASSES, ktore maju implementovany OPERATOR() a mozu sluzit ako CALLBACK OBJECTS.
+4. OPERATOR-> umoznuje pristupovat k MEMBERS daneho TYPE. Pre OPERATOR-> platia nasledujuce fakty.
+   A. OPERATOR-> je UNARY OPERATOR, ktoreho jediny PARAMETER je OBJECT nad ktorym je volany. To znaci, ze v CODE [A->B] je PARAMETER OBJECT 'A'. OPERATOR-> pri volani vsak MUSI mat definovane meno MEMBER, ku ktoremu sa ma pomcou OPERATOR-> pristupit inak COMPILER hodi ERROR.
+   B. OPERATOR-> MUSI byt implementovany ako MEMBER METHOD.
+   C. Implementacia OPERATOR-> NEZAVISI od toho k akemu MEMBER sa pomocou OPERATOR->. To je dovod preco je OPERATOR-> povazovany za UNARNY OPERATOR.
+   !!!!! D. COMPILER po pouziti OPERATOR->() na RETURN VALUE OPERATORA-> ZNOVA aplikuje OPERATOR->(). Preto aj RETURN VALUE OPERATOR->() MUSI mat ZNOVA implementovany OPERATOR->(). Teda RETURN VALUE MUSI byt bud POINTER an TYPE (NIE vsak POINTER na PRIMITIVE TYPE, kedze unho opatovna aplikacia OPERATOR->() sice DEREFERENCUJE POINTER, ale uz na PRAVEJ STRANE OPERATOR->() PRIMITIVE TYPE nema ZIADNE MEMBERS), alebo TYPE, ktory ma OPERATOR->() OVERRIDEN.
+   !!!!! E. Zmysel pretazit OPERATOR->() ma IBA VTEDY, ked TYPE, v ktorej je pretazeny sluzi ako WRAPPER okolo POINTER na TYPE.
+!!!!! 5. OPERATOR-> moze ako RETRUN VALUE mat nasledujuce TYPES.
+   A. PRIMITIVE TYPE, alebo POINTER na PRIMITIVNY TYP (resp. OBJECT na CLASS, ktory NEMA pretazeny OPERATOR->). V tomto pripade OPERATOR-> NIE JE MOZNE POUZIT pomocou SYNTAXE [A->B], kdeze u PRIMITIVNEHO TYPU NEEXISTUJU ZIADNE MEMBERS a teda ani MEMBER 'B' a JEDINY sposob ako volat OPERATOR-> je cez SYNTAX [A.operator->()].
+   B. POINTER na CLASS. Toto je NAJCASTEJSIE POUZITIE tohto OPERATORA. SYNTAX [A->B] znamena, ze za vola [A.operator->()->B], teda na POINTER na CLASS, ktory vratil OPERATOR-> sa ZNOVA APLIKUJE OPERATOR->.
+   C. OBJECT typu CLASS. V tomto pripade MUSI RETURN VALUE TYPE mat PRETAZENY OPERATOR->. To znamena, ze SYNTAX [A->B], znamena, ze sa vola [A.operator->().operator->()], kde [A.operator->()] vracia OBJECT typu 'B'.
+6. OPERATOR++ vykonava inkrementaciu VALUES. Pre OPERATOR++ platia nasledujuce fakty.
+   A. OPERATOR++ je unarny OPERATOR.
+   B. OPERATOR++ moze byt deklarovany ako PREFIX, alebo POSTFIX OPERATOR.
+   !!! C. POSTFIX verzia OPERATOR++ ma DUMMY PARAMETER TYPU [int], ktory sluzi iba na identifikaciu, ze sa jedna o POSTFIX verziu OPERATOR++.
+7. OPERATOR-- vykonava inkrementaciu VALUES. Pre OPERATOR-- platia nasledujuce fakty.
+   A. OPERATOR-- je unarny OPERATOR.
+   B. OPERATOR-- moze byt deklarovany ako PREFIX, alebo POSTFIX OPERATOR.
+   !!! C. POSTFIX verzia OPERATOR-- ma DUMMY PARAMETER TYPU [int], ktory sluzi iba na identifikaciu, ze sa jedna o POSTFIX verziu OPERATOR--.
+8. C++ umoznuje definovat CUSTOM OPERATOR NEW. Pre OPERATOR NEW platia nasledujuce fakty.
+   A. CUSTOM OPERATOR NEW[] MUSI mat MINIMALNE 1 PARAMETER, ktory obsahuje pocet BYTES, ktore maju byt alokovane.
+   B. Standardny PROTOTYPE OPERATOR NEW ma tvar [void* operator new(size_t SizeToAllocateInBytes)].
+   C. CUSTOM OPERATOR NEW je mozne definovat ako MEMBER METHOD, alebo ako NON-MEMBER FUNCTION.
+   D. CUSTOM OPERATOR NEW je IMPLICITNE STATICKY OPERATOR.
+   !!! E. Dodatocne PARAMETERS CUSTOM OPERATOR NEW je mozne definovat pomocou PLACEMENT SYNTAX OPERATOR NEW.
+   !!!!! F. Ak je OPERATOR NEW volany pomocou PLACEMENT SYNTAX a hodi EXCEPTION, tak C++ zvola OPERATOR DELETE s ROVNAKYMI PARAMETERS s akymi bol volany OPERATOR NEW, vratane vsetkych CUSTOM PARAMETERS OPERATOR NEW.
+9. C++ umoznuje definovat CUSTOM OPERATOR DELETE. Pre OPERATOR DELETE platia nasledujuce fakty.
+   A. CUSTOM OPERATOR DELETE MUSI mat MINIMALNE 1 PARAMETER, ktory obsahuje BUFFER, ktory sa ma uvolnit. CUSTOM OPERATOR DELETE moze mat aj 2 PARAMETERS, kde 2. PARAMETER obsahuje dlzku BUFFER v BYTES.
+   B. Standardny PROTOTYPE OPERATOR DELETE ma tvar [void operator delete(void* Object, size_t AllocatedSizeInBytes)].
+   C. CUSTOM OPERATOR DELETE je mozne definovat ako MEMBER METHOD, alebo ako NON-MEMBER FUNCTION.
+   D. CUSTOM OPERATOR DELETE je INPLICITNE STATICKY OPERATOR.
+   !!! E. Dodatocne PARAMETERS CUSTOM OPERATOR DELETE je mozne definovat volanim OPERATOR DELETE pomocou FUNCTION CALL SYNTAX.
+   !!!!! F. Ak je OPERATOR DELETE BEZ OHLADU na POCET PARAMETERS volany pomocou FUNCTION CALL SYNTAX, tak DESTRUCTOR NIE JE IMPLICITNE VOLANY je ho NUTNE VOLAT EXPLICITNE este PRED volanim OPERATOR DELETE.
+10. C++ umoznuje definovat CUSTOM OPERATOR NEW[]. Pre OPERATOR NEW[] platia nasledujuce fakty.
+   A. CUSTOM OPERATOR NEW[] MUSI mat MINIMALNE 1 PARAMETER, ktory obsahuje pocet BYTES, ktore maju byt alokovane.
+   B. Standardny PROTOTYPE OPERATOR NEW[] ma tvar [void* operator new[](size_t SizeToAllocateInBytes)].
+   !!!!! C. Aj ked C++ STANDARD to NEDEFINUJE, tak VACSINOU dlzka BUFFER, ktory ma OPERATOR NEW[] je rovna [sizeof(HEADER)+sizeof(ITEM)*NUMBER_OF_ITEMS], kde HEADER spravidla sluzi na ulozenie POCTU ITEMS v ARRAY. Kedze C++ STANDARD toto NEMA DEFINOVANE, je tato implementacia PLATFORM DEPENDENT, ktora zavisi od implementacie daneho COMPILER.
+   !!! D. CUSTOM OPERATOR NEW[] moze mat okrem POVINNEHO PARAMETRA TYPE [size_t] aj DALSIE PARAMETERS.
+   !!!!! E. RETURN VALUE OPERATOR NEW[] MUSI obsahovat POINTER na ALOKOVANY BUFFER. Ak implementacia C++ COMPILER pouziva HEADER, tak potom POINTER na BUFFER NIE JE IDENTICKY ako POINTER na 1. ITEM, pretoze pred 1. ITEM sa nachadza v BUFFER POCET ITEMS v ARRAY.
+   F. CUSTOM OPERATOR NEW[] je mozne definovat ako MEMBER METHOD, alebo ako NON-MEMBER FUNCTION.
+   G. CUSTOM OPERATOR NEW[] je IMPLICITNE STATICKY OPERATOR.
+   !!! H. Dodatocne PARAMETERS CUSTOM OPERATOR NEW[] je mozne definovat pomocou PLACEMENT SYNTAX OPERATOR NEW[].
+   !!!!! I. Ak je OPERATOR NEW[] volany pomocou PLACEMENT SYNTAX a hodi EXCEPTION, tak C++ zvola OPERATOR DELETE[] s ROVNAKYMI PARAMETERS s akymi bol volany OPERATOR NEW[], vratane vsetkych CUSTOM PARAMETERS OPERATOR NEW[].
+11. C++ umoznuje definovat CUSTOM OPERATOR DELETE[]. Pre OPERATOR DELETE[] platia nasledujuce fakty.
+   A. CUSTOM OPERATOR DELETE[] MUSI mat MINIMALNE 1 PARAMETER, ktory obsahuje BUFFER, ktory sa ma uvolnit. CUSTOM OPERATOR DELETE[] moze mat aj 2 PARAMETERS, kde 2. PARAMETER obsahuje dlzku BUFFER v BYTES.
+   B. Standardny PROTOTYPE OPERATOR DELETE[] ma tvar [void operator delete[](void* Object, size_t AllocatedSizeInBytes)].
+   !!!!! C. Ak COMPILER pouziva pri alokacii ARRAY aj HEADER, tak 1. PARAMETER NEBUDE odkazovat na 1. ITEM, ale na ZACIATOK BUFFER, kde je spravidla (v zavislosti od COMPILER) ulozeny POCET ITEMS.
+   !!! D. 2. PARAMETER OPERATOR DELETE[] je taktiez POVINNY a obsahuje DLZKU ALOKOVANEHO BUFFER, ktoru alokoval OPERATOR NEW[].
+   E. CUSTOM OPERATOR DELETE[] moze mat okrem POVINNYCH PARAMETERS aj DALSIE PARAMETERS.
+   F. CUSTOM OPERATOR DELETE[] je mozne definovat ako MEMBER METHOD, alebo ako NON-MEMBER FUNCTION.
+   G. CUSTOM OPERATOR DELETE[] je INPLICITNE STATICKY OPERATOR.
+   !!! H. Dodatocne PARAMETERS CUSTOM OPERATOR DELETE[] je mozne definovat volanim OPERATOR DELETE[] pomocou FUNCTION CALL SYNTAX.
+   !!!!! I. Ak je OPERATOR DELETE[] BEZ OHLADU na POCET PARAMETERS volany pomocou FUNCTION CALL SYNTAX, tak DESTRUCTORS pre jednotlive ITEMS NIE SU IMPLICITNE VOLANE je ich NUTNE VOLAT EXPLICITNE este PRED volanim OPERATOR DELETE[].
+!!!!! 12. Ak sa pre CLASSES v CLASS HIERARCHY definuju CUSTOM OPERATOR NEW, OPERATOR DELETE, OPERATOR NEW[] a OPERATOR DELETE[] je NEVYHNUTNE definovat DESTRUCTORS ako VIRTUAL, inak C++ zasle do CUSTOM OPERATOR DELETE a CUSTOM OPERATOR DELETE[] NESPRAVNU DLZKU ALOKOVANEHO BUFFER, ktory maju tieto OPERATORS odstranit. Dovody su nasledujuce.
+   A. Kedze DESTRUCTORS NIE SU VIRTUAL, tak pri volani OPERATOR DELETE a OPERATOR DELETE[] su volane tieto OPERATORS na BASE CLASS a NIE DERIVED CLASS.
+   B. Kedze C++ vola OPERATOR DELETE a OPERATOR DELETE[] na BASE CLASSES, velkost ALOKOVANEHO BUFFER vypocita na zaklade velkost BASE CLASSES a NIE DERIVED CLASSES.
+   C. Vysledkom je, ze OPERATOR DELETE a OPERATOR DELETE[] su volane s NESPRAVNOU VELKOSTOU ALOKOVANEHO BUFFER.
+13. C++ umoznuje definovat USER DEFINED LITERALS pomocou LITERAL OPERATORS. LITERAL OPERATORS mozu mat nasledujuce tvary.
+   A. OPERATOR FUNCTION [RETURN_VALUE OPERATOR"" IDENTIFIER(PARAMETER_1 Value1,...PARAMETER_N ValueN)] umoznuje ako 'IDENTIFIER' pouzit STRING, ktory MUSI zacinat znakom '_' a za ktorym NESMIE BYT VELKE PISMENO.
+   B. OPERATOR FUNCTION [RETURN_VALUE OPERATOR""IDENTIFIER(PARAMETER_1 Value1,...PARAMETER_N ValueN)] umoznuje ako 'IDENTIFIER' pouzit STRING, ktory MUSI zacinat znakom '_', no za ktorym MOZE BYT VELKE PISMENO.
+   C. OPERATOR TEMPLATE FUNCTION [template<char...> RETURN_VALUE OPERATOR"" IDENTIFIER (void)] umoznuje ako 'IDENTIFIER' pouzit STRING, ktory MUSI zacinat znakom '_' a za ktorym NESMIE BYT VELKE PISMENO. OPERATOR NESMIE mat ZIADNE PARAMETERS. OPERATOR TEMPLATE FUNCTION NESMIE mat ZIADNE PARAMETERS a moze mat iba 1 TYPE PARAMETER [char...].
+   D. OPERATOR TEMPLATE FUNCTION [template<char...> RETURN_VALUE OPERATOR""IDENTIFIER (void)] umoznuje ako 'IDENTIFIER' pouzit STRING, ktory MUSI zacinat znakom '_', no za ktorym MOZE BYT VELKE PISMENO. OPERATOR NESMIE mat ZIADNE PARAMETERS. OPERATOR TEMPLATE FUNCTION NESMIE mat ZIADNE PARAMETERS a moze mat iba 1 TYPE PARAMETER [char...].
+14. USER DEFINED LITERALS mozu reprezentovat LITERALS nasledujucich typov.
+   A. INTEGER LITERALS.
+   B. FLOATING POINT LITERALS.
+   C. CHARACTER LITERALS.
+   D. STRING LITERALS.
+   E. RAW LITERALS.
+15. NON-TEMPLATE LITERAL OPERATORS maju povolene nasledujuce PARAMETERS.
+   A. PARAMETER [unsigned long long int] reprezentuje INTEGER LITERAL. Tento LITERAL OPERATOR je volany pre VSETKY typy INTEGER LITERALS.
+   B. PARAMETER [long double] reprezentuje FLOATING POINT LITERAL. Tento LITERAL OPERATOR je volany pre VSETKY typy FLOATING POINT LITERALS.
+   C. PARAMETER [char] reprezentuje CHARACTER LITERAL.
+   D. PARAMETER [wchar_t] reprezentuje CHARACTER LITERAL.
+   E. PARAMETER [char16_t] reprezentuje CHARACTER LITERAL.
+   F. PARAMETER [char32_t] reprezentuje CHARACTER LITERAL.
+   G. PARAMETERS [const char*, size_t] reprezentuju STRING LITERAL. 2. PARAMETER obsahuje dlzku STRING v 1. PARAMETER.
+   H. PARAMETERS [const wchar_t*, size_t] reprezentuju STRING LITERAL. 2. PARAMETER obsahuje dlzku STRING v 1. PARAMETER.
+   I. PARAMETERS [const char16_t*, size_t] reprezentuju STRING LITERAL. 2. PARAMETER obsahuje dlzku STRING v 1. PARAMETER.
+   J. PARAMETERS [const char32_t*, size_t] reprezentuju STRING LITERAL. 2. PARAMETER obsahuje dlzku STRING v 1. PARAMETER.
+   K. PARAMETER [const char*] reprezentuje RAW LITERAL. RAW LITERAL OPERATOR sa aplikuje, ak C++ nenasiel ziaden vhodnejsi LITERAL OPERATOR.
+16. C++ pri hladani spravneho LITERAL OPERATOR pre INTEGER LITERALS postupuje nasledujucim sposobom.
+   A. Ako prvy hlada LITERAL OPERATOR so zadanym IDENTIFIER a PARAMETER [unsigned long long int].
+   B. Ak sa hladany LITERAL OPERATOR nenasiel, hlada sa RAW LITERAL OPERATOR so zadanym IDENTIFIER a PARAMETER [const char*], alebo LITERAL OPERATOR TEMPLATE FUNCTION. C++ ZAKAZUJE, aby CODE obsahoval definiciu RAW LITERAL OPERATOR a LITERAL OPERATOR TEMPLATE FUNCTION pre ten isty IDENTIFIER.
+   C. Ak LITERAL OPERATOR sa nenasiel, COMPILER generuje chybu.
+17. C++ pri hladani spravneho LITERAL OPERATOR pre FLOATING POINT LITERALS postupuje nasledujucim sposobom.
+   A. Ako prvy hlada LITERAL OPERATOR so zadanym IDENTIFIER a PARAMETER [long double].
+   B. Ak sa hladany LITERAL OPERATOR nenasiel, hlada sa RAW LITERAL OPERATOR so zadanym IDENTIFIER a PARAMETER [const char*], alebo LITERAL OPERATOR TEMPLATE FUNCTION. C++ ZAKAZUJE, aby CODE obsahoval definiciu RAW LITERAL OPERATOR a LITERAL OPERATOR TEMPLATE FUNCTION pre ten isty IDENTIFIER.
+   C. Ak LITERAL OPERATOR sa nenasiel, COMPILER generuje chybu.
+18. LITERAL OPERATORS NEMOZU pouzivat DEFUALT VALUES pre svoje PARAMETERS.
+!!! 19. C++ PRIKAZUJE, ze USER DEFINED LITERAL IDENTIFIERS sa MUSIA zacinat znakom '_'. Vsetky ostatne IDENTIFIERS su RESERVED pre STANDARD TEMPLATE LIBRARY a NEMALI by sa POUZIVAT.
+20. KEYWORD [friend] umoznuje NON-MEMBER FUNCTIONS pristup k PRIVATE MEMBERS CLASS v ktorej je KEYWORD [friend] deklarovany. Pre KEYWORD [friend] platia nasledujuce fakty.
+   A. KEYWORD [friend] musi byt deklarovany na urovni CLASS. To znaci, ze moze byt aplikovany iba v definicii CLASS.
+   B. KEYWORD [friend] NEBERIE do uvahy ACCESS RIGHTS. To znaci, ze je jedno ci KEYWORD [friend] je definovany v PRIVATE, alebo PUBLIC SECTION danej CLASS.
+21. KEYWORD [friend] moze byt aplikovany na nasledujuce C++ ENTITIES.
+   A. NON-MEMBER FUNCTIONS. Takto oznacene NON-MEMBER FUNCTIONS mozu pristupovat k PRIVATE MEMBERS CLASS v ktorej je KEYWORD [friend] pouzity.
+   B. METHODS inych CLASSES. Takto oznacene METHODS inych CLASSES mozu pristupovat k PRIVATE MEMBERS CLASS v ktorej je KEYWORD [friend] pouzity.
+   C. CLASSES. Vsetky METHODS danych CLASSES mozu pristupovat k PRIVATE MEMBERS CLASS v ktorej je KEYWORD [friend] pouzity.
+   D. TYPE PARAMETERS. Vsetky METHODS TYPE PARAMETERS mozu pristupovat k PRIVATE MEMBERS CLASS v ktorej je KEYWORD [friend] pouzity.
+22. C++ vyhodnocuje to ci sa KEYWORD [friend] na FRIEND FUNCTION (METHOD, CLASS, TYPE PARAMETER) aplikuje podla nasledujucich kriterii.
+   A. KEYWORD [friend] sa APLIKUJE ak FRIEND FUNCTION (METHOD, CLASS, TYPE PARAMETER) bola deklarovana v SKOR ako CLASS v ktorej sa pouzil KEYWORD [friend].
+   B. KEYWORD [friend] sa APLIKUJE ak FRIEND FUNCTION (METHOD, CLASS, TYPE PARAMETER) sa nachadza v ROVNAKOM NAMESPACE ako CLASS v ktorej sa pouzil KEYWORD [friend].
+   C. KEYWORD [friend] sa APLIKUJE ak FRIEND FUNCTION (METHOD, CLASS, TYPE PARAMETER) pouziva ako PARAMETER instanciu CLASS v ktorej sa pouzil KEYWORD [friend].
+//-----------------------------------------------------------------------------
+//-----------------------------------------------------------------------------
+//-----------------------------------------------------------------------------
+Popis OPERATORS.
+
+1. Pre OPERATOR ASSIGNMENT platia nasledujuce fakty.
+   A. SYNTAX [a=b].
+   B. OPERATOR MOZE byt OVERLOADED, ale IBA ako METHOD.
+   C. METHOD PROTOTYPE [R& A::operator=(B b)].
+2. Pre OPERATOR ADDITION platia nasledujuce fakty.
+   A. SYNTAX [a+b].
+   B. OPERATOR MOZE byt OVERLOADED.
+   C. METHOD PROTOTYPE [R A::operator+(B b)].
+   D. FUNCTION PROTOTYPE [R operator+(A a, B b)].
+3. Pre OPERATOR SUBTRACTION platia nasledujuce fakty.
+   A. SYNTAX [a-b].
+   B. OPERATOR MOZE byt OVERLOADED.
+   C. METHOD PROTOTYPE [R A::operator-(B b)].
+   D. FUNCTION PROTOTYPE [R operator-(A a, B b)].
+4. Pre OPERATOR MULTIPLICATION platia nasledujuce fakty.
+   A. SYNTAX [a*b].
+   B. OPERATOR MOZE byt OVERLOADED.
+   C. METHOD PROTOTYPE [R A::operator*(B b)].
+   D. FUNCTION PROTOTYPE [R operator*(A a, B b)].
+5. Pre OPERATOR DIVISION platia nasledujuce fakty.
+   A. SYNTAX [a/b].
+   B. OPERATOR MOZE byt OVERLOADED.
+   C. METHOD PROTOTYPE [R A::operator/(B b)].
+   D. FUNCTION PROTOTYPE [R operator/(A a, B b)].
+6. Pre OPERATOR MODULO platia nasledujuce fakty.
+   A. SYNTAX [a%b].
+   B. OPERATOR MOZE byt OVERLOADED.
+   C. METHOD PROTOTYPE [R A::operator%(B b)].
+   D. FUNCTION PROTOTYPE [R operator%(A a, B b)].
+7. Pre OPERATOR UNARY PLUS platia nasledujuce fakty.
+   A. SYNTAX [+a].
+   B. OPERATOR MOZE byt OVERLOADED.
+   C. METHOD PROTOTYPE [R A::operator+(void)].
+   D. FUNCTION PROTOTYPE [R operator+(A a)].
+8. Pre OPERATOR UNARY MINUS platia nasledujuce fakty.
+   A. SYNTAX [-a].
+   B. OPERATOR MOZE byt OVERLOADED.
+   C. METHOD PROTOTYPE [R A::operator-(void)].
+   D. FUNCTION PROTOTYPE [R operator-(A a)].
+9. Pre OPERATOR PREFIX INCREMENT platia nasledujuce fakty.
+   A. SYNTAX [++a].
+   B. OPERATOR MOZE byt OVERLOADED.
+   C. METHOD PROTOTYPE [R& A::operator++(void)].
+   D. FUNCTION PROTOTYPE [R& operator++(A& a)].
+10. Pre OPERATOR POSTFIX INCREMENT platia nasledujuce fakty.
+   A. SYNTAX [a++].
+   B. OPERATOR MOZE byt OVERLOADED.
+   C. METHOD PROTOTYPE [R A::operator++(int)].
+   D. FUNCTION PROTOTYPE [R operator++(A& a, int)].
+11. Pre OPERATOR PREFIX DEREMENT platia nasledujuce fakty.
+   A. SYNTAX [--a].
+   B. OPERATOR MOZE byt OVERLOADED.
+   C. METHOD PROTOTYPE [R& A::operator--(void)].
+   D. FUNCTION PROTOTYPE [R& operator--(A& a)].
+12. Pre OPERATOR POSTFIX DECREMENT platia nasledujuce fakty.
+   A. SYNTAX [a--].
+   B. OPERATOR MOZE byt OVERLOADED.
+   C. METHOD PROTOTYPE [R A::operator--(int)].
+   D. FUNCTION PROTOTYPE [R operator--(A& a, int)].
+13. Pre OPERATOR EQUAL TO platia nasledujuce fakty.
+   A. SYNTAX [a==b].
+   B. OPERATOR MOZE byt OVERLOADED.
+   C. METHOD PROTOTYPE [bool A::operator==(const B& b)].
+   D. FUNCTION PROTOTYPE [bool operator==(const A& a, const B& b)].
+14. Pre OPERATOR NOT EQUAL TO platia nasledujuce fakty.
+   A. SYNTAX [a!=b].
+   B. OPERATOR MOZE byt OVERLOADED.
+   C. METHOD PROTOTYPE [bool A::operator!=(const B& b)].
+   D. FUNCTION PROTOTYPE [bool operator!=(const A& a, const B& b)].
+15. Pre OPERATOR GREATER THAN platia nasledujuce fakty.
+   A. SYNTAX [a>b].
+   B. OPERATOR MOZE byt OVERLOADED.
+   C. METHOD PROTOTYPE [bool A::operator>(const B& b)].
+   D. FUNCTION PROTOTYPE [bool operator>(const A& a, const B& b)].
+16. Pre OPERATOR LESS THAN platia nasledujuce fakty.
+   A. SYNTAX [a<b].
+   B. OPERATOR MOZE byt OVERLOADED.
+   C. METHOD PROTOTYPE [bool A::operator<(const B& b)].
+   D. FUNCTION PROTOTYPE [bool operator<(const A& a, const B& b)].
+17. Pre OPERATOR GREATER THAN OR EQUAL TO platia nasledujuce fakty.
+   A. SYNTAX [a>=b].
+   B. OPERATOR MOZE byt OVERLOADED.
+   C. METHOD PROTOTYPE [bool A::operator>=(const B& b)].
+   D. FUNCTION PROTOTYPE [bool operator>=(const A& a, const B& b)].
+18. Pre OPERATOR LESS THAN OR EQUAL TO platia nasledujuce fakty.
+   A. SYNTAX [a<b].
+   B. OPERATOR MOZE byt OVERLOADED.
+   C. METHOD PROTOTYPE [bool A::operator<=(const B& b)].
+   D. FUNCTION PROTOTYPE [bool operator<=(const A& a, const B& b)].
+19. Pre OPERATOR LOGICAL NEGATION platia nasledujuce fakty.
+   A. SYNTAX [!a].
+   B. OPERATOR MOZE byt OVERLOADED.
+   C. METHOD PROTOTYPE [bool A::operator!(void)].
+   D. FUNCTION PROTOTYPE [bool operator!(A a)].
+20. Pre OPERATOR LOGICAL AND platia nasledujuce fakty.
+   A. SYNTAX [a&&b].
+   B. OPERATOR MOZE byt OVERLOADED.
+   C. METHOD PROTOTYPE [bool A::operator&&(B b)].
+   D. FUNCTION PROTOTYPE [bool operator&&(A a, B b)].
+21. Pre OPERATOR LOGICAL OR platia nasledujuce fakty.
+   A. SYNTAX [a||b].
+   B. OPERATOR MOZE byt OVERLOADED.
+   C. METHOD PROTOTYPE [bool A::operator||(B b)].
+   D. FUNCTION PROTOTYPE [bool operator||(A a, B b)].
+22. Pre OPERATOR BITWISE NOT platia nasledujuce fakty.
+   A. SYNTAX [~a].
+   B. OPERATOR MOZE byt OVERLOADED.
+   C. METHOD PROTOTYPE [R A::operator~(void)].
+   D. FUNCTION PROTOTYPE [R operator~(A a)].
+23. Pre OPERATOR BITWISE AND platia nasledujuce fakty.
+   A. SYNTAX [a&b].
+   B. OPERATOR MOZE byt OVERLOADED.
+   C. METHOD PROTOTYPE [R A::operator&(B b)].
+   D. FUNCTION PROTOTYPE [R operator&(A a, B b)].
+24. Pre OPERATOR BITWISE OR platia nasledujuce fakty.
+   A. SYNTAX [a|b].
+   B. OPERATOR MOZE byt OVERLOADED.
+   C. METHOD PROTOTYPE [R A::operator|(B b)].
+   D. FUNCTION PROTOTYPE [R operator|(A a, B b)].
+25. Pre OPERATOR BITWISE XOR platia nasledujuce fakty.
+   A. SYNTAX [a^b].
+   B. OPERATOR MOZE byt OVERLOADED.
+   C. METHOD PROTOTYPE [R A::operator^(B b)].
+   D. FUNCTION PROTOTYPE [R operator^(A a, B b)].
+26. Pre OPERATOR BITWISE LEFT SHIFT platia nasledujuce fakty.
+   A. SYNTAX [a<<b].
+   B. OPERATOR MOZE byt OVERLOADED.
+   C. METHOD PROTOTYPE [R A::operator<<(B b)].
+   D. FUNCTION PROTOTYPE [R operator<<(A a, B b)].
+27. Pre OPERATOR BITWISE RIGHT SHIFT platia nasledujuce fakty.
+   A. SYNTAX [a>>b].
+   B. OPERATOR MOZE byt OVERLOADED.
+   C. METHOD PROTOTYPE [R A::operator>>(B b)].
+   D. FUNCTION PROTOTYPE [R operator>>(A a, B b)].
+28. Pre OPERATOR ADDITION ASSIGNMENT platia nasledujuce fakty.
+   A. SYNTAX [a+=b].
+   B. OPERATOR MOZE byt OVERLOADED.
+   C. METHOD PROTOTYPE [R& A::operator+=(B b)].
+   D. FUNCTION PROTOTYPE [R& operator+=(A& a, B b)].
+29. Pre OPERATOR SUBTRACTION ASSIGNMENT platia nasledujuce fakty.
+   A. SYNTAX [a-=b].
+   B. OPERATOR MOZE byt OVERLOADED.
+   C. METHOD PROTOTYPE [R& A::operator-=(B b)].
+   D. FUNCTION PROTOTYPE [R& operator-=(A& a, B b)].
+30. Pre OPERATOR MULTIPLICATION ASSIGNMENT platia nasledujuce fakty.
+   A. SYNTAX [a*=b].
+   B. OPERATOR MOZE byt OVERLOADED.
+   C. METHOD PROTOTYPE [R& A::operator*=(B b)].
+   D. FUNCTION PROTOTYPE [R& operator*=(A& a, B b)].
+31. Pre OPERATOR DIVISION ASSIGNMENT platia nasledujuce fakty.
+   A. SYNTAX [a/=b].
+   B. OPERATOR MOZE byt OVERLOADED.
+   C. METHOD PROTOTYPE [R& A::operator/=(B b)].
+   D. FUNCTION PROTOTYPE [R& operator/=(A& a, B b)].
+32. Pre OPERATOR MODULO ASSIGNMENT platia nasledujuce fakty.
+   A. SYNTAX [a%=b].
+   B. OPERATOR MOZE byt OVERLOADED.
+   C. METHOD PROTOTYPE [R& A::operator%=(B b)].
+   D. FUNCTION PROTOTYPE [R& operator%=(A& a, B b)].
+33. Pre OPERATOR BITWISE AND ASSIGNMENT platia nasledujuce fakty.
+   A. SYNTAX [a&=b].
+   B. OPERATOR MOZE byt OVERLOADED.
+   C. METHOD PROTOTYPE [R& A::operator&=(B b)].
+   D. FUNCTION PROTOTYPE [R& operator&=(A& a, B b)].
+34. Pre OPERATOR BITWISE OR ASSIGNMENT platia nasledujuce fakty.
+   A. SYNTAX [a|=b].
+   B. OPERATOR MOZE byt OVERLOADED.
+   C. METHOD PROTOTYPE [R& A::operator|=(B b)].
+   D. FUNCTION PROTOTYPE [R& operator|=(A& a, B b)].
+35. Pre OPERATOR BITWISE XOR ASSIGNMENT platia nasledujuce fakty.
+   A. SYNTAX [a^=b].
+   B. OPERATOR MOZE byt OVERLOADED.
+   C. METHOD PROTOTYPE [R& A::operator^=(B b)].
+   D. FUNCTION PROTOTYPE [R& operator^=(A& a, B b)].
+36. Pre OPERATOR BITWISE LEFT SHIFT ASSIGNMENT platia nasledujuce fakty.
+   A. SYNTAX [a<<=b].
+   B. OPERATOR MOZE byt OVERLOADED.
+   C. METHOD PROTOTYPE [R& A::operator<<=(B b)].
+   D. FUNCTION PROTOTYPE [R& operator<<=(A& a, B b)].
+37. Pre OPERATOR BITWISE RIGHT SHIFT ASSIGNMENT platia nasledujuce fakty.
+   A. SYNTAX [a>>=b].
+   B. OPERATOR MOZE byt OVERLOADED.
+   C. METHOD PROTOTYPE [R& A::operator>>=(B b)].
+   D. FUNCTION PROTOTYPE [R& operator>>=(A& a, B b)].
+38. Pre OPERATOR SUBSCRIPT platia nasledujuce fakty.
+   A. SYNTAX [a[b]].
+   B. OPERATOR MOZE byt OVERLOADED.
+   C. METHOD PROTOTYPE [R& A::operator[](B b)].
+39. Pre OPERATOR INDIRECTION platia nasledujuce fakty.
+   A. SYNTAX [*a].
+   B. OPERATOR MOZE byt OVERLOADED.
+   C. METHOD PROTOTYPE [R& A::operator*(void)].
+   D. FUNCTION PROTOTYPE [R& operator*(B b)].
+40. Pre OPERATOR ADDRESS OF platia nasledujuce fakty.
+   A. SYNTAX [&a].
+   B. OPERATOR MOZE byt OVERLOADED.
+   C. METHOD PROTOTYPE [R* A::operator&(void)].
+   D. FUNCTION PROTOTYPE [R* operator&(B b)].
+41. Pre OPERATOR STRUCTURE REFERENCE BY POINTER platia nasledujuce fakty.
+   A. SYNTAX [a->b].
+   B. OPERATOR MOZE byt OVERLOADED.
+   C. METHOD PROTOTYPE [R* A::operator->(void)].
+42. Pre OPERATOR STRUCTURE REFERENCE BY VALUE platia nasledujuce fakty.
+   A. SYNTAX [a.b].
+   B. OPERATOR NEMOZE byt OVERLOADED.
+43. Pre OPERATOR MEMBER SELECTED BY POINTER TO MEMBER BY POINTER platia nasledujuce fakty.
+   A. SYNTAX [a->*b].
+   B. OPERATOR MOZE byt OVERLOADED.
+   C. METHOD PROTOTYPE [R& A::operator->*(B b)].
+   D. FUNCTION PROTOTYPE [R& operator->*(A& a, B b)].
+44. Pre OPERATOR MEMBER SELECTED BY POINTER TO MEMBER BY VALUE platia nasledujuce fakty.
+   A. SYNTAX [a.*b].
+   B. OPERATOR NEMOZE byt OVERLOADED.
+45. Pre OPERATOR FUNCTION CALL platia nasledujuce fakty.
+   A. SYNTAX [a(a1,...,aN)].
+   B. OPERATOR MOZE byt OVERLOADED.
+   C. METHOD PROTOTYPE [R A::operator()(A1 a1,...,AN aN)].
+46. Pre OPERATOR COMMA platia nasledujuce fakty.
+   A. SYNTAX [a,b].
+   B. OPERATOR MOZE byt OVERLOADED.
+   C. METHOD PROTOTYPE [R A::operator,(B b)].
+   D. FUNCTION PROTOTYPE [R operator,(A a, B b)].
+47. Pre OPERATOR TERNARY CONDITION platia nasledujuce fakty.
+   A. SYNTAX [a?b:c].
+   B. OPERATOR NEMOZE byt OVERLOADED.
+48. Pre OPERATOR SCOPE RESOLUTION platia nasledujuce fakty.
+   A. SYNTAX [a::b].
+   B. OPERATOR NEMOZE byt OVERLOADED.
+49. Pre OPERATOR USER DEFINED LITERALS platia nasledujuce fakty.
+   A. SYNTAX ["a"_b].
+   B. OPERATOR MOZE byt OVERLOADED.
+   C. FUNCTION PROTOTYPE [R operator""_b(B b)].
+50. Pre OPERATOR SIZE OF platia nasledujuce fakty.
+   A. SYNTAX [sizeof(a)], alebo SYNTAX [sizeof(TYPE)].
+   B. OPERATOR NEMOZE byt OVERLOADED.
+51. Pre OPERATOR SIZE OF PARAMETER PACK platia nasledujuce fakty.
+   A. SYNTAX [sizeof...(a1,...,aN)].
+   B. OPERATOR NEMOZE byt OVERLOADED.
+52. Pre OPERATOR ALIGN OF platia nasledujuce fakty.
+   A. SYNTAX [align(TYPE)].
+   B. OPERATOR NEMOZE byt OVERLOADED.
+53. Pre OPERATOR ALIGN OF platia nasledujuce fakty.
+   A. SYNTAX [alignof(a)], alebo SYNTAX [alignof(TYPE)].
+   B. OPERATOR NEMOZE byt OVERLOADED.
+54. Pre OPERATOR C-CONVERSION platia nasledujuce fakty.
+   A. SYNTAX [(TYPE)a].
+   B. OPERATOR NEMOZE byt OVERLOADED.
+55. Pre OPERATOR CONVERSION platia nasledujuce fakty.
+   A. SYNTAX [TYPE(a)].
+   B. OPERATOR NEMOZE byt OVERLOADED.
+56. Pre OPERATOR STATIC CAST platia nasledujuce fakty.
+   A. SYNTAX [static_cast<TYPE>(a)].
+   B. OPERATOR MOZE byt OVERLOADED.
+   C. METHOD PROTOTYPE [A::operator B(void)], alebo METHOD PROTOTYPE [explicit A::operator B(void)].
+57. Pre OPERATOR DYNAMIC CAST platia nasledujuce fakty.
+   A. SYNTAX [dynamic_cast<TYPE>(a)].
+   B. OPERATOR NEMOZE byt OVERLOADED.
+58. Pre OPERATOR CONST CAST platia nasledujuce fakty.
+   A. SYNTAX [const_cast<TYPE>(a)].
+   B. OPERATOR NEMOZE byt OVERLOADED.
+59. Pre OPERATOR CONST CAST platia nasledujuce fakty.
+   A. SYNTAX [reinterpret_cast<TYPE>(a)].
+   B. OPERATOR NEMOZE byt OVERLOADED.
+60. Pre OPERATOR ALLOCATE STORAGE platia nasledujuce fakty.
+   A. SYNTAX [new TYPE].
+   B. OPERATOR MOZE byt OVERLOADED.
+   C. METHOD PROTOTYPE [void* A::operator new(size_t a)].
+   D. FUNCTION PROTOTYPE [void* operator new(size_t a)].
+61. Pre OPERATOR ALLOCATE STORAGE ARRAY platia nasledujuce fakty.
+   A. SYNTAX [new TYPE[a]].
+   B. OPERATOR MOZE byt OVERLOADED.
+   C. METHOD PROTOTYPE [void* A::operator new[](size_t a)].
+   D. FUNCTION PROTOTYPE [void* operator new[](size_t a)].
+62. Pre OPERATOR DEALLOCATE STORAGE platia nasledujuce fakty.
+   A. SYNTAX [delete a].
+   B. OPERATOR MOZE byt OVERLOADED.
+   C. METHOD PROTOTYPE [void A::operator delete(void* a)].
+   D. FUNCTION PROTOTYPE [void operator delete(void* a)].
+63. Pre OPERATOR DEALLOCATE STORAGE ARRAY platia nasledujuce fakty.
+   A. SYNTAX [delete[] a].
+   B. OPERATOR MOZE byt OVERLOADED.
+   C. METHOD PROTOTYPE [void A::operator delete[](void* a)].
+   D. FUNCTION PROTOTYPE [void operator delete[](void* a)].
+64. Pre OPERATOR EXCEPTION CHECK platia nasledujuce fakty.
+   A. SYNTAX [noexcept(a)].
+   B. OPERATOR NEMOZE byt OVERLOADED.
+//-----------------------------------------------------------------------------

@@ -1,0 +1,175 @@
+//-----------------------------------------------------------------------------
+1. Solution demonstruje pozitie ABSTRACTION MECHANISMS v C++.
+2. CLASS je USER DEFINED TYPE, ktory reprezentuje CONCEPT v PROGRAME.
+3. CLASSES je mozne rozdelit do nasledujucich kategorii.
+   A. CONCRETE TYPE. CONCRETE TYPE je TYPE z ktoreho je mozne vytvarat instancie nazyvane OBJECTS.
+   B. ABSTRACT TYPE. ABSTRACT TYPE je TYPE, ktory sluzi ako sablona pre vytvaranie CONCRETE TYPES. Z ABSTRACT TYPES nie je mozne vytvarat ich instancie.
+   C. CLASSES v CLASS HIERARCHY. CLASSES v CLASS HIERARCHY su CLASSES, ktore su vzajomne previazane pomocou ABSTRACTION MECHANISMS INHERITANCE a POLYMORPHISM.
+4. CONCRETE TYPE je TYPE, ktory je plne definovany a mozu byt z neho vytvarane jeho instancie.
+!!! 5. VYHODOU CONCRETE TYPES je, ze instancie mozu byt vytvarane aj na STACKU, pretoze TYPE je plne definovany a COMPILER pozna jeho VELKOST v BYTES.
+!!! 6. NEVYHODOU CONCRETE TYPES je, zmena PRIVATE FIELDS ako je pridanie ci odobranie FIELD vyzaduje RECOMPILATION CLIENT CODE, ktory dany CONCRETE TYPE pouziva.
+7. CLASSES maju definovane CONSTRUCTORS. CONSTRUCTORS su volane pri inicializacii intancie CLASS a sluzia na inicializaciu FIELDS danej CLASS, vratane alokovania RESOURCES, ktore CLASS vyuziva.
+8. CLASSES maju definovane DESTRUCTORS. DESTRUCTORS su volane pri uvolnovanie intancie CLASS a sluzia na uvolnenie RESOURCES, ktore CLASS vyuzivala.
+9. ABSTRACT TYPES mozu definovat VIRTUAL METHODS. VIRTUAL METHODS umoznuju implementovat POLYMORPHISM. POLYMORPHISM umoznuje zavolat verziu METHOD v zavislosti od TYPE instancie.
+10. VIRTUAL METHODS mozu byt definovane ako PURE VIRTUAL METHODS, ktore nemaju implementovane BODY. Taketo METHODS MUSIA byt v DERIVED TYPES implementovane, aby tieto DERIVED TYPES predstavovali CONCRETE TYPES a mohli byt z nich vytvarane instancie.
+11. ABSTRACT TYPES definuju INTERFACE, ktory musia DERIVED TYPES implementovat.
+!!! 12. ABSTRACT CLASS je CLASS, ktora ma aspon 1 PURE VIRTUAL METHOD.
+!!! 13. VYHODOU ABSTRACT TYPES je moznost ukryt IMPLEMENTATION DETAILS. Ak sa pristupuje k DERIVED TYPE prostrednictvom BASE TYPE, tak implementacia DERIVED TYPE je ukryta s vynimkou vytvorenia instancie DERIVED CLASS.
+!!! 14. NEVYHODOU ABSTRACT TYPES je nutnost pouzitia POINTERS a REFERENCES ak ma byt aplikovany POLYMORPHISM.
+!!!!! 15. VIRTUAL CLASS je CLASS, ktory ma ASPON 1 VIRTUAL METHOD, alebo VIRTUAL DESTRUCTOR. Takato CLASS obsahuje SKRYTY POINTER, ktory odkazuje na VIRTUAL METHOD TABLE. VIRTUAL METHOD TABLE pouziva C++ pri vyhladani, ktory METHOD pri aplikacii POLYMORPHISM ma pouzit. C++ pri volani METHOD pouziva POINTER na VIRTUAL METHOD TABLE a INDEX urcujuci, ktoru VIRTUAL METHOD ma volat. Vysledkom je POINTER na VIRTUAL METHOD, ktora sa ma zavolat.
+16. Pouzitie VIRTUAL METHODS prinasa nasledujuce PERFORMANCE HITS.
+   A. CLASS, ktora ma aspon 1 VIRTUAL METHOD (vratane VIRTUAL DESTRUCTOR) je dlzia o POINTER SIZE. POINTER reprezentuje POINTER na VIRTUAL METHOD TABLE.
+   B. Volanie VIRTUAL METHODS je o nieco POMALSIE ako volanie NON-VIRTUAL METHODS, pretoze pri volani VIRTUAL METHODS je nutne urcit ADDRESS VIRTUAL METHOD, ktora sa urcuje scitanim hodnoty POINTER na VIRTUAL METHOD TABLE a INDEXU urcujuceho volanu VIRTUAL METHOD. To vyzaduje vykonanie operacie DEREFERENCE a ADD, a preto je volanie VIRTUAL METHODS pomalsie.
+!!! 17. Ak CLASS obsahuje VIRTUAL METHODS tak je VHODNE, aby jej DESTRUCTOR bol VIRTUAL. VIRTUAL DESTRUCTOR zabezpecuje, ze pri odstranovani OBJECT z MEMORY, ak bol pretypovany na BASE CLASS sa zavola DESTRUCTOR pre DERIVED CLASS. Ak by DESTRUCTOR NEBOL VIRTUAL tak by sa pri likvidacii DERIVED OBJECT pretypovaneho na BASE OBJECT volal IBA DESTRUCTOR pre BASE OBJECT a DESTRUCTOR pre DERIVED OBJECT by sa NEVOLAL.
+18. CLASS HIERARCHIES mozu byt v C++ dizajnovane viacerymi sposobmni.
+   A. IMPLEMENTATION INHERITANCE.
+   B. INTERFACE INHERITANCE.
+19. Pre IMPLEMENTATION INHERITANCE platia nasledujuce fakty.
+   A. Pri IMPLEMENTATION INHERITANCE BASE CLASS definuje FIELDS a VIRTUAL METHODS ku ktorym mozu DERIVED CLASSES pristupovat.
+   B. FIELDS, ktore su definovane ako PROTECTED mozu DERIVED CLASSES PRIAMO MODIFIKOVAT.
+   C. NEVYHODOU IMPLEMENTATION INHERITANCE je, ze ak BASE CLASS je zavisla na konkretnej LIBRARY, potom IMPLEMENTATION DETAILS dedi cela CLASS HIERARCHY, cim vznika vazba medzi CLASS HIERARCHY a IMPLEMENTATION DETAILS pouzitej LIBRARY. Zmena v pouzitej LIBRARY moze vynutit kaskadovitu zmenu CLASSES v CLASS HIERARCHY.
+   D. NEVYHODOU IMPLEMENTATION INHERITANCE je aj moznost (niekedy nutnost) menit FIELDS BASE CLASSES. Vysledkom je CODE, ktory je nachylny na chyby, pretoze DERIVED CLASSES menia FIELDS v BASE CLASSES, ktore mozu byt kontextovo zavisle.
+   E. NEVYHODOU IMPLEMENTATION INHERITANCE je ze definovanim FIELDS v BASE CLASS su tieto FIELDS definovane v kazdej DERIVED CLASS. To vytvara vysoku mieru implementacnej zavislosti na BASE CLASS. Ak napriklad DERIVED CLASS vie hodnoty FIELDS vypocitat v RUNTIME a nemusi ich ukladat do FIELDS, je definovanie FIELDS v BASE CLASS zbytocne.
+   F. NEVYHODOU IMPLEMENTATION INHERITANCE je nutnost vykonat kompilaciu vzdy ked sa zmeni BASE CLASS.
+20. Pre INTERFACE INHERITANCE platia nasledujuce fakty.
+   A. DERIVED CLASSES maju VIACERO BASES CLASSES.
+   B. BASE CLASSES, ktore reprezentuju abstrakciu su implementovane ako PURE VIRTUAL CLASSES, ktore maju iba PURE VIRTUAL METHODS. Tieto BASE CLASSES su DERIVED ako PUBLIC INHERITANCE.
+   C. BASE CLASSES, ktore reprezentuju IMPLEMENTATION DETAILS su DERIVED ako PROTECTED, alebo PRIVATE INHERITANCE.
+   D. VYHODOU INTERFACE INHERITANCE je, ze IMPLEMENTATION DETAILS su zakryte v CLASSES, ktore NIE SU PRISTUPNE z CLIENT CODE, cim sa ZNIZUJE zavislost CLIENT CODE na IMPLEMENTATION DETIALS ako je napriklad typ LIBRARY, ktoru CLASS HIERARCHY na implementaciu IMPLEMENTATION DETIALS pouziva. CLIENT CODE pracuje IBA s METHODS, ktore reprezentuju ABSTRAKCIU a NIE IMPLEMENTATION DETAILS.
+   E. NEVYHODOU INTERFACE INHERITANCE je, ze IMPLEMENTATION DETAILS su na niektorej vrstve CLASS HIERARCHY predsa len ukryte a modifikacia LIBRARY implementujucej IMPLEMENTATION DETAILS vyzaduje zmenu ABSTRAKTNEJ CLASS HIERARCHY.
+21. Vytvaranie instancii CLASSES, ktore obsahuju IMPLEMENTATION DETAILS by malo byt v CODE co najviac lokalizovane, aby zavislost na IMPLEMENTATION DETAILS bola co najviac limitovana. Riesenim je definovanie FACTORY CLASSES, ktore vytvaraju instancie konkretnych CLASSES a jedine CODE tychto FACTORY CLASSES obsahuje vytvarnie intancii CLASSES obsahujucich IMPLEMENTATION DETAILS.
+22. MULTIPLE INHERITANCE je INHERITANCE, ked CLASS je PRIAMO DERIVED z VIACERYCH BASE CLASSES. MULTIPLE INHERITANCE existuje v 2 verziach.
+   A. MULTIPLE INTERFACE INHERITANCE. Pri tejto verzii MULTIPLE INHERITANCE je CLASS DERIVED z viacerych INTERFACES. INTERFACE reprezentuje CLASS, ktora ma IBA PURE VIRTUAL METHODS.
+   B. MULTIPLE IMPLEMENTATION INHERITANCE. Pri tejto verzii MULTIPLE INHERITANCE je CLASS DERIVED z viacerych CLASSES. CLASSES obsahuju FIELDS a NON-VIRTUAL METHODS.
+!!! 23. Ak DERIVED CLASS ma viacero BASE CLASSES, pricom BASE CLASSES maju METHODS s ROVNAKYM PROTOTYPE, potom tieto METHODS BASE CLASSES je mozne volat pomocou SYNTAXE [BASE_CLASS_NAME::METHOD_NAME()]. Tuto SYNTAX je mozne pouzit ako v DERIVED CLASSES, tak aj v CALLER CLASSES, ktore DERIVED CLASSES vyuzivaju. Ak sa pouzije [BASE_CLASS_NAME::METHOD_NAME()] pricom BASE CLASS 'BASE_CLASS_NAME' NEOBSAHUJE METHOD 'METHOD_NAME()' potom C++ skusi hladat tuto METHOD v BASE CLASSES CLASS 'BASE_CLASS_NAME'. Ak niektora z nich obsahuje METHOD 'METHOD_NAME()', tak sa zavola tato METHOD. Inak COMPILER hodi ERROR.
+!!! 24. Ak DERIVED CLASS ma viacero BASE CLASSES, pricom tieto BASE CLASSES su INHERITED z ROVNAKEJ CLASS 'XXX', potom C++ umoznuje definovat CLASS HIERARCHY ked sa CLASS 'XXX' bude nachadzat v CLASS HIERARCHY VIACKRAT, alebo iba RAZ.
+   A. NON-VIRTUAL INHERITANCE je INHERITANCE, kedy v CLASS HIERARCHY sa vytvara pre KAZDU VETVU VLASTNA INSTANCIA CLASS 'XXX'. To znamena, ze KAZDA VETVA CLASS HIERARCHY bude mat VLASTNU INSTANCIU CLASS 'XXX', ktore su navzajom NEZAVISLE.
+   B. VIRTUAL INHERITANCE je INHERITANCE, kedy v CLASS HIERARCHY sa IBA 1 INSTANCIA CLASS 'XXX'. To znamena, ze v CLASS HIERARCHY existuje iba 1 INSTANCIA CLASS 'XXX', ktora je SPOLOCNA pre VSETKY VETVY CLASS HIERARCHY.
+25. VIRTUAL INHERITANCE sa definuje aplikovanim KEYWORD [virtual] pri specifikovani INHERITANCE v deklaracii CLASS.
+26. VIRTUAL INHERITANCE umoznuje, aby vsetky instancie BASE CLASS ak su v CLASS HIERARCHY dedene viacerymi vetvami CLASS HIERARCHY boli zlucene do SPOLOCNEJ INSTANCIE. Ak napriklad CLASS 'CDerived' dedi z CLASS 'CBase1' a CLASS 'CBase2', pricom CLASS 'CBase1' aj CLASS 'CBase2' dedia z CLASS 'CSharedBase', tak pri aplikovani VIRTUAL INHERITANCE v CLASS CLASS 'CBase1' a CLASS 'CBase2' sa OBE INSTANCIE CLASS 'CSharedBase' ZLUCENE do 1 INSTANCIE, ktora je SPOLOCNA pre CELU CLASS HIERARCHY.
+!!!!! 27. Pri pouziti VIRTUAL INHERITANCE je NEVYHUTNE, aby ak v DEDICSKEJ HIERARCHII niektora VETVA PRETAZUJE VIRTUAL METHOD XXX() a v INEJ VETVE NEPRETAZUJE VIRTUAL METHOD XXX(), tak MOST DERIVED CLASS MUSI PRETAZIT XXX(), inak COMPILER hodi ERROR, pretoze nevie jednoznacne urcit, ktoru METHOD ma volat.
+!!! 28. Ak BASE CLASS, ktora je DERIVED pomocou VIRTUAL INHERITANCE VIACERYMI VETVAMI CLASS HIERARCHY na NON-DEFAULT CONSTRUCTOR, tak tento je z MOST DERIVED CLASS NEVYHNUTNE EXPLICITNE VOLAT. CONSTRUCTOR BASE CLASS sa vola IBA RAZ. Podobne aj BASE CLASS DESTRUCTOR sa vola IBA RAZ.
+!!!!! 29. Pri pouziti VIRTUAL INHERITANCE kazda DERIVED CLASS, ktora je DERIVED z BASE CLASS pomocou VIRTUAL INHERITANCE obsahuje INDEX odkazujuci na tuto BASE CLASS, ktora je SHARED medzi VIACERYMI vetvami CLASS HIERARCHY.
+30. Ak sa pouziva VIRTUAL INHERITANCE pri METHOD OVERRIDING platia nasledujuce pravidla.
+   A. CLASSES, ktore su DERIVED cez VIRTUAL INHERITANCE mozu vykonat METHOD OVERRIDING rozlicnych METHODS. To znaci, ze napriklad ak CLASS 'CBase1' aj CLASS 'CBase2' su DERIVED z CLASS 'CSuperBase', ktora definuje METHOD AAA() a METHOD BBB(), tak CLASS 'CBase1' moze vykonat OVERRIDING METHOD AAA() a CLASS 'CBase2' moze vykonat OVERRIDING METHOD BBB().
+   B. CLASSES, ktore su DERIVED cez VIRTUAL INHERITANCE mozu vykonat METHOD OVERRIDING rovnakych METHODS, no MOST DERIVED CLASS MUSI taktiez vykonat METHOD OVERRIDING tychto METHODS, inak COMPILER hodi ERROR, kedze nedokaze JEDNOZNACNE urcit, ktoru METHOD ma volat. To znaci, ze napriklad ak CLASS 'CBase1' aj CLASS 'CBase2' su DERIVED z CLASS 'CSuperBase', ktora definuje METHOD CCC(), pricom ako CLASS 'CBase1', tak aj CLASS 'CBase2' vykonavaju OVERRIDING METHOD CCC(), potom CLASS 'CDerived', ktora je DERIVED z CLASS 'CBase1' a CLASS 'CBase2' MUSI vykonat OVERRIDING METHOD CCC(), inak COMPILER hodi ERROR.
+31. CLASSES, ktore pri pouziti VIRTUAL INHERITANCE vykonavaju METHOD OVERRIDING iba NIEKTORYCH METHODS sa nazyvaju MIXINS.
+32. V CLASS HIERARCHY su CONSTRUCTORS jednotlivych CLASSES volane v nasledujucom poradi.
+   A. CONSTRUCTOR vola CONSTRUCTORS VSETKYCH BASE CLASSES, pricom CONSTRUCTORS VIRTUAL BASE CLASSES su volane VZDY pred ich PRVYM POUZITIM v CLASS HIERARCHY.
+   B. CONSTRUCTOR vola CONSTRUCTORS VSETKYCH FIELDS v poradi v akom su FIELDS DEKLAROVANE v CLASS.
+   C. CONSTRUCTOR vykona svoje BODY.
+33. V CLASS HIERARCHY su DESTRUCTORS jednotlivych CLASSES volane v nasledujucom poradi.
+   A. DESTRUCTOR vykona svoje BODY.
+   B. DESTRUCTOR vola DESTRUCTORS VSETKYCH FIELDS v OPACNOM poradi v akom su FIELDS DEKLAROVANE v CLASS.
+   C. DESTRUCTOR vola DESTRUCTORS VSETKYCH BASE CLASSES, pricom DESTRUCTORS VIRTUAL BASE CLASSES su volane VZDY po ich PO POSLEDNOM POUZITI v CLASS HIERARCHY.
+34. Transfer VALUES medzi 2 VARIABLES je v C++ mozne vykonat nasledujucimi sposobmi.
+   A. COPY OPERATION je OPERATION kde je VALUE z 1. VARIABLE skopirovana do 2. VARIABLE, pricom hodnoty oboch VARIABLES su NEZAVISLE.
+   B. MOVE OPERATION je OPERATION kde je VALUE z 1. VARIABLE presunuta do 2. VARIABLE tak, ze 1. VARIABLE STRATI svoj VNUTORNY STATE a tento sa stava VNUTORNYM STATE 2. VARIABLE. 1. VARIABLE by vsak mala ostat v NEDEFINOVANOM, no PLATNOM STAVE, aby pre nu mohol byt volany DESTRUCTOR.
+35. COPY OPERATION v CLASS pozostava z implementacie nasledujucich operacii.
+   A. COPY CONSTRUCTOR. COPY CONSTRUCTOR vytvara novu instanciu OBJECT, ktora repzentuje kopiu ineho OBJECT toho isteho TYPE zaslaneho ako PARAMETER.
+   B. COPY OPERATOR=. COPY OPERATOR= priradzuje do aktualnej instancie OBJECT instanciu ineho OBJECT toho isteho TYPE. COPY OPERATOR=, na rozdiel od COPY OPERATOR musi uvolnit existujuce VALUES svojich FIELDS a az potom do nich priradit kopiu FIELDS ineho OBJECT.
+36. MOVE OPERATION v CLASS pozostava z implementacie nasledujucich operacii.
+   A. MOVE CONSTRUCTOR. MOVE CONSTRUCTOR vytvara novu instanciu OBJECT, ktora obsahuje VNUTORNE FIELDS ineho OBJECT toho isteho TYPE zaslaneho ako PARAMETER. VNUTORNE FIELDS OBJECT zaslaneho ako PARAMETER su nastavene na PRAZDNE VALUES.
+   B. MOVE OPERATOR=. MOVE OPERATOR= priradzuje do aktualnej instancie OBJECT VNUTORNE FIELDS ineho OBJECT toho isteho TYPE. VNUTORNE FIELDS OBJECT zaslaneho ako PARAMETER su nastavene na PRAZDNE VALUES. MOVE OPERATOR=, na rozdiel od MOVE OPERATOR musi uvolnit existujuce VALUES svojich FIELDS a az potom do nich priradit FIELDS ineho OBJECT.
+37. Implementacia MOVE OPERATIONS spociva vo vykonani nasledujucich krokoch.
+   A. Presune hodnot VNUTORYCH FIELDS zo SOURCE do DESTINATION OBJECT.
+   B. Resetnuti hodnot VNUTORNYCH FIELDS v SOURCE OBJECT, aby neobsahovali podovne hodnoty.
+!!! 38. Pri MOVE OPERATIONS MUSIA byt PARAMETERS, ktore maju byt MOVED VZDY prenasane ako NON-CONST RVALUE REFERENCES, pretoze pri MOVE OPERATION je NUTNE zmenit hodnoty FIELDS OBJECT, ktory bol MOVED.
+!!! 39. Pri MOVE OPERATIONS MUSIA byt FIELDS MOVED OBJECT nastavene na PLATNU VALUE, ktoru by DESTRUCTOR bol schopny spracovat. MOVED OBJECTS by NEMALI obsahovat hodnoty FIELDS pred vykonanim MOVE OPERATION.
+!!!!! 40. Po vykonani MOVE OPERATION (MOVE CONSTRUCTOR a MOVE OPERATOR=) musi byt MOVED OBJECT v stave v ktorom je pre OBJECT mozne zavolat DESTRUCTOR.
+41. Pomocou SYNTAXE [OPERATION=delete] je mozne oznacit METHODS za DELETED. SYNTAX [OPERATION=delete] je mozne vyuzit na nasledujuce ucely.
+   !!! A. DELETED DEFAULT OPERATIONS prikazuju COMPILER, aby NEGENEROVAL DEFAULT OPERATIONS. Pouzitie co i len 1 DELETED DEFAULT OPERATION vedie k tomu, ze COMPILER NEVYGENERUJE ZIADNU DEFAULT OPERATION, pokial sa nepouzije SYNTAX [OPERATION=default].
+   B. METHODS a OPERATORS oznacene ako DELETED NIE JE mozne volat a COMPILER sa zaroven ani NEPOKUSA HLADAT ALTERNATIVY napriklad medzi OVERLOADED METHODS a OPERATORS.
+42. TEMPLATES umoznuje implementovat GENERIC PROGRAMMING v C++.
+43. TEMPLATES umoznuju definovat CLASSES, alebo FUNCTIONS, ktore maju TYPES ako PARAMETERS. TYPE PARAMETERS je mozne pouzivat v definicii CLASS, alebo FUNCTION ako normalny TYPE. Jeho realna hodnota sa aplikuje az pri pouziti TEMPLATE. C++ umoznuje nasledujuce typy TEMPLATES.
+   A. CLASS TEMPLATES.
+   B. FUNCTION TEMPLATES.
+   C. METHOD TEMPLATES. Su METHODS, ktore maju vlastne TYPE PARAMETERS. TYPE PARAMETERS pre METHODS musia byt uvedene na SEPARATNYCH deklaraciach [template<TType>], aby sa odlisili od pripadnych CLASS TYPE PARAMETERS.
+44. K FUNCTION TEMPLATES patria GLOBAL FUNCTION TEMPLATES, TEMPLATE METHODS, GLOBAL OPERATOR TEMPLATESS a METHOD OPERATOR TEMPLATES.
+!!! 45. TEMPLATES su CISTO COMPILE-TIME CONSTRUCTS, ktore nemaju ZIADNU SPECIALNU PODPORU v RUN-TIME, ako je to napriklad v pripade POLYMORFIZMU, kde exituje POLYMORFNE volanie VIRTUAL METHODS cez VIRTUAL TABLE. Na rozdiel od TEMPLATES su .NET GENERICS RUN-TIME CONSTRUCT.
+46. TEMPLATES su definovane pomocou SYNTAX [template<typename T1,...,typename TN>], ktora musi predchadzat definicii CLASS TEMPLATES, METHOD TEMPLATES, alebo FUNCTION TEMPLATES. Hodnoty 'T1', az 'TN' reprezentuju mena TYPE PARAMETERS, ktore je mozne pouzit v definicii TEMPLATE ako TYPE PLACEHOLDER. TYPE PLACEHOLDER sa v COMPILE TIME pri vytvarani TEMPLATE INSTANCE nahradi skutocnym TYPE.
+!!! 47. TEMPLATES v C++ NEUMOZNUJU definovat zoznam poziadaviek na to ake TYPES moze TEMPLATE prijimat. Ciastocne je toto obmedzenie mozne obist doplnenim prikazov [static_assert()], ktore hodia v COMPILE TIME ERROR v pripade, ze zadana podmienka vrati FALSE.
+48. METHODS definovane v TEMPLATES, aj ked nie su METHODS TEMPLATES (tj. nemaju vlastne specializovane TYPE PARAMETERS) su sami tiez TEMPLATES, ktore su vytvarane v COMPILE TIME pri vytvarani TEMPLATE INSTANCE.
+49. METHODS TEMPLATE CLASSES je podobne ako pri beznych CLASSES mozne definovat aj MIMO definicie TEMPLATE CLASS. V takom pripade je vsak nutne pouzit KEYWORD [template<>] a pri nazve CLASS je treba definovat vsetky TYPE PARAMETERS pomocou SYNTAXE [RETURN_TYPE FUNCTION<T1,...,TN>FunctionName(PARAMETERS)].
+!!! 50. FUNCTION TEMPLATES a METHOD TEMPLATES mozu byt OVERLOADED a to AJ KED MAJU IDENTICKY PROTOTYPE. Staci, aby sa lisili poctom TYPE PARAMETERS. Pri TEMPLATE INSTANCING, ak COMPILER automaticky detekuje vhodnu TEMPLATE, tak VZDY preferuje NON-TEMPLATE FUNCTION pred TEMPLATE FUNCTION, ak jej PARAMETERS sa zhoduju s PARAMETERS pouzitymi pri volani FUNCTION.
+!!! 51. CLASS TEMPLATES NEMOZU byt OVERLOADED.
+!!!!! 52. Pri deklaracii CLASS TEMPLATES sa SILNE NEDOPORUCUJE definovat METHODS v CPP FILES. C++ LINKER taketo METHODS NEDOKAZE bez EXPLICITNEHO INSTANCING vlozit do GENEROVANEHO OUTPUT suboru. Vysledkom je, ze LINKER NEVIE najst definicie METHOD TEMPLATES a hodi COMPILER ERROR.
+53. TEMPLATE INSTANTIATION je proces vytvarania CODE z TEMPLATES.
+54. TEMPLATE SPECIALIZATION je vytvorenie TEMPLATE CODE s uz substituovanymi TYPE PARAMETERS. TEMPLATE SPECIALIZATION je mozne vyuzit na implementaciu FUNCTIONS ci METHODS, ktore je mozne pre urcite typy TYPE PARAMETERS mozne implementovat optimalejsie ako su implementovane pomocou TEMPLATE.
+!!! 55. C++ generuje CODE iba tych TEMPLATE FUNCTIONS a TEMPLATE METHODS, ktore su v PROGRAME REALNE POUZITE. Ak napriklad TEMPLATE CLASS definuje 10 METHODS, no pre PARAMETER XXX PROGRAM pouziva iba 4 z nich, tak C++ vygeneruje CODE IBA pre tieto 4 METHODS a pre ostatnych 6 METHODS CODE NIE JE generovany.
+56. CLASSES, STRUCTURES, FUNCTIONS a METHODS ak su vytvorene z TEMPLATES s TYMI ISTYMI TYPE PARAMETERS su EKVIVALENTNE a to aj v pripade pouzitia TYPE ALIASES. Ak TYPE ALIASES refereruju na ten isty TYPE a tento sa pouzije pri TEMPLATE INSTANTIATION, tak vytvorene CLASSES, STRUCTURES, FUNCTIONS a METHODS su IDENTICKE.
+!!! 57. Ak je instancia CLASS TEMPLATE vytvorena pre BASE aj DERIVED CLASSES, tak NIE JE MOZNE VZAJOMNE PRETYPOVAT tieto 2 CLASSES, aj ked BASE a DERIVED CLASSES samozrejme pretypovat je mozne.
+58. C++ dokaze vykonava pre TEMPLATES iba SYNTAKTICKU a JEDNODUCHU SEMATICKU kontrolu. Kompletna kontrola je vykonavana az pri TEMPLATE INSTANTIATION, ked uz su konkretne TYPES dosadene za TYPE PARAMETERS zname.
+59. CLASS TEMPLATES mozu obsahovat nasledujuce MEMBERS.
+   A. VARIABLES.
+   B. CONSTANTS.
+   C. METHODS.
+   D. TYPE ALIASES.
+   E. STATIC VARIABLES.
+   F. STATIC CONSTANTS.
+   G. STATIC METHODS.
+   H. MEMBER TYPES.
+   I. MEMBER TEMPLATES (CLASS, STRUCTURE a FUNCTION TEMPLATES).
+60. TEMPLATE CLASSES a TEMPLATE STRUCTURES NEMOZU mat VIRTUAL METHODS ako TEMPLATE METHODS. Vyzadovalo by si to vyrazne zmeny na strane C++ LINKER, a preto C++ VIRTUAL TEMPLATE METHODS NEPODPORUJE.
+!!! 61. Aj ked TEMPLATE CLASSES a TEMPLATE STRUCTURES mozu mat NESTED CLASSES, silne sa odporuca definovat NESTED CLASS v TEMPLATE CLASS IBA ak NESTED CLASS vyzaduje VSETKY TYPE PARAMETERS z TEMPLATE CLASS. Inak to vedie k nutnosti definovat vsetky TYPE PARAMETERS pri kazdom pouziti NESTED CLASS co moze viest ku CODE BLOATING.
+62. FUNCTION TEMPLATES su FUNCTIONS a OPERATORS, ktore maju TYPE PARAMETERS.
+63. VARIADIC TEMPLATES su TEMPLATES, ktore maju variabilny pocet TYPE PARAMETERS.
+64. C++ podporuje definicie VARIADIC TEMPLATE CLASSES, VARIADIC TEMPLATE STRUCTURES, VARIADIC TEMPLATE METHODS a VARIADIC TEMPLATE FUNCTIONS.
+!!! 65. VARIADIC TEMPLATES sa v C++ spracovavaju pomocou RECURSION. Ta vyzaduje definovanie nasledujucich elementov.
+   A. Definovanie ELEMENTU (CLASS, STRUCTURE, METHOD, FUNCTION), ktory spracovava RECURSION FINAL STEP.
+   B. Definovanie ELEMENTU (CLASS, STRUCTURE, METHOD, FUNCTION), ktory spracovava RECURSION RECURSIVE STEP.
+   !!! C. Z ELEMENTU, ktory spracovava RECURSION RECURSIVE STEP je nutne REKURZIVNE volat ELEMENT, az kym nebude zavolany ELEMENT pre RECURSION FINAL STEP.
+   !!!!! D. Pocas vykonavania REKURZIE je postupne ODSTRANOVANY VZDY 1. TYPE PARAMETER, pricom ELEMENT (CLASS, STRUCTURE, METHOD, FUNCTION) tento TYPE PARAMETER spracuje pred vykonanim dalsej REKURZIE.
+   E. Proces pri ktorom sa v REKURZII odstranuje vzdy 1. TYPE PARAMETER sa nazyva TYPE PARAMETER PEEL OFF.
+!!! 66. VARIADIC TEMPLATES sa deklaruju pomocou KEYWORD [...]. KEYWORD [...] ma vo VARIADIC TEMPLATES 2 vyznamy.
+   A. Ak sa KEYWORD [...] nachadza NALAVO od TYPE PARAMETER NAME, tak reprezentuje DEKLARACIU TYPE PARAMETER PACK. TYPE PARAMETER PACK reprezentuje VARIABILNY POCET TYPE PARAMETERS danej VARIADIC TEMPLATE, ktore su zbalene do JEDNEHO NAME.
+   B. Ak sa KEYWORD [...] nachadza NAPRAVO od TYPE PARAMETER NAME, tak C++ TYPE PARAMETER PACK ROZBALI na jednotlive TYPE PARAMETERS do EXPRESSION [TYPE_PARAMETER_1,TYPE_PARAMETER_2,...,TYPE_PARAMETER_N], kde hodnoty 'TYPE_PARAMETER_X' su hodnotami TYPE PARAMETERS.
+67. Jednoduche rozbalenie TYPE PARAMETER PACK funguje nasledujucim sposobom.
+   A. Definuje sa VARIADIC TEMPLATE FUNCTION [template<typename...TItems> void XXX(TItems... Items)].
+   B. Definuje sa VARIADIC TEMPLATE FUNCTION [template<typename...TItems> void YYY(TItems... Items)].
+   C. FUNCTION XXX() obsahuje CODE [YYY(Items...)], ktorym sa vola FUNCTION YYY().
+   !!!!! D. Ak TYPE PARAMETER PACK [Items] obsahuje hodnoty (true,100,L"ABC"), C++ volanie FUNCTION YYY() zmeni na CODE [YYY<bool,int,wstring>(true,100,wstring(L"ABC"))].
+!!! 68. TYPE PARAMETER PACKS je mozne rozbalit AJ KED SU SUCASTOU EXPRESSIONS.
+   A. Definuje sa VARIADIC TEMPLATE FUNCTION [template<typename...TItems> void XXX(TItems... Items)].
+   B. Definuje sa VARIADIC TEMPLATE FUNCTION [template<typename...TItems> void YYY(TItems... Items)].
+   !!! C. FUNCTION XXX() obsahuje CODE [YYY((Items++)...)], ktorym sa vola FUNCTION YYY(), pricom sa jednotlive TYPE PARAMETER v TYPE PARAMETER PACK INKREMENTUJU.
+   !!!!! D. Ak TYPE PARAMETER PACK [Items] obsahuje hodnoty (10,20.2,30.4), C++ volanie FUNCTION YYY() zmeni na CODE [YYY<int,double,double>(11,21.2,31.4)].
+   !!!!! E. Z uvedeneho vyplyva, ze ak k rozbaleniu TYPE PARAMETER PACK dochadza v EXPRESSION, tak C++ VYKONA danu EXPRESSION pre KAZDY TYPE PARAMETER z TYPE PARAMETER PACK. To znaci, ze EXPRESSION [SOME_EXPRESSION(Items...)] C++ zmeni na CODE [SOME_EXPRESSION(TYPE_PARAMETER_1),SOME_EXPRESSION(TYPE_PARAMETER_2),...,SOME_EXPRESSION(TYPE_PARAMETER_N)].
+   !!!!! F. Ak sa v EXPRESSION pouzije aj nazov TYPE PARAMETER PACK, tak C++ ho rozbali na jednotlive TYPES, ktore TYPE PARAMETER PACK obsahuje. Napriklad EXPRESSION [(TTypeParameters) Items...] C++ zmeni na CODE [(TYPE_1) TYPE_PARAMETER_1,(TYPE_2) TYPE_PARAMETER_2,...,(TYPE_N) TYPE_PARAMETER_N].
+!!!!! 69. TYPE PARAMETER PACK je mozne rozbalit IBA v CODE, ktory umoznuje spracovat 'N' PARAMETERS. Nasledujuci zoznam uvadza priklady, kedy je rozbalenie TYPE PARAMETER PACK mozne vykonat.
+   A. FUNCTION ARGUMENT LIST.
+   B. TEMPLATE ARGUMENT LIST.
+   C. BASE SPECIFIER LIST.
+   D. BASE, alebo MEMBER INITIALIZER LIST.
+   E. INITIALIZER LIST.
+   F. OPERATOR [sizeof...]. OPERATOR [sizeof...] vracia pocet ITEMS v TYPE PARAMETER PACK.
+!!!!! 70. TYPE PARAMETER PACK NIE JE mozne rozbalit vzdy. Nasledujuci zoznam uvadza priklady, kedy je rozbalenie TYPE PARAMETER PACK NIE JE mozne vykonat.
+   A. Pri definicii VARIABLIES. Kedze TYPE PARAMETER PACK reprezentuje viacero VALUES, definovanie VARIABLE typu TYPE PARAMETER PACK by znamenalo vznik VIACERYCH VARIABLES, a preto to C++ nepovoluje.
+   B. Pri definicii FIELDS. Kedze TYPE PARAMETER PACK reprezentuje viacero VALUES, definovanie FIELD typu TYPE PARAMETER PACK by znamenalo vznik VIACERYCH FIELDS, a preto to C++ nepovoluje.
+   C. V RETURN VALUES. Kedze TYPE PARAMETER PACK reprezentuje viacero VALUES, definovanie RETURN VALUE typu TYPE PARAMETER PACK by znamenalo, ze FUNCTION ci METHOD by musela vratia VIACERO VALUES, co vsak v C++ NIE JE MOZNE.
+!!! 71. TYPE PARAMETER PACKS (napriklad [TTypes]) je aj bez ROZBALENIA mozne pouzit napriklad v nasledujucich situaciach.
+   !!! A. Na definiciu TYPE PARAMETERS TEMPLATES, ktore VARIADIC TEMPLATE vola. Napriklad CODE [SomeTemplateFunction<TTypes>(TypeParameters...)] C++ transformuje na CODE [SomeTemplateFunction<TYPE_1,TYPE_2,...,TYPE_N>(TYPE_PARAMETER_1,TYPE_PARAMETER_2,...,TYPE_PARAMETER_N)].
+   !!!!! B. Pri vykonavani CASTING. Napriklad CODE [SomeTemplateFunction((TTypes) TypeParameters)] C++ transformuje na CODE [SomeTemplateFunction((TYPE_1) TypeParameter_1,(TYPE_2) TypeParameter_2,...,(TYPE_N) TypeParameter_N)]. To znaci, ze KAZDY TYPE PARAMETER z TYPE PARAMETER je pretypovany na SVOJ VLASTNY TYPE (co samozrejme nie je potrebne) a nasledne je zavolana VARIADIC TEMPLATE FUNCTION SomeTemplateFunction().
+72. Standardna implementacia VARIADIC TEMPLATE FUNCTIONS/METHODS sa sklada z nasledujucich ELEMENTOV.
+   A. Implementacia NON-TEMPLATE FUNCTION/METHOD, ktora nema TYPE PARAMETERS. Tato NON-TEMPLATE FUNCTION/METHOD reprezentuje RECURSION FINAL STEP.
+   B. Implementacia VARIADIC TEMPLATE FUNCTION/METHOD, ktora ma 1 TYPE PARAMETER a 1 TYPE PARAMETER PACK. TYPE PARAMETER reprezentuje rozbaleny TYPE PARAMETER, ktory bol PEELED OFF, zatial co TYPE PARAMETER PACK reprezentuje ostatne TYPE PARAMETERS, ktore este neboli rozbalene.
+   !!! C. VARIADIC TEMPLATE FUNCTION/METHOD musi vo svojom CODE REKURZIVNE volat samu seba, az kym nie je zavolana NON-TEMPLATE FUNCTION/METHOD, ktora REUKURZIU ukonci.
+73. Standardna implementacia VARIADIC TEMPLATE CLASS/STRUCTURES sa sklada z nasledujucich ELEMENTOV.
+   A. Implementacia VARIADIC TEMPLATE CLASS/STRUCTURE, ktora TYPE PARAMETER PACK. Tato TEMPLATE CLASS/STRUCTURE okrem definicie samotnej VARIADIC TEMPLATE reprezentuje aj RECURSION FINAL STEP.
+   !!! B. Implementacia VARIADIC TEMPLATE CLASS/STRUCTURE SPECIALIZATION, ktora ma ma 1 TYPE PARAMETER a 1 TYPE PARAMETER PACK. TYPE PARAMETER reprezentuje rozbaleny TYPE PARAMETER, ktory bol PEELED OFF, zatial co TYPE PARAMETER PACK reprezentuje ostatne TYPE PARAMETERS, ktore este neboli rozbalene.
+   !!!!! C. VARIADIC TEMPLATE CLASS/STRUCTURE SPECIALIZATION by zaroven MUSI BYT DERIVED z VARIADIC TEMPLATE CLASS/STRUCTURE definovanej v 1. kroku. To umozni METHODS tejto SPECIALIZATION spracovat jednotlive TYPE PARAMETERS z TYPE PARAMETER PACK.
+   !!!!! D. VARIADIC TEMPLATE CLASS/STRUCTURE SPECIALIZATION by zaroven MALA MAT FIELD typu TYPE PARAMETER. Tento FIELD sluzi na ulozenie uz rozbaleneho TYPE PARAMETER z TYPE PARAMETER PACK. BASE CLASSES/STRUCTURES potom budu obsahovat ostatne TYPE PARAMETERS z TYPE PARAMETER PACK.
+!!! 74. Ak METHOD vo VARIADIC CLASS/STRUCTURE chce spracovat vsetky TYPE PARAMETERS z TYPE PARAMETER PACK, musi vykonat nasledujuce kroky.
+   A. Vo VARIADIC TEMPLATE CLASS/STRUCTURE je nutne definovat tuto METHOD, ktora spracovava RECURSION FINAL STEP.
+   !!! B. Vo VARIADIC TEMPLATE CLASS/STRUCTURE SPECIALIZATION je nutne definovat tuto METHOD, ktora spracovava rozbaleny TYPE PARAMETER a REKURZIVNE vola SAMU SEBA pre svoje BASE CLASSES/STRUCTURES.
+   !!! C. Postupnym volanim METHOD pre vsetky BASE CLASSES/STRUCTURES moze METHOD spracovat VSETKY rozbalene TYPE PARAMETERS z TYPE PARAMETER PACK.
+   D. Na konci REKURZIE sa vola METHOD z VARIADIC TEMPLATE CLASS/STRUCTURE, ktora REKURZIU ukonci.
+75. VARIADIC TEMPLATE FUNCTIONS je mozne vyuzit na volanie inych FUNCTIONS, ktorych pocet PARAMETERS nie je znamy. Pomocou TEMPLATE FUNCTION forward<TType>() a pouzitia MOVE SEMANTICS je mozne dosiahnut to, ze VALUES sa pri volani inych FUNCTIONS NEBUDU KOPIROVAT, ale budu MOVED.
+76. C++ umoznuje definovat TEMPLATE ALIASES 2 sposobmi.
+   A. Pouzitim KEYWORD [typedef].
+   B. Pouzitim KEYWORD [using]. Tato SYNTAX bola pridana v C++ 11.
+77. C++ 11 umoznuje pomocou KEYWORD [using] deklarovat TYPE ALIASES. Pre TYPE ALIASES platia nasledujuce vlastnosti.
+   A. SYNTAX TYPE ALIAS je [template<typename T1,...,typename TN> using Alias=typename TEMPLATE<T1,...,TN>].
+   !!! B. TYPE ALIASES NIE su deklaraciou novych TEMPLATES, iba vytvorenim ALIAS pre TYPES generovane z existujucich TEMPLATES.
+   C. TYPE ALIASES mozu byt deklarovane iba v TYPE SCOPE a GLOBAL SCOPE. Nemozu byt vsak deklarovane v telach FUNCTIONS.
+//-----------------------------------------------------------------------------

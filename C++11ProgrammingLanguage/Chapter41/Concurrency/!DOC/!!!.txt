@@ -1,0 +1,118 @@
+//-------------------------------------------------------------------------------------------------------
+1. Solution demonstruje CONCURRENCY v C++.
+2. TASK reprezentuje logicku entitu, ktora moze bezat paralelne voci inym TASKS.
+3. THREAD je SYSTEM LEVEL reprezentacia TASK.
+4. TASKS v C++ bezia v ramci 1 PROCESS a zdielaju spolocny ADDRESS SPACE.
+5. CONCURRENCY v C++ je realizovana nasledujucimi castami.
+   A. MEMORY MODEL definuje pravidla, ktore C++ dodrzuje pri pristupe k MEMORY.
+   B. Podpora C++ pre LOCK-FREE PROGRAMMING.
+   C. THREAD LIBRARY pre realizaciu LOW-LEVEL CONCURRENCY PROGRAMMING. Sem patria CLASSES [thread], CLASS [condition_variable] a CLASS [mutex].
+   D. TASK SUPPORT LIBRARY pre realizaciu HIGH-LEVEL CONCURRENCY PROGRAMMING. Sem patria CLASSES [future<T>], CLASS [promise<T>], CLASS [packaged_task<R,...ARGS>] a FUNCTION async().
+!!! 6. C++ MEMORY MODEL definuje pojem MEMORY LOCATION, pricom GARANTUJE, ze pristup k 2 rozdielnym MEMORY LOCATIONS z 2 roznych THREADS je VZDY VZAJOMNE NEZAVISLY a NEOVPLYVNUJUCI sa.
+!!! 7. MEMORY LOCATION je definovana nasledovne.
+   A. VARIABLE ARITHMETIC TYPE je VZDY povazovana za MEMORY LOCATION.
+   B. POINTER je povazovana za MEMORY LOCATION.
+   !!! C. BIT FIELDS v STRUCTURE, ktore za sebou nasleduju pricom ZIADEN BIT FIELD NEMA dlzku 0 je povazovana za MEMORY LOCATION. To znamena, ze BIT FIELDS v ramci 1 MEMORY LOCATIONS sa VZAJOMNE MOZU OVPLYVNOVAT, a preto pristup k nim MUSI byt SYNCHRONIZED.
+!!! 8. Z definicie MEMORY LOCATION vyplyvaju nasledujuce obmedzenia.
+   A. MULTI-WORDS STRUCTURES obsahuju VIACERO MEMORY LOCATIONS a preto pri pristupe z viacerych THREADS vyzaduju explicitnu SYNCHRONIZATION.
+   !!!!! B. BIT FIELDS, ktore nasledujucu za sebou pricom ziaden z nich NEMA dlzku 0 su povazovane za 1 MEMORY LOCATION. Garancia, ze pristup k 2 rozdielnym MEMORY LOCATIONS z 2 roznych THREADS je VZDY VZAJOMNE NEZAVISLY a NEOVPLYVNUJUCI sa vsak NEGARANTUJE, ze v RAMCI tejto 1 MEMORY LOCATION nedojde k CHYBNEJ MODIFIKACIE BIT FIELDS. Preto je pristup k jednotlivym BIT FIELDS, ktore lezia v 1 MEMORY LOCATION NUTNE SYNCHRONIZOVAT.
+!!!!! 9. Garancia nezavisleho pristupu k k 2 rozdielnym MEMORY LOCATIONS z 2 roznych THREADS riesi problem, ktory by mohol vzniknut, ak by LINKER napriklad umiestnil 2 VARIABLES o dlzke 1 BYTE pristupne z viacerych THREADS do toho isteho WORD. V tomto pripade by pri MULTITHREADING doslo k problemu, pretoze CPU pri pristupe k MEMORY pracuje na urovni WORDS. Ak by LINKER skutocne umiestnil 2 VARIABLES pristupne z viacerych THREADS do 1 WORD, pri citani a zapise tychto VARIABLES z 2 THREAD by doslo k NEKONZISTENCII. Garancia nezavislosti pristupu k rozlicnym MEMORY LOCATIONS tento problem ELIMINUJE. Popis problemu je rozpisany v nasledujucich krokoch.
+   A. V PROGRAME existuju GLOBAL VARIABLES 'A' a 'B' typu CHAR.
+   !!! B. Ak by NEEXISTOVALA garancia nezavisleho pristupu k k 2 rozdielnym MEMORY LOCATIONS z 2 roznych THREADS, potom by LINKER mohol umiestnit tieto VARIABLES do TOHO ISTEHO WORD v MEMORY.
+   !!!!! C. Problem nastava ak by THREAD 1 nacital a modifikoval VARIABLE 'A' a ZAROVEN v TOM ISTOM CASE by THREAD 2 nacital a modifikoval VARIABLE 'B'. Kedze obe VARIABLES sa nachadzaju v TOM ISTOM WORD, tak by sa mohlo stat, ze THREAD 1 by nacital WORD aby modifikoval VARIABLE 'A', zatial co THREAD 2 by nacital WORD aby modifikoval VARIABLE 'B'. Kedze CPU vie citat z MEMORY data iba po WORDS, tak by THREAD 1 mohol nechcene okrem modifikacie VARIABLE 'A' modifikovat aj VARIABLE 'B' a THREAD 2 mohol nechcene okrem modifikacie VARIABLE 'B' modifikovat aj VARIABLE 'A'.
+   D. Garancia nezavisleho pristupu k k 2 rozdielnym MEMORY LOCATIONS z 2 roznych THREADS tento problem ELIMINUJE.
+!!! 10. C++ NEGARANTUJE poradie v akom budu v inicializovane VARIABLES, ak inicializacia tychto 2 VARIABLES vzajomne na sebe nezavisi. COMPILER moze vykonat INSTRUCTION REORDERING, ked je poradie takychto inicializacii LUBOVOLNE PREHODENE podla optimalizacnych potrieb COMPILER. Ak tieto VARIABLES su pouzivane na riadenie behu PROGRAMU v MULTI-THREAD PROGRAME, potom je NUTNE pre pristup k tymto VARIABLES pouzit SYNCHRONIZATION.
+!!! 11. Nekonzistentnosti pri pristupe k MEMORY moze sposobit aj CACHING. V tomto pripade existancia CACHES moze vytvorit situaciu, ked jeden logicky CPU bude pri pristupe k TEJ ISTEJ MEMORY LOCATION pracovat s inymi hodnotami ako iny logicky CPU.
+12. Jednym z moznych rieseni nekonzistentnosti pri pristupe k MEMORY je SEQUENTIAL MEMORY ORDERING. SEQUENTIAL MEMORY ORDERING je mechanizmus, ktory zabezpecuje, ze INSTRUCTIONS budu vykonavane VZDY v poradi v akom su zapisane v PROGRAME. SEQUENTIAL MEMORY ORDERING NEZNAMENA, ze COMPILER nemoze prehodit poradie INSTRUCTIONS, no znamena, ze ho musi realizovat tak, aby to INE THREADS nemohli postrehnut. To znamena, ze z inych THREADS musi CODE vyzerat, akoby bol VZDY vykonavany SEKVENCNE. Problem SEQUENTIAL MEMORY ORDERING je nutnost realizovat LOCKING, ktory je casovo narocny. Preto tento model C++ NEPOUZIVA BY-DEFAULT, no je ho mozne pomocou explicitnych LOCKS vyziadat.
+!!! 13. C++ NEGARANTUJE ATOMICKY pristup ako k PRIMITIVE TYPES ako [int] ci [bool]. Aj pristup k VARIABLES tychto TYPES MUSI byt SYNCHRONIZED.
+14. Atomicke operacie su v C++ realizovane pomocou CLASS [atomic<T>]. CLASS [atomic<T>] ma nasledujuce MEMBERS.
+   A. CONSTRUCTOR vytvara instanciu CLASS [atomic<T>].
+   B. OPERATOR= THREAD SAFE sposobom priradzuje VALUE TYPE 'T' do instancie CLASS [atomic<T>].
+   C. OPERATOR() THREAD SAFE sposobom vracia kopiu VALUE TYPE 'T'.
+   D. OPERATOR++ THREAD SAFE sposobom vykonava OPERATOR++ nad VALUE TYPE 'T'.
+   E. OPERATOR-- THREAD SAFE sposobom vykonava OPERATOR-- nad VALUE TYPE 'T'.
+   F. OPERATOR&= THREAD SAFE sposobom vykonava OPERATOR&= nad VALUE TYPE 'T'.
+   G. OPERATOR|= THREAD SAFE sposobom vykonava OPERATOR|= nad VALUE TYPE 'T'.
+   H. OPERATOR^= THREAD SAFE sposobom vykonava OPERATOR^= nad VALUE TYPE 'T'.
+   I. METHOD atomic<T>::fetch_add() THREAD SAFE sposobom vykonava OPERATOR++ nad VALUE TYPE 'T'.
+   J. METHOD atomic<T>::fetch_sub() THREAD SAFE sposobom vykonava OPERATOR-- nad VALUE TYPE 'T'.
+   K. METHOD atomic<T>::fetch_and() THREAD SAFE sposobom vykonava OPERATOR&= nad VALUE TYPE 'T'.
+   L. METHOD atomic<T>::fetch_or() THREAD SAFE sposobom vykonava OPERATOR|= nad VALUE TYPE 'T'.
+   M. METHOD atomic<T>::fetch_xor() THREAD SAFE sposobom vykonava OPERATOR^= nad VALUE TYPE 'T'.
+   !!! N. METHOD atomic<T>::load() THREAD SAFE sposobom nacitava a vracia kopiu VALUE TYPE 'T'.
+   !!! O. METHOD atomic<T>::store() THREAD SAFE sposobom uklada VALUE TYPE 'T' do instancie CLASS [atomic<T>].
+   !!! P. METHOD atomic<T>::exchange() THREAD SAFE sposobom uklada VALUE TYPE 'T' do instancie CLASS [atomic<T>] a vracia POVODNOU hondotu, ktora bola v instancii CLASS [atomic<T>] ulozena.
+   !!! Q. METHOD atomic<T>::compare_exchange_weak() THREAD SAFE sposobom vykonava operaciu COMPARE AND SWAP, pri ktorej sa porovnava CURRENT VALUE instancie CLASS [atomic<T>] so zadanou a AK SU ZHODNE, tak CURRENT VALUE instancie CLASS [atomic<T>] sa nahradi NOVOU VALUE, ktora bola prenesena ako PARAMETER METHOD. METHOD vracia ako RETURN VALUE TRUE, ak sa nastavenie VARIABLE podarilo, inak FALSE. V pripade FALSE sa PARAMETER obsahujuci VALUE, ktora sa pouzila na porovnanie. RETURN VALUE pri tejto verzii NEMUSI byt PRESNA a moze vracat FALSE, aj ked instancia CLASS [atomic<T>] obsahovala pozadovanu hondotu. Je to preto, aby METHOD bola RYCHLEJSIA ako METHOD atomic<T>::compare_exchange_strong().
+   !!!!! R. METHOD atomic<T>::compare_exchange_strong() THREAD SAFE sposobom vykonava operaciu COMPARE AND SWAP, pri ktorej sa porovnava CURRENT VALUE instancie CLASS [atomic<T>] so zadanou a AK SU ZHODNE, tak CURRENT VALUE instancie CLASS [atomic<T>] sa nahradi NOVOU VALUE, ktora bola prenesena ako PARAMETER METHOD. METHOD vracia ako RETURN VALUE TRUE, ak sa nastavenie VARIABLE podarilo, inak FALSE. V pripade FALSE sa PARAMETER obsahujuci VALUE, ktora sa pouzila na porovnanie. RETURN VALUE je VZDY PRESNA.
+   S. METHOD atomic<T>::is_lock_free() vracia informaciu ci METHODS TYPE 'T' su LOCK-FREE.
+15. LIBRARY [<atomic>] definuje nasledujuce FUNCTIONS, ktore umoznuju pracu s CLASS [atomic<T>]. Sluzia pre jednoduchsie portovanie C PROGRAMS do C++.
+   A. FUNCTION atomic_is_lock_free() vracia informaciu ci METHODS CLASS [atomic<T>] su LOCK-FREE.
+   !!! B. FUNCTION atomic_load() THREAD SAFE sposobom nacitava a vracia hodnotu instancie CLASS [atomic<T>].
+   !!! C. FUNCTION atomic_load_explicit() THREAD SAFE sposobom nacitava a vracia hodnotu instancie CLASS [atomic<T>]. FUNCTION umoznuje nastavit sposob aplikacie MEMORY BARRIERS.
+   !!! D. FUNCTION atomic_load() THREAD SAFE sposobom uklada hodnotu do instancie CLASS [atomic<T>].
+   !!! E. FUNCTION atomic_load_explicit() THREAD SAFE uklada hodnotu do instancie CLASS [atomic<T>]. FUNCTION umoznuje nastavit sposob aplikacie MEMORY BARRIERS.
+   !!! F. FUNCTION atomic_exchange() THREAD SAFE sposobom uklada hodnotu do instancie CLASS [atomic<T>] a vracia POVODNOU hondotu, ktora bola v instancii CLASS [atomic<T>] ulozena.
+   !!! G. FUNCTION atomic_exchange_explicit() THREAD SAFE sposobom uklada hodnotu do instancie CLASS [atomic<T>] a vracia POVODNOU hondotu, ktora bola v instancii CLASS [atomic<T>] ulozena. FUNCTION umoznuje nastavit sposob aplikacie MEMORY BARRIERS.
+   !!! H. FUNCTION atomic_compare_exchange_weak() THREAD SAFE sposobom vykonava operaciu COMPARE AND SWAP, pri ktorej sa porovnava CURRENT VALUE instancie CLASS [atomic<T>] so zadanou a AK SU ZHODNE, tak CURRENT VALUE instancie CLASS [atomic<T>] sa nahradi NOVOU VALUE, ktora bola prenesena ako PARAMETER FUNCTION. FUNCTION vracia ako RETURN VALUE TRUE, ak sa nastavenie VARIABLE podarilo, inak FALSE. V pripade FALSE sa PARAMETER obsahujuci VALUE, ktora sa pouzila na porovnanie. RETURN VALUE pri tejto verzii NEMUSI byt PRESNA a moze vracat FALSE, aj ked instancia CLASS [atomic<T>] obsahovala pozadovanu hondotu. Je to preto, aby FUNCTION bola RYCHLEJSIA ako FUNCTION atomic<T>::atomic_compare_exchange_strong().
+   !!! I. FUNCTION atomic_compare_exchange_weak_explicit() THREAD SAFE sposobom vykonava operaciu COMPARE AND SWAP, pri ktorej sa porovnava CURRENT VALUE instancie CLASS [atomic<T>] so zadanou a AK SU ZHODNE, tak CURRENT VALUE instancie CLASS [atomic<T>] sa nahradi NOVOU VALUE, ktora bola prenesena ako PARAMETER FUNCTION. FUNCTION vracia ako RETURN VALUE TRUE, ak sa nastavenie VARIABLE podarilo, inak FALSE. V pripade FALSE sa PARAMETER obsahujuci VALUE, ktora sa pouzila na porovnanie. RETURN VALUE pri tejto verzii NEMUSI byt PRESNA a moze vracat FALSE, aj ked instancia CLASS [atomic<T>] obsahovala pozadovanu hondotu. Je to preto, aby FUNCTION bola RYCHLEJSIA ako FUNCTION atomic<T>::atomic_compare_exchange_strong(). FUNCTION umoznuje nastavit sposob aplikacie MEMORY BARRIERS.
+   !!!!! J. FUNCTION atomic_compare_exchange_strong() THREAD SAFE sposobom vykonava operaciu COMPARE AND SWAP, pri ktorej sa porovnava CURRENT VALUE instancie CLASS [atomic<T>] so zadanou a AK SU ZHODNE, tak CURRENT VALUE instancie CLASS [atomic<T>] sa nahradi NOVOU VALUE, ktora bola prenesena ako PARAMETER FUNCTION. FUNCTION vracia ako RETURN VALUE TRUE, ak sa nastavenie VARIABLE podarilo, inak FALSE. V pripade FALSE sa PARAMETER obsahujuci VALUE, ktora sa pouzila na porovnanie. RETURN VALUE je VZDY PRESNA.
+   !!!!! K. FUNCTION atomic_compare_exchange_strong_explicit() THREAD SAFE sposobom vykonava operaciu COMPARE AND SWAP, pri ktorej sa porovnava CURRENT VALUE instancie CLASS [atomic<T>] so zadanou a AK SU ZHODNE, tak CURRENT VALUE instancie CLASS [atomic<T>] sa nahradi NOVOU VALUE, ktora bola prenesena ako PARAMETER FUNCTION. FUNCTION vracia ako RETURN VALUE TRUE, ak sa nastavenie VARIABLE podarilo, inak FALSE. V pripade FALSE sa PARAMETER obsahujuci VALUE, ktora sa pouzila na porovnanie. RETURN VALUE je VZDY PRESNA. FUNCTION umoznuje nastavit sposob aplikacie MEMORY BARRIERS.
+   L. FUNCTION atomic_fetch_add() THREAD SAFE sposobom vykonava OPERATOR++ nad instanciou CLASS [atomic<T>].
+   M. FUNCTION atomic_fetch_add_explicit() THREAD SAFE sposobom vykonava OPERATOR++ nad instanciou CLASS [atomic<T>]. FUNCTION umoznuje nastavit sposob aplikacie MEMORY BARRIERS.
+   N. FUNCTION atomic_fetch_sub() THREAD SAFE sposobom vykonava OPERATOR-- nad instanciou CLASS [atomic<T>].
+   O. FUNCTION atomic_fetch_sub_explicit() THREAD SAFE sposobom vykonava OPERATOR-- nad instanciou CLASS [atomic<T>]. FUNCTION umoznuje nastavit sposob aplikacie MEMORY BARRIERS.
+   P. FUNCTION atomic_fetch_and() THREAD SAFE sposobom vykonava OPERATOR&= nad instanciou CLASS [atomic<T>].
+   Q. FUNCTION atomic_fetch_and_explicit() THREAD SAFE sposobom vykonava OPERATOR&= nad instanciou CLASS [atomic<T>]. FUNCTION umoznuje nastavit sposob aplikacie MEMORY BARRIERS.
+   R. FUNCTION atomic_fetch_or() THREAD SAFE sposobom vykonava OPERATOR|= nad instanciou CLASS [atomic<T>].
+   S. FUNCTION atomic_fetch_or_explicit() THREAD SAFE sposobom vykonava OPERATOR|= nad instanciou CLASS [atomic<T>]. FUNCTION umoznuje nastavit sposob aplikacie MEMORY BARRIERS.
+   T. FUNCTION atomic_fetch_xor() THREAD SAFE sposobom vykonava OPERATOR^= nad instanciou CLASS [atomic<T>].
+   U. FUNCTION atomic_fetch_xor_explicit() THREAD SAFE sposobom vykonava OPERATOR^= nad instanciou CLASS [atomic<T>]. FUNCTION umoznuje nastavit sposob aplikacie MEMORY BARRIERS.
+   V. FUNCTION atomic_init() inicializuje instanciu CLASS [atomic<T>].
+   W. FUNCTION atomic_thread_fence() vlozi MEMORY BARRIER do CODE. MEMORY BARRIER je implementovana na urovni CPU INSTRUCTIONS.
+   X. FUNCTION atomic_signal_fence() vlozi MEMORY BARRIER do CODE. MEMORY BARRIER je implementovana IBA na urovni vypnutia COMPILER OPTIMALIZATIONS, pricom sa vsak do CODE NEVLOZIA specializovane CPU INSTRUCTIONS vykonavaju MEMORY BARRIER.
+16. CLASS [atomic<T>] z LIBRARY [<atomic>] umonzuje implementaciu LOCK-FREE ALGORITHMS. Pre CLASS [atomic<T>] platia nasledujuce vlastnosti.
+   !!! A. EMPTY CONSTRUCTOR NEINICIALIZUJE insanciu CLASS [atomic<T>] a to VRATANE INTERNAL LOCK. To znaci, ze instanciu CLASS [atomic<T>] NIE JE mozne pouzit a je NUTNE zavolat FUNCTION atomic_init(), aby instanciu CLASS [atomic<T>] inicializovala.
+   !!!!! B. METHODS CLASS [atomic<T>] sluzia ako MEMORY BARRIERS. To znaci, ze CODE pred a po volani METHODS CLASS [atomic<T>] je ZACHOVANE.
+   C. CLASS [atomic<T>] obsahuje OVERLOADED verzie METHODS pre VOLATILE a NON-VOLATILE instancie CLASS [atomic<T>].
+   D. CLASS [atomic<T>] ma SPECIALIZATIONS pre POINTERS, INTEGER TYPES a TYPE BOOL.
+!!! 17. CLASS [atomic<T>] moze byt pouzita IBA pre TYPES, ktore tu TRIVIALLY COPYABLE. To znaci, ze TYPE NESMIE mat CUSTOM COPY OPERATIONS a MUSI mat DEFAULT CONSTRUCTOR.
+!!!!! 18. Pre NON-PRIMITIVE TYPES velkej dlzky (vacsej ako POINTER SIZE) je CLASS [atomic<T>] implementovana s vyuzitim LOCK. To znaci, ze pre tieto TYPES pristup k datam zabalenym v instancii CLASS [atomic<T>] NIE JE LOCK FREE.
+!!! 19. C++ standard NEVYZADUJE, aby implementacia CLASS [atomic<T>] bola LOCK FREE. Pre STRUCTURES VACSIE ako je POINTER SIZE implementacia takmer vzdy pouziva LOCKS, no ani pre PRIMITIVE TYPES standard NEVYZADUJE LOCK FREE implementaciu. Vacsina implementacii CLASS [atomic<T>] vsak je LOCK FREE pre TYPES, ktore su kratsie ako POINTER SIZE.
+20. ENUM [memory_order] sluzi na definovanie sposobu ako COMPILER a CPU budu vykonavat REORDERING pristupu k MEMORY (umiestnovat MEMORY BARRIERS) pri volani METHOD CLASS [atomic<T>] a FUNCTIONS atomic_*_explicit(). ENUM ma nasledujuce VALUES.
+   !!! A. VALUE [memory_order_relaxed] NEVKLADA do CODE ziadnu MEMORY BARRIER a takisto NEBRANI COMPILER, aby vykonaval MEMORY ACCESS REORDERING OPTIMALIZATIONS. To znamena, ze ZIADNA OCHRANA pred REORDERING sa NEVYKONAVA, aj ked ATOMICITA OPERACII pri pouzivani CLASS [atomic<T>] je GARANTOVANA. VALUE ma vyznam vtedy, ak instancia CLASS [atomic<T>] sa POUZIVA iba na zabezpecenie ATOMICITY, no NEPOUZIVA sa na riadenie CODE.
+   B. VALUE [memory_order_consume] ZABRANUJE COMPILER vo vykonavani MEMORY ACCESS REORDERING OPTIMALIZATIONS, avsak do CODE NEVKLADA MEMORY BARRIERS. VALUE zabezpecuje, ze ZIADNE LOAD OPERATIONS NEMOZU byt premiestnene COMPILER pred tuto LOAD OPERATION.
+   C. VALUE [memory_order_acquire] ZABRANUJE COMPILER vo vykonavani MEMORY ACCESS REORDERING OPTIMALIZATIONS, avsak do CODE NEVKLADA MEMORY BARRIERS. VALUE zabezpecuje, ze ZIADNE MEMORY ACCESS OPERATIONS NEMOZU byt premiestnene COMPILER pred tuto LOAD OPERATION.
+   D. VALUE [memory_order_release] ZABRANUJE COMPILER vo vykonavani MEMORY ACCESS REORDERING OPTIMALIZATIONS, avsak do CODE NEVKLADA MEMORY BARRIERS. VALUE zabezpecuje, ze ZIADNE MEMORY ACCESS OPERATIONS NEMOZU byt premiestnene COMPILER za tuto STORE OPERATION.
+   E. VALUE [memory_order_acq_rel] ZABRANUJE COMPILER vo vykonavani MEMORY ACCESS REORDERING OPTIMALIZATIONS, avsak do CODE NEVKLADA MEMORY BARRIERS. VALUE zabezpecuje, ze ZIADNE MEMORY ACCESS OPERATIONS NEMOZU byt premiestnene COMPILER pred tuto LOAD OPERATION a ZIADNE MEMORY ACCESS OPERATIONS NEMOZU byt premiestnene COMPILER za touto STORE OPERATION.
+   !!! F. VALUE [memory_order_seq_cst] ZABRANUJE COMPILER vo vykonavani MEMORY ACCESS REORDERING OPTIMALIZATIONS pricom do do CODE VKLADA MEMORY BARRIERS. VALUE zabezpecuje, ze ZIADNE MEMORY ACCESS OPERATIONS NEMOZU byt premiestnene COMPILER pred tuto LOAD OPERATION a ZIADNE MEMORY ACCESS OPERATIONS NEMOZU byt premiestnene COMPILER za tuto STORE OPERATION. Je to DEFAULT VALUE pre verzie METHODS a FUNCTIONS, ktore nemaju definovany PARAMETER TYPE [memory_order].
+21. C++ ATTRIBUTE [[carries_dependency]] umoznuje COMPILER, aby zvoleny MEMORY ORDER definovany ENUM [memory_order] preniesol z CALLED FUNCTION do CALLER. To umoznuje COMPILER odburat zbytocne MEMORY FENCES, ktore pri volani FUNCTION standardne generuje a tak je mozne optimalizovat CODE na vyssiu rychlost.
+!!!!! 22. LOCK FREE ALGORITHMS ako napriklad pridavanie ITEMS do LOCK FREE LIST mozu byt vystavene ABA PROBLEM. Tento problem sa vyskytuje pri pouziti METHOD atomic<T>::compare_exchange_weak() a METHOD atomic<T>::compare_exchange_strong(), ktore sa pouzivaju pri implementacii LOCK FREE ALGORITHMS. ABA PROBLEM pri pridavani ITEM do LOCK FREE LIST je popisany v nasledujucich krokoch.
+   A. THREAD 1 a THREAD 2 chcu vlozit novy ITEM 'A' do LIST.
+   B. THREAD 1 a THREAD 2 si ulozia referenciu na ITEM 'A' do svojich pomocnych VARIABLES.
+   C. THREAD 2 zavola METHOD atomic<LIST_HEAD>::compare_exchange_weak(), alebo METHOD atomic<LIST_HEAD>::compare_exchange_strong().
+   !!! D. Kedze THREAD 1 NEZMENI LIST_HEAD, tak operacia prebehne USPESNE a LIST_HEAD je nastaveny na novu hodnotu.
+   !!!!! E. THREAD 2 ZNOVA sa pokusi vlozit ITEM 'A' do LIST. Toto moze nastat napriklad vtedy ak sa pouzivaju tie iste REFERENCES na LIST ITEMS, ale sa jednoducho vlozi 2 krat ten isty ITEM 'A' do LIST.
+   F. THREAD 2 uspesne zavola METHOD atomic<LIST_HEAD>::compare_exchange_weak(), alebo METHOD atomic<LIST_HEAD>::compare_exchange_strong() a znova LIST 'A' uspesne vlozi do LIST, pricom sa zmeni hodnota LIST_HEAD.
+   !!!!! G. Ak teraz THREAD 1 vykona METHOD atomic<LIST_HEAD>::compare_exchange_weak(), alebo METHOD atomic<LIST_HEAD>::compare_exchange_strong(), tak METHOD NIE JE SCHOPNA DETEKOVAT, ze LIST bol zmeneny 2 KRAT. A novovlozeny ITEM bude mat REFERENCIU na NEXT odkazujucu na NESPRAVNY ITEM.
+!!! 23. FUNCTION call_once() reprezentuje implementaciu DOUBLE CHECKED LOCKING ALGORITHM. DOUBLE CHECKED LOCKING ALGORITHM riesi problem ako inicializovat VARIABLE THREAD SAFE sposobom bez toho, aby pri pouziti VARIABLE bolo neustale nutne pouzit LOCK na zistenie ci VARIABLE uz bola inicializovana. Kedze VARIABLE moze byt inicializovana iba RAZ, opakovane volanie LOCK na uz inicializovanej VARIABLE je zbytocny PERFORMANCE HIT. DOUBLE CHECKED LOCKING ALGORITHM je realizovany nasledujucim sposobom.
+   A. Pouzije sa instancia CLASS [atomic<bool>] na testovanie ci VARIABLE uz bola inicializovana. Kedze sa pouzivat CLASS [atomic<bool>], pristup je LOCK FREE.
+   B. Pri KAZDOM pristupe k VARIABLE je nutne skontrolovat ci uz VARIABLE bola inicializovana. To sa vykona kontrolou hodnoty instancia CLASS [atomic<bool>]. Ak je na TRUE, VARIABLE bola inicializovana a je ju mozne pouzit. Kedze sa pouzila instancia CLASS [atomic<bool>], tak NEDOSLO k LOCKING.
+   C. V pripade, ze VARIABLE este NEBOLA INICIALIZOVANA, je ju nutne inicializovat. Preto sa pouzije LOCK, mapriklad s vyuzitim CLASS [mutex]. LOCK sa pouziva IBA TERAZ, ked sa detekovalo, ze VARIABLE este NEBOLA INICIALIZOVANA a NIE pri KAZDOM pristupe k VARIABLE.
+   !!!!! D. V ramci LOCK, pred samotnou inicializaciou je NUTNE ZNOVA vykonat kontrolu instancie CLASS [atomic<bool>], pretoze v case medzi 1. kontrolou a ziskanim LOCK mohol INY THREAD danu VARIABLE INICIALIZOVAT. Preto sa vykona 2. kontrola a IBA ak VARIABLE je NEINICIALIZOVANA, tak sa INICIALIZUJE.
+24. CLASS [atomic_flag] repreznetuje LOCK FREE implementaciu BIT FLAG. CLASS [atomic_flag] ma nasledujuce MEMBERS.
+   A. CONSTRUCTOR vytvara instanciu CLASS [atomic_flag].
+   B. OPERATOR= THREAD SAFE sposobom priradzuje BOOL VALUE TYPE do instancie CLASS [atomic_flag].
+   C. METHOD atomic_flag::clear() nastavuje LOCK FREE sposobom FLAG na FALSE.
+   D. METHOD atomic_flag::test_and_set() nastavuje LOCK FREE sposobom FLAG na TRUE a vracia povodnu hodnotu.
+   E. MACRO ATOMIC_FLAG_INIT obsahuje FALSE hodnotu pre CLASS [atomic_flag].
+25. C++ definuje zoznam FUNCTIONS, ktorymi je v C mozne pracovat s CLASS [atomic_flag].
+   A. FUNCTION atomic_flag_clear() nastavuje LOCK FREE sposobom FLAG na FALSE.
+   B. FUNCTION atomic_flag_clear_explicit() nastavuje LOCK FREE sposobom FLAG na FALSE. FUNCTION umoznuje nastavit MEMORY BARRIER pomocou ENUM [memory_order].
+   C. FUNCTION atomic_flag_test_and_set() nastavuje LOCK FREE sposobom FLAG na TRUE a vracia povodnu hodnotu.
+   D. FUNCTION atomic_flag_test_and_set_explicit() nastavuje LOCK FREE sposobom FLAG na TRUE a vracia povodnu hodnotu. FUNCTION umoznuje nastavit MEMORY BARRIER pomocou ENUM [memory_order].
+!!! 26. Na rozdiel od CLASS [atomic<T>] C++ standard GARANTUJE, ze CLASS [atomic_flag] MUSI byt implementany ako LOCK FREE CLASS.
+27. C++ standard definuje FUNCTIONS pre definovanie MEMORY BARRIERS, ktore MUSIA mat podla standardu LOCK FREE implementaciu.
+   A. FUNCTION atomic_thread_fence() vlozi MEMORY BARRIER do CODE. MEMORY BARRIER je implementovana na urovni CPU INSTRUCTIONS.
+   B. FUNCTION atomic_signal_fence() vlozi MEMORY BARRIER do CODE. MEMORY BARRIER je implementovana IBA na urovni vypnutia COMPILER OPTIMALIZATIONS, pricom sa vsak do CODE NEVLOZIA specializovane CPU INSTRUCTIONS vykonavaju MEMORY BARRIER.
+!!! 28. KEYWORD 'volatile' sluzi na oznacenie VARIABLE, ktoru COMPILER NEMA OPTIMALIZOVAT. V pripade aplikovania na VARIABLE, C++ tuto VARIABLE NEBUDE za ZIADNYCH OKOLNOSTI OPTIMALIZOVAT. Aplikacia tohto KEYWORD je nutna v pripade, ze VARIABLE moze byt modifikovana z ineho THREAD a v CURRENT THREAD je VARIABLE pouzita tak, ze C++ ju moze pri optimalizacii vyhodit. Pouzitie KEYWORD 'volatile' tomu zabrani.
+//-------------------------------------------------------------------------------------------------------
