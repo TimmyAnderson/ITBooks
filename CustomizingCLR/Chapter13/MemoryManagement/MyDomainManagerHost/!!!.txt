@@ -1,0 +1,36 @@
+//------------------------------------------------------------------------------------------------------
+1. Solution demonstruje moznosti akymi CLR moze CUSTOMIZOVAT alokaciu MEMORY v CLR CODE.
+2. CLR HOSTING API poskytuje sadu MANAGERS, ktore ak ich HOST POSKYTUJE, tak su volane pri ALOKACII ci UVOLNOVANI MEMORY, pri VYTVARANI THREADS, THREAD POOL TASKS ci inych UNMANAGED RESOURCES.
+!!! 3. Ak HOST NEPOSKYTUJE CUSTOM MEMORY MANAGERS, tak MEMORY je alokovane STANDARDNOU IMPLEMENTACIOU tychto MANAGERS, ktore alokuju MEMORY z cez VIRTUAL MEMORY WIN32 API FUNCTIONS.
+4. MEMORY HOST MANAGER je tvoreny nasledujucimi COM INTERFACES.
+   A. COM INTERFACE IHostMemoryManager je ZAKLADNY COM INTERFACE MEMORY HOST MANAGER. Obsahuje METHODS, pomocou ktorych CLR ziada HOST o alokaciu MEMORY.
+   B. COM INTERFACE IHostMalloc umoznuje CLR FINE-GRAINED alokaciu MEMORY z HEAP.
+   C. COM INTERFACE ICLRMemoryNotificationCallback notifikuje CLR o mnozstve alokovanej MEMORY.
+5. COM INTERFACE IHostMemoryManager ma nasledujuce METHODS.
+   A. METHOD IHostMemoryManager::CreateMAlloc() vracia OBJECT typu IHostMalloc, ktory je zodpovedny za alokaciu MEMORY z HEAP.
+   B. METHOD IHostMemoryManager::VirtualAlloc() je WRAPPER okolo WIN32 API FUNCTION VirtualAlloc().
+   C. METHOD IHostMemoryManager::VirtualFree() je WRAPPER okolo WIN32 API FUNCTION VirtualFree().
+   D. METHOD IHostMemoryManager::VirtualQuery() je WRAPPER okolo WIN32 API FUNCTION VirtualQuery().
+   E. METHOD IHostMemoryManager::VirtualProtect() je WRAPPER okolo WIN32 API FUNCTION VirtualProtect().
+   F. METHOD IHostMemoryManager::GetMemoryLoad() vracia mnozstvo alokovanej MEMORY do CLR. Na zakladne vratenej hodnoty moze CLR spustit GC na uvolnenie nepouzivanej MEMORY.
+   G. METHOD IHostMemoryManager::RegisterMemoryNotificationCallback() registruje CALLBACK POINTER na COM INTERFACE RegisterMemoryNotificationCallback pomocou, ktoreho HOST zasiela CLR informaciu o mnozstve alokovanej MEMORY.
+   H. METHOD IHostMemoryManager::NeedsVirtualAddressSpace() je volana CLR, aby notifikovala HOST, ze ide pouzit danu MEMORY. Je volana ak CLR alokovala MEMORY cez MEMORY-MAPPED FILES, ktore pouziva pri citani ASSEMBLIES.
+   I. METHOD IHostMemoryManager::AcquiredVirtualAddressSpace() vola CLR aby NOTIFIKOVAL HOST o tom, ze ALOKOVAL danu MEMORY. Je volana ak CLR alokovala MEMORY cez MEMORY-MAPPED FILES, ktore pouziva pri citani ASSEMBLIES.
+   J. METHOD IHostMemoryManager::ReleasedVirtualAddressSpace() vola CLR aby NOTIFIKOVAL HOST o tom, ze UVOLNIL danu MEMORY. Je volana ak CLR alokovala MEMORY cez MEMORY-MAPPED FILES, ktore pouziva pri citani ASSEMBLIES.
+6. COM INTERFACE IHostMalloc ma nasledujuce METHODS.
+   A. METHOD IHostMalloc::Alloc() je volana ak CLR ziada HOST o alokaciu MEMORY z HEAP.
+   B. METHOD IHostMalloc::Free() je volana ak CLR ziada HOST o uvolnenie MEMORY z HEAP.
+   C. METHOD IHostMalloc::DebugHeap() je volana ak CLR ziada HOST o alokaciu MEMORY z HEAP, ktora ma byt TRACKED z DEBUGGER.
+!!! 7. COM INTERFACE ICLRMemoryNotificationCallback obsahuje METHOD ICLRMemoryNotificationCallback::ICLRMemoryNotificationCallback, ktorou notifikuje CLR o mnozstve alokovanej MEMORY. Na zaklade zaslanej hodnoty (cez ENUM EMemoryAvailable) moze CLR spustit GC, aby uvolnila nepouzivanu MEMORY.
+!!! 8. HOST moze pracovat s GC pomocou GC MANAGER. Ten je tvoreny nasledujucimi COM INTERFACES.
+   A. COM INTERFACE ICLRGCManager umoznuje HOST spustit GC a ziskavat rozlicne statistiky o cinnosti GC.
+   B. COM INTERFACE IHostGCManager umoznuje CLR NOTIFIKOVAT HOST o spusteni ci zastaveni GC.
+9. COM INTERFACE ICLRGCManager ma nasledujuce METHODS.
+   A. METHOD ICLRGCManager::Collect() umoznuje vykonat GC nad danou GENERATION.
+   B. METHOD ICLRGCManager::GetStats() ziskava statistiku o cinnosti GC.
+   C. METHOD ICLRGCManager::GetStatsSetGCStartupLimits() nastavuje limitne velkosti pri ktorych sa bude GC spustat.
+10. COM INTERFACE IHostGCManager ma nasledujuce METHODS.
+   A. METHOD IHostGCManager::SuspensionStarting() je volana CLR, aby notifikovala HOST, ze sa pozastavuje vykon MANAGED CODE, pretoze sa spusta GC.
+   B. METHOD IHostGCManager::SuspensionEnding() je volana CLR, aby notifikovala HOST, ze sa znovu spustila vykon MANAGED CODE, ktory bol pozastaveny pre spustenie GC.
+   C. METHOD IHostGCManager::ThreadIsBlockingForSuspension() je volana CLR, aby notifikovala HOST, ze THREAD z ktoreho bola IHostGCManager::ThreadIsBlockingForSuspension() volana je POZASTAVENY pretoze bol spusteny GC.
+//------------------------------------------------------------------------------------------------------

@@ -1,0 +1,70 @@
+﻿//-------------------------------------------------------------------------------------------------------
+1. Solution demonstruje moznosti ASSEMBLY LOADING v CLR.
+2. V .NET existuju ASSEMBLIES 2 typov.
+   A. WEAKLY NAMED ASSEMBLIES. Tieto ASSEMBLIES NEOBSAHUJU vo svojich METADATACH DIGITAL SIGNATURE, ani PUBLIC KEY pouzity na generovani DIGITAL SIGNATURE.
+   B. STRONGLY NAMED ASSEMBLIES. Tieto ASSEMBLIES OBSAHUJU v METADATACH DIGITAL SIGNATURE a PUBLIC KEY pouzity na generovani DIGITAL SIGNATURE.
+3. WEAKLY NAMED ASSEMBLIES maju WEAK NAMES pozostavajuce z ASSEEMBLY FRIENDLY NAME, VERSION a OPTIONALLY aj CULTURE.
+4. STRONGLY NAMED ASSEMBLIES maju STRONG NAMES pozostavajuce z ASSEEMBLY FRIENDLY NAME, VERSION, PUBLIC KEY a CULTURE.
+5. ASSEMBLIES mozu byt nacitavane do APP DOMAINS 2 sposobmi.
+   A. EARLY BOUND LOADING je realizovany pomocou STATICKYCH REFERENCII, ktore ASSEMBLIES obsahuju pri odkazovani sa na ine ASSEMBLIES.
+   B. LATE BOUND LOADING je realizovany v RUNTIME, kde sa napriklad pomocou METHOD REFECTION API ci DOMAIN OBJECT API nacitavaju ASSEMBLIES podla kriterii definovanych kodom programu.
+6. ASSEMBLY ma FULLY SPECIFIED NAME, ked NAME obsahuje VSETKY ZLOZKY (FRIENDLY NAME, VERSION, PUBLIC KEY a CULTURE).
+7. VERSION POLICY definuje RULES podla ktorych sa budu nacitavat ASSEMBLIES s ROZLICNYMI VERZIAMI. VERSION POLICY umoznuje ASSEMBLY REDIRECTION, kedy sa nacita INA VERSION ASSEMBLY ako bola pozadovana. VERSION POLICY je ulozeny v .CONFIG FILE, alebo moze byt definovany aj v PUBLISHER POLICY ASSEMBLY.
+!!! 8. CLASS AssemblyName reprezentuje FULLY SPECIFIED NAME obsahujuc FRIENDLY NAME, VERSION, PUBLIC KEY a CULTURE.
+!!! 9. Ak program nacitava ADD-INS a pouziva VIACERO APP DOMAINS, tak NAJJEDNODUCHSIM SPOSOBOM ako nacitat ASSEMBLIES do NOVOVYTVORENYCH APP DOMAINS je pouzit APP DOMAIN MANAGER a v METHOD AppDomainManager.InitializeNewDomain(), ktora je volana v NOVOVYTVORENEJ APP DOMAIN nacitat vsetky potrebne ASSEMBLIES daneho ADD-IN.
+!!! 10. Prechod medzi HRANICAMI APP DOMAINS moze byt vykonany 2 SPOSOBMI.
+   A. MARSHAL-by-VALUE. V LOCAL APP DOMAIN sa vytvori KOPIA OBJECT z REMOTE APP DOMAIN.
+   B. MARSHAL-by-REFERENCE. V LOCAL APP DOMAIN sa vytvori PROXY OBJECT odkazujuci na OBJECT v REMOTE APP DOMAIN.
+!!!!! 11. Ak OBJECT NEDEDI z MarshalByRefObject, tak bude cez hranice APP DOMAINS prenasany ako MARSHAL-by-VALUE OBJECT. Pre MARSHAL-by-VALUE OBJECTS platia nasledujuce fakty.
+   A. CLASS daneho OBJECT NEDEDI z MarshalByRefObject.
+   B. CLASS daneho OBJECT je SERIALIZABLE, co znaci, ze ma APLIKOVANY ATTRIBUTE [Serializable]. OPTIONALLY moze AJ implementovat ISerializable, ak chce CUSTOMIZOVAT SERIALIZATION.
+   !!! C. Pri prechode cez hranice APP DOMAINS volanim METHOD ObjectHandle.Unwrap() je v CURRENT APP DOMAIN vytvorena KOPIA OBJECT. KOPIA je vytvorena pomocou procesu SERIALIZATION v REMOTE APP DOMAIN a naslednej DESERIALIZATION v CURRENT APP DOMAIN.
+   !!!!! D. Vysledkom volania ObjectHandle.Unwrap() su teda 2 OBJECTS beziace v 2 ROZDIELNYCH APP DOMAINS.
+!!!!! 12. Ak OBJECT DEDI z MarshalByRefObject, tak bude cez hranice APP DOMAINS prenasany ako MARSHAL-by-REFERENCE OBJECT. Pre MARSHAL-by-REFERENCE OBJECTS platia nasledujuce fakty.
+   A. CLASS daneho OBJECT DEDI z MarshalByRefObject.
+   B. CLASS daneho OBJECT NEMUSI BYT SERIALIZABLE, kedze NIE JE PRENASANA cez hranice APP DOMAINS.
+   !!! C. Pri prechode cez hranice APP DOMAINS volanim METHOD ObjectHandle.Unwrap() je v CURRENT APP DOMAIN vytvoreny PROXY OBJECT na OBJECT v REMOTE APP DOMAIN.
+   !!!!! D. Vysledkom volania ObjectHandle.Unwrap() je teda iba JEDEN SKUTOCNY OBJECT a druy PROXY OBJECT na OBJECT v REMOTE APP DOMAIN cez ktory su volania do REMOTE APP DOMAIN cez REMOTING prenasane.
+!!! 13. CLASS Assembly NEDEDI z MarshalByRefObject, ale naopak je SERIALIZABLE a teda je to MARSHAL-by-VALUE CLASS.
+14. ASSEMBLIES je mozne nacitavat do APP DOMAINS nasledujucimi sposobmi.
+   A. METHOD AppDomain.Load() umoznuje nacitat ASSEMBLY aj do REMOTE APP DOMAIN - teda do INEJ APP DOMAIN ako tej v ktorej bezi. NEVYHODOU tohto postupu je, ze sa ASSEMBLY nahravat aj do LOCAL APP DOMAIN - teda DOMAIN z ktorej bola METHOD AppDomain.Load() volana.
+   B. METHOD AppDomain.ExecuteAssemblyByName() nacita danu ASSEMBLY a spusti jej ENTRY-POINT FUNCTION. METHOD AppDomain.ExecuteAssemblyByName() az ked vykonavanie v ENTRY-POINT FUNCTION SKONCI. ASSEMBLY sa identifikuje podla svojho DISPLAY NAME.
+   C. METHOD AppDomain.ExecuteAssembly() nacita danu ASSEMBLY a spusti jej ENTRY-POINT FUNCTION. METHOD AppDomain.ExecuteAssemblyByName() az ked vykonavanie v ENTRY-POINT FUNCTION SKONCI. ASSEMBLY sa identifikuje podla PATH v ktorej sa nachadza.
+   D. METHOD Assembly.Load() nacitava ASSEMBLY do LOCAL APP DOMAIN.
+   E. METHOD AppDomain.CreateInstance() vytvara OBJECT daneho CLASS a ak ASSEMBLY v ktorej je CLASS nie je nacitana, tak ju nacita.
+   F. METHOD AppDomain.CreateInstanceAndUnwrap() vytvara OBJECT daneho CLASS v REMOTE APP DOMAIN a ak ASSEMBLY v ktorej je CLASS nie je nacitana, tak ju nacita. Zaroven vola aj METHOD ObjectHandle.Unwrap(), aby do LOCAL APP DOMAIN vratila bud KOPIU OBJECT, ak je OBJECT MARSHAL-by-VALUE, alebo PROXY na OBJECT v REMOTE APP DOMAIN, ak ak je OBJECT MARSHAL-by-REFERENCE.
+   G. METHOD Activator.CreateInstance() vytvara OBJECT daneho CLASS a ak ASSEMBLY v ktorej je CLASS nie je nacitana, tak ju nacita.
+15. ASSEMBLY NAMES, ak su zadavane ako STRING, musia mat nasledujuci FORMAT [FriendlyName, Version=VersionValue, PublicKeyToken=PublicKeyTokenValue, Culture=CultureValue].
+16. CLR vyhladava WEAKLY NAMED ASSEMBLIES v nasledujucich krokoch.
+   A. Skontroluje <codeBase> v .CONFIG FILE a zisti ci PATH k hladanej verzii ASSEMBLY nie je definovany tu. Ak ano, tak ASSEMBLY z danej PATH natiahne. ATTRIBUTE <codeBase> moze odkazovat IBA do SUBDIRECTORY DIRECTORY AppDomain.ApplicationBase.
+   B. Ak ASSEMBLY sa v <codeBase> sa NENACHADZA (najcastejsi pripad), tak je vykonany PROBING v DIRECTORY urcenom PROPERTY AppDomain.ApplicationBase.
+17. CLR vyhladava STRONGLY NAMED ASSEMBLIES v nasledujucich krokoch.
+   A. Skontroluje VERSION POLICY ci sa neaplikuje ASSEMBLY REDIRECTION a ak ano, tak zmeni VERSION ASSEMBLY, ktora sa bude nacitavat.
+   B. Pokusi sa nacitat ASSEMBLY z GAC.
+   C. Skontroluje <codeBase> v .CONFIG FILE a zisti ci PATH k hladanej verzii ASSEMBLY nie je definovany tu. Ak ano, tak ASSEMBLY z danej PATH natiahne. ATTRIBUTE <codeBase> moze odkazovat aj MIMO AppDomain.ApplicationBase, na INE PC, alebo na INTERNETOVU URL.
+   D. Vykona sa PROBING v DIRECTORY urcenom PROPERTY AppDomain.ApplicationBase.
+!!! 18. PROPERTIES Assembly.CodeBase, Assembly.Location a Assembly.GlobalAssemblyCache umoznuju ziskat PATH z ktorej bola ASSEMBLY nacitana.
+19. TOOL [fuslogvw.exe] umoznuje logovat nacitavanie ASSEMBLIES do PROCESSU. Zobrazuju sa aj DIRECTORIES v ktorych sa ASSEMBLIES vyhladavali. Platia prenho nasledujuce skutocnosti.
+   !!!!! A. TOOL [fuslogvw.exe] CASTO NEFUNGUJE kvoli problemom s IE CACHE, ktoru vyuziva (LOGS su zapisovane ako HTML PAGES). Obist sa to da tak, ze sa v Settings [fuslogvw.exe] nastavi [Custom log path] na nejaky DIRECTORY do ktoreho sa budu LOGS pisat.
+   !!!!! B. TOOL [fuslogvw.exe] je treba po skonceni prace v Settings nastavit, aby PRESTAL vykonavat LOGGING. Inak bude aj po VYPNUTI [fuslogvw.exe] DALEJ ZAPISOVAT LOGS a to pre VSETKY .NET PROGRAMY v SYSTEME.
+!!! 20. Ak sa pokusim nacitat ASSEMBLY skompilovanu pre INY CPU (x86 vs x64), tak je generovana EXCEPTION BadImageFormatException. Tato EXCEPTION je generovana aj vtedy, ked nacitavany FILE NIE JE ASSMBLY FILE, ale napriklad NATIVE DLL s rovnakym menom ako nazov ASSEMBLY.
+!!! 21. EXCEPTIONS BadImageFormatException, FileNotFoundException a FileLoadException maju PROPERTY FusionLog, ktora obsahuje LOG IDENTICKY ako generuje TOOL [fuslogvw.exe].
+!!! 22. Ak pri hladani ASSEMBLIES, ktora vyhladavam pomocou WEAK NAME (CLR ju hlada v DIRECTORY AppDomain.ApplicationBase), najde CLR ASSEMBLY so STRONG NAME, tak NAJPRV pozrie do GAC ci dana ASSEMBLY sa nenachadza v GAC a namiesto DIRECTORY AppDomain.ApplicationBase. Zaroven su aplikovane aj VERSION POLICIES. Ak vo WEAK NAME definujem aj PUBLIC KEY ci VERSION, tak sa tieto OVERIA voci najdenej STRONGLY-NAMES ASSEMBLY a ak sa NEZHODUJU, tak je hodena EXCEPTION FileLoadException. Naopak, ak sa najde WEAKLY NAMED ASSEMBLY, tak tu sa PUBLIC KEY a VERSION IGNORUJE a ASSEMBLY sa okamzite nacita.
+!!! 23. ASSEMBLIES je mozne nacitavat aj zadanim PATH k ASSEMBLY FILE, ktory sa ma nacitat. Avsak AJ pri zadani PRESNEJ PATH .NET NEGARANTUJE, ze bude nacitana ASSEMBLY z tohto PATH. Na ASSEMBLIES sa totizto vztahuju VERSION POLICIS a BINDING RULES.
+24. ASSEMBLIES je mozne nacitavat zadanim PATH k ASSEMBLY FILE nasledujucimi METHODS.
+   A. Assembly.LoadFrom().
+   B. Assembly.LoadFile().
+   C. AppDomain.CreateInstanceFrom().
+   D. AppDomainCreateInstanceFromAndUnwrap().
+   E. Activator.CreateInstanceFrom().
+!!! 25. ASSEMBLIES su do PROCESSU nahravane v 2 rozlicnych BINDING CONTEXT. V PROCESSE sa teda mozu vyskytnut aj 2 ASSEMBLIES s ROVNAKYM NAME, kazda v INOM BINDING CONTEXT. CLR pozna nasledujuce BINDING CONTEXT.
+   A. LOAD CONTEXT je CONTEXT do ktoreho su nahravane VSETKY STATICKY REFEROVANE ASSEMBLIES.
+   B. LOAD FROM CONTEXT je CONTEXT do ktoreho su nahravane VSETKY DYNAMICKY REFEROVANE ASSEMBLIES okrem tych, ktore su ulozene v DIRECTORIES ktore CLR prehladava v ramci ASSEMBLY PROBING (DIRECTORY AppDomainSetup.ApplicationBase). Ak uz je ASSEMBLY nahrana do LOAD FROM CONTEXT a je volana METHOD Assembly.LoadFrom() s ROVNAKYM WEAK NAME, avsak odkazujucim na INU ASSEMBLY, tak tato NIE JE NAHRANA a namiesto toho je vratena referencia na UZ NAHRANU ASSEMBLY.
+26. Ak ASSEMBLY je nacitavana do LOAD FROM CONTEXT (volanim Assembly.LoadFrom()) a obsahuje STATIC REFERENCES na ine ASSEMBLIES, tak tieto su nacitavane z DIRECTORY z ktoreho bola ASSEMBLY, ktore obsahuje REFERENCES nacitavana (ak sa nenachadzaju v DIRECTORY AppDomainSetup.ApplicationBase, ktory ma VZDY PREDNOST) a NIE z DIRECTORY AppDomainSetup.ApplicationBase programu. Toto pravidlo zjednodusuje DEPLOYMENT.
+!!! 27. Pomocou METHOD ICLRRuntimeHost::ExecuteInDefaultAppDomain() je mozne nacitat ASSEMBLY a spustit METHOD v DEFAULT APP DOMAIN. METHOD musi mat tvar [static int MethodName(string Argument)].
+!!! 28. CLASS AppDomain obsahuje EVENT AppDomain.AssemblyLoad, ktory je volany po nacitavani ASSEMBLY do APP DOMAIN. EVENT je mozne pouzit napriklad pri DEBUGGING na zistenie, ktore ASSEMBLIES su do danej APP DOMAIN nacitane.
+!!! 29. Pomocou PROPERTY Assembly.ImageRuntimeVersion je mozne zistit verziu CLR voci ktorej bola ASSEMBLY kompilovana. NEVYHODOU tejto PROPERTY je, ze ASSEMBLY uz MUSI BYT NACITANA, aby bolo mozne zistit verziu CLR voci ktorej bola kompilovana.
+!!! 30. METHOD ICLRMetaHost::GetVersionFromFile() umoznuje zistit verziu CLR voci ktorej bola ASSEMBLY kompilovana BEZ TOHO, aby ju bolo nutne nacitavat do APP DOMAIN.
+31. PROPERTY Environment.Version vracia cislo CLR verzie, ktora je zavedena do PROCESSU.
+32. Kedze medzi STANDARD .NET ASSEMBLIES existuju pevne vazby, v pripade, ze v PROCESSE su ASSEMBLIES, ktore sa odkazuju na ROZLICNE verzie STANDARD .NET ASSEMBLIES, CLR standardne (je to mozne zmenit v .CONFIG FILE) presmeruje VSETKY taketo REFERENCES na verzie STANDARD .NET ASSEMBLIES zodpovedajuce verzi CLR, ktora bola zavedena do PROCESSU.
+//-------------------------------------------------------------------------------------------------------

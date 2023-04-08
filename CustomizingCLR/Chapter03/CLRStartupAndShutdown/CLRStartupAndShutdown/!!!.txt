@@ -1,0 +1,33 @@
+//-------------------------------------------------------------------------------------------------------
+1. Solution demonstruje spustenie a ukoncenie CLR v HOSTING PROCESS.
+!!! 2. Do HOSTING PROCESS moze byt zavedeny iba 1 CLR a po zavedeni CLR ho uz NIE JE MOZNE KOMPLETNE ODSTRANIT z PROCESSU, az kym PROCESS NESKONCI.
+!!! 3. .NET je mozne rozdelit do 3 casti, ktore su verziovane SEPARATNE.
+   A. CLR - obsahuje RUNTIME ENVIRONMENT pre .NET.
+   B. BASE CLASS LIBRARY (BCL) - obsahuje ZAKLADNE CLASSES .NET. Patria sem napriklad tieto NAMESPACES [System, System.Collections, System.IO, System.Reflection, System.Runtime, System.Threading ci System.Xml], ktore boli STANDARDIZOVANE, no patria sem aj NESTANDARDIZOVANE LIBRARIES ako napriklad [System.CodeDom, System.Data, System.Drawing, System.EnterpriseServices, System.Linq, System.Transactions, System.Web ci System.Windows.Forms].
+   C. .NET FRAMEWORK CLASS LIBRARIES - obsahuje BCL a zaroven aj dodatocne LIBRARIES ao napriklad WCF, WPF ci WF.
+4. Informacie o nainstalovanych verziach .NET su v REGISTRY KEY [HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\.NETFramework\Policy].
+5. Jednotlive verzie .NET su nainstalovane v DIRECTORY [C:\Windows\Microsoft.NET].
+6. SHIM je .NET LOADER. Je ulozeny v LIBRARY [mscoree.dll] a je zodpovedny za NACITANIE POZADOVANEJ VERZIE CLR.
+!!! 7. SHIM sa nachadza vo Windows iba v 1 KOPII. Teda na rozdiel od CLR, kde VSETKY CLR su instalovane SIDE-by-SIDE (teda paralelne) SHIM je vzdy PREPISANY NOVSOU VERZIOU. Samozrejme SHIM tym padom MUSI BYT BACKWARD COMPATIBLE so vsetkymi nainstalovanymi verziami CLR, ktore su vo Windows nainstalovane.
+!!! 8. SHIM obsahuje aj implementaciu DEFAULT HOST, ktory sa vyuziva pri spusteni .NET programu ako .EXE FILE, alebo pri spusteni .NET ASSEMBLY cez COM INTEROP.
+!!! 9. SHIM je zodpovedny za nacitanie CLR. V .NET 2.0. bol CLR ulozeny v DLL [mscorwks.dll]. V .NET 4.0. je ulozeny v DLL [clr.dll]. Okrem CLR sa nacitava aj [mscorlib.dll], ktora obsahuje zakladne TYPES ako napriklad String, Object ci Exception a CLASSES zakladnych NAMESPACES [System, System.IO ci System.Runtime].
+!!!!! 10. Po zavedeni CLR su do PROCESSU zavadzane DEFAULT iba TIE VERZIE ASSEMBLIES, ktore su IDENTICKE s verziou CLR a to aj napriek tomu, ze spustany program bol kompilovany so STARSIMI VERZIAMI CLR, ktore pouzivali STARSIE VERZIE ASSEMBLIES. Toto DEFAULT chovanie je mozne zmenit konfiguraciou v konfiguracnom subore a teda prinutit CLR, aby nacitalo verziu ASSEMBLY kompilovanu pod INYM CLR, ako to, ktore je zavedene do PROCESSU.
+11. CLR existuje v 2 rozlicnych verziach.
+   A. WORKSTATION CLR - pouziva SINGLE THREAD verziu GC.
+   B. SERVER - pouziva MULTI THREAD verziu GC.
+!!! 12. To ci sa pouzije WORKSTATION CLR, alebo SERVER CLR je mozne nastavit jednak pomocou .CONFIG FILE a takisto pri VYTVARANI HOST nastavenim FLAGS v METHOD ICLRRuntimeInfo::SetDefaultStartupFlags().
+!!! 13. Pre WORKSTATION CLR je mozne nastavenim FLAGS v METHOD ICLRRuntimeInfo::SetDefaultStartupFlags() nastavit pouzitie CONCURRENT GC. CONCURRENT GC sa pouziva IBA ak ma PC VIACERO CORES. Pri CONCURRENT GC sa GC vykonava vo WORKER THREAD cim je sice vykonavanie GC POMALSIE, ale program je VIAC RESPONSIVE.
+14. GC moze byt nastavene na nasledujuce 3 rezimy.
+   A. SERVER GC (v SetDefaultStartupFlags() nastaveny FLAG na STARTUP_SERVER_GC). GC v tomto rezime ma HEAP pre KAZDY CORE a GC je spusteny NARAZ na VSETKYCH CPU. Program je pocas GC POZASTAVENY. Tento GC bezi iba na MULTICORE PC.
+   B. CONCURRENT WORKSTATION GC (v SetDefaultStartupFlags() nastaveny FLAG na STARTUP_CONCURRENT_GC). GC v tomto rezime dedikuje OSOBITNY THREAD, ktory vykonava GC, pricom ostatne THREADS DALEJ BEZIA. Vysledkom je, ze GC je POMALSIE, ale program je VIAC RESPONSIVE. Tento GC bezi iba na MULTICORE PC.
+   C. NONCONCURRENT WORKSTATION GC (v SetDefaultStartupFlags() je nastaveny FLAG na 0). GC v tomto rezime POZASTAVI PROGRAM pocas behu GC a GC bezi v TOM ISTO THREADE ako GUI. Vysledkom je RYCHLY BEH GC, ale strata RESPONSIVITY pocas behu GC. Tento GC bezi aj na SINGLECORE PC.
+!!! 15. DOMAIN NEUTRAL ASSEMBLIES su ASSEMBLIES, ktorych JIT CODE je ZDIELANY VSETKYMI APP DOMAINS na usetrenie PAMATE. DOMAIN NEUTRAL ASSEMBLIES potom ako su nacitane do PROCESSU uz NEMOZU BYT UNLOADED, az kym sa PROCESS NESKONCI.
+!!! 16. DOMAIN NEUTRAL ASSEMBLIES je mozne konfigurovat v STARTUP pomocou ICLRRuntimeInfo::SetDefaultStartupFlags(), aj ked neskor je mozne tieto SETTINGS zmenit. Pomocou ICLRRuntimeInfo::SetDefaultStartupFlags() je mozne nastavit mod DOMAIN NEUTRAL ASSEMBLIES na nasledujuce varianty.
+   A. STARTUP_LOADER_OPTIMIZATION_SINGLE_DOMAIN - ZIADNA ASSEMBLY nebude nacitana ako DOMAIN NEUTRAL ASSEMBLY.
+   B. STARTUP_LOADER_OPTIMIZATION_MULTI_DOMAIN - VSETKY ASSEMBLIES su nacitane ako DOMAIN NEUTRAL ASSEMBLIES.
+   C. STARTUP_LOADER_OPTIMIZATION_MULTI_DOMAIN_HOST - VSETKY STRONGLY NAMED ASSEMBLIES su nacitane ako DOMAIN NEUTRAL ASSEMBLIES.
+!!! 17. CLR v PROCESSE moze byt SPUSTENY IBA RAZ. Dalsie volania ICLRRuntimeHost::Start() vracia S_FALSE.
+!!! 18. Ak CLR NIE JE NACITANE HNED pri starte PROCESSU, ale jeho vytvorenie je DEFERRED, tak sa moze stat, ze ak HOST zavola FUNCTION, ktora pouziva COM INTEROP, tak je zavedene do PROCESSU CLR. Toto CLR nemusi mat tie iste SETTINGS, ake HOST pozaduje. Preto HOSTING API pomocou METHOD ICLRMetaHost::RequestRuntimeLoadedNotification() umoznuje nastavit CALLBACK FUNCTION, ktora bude volana, ak je CLR ZAVADZANE. Tu moze HOST modifikovat jeho SETTINGS podla vlastnych potrieb.
+!!!!! 19. CLR sa spusta pomocou METHOD ICLRRuntimeHost::Start() a zastavuje sa pomocou METHOD ICLRRuntimeHost::Stop(). Po volani ICLRRuntimeHost::Stop() uz NIE JE MOZNE CLR ZNOVA SPUSTIT v danom PROCESSE.
+!!!!! 20. METHOD ICLRRuntimeHost::Stop() NEUVOLNUJE RESOURCES, NEROBI UNLOAD APP DOMAINS ani NELIKVIDUJE THREADS. To sa robi az pri UKONCENI PROCESSU.
+//-------------------------------------------------------------------------------------------------------

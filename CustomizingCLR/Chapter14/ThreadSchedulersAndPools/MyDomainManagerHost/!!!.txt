@@ -1,0 +1,73 @@
+//------------------------------------------------------------------------------------------------------
+1. Solution demonstruje moznosti akym CLR moze CUSTOMIZOVAT THREAD SCHEDULER a THREAD POOL.
+2. Pre pracu s THREADS, THREAD SCHEDULER a THREAD POOL HOSTING API poskytuje nasledujuce MANAGER.
+   A. TASK MANAGER.
+   B. SYNCHRONIZATION MANAGER.
+   C. THREAD POOL MANAGER.
+!!! 3. TASK reprezentuje v CLR abstrakciu UNIT OF EXECUTION, ktoru HOST moze mapovat bud na THREAD, alebo na FIBER.
+!!! 4. TASK MANAGER je zodpovedny za asociovanie TASKS s UNIT OF EXECUTION co su bud THREADS, alebo FIBERS. TASK MANAGER obsahuje nasledujuce COM INTERFACES.
+   A. COM INTERFACE IHostTaskManager umoznuje CLR ziadat HOST o vytvorenie TASKS (THREADS, alebo FIBERS) a notifikovat ho o rozlicnych EVENTS suvisiacich s TASKS.
+   B. COM INTERFACE ICLRTaskManager umoznuje HOST vytvarat CLR TASKS.
+   C. COM INTERFACE IHostTask reprezentuje TASK, umoznujuc CLR ziadat HOST o vykonavanie riadiacich operacii (START, JOIN, ABORT) nad TASKS. Pre KAZDY TASK je vytvorena 1 INSTANCIA IHostTask a 1 INSTANCIA ICLRTask.
+   D. COM INTERFACE ICLRTask reprezentuje TASK, umoznujuc HOST informovat CLR o zmenach v TASKS (EXIT, ABORT, RUDE ABORT). Pre KAZDY TASK je vytvorena 1 INSTANCIA IHostTask a 1 INSTANCIA ICLRTask.
+5. COM INTERFACE IHostTaskManager umoznuje CLR ziadat HOST o vytvorenie TASKS (THREADS, alebo FIBERS) a notifikovat ho o rozlicnych EVENTS suvisiacich s TASKS. Ma nasledujuce METHODS.
+   A. METHOD IHostTaskManager::CreateTask() umoznuje CLR poziadat HOST o vytvorenie noveho TASK. Ako PARAMETER zadava ADDRESS na METHOD, ktoru ma TASK vykonavat.
+   B. METHOD IHostTaskManager::GetCurrentTask() umoznuje CLR ziskat POINTER na TASK, ktory vykonava THREAD ktory volal tuto METHOD.
+   C. METHOD IHostTaskManager::SetCLRTaskManager() umoznuje CLR zaslat HOST POINTER na ICLRTaskManager.
+   D. METHOD IHostTaskManager::GetStackGuarantee() umoznuje CLR ziskat mnozstvo BYTES, ktore musia byt dostupne po skonceni STACK OPERACIE, avsak pred ukoncenim PROCESSU.
+   E. METHOD IHostTaskManager::SetStackGuarantee() je rezervovana pre INTERNE POUZITIE.
+   F. METHOD IHostTaskManager::CallNeedsHostHook() umoznuje CLR ziskat informaciu ci volanie FUNCTION moze byt INLINED.
+   G. METHOD IHostTaskManager::BeginDelayAbort() umoznuje CLR notifikovat HOST o tom, ze CURRENT TASK (ktory volal METHOD) NEMOZE byt ABORTED.
+   H. METHOD IHostTaskManager::EndDelayAbort() umoznuje CLR notifikovat HOST o tom, ze CURRENT TASK (ktory volal METHOD) uz MOZE byt znova ABORTED. METHOD moze byt volana AZ PO volani IHostTaskManager::BeginDelayAbort().
+   I. METHOD IHostTaskManager::BeginThreadAffinity() umoznuje CLR notifikovat HOST o tom, ze CURRENT TASK (ktory volal METHOD) NESMIE byt presunvany do INYCH THREADS.
+   J. METHOD IHostTaskManager::EndThreadAffinity() umoznuje CLR notifikovat HOST o tom, ze CURRENT TASK (ktory volal METHOD) uz MOZE byt znova presunvany do INYCH THREADS. METHOD moze byt volana AZ PO volani IHostTaskManager::BeginThreadAffinity().
+   K. METHOD IHostTaskManager::LeaveRuntime() umznuje CLR notifikovat HOST, ze CLR ZACALO volanie NATIVE CODE z CLR.
+   L. METHOD IHostTaskManager::EnterRuntime() umznuje CLR notifikovat HOST, ze CLR UKONCILO volanie NATIVE CODE a vracia sa spat do CLR.
+   M. METHOD IHostTaskManager::ReverseEnterRuntime() umoznuje CLR notifikovat HOST, ze CLR CODE bol zavolany z UNMANAGED CODE.
+   N. METHOD IHostTaskManager::ReverseLeaveRuntime() umoznuje CLR notifikovat HOST, ze CLR CODE prechadza do UNMANAGED FUNCTION, ktora bola volana z CLR CODE.
+   O. METHOD IHostTaskManager::SetLocale() umoznuje CLR notifikovat HOST, ze CURRENT TASK zmenil LOCALE.
+   P. METHOD IHostTaskManager::SetUILocale() umoznuje CLR notifikovat HOST, ze CURRENT TASK zmenil UI LOCALE.
+   Q. METHOD IHostTaskManager::SwitchToTask() umoznuje CLR notifikovat HOST, ze by sa mal vyskocit z CURRENT TASKU.
+   R. METHOD IHostTaskManager::Sleep() umoznuje CLR notifikovat HOST, ze by mal zablokovat CURRENT TASK na stanoveny cas.
+6. COM INTERFACE ICLRTaskManager umoznuje HOST vytvarat CLR TASKS. Ma nasledujuce METHODS.
+   A. METHOD ICLRTaskManager::CreateTask() umoznuje HOST poziadat CLR o vytvorenie noveho TASKU.
+   B. METHOD ICLRTaskManager::GetCurrentTask() umoznuje HOST poziadat CLR o ziskanie instancie ICLRTask CURRENT TASKU.
+   C. METHOD ICLRTaskManager::GetCurrentTaskType() umoznuje HOST poziadat CLR o vratenie TYPU CURRENT TASKU.
+   D. METHOD ICLRTaskManager::SetLocale() umoznuje HOST notifikovat CLR, ze CURRENT TASK zmenil LOCALE.
+   E. METHOD ICLRTaskManager::SetUILocale() umoznuje HOST notifikovat CLR, ze CURRENT TASK zmenil UI LOCALE.
+7. COM INTERFACE IHostTask umoznuje CLR ziadat HOST o vykonavanie riadiacich operacii (START, JOIN, ABORT) nad TASKS. Ma nasledujuce METHODS.
+   A. METHOD IHostTask::Start() umoznuje CLR poziadat HOST o spustenie TASKU.
+   B. METHOD IHostTask::Join() umoznuje CLR poziadat HOST pozastavenie CURRENT TASK, az kym TASK reprezentovany volanou instanciu IHostTask NESKONCI.
+   C. METHOD IHostTask::Abort() umoznuje CLR poziadat HOST o ABORT CURRENT TASK.
+   D. METHOD IHostTask::SetCLRTask() umoznuje CLR zaslat HOST POINTER na ICLRTask cez ktory moze HOST komunikovat s prislusnym TASK v CLR.
+   E. METHOD IHostTask::GetPriority() umoznuje CLR poziadat HOST o vratenie PRIORITY daneho TASKU.
+   F. METHOD IHostTask::SetPriority() umoznuje CLR poziadat HOST o nastavenie PRIORITY daneho TASKU.
+8. COM INTERFACE ICLRTask umoznuje HOST informovat CLR o zmenach v TASKS (EXIT, ABORT, RUDE ABORT). Ma nasledujuce METHODS.
+   A. METHOD ICLRTask::Abort() umoznuje HOST poziadat CLR o ABORT CURRENT TASK.
+   B. METHOD ICLRTask::RudeAbort() umoznuje HOST poziadat CLR o RUDE ABORT CURRENT TASK pri ktorom FINALIZER NEMUSIA byt VOLANE.
+   C. METHOD ICLRTask::ExitTask() umoznuje HOST notifikovat CLR, ze CURRENT TASK konci a zacina sa pokus o jeho korektne ukoncenie. Pri volanie tejto METHOD sa INSTANCIA ICLRTask uz viac NEPOUZIVA a pre NOVY TASK CLR vytvori NOVU INSTANCIU ICLRTask.
+   D. METHOD ICLRTask::Reset() umoznuje HOST notifikovat CLR, ze CURRENT TASK SKONCIL a INSTANCIA ICLRTask moze byt ZNOVU POUZITA pre INY TASK.
+   E. METHOD ICLRTask::SetTaskIdentifier() umoznuje HOST nastavit CLR TASK ID pre potreby DEBUGGINGU.
+   F. METHOD ICLRTask::GetMemStats() umoznuje HOST ziskat statistiku o pouzivani MEMORY v CURRENT TASK.
+   G. METHOD ICLRTask::LocksHeld() umoznuje HOST ziskat pocet LOCKS, ktore drzi CURRENT TASK.
+   H. METHOD ICLRTask::NeedsPriorityScheduling() umoznuje HOST notifikovat CLR, ze CURRENT TASK by mal byt oznaceny ako TASK s vyskou prioritou.
+   I. METHOD ICLRTask::SwitchIn() umoznuje HOST notifikovat CLR, ze CURRENT TASK je vykonavany.
+   J. METHOD ICLRTask::SwitchOut() umoznuje HOST notifikovat CLR, ze vykonavanie CURRENT TASK bolo POZASTAVENE.
+   K. METHOD ICLRTask::YieldTask() umoznuje HOST notifikovat CLR, ze cas prideleny CURRENT TASK moze byt prideleny na vykonavanie inemu TASKU.
+!!! 9. LIFETIME TASKS prebieha v nasledujucich krokoch.
+   A. CLR poziada HOST o vytvorenie TASK volanim IHostTaskManager::CreateTask(), ktora vracia instanciu COM OBJECT IHostTask.
+   B. CLR pre vytvoreny TASK vytvori instanciu COM INTERFACE ICLRTask.
+   C. CLR zavola METHOD IHostTask::SetCLRTask(), ktorou zasle IHostTask instanciu ICLRTask.
+   D. CLR zavola METHOD IHostTask::Start(), ktorym spusti TASK.
+   E. HOST zavola METHOD ICLRTask::SwitchIn(), ktorym HOST oznami CLR, ze TASK je vykonavany.
+   F. V pripade, ze TASK ma byt POZASTAVENY (napriklad preto, lebo caka na LOCK), HOST o tom notifikuje CLR volanim METHOD ICLRTask::SwitchOut().
+   G. Ak TASK je SKONCENY, tak HOST zavola METHOD ICLRTask::ExitTask(), ktorym CLR oznami, ze TASK bude UKONCENY.
+!!! 10. SYNCHRONIZATION MANAGER umoznuje HOST poskytnut CLR CUSTOM implementacie SYNCHRONIZATION PRIMITIVES. SYNCHRONIZATION MANAGER je tvoreny nasledujucimi COM INTERFACES.
+   A. COM INTERFACE IHostSyncManager reprezentuje FACTORY na vytvaranie SYNCHRONIZATION PRIMITIVES.
+   B. COM INTERFACE ICLRSyncManager umoznuje HOST zistit, ktory CLR TASK pouziva danu SYNCHRONIZATION PRIMITIVE.
+   C. COM INTERFACE IHostSemaphore umoznuje HOST poskytnut CLR implementaciu SEMAPHORE.
+   D. COM INTERFACE IHostManualEvent umoznuje HOST poskytnut CLR implementaciu MANUAL HOST EVENT.
+   E. COM INTERFACE IHostAutoEvent umoznuje HOST poskytnut CLR implementaciu AUTO HOST EVENT.
+   F. COM INTERFACE IHostCrst umoznuje HOST poskytnut CLR implementaciu CRITICAL SECTION.
+!!! 11. THREAD POOL MANAGER umoznuje HOST poskytnut CLR CUSTOM implementaciu THREAD POOL. SYNCHRONIZATION MANAGER je tvoreny COM INTERFACE IHostThreadpoolManager.
+//------------------------------------------------------------------------------------------------------

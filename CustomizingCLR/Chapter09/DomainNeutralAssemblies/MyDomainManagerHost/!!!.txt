@@ -1,0 +1,17 @@
+//------------------------------------------------------------------------------------------------------
+1. Solution demonstruje pouzitie DOMAIN NEUTRAL ASSEMBLIES.
+!!!!! 2. ASSEMBLIES su standardne nahravane NEZAVISLE do KAZDEJ APP DOMAIN. To znamena, ze ak v PROCESSE je 'N' APP DOMAINS a kazda APP DOMAIN potrebuje pristup k urcitej ASSEMBLY, tak tato ASSEMBLY bude v PROCESSE nahrana 'N' krat.
+!!! 3. DOMAIN-NEUTRAL ASSEMBLIES su ASSEMBLIES, ktore su SHARED medzi APP DOMAINS a do PROCESSU, ktory ma VIACERO APP DOMAINS su nahrate IBA RAZ.
+!!! 4. DOMAIN-NEUTRAL ASSEMBLIES zdielaju iba RUNTIME DATA vytvorene CLR. Instancie OBJECTS ci STATIC FIELDS medzi APP DOMAIN NIE SU SHARED a KAZDA APP DOMAIN ma VLASTNU KOPIU tychto dat.
+5. Aj napriek tomu, ze DOMAIN-NEUTRAL ASSEMBLIES VYRAZNE SETRIA PAMAT, prinasaju aj niekolko obmedzeni.
+   A. DOMAIN-NEUTRAL ASSEMBLIES NEMOZU byt ODSTRANENE z PROCESSU tym, ze sa vykona UNLOAD APP DOMAIN a su odstranene AZ pri UKONCENI celeho PROCESSU.
+   B. DOMAIN-NEUTRAL ASSEMBLIES, kedze si pre KAZDU APP DOMAIN udrzuju VLASTNU KOPIU STATIC FIELDS a pristup k nim sa robi cez LOOKUP TABLE (DICTIONARY s APP DOMAIN ID ako KEY), tak pristup k STATIC FIELDS v DOMAIN-NEUTRAL ASSEMBLIES je POMALSI.
+   C. DOMAIN-NEUTRAL ASSEMBLIES, kedze pre KAZDU APP DOMAIN OSOBITNE volaju STATIC CONSTRUCTORS pocet volani i vykonavanie samotnych STATIC CONSTRUCTORS MOZE byt POMALSIE.
+   D. DOMAIN-NEUTRAL ASSEMBLIES by mali mat ROVNAKE SECURITY PREMISSIONS vo VSETKYCH APP DOMAINS, aby nedochadzalo k vzniku SECURITY EXCEPTIONS.
+   !!! E. VSETKY ASSEMBLIES na ktore sa DOMAIN-NEUTRAL ASSEMBLIES REFERUJU MUSIA byt TIEZ zavedene ako DOMAIN-NEUTRAL ASSEMBLIES.
+   F. APP DOMAINS s DOMAIN-NEUTRAL ASSEMBLIES by mali mat ROVNAKU VERSION POLICY pre DOMAIN-NEUTRAL ASSEMBLIES. V pripade, ze su VERSION POLICIES na DOMAIN-NEUTRAL ASSEMBLIES v APP DOMAINS ROZDIELNE, teda aplikuju sa INE VERZIE DOMAIN-NEUTRAL ASSEMBLIES, CLR musi pre tieto verzie DOMAIN-NEUTRAL ASSEMBLIES generovat VLASTNY NATIVE CODE a tym sa vyhoda DOMAIN-NEUTRAL ASSEMBLIES STRACA.
+!!! 6. CLR umoznuje specifikovat, ktore ASSEMBLIES budu nacitane ako DOMAIN-NEUTRAL ASSEMBLIES nasledujucimi sposobmi.
+   A. Pouzitim METHOD ICLRRuntimeInfo::SetDefaultStartupFlags() je mozne nastavit FLAGS, ktore urcia ci ZIADNA ASSEMBLIES (STARTUP_LOADER_OPTIMIZATION_SINGLE_DOMAIN), VSETKY ASSEMBLIES (STARTUP_LOADER_OPTIMIZATION_MULTI_DOMAIN), alebo VSETKY STRONGLY-NAMED ASSEMBLIES (STARTUP_LOADER_OPTIMIZATION_MULTI_DOMAIN_HOST) budu nacitane ako DOMAIN-NEUTRAL ASSEMBLIES.
+   !!! B. Aplikovanim ATTRIBUTE [LoaderOptimizationAttribute] na Main() METHOD programu. (Pri aplikovani na INE METHOD je ATTRIBUTE IGNOROVANY.) Tak ako v pripade ICLRRuntimeInfo::SetDefaultStartupFlags() aj toto nastavenie je nastaveni CELEHO PROCESSU.
+   !!! C. Nastavenim PROPERTY AppDomainSetup.LoaderOptimization. VYHODOU tohto sposobu je moznost nastavit to, ktore ASSEMBLIES budu nacitane ako DOMMAIN-NEUTRAL ASSEMBLIES ROZDIELNE pre KAZDU APP DOMAIN.
+//------------------------------------------------------------------------------------------------------

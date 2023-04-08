@@ -1,0 +1,49 @@
+//------------------------------------------------------------------------------------------------------
+1. Solution demonstruje CUSTOMIZACIU ASSEMBLY LOADING.
+2. CUSTOMIZACIU procesu ASSEMBLY LOADING je mozne vykonavat 2 sposobmi.
+   A. V MANAGED CODE pomocou EVENT AppDomain.AssemblyReslove a METHODS AppDomain.Load() a Assembly.Load().
+   B. V UNMANAGED CODE.
+3. COM INTERFACE ICLRAssemblyIdentityManager poskytuje METHODS pomocou, ktory je mozne z FILE, alebo IStream ziskat FULLY QUALIFIED ASSEMBLY NAME.
+!!! 4. COM INTERFACE ICLRAssemblyIdentityManager je v .NET mozne ziskat nasledujucim sposobom.
+   A. Pomocou METHOD ICLRRuntimeInfo::GetProcAddress() sa ziska POINTER na GLOBAL FUNCTION GetCLRIdentityManager().
+   !!! B. Aj ked FUNCTION GetCLRIdentityManager() je oznacena ako DEPRECATED, tak FUNGUJE i v .NET 4.0..
+   C. Pomocou FUNCTION GetCLRIdentityManager() sa ziska POINTER na COM INTERFACE ICLRAssemblyIdentityManager.
+!!! 5. Ak UNMANAGED HOST chce implementovat CUSTOM ASSEMBLY LOADING, musi implementovat COM INTERFACES patriace do CUSTOM ASSEMBLY LOADING MANAGER. Sem patria tieto INTERFACES.
+   A. COM INTERFACE IHostAssemblyManager poskytuje METHODS, ktore umoznuju HOST specifikovat, ktore ASSEMBLIES ma CLR nacitat AUTOMATICKY BEZ asistencie UNMANAGED HOST.
+   B. COM INTERFACE IHostAssemblyStore umoznuje HOST nacitat CUSTOM ASSEMBLIES a MODULES NEZAVISLE na CLR. Teda ASSEMBLIES NIE SU CITANE cez CLR (z FILE SYSTEM), ale su citane UNMANAGED HOST z LUBOVOLNEHO MEDIA ako je napriklad .ZIP FILE, alebo trebars aj DB TABLE.
+6. CLASS IHostAssemblyManager ma nasledujuce METHODS.
+   A. METHOD GetAssemblyStore() vracia POINTER na IHostAssemblyStore, ktory realizuje CUSTOM ASSEMBLY LOADING.
+   B. METHOD GetNonHostStoreAssemblies() vracia POINTER na ICLRAssemblyReferenceList, ktory obsahuje zoznam ASSEMBLIES, ktore HOST ocakava, ze budu nacitane z CLR.
+7. CLASS IHostAssemblyStore ma nasledujuce METHODS.
+   !!! A. METHOD ProvideAssembly() umoznuje UNAMANGED HOST, aby nacital a v OUTPUT PARAMETER vratil ASSEMBLY (presnejsie obsah FILE s ASSEMBLY MANIFEST, co vsak pri SINGLE-MODULE ASSEMBLY je samotny ASSEMBLY FILE) v tvare IStream OBJECT. Je CISTO ZALEZITOST UNMANAGED HOST odkail bude ASSEMBLY NACITANA, ci to bude FILE SYSTEM, trebars .ZIP FILE, alebo kludne aj DB TABLE. Cielom tejto METHOD je nacitat OBSAH ASSEMBLY a vratit ju ako IStream OBJECT.
+   B. METHOD ProvideModule() umoznuje UNAMANGED HOST, aby nacital a v OUTPUT PARAMETER vratil MODULE v tvare IStream OBJECT. METHOD je volana pre KAZDY MODULE MULTI-MODULE ASSEMBLY, okrem MODULE obsahujuci MANIFEST. Pre tento je volana METHOD ProvideAssembly().
+!!! 8. Pri implementacii CUSTOM ASSEMBLY LOADING MANAGER sa ASSEMBLIES logicky delia do 2 CATEGORIES.
+   A. ASSEMBLIES, ktore CUSTOM ASSEMBLY LOADING MANAGER ponecha, aby ich nacital CLR. Tymto sposobom sa zvycajne nacitavaju STANDARD .NET ASSEMBLIES, pre ktore je vyhodne aby ich nacitalo CLR samo, kedze CLR dokaze tieto ASSEMBLIES nacitat s patricnymi zavislostami a UPDATES, tak aby sa nacitali najnovsie verzie tychto ASSEMBLIES a kompatibilnymi VERSIONS.
+   B. ASSEMBLIES, ktore bude CUSTOM ASSEMBLY LOADING MANAGER nacitavat sam. Tymto sposobom sa zvycajne nacitavaju CUSTOM ASSEMBLIES.
+!!! 9. ASSEMBLIES, ktore CUSTOM ASSEMBLY LOADING MANAGER ponecha CLR, aby ich nacitala je mozne urcit 2 sposobmi.
+   A. V METHOD IHostAssemblyManager::GetNonHostStoreAssemblies() vratit EXPLICITNY ZOZNAM ASSEMBLIES (COM INTERFACE ICLRAssemblyReferenceList), ktore ma CLR nacitat.
+   B. V METHOD IHostAssemblyManager::GetNonHostStoreAssemblies() vratit NULL a nechat CLR, aby najprv skusila nacitat VSETKY ASSEMBLIES z GAC a ked sa v GAC nenachadzaju, tak dat moznost CUSTOM ASSEMBLY LOADING MANAGER, aby ich nacital sam. Ak to ani CUSTOM ASSEMBLY LOADING MANAGER NEDOKAZE, tak CLR hlada ASSEMBLIES v APPLICATION BASE DIRECTORY.
+!!! 10. COM INTERFACE ICLRAssemblyReferenceList obsahujuci EXPLICITNY ZOZNAM ASSEMBLIES, ktore ma CLR nacitat sa vytvara pomocou METHOD ICLRAssemblyIdentityManager::GetCLRAssemblyReferenceList(), kde INPUT PARAMETER obsahuje pole STRINGS s FULLY-SPECIFIED (alebo PARTIAL) ASSEMBLY NAMES, ktore ma CLR nacitat.
+!!! 11. CUSTOM ASSEMBLY LOADING sa implementuje v nasledujucich krokoch.
+   A. UNMANAGED HOST implementuje COM INTERFACES IHostAssemblyManager a IHostAssemblyStore.
+   B. V METHOD IHostAssemblyManager::GetNonHostStoreAssemblies() vracia OBJECT typu ICLRAssemblyReferenceList (vytvoreny pomocou ICLRAssemblyIdentityManager::GetCLRAssemblyReferenceList()), ktory obsahuje VSETKY ASSEMBLIES, ktore HOST ocakava, ze budu nahrane CLR za pouzitia STANDARDNEHO CLR PROBING mechanizmu.
+   !!! C. V METHOD IHostAssemblyManager::GetAssemblyStore() vracia OBJECT typu IHostAssemblyStore, ktory sluzi na NACITANIE obsahuj ASSEMBLIES, ktore NENACITAL CLR a ich vratenie v podobe IStream OBJECT v OUTPUT PARAMETER.
+   !!!!! D. METHOD IHostAssemblyStore::ProvideAssembly() je volana pre KAZDU ASSEMBLY, ktora nebola specifikovana v zozname ICLRAssemblyReferenceList a ulohou IHostAssemblyStore::ProvideAssembly() je vratit OBJECT IStream z obsahom hladanej ASSEMBLY. OBJECT IStream musi obsahovat PRESNY OBSAH ASSEMBLY FILE. OPTIONALLY je mozne vratit aj obsah .PDB FILE.
+   !!! E. METHOD IHostAssemblyStore::ProvideAssembly() dostava informaciu o tom aka ASSEMBLY sa ma nacitat v PARAMETRI BindInfo TYPU AssemblyBindInfo, ktory obsahuje ASSEMBLY NAME, ktore sa ma nacitat, APP DOMAIN ID do ktorej sa ASSEMBLY bude nacitavat, POLICY LEVEL urcujuci ci niektora VERSION POLICY bola aplikovana a ASSEMBLY NAME po aplikovani VERSION POLICY. Na zaklade tychto informacii musi METHOD IHostAssemblyStore::ProvideAssembly() nacitat z CUSTOM STORE OBSAH ASSEHMBLY FILE a vratit ho ako IStream OBJECT v PARAMETRI StmAssemblyImage. V pripade, ze je VERSION POLICY aplikovana, tak METHOD IHostAssemblyStore::ProvideAssembly() MUSI vracat ASSEMBLY PO APLIKOVANI VERSION POLICY, inak CLR hodi ERROR.
+!!! 12. CUSTOM ASSEMBLY LOADING je mozne implementovat aj v MANAGED CODE nasledujucim sposobom.
+   !!! A. Pomocou EVENT AppDomain.AssemblyResolve je mozne vykonat RESOLVING ASSEMBLIES a tym aj nacitanie ASSEMBLIES z CUSTOM MEDIA. EVENT je volany AZ POTOM ako CLR NEDOKAZE nacitat pozadovanu ASSEMBLY.
+   B. Pomocou METHODS Assembly.Load() a AppDomain.Load() s PARAMETROM typu BYTE ARRAY je mozne nacitat ASSEMBLY nie ako FILE ale z BYTE ARRAY.
+   !!! C. Pri MULTI-MODULE ASSEMBLIES pomocou EVENT AppDomain.ModuleResolve je mozne vykonat RESOLVING MODULES a tym aj nacitanie MODULES z CUSTOM MEDIA. EVENT je volany AZ POTOM ako CLR NEDOKAZE nacitat pozadovany MODULE.
+   !!! D. Pri MULTI-MODULE ASSEMBLIES je MODULE mozne pomocou METHOD Assembly.LoadModule() s PARAMETROM typu BYTE ARRAY nacitat MODULE nie ako FILE ale z BYTE ARRAY.
+!!! 13. METHODS Assembly.Load() a AppDomain.Load() umoznuju nacitavat ASSEMBLIES do PROCESSU ako BYTE ARRAY.
+   A. ASSEMBLY je zadavana ako BYTE ARRAY.
+   B. Okrem ASSEMBLY FILE je v pretazenych verziach METHODS mozne poslat aj .PDB FILE.
+!!! 14. Nacitanie ASSEMBLIES z CUSTOM STORE v MANAGED CODE pomocou CUSTOM ASSEMBLY LOADING sa realizuje v nasledujucich bodoch.
+   A. Zaregistruje sa EVENT HANDLER na EVENT AppDomain.AssemblyResolve.
+   B. Pomocou METHODS Assembly.Load(), alebo AppDomain.Load() sa poziada CLR o nacitanie CUSTOM ASSEMBLY, ktora NIE JE ulozena v STANDARDNYCH DIRECTORIES, resp. moze byt ulozena v DB TABLE, alebo hocijakom inom CUSTOM STORE.
+   C. Kedze CLR ASSEMBLY NEDOKAZE NAJST zavola HANDLER pre EVENT AppDomain.AssemblyResolve.
+   D. V HANDLER pre EVENT AppDomain.AssemblyResolve sa DATA (BYTE ARRAY) pozadovanej ASSEMBLY (PROPERTY ResolveEventArgs.Name) nacitaju z CUSTOM STORE a pomocou METHODS Assembly.Load(), alebo AppDomain.Load() s PARAMETROM TYPU BYTE ARRAY sa vytvori hladana ASSEMBLY, ktora sa vrati ako RETURN VALUE. Ak danu ASSEMBLY HANDLER pre EVENT AppDomain.AssemblyResolve NEVIE NAJST, tak vrati NULL.
+   !!! E. ASSEMBLY, ktora vrati HANDLER pre EVENT AppDomain.AssemblyResolve musi ma TU ISTU IDENTITY aka bola pozadovana v PROPERTY ResolveEventArgs.Name.
+   !!!!! F. Pri MULTI-MODULE ASSEMBLIES je nutne zaregistrovat aj EVENT AppDomain.ModuleResolve a v jeho HANDLER spravit RESOLVING MODULE, ktory potom vytvoreny z BYTE ARRAY pomocou METHOD Assembly.LoadModule() s PARAMETROM typu BYTE ARRAY.
+!!!!! 15. CUSTOM ASSEMBLY LOADING v UNAMAGED CODE je OVELA RYCHLEJSI a EFEKTIVNEJSI na PAMAT ako implementacia CUSTOM ASSEMBLY LOADING v MAMAGED CODE. Na druhej strane implementacia CUSTOM ASSEMBLY LOADING v MAMAGED CODE je DALEKO JEDNODUCHSIA.
+//------------------------------------------------------------------------------------------------------

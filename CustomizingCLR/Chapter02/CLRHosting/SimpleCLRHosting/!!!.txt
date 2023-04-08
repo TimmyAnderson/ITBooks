@@ -1,0 +1,82 @@
+//------------------------------------------------------------------------------------------------------
+1. Solution demonstruje CLR HOSTING API.
+2. CLR HOSTING API je mnozina COM INTERFACES a UNMANAGED FUNCTIONS, ktore umoznuju CUSTOMIZATION CLR.
+3. HOSTING API je definovana v nasledujucich FILES.
+   A. MSCorEE.IDL - obsahuje deklaracie COM INTERFACES.
+   B. MSCorEE.H a Metahost.H  - obsahuju deklaracie COM INTERFACES a FUNCTIONS.
+   C. MSCorEE.DLL - obsahuje kod HOSTING API.
+!!! 4. ZAKLADNYM COM INTERFACE CLR HOSTING API je COM INTERFACE ICLRRuntimeHost. Ma nasledujuce METHODS.
+   !!! A. ExecuteInDefaultAppDomain() SPUSTI STATIC METHOD v CLASS zadanej ASSEMBLY v DEFAULT APP DOMAIN. METHOD MUSI mat nasledujucu signaturu [static int MethodName(string Parameter)]. METHOD je BLOCKED. Skonci AZ KED SKONCI volana CLR METHOD.
+   B. ExecuteInAppDomain() urcuje v ktorej APP DOMAIN sa zadana METHOD bude spustat.
+   C. ExecuteApplication() urcuje APPLICATION, ktora bude spustena v novej APP DOMAIN. Pouziva sa pri CLICK ONCE DEPLOYMENT.
+   D. UnloadAppDomain() odstrani APP DOMAIN podla APP DOMAIN ID.
+   E. GetCurrentAppDomainId() vraci APP DOMAIN ID akutalne vykonavanej APP DOMAIN.
+   F. GetCLRControl() vrati POINTER na ICLRControl, ktory umoznuje CUSTOMIZOVAT CLR. Pomocou ICLRControl je mozne ziskat POINTERS na CLR MANAGERS.
+   G. SetHostControl() umoznuje specifikovat CUSTOM IMPLEMENTACIU IHostControl, ktoru CLR HOSTING API pouziva na zistenie ktore MANAGERS HOST IMPLEMENTUJE.
+   !!! H. Start() INICIALIZUJE CLR v PROCESSE.
+   !!! I. Stop() ZASTAVI VYKONAVANIE CLR CODE. Tato METHOD vsak NEUVOLNUJE RESOURCES, NEZASTAVUJE beziace THREDS, ani NEODSTRANUJE APP DOMAINS. Na to je NUTNE UKONCENIE HOSTING PROCESS.
+!!!!! 5. Instanciu COM INTERFACE ICLRRuntimeHost je v .NET 4.0. mozne ziskat nasledujucim sposobom.
+   A. Pomocou FUNCTION CLRCreateInstance() sa ziska instancia ICLRMetaHost.
+   B. Pomocou METHOD ICLRMetaHost::GetRuntime() sa ziska COM INTERAFACE ICLRRuntimeInfo pre PRISLUSNU VERZIU CLR. Pre .NET 4.0. je to verzia [v4.0.30319].
+   C. Pomocou METHOD ICLRRuntimeInfo::GetInterface() sa ziska COM INTERAFACE ICLRRuntimeHost.
+!!! 6. CLR HOSTING API pouziva jednoduchu mennu konvenciu na rozlisenie COM INTERFACES.
+   A. COM INTERFACES s nazvom ICLRXXX su COM INTERFACES, ktore implementuje SAMOTNE CLR. Pomocou nich moze HOST ovladat a ziskavat informacie o CLR.
+   B. COM INTERFACES s nazvom IHostXXX su COM INTERFACES, ktore implementuje HOST (.NET samozrejme poskytuje STANDARDNE IMPLEMENTACIE). Pomocou nich moze CLR ziadat od HOST vykonanie rozlicnych operacii ako napriklad pridelenie pamate.
+!!! 7. CLR HOSTING API niektore COM INTERFACES (casto kombinacie ICLRXXX a IHostXXX) zdruzuje do LOGICKYCH CELKOV, ktore sa oznacuju ako MANAGERS.
+8. Pre MANAGERS platia nasledujuce fakty.
+   A. MANAGER je mnozina SUVISIACICH COM INTERFACES CLR HOSTING API, ktore implementuju jednu ucelene funkcionalitu HOSTING API.
+   B. HOST moze implementovat iba VYBRANE TYPY MANAGERS. Tie, ktore neimplementuje su nahradene STANDARDNYMI IMPLEMENTACIAMI.
+   C. Ak sa HOST rozhodne implementovat niektory MANAGER, tak MUSI IMPLEMENTOVAT VSETKY jeho COM INTERFACES a METHODS.
+   D. MANAGER ma jedno z COM INTERFACES povazovane za PRIMARY z ktoreho je mozne ziskat ostatne COM INTERFACES.
+9. CLR HOSTING API obsahuje nasledujuce MANAGERS.
+   A. ASSEMBLY LOADING [IHostAssemblyManager, IHostAssemblyStore, ICLRAssemblyReferenceList a ICLRAssemblyIdentityList].
+   B. HOST PROTECTION [ICLRHostProtectionManager].
+   C. FAILURE POLICY [ICLRPolicyManager a IHostPolicyManager].
+   D. MEMORY [IHostMemoryManager, IHostMalloc a ICLRMemoryNotificationCallback].
+   E. THREADING [IHostTaskManager, ICLRTaskManager, IHostTask a ICLRTask].
+   F. THREAD POOL MANAGER [IHostThreadPoolManager].
+   G. SYNCHRONIZATION [IHostSyncManager, ICLRSyncManager, IHostCriticalSection, IHostManualEvent, IHostAutoEvent a IHostSemaphore].
+   H. I/O COMPLETION [IHostIoCompletionManager a ICLRIoCompetionManager].
+   I. GARBAGE COLLECTION [IHostGCManager a ICLRGCManager].
+   J. DEBUGGING [ICLRDebugManager].
+   K. CLR EVENTS [ICLROnEventManager a IActionOnCLREvent]
+!!! 10. LIBRARY MSCorEE.DLL NEOBSAHUJE samotnu CLR iba LOADER zvany CLR SHIM. CLR SHIM je zodpovedny za nacitanie korektnej verzie CLR. LIBRARY MSCorEE.DLL je nainstalovana v systeme IBA RAZ a vykonava vyber, ktory CLR zo vsetkych nainstalovanych sa zavedie do daneho PROCESSU.
+!!! 11. METHOD ICLRRuntimeHost::Start() spusta CLR. To znamena, ze SHIM zavedie prislusny CLR do HOSTING PROCESS.
+!!!!! 12. COM INTERFACE IHostControl umoznuje CLR zistit, ktore MANAGERS dany HOST PODPORUJE. METHOD GetHostManager() vracia S_OK a POINTER na PRIMARY COM INTERFACE daneho MANAGER, ako ho HOST PODPORUJE. Ak dany MANAGER HOST NEPODPORUJE, tak vracia E_NOINTERFACE.
+!!!!! 13. COM INTERFACE ICLRControl umoznuje HOST zistit, ktore MANAGERS dane CLR PODPORUJE. METHOD GetCLRManager() vracia S_OK a POINTER na PRIMARY COM INTERFACE daneho MANAGER, ako ho CLR PODPORUJE. Ak dany MANAGER CLR NEPODPORUJE, tak vracia E_NOINTERFACE.
+14. COM INTERFACE IHostControl sa pouziva nasledujucim sposobom.
+   A. Pri volani METHOD ICLRRuntimeHost::Start() CLR zisti ci CUSTOM IHostControl bol ZAREGISTROVANY pomocou METHOD ICLRRuntimeHost::SetHostControl().
+   B. Ak HOST NEZAREGISTROVAL (volanim ICLRRuntimeHost::SetHostControl()) CUSTOM IMPLEMENTACIU IHostControl, tak CLR tym vie, ze ZIADEN MANAGER HOST NEIMPLEMENTUJE a teda pouzije STANDARD MANAGERS.
+   C. Ak HOST ZAREGISTROVAL (volanim ICLRRuntimeHost::SetHostControl()) CUSTOM IMPLEMENTACIU IHostControl, tak CLR zacne pre KAZDY HOST MANAGER volat METHOD IHostControl::GetHostManager(). Pomocou nej zisti, ktore MANAGERS dany HOST IMPLEMENTUJE. Pre tie, ktore NEIMPLEMENTUJE (IHostControl::GetHostManager() vratil E_NOINTERFACE), pre tie CLR zavedie STANDARD MANAGERS.
+15. COM INTERFACE ICLRControl sa pouziva nasledujucim sposobom.
+   A. HOST zavola METHOD ICLRControl::GetCLRControl() na ziskanie POINTER na ICLRControl.
+   B. HOST vola METHOD ICLRControl::GetCLRManager() na ziskanie prislusneho CLR MANAGER.
+16. HOST MANAGER 'ASSEMBLY LOADING' umoznuje nasledujuce CUSTOMIZATIONS.
+   A. Urcovat LOCATION z ktorej budu ASSEMBLIES nacitavane.
+   B. Definovat CUSTOM VERSIONING POLICY.
+   C. FORMAT z ktoreho budu ASSEMBLIES nacitavane. ASSEMBLIES vdaka tejto CUSTOMIZACII napriklad NEMUSIA byt nacitavane ako FILES vo FILE SYSTEM.
+!!! 17. HOST MANAGER 'ASSEMBLY LOADING' je vyuzivany napriklad v SQL SERVER, kde su ASSEMBLIES v ktorych su ulozene CUSTOM STORED PROCEDURES, alebo CUSTOM USER DEFINED FUNCTIONS nacitavane NIE z FILE SYSTEM, ale z DB TABLES, kde sa ulozia pri REGISTRACII ASSEMBLIES do SQL SERVER.
+18. HOST MANAGER 'FAILURE BEHAVIOR' umoznuje nasledujuce CUSTOMIZATIONS.
+   A. Definovat TIMEOUTS pre jednotlive FAILURE situacie.
+   B. Definovat POLICY pre jednotlive FAILURE situacie.
+19. HOST MANAGER 'HOST PROTECTION' umoznuje OBMEDZIT CLASSES a METHODS, ktore bude mozne volat z CLR. Toto je dolezite napriklad zo RELIABILITY ci SCALABILITY dovodov. Tieto obmedzenia sa vsak NEAPLIKUJU zo SECURITY dovodov, ale skor preto, lebo bude nemaju zmysel, alebo obmedzuju napriklad SCALABILITY. CLASSES na ktore sa aplikuju obmedzenia su delene do CATEGORIES na ktore sa tieto obmedzenie aplikuju.
+!!! 20. HOST MANAGER 'HOST PROTECTION' na urcenie ktora CLASS ci METHOD patri do ktorej CATEGORY, ku ktorej je mozne obmedzit pristup pouziva ATTRIBUTE [HostProtectionAttribute]. Ak je tento ATTRIBUTE aplikovany na CLASS ci METHOD, pricom zodpovedajucu CATEGORY HOST OBMEDZUJE, potom pri volani danej CLASS ci METHOD je generovana EXCEPTION.
+21. HOST MANAGER 'MEMORY' umoznuje nasledujuce CUSTOMIZATIONS.
+   A. CUSTOMIZOVAT alokaciu a uvolnovanie pamate.
+   B. Urcit LIMIT pre maximalny objem alokovanej pamate.
+   C. Notifikaciu o NEDOSTATKU PAMATE.
+22. HOST MANAGER 'GARBAGE COLLECTION' umoznuje nasledujuce CUSTOMIZATIONS.
+   A. Zistenie kedy GC bude spusteny a kedy ukonceny.
+   B. Iniciovat spustenie GC.
+23. HOST MANAGER 'THREADING' umoznuje nasledujuce CUSTOMIZATIONS.
+   A. Spustanie, zastavovanie a celkovo pracu s THREADS.
+   B. Pouzit namiesto THREADS napriklad FIBERS na realizovanie CUSTOM THREADING MODELU.
+   C. SCHEDULING jednotlivych THREADS.
+   D. Notifikacia kedy je z MANAGED kodu volany UNMANAGED kod a kedy sa volanie vrati spat do MANAGED kodu.
+24. HOST MANAGER 'SYNCHRONIZATION' umoznuje nasledujuce CUSTOMIZATIONS.
+   A. CUSTOMIZOVAT vytvaranie SYNCHRONIZATION PRIMITIVES.
+   B. Notifikaciu kedy boli LOCKS vykonane a kedy uvolnene.
+25. HOST MANAGER 'I/O COMPLETION' umoznuje nasledujuce CUSTOMIZATIONS.
+   A. Spustanie I/O COMPLETION PORT operacie.
+   B. Notifikaciu kedy boli I/O COMPLETION PORT operacie skoncene.
+//------------------------------------------------------------------------------------------------------

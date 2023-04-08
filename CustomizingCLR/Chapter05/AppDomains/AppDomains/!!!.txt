@@ -1,0 +1,108 @@
+//-------------------------------------------------------------------------------------------------------
+1. Solution demonstruje pouzitie APP DOMAINS.
+2. APP DOMAINS je mnozina ASSEMBLIES, ktore su nahrane do PROCESSU a spustane NEZAVISLE v NEZAVISLOM ADDRESS SPACE s VLASTNYM SECURITY CONTEXT. Su teda KOMPLETNE IZOLOVANE od inych APP DOMAINS beziacich v TOM ISTO PROCESSE.
+3. APP DOMAINS poskytuju nasledujuce vyhody.
+   A. Viacero moze bezat UPLNE NEZAVISLE v JEDNOM PROCESSE.
+   B. Su vzajomne UPLNE NEZAVISLE a vzajomna interakcia je mozna iba cez REMOTING.
+   C. Mozu byt NEZAVISLE LOADED a UNLOADED.
+   !!! D. Pri UNLOAD APP DOMAIN su ODSTRANOVANE ASSEMLIES z PAMATE. Je to JEDINY SPOSOB ako odstranit uz LOADED ASSEMBLY z PROCESSU.
+!!!!! 4. ZASADNOU VYHODOU pouzitia APP DOMAIN na IZOLACIU NEZAVISLYCH SKUPIN ASSEMBLIES na ROZDIEL od pouzitia PROCESSES na IZOLACIU v UNMANAGED CODE je VYKONNOST. Dovody vyssej vykonnost APP DOMAIN su nasledovne.
+   A. Kedze CLR je STATICKY schopne VERIFIKOVAT ASSEMBLY CODE - zistit ci nepristupuje k INVALID MEMORY, tak RUNTIME kontrola, ktora je NUTNA v UNMANAGED CODE na zistenie ci PROCESS nepristupuje k INVALID MEMORY pri APP DOMAINS NIE JE NUTNA.
+   B. CLR moze EFEKTIVNEJSIE spravovat THREADS pri mapovani CLR THREADS na UNMANAGED THREADS a tym znizit pocet CONTEXT SWITCHES.
+   C. Kedze APP DOMAINS bezia v ramci 1 PROCESSU, tak zdielaju ROVNAKY VIRTUALNY ADDRESS SPACE. To umoznuje efektivnejsie vyuzivanie PAMATE.
+!!!!! 5. Vyhody APP DOMAINS a IZOLACIE medzi nimi mozu vyuzivat iba VERIFIKOVATELNE - SAFE ASSEMBLIES. Taketo ASSEMBLIES NESMU pouzivat UNSAFE CODE, ako napriklad pristup k POINTERS.
+!!! 6. C# ci C++/CLI umoznuju nastavit ci generovana ASSEMBLY bude SAFE, alebo UNSAFE.
+7. APP DOMAINS poskytuju ISOLATION na viacerych urovniach.
+   A. TYPE VISIBILITY. ASSEMBLIES su nahravane do APP DOMAINS NEZAVISLE. To znaci, ze ak nacitam TU ISTU ASSEMBLY do 2 APP DOMAINS, tak bude v PROCESSE 2 KRAT. (Vynimkou su DOMAIN-NEUTRAL ASSEMBLIES.) Kedze ASSEMBLIES su VIAZANE na APP DOMAINS, tak k TYPES z jednej ASSEMBLY NEMOZU PRIAMO pristupovat INE ASSEMBLIES. To sa da len NEPRIAMO cez presne definovane CONTRACTS pomocou REMOTING.
+   B. CONFIGURATION DATA. Kazda APP DOMAIN moze mat VLASTNY .CONFIG FILE.
+   C. SECURITY SETTINGS. Kazda APP DOMAIN moze byt nastavena na VLASTNE SECURITY SETTINGS.
+   D. ACCESS to STATIC DATA and MEMBERS. Kedze ASSEMBLIES su ISOLATED, tak ISOLATED su aj STATIC MEMBERS. Problem nastava iba u DOMAIN NEUTRAL ASSEMBLIES, ktore su ZDIELANE medzi APP DOMAINS. Pre ne si CLR vytvara v KAZDEJ ASSEMBLY SEPARATNU KOPIU VSETKYCH STATIC MEMBERS, a tak su tieto ISOLATED medzi APP DOMAINS.
+!!! 8. APP DOMAINS aj ked su ISOLATED, existuju iste OBMEDZENIA.
+   A. GARBAGE COLLECTION HEAP je ZDIELANA medzi APP DOMAINS.
+   B. CLR THREADS a CLR THREAD POOLS su ZDIELANE medzi APP DOMAINS.
+   C. WRAPPERS nad UNMANAGED OBJECTS (napriklad KERNEL OBJECTS ako SEMAPHORE ci MUTEX) su ZDIELANE medzi APP DOMAINS.
+9. APP DOMAIN pozostavaju z mnoziny DATA STRUCTURES.
+   A. Zoznam ASSEMBLIES nacitanych do APP DOMAIN.
+   B. SECURITY POLICY.
+   C. APP DOMAIN PROPERTIES. Obsahuju informacie o ako napriklad BASE DIRECTORY v ktorom sa maju hladat ASSEMBLIES ci FILE obsahujuci CONFIGURATION DATA pre APP DOMAIN. Takisto obsahuje DICTIONARY s CUSTOM VALUES, ktore mozu vyuzivat CUSTOM ASSEMBLIES.
+   D. Kopiu vsetkych STATIC MEMBERS vsetkych CLASSES.
+   E. REMOTING PROXIES na komunikaciu medzi APP DOMAINS.
+!!! 10. DEFAULT APP DOMAIN je APP DOMAIN, ktora je standardne vytvorena pri spustani MANAGED .NET PROCESSU DAFAULT HOST a do ktorej je nacitana ASSEMBLY obsahujuce ENTRY POINT i vsetky STATICKY LINKOVANE ASSEMBLIES.
+!!! 11. DEFAULT APP DOMAIN NEMOZE byt UNLOADED z PROCESSU.
+!!!!! 12. DOMAIN-NEUTRAL ASSEMBLIES aj ked su v PROCESSE zavedene IBA RAZ, tak LOGICKY vystupuju v KAZDEJ APP DOMAIN ako ISOLATED ASSEMBLIES. Je to zabezpecene tym, ze APP DOMAINS robia pre STATIC MEMBERS osobitnu KOPIU do KAZDEJ APP DOMAIN a teda ISOLATION je ZACHOVANA.
+13. COM INTERFACES ICorPublish, ICorPublishProcess a ICorPublishAppDomain su sucastou CLR DEBUGGER. Je ich vsak mozne pouzit aj na iterovanie vsetkymi MANAGED PROCESSES a ich APP DOMAINS.
+!!!!! 14. .NET NEPODPORUJE UNLOAD jednotlivych ASSEMBLIES. JEDINY sposobom ako vykonat UNLOAD ASSEMBLIES je vykonat UNLOAD CELEJ APP DOMAIN pri ktorom sa robi UNLOAD aj VSETKYCH ASSEMBLIES nahratych do danej APP DOMAIN.
+!!! 15. Pre DOMAIN-NEUTRAL ASSEMBLIES NIE JE MOZNE vykonat UNLOAD.
+!!!!! 16. Ak APP DOMAIN je UNLOADED pricom v nej este bezi nejaky CODE, potom METHOD, ktora kod v APP DOMAIN SPUSTILA (napriklad Domain.ExecuteAssembly()) hodi EXCEPTION AppDomainUnloadedException.
+!!! 17. CLASS AppDomainManager ZJEDNODUSUJE MANAGEMENT APP DOMAINS. Zjednodusuje LOADING a UNLOADING APP DOMAINS a poskytuje moznosti CUSTOMIZATION pri vytvarani novej APP DOMAIN.
+!!! 18. CLASS AppDomainManager sa pouziva nasledujucim sposobom.
+   A. Vytvori sa CUSTOM APP DOMAIN MANAGER, tym, ze sa implementuje CLASS, ktora je DERIVED z AppDomainManager.
+   B. CUSTOM APP DOMAIN MANAGER sa zaregistruje v CLR.
+   C. Nasledne CLR pri vytvarani novych APP DOMAINS pouziva CUSTOM APP DOMAIN MANAGER.
+   !!!!! D. Pre KAZDU NOVOVYTVORENU APP DOMAIN sa vytvori NOVA INSTANCIA zaregistrovaneho CUSTOM APP DOMAIN MANAGER.
+19. CLASS AppDomainManager dedi z MarshalByRefObject a ma nasledujuce MEMBERS.
+   A. STATIC METHOD CreateDomainHelper() je HELPER METHOD na vytvaranie NOVYCH APP DOMAINS.
+   B. METHOD CreateDomain() je volana pri poziadavke na vytvorenie NOVEJ APP DOMAIN. CUSTOM APP DOMAIN MANAGER moze bud VYTVORIT NOVU APP DOMAIN, alebo vratit EXISTUJUCU APP DOMAIN.
+   C. METHOD InitializeNewDomain() je volana pri poziadavke na INICIALIZACIU NOVEJ APP DOMAIN. APP DOMAIN MANAGER moze v tejto METHOD CUSTOMIZOVAT vytvaranu APP DOMAIN. METHOD je volana z NOVOVYTVORENEJ APP DOMAIN.
+   D. METHOD CheckSecuritySettings() vracia BOOLEAN hodnotu, informujucu o tom ci specifikovana OPERATION ma SECURITY RIGHTS na vykonanie v APP DOMAIN.
+   E. PROPERTY EntryAssembly vracia ENTRY ASSEMBLY daneho programu.
+   F. PROPERTY InitializationFlags vracia INITIALIZATION FLAGS APP DOMAIN MANAGER.
+   G. PROPERTY ApplicationActivator vracia APPLICATION ACTIVATOR pouzivany pri aktivacii ADD-INS.
+   H. PROPERTY HostSecurityManager vracia instanciu HostSecurityManager, ktory CLR pouzije pre nastavenie SECURITY pre danu APP DOMAIN.
+   I. PROPERTY HostExecutionContextManager vracia instanciu HostExecutionContextManager, ktory urcuje sposob akym budu tiect informacie o CONTEXT medzi THREADS.
+20. CUSTOM APP DOMAIN MANAGER je mozne priradit PROCESSU 2 sposobmi.
+   A. Pouzit HOSTING API METHOD ICLRControl::SetAddDomainManagerType().
+   B. Nastavit ENVIRONMENT VARIABLES.
+!!! 21. CUSTOM APP DOMAIN MANAGER spravidla sluzi aj ako ENTRY POINT, ktorym UNMANAGED HOST vstupuje do MANAGED CODE. POINTER na CUSTOM APP DOMAIN MANAGER moze UNMANAGED HOST ziskat nasledujucim sposobom.
+   A. CUSTOM APP DOMAIN MANAGER musi vo SVOJEJ METHOD AppDomainManager.InitializeNewDomain() nastavit PROPERTY AppDomainManager.InitializationFlags na AppDomainManagerInitializationOptions.RegisterWithHost.
+   B. UNMANAGED HOST MUSI implementovat METHOD iHostControl::SetAppDomainManager() v ktorej do UNMANAGED HOST bude zaslany POINTER na CUSTOM APP DOMAIN MANAGER.
+22. CUSTOM APP DOMAIN MANAGER moze byt pre PROCESS nastaveny aj tak, ze sa nastavia ENVIRONMENT VARIABLES PRED SPUSTENIM CLR. To sa da vykonat nasledovne.
+   A. Pre programy implementujuce CUSTOM HOST (cez HOSTING API) staci PRED volanim METHOD ICLRRuntimeHost::Start() nastavit ENVIRONMENT VARIABLE APPDOMAIN_MANAGER_ASM na meno ASSEMBLY obsahujucej CUSTOM APP DOMAIN MANAGER a ENVIRONMENT VARIABLE APPDOMAIN_MANAGER_TYPE na TYPE, ktory implementuje CUSTOM APP DOMAIN MANAGER.
+   B. Pre programy napisane CISTO v .NET, ktore NEIMPLEMENTUJU CUSTOM HOST je nutne vytvorit vyvorit CUSTOM PROCESS LOADER, ktory zavedie PROCESS, ktory ma pouzivat  CUSTOM APP DOMAIN MANAGER, no este pred jeho spustenim vytvori ENVIRONMENT VARIABLE APPDOMAIN_MANAGER_ASM na meno ASSEMBLY obsahujucej CUSTOM APP DOMAIN MANAGER a ENVIRONMENT VARIABLE APPDOMAIN_MANAGER_TYPE na TYPE, ktory implementuje CUSTOM APP DOMAIN MANAGER.
+!!!!! 23. APP DOMAINS z UNMANAGED CODE NIE JE MOZNE PRIAMO VYTVARAT. Je mozne ich vytvarat IBA v MANAGED CODE pomocou CLASS AppDomain.
+!!! 24. Postup pre vytvorenie a pouzitie CUSTOM APP DOMAIN MANAGER z UNMANAGED HOST na vytvaranie APP DOMAINS je nasledovny.
+   A. Definujem ASSEMBLY MyAppDomainManager.DLL, ktora bude obsahovat CUSTOM APP DOMAIN MANAGER CMyAppDomainManager ako CLASS zdedenu z AppDomainManager.
+   !!!!! B. CUSTOM APP DOMAIN MANAGER CMyAppDomainManager implementuje AppDomainManager.InitializeNewDomain(), v ktorej nastavi PROPERTY AppDomainManager.InitializationFlags na AppDomainManagerInitializationOptions.RegisterWithHost. Vdaka tomuto FLAG PRINUTI CLR, aby pre KAZDU VYTVORENU APP DOMAIN (pri ktorej sa vytvara NOVA INSTANCIA CUSTOM APP DOMAIN MANAGER CMyAppDomainManager) zaslal POINTER na CMyAppDomainManager (presnejsie na CCW WRAPPER okolo CMyAppDomainManager) do HOST. HOST ziska tento POINTER cez METHOD IHostControl::SetAppDomainManager().
+   !!! C. UNMANAGED HOST zavola METHOD ICLRControl::SetAppDomainManagerType(), ktorou nastavi ASSEMBLY NAME (MyAppDomainManager.DLL) a CLASS (CMyAppDomainManager), ktora implementuje CUSTOM APP DOMAIN MANAGER. Tymto sa HOST oznami, ze ma CUSTOM APP DOMAIN MANAGER CMyAppDomainManager pouzit na vytvorenie KAZDEJ APP DOMAIN (VRATANE DEFAULT APP DOMAIN).
+   !!! D. Na to HOST dokazal ASSEMBLY MyAppDomainManager.DLL najst, musi MyAppDomainManager.DLL byt nakopirovana v PATH, ktoru UNMANAGED HOST pozna. Najlepsie je ju nakopirovat do toho isteho DIRECTORY ako HOST.
+   E. HOST MUSI implementovat IHostControl, ktory zaregistruje pomocou METHOD ICLRRuntimeHost::SetHostControl().
+   !!!!! F. CLR pre KAZDU APP DOMAIN vytvorenu v PROCESSE (ak bol v CUSTOM APP DOMAIN MANAGER nastaveny FLAG AppDomainManagerInitializationOptions.RegisterWithHost) vola METHOD IHostControl::SetAppDomainManager(). Pomocou nej HOST ziskava POINTERS na CUSTOM APP DOMAIN MANAGERS (instancie CLASS CMyAppDomainManager), ktore sa vytvaraju pre KAZDU NOVOVYTVORENU APP DOMAIN, vratane DEFAULT APP DOMAIN.
+   !!!!! G. Pri volani ICLRRuntimeHost::Start() sa vytvara DEFAULT APP DOMAIN s ktorou (tak ako s kazdou APP DOMAIN) je asociovany CUSTOM APP DOMAIN MANAGER (CMyAppDomainManager). CLR (tak ako pre VSETKY APP DOMAINS) zasle POINTER na CUSTOM APP DOMAIN MANAGER (CMyAppDomainManager) do HOST volanim METHOD ICLRRuntimeHost::SetAppDomainManager(). Vdaka tomu moze HOST vediet o KAZDEJ VYTVORENEJ APP DOMAIN.
+   H. Ak teraz CLR vytvori dalsie APP DOMAINS (HOST APP DOMAINS priamo vytvarat NEVIE), tak VZDY bude volana METHOD ICLRRuntimeHost::SetAppDomainManager() s POINTER na CUSTOM APP DOMAIN MANAGER (CMyAppDomainManager) asociovany s novou APP DOMAIN.
+!!!!! 25. Velmi casto HOST potrebuje komunikovat s APP DOMAIN. Najjednoduchsie je na to vyuzit CUSTOM APP DOMAIN MANAGERS, pretoze POINTERS na ne su zaslane do HOST (ak bol v CUSTOM APP DOMAIN MANAGER nastaveny FLAG AppDomainManagerInitializationOptions.RegisterWithHost) pri vytvoreni kazdej nove APP DOMAIN (pre ktoru je vzdy vytvoreny aj asociovany CUSTOM APP DOMAIN MANAGER). Prave POINTERS na CUSTOM APP DOMAIN MANAGERS je mozne vyuzit na komunikaciu HOST s APP DOMAINS a to nasledujucim sposobom.
+   A. Definuje sa MANAGED INTERFACE, ktore bude vystavene cez COM (MUSI byt nan aplikovany ATTRIBUTE [ComVisible(true)]). Prave tento INTERFACE bude sluzit ako komunikacny INTERFACE cez ktory bude UNMANAGED HOST volat MANAGED CODE v asociovanej APP DOMAIN.
+   !!! B. CUSTOM APP DOMAIN MANAGER MUSI implementovat MANAGED INTERFACE z bodu A.
+   !!! C. Pomocou [TLBEXP.EXE] (ak ASSEMBLY obsahujuca CUSTOM APP DOMAIN MANAGER je kompilovana pod X64, tak je treba pouzit VS COMMAND PROMPT pre X64) vytvorim TYPE LIBRARY (.TLB FILE) na MANAGED INTERFACE z bodu A.
+   !!! D. Vytvoreny .TLB FILE pomocou KEYWORD #import importujem do UNMANAGED HOST. Tym v UNMANAGED HOST ziskam COM INTERFACE, ktory referuje na MANAGED INTERFACE z bodu A.
+   !!!!! E. Pri vytvoreni novej APP DOMAIN (a asociovanej APP DOMAIN MANAGER, ktory sa vytvara pre kazdu novu APP DOMAIN) zavola CLR METHOD IHostControl::SetAppDomainManager() na HOST. HOST ziska POINTER na CCW WRAPPER okolo novovytvoreneho CUSTOM APP DOMAIN MANAGER novovytvorenej APP DOMAIN. Kedze CUSTOM APP DOMAIN MANAGER v bode B IMPLEMENTOVAL MANAGED INTERFACE z bodu A, mozem pomocou IUnknown::QueryInterface() ziskat POINTER na CCW WRAPPER okolo MANAGED INTERFACE definovaneho v bode A.
+   F. POINTER na CCW WRAPPER okolo MANAGED INTERFACE definovaneho v bode A je potom mozne v HOST pouzit na komunikaciu s asociovanou APP DOMAIN v MANAGED CODE.
+!!! 26. THREADS a APP DOMAINS su NEZAVISLE KONCEPTY. Pri vytvoreni APP DOMAIN sa NEVYTVARA pre tuto APP DOMAIN novy THREAD a aktualny THREAD ani NEVSTUPUJE do NOVEJ APP DOMAIN. Na to, aby THREAD vstupil do inej DOMAIN je potrebne volat CODE nacitany v inej APP DOMAIN. To je mozne realizovat viacerymi sposobmi.
+   A. Volat CUSTOM METHOD CUSTOM APP DOMAIN MANAGER. Volanie tejto METHOD sposobi prechod THREADU do APP DOMAIN asociovanej s CUSTOM APP DOMAIN MANAGER.
+   B. Volat METHOD AppDomain.ExecuteAssembly().
+   !!!!! C. Pouzit METHOD AppDomain.DoCallBack().
+   D. Pouzit REMOTING PROXY.
+!!! 27. CODE jednej APP DOMAIN moze NARAZ vykonavat i VIACERO THREADS.
+!!! 28. TLS STATE daneho THREAD, ak THREAD prejde do INEJ APP DOMAIN je RESET do stavu, ktory zodpoveda APP DOMAIN do ktorej THREAD presiel.
+!!! 29. V .NET NIE JE MOZNE vykonat UNLOAD jednotlivych ASSEMBLIES. UNLOAD je mozne vykonat IBA na APP DOMAINS.
+30. APP DOMAIN UNLOAD je mozne vykonat nasledujucimi sposobmi.
+   A. V MANAGED CODE je UNLAOD APP DOMAIN moze vykonat volanim METHOD AppDomain.Unload().
+   B. V UNMANAGED CODE je UNLAOD APP DOMAIN moze vykonat volanim METHOD ICLRRuntimeHost::UnloadAppDomain().
+!!! 31. Ak je UNLOAD APP DOMAIN vykonany GRACEFULLY (teda bud pomocou AppDomain.Unload(), alebo ICLRRuntimeHost::UnloadAppDomain()), tak CLR vykonava nasledujuce cinnosti.
+   A. THREADS, ktore prave bezia v danej APP DOMAIN su ABORTED. V tychto THREADS je vyhodena EXCEPTION ThreadAbortException. ABORTED mozu byt aj tie THREADS, ktore v danej chvili NEVYKONAVAJU CODE v UNLOADED APP DOMAIN, ale v CALL STACK maju METHOD, ktora bola vykonavana v APP DOMAIN, ktora je UNLOADED. Potom aj tento THREAD je ABORTED hodenim EXCEPTION ThreadAbortException.
+   B. Je vyvolany EVENT notifikujuci o UNLOAD APP DOMAIN. V MANAGED CODE je to EVENT AppDomain.DomainUnload. V UNAMANAGED CODE je notifikacia o APP DOMAIN UNLOAD zaslana pomocou COM INTERFACE IActionOnCLREvent, ktory musi HOST IMPLEMENTOVAT.
+   C. Pre OBJECTS beziace v APP DOMAIN su volane FINALIZERS. Takisto su volane FINALLY BLOCKS. Pocas behu FINALIZER moze FINALIZER zistit ci bol spusteny z GC, alebo vdaka APP DOMAIN UNLOAD pomocou METHOD AppDomain.IsFinalizingForUnload().
+   D. CLR vymaza interne struktury asociovane s APP DOMAIN.
+!!! 32. Ak sa pokusim o pristup k OBJECT definovanim v UNLOADED APP DOMAIN, tak je hodena EXCEPTION AppDomainUnloadedException.
+33. Pri pokuse o UNLOAD DEFAULT APP DOMAIN, ktora NEMOZE BYT ULOADED je hodena EXCEPTION CannotUnloadAppDomainException.
+34. Ak chcem zachytavat UNLOAD APP DOMAIN EVENT v UNMANAGED CODE je nutne vykonat nasledujuce kroky.
+   A. Implementovat INTERFACE IActionOnCLREvent. Tento COM INTERFACE umoznuje zachytavat VSETKY EVENTS, ktore CLR zasiala HOST.
+   B. Ziskat POINTER na ICLRControl.
+   C. Pomocou METHOD ICLRControl::GetCLRManager() ziskat POINTER na ICLROnEventManager.
+   D. Pomocou METHOD ICLROnEventManager::RegisterActionOnEvent() sa zaregistruje INTERFACE IActionOnCLREvent, vdaka comu moze HOST zachytavat EVENTS z CLR.
+   E. Pomocou METHOD ICLROnEventManager::UnregisterActionOnEvent() je mozne odregistrovat INTERFACE IActionOnCLREvent.
+!!!!! 35. CODE pri pokuse o pristup k OBJECTS (FIELDS, PROPERTIES, METHODS) vytvorenym v INYCH APP DOMAINS sa chova nasledovne.
+   A. Ak CLASS danej OBJECT dedi z MarshalByRefObject vykona sa MARSHAL-BY-REFERENCE PRISTUP.
+   B. Ak CLASS danej OBJECT je SERIALIZABLE vykona sa MARSHAL-BY-VALUE PRISTUP.
+   C. Ak CLASS danej OBJECT NEDEDI z MarshalByRefObject ani NIE je SERIALIZABLE NEVYKONA sa MARSHALLING, ale HODI sa EXCEPTION.
+!!!!! 36. Ak v REMOTE APP DOMAIN je hodena UNHANDLED EXCEPTION, tak APP DOMAIN je UNLOADED, avsak PROCESS DALEJ BEZI, kedze APP DOMAINS su NEZAVISLE a PAD JEDNEJ APP DOMAIN NEZNAMENA KONIEC PROCESSU.
+//-------------------------------------------------------------------------------------------------------

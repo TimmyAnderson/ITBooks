@@ -1,0 +1,58 @@
+﻿//------------------------------------------------------------------------------------------------------
+1. Solution demonstruje moznosti konfiguracie APP DOMAINS.
+2. CLASS AppDomainSetup sluzi na konfiguraciu vytvaranych APP DOMAINS.
+3. PROPERTY AppDomain.SetupInformation vracia instanciu AppDomainSetup s konfiguraciou danej APP DOMAIN.
+!!! 4. CLASS AppDomain ma viacero PROPERTIES, ktorymi je mozne nastavit viacere konfiguracne parametre APP DOMAIN PO JEJ VYTVORENI. Tieto PROPERTIES je vsak mozne zmenit IBA PREDTYM ako sa nacita PRVA ASSEMBLY do APP DOMAIN. Neskor sa zmeny tychto PROPERTIES IGNORUJU.
+5. PROPERTY AppDomainSetup.ApplicationBase urcuje DIRECTORY v ktorom budu vyhladavane ASSEMBLIES pre danu APP DOMAIN. Standardne sa nastavuje tato hodnota pre VSETKY APP DOMAINS na DIRECTORY obsahujuci EXECUTABLE FILE. Tutu hodnotu je vsak mozne zmenit na ine miesto, dokonca aj na inom PC.
+6. PROPERTY AppDomainSetup.PrivateBinPath umoznuje nastavit ZOZNAM SUBDIRECTORIES (oddelenych bodkociarkou) v DIRECTORY urcenom PROPERTY AppDomainSetup.ApplicationBase kde CLR ma hladat referovane ASSEMBLIES.
+!!! 7. ZOZNAM SUBDIRECTORIES v DIRECTORY AppDomainSetup.ApplicationBase v ktorych sa budu vyhladavat ASSEMBLIES je mozne modifikovat aj pomocou .CONFIG FILE a METHODS AppDomain.ClearPrivatePath() a AppDomain.AppendPrivatePath().
+8. PROPERTY AppDomainSetup.DisallowApplicationBaseProbing ak je nastavena na TRUE, ZABRANI CLR aby vyhladavat ASSEMBLIES v DIRECTORY AppDomainSetup.ApplicationBase a vsetkych jeho SUBDIRECTORIES. Vyuziva sa napriklad v SQL SERVER, ktory uklada ASSEMBLIES do DB TABLES a NIE do FILE SYSTEM.
+9. PROPERTY AppDomainSetup.PrivateBinPathProbe ak je nastavena na LUBOVOLNY NEPRAZNY STRING, ZABRANI CLR aby vyhladavat ASSEMBLIES v DIRECTORY AppDomainSetup.ApplicationBase, avsak ASSEMBLIES su NADALEJ VYHLADAVANE v SUBDIRECTORIES AppDomainSetup.ApplicationBase. Vyuziva sa napriklad v SQL SERVER, ktory uklada ASSEMBLIES do DB TABLES a NIE do FILE SYSTEM.
+!!! 10. PROPERTY AppDomainSetup.ConfigurationFile umoznuje nastavit nazov .CONFIG FILE, ktory sa pouzije pre danu APP DOMAIN. Vdaka tomu je mozne zmenit DEFAULT nazov .CONFIG FILE na vlastny.
+!!!!! 11. METHOD AppDomainSetup.SetConfigurationBytes() umoznuje nastavit BINARY ARRAY, ktory obsahuje nacitany .CONFIG FILE. Tento .CONFIG FILE v BINARY sluzi ako klasicky .CONFIG FILE v danej APP DOMAIN. Bohuzial, za sa, ze CLR IGNORUJE toto nastavenie.
+!!!!! 12. SHADOW COPY je CLR FEATURE, ktora umozni UPDATE ASSEMBLIES v UZ SPUSTENOM programe. Dosahuje sa tak, ze CLR pri zapnutom SHADOW COPY vytvori KOPIE ASSEMBLY FILES do specifikovaneho DIRECTORY a nad povodnymi ASSEMBLY FILES NEVYKONA LOCK. Tieto ASSEMBLY FILES je mozne VYMAZAT a NAHRADIT INYMI VERZIAMI. SHADOW COPY sa NESTARA o to akym sposobom si program nove verzie ASSEMBLIES nacita, ani nerobi notifikaciu o zmene FILES. Jedine co robi je, ze NEVYKONA LOCK na NACIANE ASSEMBLY FILES.
+!!! 13. SHADOW COPY sa realizuje na nasledujucich krokoch.
+   A. Zapne sa SHADOW COPY nastavenim STRING PROPERTY AppDomainSetup.ShadowCopyFiles na STRING 'true'.
+   B. Specifikuje sa PATH (PROPERTIES AppDomainSetup.CachePath a AppDomainSetup.ApplicationName, ktorych VALUE sa ZLUCIA), kde sa maju skopirovane ASSEMBLY FILES ukladat.
+   C. Urcia sa ASSEMBLY FILES, ktore sa budu kopirovat. Standardne sa kopiruju VSETKY ASSEMBLY FILES, ale pri specifikovani PROPERTY AppDomainSetup.ShadowCopyDirectories je mozne EXPLICITNE UVIEST SUBDIRECTORIES (oddelene bodkociarkou) DIRECTORY AppDomainSetup.ApplicationBase ktorych ASSEMBLY FILES sa budu kopirovat cez SHADOW COPY.
+   D. Odstrania sa skopirovane ASSEMBLY FILES z DIRECTORY urcenom PROPERTIES AppDomainSetup.CachePath a AppDomainSetup.ApplicationName.
+!!! 14. SHADOW COPY je mozne zapnut aj na UZ VYTVORENYCH ASSEMBLIES pomocou METHOD AppDomain.SetShadowCopyFiles().
+!!! 15. DIRECTORIES, ktore sa budu pri SHADOW COPY kopirovat je mozne zapnut aj na UZ VYTVORENYCH ASSEMBLIES pomocou METHOD AppDomain.SetShadowCopyPath().
+!!!!! 16. SHADOW COPY sa NESTARA o to akym sposobom si program nove verzie ASSEMBLIES nacita, ani nerobi notifikaciu o zmene FILES. Jedine co robi je, ze NEVYKONA LOCK na NACIANE ASSEMBLY FILES. Zvycajne program pri detekcii novych ASSEMBLY FILES vo FILE SYSTEM musi vytvorit NOVU APP DOMAIN s NOVYMI ASSEMBLIES a existujucu APP DOMAIN ZLIKVIDOVAT cez UNLOAD.
+17. PROPERTY AppDomainSetup.DisallowBindingRedirects umoznuje vypnut vsetky nastavenia tykajuce sa BINDING REDIRECT nastavene v .CONFIG FILE.
+18. PROPERTY AppDomainSetup.DisallowPublisherPolicy umoznuje vypnut vsetky nastavenia tykajuce sa PUBLISHER POLICY nastavene v .CONFIG FILE.
+19. PROPERTY AppDomainSetup.LicenseFile umoznuje specifikovat LICENSE FILE pre danu APP DOMAIN.
+!!! 20. PROPERTY AppDomainSetup.DynamicBase (PATH je zlucena s RANDOM NUMBER a s PROPERTY AppDomainSetup.ApplicationName) umoznuje definovat DIRECTORY, v ktorom bude CLR vyhladavat ASSEMBLIES podla ROVNAKYCH PRAVIDIEL ako v DIRECTORY AppDomainSetup.ApplicationBase. DIRECTORY AppDomainSetup.DynamicBase pritom NEMUSI byt SUBDIRECTORY AppDomainSetup.ApplicationBase. Tato PROPERTY ma vyznam napriklad ak su ASSEMBLIES generovane ON-FLY zo SOURCE CODE (napriklad z .ASPX) a vygenerovane ASSEMBLIES je potrebne ulozit do FILE SYSTEM, aby ho CLR nasiel, avsak DIRECTORY AppDomainSetup.DynamicBase ma obmedzene WRITE RIGHTS. V tomto pripade moze takyto program ulozit ASSEMBLIES do DIRECTORY AppDomainSetup.DynamicBase, kde sa predpoklada, ze bude mat nan WRITE RIGHT a CLR dokaze taketo ASSEMBLIES v tomto DIRECTORY najst. ASP.NET tuto vlastnost vyuziva pri generovani ASSEMBLIES z .ASPX FILES. Kedze CLR pridavat do DYNAMIC DIRECTORY i RANDOM NUMBER, tak program musi SKUTOCNU hodnotu DYNAMIC DIRECTORY zistit z PROPERTY AppDomain.DynamicDirectory.
+!!! 21. DYNAMIC DIRECTORY v ktorom je CLR schopne vyhladavat ASSEMBLIES je mozne definovat aj v UZ BEZIACICH APP DOMAINS pomocou METHOD AppDomain.SetDynamicBase().
+22. PROPERTY AppDomainSetup.DisallowCodeDownload umoznuje zabranit stahovanie ASSEMBLIES cez NETWORK. ASSEMBLIES potom mozu byt nacitane iba z LOCAL PC.
+!!! 23. PROPERTIES AppDomainSetup.AppDomainInitializer a AppDomainSetup.AppDomainInitializerArguments umoznuju ZJEDNODUSENY sposob ako spustit METHOD v REMOTE APP DOMAIN.
+   A. Pomocou PROPERTY AppDomainSetup.AppDomainInitializer sa nastavi DELEGATE typu AppDomainInitializer, ktory CLR spusti HNED po vytvoreni APP DOMAIN.
+   B. Pomocou PROPERTY AppDomainSetup.AppDomainInitializerArguments na nastavia PARAMETERS typu String[], ktore sa zaslu do METHOD urcenej PROPERTY AppDomainSetup.AppDomainInitializer.
+24. APP DOMAIN MANAGER (AppDomainManager) umoznuje realizovat 3 cinnosti.
+   A. Centralizuje miesto vytvarania APP DOMAINS, kedy KAZDA POZIADAVKA na vytvorenie NOVEJ APP DOMAIN je smerovana do AppDomainManager a ten rozhoduje ci sa VYTVORI NOVA APP DOMAIN, alebo sa pouzije EXISTUJUCA APP DOMAIN.
+   B. Umoznuje komunikaciu z UNMANAGED HOST do MANAGED CODE, pretoze KAZDA NOVOVYTVORENA instancia AppDomainManager (vytvara sa jedna pre KAZDU APP DOMAIN) je zaslana cez CCW do UNMANAGED HOST, ktory pomocou tohto POINTER moze komunikovat s MANAGED CODE.
+   C. Umoznuje CUSTOMIZOVAT vytvarane APP DOMAINS.
+25. APP DOMAIN MANAGER umoznuje CUSTOMIZOVAT proces vytvarania novych APP DOMAINS nasledujucim sposobom.
+   A. Pri poziadavke na vytvorenie NOVEJ APP DOMAIN je volana METHOD AppDomainManager.CreateDomain() na APP DOMAIN, kde bola volana METHDO AppDomain.CreateDomain(). APP DOMAIN MANAGER sa moze rozhodnut VYTVORIT NOVU APP DOMAIN, alebo vratit EXISTUJUCU APP DOMAIN. V pripade, ze vracia NOVU APP DOMAIN, tak ju moze CUSTOMIZOVAT pomocou AppDomainSetup.
+   B. Ak AppDomainManager.CreateDomain() vytvori NOVU APP DOMAIN, tak je pre tuto APP DOMAIN v tejto APP DOMAIN je vytvorena instancia AppDomainManager.
+   !!! C. Na AppDomainManager vytvorenej v NOVEJ APP DOMAIN je volana METHOD AppDomainManager.InitializeNewDomain(), kde je mozne inicializovat APP DOMAIN. Kedze tato METHOD uz bezi v NOVOVYTVORENEJ APP DOMAIN je mozne priamo v tejto APP DOMAIN vykonat prislusne inicializacie. Zvycajne sa pouziva na nacitanie ASSEMBLIES do APP DOMAIN. Tato METHOD sa vola AJ PRE DEFAULT APP DOMAIN. VSETKY zmeny v PARAMETRI typu AppDomainInfo su PREMIETNUTE do NOVOVYTVORENEJ APP DOMAIN. Cize AppDomainManager.InitializeNewDomain() JEDINE MIESTO, kde je mozne zmenit PARAMETRE AppDomainInfo pre DEFAULT APP DOMAIN.
+   D. CLR ziska hodnotu PROPERTY AppDomainManager.ApplicationActivator. Vratenu CLASS typu AppDomainManager je mozne IMPLEMENTOVAT a pomocou tejto implementacie je mozne CUSTOMIZOVAT, ako su APPLICATIONS aktivovane cez APPLICATION MANIFEST.
+   E. CLR ziska hodnotu PROPERTY AppDomainManager.HostExecutionContextManager. Vratenu CLASS typu HostExecutionContextManager je mozne IMPLEMENTOVAT a pomocou tejto implementacie je mozne CUSTOMIZOVAT, ako budu CONTEXT INFORMATION prenasane cez hranice THREADS.
+   F. CLR ziska hodnotu PROPERTY AppDomainManager.HostSecurityManager. Vratenu CLASS typu HostSecurityManager je mozne IMPLEMENTOVAT a pomocou tejto implementacie je mozne konfigurovat SECURITY novovytvorenej APP DOMAIN.
+//------------------------------------------------------------------------------------------------------
+Prechod medzi APP DOMAIN.
+
+1. Ak chcem aby OBJECT danej CLASS bol vytvoreny v INEJ APP DOMAIN, mozem potrebne pouzit METHOD AppDomain.CreateInstance().
+2. METHOD AppDomain.CreateInstance() vytvori instanciu definovanej CLASS v REMOTE APP DOMAIN a do CURRENT APP DOMAIN v ktorej sa METHOD AppDomain.CreateInstance() volala vrati HANDLER OBJECT ObjectHandle.
+!!!!! 3. HANDLER OBJECT ObjectHandle ma METHOD ObjectHandle.Unwrap(), ktorou je mozne ziskat REFERENCIU na OBJECT v CURRENT APP DOMAIN. Jej chovanie zavisi od toho ci OBJECT dedi, alebo nededi z MarshalByRefObject.
+!!!!! 4. Ak OBJECT NEDEDI z MarshalByRefObject, tak bude cez hranice APP DOMAINS prenasany ako MARSHAL-by-VALUE OBJECT. Pre MARSHAL-by-VALUE OBJECTS platia nasledujuce fakty.
+   A. CLASS daneho OBJECT NEDEDI z MarshalByRefObject.
+   B. CLASS daneho OBJECT je SERIALIZABLE, co znaci, ze ma APLIKOVANY ATTRIBUTE [Serializable]. OPTIONALLY moze AJ implementovat ISerializable, ak chce CUSTOMIZOVAT SERIALIZATION.
+   !!! C. Pri volani METHOD ObjectHandle.Unwrap() je v CURRENT APP DOMAIN vytvorena KOPIA OBJECT. KOPIA je vytvorena pomocou procesu SERIALIZATION v REMOTE APP DOMAIN a naslednej DESERIALIZATION v CURRENT APP DOMAIN.
+   !!!!! D. Vysledkom volania ObjectHandle.Unwrap() su teda 2 OBJECTS beziace v 2 ROZDIELNYCH APP DOMAINS.
+!!!!! 5. Ak OBJECT DEDI z MarshalByRefObject, tak bude cez hranice APP DOMAINS prenasany ako MARSHAL-by-REFERENCE OBJECT. Pre MARSHAL-by-REFERENCE OBJECTS platia nasledujuce fakty.
+   A. CLASS daneho OBJECT DEDI z MarshalByRefObject.
+   B. CLASS daneho OBJECT NEMUSI BYT SERIALIZABLE, kedze NIE JE PRENASANA cez hranice APP DOMAINS.
+   !!! C. Pri volani METHOD ObjectHandle.Unwrap() je v CURRENT APP DOMAIN vytvoreny PROXY OBJECT na OBJECT v REMOTE APP DOMAIN.
+   !!!!! D. Vysledkom volania ObjectHandle.Unwrap() je teda iba JEDEN SKUTOCNY OBJECT a druy PROXY OBJECT na OBJECT v REMOTE APP DOMAIN cez ktory su volania do REMOTE APP DOMAIN cez REMOTING prenasane.
+//------------------------------------------------------------------------------------------------------

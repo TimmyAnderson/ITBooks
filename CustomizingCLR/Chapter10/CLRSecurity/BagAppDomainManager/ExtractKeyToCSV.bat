@@ -1,0 +1,1 @@
+sn.exe -o MyKey.snk MyKey.csv

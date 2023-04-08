@@ -1,0 +1,61 @@
+//------------------------------------------------------------------------------------------------------
+1. Solution demonstruje tvorbu HIGHLY AVAILABLE APPLICATIONS.
+!!! 2. CLR zabezpecuje, ze APP DOMAINS je mozne VZDY (aj po vzniku FATAL EXCEPTION) UVOLNIT z PROCESSU BEZ TOHO, aby doslo k MEMORY LEAKS.
+!!! 3. APP DOMAINS su vzajomne NEZAVISLE. To znamena, ze UNAHNDLED EXCEPTION v jednej APP DOMAIN NEMA VPLYV na cinnost INYCH APP DOMAINS v TOM ISTOM PROCESSE.
+!!!!! 4. HIGH AVAILABILITY zabezpecuje CLR vdaka principu, ze APP DOMAINS je mozne VZDY UVOLNIT z PROCESSU BEZ TOHO, aby doslo k MEMORY LEAKS.
+!!! 5. CLR umoznuje definovanie ESCALATION POLICIES, ktore urcuju ako sa ma CLR pri vyskyte urciteho FAILURE zachovat. CLR definuje nasledujuce typy FAILURES, ktorych osetrenie je mozne CUSTOMIZOVAT.
+   A. FAILURE to ALLOCATE RESOURCE - vznika ked niektory RESOURCE ako napriklad MEMORY nemoze byt alokovany. Sem patria aj FAILURES ako napriklad STACK OVERFLOW.
+   !!! B. FAILURE to ALLOCATE RESOURCE in CRITICAL REGION - vznika ked niektory RESOURCE ako napriklad MEMORY nemoze byt alokovany v CODE, ktory zavisi od STATE, ktory je SHARED medzi VIACERYMI THREADS. CRITICAL REGION je detekovany AUTOMATICKY CLR a to tak, ze CLR detekuje ci CODE v ktorom doslo k FAILURE to ALLOCATE RESOURCE caka na nejake LOCKS (SYNCHRONIZATION PRIMITIVES). Ak ano, tak takato FAILURE to ALLOCATE RESOURCE je povazovana za FAILURE to ALLOCATE RESOURCE in CRITICAL REGION. Na to, aby CLR dokazal detekovat CRITICAL REGIONS je NUTNE pouzivat .NET SYNCHRONIZATION PRIMITIVES a nie nejake CUSTOM SYNCHRONIZATION mechanizmi.
+   C. FATAL RUNTIME ERRORS - vznikaju ked dojde k internej chybe samotneho CLR.
+   D. ORPHANED LOCK - vznika ako THREAD, ktory vytvoril LOCK bol TERMINATED BEZ TOHO, aby doslo k UVOLNENIU LOCK.
+!!! 6. ESCALATION POLICIES mozu specifikovat pre kazdy TYPE FAILURE rozlicne ACTIONS ako sa ma CLR zachovat pri vyskyte danej FAILURE.
+   A. THROW EXCEPTION - dochadza k hodeniu EXCEPTION, ktoru je v kode moze zachytit a spracovat.
+   B. GRACEFULLY ABORT THREAD on which FAILURE OCCURED - THREAD, ktory sposobil FAILURE je GRACEFULLY ABORTED. To znaci, ze v THREADE je hodena EXCEPTION ThreadAbortException a vsetky FINALLY BLOCKS su VYKONANE.
+   C. RUDELY ABORT THREAD on which FAILURE OCCURED - THREAD, ktory sposobil FAILURE je RUDELY ABORTED. To znaci, ze v THREADE NEMUSIA byt vykonane FINALLY BLOCKS. RUDE ABORT sa zvycajne vykonava ak THREAD nie je schopny byt GRACEFULLY ABORTED v stanovenom case.
+   D. GRACEFULLY ABORT APP DOMAIN on which FAILURE OCCURED - APP DOMAIN, ktora sposobila FAILURE je GRACEFULLY ABORTED. To znaci, ze VSETKY THREADS v vytvorene v danej APP DOMAIN su GRACEFULLY ABORTED a zodpovedajce APP DOMAIN DATA STRUCTURES su korektne uvolnene.
+   E. RUDELY ABORT APP DOMAIN on which FAILURE OCCURED - APP DOMAIN, ktora sposobila FAILURE je RUDELY ABORTED. To znaci, ze v THREADS NEMUSIA byt vykonane FINALLY BLOCKS. Takisto NEMUSIA BYT vykonane FINALIZERS, okrem CRITICAL FINALIZERS. RUDE ABORT sa zvycajne vykonava ak APP DOMAIN nie je schopna byt GRACEFULLY ABORTED v stanovenom case.
+   F. GRACEFULLY EXIT PROCESS - PROCESS je GRACEFULLY EXITED. To znaci, ze VSETKY APP DOMAINS su GRACEFULLY ABORTED, vsetky FINNALY BLOCKS su volane a vseetky FINALIZERS su vykonane.
+   G. RUDELY EXIT PROCESS - PROCESS je RUDELY EXITED. CLR sa nepokusa vykonat GRACEFULLY ABORT APP DOMAIN a tie su rovno RUDELY ABORTED.
+   H. DISABLE CLR - CLR je DISABLED, ale UNMANAGED PROCESS bezi dalej. Toto sa vyuziva napriklad v SQL SERVER, kde pri pade CLR SQL SERVER bezi dalej.
+!!! 7. Okrem ACTION mozu ESCALATION POLICIES stanovit aj TIMEOUTS za ktore maju byt dane operacie vykonane. CLR umoznuje stanovit TIMEOUTS pre nasledujuce operacie.
+   A. THREAD ABORT.
+   B. THREAD ABORT beziaci v CRITICAL REGION.
+   C. APP DOMAIN UNLOAD.
+   D. PROCESS EXIT.
+   E. TIMEOUT behu FINALIZERS.
+!!!!! 8. CRITICAL FINALIZERS su FINALIZERS pri ktorych CLR GARANTUJE, ze budu vykonane aj pri RUDELY ABORT THREAD ci APP DOMAIN.
+!!! 9. CRITICAL FINALIZERS sa aplikuju na CLASSES, ktore dedia z CLASS CriticalFinalizeObject.
+!!!!! 10. SAFE HANDLES (CLASS SafeHandle) su WRAPPERS okolo UNMANAGED HANDLERS, ktore vyuzivaju funkcionalitu CRITICAL FINALIZERS a CONSTRAINED EXECUTION REGION (CER) na KOREKTNE UVOLNENIE UNMANAGED HANDLERS pri vyskyte FAILURE.
+!!!!! 11. CONSTRAINED EXECUTION REGION (CER) je CODE REGION v ktorom NEMOZE dojst k EXCEPTION ako napriklad OutOfMemoryException, ci StackOverflowException. Pre CER platia nasledujuce zasady.
+   !!! A. CER su METHODS, ktore su oznacene ATTRIBUTE [ReliabilityContractAttribute], alebo su pripravene volanim METHOD RuntimeHelpers.PrepareMethod().
+   B. CLR pred vykonanim CODE, ktory obsahuje CER vykona JIT COMPILATION, aby nedoslo k nedostatku MEMORY v dosledku JIT COMPILATION.
+   !!!!! C. CODE v CER NESMIE ALOKOVAT ZIADNU MEMORY a to vratane NEPRIAMEJ ALOKACIE napriklad cez BOXING, inak CLR NEDOKAZE GARANTOVAT, ze CER nehodi EXCEPTION. Nemoznost alokacie pamate v CER REGION CLR NEDOKAZE DETEKOVAT a teda je LEN na PROGRAMATOROVI, aby to zabezpecil.
+!!! 12. CRITCAL FINALIZERS su vykonany VZDY AZ PO vykonani NON-CRITICAL FINALIZERS.
+13. ESCALATION POLICIES je mozne specifikovat pomocou FAILURE POLICY MANAGER, ktory sa sklada z 2 INTERFACES.
+   A. ICLRPolicyManager umoznuje HOST nastavit rozlicne parametre ESCALATION POLICIES.
+   B. IHostPolicyManager umoznuje CLR zasielat EVENTS o ACTIONS vykonanych pri FAILURES.
+!!! 14. FAILURE POLICY MANAGER definuje 3 pojmy, ktore su reprezentovane cez ENUMERATORS.
+   A. ENUM EClrFailure obsahuje zoznam FAILURES, ktore moze CLR generovat. Sem patri napriklad nemoznost alokovat RESOURCE, vysky ORPHANED LOCK, STACK OVERFLOW ci CLR RUNTIME ERROR.
+   B. ENUM EPolicyAction obsahuje zoznam ACTIONS, ktore sa vykonaju pri vyskyte FAILURE, alebo pri EXPIRACII TIMEOUT danej OPERATION. Medzi ACTIONS patria napriklad THROW EXCEPTION, ABORT THREAD, UNLOAD APP DOMAIN ci PROCESS EXIT.
+   !!! C. ENUM ClrOperation obsahuje zoznam OPERATIONS. Tieto urcuju jednak OPERATIONS pre ktore je mozne nastavit EXPIRACNY TIMEOUT za ktory ak sa OPERATION NEVYKONA tak je to povazovane za FAILURE a vykona sa prislusna ACTION. OPERATIONS urcuju aj ACTIONS, ktore sa maju vykonat pri FAILURE ESCALATION (napriklad FAILURE alokacie RESOURCE ma byt ESCALATED na UNLOAD APP DOMAIN).
+15. COM INTERFACE ICLRPolicyManager ma nasledujuce METHODS.
+   A. METHOD ICLRPolicyManager::SetDefaultAction() umoznuje nastavit DEFAULT ACTION (THROW EXCEPTION, ABORT THREAD, UNLOAD APP DOMAIN ci PROCESS EXIT), ktora sa vykonat pre danu OPERATION (THREAD ABORT, APP DOMAIN UNLOAD, FINALIZER RUN, ci PROCESS EXIT).
+   B. METHOD ICLRPolicyManager::SetTimeout() umoznuje nastavit TIMEOUT s ktorym sa ma vykonat dana OPERATION (THREAD ABORT, APP DOMAIN UNLOAD, ci PROCESS EXIT).
+   C. METHOD ICLRPolicyManager::SetActionOnTimeout() umoznuje nastavit ACTION (THROW EXCEPTION, ABORT THREAD, UNLOAD APP DOMAIN ci PROCESS EXIT), ktora sa ma vykonat ak expiruje TIMEOUT danej OPERATION (THREAD ABORT, APP DOMAIN UNLOAD, ci PROCESS EXIT).
+   D. METHOD ICLRPolicyManager::SetTimeoutAndAction() umoznuje nastavit TIMEOUT a ACTION (THROW EXCEPTION, ABORT THREAD, UNLOAD APP DOMAIN ci PROCESS EXIT), ktora sa ma vykonat ak expiruje TIMEOUT danej OPERATION (THREAD ABORT, APP DOMAIN UNLOAD, ci PROCESS EXIT).
+   E. METHOD ICLRPolicyManager::OnFailure() umoznuje nastavit TIMEOUT a ACTION (THROW EXCEPTION, ABORT THREAD, UNLOAD APP DOMAIN ci PROCESS EXIT), ktora sa ma vykonat ak dojde k FAILURE (nemoznost alokovat RESOURCE, vysky ORPHANED LOCK, STACK OVERFLOW ci CLR RUNTIME ERROR).
+   F. METHOD ICLRPolicyManager::SetUnhandledExceptionPolicy() umoznuje definovat chovanie sa CLR pri vyskyte UNHANDLED EXCEPTION.
+16. COM INTERFACE IHostPolicyManager ma nasledujuce METHODS.
+   A. METHOD IHostPolicyManager::OnDefaultAction() je volana ked CLR ide vykonat DEFAULT ACTION (definovanu ICLRPolicyManager::SetDefaultAction()) pri THREAD ABORT, alebo APP DOMAIN UNLOAD.
+   B. METHOD IHostPolicyManager::OnFailure() je volana ked CLR ide vykonat ACTION (definovanu ICLRPolicyManager::SetActionOnFailure()) pri RESOURCE ALLOCATION alebo RECLAMATION FAILURES.
+   C. METHOD IHostPolicyManager::OnTimeout()  je volana ked CLR ide vykonat ACTION (definovanu ICLRPolicyManager::SetActionOnTimeout()) pri expirovani TIMEOUT.
+!!! 17. V pripade ze CODE pracuje s UNMANAGED HANDLES, mal by VZDY pouzivat CLASS SafeHandle. Ten je mozne vyuzit 2 sposobmi.
+   A. Pouzitim uz vytvorene SAFE HANDLE pre konkretne typy HANDLES, ktore definuje .NET. Tieto TYPY zdedene zo SafeHandle su v NAMESPACE System.Runtime.InteropServices.
+   B. Implementaciou CUSTOM SAFE HANDLE CLASS, ktore dedi zo SafeHandle.
+!!! 18. Implementacia CUSTOM SAFE HANDLE CLASS sa realizuje v nasledujucich krokoch.
+   !!! A. Vytvorit CLASS, ktora dedi zo SafeHandle. Kedze SafeHandle dedi z CriticalFinalizeObject a teda jeho FINALIZER je CRITICAL FINALIZER.
+   B. Implementovat CONSTRUCTOR, ktory priradi vytvoreny NATIVE HANDLE v tvare IntPtr.
+   !!!!! C. Pretazit METHOD SafeHandle.ReleaseHandle() v ktorej sa UVOLNI NATIVE HANDLE. Uvolnenie je realizovane NATIVE FUNCTION, ktore ZAVISI od TYPU HANDLE. Napriklad VACSINA HANDLES sa uvolnuje volanim CloseHandle(), ale napriklad REGISTRY KEYS sa uvolnuju volanim RegCloseKey(). Tato METHOD je vykonavana v CONSTRAINED EXECUTION REGION a preto NESMIE ALOKOVAT ZIADNU MEMORY.
+   !!!!! D. Pretazit PROPERTY SafeHandle.IsInvalid v ktorej sa DETEKUJE ci NATIVE HANDLE je PLATNY. Na zaklade jej hodnoty potom CLR bud vola, alebo nevola v CRITICAL FINALIDZE METHOD SafeHandle.ReleaseHandle(). Tato PROPERTY je vykonavana v CONSTRAINED EXECUTION REGION a preto NESMIE ALOKOVAT ZIADNU MEMORY.
+!!! 19. Ak CLR THREAD vykonava UNMANAGED CODE cez PInvoke, tak takyto THREAD pocas vykonavania UNMANAGED CODE NEMOZE BYT CLR ABORTED. Preto je treba v UNMANAGED CODE zabezpecit aby tento NEOSTAL VISIET a v urcitom case (napriklad pri expiracii stanovenych TIMEOUTS) sa UKONCIL, inak CLR dany CLR THREAD, ktory vykonal PInvoke NEBUDE VEDIET UKONCIT.
+//------------------------------------------------------------------------------------------------------

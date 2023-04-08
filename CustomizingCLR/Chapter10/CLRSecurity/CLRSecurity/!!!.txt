@@ -1,0 +1,46 @@
+﻿//------------------------------------------------------------------------------------------------------
+1. Solution demonstruje CUSTOMIZATION SECURITY v CLR.
+2. CODE ACCESS SECURITY (CAS) je mechanizmus, ktory umoznuje OBMEDZIT MNOZINU OPERACII, ktore moze dany program vykonavat. OBMEDZENIE je definovane podla roznych kriterii a je aplikovane na definovane SKUPINY OPERACII (pristup k FILE SYSTEM, praca s NETWORK, PRINTER, zobrazovanie GUI).
+3. CAS umoznuje PARTIAL TRUST, kedy program moze vykonavat URCITE MNOZINY OPERACII, avsak INE OPERACIE, ktore neboli explicitne povolene VYKONAVAT NEMOZE a pri pokuse o ich vykonanie je GENEROVANA EXCEPTION.
+!!! 4. CAS prideluje PERMISSIONS (urcuje, ktore MNOZINY OPERACII moze dany program vykonat) NIE na zaklade toho ABY WINDOWS USER kod spustil, ale na zaklade toho ODKIAL KOD POCHADZA. Napriklad CAS umoznuje pridelit PERMISSIONS danej ASSEMBLY podla toho kto ASSEMBLY VYTVORIL - hodnoty CRYPTOGRAPHIC KEY ulozenej v STRONGLY-NAMED ASSEMBLY.
+5. CAS je realizovana prostrednictvom nasledujucich ENTIT.
+   A. EVIDENCES su charakteristiky ASSEMBLIES, ktorymi su dane ASSEMBLIES IDENTIFIKOVANE. Medzi EVIDENCES patria napriklad APPLICATION DIRECTORY, to ci ASSEMBLY je v GAC, HASH, SITE ci ZONE. Je mozne definovat aj CUSTOM EVIDENCES.
+   B. PERMISSIONS su MNOZINY OPERACII, ktore moze kod chraneny CAS VYKONAT. Je mozne definovat i CUSTOM PERMISSIONS.
+   C. POLICIES su mnoziny RULES, ktore realizuju mapovanie medzi EVIDENCES a PERMISSIONS.
+!!! 6. EVIDENCE je implementovana ako CLASS Evidence a pre danu ASSEMBLY je mozne OBJECT Evidence zistit z PROPERTY Assembly.Evidence.
+!!! 7. EVIDENCES pre danu ASSEMBLY mozu urcite nasledujuce komponenty.
+    A. CLR overenim PROPERTIES danej ASSEMBLY, ako napriklad zistenim ci ASSEMBLY je v GAC, alebo z ktorej ZONE pochadza. Zoznam CLR (a HOST) EVIDENCES je mozne ziskat pomocou METHOD Evidence.GetAssemblyEnumerator().
+    B. HOST moze specifikovat CUSTOM EVIDENCES. Zoznam HOST (a CLR) EVIDENCES je mozne ziskat pomocou METHOD Evidence.GetHostEnumerator().
+    C. ASSEMBLY moze definovat CUSTOM EVIDENCES. Tieto ale mozu byt prepisane ostatnymi EVIDENCES. Zoznam ASSEMBLY EVIDENCES je mozne ziskat pomocou METHOD Evidence.GetAssemblyEnumerator().
+!!! 8. POLICY je mnozina CODE GROUPS organizovanych v TREE HIERARCHY. Kazda CODE GROUP obsahuje MEMBERSHIP CONDITION a POLICY STATEMENT. 
+   A. MEMBERSHIP CONDITION urcuje CONDITION, ktoru musi EVIDENCE danej ASSEMBLY splnat aby vyhovel danej CODE GROUP. Je mozne implementovat CUSTOM MEMBERSHIP CONDITION implementovanim INTERFACE IMembershipCondition.
+   B. POLICY STATEMENT obsahuje zoznam PERMISSIONS, ktore budu pri splneni MEMBERSHIP CONDITION garantovane ASSEMBLY a takisto aj MERGING RULES, ktore urcuju ako sa budu CODE GROUPS navzajom zlucovat.
+!!! 9. POLICY CODE GROUPS (POLICY RULES) su organizovane ako TREE, kde ROOT je POLICY GROUP 'All Code', ktory obsahuje PERMISSIONS pre VSETKY ASSEMBLIES BEZ OHLADU na ich EVIDENCES. CHILD CODE GROUPS obsahuju MEMBERSHIP CONDITIONS a POLICY STATEMENTS, ktorym sa mapuju PERMISSIONS pre ASSEMBLIES, ktore splnaju MEMBERSHIP CONDITION.
+!!!!! 10. Pri urcovanie ake PERMISSIONS ma dana ASSEMBLY CLR prechadza TREE so vsetkymi POLICY GROUPS a porovnava ich EVIDENCES s MEMBERSHIP CONDITION. Ak EVIDENCES vyhovuju MEMBERSHIP CONDITION, tak PERMISSIONS obsiahnute v POLICY STATEMENT danej CODE GROUP su KOMBINOVANE s PERMISSIONS OSTATNYCH CODE GROUPS. Sposob KOMBINACIE PERMISSIONS zavisi od TYPU CODE GROUPS a ATTRIBUTES v POLICY STATEMENTS. Najcastejsie je pouzita operacia UNION, ale mozu byt pouzita aj INE OPERACIE ZLUCOVANIA PERMISSIONS ako napriklad FIRST MATCH.
+!!! 11. POLICIES mozu byt definovane na 4 urovniach pricom vysledne PERMISSIONS su dane INTERSETION POLICIES na VSETKYCH 4 UROVNIACH.
+   A. ENTREPRISE LEVEL. POLICIES su urcene na urovni ENTERPRISE.
+   B. MACHINE LEVEL. POLICIES su urcene na urovni daneho PC.
+   C. USER. POLICIES su urcene pre konkretnych USERS.
+   D. APP DOMAIN. POLICIES su urcene na urovni konkretnej APP DOMAIN.
+!!! 12. Pomocou TOOL [caspol.exe] je mozne zistit, ktore POLICIES a tym padom aj PERMISSIONS boli na danu ASSEMBLY aplikovane, co zjednosuduje hladanie ERRORS.
+13. .NET obsahuje DEFAULT POLICY, ktora garantuje FULL TRUST vsetky nainstalovanym .NET ASSEMBLIES a PARTIAL TRUST ASSEMBLIES stiahnutym z INTERNETU.
+!!! 14. PERMISSIONS su v .NET reprezentovane CLASS CodeAccessPermission (ktora implementuje INTERFACE IPermission). Program si moze definovat aj CUSTOM PERMISSIONS zdedenim z CLASS CodeAccessPermission.
+15. CAS pri identifikacii ci dany CODE ma pravo byt vykonany pouziva 3 techniky.
+   A. VALIDATION overuje ci ASSEMBLY MEDATADA a IL INSTRUCTIONS su korektne.
+   B. VERIFICATION kontroluje ci ASEEMBLY CODE je TYPE SAFE.
+   C. STACK WALK kontrolje ci ASSEMBLY CODE ma potrebne PERMISSIONS na vykonanie pozadovanej OPERATION.
+!!!!! 16. PROCES vyziadania PERMISSIONS cez STACK WALK funguje nasledujucim sposobom.
+   A. RESOURCE, ktory ma byt chraneny CAS definuje .NET CLASS zdedenu z CodeAccessPermission. Napriklad pre pristup k FILE SYSTEM je definovana PERMISSION FileIOPermission.
+   B. CODE, ktory pristupuje k chranenemu RESOURCE pre vykonanim pristupu k RESOURCE vysle POZIADAVKU na CLR, aby overil ci VOLAJUCI CODE ma prislunu PERMISSION. V pripade FILE SYSTEM napriklad METHOD File.Read() pred citanim z FILE poziada CLR o zistenie ci VOLAJUCI CODE ma PERMISSION FileIOPermission volanim METHOD FileIOPermission.Demand().
+   !!! C. Volanie METHOD FileIOPermission.Demand() (zdedenej z IPermission) sposobi STACK WALK pri ktorom sa prechadzaju ASSEMBLIES, ktorych METHODS su vykonavane na STACKU a pre KAZDU ASSEMBLY CLR kontroluje ci ma FileIOPermission. Ako co i len JEDNA ASSEMBLY NEMA FileIOPermission, je generovana EXCEPTION SecurityException. CODE, ktory pristpuje k RESOURCE by pri generovani EXCEPTION SecurityException NEMAL PRISTUPIT k pozadovanemu FILE a EXCEPTION PROPAGOVAT do CALLER CODE.
+   !!!!! D. CLR poskytuje aj ALTERNATIVNE MECHANIZMY voci STANDARDNEMU STACK WALK pri ktorych sa napriklad nevyzaduje, aby VSETKY ASSEMBLIES, ktorych METHODS su na STACK mali potrebne PERMISSIONS, ale staci aby ich mal napriklad iba PRIAMY CALLER.
+   !!! E. Pri STACK WALK sa kontroluje aj PERMISSIONS asociovane s APP DOMAIN (cez METHOD AppDomain.CreateDomain()), tak ako keby APP DOMAIN bol CALLER na ROOT LEVEL. Takto je mozne nastavit PERMISSIONS aj pre VSETOK KOD beziaci v danej APP DOMAIN.
+!!! 17. CLASS HostSecurityManager umoznuje CUSTOMIZOVAT SECURITY APP DOMAINS. Pomocou CLASS DERIVED z HostSecurityManager program moze poskytnut EVIDENCES pre ASSEMBLIES, ktore su nahravane ci poskytnut CAS POLICY TREE pre danu APP DOMAIN. Ak CUSTOM implementacia HostSecurityManager bola programom poskutnuta, tak CLR pouzije jej instanciu na CUSTOMIZACIU SECURITY pre vytvarane APP DOMAINS.
+18. Implementacia HOST SECURITY MANAGER sa realizuje v nasledujucich krokoch.
+   A. Vytvori sa CLASS, ktora je DERIVED z CLASS HostSecurityManager.
+   B. Implementuje sa PROPERTY CLASS HostSecurityManager.Flags, urcujuca co vsetko CLASS HostSecurityManager CUSTOMIZUJE.
+   C. CUSTOM implementaica CLASS HostSecurityManager sa zasle do CLR cez APP DOMAIN MANAGER.
+19. Pomocou METHOD Assembly.Load() je mozne specifikovat EVIDENCES pre nacitavanu ASSEMBLY. Tato METHOD je v .NET 4.0. OBSOLETE.
+20. Pomocou METHOD AppDomain.Load() je mozne specifikovat EVIDENCES pre nacitavanu ASSEMBLY. Tato METHOD je v .NET 4.0. OBSOLETE.
+!!!!! 21. Ak ma dana ASSEMBLY v APP DOMAIN len PARTIAL TRUST, tak STANDARDNE NEMOZE volat CODE v INYCH ASSEMBLIES. CODE v INYCH ASSEMBLIES moze volat IBA VTEDY, ak tieto ASSEMBLIES su oznacene ATTRBUTE [AllowPartiallyTrustedCallers].
+//------------------------------------------------------------------------------------------------------
