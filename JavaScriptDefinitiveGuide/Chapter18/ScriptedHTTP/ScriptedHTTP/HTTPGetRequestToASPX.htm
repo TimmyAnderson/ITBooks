@@ -1,0 +1,95 @@
+﻿<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+    <title></title>
+</head>
+<body>
+	<div style="border:1px solid green;width:600px;height:300px;" id="DestinationDiv">
+	</div>
+	<br />
+	<input type="button" id="Button" value="GET request" />
+	<input type="button" id="Clear" value="Clear" />
+	<br />
+	<br />
+	<textarea id="Text" cols="100" rows="10"></textarea>
+
+	<script type="text/javascript">
+		window.onload=function()
+		{
+			var													DestinationDiv=window.document.getElementById("DestinationDiv");
+			var													Button=window.document.getElementById("Button");
+			var													Clear=window.document.getElementById("Clear");
+			var													Text=window.document.getElementById("Text");
+			var													HTTPRequest=null;
+
+			function HTTPRequestCallback()
+			{
+				if (HTTPRequest!=null)
+				{
+					if (HTTPRequest.readyState==XMLHttpRequest.DONE)
+					{
+						if (HTTPRequest.status==200)
+						{
+							// !!! Ziskam hodnotu HTTP RESPONSE HEADER.
+							var									ResponseHeader=HTTPRequest.getResponseHeader("Content-Type");
+
+							Text.value+="EVENT CALLED - READY STATE [" + HTTPRequest.readyState + "], STATUS [" + HTTPRequest.status + "], RESPONSE HEADER CONTENT TYPE [" + ResponseHeader + "] !\n";
+
+							// !!!!! Kedze v HTTP RESPOSNE je HTML DOCUMENT je MOZNE pouzit PROPERTY XMLHttpRequest.responseXML.
+							var									DocumentObject=HTTPRequest.responseXML;
+
+							// !!!!! BOHUZIAL, kedze aktualna implementacia VACSINY BROWSERS NEPODPORUJE implementaciu PARSINGU CONTENT-TYPE s 'text/html' NEOBSAHUJE. V tomto pripade je treba pristupovat k HTTP RESONSE BODY pomocou PROPERTY XMLHttpRequest.responseText obsahujuce NEROZPARSOVANY TEXT.
+							// !!!!! Kedze PARSING HTML RESPONSE BODY NIE JE PODPOROVANE, METHOD Document.getElementsByTagName() vracia PRAZDU COLLECTION.
+							var									Div=DocumentObject.getElementsByTagName("div")
+
+							// !!!!! Kedze HTTPRequest.responseXML v HTML NIE JE MOZNE POUZIT je NUTNE pouzit HTTPRequest.responseText na ziskanie NEPARSOVANEHO TEXTU.
+							var									ResponseText=HTTPRequest.responseText;
+
+							// !!! HTTP RESPONSE BODY obsahujuci jednoduchy HTML vlozim do <div>.
+							DestinationDiv.innerHTML=ResponseText;
+						}
+						else
+						{
+							Text.value+="EVENT CALLED - READY STATE [" + HTTPRequest.readyState + "], STATUS [" + HTTPRequest.status + "] !\n";
+						}
+
+						HTTPRequest=null;
+					}
+					else
+					{
+						Text.value+="EVENT CALLED - READY STATE [" + HTTPRequest.readyState + "] !\n";
+					}
+				}
+			}
+
+			Button.onclick=function()
+			{
+				if (HTTPRequest==null)
+				{
+					// Vytvori sa nova instancia XMLHttpRequest.
+					HTTPRequest=new XMLHttpRequest();
+
+					// !!! Zaregistruje sa EVENT HANDLER zachytavajuci EVENT z XMLHttpRequest.
+					HTTPRequest.onreadystatechange=HTTPRequestCallback;
+
+					// !!! Zapise sa VERB a URL na ktory sa bude robit HTTP REQUEST.
+					HTTPRequest.open("GET","GetASPXForm.aspx");
+
+					// !!! OPTIONAL. Nastavi sa HTTP REQUEST HEADER.
+					HTTPRequest.setRequestHeader("Content-Type","text/plain");
+
+					// !!! Odosle sa HTTP REQUEST na WEB SERVER.
+					// !!!!! Kedze sa jedna o HTTP GET REQUEST, HTTP BODY je 'null'.
+					HTTPRequest.send(null);
+				}
+			}
+
+			Clear.onclick=function()
+			{
+				Text.value="";
+				DestinationDiv.innerHTML="";
+			}
+		}
+	</script>
+</body>
+</html>

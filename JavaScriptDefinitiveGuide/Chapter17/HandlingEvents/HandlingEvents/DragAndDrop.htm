@@ -1,0 +1,129 @@
+﻿<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+    <title></title>
+</head>
+<body>
+	DRAG SOURCE !
+	<br />
+	<!-- !!! PROPERTY 'draggable' musi byt nastavena na TRUE. -->
+	<span draggable="true" style="border:1px solid green; width:100px" id="DragSource">
+		This is DRAG SOURCE !
+	</span>
+	<br />
+	<br />
+	<br />
+
+	DRAG TARGET !
+	<br />
+	<div style="border:1px solid green;" id="DragTarget">
+		<br />
+		<br />
+		<label id="Label">Here place your DRAGS.</label>
+		<br />
+		<br />
+		<br />
+	</div>
+
+	<script type="text/javascript">
+		var														DragCounter=0;
+		var														DragSourceCounter=0;
+		var														DragTargetCounter=0;
+
+		window.onload=function()
+		{
+			var													DragSource=window.document.getElementById("DragSource");
+			var													DragTarget=window.document.getElementById("DragTarget");
+			var													DragSourceState=window.document.getElementById("DragSourceState");
+			var													DragTargetState=window.document.getElementById("DragTargetState");
+			var													DragImage=new Image();
+			var													DragResult=window.document.getElementById("DragResult");
+
+			DragImage.src="DragAndDropImage.png";
+
+			// !!!!! EVENTS pre DRAG SOURCE.
+
+			DragSource.ondragstart=function()
+			{
+				// Ziskam DATA TRANSFER OBJECT.
+				var												DataTransfer=window.event.dataTransfer;
+
+				DragSourceCounter=0;
+				DragSourceState.value="DRAGGING STARED !";
+				DragCounter++;
+
+				// !!! Nastavim CUSTOM DATA, ktore chcem pomocou DRAG and DROP prenasat.
+				// !!!!! Prvy parameter urcuje TYP DAT.
+				DataTransfer.setData("Text","Timmy Anderson [" + DragCounter + "] !");
+
+				// Nastavenie IMAGE pre OBJECT, ktory bude DRAGGED.
+				// !!!!! IE DataTransfer.setDragImage NEPODPORUJE.
+				//DataTransfer.setDragImage(DragImage,0,0);
+			}
+
+			DragSource.ondrag=function()
+			{
+				DragSourceCounter++;
+				DragSourceState.value="DRAGGING [" + DragSourceCounter + "] !";
+			}
+
+			DragSource.ondragend=function()
+			{
+				// !!! Pri MOVE operacii by tu bol kod na ODSTRANENIE DRAG SOURCE.
+				DragSourceState.value="DRAGGING FINISHED !";
+			}
+
+
+			// !!!!! EVENTS pre DRAG TARGET.
+
+
+			DragTarget.ondragenter=function()
+			{
+				DragTarget.style.borderWidth="10px";
+				DragTargetState.value="ENTERED DROP TARGET !";
+				DragTargetCounter=0;
+
+				// !!!!! Ak chcem BROWSERU zaslat informaciu, ze tento HTML ELEMENT je VALIDNYM DROP TARGET MUSIM vykonat CANCELLATION tohto EVENT.
+				// !!! Samozrejme tu by som mohol vykonat CHECK, ci DRAG OBJECT TYPE je pre tento HTML ELEMENT VALIDNY a teda ci tento HTML ELEMENT MOZE SLUZIT, ako DROP TARGET.
+				return(false);
+			}
+
+			DragTarget.ondragover=function()
+			{
+				DragTargetCounter++;
+				DragTargetState.value="DRAGGING [" + DragTargetCounter + "] !";
+
+				// I tento na tento EVENT je NUTNE vykonat CANCELLATION, inak sa EVENT Element.ondrop NEVYKONA.
+				return(false);
+			}
+
+			DragTarget.ondragleave=function()
+			{
+				DragTarget.style.borderWidth="1px";
+				DragTargetState.value="LEFT DROP TARGET !";
+
+				return(false);
+			}
+
+			DragTarget.ondrop=function()
+			{
+				// Ziskam DATA TRANSFER OBJECT.
+				var												DataTransfer=window.event.dataTransfer;
+
+				DragTargetState.value="DRAGGING FINISHED !";
+
+				var												Data=DataTransfer.getData("Text");
+
+				DragResult.value+="DRAG RESULT [" + Data + "] !\n"
+			}
+		}
+	</script>
+
+	<br />
+	DRAG SOURCE STATE: <input type="text" id="DragSourceState" size="100" />
+	<br />
+	DRAG TARGET STATE: <input type="text" id="DragTargetState" size="100" />
+	<br />
+	<textarea id="DragResult" cols="50" rows="10"></textarea>
+</body>
+</html>

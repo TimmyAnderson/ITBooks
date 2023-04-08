@@ -1,0 +1,90 @@
+﻿//-------------------------------------------------------------------------------------------------------
+1. Solution demonstruje SCRIPTING HTTP REQUESTS a RESPONSES v JavaScripte.
+2. AJAX umoznuje vykonat interakciu s WEB SERVER bez toho, aby doslo k PAGE REFRESH.
+3. COMET je OPAK AJAX. Umoznuje aby WEB SERVER ASYNCHRONNE zaslal EVENT do WEB BROWSER. Na tento EVENT potom WEB BROWSER moze odpovedat pomocou AJAX.
+4. AJAX i COMET pouzivaju na PRENOS DAT medzi WEB BROWSER a WEB SERVER tzv. TRANSPORT.
+!!! 5. Ak TRANSPORT moze sluzit <img> HTML ATTRIBUTE, kde do 'src' PROPERTY daneho ELEMENT by sa zakodoval HTTP REQUEST v tvare URL a vrateny IMAGE by NEOBSAHOVAL IMAGE, ale DATA, ktore by si WEB BROWSER PARSOVAL.
+!!!!! 6. LEPSOU ALTERNATIVOU pre TRANSPORTS su <iframe> HTML ATTRIBUTE. Do 'src' PROPERTY je mozne zakodovat HTTP REQUEST v tvare URL na ktory WEB SERVER odpoveda zaslanim <iframe>, ktory obsahuje DATA ako odpoved na HTTP REQUEST. Vyhodou je, ze PRECHOD <iframe> a tym i prechod HTTP RESPONSE je pomocou JavaScript JEDNODUCHY.
+!!!!! 7. ESTE LEPSOU ALTERNATIVOU je za TRANSPORT pouzit <script>. Jeho 'src' PROPERTY umoznuje vytvorit HTTP REQUEST v tvare URL. Zaslany HTTP RESPONSE je zvycajne vo formate JSON, ktory je JavaScript schopny VELMI LAHKO PARSOVAT.
+!!!!! 8. VACSINA dnesnych WEB BROWSERS umoznuje ako TRANSPORT pouzit CLASS XMLHttpRequest, ktory podporuje rozsiahle moznosti definovania HTTP REQUUEST, ako i PARSINGU HTTP RESPONSE.
+!!! 9. COMET ako TRANSPORT vyuziva drzanie HTTP CONNECTION, pokym WEB SERVER potrebuje zasielat EVENTS na WEB BROWSER. Po zaslani NOVEHO EVENT WEB SERVER OKAMZITE UKONCI SPOJENIE a WEB BROWSER po spracovani EVENT OKAMZITE zavola WEB SERVER cez AJAX, aby ten mohol cez takto otvorenu CONNECTION zaslat DALSI EVENT.
+!!!!! 10. CLASS XMLHttpRequest poskytuje API pre zasielanie HTTP REQUESTS a spracovanie HTTP RESPONSES. Jedna INSTANCIA XMLHttpRequest reprezentuje 1 par HTTP REQUEST-RESPONSE. INSTANCIU XMLHttpRequest je sice mozne znova pouzit na vyslanie dalsieho HTTP REQUEST-RESPONSE, ale pokial je uz nejaky vyslany a caka sa na HTTP RESPONSE, tak ho XMLHttpRequest IHNED ZRUSI a posle novy HTTP REQUEST, cize zacne novy HTTP REQUEST-RESPONSE operaciu.
+11. HTTP REQUEST zaslany cez XMLHttpRequest obsahuje nasledujuce casti.
+   A. Nastavit HTTP REQUEST METHOD (VERB), ktorou sa bude dotazovat HTTP SERVER.
+   B. Nastavit URL, ktore sa bude dotazovat.
+   C. Ako OPTIONAL nastavit COLLECTION HTTP REQUEST HEADERS. Tie napriklad je mozne pouzit na prenos AUTHENTICATION udajov.
+   D. Ako OPTIONAL nastavit HTTP REQUEST BODY.
+12. HTTP RESPONSE prijaty ako odpoved na HTTP REQUEST zaslany cez XMLHttpRequest obsahuje nasledujuce casti.
+   A. Ciselny, alebo textovy HTTP STATUS CODE indikujuci ci operacia prebehla uspesne, alebo zlyhala.
+   B. COLLECTION HTTP RESPONSE HEADERS.
+   C. HTTP RESPONSE BODY.
+!!!!! 13. Kedze XMLHttpRequest API je postavene ako NADSTAVBA HTTP, pri praci s nim problemy HTTP PROCOTOL ako su CACHING, REDIRECTING, ci COOKIES toto API NEMUSI RIESIT. Su vyriesene PRIAMO IMPLEMENTACIU XMLHttpRequest.
+!!!!! 14. Kedze XMLHttpRequest API je postavene ako NADSTAVBA HTTP, i pri ladeni je NUTNE mat nainstalovany HTTP SERVER, ktory bude prijmat REQUEST v protokole HTTP a takisto i zasielat RESPONSES v protokole HTTP.
+!!!!! 15. Pri vytvarani HTTP REQUEST pomocou XMLHttpRequest je NUTNE volat METHODS v NASLEDUJUCOM PORADI, INAK DOJDE k EXCEPTION. Je do dosledok toho, ze HTTP potrebuje presne poradie svojich ELEMENTS a XMLHttpRequest pri volani svojich METHODS zapisuje do STREAM OBJECT a teda poradie je dane poradim volanie METHODS XMLHttpRequest OBJECT.
+   A. Ako PRVA musi byt volana METHOD XMLHttpRequest.open(). Pomocou nej sa specifikuje HTTP VERB a URL na ktory sa bude odosielat HTTP REQUEST.
+   B. Ako DRUHA musi byt volana METHOD XMLHttpRequest.setRequestHeader(). Toto volanie je OPTIONAL, kedze HTTP REQUEST NEMUSI obsahovat HTTP REQUEST HEADERS.
+   C. Ako TRETIA musi byt volana METHOD XMLHttpRequest.send(), ktorou sa nastavu HTTP BODY a zaroven sa HTTP REQUEST odosiela SYNCHRONNE, alebo ASYNCHRONNE na WEB SERVER.
+16. METHOD XMLHttpRequest.open() ma nasledujuce vlastnosti.
+   A. PRVY PARAMETER urcuje HTTP VERB, ktory sa zasiela na WEB SERVER pri zasielani HTTP REQUEST.
+   !!! B. V pripade, ze HTTP REQUEST NEPOTREBUJE ZASIELAT ZIADNE DATA a HTTP REQUEST NEMENI STAV na WEB SERVER, najlepsie je pouzit GET. Kedze sa stav na WEB SERVERI NEMENI a teda HTTP RESPONSES dvoch HTTP GET REQUESTS su ROVNAKE, je mozne HTTP GET REQUEST ukladat do CACHED. To znamena, ze istu dobu sa namiesto dotazu na WEB SERVER vrati HTTP RESPONSE ulozene v CACHE.
+   !!! C. V pripade, ze HTTP REQUEST POTREBUJE ZASIELAT na WEB SERVER DATA (typicky obsah FORM), je najlepsie pouzit POST. POST indikuje, ze HTTP REQUEST MENI stav na WEB SERVER. To znamena, ze HTTP RESPONSES dvoch HTTP POST REQUESTS mozu byt ROZLICNE a teda HTTP POST REQUESTS by NEMALI BYT CACHED.
+   D. TRETI PARAMETER urcuje ci sa bude FUNCTION volat SYNCHRONNE (false), alebo ASYNCHRONNE (true). DEFAULT je ASYNCHRONNE.
+   E. STVRTY OPTIONAL PARAMETER je USERNAME, ktory sa zasiela na WEB SERVER. Tento USERNAME XMLHttpRequest ulozi do Authorization HTTP REQUEST HEADER.
+   F. PIATY OPTIONAL PARAMETER je PASSWORD, ktory sa zasiela na WEB SERVER. Tento PASSWORD XMLHttpRequest ulozi do Authorization HTTP REQUEST HEADER.
+17. METHOD XMLHttpRequest.setRequestHeader() ma nasledujuce vlastnosti.
+   A. PRVY PARAMETER urcuje TYP HTTP REQUEST HEADER.
+   B. PRVY PARAMETER urcuje VALUE HTTP REQUEST HEADER.
+   C. Pri VIACNASOBNOM volani XMLHttpRequest.setRequestHeader() s ROVNAKYM TYPOM HTTP REQUEST HEADER sa ulozia VSETKY VALUES do HTTP REQUEST HEADER.
+   D. Mnozstvo HTTP REQUEST HEADERS nastavuje WEB BROWSER AUTOMATICKY a niektore ani NIE JE MOZNE NASTAVIT volanim XMLHttpRequest.setRequestHeader() NIE JE MOZNE kvoli SECURITY nastavit.
+18. METHOD XMLHttpRequest.send() ma nasledujuce vlastnosti.
+   A. PARAMETER obsahuje HTTP REQUEST BODY. Toto BODY MOZE byt 'null'. Pre GET by mal byt VZDY 'null', kedze GET NIKDY NEPOSIELA ziadne data na WEB SERVER a HTTP REQUEST BODY IGNORUJE.
+   B. METHOD odosle HTTP WEB REQUEST na WEB SERVER a IHNED SKONCI. Je vykonavana SYNCHRONNE, alebo ASYNCHRONNE v zavislosti od hodnoty 3. PARAMETRA METHOD XMLHttpRequest.open().
+!!! 19. Ak sa XMLHttpRequest.send() vykonavana ASYNCHRONNE, je NUTNE zaregistrovat EVENT XMLHttpRequest.readystatechange, ktory je volany pri zmene stavu spracovanie HTTP REQUEST cez XMLHttpRequest. Pre tento EVENT platia nasledujuce fakty.
+   A. EVENT HANDLER by mal kontrolovat hodnotu PROPERTY XMLHttpRequest.readyState, ktora obsahuje informaciu o stave spracovania daneho HTTP REQUEST.
+   B. EVENT HANDLER po detekcii XMLHttpRequest.readyState==XMLHttpRequest.DONE, ktora znamena prichod KOMPLETNEJ HTTP RESPONSE by mal kontrolovat hodnotu XMLHttpRequest.status na detekciu ci HTTP RESPONSE obsahuje korektny vysledok, alebo CHYBU.
+!!! 20. PROPERTY XMLHttpRequest.status obsahuje HTTP STATUS CODE v CISELNEJ PODOBE a sluzi na detekciu si HTTP RESPONSE obsahuje korektny vysledok, alebo CHYBU.
+21. PROPERTY XMLHttpRequest.statusText obsahuje HTTP STATUS CODE v TEXTOVEJ PODOBE. Napriklad, ked XMLHttpRequest.status==200 co znamena, ze HTTP RESPONSE obsahuje korektny vysledok, XMLHttpRequest.statusText=="OK".
+22. Pomocou METHODS XMLHttpRequest.getResponseHeader() a XMLHttpRequest.getResponseHeaders() je mozne ziskat HTTP RESPONSE HEADERS asociovane s dany HTTP RESPONSE.
+!!! 23. PROPERTY XMLHttpRequest.responseText obsahuje HTTP RESPONSE BODY v TEXTOVEJ PODOBE.
+!!!!! 24. PROPERTY XMLHttpRequest.responseXML obsahuje HTTP RESPONSE BODY v PODOBE Document OBJECT.
+!!! 25. Spracovanie HTTP RESPONSE je zavisle od TYPU DAT v HTTP RESPONSE.
+   !!! A. Ak HTTP RESPONSE BODY obsahuje XML a teda CONTENT-TYPE je 'text/xml', tak XMLHttpRequest.responseXML obsahuje SPECIALNU VERZIU Document OBJECT, ktora NEMA METHOD XMLHttpRequest.getElementById(), kedze v XML NIC TAKE ako ID NEEXISTUJE. Ma vsak METHOD Document.getElementsByTagName(), ktorou je mozne TRAVERZOVAT XML NODES a vyberat z nich XML ELEMENTS a ATTRIBUTES.
+   !!! B. Ak HTTP RESPONSE BODY obsahuje HTML a teda CONTENT-TYPE je 'text/html', tak XMLHttpRequest.responseXML BY MAL OBSAHOVAT KLASICKY HTML Document OBJECT, ktory okrem ineho MA METHOD XMLHttpRequest.getElementById(). BOHUZIAL aktualna implementacia VACSINY BROWSERS NEPODPORUJE implementaciu PARSINGU CONTENT-TYPE s 'text/html' NEOBSAHUJE. V tomto pripade je treba pristupovat k HTTP RESONSE BODY pomocou PROPERTY XMLHttpRequest.responseText obsahujuce NEROZPARSOVANY TEXT.
+   C. Ak HTTP RESPONSE BODY obsahuje JSON data, je NUTNE pouzit PROPERTY XMLHttpRequest.responseText, ktorej obsah sa zasle do METHOD JSON.parse(). METHOD JSON.parse() vracia PARSED OBJECT, ktoreho PROPERTIES su hodnotami zaslanymi cez JSON format.
+   D. Ak HTTP RESPONSE BODY obsahuje JavaScript kode, je NUTNE pouzit PROPERTY XMLHttpRequest.responseText, ktore obsah sa zasle do GLOBAL FUNCTION eval(), ktora JavaScript kod VYKONA.
+26. METHOD XMLHttpRequest.overrideMimeType() umoznuje NA PEVNO nastavit aky MIME TYPE bude obsahovat HTTP RESPONSE. MIME TYPE, ktory v skutocnosti nastavi HTTP RESPONE bude PREPISANY hodnotou zadanou v XMLHttpRequest.overrideMimeType().
+!!! 27. Zasielat DATA na WEB SERVER z XMLHttpRequest je mozne viacerymi sposobmi.
+   A. Vsetky DATA zasielane na WEB SERVER je mozne zakodovat do URL. Toto je STANDARDNY SPOSOB ako WEB BROWSER zasiela data pri odosielani TRADICNYCH WEB FORMS. Tuto techniku zakodovanie dat do URL je mozne pouzit aj v XMLHttpRequest.open(), kde 2. PARAMETER urcuje URL s DATAMI, ktora sa zasle na SERVER. Pri KODOVANI URL je mozne pouzit FUNCTION encodeURIComponent(), ktora koduje specialne znaky do formatu akceptovatelneho URL.
+   B. Data zasielane na WEB SERVER je mozne zakodovat do JSON formatu pomocou FUNCTION JSON.stringify() a poslat ich ako HTTP BODY v HTTP POST REQUEST. Je NUTNE pouzit POST VERB, pretoze IBA VTEDY je HTTP BODY prenasane na WEB SERVER. Ak sa pouziva HTTP GET, tak HTTP BODY NIE JE PRENASANE na WEB SERVER.
+   C. Data zasielane na WEB SERVER je mozne zakodovat do XML formatu pomocou XMLDocument OBJECT a poslat ich ako HTTP BODY v HTTP POST REQUEST. Je NUTNE pouzit POST VERB, pretoze IBA VTEDY je HTTP BODY prenasane na WEB SERVER. Ak sa pouziva HTTP GET, tak HTTP BODY NIE JE PRENASANE na WEB SERVER.
+   D. Na WEB SERVER je mozne ako HTTP REQUEST BODY pomocou METHOD XMLHttpRequest.send() zaslat i FILE. Tento FILE je kvoli SECURITY mozne ziskat IBA z HTML ELEMENT <input type="file"> priamym vlozenim POUZIVATELA.
+   E. Na WEB SERVER je mozne ako HTTP REQUEST BODY pomocou METHOD XMLHttpRequest.send() zaslat MULTIPART data. Tieto sa zasielaju pomocou OBJECT FormData, ktory moze obsahovat File a Blob OBJECTS a je zaslany pomocou XMLHttpRequest.send() na WEB SERVER.
+!!! 28. NOVA SPECIFIKACIA XMLHttpRequest (zatial NIE JE implementovana na IE) vystavuje viacero EVENTS, ktore NAHRADZAJU nutnost zachytavat EVENT XMLHttpRequest.readystatechange a kontrolovat hodnotu XMLHttpRequest.readyState.
+   A. EVENT XMLHttpRequest.loadstart je volany po zavolani METHOD XMLHttpRequest.send(). EVENT je odosielany IBA RAZ.
+   B. EVENT XMLHttpRequest.progress je PRAVIDELNE volany pri cakani na prichod HTTP RESPONSE. EVENT moze byt volany 0 az N krat a vyuziva sa na vizualnu indikaciu cakania na WEB RESPONSE.
+   C. EVENT XMLHttpRequest.load je volany pri prichode HTTP RESPONSE, alebo pri vyskyte chyby.
+   D. EVENT XMLHttpRequest.abort je volany pri vykonani ABORT volanim METHOD XMLHttpRequest.abort().
+   E. EVENT XMLHttpRequest.timeout je volany pri vyskyte TIMEOUT.
+   F. EVENT XMLHttpRequest.timeout je volany pri vyskyte ERROR.
+   G. EVENT XMLHttpRequest.loadend je volany ako POSLEDNY EVENT ukoncujuci cinnost XMLHttpRequest. Momentalne vsak nie je ziadnym BROWSER implementovany.
+   !!! H. EVENTS z XMLHttpRequest je mozne zachytavat i pomocou PROPERTY XMLHttpRequest.upload, ktora definuje TIE ISTE EVENTS ako OBJECT XMLHttpRequest.
+29. METHOD XMLHttpRequest.abort() vykona ABORT HTTP operacie a zaroven vola EVENT XMLHttpRequest.abort.
+30. Zatial NEIMPLEMENTOVANA PROPERTY XMLHttpRequest.timeout umoznuje nastavit TIMEOUT po vyprsani, ktoreho sa vykona ABORT HTTP operacie a zaroven vola EVENT XMLHttpRequest.timeout.
+!!! 31. Standardne kvoli SECURITY moze XMLHttpRequest odosielat HTTP REQUESTS IBA na WEB SERVER z ktoreho bola WEB PAGE, ktora HTTP REQUEST stiahnuta. Toto chovanie sa ale da zmenit ak HTTP REQUEST obsahuje CORS HTTP REQUEST HEADER.
+!!! 32. HTTP REQUEST zaslany pomocou XMLHttpRequest moze obsahovat i REQUEST na <script> ELEMENT, kde ATTRIBUTE 'src' urcuje miesto odkial sa <script> stiahne. Vyhodou pouzitia <script> ako TRANSPORT LAYER je, ze tento <script> NEPODLIEHA SAME ORIGIN POLICY a RESPONSE BODY obsahujuci <script> zakodovany ako JSON data je AUTOMATICKY SPUSTENY. Tento <script> spravilda obsahuje iba nejake DATA zo SERVER a CALLBACK FUNCTION, ktora sa vola na BROWSER s datami, ktore zakodovane ako JSON zaslal WEB SERVER.
+!!!!! 33. Zakladnym OBJECT kniznice COMET je OBJECT EventSource. Bohuzial IE 9 ho NEPODPORUJE.
+!!! 34. OBJECT EventSource ma EVENT EventSource.message, ktora ma ako EVENT OBJECT OBJECT, ktory ma PROPERTIES 'type' obsahujuci typ daneho EVENT a PROPERTY 'data' obsahujuci DATA zaslane z WEB SERVER.
+!!! 35. Pouzitie EventSource OBJECT je velmi jednoduche.
+   A. Vytvori sa instancia EventSource OBJECT, kde v CONSTRUCTOR sa zada URL WEB SERVER, ktory bude distribuovat EVENTS na WEB BROWSERS.
+   B. Zaregistruje sa EVENT EventSource.message a v EVENT HANDLER sa spracovavaju prijate DATA z WEB SERVER.
+   C. Pri skonceni komunikacie sa vola METHOD EventSource.close().
+//-------------------------------------------------------------------------------------------------------
+Rozdiely medzi GET a POST.
+
+1. GET NEZASIELA na WEB SERVER ZIADNE DATA v HTTP BODY.
+2. POST zvycajne ZASIELA na WEB SERVER DATA v HTTP BODY.
+3. GET by NEMAL sposobit ZMENU STAVU WEB SERVER. To znamena, ze 2 HTTP REQUESTS s rovnakou URL by MALI vracat ROVNAKE HTTP RESPONSES.
+4. POST MOZE sposobit ZMENU STAVU WEB SERVER. To znamena, ze 2 HTTP REQUESTS s rovnakou URL MOZU vracat ROZNE HTTP RESPONSES.
+!!! 5. Kedze GET NEMENI STAV WEB SERVER a teda 2 HTTP REQUESTS s rovnakou URL by MALI vracat ROVNAKE HTTP RESPONSES, tak HTTP RESPONSES pre dane HTTP REQUESTS je mozne ULOZIT do CACHE.
+!!! 6. Kedze POST MOZE MENIT STAV WEB SERVER a teda 2 HTTP REQUESTS s rovnakou URL MOZU vracat ROZDIELNE HTTP RESPONSES, tak HTTP RESPONSES pre dane HTTP REQUESTS by sa NEMAL UKLADAT do CACHE.
+//-------------------------------------------------------------------------------------------------------

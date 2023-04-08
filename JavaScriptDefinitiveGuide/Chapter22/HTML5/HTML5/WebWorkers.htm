@@ -1,0 +1,119 @@
+﻿<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+    <title></title>
+</head>
+<body>
+	<textarea id="Text" cols="100" rows="10"></textarea>
+	<br />
+	<input type="button" id="StartNormalThread" value="Start NORMAL THREAD" />
+	<input type="button" id="StartErrorThread" value="Start ERROR THREAD" />
+	<input type="button" id="StartTerminateThread" value="Start TERMINATE THREAD" />
+	<input type="button" id="TerminateTerminateThread" value="Terminate TERMINATE THREAD" />
+	<input type="button" id="CreateAndStartPostponedThread" value="Create and start POSTPONED THREAD" />
+	<input type="button" id="Clear" value="Clear" />
+
+	<script type="text/javascript">
+		window.onload=function()
+		{
+			var													Text=window.document.getElementById("Text");
+			var													StartNormalThread=window.document.getElementById("StartNormalThread");
+			var													StartErrorThread=window.document.getElementById("StartErrorThread");
+			var													StartTerminateThread=window.document.getElementById("StartTerminateThread");
+			var													TerminateTerminateThread=window.document.getElementById("TerminateTerminateThread");
+			var													CreateAndStartPostponedThread=window.document.getElementById("CreateAndStartPostponedThread");
+			var													Clear=window.document.getElementById("Clear");
+			var													WorkerThreadTerminate=undefined;
+
+			StartNormalThread.onclick=function()
+			{
+				var												WorkerThread=new Worker("NormalThread.js");
+
+				WorkerThread.postMessage("MESSAGE FROM SERVER 1 !");
+
+				WorkerThread.onmessage=function(Message)
+				{
+					Text.value+="MESSAGE [" + Message.data + "] !\n";
+				}
+
+				WorkerThread.onerror=function(Error)
+				{
+					Text.value+="ERROR [" + Error.message + "] !\n";
+				}
+
+				WorkerThread.postMessage("MESSAGE FROM SERVER 2 !");
+			}
+
+			StartErrorThread.onclick=function()
+			{
+				var												WorkerThread=new Worker("ErrorThread.js");
+
+				WorkerThread.onmessage=function(Message)
+				{
+					Text.value+="MESSAGE [" + Message.data + "] !\n";
+				}
+
+				WorkerThread.onerror=function(Error)
+				{
+					Text.value+="ERROR [" + Error.message + "] !\n";
+				}
+			}
+
+			StartTerminateThread.onclick=function()
+			{
+				if (WorkerThreadTerminate==undefined)
+				{
+					WorkerThreadTerminate=new Worker("NormalThread.js");
+
+					WorkerThreadTerminate.onmessage=function(Message)
+					{
+						Text.value+="MESSAGE [" + Message.data + "] !\n";
+					}
+
+					WorkerThreadTerminate.onerror=function(Error)
+					{
+						Text.value+="ERROR [" + Error.message + "] !\n";
+					}
+				}
+				else
+				{
+					Text.value+="THREAD was NOT TERMINATED !\n";
+				}
+			}
+
+			TerminateTerminateThread.onclick=function()
+			{
+				if (WorkerThreadTerminate!=undefined)
+				{
+					Text.value+="THREAD TERMINATED !\n";
+					WorkerThreadTerminate.terminate();
+					WorkerThreadTerminate=undefined;
+				}
+			}
+
+			CreateAndStartPostponedThread.onclick=function()
+			{
+				var												WorkerThread=new Worker("PostponedThread.js");
+
+				WorkerThread.onmessage=function(Message)
+				{
+					Text.value+="MESSAGE [" + Message.data + "] !\n";
+				}
+
+				WorkerThread.onerror=function(Error)
+				{
+					Text.value+="ERROR [" + Error.message + "] !\n";
+				}
+
+				// !!! Az TERAZ sa spusti WORKER THREAD.
+				WorkerThread.postMessage("RUN THREAD MESSAGE !");
+			}
+
+			Clear.onclick=function()
+			{
+				Text.value="";
+			}
+		}
+	</script>
+</body>
+</html>
