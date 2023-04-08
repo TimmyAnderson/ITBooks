@@ -1,0 +1,79 @@
+//-------------------------------------------------------------------------------------------------------
+1. Solution demonstruje ITERATORS a ALLOCATORS v STL.
+2. ITERATOR je ENTITA umoznujuca INTEROVAT LUBOVOLNU COLLECTION.
+3. ALLOCATOR sluzi na alokaciu a dealokaciu pamate v COLLECTIONS.
+4. ITERATOR je ENTITA, ktora musi mat implementovane MINIMALNE tieto OPERATORS.
+   A. OPERATOR* umoznuje DEREFERENCOVAT ITEM na ktory odkazuje ITERATOR.
+   B. OPERATOR++ umoznuje inkrementovat poziciu ITERATOR.
+   C. Podla typu ITERATOR i OPERATOR->, OPERATOR==, OPERATOR!=, OPERATOR[], OPERATOR--, OPERATOR<, OPERATOR>, OPERATOR<=, OPERATOR>=, OPERATOR+, OPERATOR-, OPERATOR+= a OPERATOR-=.
+!!! 5. Ako ITERATORS mozu sluzit ako CLASSES, ktore maju pretazene dane OPERATORS alebo i POINTERS, kedze tie VZDY podporuju tieto OPERATORS.
+6. ITERATORS je mozne rozdelit do nasledujucich kategorii.
+   A. INPUT ITERATORS. Umoznuju v COLLECION posun IBA DOPREDU a IBA CITANIE z ITEMS. Neumoznuju ZAPIS do ITEMS. Musia podporovat nasledujuce OPERATORS: OPERATOR* (pre READ), OPERATOR->, OPERATOR++, OPERATOR== a OPERATOR!=.
+   B. OUTPUT ITERATORS. Umoznuju v COLLECION posun IBA DOPREDU a IBA ZAPIS do ITEMS. Neumoznuju CITANIE z ITEMS. Musia podporovat nasledujuce OPERATORS: OPERATOR* (pre WRITE) a OPERATOR++.
+   C. FORWARD ITERATORS. Umoznuju v COLLECION posun IBA DOPREDU. Musia podporovat nasledujuce OPERATORS: OPERATOR* (pre READ i WRITE), OPERATOR->, OPERATOR++, OPERATOR== a OPERATOR!=.
+   D. BIDIRECTIONAL ITERATORS. Umoznuju pohyb v COLLECTION OBOMA smermi. Musia podporovat nasledujuce OPERATORS: OPERATOR* (pre READ i WRITE), OPERATOR->, OPERATOR++, OPERATOR--, OPERATOR== a OPERATOR!=.
+   E. RANDOM ACCESS ITERATORS. Umoznuju OKAMZITY pristup k LUBOVOLNEMU ITEMU v COLLECTION. Musia podporovat nasledujuce OPERATORS: OPERATOR* (pre READ aj WRITE), OPERATOR->, OPERATOR[], OPERATOR++, OPERATOR--, OPERATOR+, OPERATOR-, OPERATOR+=, OPERATOR-=, OPERATOR==, OPERATOR!=, OPERATOR<, OPERATOR>, OPERATOR<= a OPERATOR>=.
+!!!!! 7. Na to aby ALGORITHMS mohli pracovat NEZAVISLE na TYPE ITERATORS a ITEMS, MUSI ITERATOR definovat PRESNE POMENOVAT TYPY cez TYPEDEF.
+   A. TYPE 'iterator_category' urcuje CATEGORY ITERATORA.
+   B. TYPE 'value_type' urcuje TYP ITEM.
+   C. TYPE 'difference_type' urcuje TYP pouzivany pri ODCITAVANI 2 ITERATORS.
+   D. TYPE 'distance_type' urcuje TYP pri urceni VZDIALENOSTI medzi 2 ITERATORS.
+   E. TYPE 'pointer' urcuje TYP POINTERU na ITEM.
+   F. TYPE 'reference' urcuje TYP REFERENCIE na ITEM.
+!!!!! 7. Ak definujem CUSTOM ITERATOR CLASS MUSIM v nom definovat i prislusne TYPY pre ITERATOR, inak tento ITERATOR NEBUDE pouzitelny v STL ALGORITHMS. Existuju 2 moznosti definovania TYPOV.
+   A. Priamo v ITERATOR CLASS definujem TYPEDEFS s prislusnymi TYPMI.
+   B. Zdedim CUSTOM ITERATOR CLASS z CLASS iterator<TCategory,TItemType,TIteratorDifference,TItemPointer,TItemReference>, kde pomocou TEMPLATE PARAMETERS definujem prislusne TYPY.
+!!! 8. STL definuje pre jednotlive ITERATOR CATEGORIES CLASSES pomocou ktorych je mozne definovat CATEGORY pre dany ITERATOR, vdaka comu ALGORITHMS mozu korektne identifikovat TYP ITERATORA. STL definuje nasledujuce TYPY ITERATOR CATEGORIES.
+   A. CLASS 'input_iterator_tag' sa pouziva pre INPUT ITERATORS.
+   B. CLASS 'output_iterator_tag' sa pouziva pre OUTPUT ITERATORS.
+   C. CLASS 'forward_iterator_tag' sa pouziva pre FORWARD ITERATORS.
+   D. CLASS 'bidirectional_iterator_tag' sa pouziva pre BIDIRECTIONAL ITERATORS.
+   E. CLASS 'random_access_iterator_tag' sa pouziva pre RANDOM-ACCESS ITERATORS.
+9. STL poskytuje aj specialne typy ITERATORS pouzivane na VKLADANIE NOVYCH ITEMS do COLLECTION.
+   A. CLASS 'back_inserter<TType>' pridava ITEM na KONIEC COLLECTION. Zaroven VYZADUJE, aby COLLECTION obsahovala metodu push_back().
+   B. CLASS 'front_inserter<TType>' pridava ITEM na KONIEC COLLECTION. Zaroven VYZADUJE, aby COLLECTION obsahovala metodu push_front().
+   C. CLASS 'insert_iterator<TType,TIterator>' pridava ITEM na LUBOVOLNE MIESTO v COLLECTION. Zaroven VYZADUJE, aby COLLECTION obsahovala metodu insert().
+!!! 10. CLASS 'reverse_iterator<TIterator>' umoznuje vytvorit z normalneho ITERATOR REVERZNU VERZIU. Tato verzia PRACUJE UPLNE NORMALNE ako KAZDY INY ITERATOR. Teda napriklad TAKISTO ako BEZNY ITERATOR je v rozsahu [begin(),end()+1], pricom je VNUTORNA IMPLEMENTACIA zabezpecuje, ze vracia KOREKTNY ITEM. Teda pri zaciatku ITEROVANIA aj ked ITERATOR v skutocnosti odkazuje na (end()+1), tak OPERATOR* vrati hodnotu *(end()).
+11. STL poskytuje nasledujuce ITERATORS, ktore umoznuju pracu so STREAMS pomocou ITERATORS.
+   A. CLASS 'ostream_iterator<TItem>' umoznuje pracovat s OUTPUT STREAMS pomocou ITERATORS.
+   B. CLASS 'istream_iterator<TItem>' umoznuje pracovat s INPUT STREAMS pomocou ITERATORS.
+   C. CLASS 'ostreambuf_iterator<TItem>' umoznuje pracovat s BUFFERED OUTPUT STREAMS pomocou ITERATORS.
+   D. CLASS 'istreambuf_iterator<TItem>' umoznuje pracovat s BUFFERED INPUT STREAMS pomocou ITERATORS.
+12. CLASS 'allocator<TType>' je definovany v <memory>. Ma nasledujuce MEMBERS.
+   A. Metoda allocate() je volana ak sa ma alokovat BLOK PAMATI do, ktoreho sa budu alokovat ITEMS.
+   B. Metoda deallocate() je volana ak sa ma dealokovat BLOK PAMATI v ktorom boli alokovane ITEMS.
+   C. Metoda construct() vytvori ITEM v uz ALOKOVANEJ PAMATI.
+   D. Metoda destroy() zlikviduje ITEM v uz ALOKOVANEJ PAMATI volanim DESTRUCTORU pre dany OBJEKT.
+!!!!! 13. CLASS 'allocator<TType>' je STANDARDNOU IMPLEMENTACIOU ALLOCATOR, ktory pouziva interne NEW a DELETE.
+!!!!! 14. Ak chcem implementovat CUSTOM ALLOCATOR, musim definovat CLASS, ktory bude mat TIE ISTE MEMBERS ako CLASS 'allocator<TType>'.
+!!!!! 15. C++ ma pre OPERATOR NEW (nie vsak pre DELETE) SPECIALNU SYNTAX nazyvanu aj PLACEMENT EXPRESSION. Pomocou tejto syntaxe je mozne OPERATOR NEW prinutit aby alokovat pamat v CUSTOM BUFFER a nie v STANDARDNEJ HEAP. Sposob pouzitia je nasledovny.
+   A. Alokuje sa BUFFER do ktoreho sa budu ukladat OBJEKTY cez PLACEMENT SYNTAX. Tento BUFFER moze byt na HEAP, ale kludne moze byt aj na STACK, samozrejme s tym, ze pri konci SCOPE sa pamat a v nej cez PLACEMENT NEW 'alokovane' objekty okamzite uvolnia.
+   !!! B. V BUFFER pomocou PLACEMENT NEW [new(PointerInsideBuffer) CClass(Params)] 'alokujem' objekty. POZOR NEJEDNA sa o SKUTOCNU ALOKACIU PAMATE. PLACEMENT NEW (aspon jeho standardna verzia) NIKDY NEALOKUJE ZIADNU PAMAT. Je to iba NAMAPOVANIE vytvaraneho objektu na PAMATOVU LOKACIU, ktora sa posle ako PARAMETER PLACEMENT NEW. Teda ZIADNA NOVA PAMAT sa NEALOKUJE, iba sa vyuziva PAMAT BUFFERA alokovana v predchadzajucom bode. Samozrejme poziciu v BUFFER si musim EXPLICITNE VYRATAVAT. PLACEMENT NEROBI ZIADEN POSUN POINTERA. Vlastne NEROBI NIC INE, iba VRATI TEN ISTY POINTER, ktory som poslal ako PARAMETER do PLACEMENT NEW.
+   !!!!! C. PLACEMENT NEW pri volanie AJ KED NEALOKUJE PAMAT, tak ZAVOLA PRISLUSNY CONSTRUCTOR.
+   D. POINTER vrateny PLACEMENT NEW je teraz STANDARDNE INICIALIZOVANY OBJEKT na ktory bol volany CONSTRUCTOR. Jediny rozdiel je v tom, ze NIE JE ALOKOVANY na HEAP, ale na BUFFER, ktory som si SAM ALOKOVAL.
+   !!!!! E. Pri odstranovani objektu alokovaneho cez PLACEMENT NEW sa NESMIE VOLAT DELETE. Je to preto, lebo PLACEMENT NEW v skutocnost NEALOKUJE ZIADNU PAMAT, iba vracia POINTER v BUFFER, ktory bol alokovany skor (a kludne mohol byt alokovany i na STACK).
+   !!!!! F. Pri odstranovani objektu alokovaneho cez PLACEMENT NEW je vsak NUTNE EXPLICITNE VOLAT DESTRUCTOR daneho OBJEKTU. Kedze sa NESMIE VOLAT DELETE, ktory vola DESTRUCTOR AUTOMATICKY, tak je nutne ho zavolat MANUALNE. Teda odstranenie objektu 'alokovaneho' cez PLACEMENT NEW znamena IBA EXPLICITNE VOLANIE DESTRUCTORA OBJEKTU 'alokovaneho' cez PLACEMENT NEW.
+   G. Odstranenie BUFFERA sa vykonava bud volanim DELETE (ak bol alokovany cez NEW), alebo ak bol alokovany cez STACK, tak skoncenim SCOPE.
+!!!!! 16. Pre PLACEMENT NEW plati.
+   A. NEALOKUJE ZIADNU PAMAT iba priradzuje UZ ALKOVANU pamat z BUFFERA, ktory sa zasiela ako PARAMETER PLACEMENT NEW.
+   B. PLACEMENT NEW zavola CONSTRUCTOR.
+17. STL poskytuje niekoko TEMPLATE FUNCTIONS pomocou, ktorych je mozne pracovat s NEINICALIZOVANOU RAW PAMATOU.
+   A. Metoda get_temporary_buffer() alokuje RAW PAMAT pricom vracia objekt pair<TPointer*,ptrdiff_t>, kde 'first' je POINTER na alokovanu pamat a 'second' pocet objektov, ktore sa do alokovanej pamate vojdu. V pripade chyby je 'second' rovny 0.
+   B. Metoda return_temporary_buffer() uvolnuje RAW PAMAT alkoovanu metodou get_temporary_buffer().
+   C. Iterator CLASS 'raw_storage_iterator<TIterator,TItem>' sluzi na prechod RAW PAMATOU. Je VELMI DOLEZITY pri VOLANI ALGORITHMS, ktore predpokladaju, ze PAMAT ktorou iteruju UZ BOLA INICIALIZOVANA a preto pouzivaju OPERATOR= napriklad pri KOPIROVANI ITEMS. Pouzitie 'raw_storage_iterator<TIterator,TItem>', ktory RAW PAMAT INICIALIZUJE volanim CONSTRUCTORS namiesto pouzitia OPERATOR=.
+   D. Metoda uninitialized_copy() kopiruje RAW PAMAT. Interne pouziva PLACEMENT NEW.
+   E. Metoda uninitialized_fill() naplna RAW PAMAT volanim CONSTRUCTORS pre jednotlive OBJEKTY. Interne pouziva PLACEMENT NEW.
+   F. Metoda uninitialized_fill_s() naplna prvych N objektov RAW PAMATE volanim CONSTRUCTORS pre jednotlive ITEMS. Interne pouziva PLACEMENT NEW.
+!!! 18. Kniznica <new> obsahuje SPECIALNE implementacie NEW a DELETE OPERATORS (napriklad PLACEMENT NEW, ci pouzitie 'nothrow). Pouzite NEW a DELETE ako i PLACEMENT NEW ci CUSTOM VERZII (aj viacparametrickych) pre NEW a DELETE je demonstrovane v CHAPTER 10.
+!!!!! 19. Pouzitie C funkcie free() je VELMI RISKANTNE, kedze funkcia NEVOLA DESTRUCTOR pre odstranovany OBJEKT. Preto by sa malloc() a free() v C++ NEMALI POUZIVAT.
+//-------------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------------
+Standardna implementacia PLACEMENT NEW.
+
+inline void *__CRTDECL operator new(size_t, void *_Where) _THROW0()
+{	
+	// !!! Ako je vidiet PLACEMENT NEW NEROBI ABSOLUTNE NIC.
+	return(_Where);
+}
+//-------------------------------------------------------------------------------------------------------

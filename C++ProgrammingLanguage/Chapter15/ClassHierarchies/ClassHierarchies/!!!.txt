@@ -1,0 +1,82 @@
+//-------------------------------------------------------------------------------------------------------
+1. Solution demonstruje implementaciu CLASS HIERARCHIES v C++.
+2. C++ podporuje MULTIPLE INHERITANCE, kde jeden CLASS moze byt zdedeny z VIACERYCH BASE CLASSES.
+!!! 3. Ak viacero BASE CLASSES obsahuje ROVNAKO POMENOVANU VIRTUALNU METODU, potom pokial tato metoda NIE JE OVERRIDED v DERIVED CLASS, tak je na volanie metod z BASE CLASS potrebne pouzit OPERATOR::. Bez jeho pouzitia C++ NEVIE, ktoru verziu (z ktorej BASE CLASS) ma pouzit.
+!!!!! 4. Ak BASE CLASS a DERIVED CLASS obsahuje OVERLOADED VERZIE ROVNAKO POMENOVANYCH METOD s INYMI PARAMETRAMI, tak je potrebne v DEKLARACII CLASS pouzit SYNTAX nazyvanu USING DECLARATION [using BaseClass::OverloadedMethodName], aby boli PRIAMO PRISTUPNE i z DERIVED CLASS.
+5. VIRTUAL INHERITANCE sa definuje aplikovanim KEYWORD 'virtual' pri specifikovani DEDENIA v DEKLARACII CLASS. VIRTUAL INHERITANCE umoznuje, aby ak v DEDICSKEJ HIERARCHII DERIVED CLASS dedi z VIACERYCH CLASSES, pricom BASE CLASSES dedia zo SPOLOCNEJ BASE CLASS, aby doslo k ZLUCENIU VSETKYCH INSTANCII BASE CLASS.
+!!!!! 6. Pri pouziti VIRTUAL INHERITANCE je NEVYHUTNE, aby ak v DEDICSKEJ HIERARCHII niektora VETVA PRETAZUJE VIRTUAL METHOD XXX() a v INEJ VETVE NEPRETAZUJE VIRTUAL METHOD XXX(), tak MOST DERIVED CLASS MUSI PRETAZIT XXX(), inak COMPILER hodi CHYBU.
+!!! 7. Ak BASE CLASS, ktora je dedena pomocou VIRTUAL INHERITANCE VIACERYMI VETVAMI DEDICSKEJ HIERARCHIE na NON-DEFAULT CONSTRUCTOR, tak tento je z MOST DERIVED CLASS NEVYHNUTNE EXPLICITNE VOLAT. CONSTRUCTOR BASE CLASS sa vola IBA RAZ.
+8. ACCESS CONTROL moze byt okrem MEMBERS aplikovany aj pri INHERITANCE. ACCESS CONTROL aplikovany pri INHERITANCE ma nasledujuci vyznam.
+   A. PRIVATE - PUBLIC a PROTECTED MEMBERS triedy CBase su pristupne iba v METHODS CDerived. Konverziu CDerived* na CBase* je mozne robit IBA v METHODS CDerived. Mimo tychto METHODS konverziu NIE JE MOZNE ROBIT.
+   B. PROTECTED - PUBLIC a PROTECTED MEMBERS triedy CBase su pristupne iba v METHODS CDerived a METHODS CLASSES, ktore DEDIA z CDerived. Konverziu CDerived* na CBase* je mozne robit IBA v METHODS CDerived a METHODS CLASSES, ktore su ZDEDENE z CDerived. Mimo tychto METHODS konverziu NIE JE MOZNE ROBIT.
+   C. PUBLIC - PUBLIC a PROTECTED MEMBERS triedy CBase su pristupne v lubovolnej FUNCTION. Konverziu CDerived* na CBase* je mozne robit z lubovolnych FUNCTIONS.
+9. Ak sa pri INHERITACNE EXPLICITE NEURCI ACCESS CONTROL, tak plati, ze CLASSES maju PRIVATE ACCESS a STRUCTS maju PUBLIC ACCESS.
+!!!!! 10. Pomocou USING DECLARATION SYNTAX je mozne VYSTAVIT INHERITED MEMBERS LUBOVOLNYCH FUNCTIONS, ktore by pri PRIVATE a PROTECTED INHERITANCE boli pristupne iba z METHODS DERIVED CLASSES. Pomocou USING DECLARATION, vsak NIE JE MOZNE ZVIDITELNIT MEMBERS, ktore v CLASS, ktora pouzila USING DECLARATION su NEPRISTUPNE. Iba tie ktore su PRISTUPNE je mozne ZVEREJNIT. Pomocou tejto techniky je napriklad mozne z PROTECTED MEMBER z BASE CLASS spravit v DERIVED CLASS PUBLIC MEMBER.
+11. OPERATOR 'dynamic_cast<>()' umoznuje DYNAMICKY konvertovat POINTERS, alebo REFERENCES CLASS v dedicskej hierarchii. Umoznuje nasledujuce typy konverzii.
+   !!! A. Konverziu CDerived na CBase. Pri konverzii sa RESPEKTUJE ACCESS CONTROL pre INHERITANCE. Teda ak ACCESS CONTROL NEUMOZNUJE konverziu, tak ta ZLYHA.
+   B. Konverziu CBase na CDerived.
+   C. Konverziu CBase1 na CBase2, ak CLASS implementuje CBase1 aj CBase2.
+!!! 12. OPERATOR 'dynamic_cast<>()' vyuziva pri identifikacii a kontrole typu RTTI.
+!!! 13. OPERATOR 'dynamic_cast<>()' ak nedokaze pretypovat vrati NULL. Ak nedokaze pretypovat REFERENCE, hodi EXCEPTION 'bad_cast'.
+!!!!! 14. OPERATOR 'dynamic_cast<TType>()' moze mat za TType IBA NASLEDUJUCE TYPE.
+   A. POINTER na CLASS, alebo STRUCT.
+   B. REFERENCE na CLASS, alebo STRUCT.
+   C. POINTER na VOID.
+   !!! D. Ine konverzie, napriklad konverzie VALUE TYPES, alebo POINTERS na PRIMITIVNE TYPY NIE SU POVOLENE.
+!!!!! 15. OPERATOR 'dynamic_cast<>()' ma ZASADNU PODMIENKU a to aby pri KONVERZII z CDerived na CBase, bola CBase POLYMORFNA. Ak nie je COMPILER HODI CHYBU.
+!!!!! 16. CLASS je POLYMORFNA, ak ma ASPON 1 METODU VIRTUALNU, ale ma VIRTUALNY DESTRUCTOR.
+!!!!! 17. Dovod preco 'dynamic_cast<>()' VYZADUJE aby TARGET TYPE bol POLYMORFNY spociva v tom, ze IBA POLYMORNE TYPE maju VIRTUAL TABLE a PRAVE do VIRTUAL TABLE sa uklada TYPOVA INFORMACIA, ktoru RTTI (a tym padom i 'dynamic_cast<>()') VYUZIVA pri IDENTIFIKACII TYPU.
+!!!!! 18. TYPOVA INFORMACIA pre RTTI sa uklada VZDY do VIRTUAL TABLE. Zvycajne je ulozena v forme STRINGU, pricom obsahuje POINTERS na BASE TYPES. OPERATOR 'dynamic_cast<>()' pri zistovani danu konverziu moze spravit, POROVNAVA tieto STRINGS s nazvom POZADOVANEHO TYPU. Prehladavaju sa aj BASE TYPES.
+!!!!! 19. OPERATOR 'dynamic_cast<>()' NEDOKAZE vykonat konverziu z VOID*. Je to dosledok toho, ze OPERATOR 'dynamic_cast<>()' VYZADUJE, aby sa POINTER odkazoval na VIRTUAL TABLE (na OFFSETE 0 daneho POINTER). A pri VOID* NEEXISTUJE ISTOTA, ze VOID* ukazuje na POLYMORNY CLASS, ktory ma hned na zaciatku POINTER na VIRTUAL METHOD TABLE. POINTER by sa mohol odkazovat na KUS PAMATE, ktory ak by COPMILER interpretoval ako POINTER na VIRTUAL METHOD TABLE, skoncilo by to CHYBOU PRISTUPU k PAMATI. Preto COMPILER takuto konverziu NEPOVOLI. Alternativou je pouzitie OPERATORA 'static_cast<>()'.
+!!! 20. V CONSTRUCTORS a DESTRUCTORS je SILNE NEDOPORUCOVANE volat VIRTUALNE METODY.
+21. OPERATOR typeid() vracia OBJEKT typu 'type_info', ktory obsahuje typove informacie o objekte. OPERATOR typeid() ma nasledujuce vlastnosti.
+   A. Umoznuje ziskat TYPES pre VALUE TYPES, POINTER TYPES a REFERENCE TYPES.
+   B. Volanie typeid() pre NON-POLYMORFIC TYPE, CONSTANT, alebo PRIMITIVNY TYPE je vyhodnoteny uz v COMPILE TIME.
+   !!! C. C++ NEGARANTUJE, ze pre JEDEN TYPE bude existovat IBA JEDNA INSTANCIA objektu typu 'type_info', preto na porovnanie 2 OBJEKTOV typu 'type_info' je potrebne pouzit PRETAZENY OPERATOR==, ktory 'type_info' implementuje.
+   D. Pri pokuse zistit TYPE pre NULL POINTER je generovana EXCEPTION typu 'bad_typeid'.
+   !!!!! E. POLYMORFNE zistenie TYPU sa realizuje iba ak do typeid() zaslem VALUE VARIABLE. Ak zaslem POINTER VARIABLE, tak vrati TYP POINTER, ktory NIE JE POLYMORFNY a teda ak posielam POINTER na CBase* - typeid(PointerToBase), aj ked OBSAHUJE objekt typu CDerived, vrati CBase*. Ak chcem zistit SKUTOCNY TYP, musim volat typeid(*PointerToBase). Ten potom SPRAVNE vrati typ CDerived.
+22. CLASS 'type_info' obsahuje nasledujuce MEMBERS.
+   A. OPERATOR== a OPERATOR!= umoznuju porovnanie 2 INSTANCII 'type_info' objektov.
+   B. Metoda name() vracia CHAR* obsahujuci meno CLASS.
+   C. Visual C++ obsahuje metodu hash_code() vracajucu HASH CODE daneho TYPU.
+!!! 23. RTTI nesie so sebou isty PERFORMANCE HIT, a preto ho treba pouzivat iba ak je to ozaj nevyhnutne.
+24. POINTER na MEMBER je specialny typ POINTER pomocou ktoreho je mozne odkazovat na MEMBER danej CLASS. Pomocou tohto POINTER je mozne vytvorit POINTER na FIELD, alebo METHOD a pomocou OPERATORA.* a OPERATORA->* pristupovat k tymto MEMBERS pre danu VALUE VARIABLE (OPERATOR.*), alebo POINTER VARIABLE (OPERATOR->*).
+!!! 25. Na to, aby do POINTER na MEMBER bolo mozne priradit MEMBER musi byt tento NON-STATIC a volajuci kod musi mat potrebne ACCESS RIGHTS. STATIC MEMBER NIE JE MOZNE priradzovat do POINTER na MEMBER.
+!!! 26. POINTER na MEMBER podporuje INHERITANCE. Ak sa odkazuje na VIRTUAL METHOD, tak sa zavola tato metoda POLYMORFNE.
+!!! 27. Do POINTER na MEMBER odkazujuceho na DERIVED CLASS je mozne priradzovat MEMBERS z BASE CLASS. Opacne to vsak NEPLATI. Teda do POINTER na MEMBER odkazujuceho na BASE CLASS NIE JE mozne priradit MEMBER z DERIVED CLASS.
+!!!!! 28. POINTER na MEMBER je interne implementovany ROZDIELNE pre ROZLICNE TYPY MEMBERS.
+   A. FIELDS - POINTER na MEMBER je implementovany ako OFFSET v CLASS.
+   B. NON-VIRTUAL - POINTER na MEMBER je implementovany ako KLASICKY POINTER odkazujuci sa na ADRESU v PAMATI.
+   C. VIRTUAL - POINTER na MEMBER je implementovany ako OFFSET v TABULKE VIRTUALNYCH FUNKCII.
+!!! 29. C++ umoznuje PRETAZOVAT operatory NEW, DELETE, NEW[] a DELETE[]. Pretazene verzie mozu mat okrem POVINNEHO PARAMETRA typu 'size_t' aj DALSIE PARAMETRE. Pretazovate je moze NEW a DELETE pre CLASS, alebo i GLOBALNE VERZIE tychto OPERATORS.
+!!!!! 30. Pretazene verzie OPERATOR NEW, OPERATOR DELETE, OPERATOR NEW[] a OPERATOR DELETE[] mozu mat i DODATOCNE PARAMETRE. Avsak pri DELETE je nutne volat PRETAZENU VERZIU s PARAMETRAMI co FUNCTION CALL SYNTAX [Pointer->operator delete(Pointer,Params);] a [Pointer->operator delete[](Pointer,Params);].
+!!! 31. Pretazene verzie MEMBER OPERATOR NEW, OPERATOR DELETE, OPERATOR NEW[] a OPERATOR DELETE[] su IMPLICITNE STATICKE.
+!!!!! 32. Ak pretazujem NEW a DELETE OPERATORS pre CLASS a tato CLASSS moze byt v DEDICSKEJ HIERARCHII, tak BASE CLASS MUSI MAT VIRTUAL DESTRUCTOR, inak PRETAZENE NEW a DELETE NEBUDU FUNGOVAT SPRAVNE.
+!!!!! 33. Ak sa vola OPERATOR NEW, OPERATOR NEW[], OPERATOR DELETE, alebo OPERATOR DELETE[] ako FUNCTION, tak sa CONSTRUCTORS a DESTRUCTORS NEVOLAJU.
+!!!!! 34. C++ umoznuje COVARIANCE RETURN VALUES pre VIRTUALNE METHODS. Znamena to, ze ak CBase ma VIRTUAL METHOD [CBase* XXX(void);], tak CDerived moze mat VIRTUAL METHOD [CDerived* XXX(void);]. To znamena, ze RETURN VALUE OVERRIDDE METHOD moze byt POINTER na DERIVED CLASS z RETURN VALUE typu, ktoru vratila VIRTUALNA METODA v BASE CLASS.
+//-------------------------------------------------------------------------------------------------------
+Priklad pouzitia USING DECLARATION.
+
+1. CLASS CBase obsahuje metodu DoSomething(int Value).
+2. CLASS CDerived obsahuje metodu DoSomething(double Value).
+3. CLASS CDerived dedi z CBase.
+4. V DEKLRACII CDerived pouzijem USING DECLARATION [using CBase::DoSomething].
+!!! 5. Pokial sa NEPOUZIJE USING DECLARATION, tak volenie CDerived.DoSomething() VZDY zavola DOUBLE verziu aj ked je parameter typu INT.
+!!! 6. Po pouziti USING DECLARATION je mozne volat CDerived.DoSomething() ako s parametrom INT, tak i parametrom DOUBLE a VZDY sa zavola ta SPRAVNA METODA.
+//-------------------------------------------------------------------------------------------------------
+Priklad pouzitia NON-VIRTUAL INHERITANCE.
+
+1. CLASS 'CBase' predstavuje BASE CLASS.
+2. CLASS 'CBase1' dedi z CLASS 'CBase'.
+3. CLASS 'CBase2' dedi z CLASS 'CBase'.
+4. CLASS 'CDerived' dedi z CLASS 'CBase1' a CLASS 'CBase2'.
+!!! 5. Kedze sa NEPOUZILA VIRTUAL INHERITANCE, tak CLASS 'CDerived' bude obsahovat 2 INSTANCIE 'CBase', jednu DERIVED z CLASS 'CBase1' a druhu z DERIVED z CLASS 'CBase2'.
+//-------------------------------------------------------------------------------------------------------
+Priklad pouzitia VIRTUAL INHERITANCE.
+
+1. CLASS 'CBase' predstavuje BASE CLASS.
+2. CLASS 'CBase1' VIRTUALNE dedi z CLASS 'CBase'.
+3. CLASS 'CBase2' VIRTUALNE dedi z CLASS 'CBase'.
+4. CLASS 'CDerived' dedi z CLASS 'CBase1' a CLASS 'CBase2'.
+!!! 5. Kedze sa POUZILA VIRTUAL INHERITANCE, tak CLASS 'CDerived' bude obsahovat iba JEDNU INSTANCIU CLASS 'CBase'.
+//-------------------------------------------------------------------------------------------------------

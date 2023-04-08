@@ -1,0 +1,50 @@
+//-------------------------------------------------------------------------------------------------------
+1. Solution demonstruje pouzitie EXCEPTIONS v C++.
+2. EXCEPTIONS sa realizuju pomocou KEYWORDS 'try' a 'catch'.
+!!! 3. C++ NEPODPORUJE 'finally'.
+4. V CATCH bloku sa uvadza TYP, ktory dany CATCH BLOK ZACHYTAVA a spracovava. Ak existuje DEDICSKA HIERARCHIA tak DERIVED CATCH bloky MUSIA byt PRED BASE CATCH blokmi.
+5. Pomocou ELLIPSIS CATCH BLOKU [catch(...)] je mozne zachytit tie EXCEPTIONS, ktore neboli zachytene ostatnym CATCH BLOKMI.
+!!! 6. Ak EXCEPTION CLASS dedi z VIACERYCH BASE CLASSES, tak pre VSETKY BASE CLASSES je mozne vytvorit CATCH BLOKY, ktore budu zachytavat tieto EXCEPTIONS.
+!!!!! 7. CATCH BLOK by mal VZDY pouzivat REFERENCE VARIABLE a nie VALUE VARIABLE. Je to dolezite najme ak mam HIERARCHIU EXCEPTION CLASSES. Ak mam CATCH BLOK typovany na BASE CLASS, pri pouziti VALUE VARIABLE dochadza ku SKOPIROVANIU EXCEPTION OBJEKTU do BASE CLASS OBJEKTU a tym padom i STRATE INFORMACII. Naopak, pri pouziti REFERENCE VARIABLE sa pouzivaju REFERENCES a teda NEDOCHADZA k ZMENE TYPU EXCEPTION OBJEKTU a je mozne POLYMORFNE VOLENIE VIRTUAL METHODS. Ak mam za sebou 2 CATCH BLOKY s CLASSES, ktore su BASE CLASSES v MULTIPLE INHERITANCE, tak je zavolany VZDY len PRVY z nich.
+!!! 8. V CATCH BLOKU je mozne pouzit i typ [const T], asavk C++ ho NEODLISUJE od typu [T].
+!!! 9. OBJEKT, ktory bol hodeny cez THROW sa VZDY KOPIRUJE a teda objekt ziskany v CATCH BLOKU je KOPIA povodneho objektu. Je to logicke, kedze pre STACK UNWIND sa volaju DESTRUCTORS pre vsetky lokalne objekty.
+!!! 10. C++ umoznuje aj THROW pre POINTER a REFERENCE VARIABLES.
+!!! 11. Pri RE-THROWN je hodeny POVODNY TYP EXCEPTION a nie ten, ktory bol oznaceny v CATCH BLOKU. Toto sa stane napriklad vtedy ak hodim EXCEPTION typu DERIVED CLASS, ale zachytavam VALUE VARIABLE typu BASE CLASS. Aj ked v CATCH BLOKU pracujem s KOPIU typu DERIVED CLASS, tak pri RE-THROWN je hodena POVODNA DERIVED CLASS EXCEPTION.
+!!! 12. DESTRUCTOR je volany IBA pre TIE OBJEKTY pre ktore bol CELY CONSTRUCTOR USPESNE VYKONANY. Ak v tele CONSTRUCTOR bola hodena EXCEPTION, tak DESTRUCTOR sa NEZAVOLA. Ak vsak CLASS ma VIACERO FIELDS, tak pre tie, ktorych CONSTRUCTORS boli USPESNE VYKONANE su ZAVOLANE DESTRUCTORS a to aj napriek tomu, ze CONSTRUCTOR objektu, ktory tieto FIELDS obsahuje hodil EXCEPTION.
+13. STL obsahuje triedu auto_ptr<T>, ktora implementuje funkcionalitu SMART POINTERS. V DESTRUCTOR sa vola OPERATOR DELETE. Ten sa takisto vola pri PRIRADENI noveho auto_ptr<T>. POINTERS do auto_ptr<T> priradzovat NEMOZNO.
+14. V C++11 je alternativou voci auto_ptr<T> CLASS unique_ptr<T>.
+15. Ak CONSTRUCTOR hodi EXCEPTION pricom objekt bol alokovany pomocou OPERATORA NEW zavisi od typu OPERATORA NEW. DESTRUCTOR sa vsak NIKDY NEVOLA.
+   A. STANDARDNY NEW OPERATOR VZDY DEALOKUJE pamat volanim OPERATORA DELETE. Zaroven sa POINTER nastavi na NULL.
+   B. PRETAZENY NEW OPERATOR VZDY DEALOKUJE pamat volanim PRETAZENEHO OPERATORA DELETE. Zaroven sa POINTER nastavi na NULL.
+   C. NEW OPERATOR cez PLACEMENT SYNTAX NEDEALOKUJE EXPLICITNE PAMAT (co nema ani zmysel, kedze pamat sa alokouje MANUALNE programatorom podla potreby) a je to potrebne urobit MANUALNE programatorom. POINTER je vsak nastaveny na NULL.
+!!! 16. Ak OPERATOR NEW nema dost pamate, tak NAJPRV zavola METODU zaregistrovanu pomocou funkcie set_new_handler() a ak ani potom nema dost pamate, tak hodi EXCEPTION bad_alloc.
+!!!!! 17. HANDLER zaregistrovany pomocou set_new_handler() ak NEDOKAZE UVOLNIT PAMAT, MUSI hodit EXCEPTION 'bad_alloc', inak dojde k INFINITE LOOP.
+!!! 18. SPECIFIKACIA C++ urcuje NUTNOST C++ rezervovat si dost pamate aby v pripade jej nedostatku mal jej dost na hodenie EXCEPTION 'bad_alloc'.
+!!!!! 19. C++ umoznuje ZACHYTAVAT EXCEPTIONS generovane v CONSTRUCTORS jednotlivych FIELDS PRIAMO v CONSTRUCTOR CLASS, ktora obsahuje dane FIELDS. Pouziva sa SPECIALNA SYNTAX [CONSTRUCTOR(PARAMS) try : INITALIZERS {BODY} catch(TYPE){CATCH_BLOCK)]. BODY je BODY daneho CONSTRUCTOR a INITALIZERS su volania CONSTRUCTORS pre FIELDS danej CLASS. SPECIALITOU tejto SYNTAXE je, ze C++ AUTOMATICKY GENERUJE na KONCI CATCH BLOCK RE-THROW TEJ ISTEJ EXCEPTION.
+!!!!! 20. EXCEPTIONS v DESTRUCTOR sa spracovavaju ODLISNE na zaklade toho ci k EXCEPTION doslo pocas NORMALNEHO VOLANIA DESTRUCTOR, alebo ak sa DESTRUCTOR zavolal ako sucast STACK UNWIND, pri hodeni INEJ EXCEPTION.
+   A. Ak je EXCEPTION hodena v DESTRUCTOR pocas NORMALNEHO BEHU PROGRAMU, tak tuto EXCEPTION je mozne NORMALNE SPRACOVAT v CATCH BLOCK a PROGRAM MOZE DALEJ POKRACOVAT.
+   B. Ak je EXCEPTION hodena v DESTRUCTOR, ktory bol zavolany pocas STACK UNWIND pri spracovani INEJ EXCEPTION, dojde k OKAMZITEMU TERMINATE PROGRAMU.
+!!!!! 21. EXCEPTIONS v DESTRUCTOR aj ked pocas NORMALNEHO BEHU PROGRAMU su POVOLENE, tak sa NEDOPORUCUJU. Napriklad STL NEPREDPOKLADA, ze by DESTRUCTORS mohli hodit EXCEPTIONS a pouzitie STL v spojitost s CLASSES, ktore hadzu EXCEPTIONS v DESTRUCTORS moze sposobit PROBLEMY.
+23. C++ umoznuje specifikovat za FUNCTION, alebo METHOD zoznam EXCEPTIONS (EXCEPTION SPECIFICATION), ktore mozu byt hodene z danej FUNCTION, alebo METHOD hodene. Zoznam EXCEPTIONS, ktore FUNCTION, alebo METHOD moze hodit je definovany ZA DEKLARACIOU, alebo DEFINICIOU FUNCTION, alebo METHOD pomocou KEYWORD 'throw()'. Ak ich je viac, musia byt oddelene CIARKOU. Zoznam EXCEPTIONS MUSI byt ROVNAKY v DECLARATION aj DEFINITION danej FUNCTION, alebo METHOD.
+   A. EXCEPTION SPECIFICATION [void XXX(void);], alebo [void XXX(void); throw(...)] znamena, ze FUNCTION moze hodit LUBOVOLNU EXCEPTION.
+   B. EXCEPTION SPECIFICATION [void XXX(void) throw(X,Y);] znamena, ze FUNCTION moze hodit IBA EXCEPTIONS typu X a Y. Pri hodeni INEHO TYPU EXCEPTION dochadza UNEXPECTED EXCEPTION a zavola sa funkcia zaregistrovana pomocou funkcie set_unexpected().
+   C. EXCEPTION SPECIFICATION [void XXX(void) throw();] znamena, ze FUNCTION NEMOZE hodit ZIADNU EXCEPTION.  Pri hodeni EXCEPTION dochadza UNEXPECTED EXCEPTION a zavola sa funkcia zaregistrovana pomocou funkcie set_unexpected().
+!!!!! 24. Ak FUNCTION, alebo METHOD hodi INU EXCEPTION ako su povolene v EXCEPTION SPECIFICATION za KEYWORD 'throw()', tak sa vola FUNCTION std::unexpected(), ktorej DEFAULT BEHAVIOR je UKONCENIE PROGRAMU.
+!!! 25. Ak VIRTUAL METHODS v BASE CLASSES obsahuju EXCEPTION SPECIFICATION, tak VIRUTUAL METHODS v DERIVED CLASSES MOZU mat bud IDENTICKE, alebo RESTRIKTIVNEJSIU EXCEPTION SPECIFICATION, inak kompilator hodi chybu.
+!!! 26. EXCEPTION SPECIFICATIONS sa udavaju aj pri deklaracii POINTER na FUNCTION a pri priradeni FUNCTION do POINTER na FUNCTION, kde NESEDIA EXCEPTION SPECIFICATIONS hodi KOMPILATOR CHYBU. Visual C++, kedze vsak EXCEPTION SPECIFICATIONS IGNORUJE, tak to AKCEPTUJE.
+!!! 27. Pri 'typedef', ak nim chcem definovat novy TYPE ALIAS na POINTER na FUNCTION sa vsak EXCEPTION SPECIFICATION sa NESMU ZADAT, inak kompilator hodi chybu.
+!!!!! 28. Visual C++ 10 NEPODPORUJE EXCEPTION SPECIFICATIONS. Sice program je skompilovatelny, ale EXCEPTION SPECIFICATIONS su IGNOROVANE.
+!!!!! 29. Pri vyskyte UNEXPECTED EXCEPTION je volanu HANDLER, ktory je zaregistrovany pomocou funkcie set_unexpected(). STANDARDNY HANDLER sposobi volanie funkcie terminate(), ktora STANDARDNE vola abort() a ta ukonci program.
+!!! 30. EXCEPTION typu 'bad_exception' je SPECIALNA EXCEPTION, ktora umoznuje ZABRANIT VZNIKU UNEXPECTED EXCEPTIONS. Ak 'bad_exception' definujem v EXCEPTION SPECIFICATION, tak NAMIESTO UKOCENIA PROGRAMU dochadza ku KONVERZII EXCEPTION na 'bad_exception', ktora je potom hodena NAMIESTO POVODNEJ EXCEPTION. CUSTOM UNEXPECTED HANDLER MUSI but UKONCIT cely program, alebo HODIT EXCEPTION.
+31. Ak dojde k UNHANDLED EXCEPTION tak je volany UNHANDLED EXCEPTION HANDLER. Standardny HANDLER vola abort(). Pomocou funkcie set_terminate() je mozne nastavit CUSTOM UNHANDLED EXCEPTION HANDLER. Ten musi UKONCIT PROGRAM a NESMIE sa vratit do CALLER.
+32. STL definuje viacero TYPOV EXCEPTIONS. Vsetky tieto EXCEPTIONS maju BASE CLASS typu 'exception'. Trieda 'exception' ma VIRTUALNU metodu what(), ktora vracia ASCII STRING a NIE UNICODE STRING.
+33. C++ hadze nasledujuce typy EXCEPTIONS.
+   A. bad_alloc - je hodena pri nedostatku pamati.
+   B. bad_typeid - je hodena pri chybe OPERATORA 'dynamic_cast<>()'.
+   C. bad_typeid - je hodena pri chybe OPERATORA 'typeid'.
+   D. bad_exception - je hodena C++ ak dojde k UNHANDLED EXCEPTION a FUNCTION obsahuje v EXCEPTION SPECIFICATION EXCEPTION TYPU 'bad_exception'.
+   E. out_of_range - hadze ju STL.
+   F. invalid_argument - hadze ju STL.
+   G. overflow_error - hadzu ju STL COLLECTIONS.
+   H. ios::failure - hodena pri chybe STREAM operacii.
+//-------------------------------------------------------------------------------------------------------

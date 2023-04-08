@@ -1,0 +1,35 @@
+//-------------------------------------------------------------------------------------------------------
+1. Solution demonstruje pouzitie TEMPLATES v C++.
+2. TEMPLATES umoznuju definovat CLASS, alebo FUNCTION, ktora bude mat TYPOVE PARAMETRE. Tieto TYPOVE PARAMETRE je mozne pouzivat v DEFINICII CLASS, alebo FUNCTION ako normalny TYP. Jeho realna hodnota sa aplikuje az po pouziti TEMPLATE. C++ umoznuje nasledujuce typy TEMPLATES.
+   A. CLASS TEMPLATES.
+   B. GLOBAL FUNCTION TEMPLATES.
+   C. METHODS TEMPLATES. Su METHODS, ktore FUNCTION su TEMPLATES - maju VLASTNE TEMPLATE PARAMETERS. TEMPLATE PARAMETRE CLASS TEMPLATES a METHODS TEMPLATES MUSIA byt uvedene na SEPARATNYCH [template<TType>] RIADKOCH.
+3. Medzi FUNCTION TEMPLATES patria GLOBAL FUNCTIONS, METHOD TEMPLATES, GLOBAL OPERATORS a METHOD OPERATORS.
+!!! 4. Pomocou TYPEDEF je mozne definovat ALIAS pre TEMPLATE CLASS s pouzitim KONKRETNYCH TYPOVYCH PARAMETROV a tym i uplne vyhodit TEMPLATE PARAMETRE z DEKLARACIE CLASS [typedef CSimpleTemplate<wstring> CStringSimpleTemplate] cim sa kod stava prehladnejsim.
+!!!!! 5. ZASADNY PROBLEM pri pouzivani TEMPLATES je v tom, ze ak METODY TEMPLATE (DEKLAROVANE v H subore) DEFINUJEM (dam im telo) v CPP subore, tak LINKER tieto DEFINICIE IGNORUJE a tela METOD VOBEC NEVLOZI do GENEROVANEHO OUTPUT suboru. Vysledkom je, ze LINKER NEVIE NAJST TELA METOD TEMPLATE a hodi CHYBU. Tento problem je mozne riesit nasledujucimi sposobom.
+   A. V CPP subore kde su DEFINICIE (tela) TEMPLETE METOD sa pouzije KONKRETNA DEFINICIA TEMPLATE pre dany TYP [template CSimpleTemplate<int>;]. Tato DEFINICIA vsak MUSI byt v TOM ISTOM CPP subore, kde su TELA TEMPLATE METOD DEFINOVANE. Samozrejme VELKOU NEVYHODOU je ze CPP subor musi definovat TEMPLATES pre VSETKY POUZIVANE TYPY.
+   B. Date DEFINICIE (tela) VSETKYCH TEMPLATE METOD do H suboru a tento subor pomocou INCLUDE vlozit co CPP suborov, kde sa TEMPLATE pouziva. Toto riesenie pouziva STL.
+   !!!!! C. V CPP suboroch, kde sa TEMPLATE POUZIVA vykonat INCLUDE NIELEN H suboru, ale i CPP suboru obsahujuceho DEFINCIE (tela) METOD. Toto riesenie je NAJELEGANTNEJSIE.
+   !!! D. Pouzitie KEYWORD 'export'. Bohuzial tento KEYWORD este NEBOL IMPLEMENTOVANY vo Visual C++ 2010 a v roku 2010 bol dokonca VYHODENY z C++ STANDARDU.
+!!!!! 6. TEMPLATE je CISTO COMPILE-TIME konstrukt, ktory NEMA ZIADNU SPECIALNU PODPORU v RUN-TIME, ako je to napriklad v pripade POLYMORFIZMU, kde exituje POLYMORFNE volanie VIRTUAL METHODS cez VIRTUAL TABLE. Na rozdiel od TEMPLATES su .NET GENERICS RUN-TIME konstruktom.
+!!!!! 7. Kod TEMPLATE metod je CISTO GENERICKY. Ak vsak v nom pouzijem nejaky OPERATOR, alebo volam nejaku METODU TYPOVEHO PARAMETRA, tak pri vytvoreni INSTANCIE TEMPLATE s KONKRETNYM MENOM TYPU kompilator VYZADUJE, aby vsetky KONTRUKTY pouzite v TELACH TEMPLATE METOD dane TEMPLATE TYPY mali implementovane. Ak nemaju, tak KOMPILATOR hodi CHYBU.
+8. TEMPLATES v C++ mozu mat nasledujuce typy parametrov.
+   A. TYPY. Su to klasicke TYPY, ktore musia byt oznacene KEYWORD 'typename'.
+   !!! B. TEMPLATE PARAMETRE. Su to KONSTANTY TYPOV zadefinovany ako TYPY TEMPLATE. C++ vsak VYZADUJE, aby sa jednalo o KONSTANTY a NEUMOZNUJE objekty typu CLASS ci STRUCT, iba POINTER na CLASS ci STRUCT.
+   C. INT KONSTANTY. Kedze su to COMPILE-TIME KONSTANTY je ich mozne pouzit napriklad pri DEFINICII VELKOSTI POLA.
+9. TEMPLATES s rovnakymi PARAMETREMI predstavuju ROVNAKY TYP a preto premenne takychto TEMPLATES je mozne napriklad vzajomne priradzovat.
+!!! 10. C++ pri volani TEMPLATE FUNCTION je schopny DEDUKOVAT, ake TEMPLATE PARAMETRE budu pouzite a NIE JE NUTNOST ich EXPLICITNE DEFINOVAT. Ak vsak C++ NEDOKAZE IMPLICITNE ZISTIT (napriklad ak sa NEPOUZIVAJU ako PARAMETRE FUNKCIE, alebo sa TEMPLATE TYPE vracia iba ako RETURN VALUE) tieto parametre, treba ich zadat EXPLICITNE.
+!!! 11. C++ umoznuje definovat PRETAZENU VERZIU TEMPLATE FUNCTION, ktora je KLASICKOU FUNCTION s ROVNAKYM MENOM ako TEMPLATE FUNCTION. C++ VZDY PREFERUJE volanie KLASICKEJ FUNCTION pred TEMPLATE FUNCTION, za predpokladu, ze parametre KLASICKEJ FUNCTION sa ZHODUJU s PARAMETRAMI VOLANIA.
+12. Pomocou TEMPLATES je prenasat do TEMPLATE FUNCTIONS referencie na FUNKCIE. Robi sa to tak, ze definujem TEMPLATE PARAMETER typu CLASS, ktore obsahujue STATICKE METODY, ktore potom v TEMPLATE FUNCTION pouzijem. Prikladom moze byt implementacia SORT funkcie, ktora vyzaduje OPERACIU COMPARE. Toto je mozne implementovat tak, ze sa prenesie do TEMPLATE FUNCTION EXTRA TEMPLATE PARAMETER, ktory bude mat definovanu OPERACIU COMPARE ako STATIC METHOD. Tuto STATIC METHOD je potom v TEMPLATE FUNCTION vyvolana. VYHODOU je, ze COMPARE OPERATION je vlozena uz v COMPILE-TIME a je ju mozne vykonat i jej INLINING. To je DALEKO EFEKTIVNEJSIE ako volanie VIRTUALNEJ METODY, alebo FUNKCIE prenasanej ako PARAMETER TEMPLATE FUNCTION.
+!!! 13. CLASS TEMPLATES mozu pouzivat DEFAULT PARAMETERS. Ak ma CLASS TEMPLATE VIACERO PARAMETROV tak posledne mozu mat DEFAULT hodnotu. Ak chcem pouzit VSETKY PARAMETRE ako DEFAULT HODNOTY, tak pouzijem zapis [template<>].
+!!!!! 14. Vo Visual C++ FUNCTION TEMPLATES NEMOZU pouzivat DEFAULT TEMPLATE PARAMETERS. Toto je vsak obmedzenie IBA Visual C++ a nie C++, ktory toto podporuje.
+15. C++ umoznuje SPECIALIZATION TEMPLATES. Je to mechanizmus, ktory umoznuje pre CLASS TEMPLATES definovat SPECIALIZOVANE VERZIE pre ROZLICNE TYPY TEMPLATE PARAMTERS. Pri definicii SPECIALIZED verzie TEMPLATE sa pouziva SYNTAX [template<> class XXX<TParam1,...ParamN>{};].
+!!! 16. Pri pouziti SPECIALIZATION C++ UPREDNOSTNUJE VIAC SPECIALIZED verziu TEMPLATE.
+!!! 17. Pri SPECIALIZATION je mozne aj CIASTOCNE DEFINOVAT TEMPLATE PARAMETRE, napriklad obmedzenim, ze konkretna verzia SPECIALIZED TEMPLATE sa bude tyka IBA POINTERS. Robi sa to nasledujucou SYTNAXTOU [template<> class XXX<TParam*>].
+!!!!! 18. Visual C++ NEUMOZNUJE vykonat SPECIALIZATION TEMPLATE CLASS METHODS. C++ vsak toto UMOZNUJE. CLASS TEMPLATE METHODS je treba v SPECIALIZED CLASS TEMPLATES definovat INLINE a NEDAJU sa definovat v CPP subore.
+!!! 19. Visual C++ vsak PODPORUJE SPECIALIZATION TEMPLATE FUNCTIONS.
+20. C++ umoznuje DEDICNOST TEMPLATES. DEDIT je mozne CLASS z TEMPLATE, TEMPLATE z CLASS i TEMPLATE z TEMPLATE.
+!!! 21. C++ umoznuje dedit z TEMPLATE a to tak, ze za TEMPLATE PARAMETER v BASE CLASS sa dosadi DERIVED CLASS.
+!!!!! 22. Ak CLASS CDerived dedi z CBase, NEZNAMENA to, ze do CTemplate<CBase*> je mozne priradit CTemplate<CDerived*>.
+!!! 23. TEMPLATES MOZU mat VIRTUAL a ABSTRACT METHODS, ale NESMU mat MEMBER FUNCTIONS, ktory by boli TEMPLATE FUNCTIONS a boli VIRTUAL, alebo ABSTRACT.
+//-------------------------------------------------------------------------------------------------------

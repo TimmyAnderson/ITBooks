@@ -1,0 +1,104 @@
+//-------------------------------------------------------------------------------------------------------
+1. Solution demonstruje pretazovanie operatorov (OPERATOR OVERLOADING) v C++.
+!!! 2. C++ neumoznuje doplnat nove TOKENS pre OPERATORS, iba vyuzit existujuce TOKENS. Takisto nie je mozne menit ARITU OPERATOROV. Pretazenie OPERATORA= a OPERATOR+ NEZNAMENA, ze kompilator bude pri volanie OPERATOR+= volat OPERATOR+ a OPERATOR=. OPERATOR+= je treba EXPLICITNE tiez PRETAZIT.
+3. KEYWORD 'operator' po ktorom nasleduje samotny operator sa pouziva pri definovani OVERLOADED OPERATORS.
+!!!!! 4. Pouzitie TOKENS pre CUSTOM OPERATORS je iba SKRATENA SYNTAX, ktoru je mozne nahradit syntaxou ANALOGICKOU s FUNCTION CALL.
+!!!!! 5. FUNCTION CALL syntax pre PRIMITIVNE TYPE NIE JE MOZNE POUZIT.
+6. OPERATORS [A.*B] a [A->*B] umoznuju pristupovat k PUBLIC MEMBER 'B' objektu 'A', kde PUBLIC MEMBER moze byt premenna, alebo i metoda.
+7. OPERATORS mozu byt definovane na 3 urovniach.
+   A. Ako GLOBALNE FUNKCIE. Pocet operandov je rovny ARITE OPERATORA.
+   B. Ako NON-STATIC METODY. Pocet operandov je o 1 NIZSI ako ARITA OPERATORA. Je to preto, lebo LEFT OPERAND je vzdy 'this' objekt.
+   !!! C. OPERATORS ako STATIC METHODS NIE JE MOZNE v C++ PRETAZOVAT.
+!!! 8. OPERATORS OPERATOR[], OPERATOR(), OPERATOR= a OPERATOR-> MUSIA byt VZDY MEMBER OPERATORS.
+!!! 9. OVERLOADED OPERATOR mozu byt definovane aj pre ENUMERATORY aj ked iba ako GLOBALNE OPERATORS.
+!!!!! 10. OVERLOADED OPERATORS musia mat ASPON 1 PARAMETER typu CLASS. Nie je mozne napriklad pretazit BINARNY OPERATOR, ktory by mal OBE OPERANDY ako PRIMITIVNE TYPY.
+!!! 11. Na rozlisenie medzi PREFIX a POSTFIX verziami OPERATORS OPERATOR++ a OPERATOR-- sa pouziva DUMMY parameter typu INT.
+!!!!! 12. Ak je CLASS definovana v NAMESPACE a ma GLOBALNE OPERATORS tiez definovane v NAMESPACE, tak tieto OPERATORS su PRISTUPNE, aj BEZ PLNE KVALIFIKOVANEHO MENA. Toto je vlastnost C++, co bolo potvrdene i na fore MSDN.
+13. C++ umoznuje definiciu KONVERZNYCH OPERATORS. Tieto OPERATORS maju nasledovnu syntax [operator XXX(void)], kde XXX je nazov TYPU do ktoreho bude OPERATOR vykonavat konverziu. OPERATOR NEMA uvadzanu RETURN VALUE, pretoze ta je zhodna s typom XXX.
+!!! 14. Konverzne OPERATORS MUSIA byt NON-STATIC MEMBER FUNKCIAMI. Definovat konverzny OPERATOR ako GLOBALNU FUNKCIU NIE JE MOZNE.
+15. KEYWORD 'friend' umoznuje definovat v CLASS zoznam EXTERNYCH CLASSES, METHODS a OPERATORS, ktore budu mat pristup k PRIVATE a PROTECTED MEMBERS CLASS v ktorej bol 'friend' pouzity.
+!!! 16. Oznacenie CLASSES, METHODS a OPERATORS za 'friend' NEZNAMENA, ze sa tieto stavaju sucastou rozhrania CLASS v ktorej bol 'friend' pouzity. Nestavaju sa, iba maju moznost pristupit k PRIVATE a PROTECTED MEMBERS. Je preto aj UPLNE JEDNO ci 'friend' CLASSES, METHODS a OPERATORS maju pristupove prave PUBLIC, PROTECTED, alebo PRIVATE, pretoze tieto su IGNOROVANE.
+!!! 17. Ak funkcia prenasa HODNOTU nejaky OBJEKT do funkcie ako PARAMETER, alebo z funkcie ako RETURN VALUE, tak nad CLASS daneho OBJEKTU je v OBOCH PRIPADOCH volany COPY CONSTRUCTOR. Ak tento CLASS NEMA DEFINOVANY, tak sa KOPIRUJU VSETKY FIELDS.
+18. KEYWORD 'explicit' aplikovany na CONSTRUCTOR ZABRANUJE, aby kompilator IMPLICITNE pouzil tento CONSTRUCTOR napriklad pri posielanie PARAMETRA do FUNKCIE, alebo RETURN VALUE z funkcie. Takto oznaceny CONSTRUCTOR je mozne volat iba s pouzitim EXPLICITNEJ SYNTAXE volania CONSTRUCTORA.
+!!! 19. OPERATOR[] MUSI byt implementovany ako MEMBER OPERATOR.
+!!! 20. OPERATOR() MUSI byt implementovany ako MEMBER OPERATOR. OPERATOR() moze mat LUBOVOLNY POCET PARAMETROV a takisto i RETURN VALUE.
+!!!!! 21. OPERATOR() sa velmi casto pouziva na implementaciu CLASSES, ktore sa podobaju na DELEGATES v C#. Su to CLASSES, ktore obsahuju KONTEXTOVE PARAMETRE (podobne ako sa DELEGATE vo forme ANONYMNEJ FUNKCIE moze odkazovat na LOKALNE VARIABLE vo funkcii v ktorej je DEFINOVANY) a obsahuje OPERATOR() s PARAMETRAMI, ktore sa s KAZDYM VOLANIE (na rozdiel od KONTEXTOVYCH PARAMETROV). Takuto CLASS je potom mozne pouzit NAMIESTO FUNKCIE.
+!!!!! 22. OPERATOR-> je SPECIALIZOVANY OPERATOR pre ktory platia nasledujuce fakty.
+    A. Musi byt implementovany ako MEMBER OPERATOR.
+    !!! B. Je to UNARNY OPERATOR, ktoreho JEDINY PARAMETER je objekt na LAVEJ STRANE OPERATORA. V pripade [A->B] je to 'A'.
+    !!!!! C. Kompilator po pouziti OPERATOR->() na RETURN VALUE tohto OPERATORA sa ZNOVA aplikuje OPERATOR->(). Preto aj RETURN VALUE OPERATOR->() MUSI mat ZNOVA implementovany OPERATOR->(). Teda RETURN VALUE MUSI byt bud POINTER an CLASS (NIE vsak POINTER na PRIMIITIVNY TYP, kedze unho opatovna aplikacia OPERATOR->() sice DEREFERENCUJE POINTER, ale uz na PRAVEJ STRANE OPERATOR->() PRIMITIVNY TYP nema ZIADNE MEMBERS), alebo CLASS, ktory ma OPERATOR->() OVERRIDED.
+    !!!!! D. Zmysel pretazit OPERATOR->() ma IBA VTEDY, ked CLASS, v ktorej je pretazeny sluzi ako WRAPPER okolo POINTER na CLASS.
+!!!!! 23. OPERATOR-> moze ako RETRUN VALUE mat nasledujuce typy.
+   A. PRIMITIVNY TYP, alebo POINTER na PRIMITIVNY TYP (resp. OBJEKT na CLASS, ktory NEMA pretazeny OPERATOR->). V tomto pripade OPERATOR-> NIE JE MOZNE POUZIT pomocou SYNTAXE [A->B], kdeze u PRIMITIVNEHO TYPU NEEXISTUJU ZIADNE MEMBERS a teda ani MEMBER 'B' a JEDINY sposob ako volat OPERATOR-> je cez SYNTAX [A.operator->()].
+   B. POINTER na CLASS. Toto je NAJCASTEJSIE POUZITIE tohto OPERATORA. SYNTAX [A->B] znamena, ze za vola [A.operator->()->B], teda na POINTER na CLASS, ktory vratil OPERATOR-> sa ZNOVA APLIKUJE OPERATOR->.
+   C. OBJEKT typu CLASS. V tomto pripade MUSIM CLASS mat PRETAZENY OPERATOR->. To znamena, ze SYNTAX [A->B], znamena, ze sa vola [A.operator->().operator->()], kde [A.operator->()] vracia OBJEKT typu 'B'.
+//-------------------------------------------------------------------------------------------------------
+Pouzitie OPERATOR() v ALGORITHM for_each().
+
+1. ALGORITHM for_each() je TEMPLATE, ktory ma ako posledny parameter ENTITU (objekt, alebo funkciu), ktora pouziva OPERATOR().
+2. ALGORITHM for_each() pri prechadzani COLLECTION vola pre KAZDY ITEM pre posledny parameter OPERATOR(TIteratorItem).
+!!!!! 3. Ak zaslem do for_each() ako parameter FUNKCIU s parametrom TIteratorItem, tak kompilator to AKCEPTUJE, lebo FUNKCIA JE v PODSTATE volanie OPERATOR().
+!!!!! 4. Ak zaslem do for_each() ako parameter CLASS, tak tento MUSI mat OVERRIDED OPERATOR() s parametrom TIteratorItem, ktory potom for_each() VYVOLA.
+//-------------------------------------------------------------------------------------------------------
+OPERATORS v C++
+
+1. [a=b] - priradenie.
+2. [a+b] - scitanie.
+3. [a-b] - odcitanie.
+4. [a*b] - nasobenie.
+5. [a/b] - delenie.
+6. [a%b] - zvysok po deleni (MODULO).
+7. [++a] - prefix inkrementacia.
+8. [a++] - postfix inkrementacia.
+9. [--a] - prefix dekrementacia.
+10. [a--] - postfix dekrementacia.
+11. [+a] - unarne plus.
+12. [-b] - unarne minus.
+13. [a==b] - rovnost.
+14. [a!=b] - nerovnost.
+15. [a>b] - vacsi.
+16. [a<b] - mensi.
+17. [a>=b] - vacsi, alebo rovny.
+18. [a<=b] - mensi, alebo rovny.
+19. [!a] - LOGICAL NOT.
+20. [a&&b] - LOGICAL AND.
+21. [a||b] - LOGICAL OR.
+22. [~a] - BITWISE NOT.
+23. [a&b] - BITWISE AND.
+24. [a|b] - BITWISE OR.
+25. [a^b] - BITWISE XOR.
+26. [a<<b] - BITWISE LEFT SHIFT.
+27. [a>>b] - BITWISE RIGHT SHIFT.
+28. [a+=b] - scitanie a priradenie.
+29. [a-=b] - odcitanie a priradenie.
+30. [a*=b] - nasobenie a priradenie.
+31. [a/=b] - delenie a priradenie.
+32. [a%=b] - zvysok po deleni (MODULO) a priradenie.
+33. [a&=b] - BITWISE AND a priradenie.
+34. [a|=b] - BITWISE OR a priradenie.
+35. [a^=b] - BITWISE XOR a priradenie.
+36. [a<<=b] - BITWISE LEFT SHIFT a priradenie.
+37. [a>>=b] - BITWISE RIGHT SHIFT a priradenie.
+38. [a[b]] - ITEM pola.
+39. [*a] - hodnota POINTERA.
+40. [&a] - ziskanie POINTERA.
+41. [a.b] - referencia na MEMBER.
+42. [a->b] - referencia na MEMBER cez POINTER.
+43. [a.*b] - dereferencovanie referencie na MEMBER. 
+44. [a->*b] - dereferencovanie referencie na MEMBER cez POINTER. Operator NIE JE mozne PRETAZIT.
+45. [a(p1,p2...,pn)] - volanie funkcie, alebo metody.
+46. [a,b] - oddelene dvoch nezavislych vyrazov.
+47. [a?b:c] - podmieneny vyraz. Operator NIE JE mozne PRETAZIT.
+48. [a::b] - SCOPE RESOLUTION. Operator NIE JE mozne PRETAZIT.
+49. [sizeof(a)], [sizeof(TYPE)] - velkost objektu/typu. Operator NIE JE mozne PRETAZIT.
+50. [typeid(a)], [typeid(TYPE)] - dynamicke urcenie typu objektu/typu. Operator NIE JE mozne PRETAZIT.
+51. [(TYPE)a] - pretypovanie objektu.
+52. [const_cast<TYPE>(a)] - pretypovanie objektu.
+53. [static_cast<TYPE>(a)] - pretypovanie objektu.
+54. [dynamic_cast<TYPE>(a)] - pretypovanie objektu.
+55. [reinterpret_cast<TYPE>(a)] - pretypovanie objektu.
+56. [new TYPE] - dynamicka alokacia objektu.
+57. [new TYPE[a]] - dynamicka alokacia pola.
+58. [delete a] - dynamicka dealokacia objektu.
+59. [delete[] a] - dynamicka dealokacia pola.
+//-------------------------------------------------------------------------------------------------------

@@ -1,0 +1,81 @@
+//-------------------------------------------------------------------------------------------------------
+1. Solution demonstruje moznosti lokalizacie v C++.
+2. CLASS 'locale' predstavuje zakladny CLASS, ktorym je reprezenovana lokalizacia v C++.
+3. Funkcionalitu 'locale' je mozne rozsirovat implementovanim CUSTOM FACETS co su CLASSES zdedene z 'locale::facet'.
+!!!!! 4. Vyzera, ze Visual C++ pouziva INU KONVENCIU pre pomenovanie CULTURES. Namiesto napriklad pouzitia 'sk_SK' je treba pouzit 'Slovak_slovakia' aj ked podla knihy by mal pouzivat standardne pomenovanie 'sk_SK'. Ak 'locale' NEDOKAZE IDENTIFIKOVAT MENO CULTURE, tak hodi 'runtime_exception'.
+!!! 5. LOCALE predstavuje COLLECTION FACETS. Az FACETS implementuju INTERNACIONALIZACIU KONKRETNEJ VLASTNOSTI JAZYKA ako napriklad zobrazenie desatinnej ciarky, ci oddelovaca tisicov. CLASS 'locale' umoznuje pristup ku COLLECTION 'facet' DERIVED CLASSES.
+!!! 6. CLASS 'locale' zvycajne v INTERNEJ IMPLEMENTACII obsahuje FIELD typu 'map<id,facet>' ku ktoremu prostrednictvom 'locale' je efektivne a rychlo mozne pristupovat.
+!!!!! 7. FACETS su rozdelene do CATEGORIES. Programator moze NAHRADIT 'facet' v EXISTUJUCEJ CATEGORY, ale NEMOZE VYTVORIT DALSIU CATEGORY. FACET vsak NEMUSI PATRIT do ZIADNEJ CATEGORY. CATEGORIES sluzia iba pre potreby STL a je mozne definovat CUSTOM FACET, ktory NEPATRI do ZIADNEJ CATEGORY.
+8. CLASS basic_ios<T>, ktory je BASE CLASS pre VSETKY STREAMS v STL obsahuje FIELD typu 'locale' (je definovany v BASE CLASS ios_base) a metody, ktore umoznuju pracu s LOCALES. Pri vytvoreni STREAM ma STREAM nastavenu DEFAULT LOCALE.
+   A. getloc() - vracia aktualne nastavenu LOCALE pre dany objekt.
+   B. imbue() - nastavuje LOCALE pre dany objekt.
+9. CLASS 'locale' ma nasledujuce MEMBERS.
+   A. CONSTRUCTOR umoznuje SKOPIROVANIE JEDNEHO FACET (definovaneho ako POINTER na Facet) z ineho 'locale' objektu.
+   B. CONSTRUCTOR umoznuje SKOPIROVANIE vsetkych FACETS danej CATEGORY z ineho 'locale' objektu.
+   C. Metoda combine() umoznuje SKOPIROVANIE vsetkych FACETS z ineho 'locale' objektu OKREM FACET, ktory je definovany ako parameter metody.
+   D. Pretazeny OPERATOR= umoznuje priradzovat 'locale' objekty.
+   E. Pretazeny OPERATOR== a OPERATOR!= umoznuju porovnavat 'locale' objekty.
+   !!! F. Pomocou STATICKEJ METODY global() je mozne zistit a NASTAVIT GLOBALNY 'locale'. Jeho nastavenie vsak NEMA vplyv na UZ VYTVORENE STREAM OBJEKTY, iba na novovytvorene. Metoda global() meni aj VSETKY C FUNKCIE, ako napriklad wprintf_s(), ktore pouzivaju 'locale' z locale::global().
+10. CLASS 'locale::facet' ma nasledujuce MEMBERS.
+   A. CONSTRUCTOR je EXPLICIT a PROTECTED a ako parameter ma 'size_t'. Ak je tento rovny 0, tak 'facet' je UVOLNENY pri uvolneni 'locale' ku ktoremu prislucha. Hodnota ROZNA od 0, znamena, ze 'locale' v DESTRUCTOR NELIKVIDUJE 'facet'.
+   !!! B. TYPE 'id' sluzi ako IDENTIFIKATOR FACET. Nie je to vsak identifikator CLASS, ale INTERFACE daneho FACET CLASS.
+   C. DESTRUCTOR je PROTECTED.
+   !!! D. DERIVED FACETS obsahuju CUSTOM METHODS podla potreby. CLASS 'facet' NEOBSAHUJE ZIADNE PUBLIC METODY.
+!!! 11. S FACETS sa pracuje VZDY POMOCOU POINTERS.
+!!! 12. TEMPLATE FUNCTION has_facet<TFacet>() umoznuje zistit ci dany 'locale' objekt OBSAHUJE FACET typu 'TFacet'.
+!!! 13. TEMPLATE FUNCTION use_facet<TFacet>() umoznuje ziskat FACET typu TFacet z 'locale'. Ak 'locale' NEMA FACET typu TFacet, hodi EXCEPTION 'bad_cast'.
+!!!!! 14. FACET ID je CLASS, ktora sluzi na IDENTIFIKOVANIE FACET INTERFACE. FACET INTERFACE je PSEUDO INTERFACE pozostavajuce s PUBLIC METHODS, ktore dany FACET obsahuje. Ak 2 ROZLICNE FACET CLASSES maju TIE ISTE PUBLIC METHODS, tak MUSIA MAT IDENTICKY IDENTIFIKATOR.
+!!! 15. CUSTOMIZACIA LOCALE mechanizmu sa realizuje pomocou definovania CUSTOM FACET INTERFACES (CLASS zdedena z 'facet') a CUSTOM CLASSES DERIVED z CUSTOM FACET INTERFACES.
+!!!!! 16. FACETS sa VZDY MUSIA VYTVARAT na HEAP cez OPERATOR NEW, lebo pri pouziti v 'locale' vola DESTRUCTOR 'locale' na konci OPERATOR DELETE. Jedinou VYNIMKOU je ak sa zavola CONSTRUCTOR 'locale' s hodnotou ROZNOU od 0, kedy DESTRUCTOR 'locale' NEVOLA OPERATOR DELETE. Toto sa vsak pouziva VELMI ZRIEDKA. Najlepsie je VZDY VYTVORIT FACET na HEAP cez OPERATOR NEW.
+17. FACET collate<TChar> umoznuje POROVNAVANIE RETAZCOV. Obsahuje nasledujuce MEMBERS.
+   A. Metoda compare() porovnava retazce A a B, pricom vracia 1 ak A>B, -1 ak A<B a 0 ak A==B.
+   B. Metoda transform() konvertuje retazec na basic_string<TChar>. Vysledny basic_string<TChar> moze byt pouzity pre POROVNANIE, ktore respektuje LOCALE.
+   C. Metoda hash() vypocitava HASH hodnotu.
+18. FACET collate_byname<TChar> DEDI z collate<TChar>. Jedinym rozdielom oproti collate<TChar> je moznst v CONSTRUCTOR vybrat LOCALE, ktory sa pouzije.
+19. FACET numpunct<TChar> vracia specificke znaky a formatovanie pre INT, DOUBLE a BOOL. Obsahuje nasledujuce MEMBERS.
+   A. Metoda grouping() vracia retazec pouzivany pri GROUPING znakov.
+   B. Metoda thousands_sep() vracia znak oddelovaca tisicov.
+   C. Metoda decimal_point() vracia znak desatinnej ciarky.
+   D. Metoda truename() vracia textovu hodnotu TRUE.
+   E. Metoda falsename() vracia textovu hodnotu FALSE.
+20. FACET numpunct_byname<TChar> DEDI z numpunct<TChar>. Jedinym rozdielom oproti numpunct<TChar> je moznost v CONSTRUCTOR vybrat LOCALE, ktory sa pouzije.
+21. FACET num_get<TChar,TIterator> sluzi na citanie LOCALE verzii INT, DOUBLE a BOOL hodnot zo STREAMS.
+22. FACET num_put<TChar,TIterator> sluzi na zapis LOCALE verzii INT, DOUBLE a BOOL hodnot do STREAMS.
+23. FACET moneypunct<TChar,bool> vracia specificke znaky a formatovanie pre lubovolny typ, ktory reprezentuje MONEY. Obsahuje nasledujuce MEMBERS.
+   A. Metoda grouping() vracia retazec pouzivany pri GROUPING cisel.
+   B. Metoda thousands_sep() vracia znak oddelovaca tisicov.
+   C. Metoda decimal_point() vracia znak desatinnej ciarky.
+   D. Metoda curr_symbol() vracia retazec reprezentujuci meny.
+   E. Metoda frac_digits() vracia pocet desatinnych miest presnosti danej meny.
+   F. Metoda positive_sign() vracia znak reprezentujuci kladnu hodnotu meny.
+   G. Metoda negtive_sign() vracia znak reprezentujuci zapornu hodnotu meny.
+   H. Metoda pos_format() vracia format v ktorom sa zapisuje pozitivna hodnota meny.
+   I. Metoda neg_format() vracia format v ktorom sa zapisuje negativna hodnota meny.
+   J. FIELD intl urcuje ci sa pri zobrazovani symbolu meny pouzije skratka ($), alebo medzinarodne meno (USD).
+24. FACET moneypunct_byname<TChar,bool> DEDI z moneypunct<TChar,bool>. Jedinym rozdielom oproti moneypunct<TChar,bool> je moznost v CONSTRUCTOR vybrat LOCALE, ktory sa pouzije.
+25. FACET money_get<TChar,TIterator> sluzi na citanie LOCALE verzii MONEY hodnot zo STREAMS.
+26. FACET money_put<TChar,TIterator> sluzi na zapis LOCALE verzii MONEY hodnot do STREAMS.
+27. FACET time_get<TChar,TIterator> sluzi na citanie LOCALE verzii DATE a TIME hodnot zo STREAMS.
+28. FACET time_get_byname<TChar,TIterator> DEDI z time_get<TChar,bool>. Jedinym rozdielom oproti time_put<TChar,bool> je moznost v CONSTRUCTOR vybrat LOCALE, ktory sa pouzije.
+29. FACET time_put<TChar,TIterator> sluzi na zapis LOCALE verzii DATE a TIME hodnot do STREAMS.
+30. FACET time_put_byname<TChar,TIterator> DEDI z time_put<TChar,bool>. Jedinym rozdielom oproti time_put<TChar,bool> je moznost v CONSTRUCTOR vybrat LOCALE, ktory sa pouzije.
+31. FACET ctype<TChar> umoznuje klasifikaciu ZNAKOV do rozlicnych skupin ako i konverziu z 'char' na 'wchar_t' a opacne. Obsahuje nasledujuce MEMBERS.
+  A. Metoda is() vracia typ znaku.
+  B. Metoda scan_if() vracia prvy vyskyt daneho typu znakov.
+  C. Metoda scan_not() vracia prvy vyskyt ineho typu znakov, ako je specifikovane v parametri metody.
+  !!!!! D. Metoda widen() umoznuje konverziu z 'char' na 'wchar_t', alebo iny 'sirsi' typ znaku.
+  !!!!! E. Metoda narrow() umoznuje konverziu z 'wchar_t' na 'char', alebo iny 'uzsi' typ znaku.
+32. FACET ctype_byname<TChar> DEDI z ctype<TChar>. Jedinym rozdielom oproti ctype<TChar> je moznost v CONSTRUCTOR vybrat LOCALE, ktory sa pouzije.
+33. FACET codecvt_byname<TCharI,TCharE,TState> sluzi na konverziu retazcov typu TCharI na retazce typu TCharE a opacne. Podporuje i vychodoazijske jazyky obsahujuce SHIFT sekvencie. Obsahuje nasledujuce MEMBERS.
+   A. Metoda in() konvertuje retazce typu TCharI na retazce TCharE.
+   B. Metoda out() konvertuje retazce typu TCharE na retazce TCharI.
+   C. Metoda length() vracia dlzku konvertovaneho retazca.
+   D. Metoda encoding() vracia dlzky znaku v BYTES, alebo 0, ak sa pouziva CHARACTES SET s premenlivou dlzkou znaku.
+34. FACET codecvt_byname<TCharI,TCharE,TState> DEDI z codecvt<TCharI,TCharE,TState>. Jedinym rozdielom oproti codecvt<TCharI,TCharE,TState> je moznost v CONSTRUCTOR vybrat LOCALE, ktory sa pouzije.
+35. FACET messages<TChar> umoznuje vyberat lokalizovane textove spravy pouzivane pri vypisoch pre pouzivatela programu. Obsahuje nasledujuce MEMBERS.
+   A. Metoda open() otvara CATALOG.
+   B. Metoda close() uzatvara CATALOG.
+   C. Metoda get() ziskava retazec z CATALOGU.
+36. FACET messages_byname<TChar> DEDI z messages<TChar>. Jedinym rozdielom oproti messages<TChar> je moznost v CONSTRUCTOR vybrat LOCALE, ktory sa pouzije.
+!!! 37. Standardna implementacia FACET messages<TChar> je PRAZDNA a je potrebne vytvorit CUSTOM FACET zdedeny z messages<TChar>.
+//-------------------------------------------------------------------------------------------------------
