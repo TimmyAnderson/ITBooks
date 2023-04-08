@@ -1,0 +1,79 @@
+﻿//-------------------------------------------------------------------------------------------------------
+1. Solution demonstruje rozlicne aspekty WCF CONTRACTS.
+2. WCF podporuje nasledujuce typy CONTRACTS.
+   A. SERVICE CONTRACT - definuje SERIVCE.
+   B. OPERATION CONTRACT - definuje OPERATIONS nad SERVICE.
+   C. DATA CONTRACT - definuje strukturu MESSAGE prenasanu ako parameter OPERATION. Umoznuje definovat IBA STRUKTURU BODY danej MESSAGE.
+   D. MESSAGE CONTRACT - definuje strukturu MESSAGE prenasanu ako parameter OPERATION. Umoznuje definovat STRUKTURU HEADERS i BODY danej MESSAGE.
+!!! 3. CONTRACTS su vo WCF reprezentovane pomocou INTERFACES, CLASSES, a METHODS. Avsak WCF dokaze kazdu definiciu CONTRACT mapovat do WSDL a XSD - univerzalnych formatov definujucich CONTRACTS.
+4. SERVICE CONTRACT sa definuje aplikaciou atributu [ServiceContract] na INTERFACE, alebo CLASS. Trieda ServiceContractAttribute ma nasledujuce PROPERTIES.
+   A. Name - urcuje alternativne meno SERVICE.
+   B. Namespace - urcuje alternativne NAMESPACE SERVICE.
+   C. CallbackContract - definuje INTERFACE reprezentujuci CALLBACK CONTRACT pre DUPLEX SERVICES.
+   D. ConfigurationName - umoznuje nastavit meno konfiguracie z .CONFIG file, ktory nakonfiguruje SERVICE CONTRACT.
+   E. HasProtected - READONLY property urcujuca ci PROPERTY HasProtectionLevel je ROZNA od hodnoty 'None'.
+   F. ProtectonLevel - urcuje POZIADAVKY SERVICE CONTRACT na BINDING. Hodnota 'None' znamena, ze SERVICE moze byt vystaveny aj cez UNSECURED BINDING. Hodnota 'Sign' znamena, ze BINDING musi kazdy MESSAGE PODPISAT, aby nemohla byt sfalsovana. Hodnota 'SingAndEncrypt' znamena, ze MESSAGE musi byt PODPISANA a KRYPTOVANA.
+   G. SessionMode - urcuje SESSION POZIADAVKY SERVICE CONTRACT na BINDING. Hodnota 'Allowed' umoznuje SESSIONFUL i SESSIONLESS BINDING. Hodnota Required VYRAZUJE SESSIONFUL BINDING. Hodnota 'NotAllowed' vyzaduje SESSIONLESS BINDING.
+!!!!! 4. To na AKU SESSION sa PROPERTY 'SessionMode' aplikuje ZAVISI od TYPU BINDINGU. Existuju 4 typy SESSIONS, ktore je v niektorych BINDINGS (napriklad NetTcpBinding kombinuje SOCKET SESSION a WS-Reliable SESSION) mozne i KOMBINOVAT.
+   A. SOCKET SESSION - pouziva sa IBA pre NetTcpBinding a urcuje SESSION na urovni TCP/IP SOCKETU.
+   B. WS-ReliableSession - je WS-* implementacia RELIABLE SESSION, umoznujucej spolahlivy prenos MESSAGES v sieti, ktora ma obcasne vypadky.
+   C. SECURE SESSION - urcuju SESSION na koordinovane SECURE komunikacie.
+   D. MSMQ SESSION - ak je povolena, vsetky WCF volania OPERATION v ramci JEDNEJ SESSION su ukladane do JEDINEJ MSMQ MESSAGE a az ked je SESSION UKONCENA, tak je takato MESSAGE zaslana do MSMQ QUEUE.
+!!!!! 5. Cize PRESNE INTERPRETACIA vyznamu 'SessionMode' je SILNE ZAVISLA na POUZITOM BINDING i tom AKO JE NAKONFIGUROVANY. 'SessionMode' sa NETYKA IBA WS-ReliableSession, ale i INYCH TYPOV SESSIONS.
+6. OPERATION CONTRACT sa definuje aplikaciou atributu [OperationContract] na METODU SERVICE INTERFACE, alebo SERVICE CLASS. Trieda OperationContractAttribute ma nasledujuce PROPERTIES.
+   A. Name - urcuje alternativne meno OPERATION.
+   B. HasProtected - READONLY property urcujuca ci PROPERTY HasProtectionLevel je ROZNA od hodnoty 'None'.
+   C. ProtectonLevel - urcuje POZIADAVKY OPERATION CONTRACT na BINDING. Hodnota 'None' znamena, ze OPERATION moze byt vystavena aj cez UNSECURED BINDING. Hodnota 'Sign' znamena, ze BINDING musi kazdy MESSAGE PODPISAT, aby nemohla byt sfalsovana. Hodnota 'SingAndEncrypt' znamena, ze MESSAGE musi byt PODPISANA a KRYPTOVANA. Tato hodnota moze byt NIZSIA ako 'ProtectionLevel' v [ServiceContract].
+   D. IsInitiating - urcuje ci OPERATION ZACINA NOVU SESSION. Ak je na TRUE, tak tato OPERATION MUSI byt volana ako PRVA OPERATION v ramci danej SESSION. Na TRUE je ju mozne nastavit IBA AKO SERVICE CONTRACT ma SessionMode na hodnote 'Required'.
+   E. IsTerminating - urcuje ci OPERATION KONCI SESSION. Ak je na TRUE, tak tato OPERATION MUSI byt volana ako POSLEDNA OPERATION v ramci danej SESSION. Na TRUE je ju mozne nastavit IBA AKO SERVICE CONTRACT ma SessionMode na hodnote 'Required'.
+   F. Action - udava WS-Addressing ACTION asociovanu s REQUEST MESSAGE. Ak je na hodnote '*', potom OPERATION na ktorej je tato hodnota aplikovana moze byt cielom pre LUBOVOLNY TYP REQUEST MESSAGE.
+   G. ReplyAction - udava WS-Addressing ACTION asociovanu s REPLY MESSAGE. Ak je na hodnote '*', potom do REPLY MESSAGE NIE JE VLOZENA ReplyAction a CLIENT, ktory prijma REPLY MESSAGE bude tuto hodnotu IGNOROVAT a REPLY ACTION VZDY PRIJME - teda nebude validovat ci hodnota REPLY ACTION je taka aku OZAJ OCAKAVAL.
+   H. AsyncPattern - urcuje ze OPERATION podporuje ASYNCHRONOUS PATTERN. V tomto pripade MUSI SERVICE obsahovat BeginXXX() a EndXXX() OPERATIONS.
+   I. IsOneWay - urcuje ci OPERATION je, alebo nie je ONE WAY.
+!!!!! 7. Hodnotu 'AsyncPattern' je mozne aplikovat na CLIENT i SERVICE INTERFACE. Ako PROXY METODA CLIENT, tak i SERVICE METODA mozu byt vyvolane ASYNCHRONNE. Samozrejme mozem definovat, aby IBA CLIENT, alebo IBA SERVICE podporovali ASYNCHRONNY PATTERN.
+!!!!! 8. WCF pri inicializacii vytvori pre KAZDY OPERATION 2 DYNAMICKE DATA CONTRACTS, ktore pouzit ako BODY pre REQUEST, alebo REPLY MESSAGES.
+   A. REQUEST DATA CONTRACT - je definovany VSETKYMI VSTUPNYMI PARAMETRAMI danej OPERATION.
+   B. REPLY DATA CONTRACT - je definovany VSETKYMI VYSTUPNYMI PARAMETRAMI a RETURN VALUE danej OPERATION.
+!!! 9. Ak SERVICE CHANNEL zachyti MESSAGE, tak VYTVORI instnciu SERVICE CLASS (resp. pouzije existujucu) a podla hodnot 'Action' na nej vyvola prislusnu OPERATION. Ak BIDNING neprenasa 'Action', tak WCF sa pokusi zistit, ktotra OPERATION sa ma volat na zaklade obsahu BODY danej MESSAGE, ktora vsak MUSI BYT UNIKATNA voci INYM OPERATIONS.
+10. DATA CONTRACT sa definuje aplikaciou atributu [DataContract] na CLASS, STRUCT, alebo ENUM. Trieda DataContractAttribute ma nasledujuce PROPERTIES.
+   A. Name - urcuje alternativne meno DATA CONTRACT.
+   B. Namespace - urcuje alternativne NAMESPACE DATA CONTRACT.
+   C. IsReference - urcuje ci sa zachova referencia na objekt.
+11. Ak chcem v DATA CONTRACT triede definovat, aby FIELD, alebo PROPERTY bol prenositelny cez WCF, musim nan aplikovat atribut [DataMember]. Tento ma nasledujuce PROPERTIES.
+   A. Name - urcuje alternativne meno DATA MEMBER.
+   B. IsRequired - urcuje ci pri DESERIALIZACII musi byt hodnota daneho MEMBER v serializovanych data PRITOMNA. Ako nie je a hodnota tohto atributu je TRUE, potom pri deserializacii je generovana EXECEPTION SerializationException.
+   C. EmitDefaultValue - urcuje ci sa ma SERIALIZOVAT hodnota MEMBER ak obsahuje DEFAULT HODNOTU pre dany typ (0 pre STRUCT a NULL pre CLASS).
+   D. Order - urcuje poradie serializacie daneho DATA MEMBER.
+!!! 12. Pre MESSAGE CONTRACT platia nasledujuce zasady.
+   A. Je definovany atributom [MessageContract].
+   B. Atributom [MessageHeader] je mozne oznacit MEMBERS, ktore budu zaradene do HEADER danej MESSAGE.
+   C. Atributom [MessageBody] je mozne oznacit MEMBERS, ktore budu zaradene do BODY danej MESSAGE.
+   !!! D. OBE atributy [MessageHeader] i [MessageBody] je mozne aplikovat na VIACERO MEMBERS v ramci jednej triedy.
+   E. Trieda reprezentujuca MESSAGE CONTRACT MUSI mat DEFAULT CONSTRUCTOR.
+   !!!!! F. Na MESSAGE HEADER i MESSAGE BODY je mozne aplikovat SECURITY POZIADAVKY aplikaciou PROPERTY ProtectonLevel v [MessageContract], [MessageHeader] a [MessageBody].
+   G. MESSAGE CONTRACTS NIE SU pouzitelne ak obsahuju MESSAGE HEADERS v POX XML SERVICES.
+13. MESSAGE CONTRACT sa definuje aplikaciou atributu [MessageContract] na CLASS, alebo STRUCT. Trieda MessageContractAttribute ma nasledujuce PROPERTIES.
+   A. WrapperName - urcuje meno ELEMENTU, ktory OBALUJE MESSAGE BODY.
+   B. WrapperNamespace - urcuje NAMESPACE ELEMENTU, ktory OBALUJE MESSAGE BODY.
+   C. IsWrapper - urcuje ci MESSAGE BODY ma obalujuci WRAPPER ELEMENT.
+   D. HasProtectionLevel - READONLY property urcujuca ci PROPERTY HasProtectionLevel je ROZNA od hodnoty 'None'.
+   E. ProtectonLevel - urcuje POZIADAVKY MESSAGE CONTRACT na BINDING. Hodnota 'None' znamena, ze MESSAGE moze byt vystaveny aj cez UNSECURED BINDING. Hodnota 'Sign' znamena, ze BINDING musi kazdy MESSAGE PODPISAT, aby nemohla byt sfalsovana. Hodnota 'SingAndEncrypt' znamena, ze MESSAGE musi byt PODPISANA a KRYPTOVANA.
+14. Ak chcem v MESSAGE CONTRACT triede definovat, aby FIELD, alebo PROPERTY sucastou MESSAGE HEADER, musim nan aplikovat atribut [MessageHeader]. Tento ma nasledujuce PROPERTIES.
+   A. Name - urcuje alternativne meno MESSAGE HEADER.
+   B. Namespace - urcuje alternativne NAMESPACE MESSAGE HEADER.
+   C. HasProtectionLevel - READONLY property urcujuca ci PROPERTY HasProtectionLevel je ROZNA od hodnoty 'None'.
+   D. ProtectonLevel - urcuje POZIADAVKY MESSAGE HEADER na BINDING. Hodnota 'None' znamena, ze MESSAGE HEADER moze byt vystaveny aj cez UNSECURED BINDING. Hodnota 'Sign' znamena, ze BINDING musi MESSAGE HEADER PODPISAT, aby nemohol byt sfalsovany. Hodnota 'SingAndEncrypt' znamena, ze MESSAGE HEADER musi byt PODPISANY a KRYPTOVANY.
+   E. Actor - urcuje NODE pre ktory je HEADER urceny. Je sucastou SOAP specifikacie.
+   F. MustUnderstand - urcuje ci NODE urceny v 'Actor' musi rozumiet danemu MESSAGE HEADER. Je sucastou SOAP specifikacie.
+   G. Relay - urcuje ci HEADER moze byt preposlany aj do ostatnych NODES. Je sucastou SOAP specifikacie.
+15. Ak chcem v MESSAGE CONTRACT triede definovat, aby FIELD, alebo PROPERTY sucastou MESSAGE BODY, musim nan aplikovat atribut [MessageBodyMember]. Tento ma nasledujuce PROPERTIES.
+   A. Name - urcuje alternativne meno MESSAGE BODY.
+   B. Namespace - urcuje alternativne NAMESPACE MESSAGE BODY.
+   C. HasProtectionLevel - READONLY property urcujuca ci PROPERTY HasProtectionLevel je ROZNA od hodnoty 'None'.
+   D. ProtectonLevel - urcuje POZIADAVKY MESSAGE BODY na BINDING. Hodnota 'None' znamena, ze MESSAGE BODY moze byt vystaveny aj cez UNSECURED BINDING. Hodnota 'Sign' znamena, ze BINDING musi MESSAGE BODY PODPISAT, aby nemohol byt sfalsovany. Hodnota 'SingAndEncrypt' znamena, ze MESSAGE BODY musi byt PODPISANY a KRYPTOVANY.
+   E. Order - urcuje poradie serializacie daneho MESSAGE BODY MEMBER.
+!!! 16. WCF rozlisuje MESSAGES do 2 typov.
+   A. TYPED MESSAGE - je taka REQUEST alebo RESPONSE MESSAGE, ktora je bud PRIAMO tvorena INSTANCIOU OBJEKTU Message, alebo je definovana ako MESSAGE CONTRACT.
+   B. UNTYPED MESSAGE - je taka REQUEST alebo RESPONSE MESSAGE, ktora je definovana SELIZALIZOVATELNYMI TYMPI, alebo DATA CONTRACTS.
+!!!!! 17. Plati, ze OPERATRION MUSI mat BUD TYPED, alebo UNTYPED MESSAGE a to ako pre REQUEST, tak i RESPONSE MESSAGE. Prakticky dosledok je taky, ze NEMOZEM v TEJ ISTEJ OPERATION mat ako INPUT parametre (pre REUQEST MESSAGE), resp. OUTPUT parametere a RETURN hodnotu (pre RESPONSE MESSAGE) i Message a MESSAGE CONTRACT SPOLU s DATA CONTRACT a [Serializable] triedami. Toto WCF NEDOVOLI, kedze by nevedela ci ma vytvorit TYPED, alebo UNTYPED MESSAGE.
+//-------------------------------------------------------------------------------------------------------

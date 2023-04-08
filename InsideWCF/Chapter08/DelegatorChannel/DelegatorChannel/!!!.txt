@@ -1,0 +1,40 @@
+﻿//-------------------------------------------------------------------------------------------------------
+1. Solution demonstruje implementaciu WCF CHANNEL.
+2. WCF CHANNEL vykonava vypis svojej cinnosti na konzolu.
+3. WCF CHANNEL uz obsahuje i implementaciu CHANNEL LISTENER a CHANNEL FACTORY.
+4. WCF CHHANEL uz obsahuje i implementaciu BINIDNG ELEMENT a BINDING, cim je implementacia CUSTOM CHANNEL KOMPLETNA.
+//-------------------------------------------------------------------------------------------------------
+1. BINDING je trieda sluziaca na programovy pristup k SERVICE CHANNEL casti WCF.
+2. Ulohou BINDING je vytvorit STACK CHANNEL MANAGERS (teda STACK CHANNEL LISTENERS, alebo CHANNEL FACTORIES), ktore implementuju komunikacny protkolo na komunikaciu CLIENT a SERVICE vo WCF.
+3. Zakladnou triedou pre implementaciu BINDING je ABSTRAKTNA trieda Binding. Dedi priamo z 'object' a ma nasledujuce MEMBERS.
+   A. MessageVersion - udava podporovanu verziu MESSAGE.
+   B. Scheme - udava SCHEME daneho BINDING.
+   C. Binding() - je CONTSTRUTOR. V pretazenej verzii umoznuje prijmat meno XML Namespace a Name, ktore sa pouzivaju pri ulozeni METADAT o BINDING do WSDL.
+   D. CanBuildChannelListener<TChannel>() - vracia TRUE ak sa sa CHANNEL LISTENER STACK da vytvorit, inak FALSE. Je absolutne v kompetencii BINDING ako tieto metody implementuje a kedy vyhodnoti, ze nedokaze vytvorit CHANNEL LISTENER STACK.
+   E. CanBuildChannelFactory<TChannel>() - vracia TRUE ak sa sa CHANNEL FACTORY STACK da vytvorit, inak FALSE. Je absolutne v kompetencii BINDING ako tieto metody implementuje a kedy vyhodnoti, ze nedokaze vytvorit CHANNEL FACTORY STACK.
+   ??? F. BuildChannelListener<TChannel>() - vytvara CHANNEL LISTENER STACK. NIE CELKOM MI JE JASNE NACO SU, kedze i trieda BindingElement, ktore COLLECTION sa vytvara pomocou CreateBindingElements() ma tiez tieto metody.
+   ??? G. BuildChannelListener<TChannel>() - vytvara CHANNEL FACTORY STACK. NIE CELKOM MI JE JASNE NACO SU, kedze i trieda BindingElement, ktore COLLECTION sa vytvara pomocou CreateBindingElements() ma tiez tieto metody.
+   H. GetProperty<T>() - je mechanizmus ako sa je mozne dotazovat na PROPERTIES daneho BINDING.
+   !!! I. CreateBindingElements() - ABSTRAKTNA METODA, ktora vracia COLLECTION BINDING ELEMENTS, ktore sluzia na vytvorenie CHANNEL FACTORY, alebo CHANNEL LISTENER STACKU. Je to COLLECTION a NIE STACK, ale poradie BINDING ELEMENTS v COLLECTION udava vysledne poradie CHANNELS. To ake BINDING ELEMENTS su vytvorene zavisi na to ake poziadavky su na dany BINDING kladene. Ina COLLECTION moze byt vytvorena ak je pozadovana SECURITY, alebo prenos TRANSACTION, ako ked tieto vlastnosti pozadovane nie su.
+!!! 4. Realne pri implementacii Bidning JEDINU METODU, ktoru je treba implementovat je ABSTRAKTA METODA CreateBindingElements().
+!!! 5. Metoda BuildChannelListener<TChannel>() existuje vo viacerych pretazenych verziach, ktore mozu mat nasledujuce typy parametrov.
+   A. BindingParameterCollection - udava kolekciu parametrov potrebnych pre vytvorenie CHANNEL LISTENER STACK.
+   B. ListenUriBaseAddress - udava BASE ADDRESS na ktorej CHANNEL LISTENER bude vykonavat LISTENING.
+   C. ListenUriRelativeAddress - udava RELATIVE ADDRESS, ktora sa pridava k BASE ADDRESS na ktorej CHANNEL LISTENER bude vykonavat LISTENING.
+   !!! D.ListenUriMode - udava mod podla ktoreho je urcena LISTENING adresa. Moze nadobudat hodnoty 'Explicit' kedy je LISTENING adresa urcena ako ListenUriBaseAddress + ListenUriRelativeAddress, alebo hodnotu Unique, kedy BIDNING moze MODIFIKOVAT BASE a RELATIVE adresu, tak aby bola UNIKATNA. Sposob ako to robi zavisi na konkretnom prenosovom protokole.
+6. Trieda BindingElement predstavuje ZAKLADNU TRIEDU pre vytvorenie CHANNEL LISTENER a CHANNEL FACTORY. Dedi iba z triedy 'object' a ma nasledujuce MEMBERS.
+   !!! A. BindingElement() - KAZDY BindingElement by mal mat okrem prazdneho CONSTRUCTOR i KLONOVACI KONSTRUCKTOR oznaceny ako PROTECTED, ktoreho cielom by bolo vytvorenie DEEP COPY BindingElement. Moznost KLONOVAT BindingElement je KLUCOVA pre metody ako CanBuildChannelListener<TChannel>(), CanBuildChannelFactory<TChannel>(), BuildChannelListener<TChannel>() a BuildChannelFactory<TChannel>(), ktore INTERNE VYTVORIA KLONY BindingElement, ktore potom pouziju pri vytvarani CHANNELS a CHANNEL MANAGERS.
+   B. Clone() - metoda implementuje DEEP CLONING tym, ze interne volna CLONING CONSTRUCTOR.
+   C. CanBuildChannelListener<TChannel>() - vracia TRUE ak sa sa CHANNEL LISTENER STACK da vytvorit, inak FALSE. Metoda ma ako parameter troedu BindingContext, ktora obsahuje celu BINDING ELEMENT COLLECTION, na zaklade ktorej moze metoda rozhodnut ci je, alebo nie je mozne vytvorit BINDING CHANNEL LISTENER.
+   D. CanBuildChannelFactory<TChannel>() - vracia TRUE ak sa sa CHANNEL FACTORY STACK da vytvorit, inak FALSE. Metoda ma ako parameter troedu BindingContext, ktora obsahuje celu BINDING ELEMENT COLLECTION, na zaklade ktorej moze metoda rozhodnut ci je, alebo nie je mozne vytvorit BINDING CHANNEL FACTORY.
+   E. GetProperty<T>() - je mechanizmus ako sa je mozne dotazovat na PROPERTIES daneho BINDING ELEMENT. Ak BINDING ELEMENT nepodporuje hladanu property typu 'T', tak by volanie mala delegovat na objekt BindingContext, ktory dostava ako parameter a ktory prejde ostatne BINDING ELEMENTS a zavola nad nimi metodu GetProperty<T>().
+   F. BuildChannelListener<TChannel>() - vytvara CHANNEL LISTENER pre dany BINDING ELEMENT. Ako parameter ma objekt typu BindingContext.
+   G. BuildChannelListener<TChannel>() - vytvara CHANNEL FACTORY pre dany BINDING ELEMENT. Ako parameter ma objekt typu BindingContext.
+!!! 7. Trieda TransportBindingElement dedi z BindingElement a sluzi na implementaciu TRANSPORT BINDING ELEMENT, ktory musi byt na KONCI BINDING ELEMENT COLLECTION vytvorene v metode Binding.CreateBindingElements().
+!!! 8. Trieda BindingContext je KLUCOVA TRIEDA pri vytvarani BINDING, obsahujuca informacie ako je BINDING ELEMENT COLLECTION, BindingParameterCollection ci ListenUriBaseAddress, ListenUriRelativeAddress ci ListenUriMode. Trieda ma nasledujuce members.
+   !!! A. RemainingBindingElements - vracia OSTAVAJUCE BINDING ELEMENTS. Trieda BindingContext totizto pri vytvarani CHANNEL FACTORY ci CHANNEL LISTENER STACKU interne pouziva BINDING ELEMENT COLLECTION, z ktore po zavolani metod BuildInnerChannelFactory<TChannel>(), BuildInnerChannelListener<TChannel>(), CanBuildInnerChannelFactory<TChannel>() a CanBuildInnerChannelListener<TChannel>() ODSTRANUJE BINDING ELEMENT na VRCHOLE COLLECTION. Tato property potom vracia zoznam ostavajucich BINDING ELEMENTS.
+   B. CanBuildChannelListener<TChannel>() - vracia TRUE ak sa sa CHANNEL LISTENER STACK da vytvorit, inak FALSE. Metoda ODSTRANUJE BINDING ELEMENT z VRCHOLU BINDING ELEMENT COLLECTION.
+   C. CanBuildChannelFactory<TChannel>() - vracia TRUE ak sa sa CHANNEL FACTORY STACK da vytvorit, inak FALSE. Metoda ODSTRANUJE BINDING ELEMENT z VRCHOLU BINDING ELEMENT COLLECTION.
+   D. BuildChannelListener<TChannel>() - vytvara CHANNEL LISTENER pre dany BINDING ELEMENT. Metoda ODSTRANUJE BINDING ELEMENT z VRCHOLU BINDING ELEMENT COLLECTION.
+   E. BuildChannelListener<TChannel>() - vytvara CHANNEL FACTORY pre dany BINDING ELEMENT. Metoda ODSTRANUJE BINDING ELEMENT z VRCHOLU BINDING ELEMENT COLLECTION.
+//-------------------------------------------------------------------------------------------------------

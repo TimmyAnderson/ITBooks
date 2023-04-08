@@ -1,0 +1,104 @@
+﻿//-------------------------------------------------------------------------------------------------------
+1. Solution demonstruje implementaciu WCF CHANNEL.
+2. WCF CHANNEL vykonava vypis svojej cinnosti na konzolu.
+//-------------------------------------------------------------------------------------------------------
+1. WCF CHANNEL je zakladnym stavebnym prvkom komunikacnej casti WCF. Kazdy CHANNEL je DEDIKOVANY pre vykonavanie urcitej cinnosti a kedze komunikacia medzi CLIENT a SERVICE spravilda potrebuje viecero cinnosti, WCF pri komunikacii pouziva viacero CHANNELS zdruzenych vo STACKU.
+2. WCF CHANNELS je mozne rozdelit podla cinnosti na 2 skupiny.
+   A. COMMUNICATION CHANNELS - realizuju samotnu komunikaciu cez prenosove medium. Sem patria napriklad kanaly na pracu s HTTP, TCP ci MSMQ.
+   B. EXECUTIVE CHANNELS - realizuju LOGICKE OPERACIE suvisiace s komunikaciou MEDZI CLIENT a SERVICE. Sem patri napriklad prenos TRANSAKCII, ENCODING, alebo SECURITY.
+!!! 3. WCF CHANNELS su ulozene v STACKU, kde na vrchole je CHANNEL do ktoreho vstupuje, alebo z ktoreho vystupuje (podla toho ci sa jedna o SENDER, alebo RECEIVER stranu komunikacie) objekt typu Message. Na konci STACK je TRANSPORT CHANNEL, ktory ma za ulohu prijmat a vysielat DATA v podobe STREAMU BYTES na prenosove medium.
+!!! 4. CHANNELS NIE SU VYTVARANE PRIAMO, ale pomocou specializovanych objektov - CHANNEL FACTORIES. Zvycajne plati, ze pre KAZDY CHANNEL je vytvoreny ZVLAST CHANNEL FACTORY, ktory ho vytvara.
+!!! 5. Ulohou CHANNEL je PRIJAT Message, vykonat nejaku logicku operaciu a poslat Message NIZSIE, alebo VYSSIE do CHANNEL v STACKU. Prenos Message medzi jednotlivymi CHANNELS zabezpecuju PRIAMO CHANNELS a NEEXISTUJE nejaky externy mechanizmus, ktory by tento prenos zabezpecoval.
+6. Kazdy CHANNEL i CHANNEL FACTORY implementuje ICommunitacionObject, co je rozhranie realizujuce metody ako Open(), Close(), BeginOpen() ci BeginClose().
+!!! 7. Logicky KAZDY CHANNEL i CHANNEL FACTORY reprezentuje STATE MACHINE, kde STATE pomocou property State a udava jeden z nasledujuci stavov.
+   A. Created - CHANNEL, alebo CHANNEL FACTORY je vytvoreny, ale este NEBOL OTVORENY.
+   B. Opening - CHANNEL, alebo CHANNEL FACTORY sa otvara. Je to MEDZISTAV po volani BeginOpen().
+   C. Opened - CHANNEL, alebo CHANNEL FACTORY je otvoreny.
+   D. Closing - CHANNEL, alebo CHANNEL FACTORY sa zatvara. Je to MEDZISTAV po volani BeginClose().
+   E. Closed - CHANNEL, alebo CHANNEL FACTORY je zatvoreny.
+   D. Faulted - CHANNEL, alebo CHANNEL FACTORY je v CHYBE.
+8. Trieda CommunicationObject IMPLEMENTUJE rozhranie ICommunicationObject a ZABEZPECUJE REALIZACIU STATE MACHINE. Je to zaroven BASE CLASS pre VSETKY CHANNELS a CHANNEL FACTORIES.
+!!! 9. Pri implementacii CUSTOM COMMUNICATION OBJECT, triedy zdedenej z CommunicationObject je NUTNE, aby pretazene metody volali BASE IMPLEMENTACIE TYCHTO METOD, pretoze tie obsahuju napriklad zmeny stavu STATE MACHINE, ci volanie EVENTS CommunicationObject.
+10. Nasledujuce body ukazuju implementaciu metody CommunicationObject.Open().
+   A. Open() otvori CRITICAL SECTION - lock(thisLock).
+   B. Open() volanim metody ThrowIfDisposedOrImmutable() sa skonotroluje ci State STATE MACHINE je Created. Ak je nejake iny hodi sa EXCEPTION.
+   C. Open() zmeni State na Opening.
+   D. Open() zavola metodu OnOpening(). Ak PRETAZIM OnOpening(), tak pretazena metoda MUSI VOLAT BASE METODU OnOpening(), inak Open() hodi EXCEPTION.
+   E. CommunicationObject.OnOpening() vyvola EVENT Opening.
+   F. Open() zavola ABSTRAKTNU metodu OnOpen(). V OnOpen() by mala byt VACSINA KODU suvisiaceho s implementaciou OPEN OPERACIE daneho COMMUNICATION OBJECT.
+   G. Open() zavola metodu OnOpened(). Ak PRETAZIM OnOpened(), tak pretazena metoda MUSI VOLAT BASE METODU OnOpened(), inak Open() hodi EXCEPTION.
+   H. CommunicationObject.OnOpened() zmeni State na Opened.
+   I. CommunicationObject.OnOpened() vyvola EVENT Opened.
+   K. Open() uzatvori CRITICAL SECTION.
+!!! 11. Metoda CommunicationObject.Close() sluzi na GRACEFUL uzavretie COMMUNICATION OBJECT. Pri volani tejto metody moze COMMUNICATION OBJECT vykonat i DLHE I/O OPERACIE a preto metoda ma ako parameter TimeSpan urcujuci maximalne trvanie vykonania Close().
+!!! 12. Metoda CommunicationObject.Abort() sluzi na UNGRACEFUL uzavretie COMMUNICATION OBJECT, ked sa bud nevykonaju ZIADNE I/O operacie, alebo ich pocet je vyrazne limitovany. Kedze metoda je urcena na RYCHLE UKONCENIE nema ani asynchronnu verziu a ani TimeSpan ako parameter.
+!!! 13. Implementacia metod Close() a Abort() je VELMI PODOBNE ako vyssie uvedena implementacia Open().
+!!!!! 14. Ak COMMUNICATION OBJECT ZLYHA, mal by volat PROTECTED metodu Fault(). Jej implementacia okrem toho, ze zmeni stav do Faulted a zavola EVENT Faulted, zavola i VIRTUALNU metodu OnFaulted(). DEFAULT implementacia OnFaulted() vola Abort().
+!!!!! 15. Kedze WCF uklada CHANNELS, ktore implementuju CommunicationObject do STACK je obvykle, ze CHANNEL objekt, ktory sam implementuje CommunicationObject obsahuje INNER CommunicationObject, co je CHANNEL NIZSIE v STACKU. Pri takejto implementacii MUSI CHANNEL pri volaniach metod Open(), Close() ci Abort() volat rovnake metody INNER CommunicationObject.
+16. Podla typu CHANNEL (OneWay, Request-Reply, Duplex, P2P) CHANNEL musi implementovat prislusny interface, aby implementoval CHANNEL. WCF definuje nasledujuce INTERFACES.
+   A. Pre OneWay - IOutputChannel pre SENDER CHANNEL a IInputChannel pre RECEIVER CHANNEL.
+   B. Request-Reply - IRequestChannel pre SENDER CHANNEL a IReplyChannel pre RECEIVER CHANNEL.
+   C. Duplex - IDuplexChannel pre SENDER i RECEIVER CHANNELS.
+   D. P2P - IDuplexChannel pre SENDER i RECEIVER CHANNELS.
+!!! 17. Na korelaciu MESSAGES prenasanych medzi SEDNER a RECEIVER sa pouziva SESSION. Vo WCF je SESSION na urovni CHANNEL implementovana tak, ze CHANNEL MUSI IMPLEMENTOVAT INTERFACE ISessionChannel<T>, kde T musi implementovat ISession. Takyto CHANNEL potom PODPORUJE SESSIONS - korelaciu REQUEST a RESPONSE MESSAGES.
+18. WCF definuje sadu INTERFACES pre rozlicne typy CHANNELS, ktore podporuju SESSION. Tieto INTERFACES dedia niektory z CHANNEL INTERFACES (IOutputChannel, IInputChanne, IRequestChannel, IReplayChannel, IDuplexChannel) a ISessionChannel<T>.
+   A. Pre OneWay - IOutputSessionChannel pre SENDER CHANNEL a ISessionInputChannel pre RECEIVER CHANNEL.
+   B. Request-Reply - ISessionRequestChannel pre SENDER CHANNEL a ISessionReplyChannel pre RECEIVER CHANNEL.
+   C. Duplex - ISessionDuplexChannel pre SENDER i RECEIVER CHANNELS.
+   D. P2P - ISessionDuplexChannel pre SENDER i RECEIVER CHANNELS.
+!!! 19. Kazdy CHANNEL MUSI IMPLEMENTOVAT INTERFACE IChannel. IChannel obsahuje metodu GetProperty<T>(), ktora umoznuje robit QUERY nad CHANNEL na zistenie ci podporuje niektoru FEATURE. Kedze CHANNELS su v STACK, tak ako dany CHANNEL NEPOZNA pozadovanu FEATURE, mal by zavolat GetProperty<T>() INNER CHANNEL - teda CHANNEL NIZSIE v STACKU. Ak ani posledny TRANSPORT CHANNEL hladanu FEATRUE nepozna, tak GetProperty<T>() by mala vratit NULL.
+20. INTERFACE IOutputChannel implementuje IChannel a ICommunicationObject a sluzi ako SENDER SIDE pre OneWay CHANNELS. Zoznam MEMBERS je nasledovny.
+   A. RemoteAddress - urcuje DESTINATION ADDRESS, kde bude MESSAGE posielana.
+   B. Via - urcuje INTERMEDIARY ADRESU, leziacu medzi SEDNER a DESTINATION ADDRESS, kde bude MESSAGE zasielana. Moze byt aj NULL, ak je MESSAGE PRIAMO POSIELANA na RemoteAddress bez INTERMEDIARIS.
+   C. BeginSend() - zaciatok ASYNCHRONNEHO odosielania MESSAGE.
+   D. EndSend() - koniec ASYNCHRONNEHO odosielania MESSAGE.
+   E. Send() - SYNCHRONNE odosielanie MESSAGE.
+21. INTERFACE IInputChannel implementuje IChannel a ICommunicationObject a sluzi ako RECEIVER SIDE pre OneWay CHANNELS. Zoznam MEMBERS je nasledovny.
+   A. LocalAddress - urcuje LOCAL ADDRESS CHANNELU.
+   B. BeginReceive() - zaciatok ASYNCHRONNEHO prijmu MESSAGE. Ak MESSAGE nepride do stanoveneho casu pri volani EndReceive() sa bude generovat EXCEPTION.
+   C. EndReceive() - koniec ASYNCHRONNEHO prijmu MESSAGE. Ak MESSAGE nepride do stanoveneho casu pri volani EndReceive() sa bude generovat EXCEPTION.
+   D. Receive() - SYNCHRONNY prijm MESSAGE. Ak MESSAGE nepride do stanoveneho casu generuje sa EXCEPTION.
+   E. BeginTryReceive() - zaciatok ASYNCHRONNEHO prijmu MESSAGE. Ak MESSAGE nepride do stanoveneho casu funkcia EndTryReceive() vrati FALSE.
+   F. EndTryReceive() - koniec ASYNCHRONNEHO prijmu MESSAGE. Ak MESSAGE nepride do stanoveneho casu funkcia EndTryReceive() vrati FALSE.
+   G. TryReceive() - SYNCHRONNY prijem MESSAGE. Ak MESSAGE nepride do stanoveneho casu metoda vracia FALSE.
+   H. BeginWaitForMessage() - zaciatok ASYNCHRONNEHO MESSAGE PEEK. Ak MESSAGE nepride do stanoveneho casu funkcia EndWaitForMessage() vrati FALSE.
+   I. EndWaitForMessage() - koniec ASYNCHRONNEHO MESSAGE PEEK. Ak MESSAGE nepride do stanoveneho casu funkcia EndWaitForMessage() vrati FALSE.
+   J. WaitForMessage() - SYNCHRONNY MESSAGE PEEK. Ak MESSAGE nepride do stanoveneho casu metoda vracia FALSE.
+22. INTERFACE IRequestChannel implementuje IChannel a ICommunicationObject a sluzi ako SENDER SIDE pre Request-RESPONSE CHANNELS. Zoznam MEMBERS je nasledovny.
+   A. RemoteAddress - urcuje DESTINATION ADDRESS, kde bude MESSAGE posielana.
+   B. Via - urcuje INTERMEDIARY ADRESU, leziacu medzi SEDNER a DESTINATION ADDRESS, kde bude MESSAGE zasielana. Moze byt aj NULL, ak je MESSAGE PRIAMO POSIELANA na RemoteAddress bez INTERMEDIARIS.
+   C. BeginRequest() - zaciatok ASYNCHRONNEHO odosielania MESSAGE.
+   D. EndRequest() - koniec ASYNCHRONNEHO odosielania MESSAGE. Metoda vracia RESPONSE MESSAGE, alebo EXCEPTION pri chybe.
+   E. Request() - SYNCHRONNE odosielanie MESSAGE. Metoda vracia RESPONSE MESSAGE, alebo EXCEPTION pri chybe.
+23. INTERFACE IInputChannel implementuje IChannel a ICommunicationObject a sluzi ako RECEIVER SIDE pre Request-Response CHANNELS. Zoznam MEMBERS je nasledovny.
+   A. LocalAddress - urcuje LOCAL ADDRESS CHANNELU.
+   !!! B. BeginReceive() - zaciatok ASYNCHRONNEHO prijmu MESSAGE. Ak MESSAGE nepride do stanoveneho casu pri volani EndReceive() sa bude generovat EXCEPTION. MESSAGE je vratena formou objektu RequestContext, triedy ktora obsahuje MESSAGE.
+   !!! C. EndReceive() - koniec ASYNCHRONNEHO prijmu MESSAGE. Ak MESSAGE nepride do stanoveneho casu pri volani EndReceive() sa bude generovat EXCEPTION. MESSAGE je vratena formou objektu RequestContext, triedy ktora obsahuje MESSAGE.
+   !!! D. Receive() - SYNCHRONNY prijm MESSAGE. Ak MESSAGE nepride do stanoveneho casu generuje sa EXCEPTION. MESSAGE je vratena formou objektu RequestContext, triedy ktora obsahuje MESSAGE.
+   E. BeginTryReceive() - zaciatok ASYNCHRONNEHO prijmu MESSAGE. Ak MESSAGE nepride do stanoveneho casu funkcia EndTryReceive() vrati FALSE.
+   F. EndTryReceive() - koniec ASYNCHRONNEHO prijmu MESSAGE. Ak MESSAGE nepride do stanoveneho casu funkcia EndTryReceive() vrati FALSE.
+   G. TryReceive() - SYNCHRONNY prijem MESSAGE. Ak MESSAGE nepride do stanoveneho casu metoda vracia FALSE.
+   H. BeginWaitForMessage() - zaciatok ASYNCHRONNEHO MESSAGE PEEK. Ak MESSAGE nepride do stanoveneho casu funkcia EndWaitForMessage() vrati FALSE.
+   I. EndWaitForMessage() - koniec ASYNCHRONNEHO MESSAGE PEEK. Ak MESSAGE nepride do stanoveneho casu funkcia EndWaitForMessage() vrati FALSE.
+   J. WaitForMessage() - SYNCHRONNY MESSAGE PEEK. Ak MESSAGE nepride do stanoveneho casu metoda vracia FALSE.
+!!!!! 24. Pri Request-Response CHANNEL je MESSAGE na RECEIVER SIDE prijata ako vo forme triedy RequestContext. Trieda RequestContext nielen ze obsahuje REQUEST MESSAGE, ale umoznuje zaslat i RESPONSE na SENDER SIDE. Ma nasledujuce MEMBERS.
+   A. RequestMessage - obsahuje REQUEST MESSAGE.
+   B. BeginReply() - zaciatok ASYNCHRONNEHO odosielania REPLY MESSAGE.
+   C. EndReply() - koniec ASYNCHRONNEHO odosielania REPLY MESSAGE.
+   D. Reply() - SYNCHRONNE odosielanie REPLY MESSAGE.
+   E. Close() - GRACEFUL uzavretie REPLY CHANNEL.
+   F. Abort() - UNGRACEFUL uzavretie REPLY CHANNEL.
+   !!! G. Dispose() - zavola Dispose() metodu nad PROPERTY RequestMessage.
+!!! 25. INTERFACE IDuplexChannel implementuje IOutputChannel, IInputChannel, IChannel a ICommunicationObject a sluzi ako SENDER i RECEIVER SIDE pre Duplex CHANNELS. Tym, ze DUPLEX CHANNELS de-facto realizuju ako SENDER tak i RECEIVER SIDE, tak IDuplexChannel dedi IOutputChannel a IInputChannel a obsahuje vsetky MEMBERS tychto INTERFACES.
+26. INTERFACE IDefaultCommunicationTimeouts definuje DEFAULT TIMEOUTS pre operacie OPEN, CLOSE, SEND a RECEIVE. Tento INTERFACE je implementovany CHANNELS, CHANNEL FACTORIES i BINDINGS.
+!!! 27. Pri realizacii CUSTOM CHANNELS je vyhodne dedit CUSTOM CHANNEL z triedy ChannelBase, ktora implementuje rozhrania IChannel, ICommunicationChannel a IDefaultCommunicationTimeouts. Okrem toho trieda ma referenciu na objekt typu ChannelManagerBase co je CHANNEL FACTORY, ktory vytvoril dany CHANNEL.
+28. CHANNELS je mozne kategorizovat podla funkcionality, ktoru vykonavaju.
+   A. TRANSPORT CHANNELS - ich ulohou je komunikovat cez prenosove medium (TCP/IP, HTTP). Su vzdy na BOTTOM CHANNEL STACKU. Kazdy BINDING MUSI OBSAHOVAT ASPON 1 TRANSPORT CHANNEL. Niektore specificke BINDINGS mozu obsahovat i VIAC TRANSPORT CHANNELS a to vtedy, ak niektory CHANNEL nad nimi robi rozhadzovanie MESSAGES.
+   B. PROTOCOL CHANNELS - ich ulohou je implementacia konkretneho PROTOKOLU. Moze sa jednat o niektory z WS-* protkolov, alebo CUSTOM PROTOCOL. Ak to PROTOCOL diktuje, tak CHANNEL moze kludne vytvorit a poslat nizsie do STACK z 1 MESSAGE i VIACERO MESSAGES. Typicky sa to deje pri SECURITY CHANNELS, kde pred samotnym poslanim MESSAGE, ktora ma byt SECURED je treba vytvorit SECURE SPOJENIE, co vyzaduje vymenit si medzi SECURE CHANNELS na CLIENT a SERVICE VIACERO MESSAGES predtym, nez je poslana samotna MESSAGE, ktora ma byt SECURED.
+   C. SHAPING CHANNELS - umoznuju vetvenie CHANNEL STACKU na viacero SUB STACKOV. Patria sem CHANNELS, ktore robia SPLITTING a JOINING MESSAGES.
+29. Odporucane kroky pre vytvorenie CUSTOM NON-TRANSPORT CHANNEL.
+   A. CUSTOM CHANNEL by mal dedit z triedy ChannelBase a implementovat niektore z CHANNEL INTERFACES podla toho aky SHAPE implementuje (OneWay, Request-Response, Duplex, P2P).
+   B. CUSTOM CHANNEL by si musi uchovat referenciu na NASLEDUJUCI CHANNEL v CHANNEL STACKU ako i referenciu na CHANNEL FACTORY, ktory dany CHANNEL VYTVORIL. Najlepsie je prenasat tieto parameter cez CONSTRUCTOR.
+   C. CUSTOM CHANNEL musi implementovat vsetky ABSTRACT METODY. V nich okrem svojej pozadovanej cinnosti MUSI VOLAT i prislusnu metodu CHANNEL NIZSIE v STACKU. Napriklad v ABSTRAKTNEJ metode OnOpen() je potrebne zavolat PUBLIC metodu Open() CHANNEL NIZSIE v STACKU.
+!!!!! 30. VELMI DOLEZITA POZNAMKA. Vo WCF CHANNELS NIKDY NEMUSIA POSIELAT MESSAGES do CHANNELS, ktore su VYSSIE v CHANNEL STACKU, kedze i PRIJEM MESSAGES je robeny formou volania Receive() z CHANNEL na VRCHOLE STACKU, ktory vola CHANNEL NIZSIE v STACKU az takto sa postupne dostane na volanie metody Receive() na urovni TRANSPORT CHANNEL. Tato metoda CAKA NA PRICHOD MESSAGE z prenosoveho media a MESSAGE vracia ako NAVRATOVU HODNOTU metody Receive(). Teda MESSAGE PRIJATA z TRANSPORTNEHO MEDIA je prenasana AKO RETURN VALUE metody Receive() a preto CHANNEL NIKDY NEMUSI KOMUNIKOVAT s inym CHANNEL VYSSIE v STACKU.
+//-------------------------------------------------------------------------------------------------------

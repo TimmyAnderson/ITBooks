@@ -1,0 +1,50 @@
+﻿//-------------------------------------------------------------------------------------------------------
+1. Solution demonstruje implementaciu WCF CHANNEL.
+2. WCF CHANNEL vykonava vypis svojej cinnosti na konzolu.
+3. WCF CHANNEL uz obsahuje i implementaciu CHANNEL LISTENER a CHANNEL FACTORY.
+//-------------------------------------------------------------------------------------------------------
+1. CHANNEL vo WCF NIKDY NIE SU VYTVARANE PRIAMO, ale prostrednictvom aplikovania FACTORY PATTERN, kde FACTORY vytvori prislusny CHANNEL.
+2. WCF definuje 2 typy FACTORY tried na vytvaranie CHANNELS.
+   A. CHANNEL LISTENERS - je FACTORY trieda pouzivana na vytvaranie CHANNELS na RECEIVER SIDE.
+   B. CHANNEL FACTORIES - je FACTORY trieda pouzivana na vytvaranie CHANNELS na SENDER SIDE.
+!!! 3. Suhrnny nazov pre CHANNEL FACTORIES a CHANNEL LISTENERS je CHANNEL MANAGERS.
+4. CHANNEL LISTENERS i CHANNEL FACTORIES su TAKISTO ako CHANNELS organizovane do STACKS, nazyvanych aj CHANNEL MANAGER STACK.
+!!! 5 Spravidla plati, ze pre KAZDY CHANNEL je vytvoreny OSOBITNY CHANNEL MANAGER. Nie je to absolutna podmienka a je mozne vytvorit i univerzanejsi CHANNEL MANAGER, ktory dokaze vytvarat viacero typov CHANNELS. Typicky sa to vyuziva ak TEN ISTY CHANNEL moze implementovat viacero rozlicnych SHAPES (OneWay, Request-Response, Duplex, P2P), potom jeden CHANNEL MANAGER moze vytvarat CHANNELS pre rozlicne SHAPES.
+!!! 6. Poradie CHANNEL MANAGERS v STACKU by malo urcovat poradie CHANNELS v STACKU. Samozrejme vsetko je na implementacii prislusneho MANAGERA, ale spravidla sa dodrziava, ze 1 CHANNEL MANAGER vytvori jeden CHANNEL a kedze CHANNEL MANAGERS su pri vytvarani volane v poradi v akom su v STACKU, tak i vytvorene CHANNELS v STACKU maju rovnake poradie ako CHANNEL MANAGERS vo svojom STACKU.
+7. Zakladna trieda pre implementaciu CHANNEL MANAGERS je ChannelManagerBase.
+!!!!! 8. Vo vseobecnosti plati, ze medzi ZIVOTNOSTOU CHANNEL MANAGER a CHANNEL NIE JE PRIAMY SUVIS. Inak povedane, CHANNEL MANAGER moze ostat otvoreny a moze kludne SPUSTIT UZATVORENIE existujuceho CHANNEL a vytvorit NOVY. Zatial co existujuci CHANNEL ASYNCHRONNE KONCI SVOJU CINNOST (kde moze vykonavat dlhe I/O operacie), tak CHANNEL MANAGER si uz MEDZITYM moze vytvorit NOVY CHANNEL a MESSAGES smerovat DONHO a to este POCAS UZATVARANIA POVODNEHO CHANNEL. Tato architektura prinasa vyssi THROUGHPUT, najma na RECEIVER SIDE.
+!!! 9. CHANNEL LISTENER ma 2 ULOHY.
+   A. Vykonavat LISTENING na INCOMING CONNECTIONS pomocou volania metody Accept().
+   B. Vytvorit CHANNEL ak prisla poziadavka na vytvorenie INCOMING CONNECTION. Metoda Accept() vracia vytvoreny CHANNEL.
+!!!!! 10. Zavisi IBA NA PRENOSOVOM MEDIU a implementacii CHANNEL LISTENER ako vykona LISTENING.
+   A. Pri TCP/IP sa caka na prichod INCOMING CONNECTION a AZ PO JEJ PRICHODE sa vytvori NOVY CHANNEL.
+   !!! B. Pri MSMQ sa OKAMZITE VYTVORI CHANNEL na MSMQ QUEUE, ktory cita z QUEUE MESSAGE. Tu koncepcia cakania na INCOMING CONNECTION NEMA ZMYSEL, kedze MSMQ QUEUE je OKAMZITE DOSTUPNA BEZ NUTNOSTI prichodu INCOMING CONNECTION.
+11. Kazdy CHANNEL LISTENER MUSI implementovat INTERFACE IChannelListener, ktory implementuje ICommunicationChannel, co znaci, ze CHANNEL LISTENER implementuje STATE MACHINE. INTERFACE ma nasledujuce MEMBERS.
+   A. Uri - urcuje URI na ktorej CHANNEL LISTENER 
+   B. GetProperty<T>() - vracia PROPERTY typu 'T' ak ju CHANNEL LISTENER pozna. Ak ju nepozna, tak volanie metody je delegovane na CHANNEL LISTENER NIZSIE v STACKU.
+   C. BeginWaitForChannel() - zaciatok ASYNCHRONNEHO cakania na prichod poziadvky na vytvorenie noveho CHANNEL. Ak poziadavka nepride do stanoveneho casu metoda  EndWaitForChannel() vracia FALSE.
+   D. EndWaitForChannel() - koniec ASYNCHRONNEHO cakania na prichod poziadvky na vytvorenie noveho CHANNEL. Ak poziadavka nepride do stanoveneho casu metoda  EndWaitForChannel() vracia FALSE.
+   E. WaitForChannel() - SYNCHRONNE cakanie na prichod poziadvky na vytvorenie noveho CHANNEL. Ak poziadavka nepride do stanoveneho casu metoda vracia FALSE.
+12. Interface IChannelListener<T>, kde T je typu IChannel je BASE INTERFACE pre VSETKY CHANNEL LISTENERS. Toto rozhranie dedi z IChannelListener a ma nasledujuce MEMBERS.
+   A. BeginAcceptChannel() - zaciatok ASYNCHRONNEHO cakania na prichod novej poziadavky na vytovrenie noveho CHANNELprijmu MESSAGE. Ak poziadavka na vytvorenie noveho CHANNEL nepride, metoda EndAcceptChannel() vrati NULL. V pripade uspesneho prichodu poziadavky je vrateny NOVY CHANNEL.
+   B. EndAcceptChannel() - koniec ASYNCHRONNEHO cakania na prichod novej poziadavky na vytovrenie noveho CHANNELprijmu MESSAGE. Ak poziadavka na vytvorenie noveho CHANNEL nepride, metoda EndAcceptChannel() vrati NULL. V pripade uspesneho prichodu poziadavky je vrateny NOVY CHANNEL.
+   C. AcceptChannel() - SYNCHRONNE cakanie na prichod novej poziadavky na vytovrenie noveho CHANNELprijmu MESSAGE. Ak poziadavka na vytvorenie noveho CHANNEL nepride, metoda vrati NULL. V pripade uspesneho prichodu poziadavky je vrateny NOVY CHANNEL.
+!!! 13. Trieda ChannelListenerBase DEDI z ChannelManagerBase (ktory implementuje CommunicationObject) a implementuje rozhranie IChannelListener a sluzi ako predok pre CHANNEL LISTENERS.
+!!! 14. Trieda ChannelListenerBase<T>, kde T je typu IChannel DEDI z ChannelManagerBase (ktory implementuje CommunicationObject) implementuje rozhranie IChannelListener<T> a sluzi ako predok pre CHANNEL LISTENERS.
+15. Poznamky k implementacii CUSTOM CHANNEL LISTENER.
+   A. CUSTOM LISTENER by mal dedit z ChannelListenerBase<T>, kde T je typu IChannel implementuje.
+   B. Konstruktor by mal mat ako parameter REFERENCIU na CHANNEL LISTENER NIZSIE v STACKU. To je mozne docielit bud tym, ze parameter konstruktora bude IChannelListener<T>, alebo BindingContext, ktory volanim metody BuildInnerChannelListener<T>() vytvori VSETKY CHANNEL LISTENERS NIZSIE v STACKU.
+   C. Metody OnAcceptChannel() a OnEndAcceptChannel() by mali NAJPRV zavolat identicke metody v CHANNEL LISTENER NIZSIE v STACKU (aby tie vytvorili CHANNELS NIZSIE v STACKU) a NASLEDNE VYTVORIT svoj CHANNEL, ktory vratia ako RETURN VALUE.
+   !!!!! D. Ak je CHANNEL LISTENER uzatvarany, potom OnAcceptChannel(), resp. OnEndAcceptChannel() by mali OKAMZITE SKONCIT a VRATIT NULL. To je indikacia, ze CHANNEL LISTENER je uzatvarany.
+!!! 16. Zakladnou ulohou CHANEL FACTORY je pri prichode Message vytvorit CHANNEL a odoslat ju cez transportne medium.
+17. Kazdy CHANNEL FACTORY MUSI implementovat INTERFACE IChannelFactory, ktory implementuje ICommunicationChannel, co znaci, ze CHANNEL LISTENER implementuje STATE MACHINE. INTERFACE ma JEDINU METODU GetProperty<T>(), ktora PROPERTY typu 'T' ak ju CHANNEL FACTORY pozna. Ak ju nepozna, tak volanie metody je delegovane na CHANNEL FACTORY NIZSIE v STACKU.
+18. Kazdy CHANNEL FACTORY by mal implementovat INTERFACE IChannelFactory<T>, kde 'T' je typu IChannel. Tento INTERFACE dedi z IChannelFactory a obsahuje metodu CreateChannel(), ktora sluzi na vytvorenie noveho CHANNEL na SENDER SIDE.
+!!! 19. Trieda ChannelFactoryBase DEDI z ChannelManagerBase (ktory implementuje CommunicationObject) a implementuje rozhranie IChannelListener a sluzi ako predok pre CHANNEL FACTORIES.
+!!! 20. Trieda ChannelFactoryBase<T>, kde T je typu IChannel DEDI z ChannelManagerBase (ktory implementuje CommunicationObject) implementuje rozhranie IChannelFactory<T> a sluzi ako predok pre CHANNEL LISTENERS.
+!!!!! 21. Trieda ChannelFactoryBase<T> obsahuje PRIVATNY FIELD typu CommunicationObjectManager<IChannel>, ktory implementuje HASH TABLE obsahujuci VSETKY CHANNELS, ktore CHANNEL FACTORY pocas svojej zivotnosti vytvoril. TOTO SOM OVERIL cez Refactor.exe.
+!!!!! 22. Ak je CHANNEL FACOTRY UZATVORENY volanim Close(), alebo Abort(), tak VSETKY NIM VYTVORENE CHANNELS (ulozene v INTERNEJ HASH TABLE CHANNEL FACTORY) su TAKTIEZ UZATVORENE.
+23. Poznamky k implementacii CUSTOM CHANNEL FACTORY.
+   A. CUSTOM FACTORY by mal dedit z ChannelFactoryBase<T>, kde T je typu IChannel implementuje.
+   B. Konstruktor by mal mat ako parameter REFERENCIU na CHANNEL FACTORY NIZSIE v STACKU. To je mozne docielit bud tym, ze parameter konstruktora bude IChannelFactory<T>, alebo BindingContext, ktory volanim metody BuildInnerChannelFactory<T>() vytvori VSETKY CHANNEL FACTORIES NIZSIE v STACKU.
+   C. Metoda OnCreateChannel() by mala NAJPRV zavolat metodu CreateChannel() v CHANNEL FACTORY NIZSIE v STACKU (aby ta vytvorila CHANNELS NIZSIE v STACKU) a NASLEDNE VYTVORIT svoj CHANNEL, ktory sa vrati ako RETURN VALUE.
+//-------------------------------------------------------------------------------------------------------

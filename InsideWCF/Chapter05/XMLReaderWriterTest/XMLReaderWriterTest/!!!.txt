@@ -1,0 +1,46 @@
+﻿//-------------------------------------------------------------------------------------------------------
+1. Solution demonstruje zapis a citanie XML dokumentov pomocou XML DICTIONARY tried.
+!!!!! 2. Pri pouzivani triedy Message je treba rozlisovat medzi pojmami SERIALIZATION vs ENCODING a DESERIALIZATION vs DECODING.
+   A. MESSAGE SERIALIZATION je proces KONVERZIE MESSAGE z Message do XML.
+   B. MESSAGE ENCODING je proces KONVERZIE MESSAGE z XML do WIRE FORMAT (TEXT, MTOM, BINARY).
+   C. MESSAGE DECODING je proces KONVERZIE MESSAGE WIRE FORMAT (TEXT, MTOM, BINARY) do XML.
+   D. MESSAGE DESERIALIZATION je proces KONVERZIE MESSAGE z XML do Message.
+3. Pri operaciach SERIALIZATION, DESERIALIZATION, ENCODING a DECODING triedy Message sa pouzivaju nasledujuce triedy.
+   A. XmlDictionary.
+   B. XmlDictionaryReader.
+   C. XmlDictionaryWriter.
+!!! 4. XmlDictionary je trieda umoznujuca ZMENSIT VELKOST GENEROVANEHO XML a to tak, ze NAMIESTO DLHYCH nazvov ELEMENTS, ATTRIBUTES a NAMESPACES definuje CISELNE KONSTANTY, ktore sa pri vytvoreni XML pouziju NAMIESTO DLHYCH TEXTOV.
+!!! 5. XmlDictionary moze pracovat v 2 rezimoch.
+   A. STATICKY - kedy sa vyuzije PRIVATE KOLEKCIA mien ELEMENTS, ATTRIBUTES a NAMESPACES, ktore definuje STANDARD SOAP. STATICKY rezim sa pouziva pri SERIALIZACII/DESERIALIZACII Message. Kedze mena ELEMENTS, ATTRIBUTES a NAMESPACES su ulozene ak PRIVATNY LIST v XmlDictionary a su definovane SOAP STANDARDOM, tak Message SERIALIZOVANA na strane CLIENT pomocou XmlDictionary v STATICKOM REZIME je USPESNE DESERIALIZOVANA na strane SERVICE - kedze OBSAH XmlDictionary je ROVNAKY.
+   B. DYNAMICKY - kedy sa pri ZAPISE ELEMENTS, ATTRIBUTES a NAMESPACES AUTOMATICKY VYTVARA XmlDictionary na zaklade toho ake ELEMENTS, ATTRIBUTES a NAMESPACES sa do XmlDictionaryWriter zapisali.
+!!! 6. XmlDictionary ako ITEM pouziva XmlDictionaryString, ktory ako KEY ma INT a ako VALUE ma STRING.
+!!! 7. XmlDictionary neumoznuje ITERACIU ULOZENYCH ITEMS, ani odoberat ITEMS.
+!!!!! 8. Teda nato aby 2 OBJEKTY typu XmlDictionary generovali KOMPATIBILNE XML musia obsahovat TIE ISTE ITEMS. Pri SERIALIZACII Message vo WCF je to zabezpecene SOAP STANDARDOM, kde XmlDictionary je naplnena MENAMI ELEMENTS, ATTRIBUTES a NAMESPACES s TYMI ISTYMI KEYS.
+9. Trieda XmlDictionaryWriter je ABSTRAKTNOU triedou, ktora sluzi na ENCODING (SERIALIZACIU) XML dokumentu do prislusneho WIRE FORMAT (TEXT, MTOM, BINARY).
+10. Trieda XmlDictionaryWriter ma 4 typy CreateXXXWriter(), ktore vytvaraju triede zdedene z XmlDictionaryWriter.
+   A. CreateDictionaryWriter() - vytvori objekt XmlDictionaryWriter, ktory je WRAPPER objektom nad XmlWriter. Sluzi v podstate iba ako KONVERZNA metoda medzi XmlDictionaryWriter a XmlWriter.
+   B. CreateTextWriter() - vytvori XmlDictionaryWriter, ktory robi ENCODING do TEXT FORMATU XML. Takto vytvoreny XmlDictionaryWriter NEPOUZIVA XmlDictionary a NEVYKONAVA ANI KOMPRESIU XML.
+   C. CreateMtomWriter() - vytvori XmlDictionaryWriter, ktory robi ENCODING do MTOM FORMATU XML. Takto vytvoreny XmlDictionaryWriter NEPOUZIVA XmlDictionary a NEVYKONAVA ANI KOMPRESIU XML. Ma 2 pretazene verzie, kde ta s viacerymi parametrami umoznuje vacsiu kontrolu nad generovanym MTOM, avsak ak RECEIVER nepouziva kompatibilny MTOM, tak takto kodovanym XML NEBUDE ROZUMIET.
+   D. CreateBinaryWriter() - vytvori XmlDictionaryWriter, ktory robi ENCODING do BINARY FORMATU XML. Ako JEDINA z tried zdedenych z XmlDictionaryWriter MOZE (ale i NEMUSI) pouzivat XmlDictionary na DODATOCNU KOMPRESIU DLHYCH NAZVOV ELEMENTS, ATTRIBUTES a NAMESPACES.
+!!!!! 11. Pri pouzivani BINARY ENCODING si treba uvedomit, ze KOMPRESIA sa tu realizuje na 2 UROVNIACH.
+   A. BEZ POUZITIA XmlDictionary sa pouzije IBA kompresia vychadzajuca z BINARY FORMATU, kde sa nepouzivaju DLHE XML TAGS, ale BYTES. Tu sa usetri OPROTI TEXT ENCODING na tom, ze napriklad sa NEPOUZIVAJU UVODZOVKY ani znaky < a > a takisto sa nepouziva napriklad ani 'xmlns' pri deklaracii NAMESPACE. Avsak NAZVY ELEMENTS, ATTRIBUTES a NAMESPACES su V PLNEJ DLZKE.
+   B. S POUZITIM XmlDictionary sa NIELENZE POUZIVA KOMPRESIA dana BINARY FORMATOM, ale NAVYSE i nazvy ELEMENTS, ATTRIBUTES a NAMESPACES su NAHRADENE KOMPRIMOVANYMI CISELNYMI KODMI.
+!!! 12. Pouzitie XmlDictionaryWriter pre BINARY ENCODING s pouzitim XmlDictionary je nasledujuce.
+   A. Vytvorim instanciu XmlDictionary a NAPLNIM ju MENAMI ELEMENTS, ATTRIBUTES a NAMESPACES.
+   B. Pouzijem CreateBinaryWriter() na vytvorenie XmlDictionaryWriter realizujuceho BINARY ENCODING.
+   C. Pouzivam PRETAZENE VERZIE METOD XmlDictionaryWriter.WriteXXX(), ktore MAJU PARAMETRE TYPU XmlDictionaryString.
+!!! 13. Pomocou triedy XmlBinaryWriterSession je mozne implementovat DYNAMICKY XmlDictionaryString, kde pocas ENCODING sa VYTVARA XmlDictionary na zaklade toho ake ELEMENTS, ATTRIBUTES a NAMESPACES sa ukladaju do XML.
+!!! 14. XmlDictionaryWriter ma 2 sady WriteXXX() metod.
+   A. Metody pouzivajuce za STRING ako NAMESPACE, ELEMENT/ATTRIBUTE NAME a VALUE. Tieto metody NEPODPORUJU KOMPRESIU s vyuzitim XmlDictionary.
+   B. Metody pouzivajuce za XmlDictionaryString ako NAMESPACE, ELEMENT/ATTRIBUTE NAME a VALUE. Tieto metody PODPORUJU KOMPRESIU s vyuzitim XmlDictionary, avsak IBA ak vytvorim XmlBinaryWriter POMOCOU CreateBinaryWriter() - teda robi sa BINARY ENCODING. Nevyhodou BINARY ENCODING je to, ze NIE JE STANDARDOM.
+!!! 15. XmlDictionaryReader je OPAKOM voci XmlDictionaryWriter. Podobne ako XmlDictionaryWriter i XmlDictionaryReader ma FACTORY METODY CreateDictionaryReader(), CreateTextReader(), CreateMtomReader() a CreateBinaryReader().
+16. XmlDictionaryReader ako parameter akceptuje i nasledujuce 2 triedy.
+   A. OnXmlDictionayReaderClose je DELEGATE, ktory je vyvolany tesne pred UZATVORENIM XmlDictionaryReader metodou Close(). Vyznam ma iba ako OBJEKTY TYPU XmlDictionaryReader su UKLADANE do POOL. Pri volani tohto DELEGATE je objekt XmlDictionaryReader, ktory ukoncil pracu bol vrateny do POOL.
+   B. XmlDictionaryQuotas umoznuje definovat MAXIMALNU DLZKU pre retazce, HLBKU NODES a mnohe ine nastavenia.
+//-------------------------------------------------------------------------------------------------------
+Poznamky z MSDN k XmlDictionary.
+
+1. Dictionaries establish a mapping between commonly appearing text strings, and integers, and provide an effective mechanism for compressing and decompressing XML. Uses 2 kinds of dictionaries, static and dynamic.
+2. With static dictionaries, both sides of the communication use a predefined dictionary.
+3. With dynamic dictionaries, the sending side can add new strings and their mappings not already in the static dictionary. Dynamic dictionaries are sent out of band with the message. Dynamic dictionaries use the XmlBinaryWriterSession and XmlBinaryReaderSession classes to transmit messages and mappings
+//-------------------------------------------------------------------------------------------------------

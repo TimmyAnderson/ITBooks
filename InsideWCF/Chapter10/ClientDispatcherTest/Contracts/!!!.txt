@@ -1,0 +1,91 @@
+﻿//-------------------------------------------------------------------------------------------------------
+1. Solution demonstruje CLIENT DISPATCHERS na odosielanie MESSAGES na SERVICE.
+2. Trieda ChannelFactory<T> sluzi na vytvaranie CHANNELS na CLIENT SIDE pomocou ktorych je mozne odosielat MESSAGE do SERVICE.
+3. WCF je z hladiska architektury mozne rozdelit na 2 casti.
+   A. CHANNEL LAYER - je reprezentovany CHANNELS, CHANNEL LISTENERS, CHANNEL FACTORIES, BINDING ELEMENTS a BINDING. Jeho ulohou je realizovat FYZICKU KOMUNIKACIU medzi WCF CLIENT a WCF SERVICE.
+   B. SERVICE LAYER - je zodpoveny za VYTVARANIE Message objektov z CONTRACTS, pumpovanie Message objektov do CHANNEL LAYER, prijmanie Message objektov z CHANNEL LAYER, vyvolavanie SERIVCE OPERATIONS podla toho pre aku OPERATION je Message objekt urceny ci LIFE MANAGEMENT SERVICE objektov.
+4. SERVICE LAYER je mozne rozclenit podla toho na ktorej strane komunikacie je realizovany.
+   A. CLIENT - jedna sa o CLIENT SIDE cast SERVICE LAYER.
+   B. DISPATCHER - jedna sa o SERVICE SIDE cast SERVICE LAYER.
+5, SERVICE LAYER a to ako na strane CLIENT, tak i na strane DISPATCHER je mozne rozsirit protestrednictvom BEHAVIORS.
+6. Zakladnou triedou DISPATCHER je ChannelDispatcher, ktory pouziva viacero dalsich tried na realizaciu DISPATCHER funkcionality.
+!!!!! 7. Pre kazde URI na ktorej SERVICE robi LISTENING musi ma ASPON 1 ChannelDispatcher. Ten potom ma referenciu na CHANNEL LISTENER.
+????? 8. Takisto plati, ze na jeden CHANNEL LISTENER sa moze odkazovat VIACERO objektov ChannelDispatcher.
+9. Pre ChannelDispatcher platia nasledujuce fakty.
+   A. Je zdedena z CommunicationObject a teda realizuje STATE MACHINE.
+   !!! B. Je asociovana s triedou ServiceHost. Obsahuje property Host, ktora sa referuje na objekt ServiceHost.
+   C. Obsahuje property ServiceThrottle, ktora limituje pocet CALLS, SERVICE INSTANCES a SESSIONS pre dany ServiceHost.
+   D. Property ManualAddressing sa odkazuje na property ManualAddressing triedy TransportBindingElement (ak Binding, ktory pouziva ChannelDispatcher takyto BINDING ELEMENT OBSAHUJE). Ak je nastavena na hodnotu TRUE, potom CHANNEL LAYER NEPRIDAVA WS-Addressing HEADER do OUTGOING MESSAGE a WS-Addressing HEADER je potrebne pridat RUCNE.
+   E. Property ErrorHandlers je COLLECTION objektov typu IErrorHandler umoznujucich CUSTOM spracovanie EXCEPTIONS.
+   !!! F. Property Endpoints obsahuje COLLECTION objektov EndpointDispatcher. Ked ChannelDispatcher dostane objekt typu Message, ZISTI pre ktory ENDPOINT je URCENA a VYVOLA jeho objekt EndpointDispatcher. Ten je potom zodpovedny za volanie OPERATION prislusneho SERVICE INSTANCE objektu a serializaciu a deserializaciu Message objektu na parametre OPERATION.
+   !!!!! G. Property Listener obsahuje odkaz na CHANNEL LISTENER daneho ChannelDispatcher.
+   !!!!! H. Je zodpovedna za VYTVARANIE CHANNEL LAYER.
+10. Trieda EndpointDispatcher je zodpovedna za spracovanie Message objektov pre DANY ENDPOINT. Ma nasledujuce vlastnosti.
+   A. Obsahuje PROPERTIES ContractNamespace a ContractName, ktore urcuju ktory CONTRACT dany ENDPOINT realizuje.
+   B. Property EndpointAddress urcuje ADRESU ENDPOINT.
+   !!! C. Property ContractFilter obsahuje objekt typu MessageFilter, ktory urcuje ci prijata Message je urcena pre DANY CONTRACT.
+   !!! D. Property AddressFilter obsahuje objekt typu MessageFilter, ktory urcuje ci prijata Message je urcena pre DANY ENDPOINT.
+   E. Property DispatcherRuntime realizuje DISPATCHING volanie OPERATION.
+!!! 11. Trieda MessageFilter ma VIACERO DERIVED CLASSES.
+   A. ActionMessageFilter - robi MESSAGE FILTERING na zaklade 'Action' HEADER.
+   B. EndpointAddressMessageFilter - robi MESSAGE FILTERING na zaklade 'To' HEADER.
+   C. MatchAllMessageFilter - akceptuje VSETKY Message objekty.
+   D. MatchNoneMessageFilter - NEAKCEPTUJE ZIADNE Message objekty.
+   E. PrefixEndpointMessageFilter - robi MESSAGE FILTERING na zaklade porovnania URI s 'To' HEADER.
+   F. XPathMessageFilter - robi MESSAGE FILTERING na zaklade XPath dotazu do obsahue Message.
+12. Trieda DispatchRuntime realizuje VYBER OPERATION, ktora sa ma pre prijatu Message na danom SERVICE objekte volat. Ma nasledujuce vlastnosti.
+   A. Property InstanceProvier obsahuje objekt implementujuci IInstanceProvider, ktory sluzi na vytvorenie, alebo vratenie SERVICE INSTANCE objektu. Zavisi od zvoleneho SESSION MODE, ako sa SERVICE objekt vytvori, alebo znova pouzije existujuci.
+   B. Property InstanceXontextProvier obsahuje objekt implementujuci IInstanceContextProvider, ktory vracia objekt typu InstanceContext co je WRAPPER objekt okolo SERVICE INSTANCE objektu.
+   C. Property MessageInspectors obsahuje COLLECTION objektov typu IDispatchMessageInspector, ktore umoznuju prezerat Message objekty pred dorucenim do SERIVCE objektu (REQUEST MESSAGES) a po odoslani navratvovej hodnoty, resp. OUT parametrov (RESPONSE MESSAGES).
+   !!! D. Property OperationSelector obsahuje objekt typu IDisatchOperationSelector, ktorej ulohou je PRE DANY OBJEKT Message urcit MENO OPERATION, ktora sa ma pre danu Message vyvolat. Meno OPERATION je vratene v podobe STRINGU, ktory obsahuje STANDARDNE 'Action' HEADER z Message objektu.
+   !!! E. Property Operations obsahuje DICTIONARY typu Dictionary<string,OperationDispatcher>. Na zakladne OperationName ziskanej pomocou OperationSelector (STANDARNDE je to 'Action' HEADER Message objektu) vrati OperationDispatcher objekt danej OPERATION, ktora ma byt vyvolana.
+13. Trieda DispatchOperation je zodpovedna sa SAMOTNE VOLANIE OPERATION. Ma nasledujuce vlastnosti.
+   A. Property Formatter vykonava DESERIALIZACIU REQUEST MESSAGE a SERIALIZACIU RESPONSE MESSAGE do podoby PARAMETROV, resp. RETURN VALUE metody SERVICE objektu, ktory vola.
+   B. Property Invoker typu IOperationInvoker realizuje samotne VYVOLANIE OPERATION - METODY SERVICE OBJEKTU.
+!!! 14. Trieda ServiceHost obsahuje PROPERTY ChannelDispatchers, co je COLLECTION vsetkych ChannelDispatcher objektov, asociovanych s danym ServiceHost objektom.
+15. Na SENDER SIDE je mozne SERVICE LAYER vytvorit 2 sposobmi.
+   A. Vytvorit CUSTOM PROXY objekt zdedenim z ClientBase<TChannel>, alebo DuplexClientBase<TChannel>.
+   B. Pouzit triedu ChannelFactory<TChannel> (resp. DuplexChannelFactory<TChannel>) na AD-HOC vytvorenie PROXY objektu.
+!!!!! 16. Metoda ChannelFactory<TChannel>.CreateChannel() v skutocnosti NEVYTVARA CHANNEL FACTORY STACK a teda ani CHANNEL STACK. Vytvori IBA TRANSPARENTNY PROXY OBJEKT. CHANNEL FACTORY STACK a CHANNEL STACK sa vytvara AZ PRI VOLANI Open(), alebo PRVOM VOLANI OPERATION daneho PROXY, kedy sa interne vola Open().
+//-------------------------------------------------------------------------------------------------------
+Hierachia objektov vo WCF.
+
+SERVICE LAYER - RECEIVING SIDE.
+
+1. CHANNEL DISPATCHER - realizovany triedou ChannelDispacher VYTVARA z BINDING kompletny CHANNEL LAYER. Vykonava nasledujuce cinnosti.
+   A. Vytvara CHANNEL LISTENER, ktoreho instanciu si ulozi do property Listener.
+   B. Cita Message objekt v MESSAGE LOOP.
+   C. Robi management (otvaranie, uzatvaranie) CHANNEL LISTENER STACK a CHANNEL STACK.
+   D. Robi ROUTING REPLY MESSAGES do CHANNEL LAYER - CHANNEL STACK.
+   E. Urcuje KTOREMU ENDPOINT prijata MESSAGE PATRI.
+   !!! F. Obsahuje PROPERTY Endpoints co je COLLECTION objektov typu EndpointDispatcher.
+   !!!!! G. Urcenie KTOREMU ENDPOINT je PRIJATA Message urcena sa robi pomocou PROPERTIES triedy EndpointDispatcher (vsetky ENPOINTS su v PROPERTY Endpoints). Trieda EndpointDispatcher ma AddressFilter a ContractFilter co su PROPERTIES TYPU MessageFilter a pomocou nich dokaze ChannelDispatcher urcit, ktoremu KONKRETNEMU ENDPOINT zo VSETKYCH ENDPOINTS v COLLECTION ChannelDispatcher.Endpoint je Message URCENA.
+2. ENDPOINT DISPACHER - je realizovany triedu EndpointDispacher. Vykonava nasledujuce cinnosti.
+   A. Urcuje ci PRICHADZAJUCA Message je urcena ENPOINT, ktory ENDPOINT DISPACHER reprezentuje.
+   B. Obsahuje property DispatchRuntime, ktoreho ulohou je vykonat DISPATCH OPERATION pre ktoru je Message urcena.
+3. DISPATCH RUNTIME - je realizovany triedu DispatchRuntime a jeho ulohou je VYBRAT OPERATION, ktora sa bude volat na prislusnom SERIVCE objekte, pricom musi respektovat INSTANCE MODE daneho SERVICE. Vykonava nasledujuce cinnosti.
+   !!! A. Pomocou property OperationSelector urcuje z OBJEKTU Message meno OPERATION, ktora sa ma pre dany Message objekt vyvolat. OperationDispatcher vracia MENO OPERATION v podobe STRINGU. Standardne obsahuje 'Action' danej Message.
+   !!! B. Z MENA OPERATION, ktoru vrati OperationSelector (STANDARDNE je to 'Action' Message objektu) zisti z PROPERTY Operations objekt typu OperationDispatcher, ktory reprezentuje OPERATION, ktora sa ma volat. Hladanie OperationDispatcher sa realizuje pomocou property Operations, co je DICTIONARY typu Dictionary<string,OperationDispatcher>, kde KEY je MENO OPERATION vratenej z OperationSelector.
+4. DISPATCH OPERATION - je realizovany triedou DispachOperation a je vykonava nasledujuce cinnosti.
+   A. DESERIALIZUJE Message objekt do podoby parametrov OPERATION, ktoru ma vyvolat.
+   B. VYVOLA OPERATION SERVICE objektu.
+   C. SERIALIZUJE VYSTUPNE PARAMETRE a RETURN VALUE z volania OPERATION do podoby Message objektu.
+5. SERVICE HOST - je realizovany triedou ServiceHost. Obsahuje PROPERTY ChannelDispatchers pomocou, ktorej moze SERVICE HOST pristupovat k SERVICE LAYER a skrze neho potom i k CHANNEL LAYER. Je to NAVYSSIA TRIEDA v hierarchii WCF na RECEIVER SIDE.
+
+CHANNEL LAYER.
+
+1. BINDING - obsahuje kolekciu BINDING ELEMENTS.
+2. BINDING ELEMENT - vytvara CHANNEL MANAGERS.
+3. CHANNEL MANAGERS (CHANNEL LISTENER a CHANNEL FACTORY) - su zaradene v STACKU a vytvaraju CHANNELS.
+4. CHANNEL - su zaradene v STACKU a implementuju PRENOSOVE PROTOKOLY a zabezpecuju komunikaciu.
+
+Poradie volania jednotlivych komponent pri PRIJME MESSAGE.
+
+1. CHANNEL DISPATCHER vola BeginReceive() na CHANNEL STACK (pomocou property Listener CHANNEL STACK VYTOVRIL), ktory sa prenesie na TRANSPORT CHANNEL, ktory CAKA NA PRICHOD NOVEJ Message.
+2. TRANSPORT CHANNEL zachyti Message a v navratovej hodnote ho vrati NADRADENEMU CHANNEL v CANNEL STACK.
+3. Objekt Message prejde cez VSETKY CHANNELS az sa dostane do SERVICE DISPACHER.
+4. CHANNEL DISPATACHER urci, ktoremu ENDPOINT z kolekcie ENDPOINT DISPATCHERS, ktoru ma ulozenu v ChannelDispacher.Endpoints.
+5. ENDPOINT DISPACHER potom Message ked overi, ze skutocne patri danemu ENDPOINT posle do DISPATCH RUNTIME.
+6. DISPATCH RUNTIME urci ktorej INSTANCII SERVICE objektu je Message urcena a vyvola prislusnu OPERATION daneho SERVICE objektu.
+7. DISPATCHER OPERATION je zodpovedny za SERIALIZACIU a DESERIALIZACIU Message objektu a vyvolanie samotnej OPERATION. Po jej volani potom iniciuje poslanie RESPONSE.
+//-------------------------------------------------------------------------------------------------------

@@ -1,0 +1,68 @@
+﻿//-------------------------------------------------------------------------------------------------------
+1. Solution demonstruje pouzitie triedy Message.
+2. Trieda Message je ZAKLADOU TRIEDOU WCF pre ukladanie MESSAGE, ktora sa prenasa medzi CLIENT a SERVICE.
+!!!!! 3. Message KOPIRUJE STRUKTURU SOAP. Obsahuje HEADER, ktory kopiruje HEADER zo SOAP a obsahuje i BODY, ktory kopiruje BODY zo SOAP.
+!!! 4. Operacie nad triedou Message je mozne rozdelit do nasledujucich kategorii.
+   A. SERIALIZATION - je proces konverzie objekt Message na XML.
+   B. ENCODING - je proces konverzie XML do WIRE FORMAT (TEXT, MTOM, BINARY).
+   C. DECODING - je proces konverzie z WIRE FORMAT (TEXT, MTOM, BINARY) do XML.
+   D. DESERIALIZATION - je proces konverzie z XML do objekt Message.
+5. Pri operacii SEND MESSAGE sa vykonavaju nasledujuce operacie.
+   A. SERIALIZATION - objekt Message sa prelozi do formatu XML.
+   B. ENCODING - XML sa konvertuje na WIRE FORMAT (TEXT, MTOM, BINARY).
+6. Pri operacii RECEIVE MESSAGE sa vykonavaju nasledujuce operacie.
+   A. DECODING - z WIRE FORMAT (TEXT, MTOM, BINARY) sa vytvori XML.
+   B. DESERIALIZATION - z XML sa vytvori Message objekt.
+!!!!! 7. Fakt, ze trieda Message kopiruje strukturu SOAP bolo pri definovani Message dane tym, ze v case definovania WCF bol SOAP STANDARDNOM pre MESSAGES prenasane cez SOA. Avsak neskor, ked sa vyvinuli i ine standardy napriklad standard JSON (je lahko parsovatelny pomocou JavaScript), ktory NIE JE ZALOZENY na SOAP (ani XML), tak WCF musela byt rozsirena o podporne triedy, ktore by umoznovali konverziu medzi Message a JSON.
+!!! 8. V sucasnosti je mozne Message konverovat do nasledujucich formatov MESSAGES.
+   A. SOAP - lahko sa konvertuje z Message, kedze Message de-facto svojou internou reprezentaciou je WRAPPER pre format SOAP.
+   B. POX - kedze je zalozeny na XML tak konverzia z Message je pomerne jednoducha.
+   C. JSON - WCF musela byt rozsirena o podporne triedy, aby umoznovali konverziu na JSON, ktori NIE JE ZALOZENY na XML.
+9. Trieda Message je SOAP WRAPPER, kde jej obsah ma PODOBNU STRUKTURU ako SOAP.
+10. Objekt typu Message je mozne vytvorit pomocou niektorej z PRETAZENYCH METOD CreateMessage(), ktore umoznuju rozlicnymi sposobmi vytvorit MESSAGE BODY, ktory bude obsahovat dany Message objekt.
+   A. MESSAGE BODY je mozne vytvorit z OBJECT GRAPH. To znamena, ze LUBOVOLNY SERIALIZOVATELNY OBJEKT (ktory moze obsahovat vo FIELDS dalsie objekty) moze sluzit na vytvorenie MESSAGE BODY.
+   B. MESSAGE BODY je mozne vytvorit citanim XmlReader. Pouziva sa najma pri DESERIALIZACII.
+   C. MESSAGE BODY je mozne vytvorit zapisom do BodyWriter. Najprv je vsak nutne VYTVORIT CUSTOM TRIEDU, ktora dedi BodyWriter a implementovat jej metodu OnWriteBodyContents().
+   D. MESSAGE BODY je mozne vytvorit pomocou triedy MessageFault, ktora vytvori FAULT MESSAGE.
+!!! 11. Zatial co MESSAGE BODY po vytvoreni Message NIE JE MOZNE ZMENIT, tak v pripade MESSAGE HEADERS je ich MOZNE MODIFIKOVAT.
+12. Pomocou triedy MessageVersion je mozne definovat VERZIU pre ENVELOPE a ADDRESS.
+   A. Trieda EnvelopeVersion umoznuje definovat verziu ENVELOPE.
+   B. Trieda AddressingVersion umoznuje definovat verziu WS-ADDRESSING.
+   C. Najnovsia verzia v WCF 4.0. je Soap12WSAddressing10.
+13. WCF umoznuje vytvorit i FAULT MESSAGE, co je objekt typu Message, ktory obsahuje o FAULT. FAULT MESSAGE obsahuje nasledujuce informacie.
+   A. Code - definuje KOD CHYBY. Je vyjadreny triedou FaultCode a moze obsahovat i SUB-CODES.
+   B. Reason - obsahuje textovy popis chyby. Je vyjadreny triedou FaultReason.
+   C. Node - obsahuje informaciu o povodcovi chyby.
+   D. Role - obsahuje informaciu o roly povodcu chyby.
+   E. Detail - obsahuje LUBOVOLNE SERIALIZOVATELNE DATA blizie popisujuce chybu. Je vo forme triedy Object, ktora vsak MUSI BYT SERIALIZOVATELNA.
+!!! 14. Trieda MessageFault reprezentuje BODY pre FAULT MESSAGE a obsahuje KOMPLETNU INFORMACIU o CHYBE, vratane Code, Reason, Node, Role a Detail. Pomocou tejto triedy je mozne VYTVORIT Message reprezentujuci FAULT MESSAGE, alebo naopak z objektu Message obsahujuceho FAULT MESSAGE vytvorit MessageFault.
+15. MESSAGES vo vseobecnosti je mozne prenasat 3 sposobmi.
+   A. BUFFERED MODE - MESSAGE sa posiela ako celok.
+   B. STREAMING PUSH MODE - MESSAGE sa posiela ako STREAM dat. CLIENT tlaci data na SERVER. CLIENT pouziva BUFFER, do ktoreho tlaci data az kym sa BUFFER nenaplni.
+   C. STREAMING PULL MODE - MESSAGE sa posiela ako STREAM dat. SERVER posiela poziadavky na zaslanie dat na CLIENT. CLIENT na to reaguje zaslanim dat.
+!!! 16. WCF pouziva pre HEADERS BUFFERED mod a pre BODY bud BUFFERED, alebo STREAMED mod. Ak je pouzity STREAMED mod, tak VZDY sa pouziva PULL MODE. Pri STREAMIMNG vsak KRATKE BODIES su prenasane BUFFERED sposobom.
+!!! 17. Nevyhodou STREAMED modu je napriklad to, ze MESSAGE zasielanu ako STREAM NIE JE MOZNE KRYPTOVAT ci efektivne kontrolovat VYSKYT CHYB.
+18. SERIALIZACIA MESSAGE sa vykonava pomocou metod typu WriteXXX().
+19. DESERIALIZACIA MESSAGE sa vykonava pomocou metod typu CreateMessage(), ktore umoznuju vytvorit Message zo Stream, alebo byte[]. K MESSAGE BODY sa potom je mozne dostat pomocou metod typu GetBody<T>().
+!!! 20. Pomocou property Message.IsFault udava TRUE, ak MESSAGE je FAULT MESSAGE.
+21. Property Message.State udava STATE v ktorom sa nachadza Message.
+22. Trieda MessageHeader je trieda reprezentujuca MESSAGE HEADER triedy Message. Platia pre nu nasledujuce skutocnosti.
+   A. Instancia MessageHeader sa vytvara pomocou metod typu CreateHeader(), ktore maju ako parametre vzdy Name, Namespace a Value.
+   B. Pomocou metod WriteXXX() je mozne MessageHeader SERIALIZOVAT.
+   !!! C. Metody WriteXXX() interne volaju PROTECTED metody OnWriteStartHeader() a OnWriteHeaderContents(), ktore realizuju samotnu SERIALIZACIU. Tieto metody v ZDEDENYCH OBJEKTOCH je mozne PRETAZIT a implementovat CUSTOM SERIALIZACIU.
+   !!! D. Hodnotu MessageHeader NIE JE PRIAMO MOZNE ZISKAT pomocou triedy MessageHeader, ale je potrebne pouzit triedu MessageHeaders.
+!!! 23. Trieda EndpointAddress je ABSTRAKCIOU WS-Addressing vo WCF. Obaluje triedu Uri, ktora reprezentuje samotnu adresu.
+   A. Triedu EndpointAddress je mozne aplikovat na properties MessageHeaders.ReplyTo a MessageHeaders.FaultTo.
+   B. Ak chce nastavit MessageHeaders.To musim pouzit metodu EndpointAddress.ApplyTo().
+24. Trieda MessageHeaders predstavuje KOLEKCIU objektov MessageHeader. Z triedy Message je pristupna pomocou property MessageHeaders. Trieda MessageHeaders ma nasledujuce vlastnosti.
+   A. Pomocou metody Add() je mozne pridat dalsi MessageHeader do KOLEKCIE.
+   B. Trieda MessageHeaders rozhranie implementuje IEnumerable<MessageHeaderInfo>, ktore umoznuje iterovanie KOLEKCIOU. Trieda MessageHeaderInfo je BASE CLASS voci MessageHeader.
+   C. Instancia MesssageHeaders sa vytvara pomocou KONSTRUKTORA.
+   D. Metoda FindHeader() vracia INDEX MessageHeader podla MENA HEADER. Ak FindHeader() nenajde hladany HEADER, tak vraci hodnotu -1.
+   E. Metoda GetHeader<T>, kde T je TYP VALUE MESSAGE HEADER vracia VALUE MESSAGE HEADER.
+   F. Metoda CopyHeaderFrom() umoznuje kopirovat HEADERS medzi jednotlivymi instanciami MesssageHeaders.
+   G. Serializacia MessageHeaders je realizovana pomocou metod WriteHeader(), ktora serializuje JEDEN HEADER. Metoda WriteHeader() interne vola PROTECTED metody triedy MessageHeaders WriteHeader() a WriteHeaderContents().
+   H. Trieda MessageHeaders definuje PROPERTIES From, ReplyTo, FaultTo a To, pomocou ktorych je mozne pristupovat k PROPERTIES WS-Addressing.
+25. Pomocou metody Message.CreateBufferedCopy() je mozne vytvorit KOPIU MESSAGE. Metoda MENI STATE KOPIROVANEJ MESSAGE a zarovane vracia objekt typu MessageBuffer, ktoreho metoda CreateMessage() vytvorti novu KOPIU MESSAGE.\
+!!! 26. Trieda Message implementuje EXPLICITNE IDisposable. Ma i metodu Close(), ktorou je mozne Message objekt uzatvorit.
+//-------------------------------------------------------------------------------------------------------

@@ -1,0 +1,29 @@
+﻿//-------------------------------------------------------------------------------------------------------
+1. Solution demonstruje rozlicne Message Exchange Patterns, ktore je mozne vo WCF pouzivat.
+2. MEP urcuje kto a kedy pri komunikaciu medzi CLIENT a SERVICE posiela MESSAGES.
+3. WCF podporuje 3 druhy MEP.
+   A. ONE WAY - je JEDNOSMERNA komunikacia, ktoru iniciuje CLIENT a na ktoru SERVICE NEPOSIELA odpoved.
+   B. REQUEST-RESPONSE - je OBOJSMERNA komunikacia, ktoru iniciuje CLIENT a na ktoru SERVICE VZDY posiela odpoved.
+   C. DUPLEX - je OBOJSMERNA komunikacia, ktoru MOZE INICIOVAT ako CLIENT, tak i SERVICE. Na nadviazanie DUPLEX komunikacie musi CLIENT ako prvy zaslat MESSAGE na SERVICE, po ktorej SERVICE nadviaze spojenie spat na CLIENT.
+4. Pre ONE WAY MEP platia nasledujuce vlastnosti.
+   A. Operacia CONTRACT NESMIE mat NAVRATOVU HODNOTU ani OUT a REF parametre.
+   B. Operacia CONTRACT NESMIE mat FAULT CONTRACT, pretoze ONE WAY MEP nedorucuje spatne MESSAGES zi SERVICE na CLIENT a teda ani MESSAGES obsahujuce FAULT CONTRACT.
+   C. Pri HTTP je NUTNE posielat vzdy HTTP RESPONSE, kedze to definuje HTTP. Pri ONE WAY MEP cez HTTP sa teda MUSI ODOSLAT HTTP RESPONSE, aby HTTP komunikacia prebehla uspesne. Pri ONE WAY je HTTP RESPONSE poslana HNED POTOM ako je HTTP REQUEST prijaty na strane SERVICE, BEZ TOHO, aby CAKAL na SPRACOVANIE HTTP REQUEST.
+5. Pre REQUEST-RESPONSE MEP platia nasledujuce vlastnosti.
+   A. Operacia CONTRACT moze mat NAVRATOVU HODNOTU i OUT a REF PARAMETRE.
+   B. Operacia CONTRACT MOZE mat FAULT CONTRACT.
+   C. RESPONSE zo SERVICE je poslana az ked RESVICE dokonci operaciu.
+   D. Niektore BINDINGS ako napriklad HTTP, TCP ci IPC, ktore su IMPLICITNE DUPLEXNE umoznuju posielat RESPONSE cez BACK CHANNEL. MSMQ BINDINGS tento MEP vobec NEPODPORUJU.
+6. Pre DUPLEX MEP platia nasledujuce vlastnosti.
+   A. Su definovane 2 CONTRACTS, jeden pre posielanie MESSAGES z CLIENT na SERVICE a druhy na posielanie MESSAGES zo SERVICE na CLIENT.
+   B. Komunikaciu MUSI zacat CLIENT odoslanim MESSAGE po SERVICE. Po zahajeni komunikacie uz mozu CLIENT a SERICE si NEZAVISLE zasielat MESSAGES.
+7. MESSAGE TOPOLOGY urcuje to kolko SERVICES a ako navzajom komunikuju. Existuju nasledujuce TOPOLOGIES.
+   A. Point-to-Point - je klasicka komunikacia CLIENT-SERVICE.
+   B. Forward-Only Point-to-Point - je komunikacia, kedy pri komunikacii viacerych SERVICES sa vykonava ROUTING medzi tymito SERVICES (jeden SERVICE posle MESSAGE druhemu a ten po spracovani posle MESSAGE tretiemu), pricom spravidla komunikacia je realizoana pomocou ONE WAY MEP.
+   C. Brokered - jedna sa o topologiu PUBLISHER-SUBSCRIBER.
+   D. Peer-to-Peer - je komunikacia medzi lubovolnym poctom SERVICES cez MESH.
+8. MESSAGE CHOREOGRAPHY urcuje PATTERN, ake MESSAGES sa budu posielat na realizovanie niektorej funkcionality SERVICE.
+   A. SECURITY - vyzaduje prenos SECURITY KEYS a nato je potrebne vykonat viacnasobny prenos MESSAGES.
+   B. TRANSACTION - na implementaciu TWO COMMIT PROTOCOL je treba vykonat viacnasobny prenos MESSAGES.
+   C. RELIABILITY - zabezpecuje sa opakovany posielanim MESSAGE, ak prenos predchadzajucez zlyhal.
+//-------------------------------------------------------------------------------------------------------
