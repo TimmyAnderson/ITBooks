@@ -1,0 +1,153 @@
+﻿//-------------------------------------------------------------------------------------------------------
+1. Program demonstruje rozlicne aspekty prace .NET s pamatou.
+2. MANAGED proces vyuziva na alokaciu dve odlisne typy HEAP MANAGERS, ktorych ulohou je pridelovat pamat z HEAP.
+   A. NTDLL Heap Manager - je zodpovedny za spravu HEAPS v NATIVE APLIKACIACH. Je postaveny NAD VIRTUAL MEMORY MANAGER a jeho ulohou je ulohou je poskytovat funkcionalitu HEAPS najma pre NATIVE APLIKACIE.
+   B. CLR Heap Manager - je TAKISTO postaveny NAD VIRTUAL MEMORY MANAGER, avsak oproti NTDLL Heap Manager poskytuje i funkcionalitu GARBAGE COLLECTOR a nozstvo dalsej funkcionality. Je pristupny iba pre MANAGED APLIKACIE.
+!!! 3. CLR HEAPS obsahuju pamat v BLOKOCH nazyvanych SEGMENT. Jeden SEGMENT obsahuje VIACERO BLOCKS PAMATE, ktoru jej poskytuje z VIRTUAL MEMERY MANAGER. 1 BLOCK ma zvycajne 4 KB a SEGMENT v CLR HEAP je podstate dlhsi (16 MB).
+4. CLR Heap Manager ma az 4 mody, ktore su definovane nastavenim a architekturov OS a CPU.
+   A. Nonconcurrent WORKSTATION mode - je mod kedy v procese je IBA 1 HEAP pre VSETKY CPU (CORES) a POCAS CELEHO procesu GC su VSETKY THREADS ZASTAVENE, az kym GC NESKONCI.
+   B. Concurrent WORKSTATION mode - je mod kedy v procese je IBA 1 HEAP pre VSETKY CPU (CORES) a POCAS procesu GC ak niektory z THREADS potrebuje vykonat nejaku aktivitu, tak moze POZASTAVIT PROCES GC, vykonat to co potrebuje a GC bude pokracovat az ked dany thread skoncil svoju cinnost. Tento mod prinasia vyssiu efektivitu, kedze program pocas GC moze dalej reagovat, ale proces GC trva dlhsie, kedze je prerusovany inymi aktivnymi THREADS.
+   C. SERVER mode - je mod, kedy KAZDE CPU (CORE) ma VLASTNY HEAP a THREAD a proces GC bezi v ramci TOHTO THREADU s afinitou na dane CPU.
+   D. WORKSTATION BACKGROUND mode - umoznuje spravit FULL GC a pritom nezastavit threads. Tie mozu dalej alokovat pamat paralelne s behom BACKRGOUND GC. Ak GENERATION 0, alebo 1 su vycerpane, potom sa BACKGROUND GC prerusi a spusti sa FOREGROUND GC, ktory vycisti GENERATION 0 a 1. Ak je v GENERATION 0 a 1 stale malo pamate, rozsiri sa HLAVNY SGEMENT v ktorej ziju GENERATIONS 0 a 1, aby mohli byt uspokojene ich naroky na pamat.
+!!! 5. CLR ma 2 typy HEAPS.
+   A. Small Object Heap - alokuje objekty s velkostou mensou ako 85 000 bytes. Pri starte ma REZERVOVANU (ale nie COMMITED) velkost 16 MB. Ak sa tato velkost zaplni CLR spusta GC a ak po jeho skonceni ak je miesta na HEAP menej ako krticka hodnota, je danej HEAP alokovany dalsi segment pamate.
+   B. Large Object Heap - alokuje objekty s velkostou vacsou, alebo rovnou ako 85 000 bytes. Pri starte ma REZERVOVANU (ale nie COMMITED) velkost 16 MB. Pri zaplneni segmentu sa NESPUSTA HNED GC, ale ROVNO sa ALOKUJE DALSI SEGMENT a GC nad touto HEAP sa spusta v pravidelnych intervaloch.
+!!! 6. Kazdy objekt v .NET ma okrem samotnych dat alokovanych este dalsich 8 (resp. 12 v x64) bytes.
+!!! 7. Struktura objektu na HEAP je nasledovna.
+   A. SyncBlock - obsahuje SYNC BLOCK (4 bytes) daneho objektu, sluziaci pri synchronizacii. Ak ma hodnotu 0, tak SYNC BLOCK pre dany objekt nie je alokovany.
+   B. Type Handle - obsahuje 4 bytes (8 na x64) s informaciami o type, akeho je dany objekt.
+   C. Data - samotne data objektu.
+!!!!!! 8. Referencna premenna na objekt na HEAP sa odkazuje AZ NA Type Handle a NIE na SyncBlock. Teda ked dereferencujem referencnu premennu, tak mi bude ukazovat na TYPE HANDLE na NIE SAMOTNE DATA, alebo SYNC BLOCK. Je to logicke, pretoze vdaka TYPE HANDLE CLR vie ako na Data cast objektu interpretovat a aka je dlha.
+9. Zakladny algoritmus pre alokovanie pamate z CLR HEAP je nasledovny.
+   A. Program vykona poziadavku na alokovanie pamate.
+   B. Zisti sa ci dana HEAP nepotrebuje spustit GC (nie je dosiahnuty limit dat v segmente). Ak ano, tak sa spusti GC.
+   C. Zvysi sa hodnota alokacneho pointera - smernika odkazujuceho na prvy volny blok pamate cim sa ALOKUJE PAMAT.
+   D. Alkokovana pamat sa NULUJE.
+   E. Ak je alokovany objekt FINALIZABLE, zaradi sa do internej struktury spravujucej zoznam objektov, ktore maju FINALIZER.
+   F. Vrati sa referencia na blok alokovanej pamate.
+!!! 10. CLR HEAP je mozne prezerat prikazom '!DumpHeap', ktory vypisuje VSETKY OBJEKTY na CLR HEAP, ako aj STATISTICKE UDAJE. Okrem tejto HEAP, vsak .NET pouziva este aj ine HEAPS. Tieto su vsak NEDOKUMENTOVANE (Loader HEAP, alebo JIT HEAP) a pri debuggovani ich nie je treba prezerat.
+11. GC implementovany v .NET dodrziava 3 zakladne mechanizmy.
+   A. Kazdy objekt na ktory neexistuje v programe referencia z ineho objektu je povazovany za GARBAGE, ktory moze byt pomocou GC odstraneny.
+   B. GC rozdeluje objekty do generacii, podla toho ako dlho sa v program pouzivaju.
+   C. Objekty, ktore sa pouzivaju kratsie su castejsie predmetov GC. Naopak objekty, ktore sa v programe pouzivaju dlhsiu dobu su menej casto odstranovane cez GC.
+12. .NET implementuje 3 GENERATIONS - GENERATION 0, 1 a 2. Generation 0 obsahuje najnovsie a generation 2 najstarsie objekty.
+13. Algoritmus presunu objektov do generacii vysleda nasledovne.
+   A. Program sa pokusi o alkoaciu pamate.
+   B. Ak sa neprekrocil limit pre velkost GENERATION 0, objekt sa alokuje na GENERATION 0.
+   C. Inak sa spusti GC na GENERATION 0. Vsetky objekty, ktore GC prezili sa presunu do GENERATION 1.
+   D. Ak sa prekrocil limit pre velkost GENERATION 1, spusti sa GC na GENERATION 1. Vsetky objekty, ktore GC prezili sa presunu do GENERATION 2.
+   E. Ak sa prekrocil limit pre velkost GENERATION 2, spusti sa GC na GENERATION 2. Ak aj po GC je limit pre GENERATION 2 PREKROCENY, tak sa ALOKUJE NOVY SEGMENT pre objekty v GENERATION 2, do ktorej sa presunaju objekty z GENERATION 1, ktore prezili GC.
+   F. GENERATION 2 sa naplna az pokym nie je prekrocena maximalna kapacita pamate, kedy dochadza k hodeniu OutOfMemoryException.
+!!! 14. Teda k presunu z jednej do druhej GENERATION dochadza VTEDY, ked objekt PREZIJE v DANEJ GENERATION proces GC.
+15. Proces GC je mozne vyvolat nasledujucimi operaciami.
+   A. Poziadavkou na alokaciu pamate. Vtedy su kontrolovane LIMITY pre jednotlive GENERACIE a ak SU TIETO PRESIAHNUTE tak pre prislusne generacie je spusteny proces GC.
+   B. Volanim GC.Collect().
+   C. Ak je vysoky narok na pamat v ramci celeho OS, vtedy .NET moze spustit GC na odlahcenie pamatovych narokov na Windows.
+!!! 16. GENERATION su v pamati ukladane ZA SEBOU. Ako prva je GENERATION 2, za nou nasleduje GENERATION 1 a napokon GENERATION 0. Kazda GENERATION ma START ADDRESS, ktoru mozem ziskat prikazom '!eeheap -gc'. Porovnanim adresy objektu a startovacej adresy GENERATION mozem zistit do ktorej GENERATION dany objekt patri.
+   A. Ak je adresa v intervale <Generation_2_StartAddress,Generation_1_StartAddress), tak objekt patri do GENERATION 2.
+   B. Ak je adresa v intervale <Generation_1_StartAddress,Generation_0_StartAddress), tak objekt patri do GENERATION 1.
+   C. Ak je adresa >= ako Generation_0_StartAddress, tak objekt patri do GENERATION 0.
+!!!!! 17. Volanie GC.Collect() NARUSA optimalizovane algoritmy GC a znizuje ich efektivnost. Preto by sa v praxi NIKDY NEMAL VOLAT.
+!!!!! 18. Objekt moze byt odstraneny cez GC iba ked nan neexistuje ziaden odkaz. .NET vsak NEIMPLEMENTUJE specialny algoritmus, ktory by sledoval, ktory objekt uz nie je referovany. Namiesto toho vyuziva rozlicne INTERNE MECHANIZMY, ktore dokazu detekovat ci dany objekt je referovany, alebo nie je.
+    A. JIT kompiler. Interne si drzi informacie o tom, ci lokalny objekt je aktivny, alebo je uz OUT-OF-SCOPE. Tieto informacie si uklada JIT do tabuliek a GC ich vyuziva pri zistovani ci dany objekt moze byt odstraneny.
+	B. Stack Walker. Pouziva sa v pripade, ze sa vykonal UNMANAGED CALL. Vtedy objekt pokial je v IN-SCOPE, nesmie byt predmetom GC.
+	C. Handle Table. Drzi informacie napriklad o PINNED POINTERS a tom ci su platne.
+	D. Finalize Queue. Je tabulka objektov, ktore maju byt FINALIZED. Tieto objekty sice z pohladu programu su uz neaktivne, no kedze este je treba vykonat finalizaciu, tak ich nie je mozne odstranit z pamate.
+!!! 19. V RELEASE verzii moze objekt stratit platnost AJ KED je este IN-SCOPE, ale UZ SA NEPOUZIVA v danom SCOPE (metode). V DEBUG verzii VZDY ked je objekt IN-SCOPE, tak je PLATNY.
+20. Objekty, ktore napriklad pouziivaju UNMANAGED RESOURCES, ktore MUSIA BYT UVOLNENE, ked sa skonci s nimi praca, aby nedoslo k RESOURCE LEAKS potrebuju nejaky mechanizmus podobny C++ DESTRUCTORS, ktory by umoznoval UNMANAGED RESOURCE ODSTRANIT. CLR postkytuje dve sposoby ako to urobit.
+    A. Finalizer. Je specialna metoda (v C# ma syntax ~ClassName()), ktora je volana z CLR a ktorej kod by mal obsahovat uvolnenie UMANAGED RESOURCE. Finalizer je volany NEDETERMINISTICKY THREADOM, ktory CLR nato DEDIKUJE. FINALIZER je teda volany z DEDIKOVANEHO THREADU a presny cas jeho volania je NEDETERMINISTICKY.
+	B. Implementacia IDisposable.Dispose(). Implementacia metody Dispose() umoznuje DETERMINISTICKE uvolnenie UNAMAGED RESOURCE. Metodu Dispose() MUSI VOLAT EXPLICITNE PROGRAM, teda kod, ktory triedu implementujucu IDisposable.Dispose() pouziva. To vedie k tomu, ze volanie Dispose() a tym padom aj UVOLNENIE UNAMANGED RESOURCES je DETERMINISTICKE a udeje sa EXPLICITNE pocas volania Dispose() z kodu programu. Programator ma teda plnu kontrolu nad tym, kedy sa UNAMANGED RESOURCE uvolni. Dispose() je ANALOGIOU C++ DESTRUCTOR.
+!!! 21. Algoritmus volania FINALIZERS a uvolnovania objektov implementujucich FINALIZER.
+   A. Kazdy vytvoreny objekt, ktory ma implementovany FINALIZER je HNED PRI VYTVORENI zaradeny do Finalization Queue.
+   B. GC, ked je spusteny, tak odstrani vsetky ROOT-LESS objekty, ktore NEMAJU FINALIZER, avsak objekty, ktore MAJU FINALIZER a su ROOT-LESS (nie je na nich z programu ziaden odkaz a teda mozu byt odstranene) su PRESUNUTE z FINALIZATION QUEUE do F-REACHABLE QUEUE, ale fyzicky este NIE SU ODSTRANENE z PAMATE.
+   C. V NEDETERMINISTICKOM CASE je spusteny FINALIZER THREAD, ktory na KAZDOM OBJEKTE z F-REACHABLE QUEUE spusti FINALIZER. Po ich spusteni (ak nedoslo k RESURECTION), je objekt implementujuci FINALIZER (ktory uz bol volany) oznaceny za GARBAGE.
+   D. Dalsie spustenie GC objekty ktore implementuju FINALIZER, ktory UZ BOL VOLANY su ODSTRANENE z PAMATE.
+!!! 22. Pomocou prikazu '~*kn' som schopny vypisat STACK TRACES VSETKYCH THREADS. To by mal byt nastroj ako zisti, ktory thread je FINALIZER, pretoze takyto thread by v CALL STACK mal mat metody WaitForFinalizerEvent() a FinalizerThreadWorker(). Nato, aby tieto metody bolo mozne najst je potrebne pouzit '.symfix' a '.reload'. Sposob ako je mozne nastavit BREAKPOINT na FINALIZER METHOD vyzera nasledovne.
+   A. Spustim prikazy '.symfix', 'reload' a 'loadby sos clr'.
+   B. Prikazom '~*kn' vypisem CALL STACK pre VSETKY THREADS.
+   C. Najdem adresu metody 'clr!WKS::WaitForFinalizerEvent' a pomocou prikazu 'bp' nan nastavim breakpoint.
+   D. Po spusteni FINALIZATION je breakpoint vyvolany a pomocou prikazu '!FinalizeQueue' mozem zistit ktore objekty su v F-REACHABLE QUEUE a pomocou '!do' ich vypisat.
+!!!!! 23. Objekt implementujuci FINALIZER tym, ze musi byt na 2 krat vyradeny cez GC (pri prvom GC je premiestneny do F-REACHABLE QUEUE a az pri dalsom GC je vymazany z pamate) je obsluha FINALIZER objektov DALEKO NAROCNEJSIA ako beznych objektov. Objekt implementujuci FINALIZER je VZDY UVOLNENIE NAJSKOR v GENERATION 1.
+24. GC uvolnuje nepouzivanu pamat. Sposob ako to robi zavisi od GENERATION a TYPU HEAP.
+   A. Pre SMALL OBJECTS HEAP a to v LUBOVOLNEJ GENERATION (GENERATION 0, GENERATION 1, GENERATION 2) sa vykonava pocas GC i COMPACT MEMORY. Teda do uvolenenych casti pamate sa presuvaju aktivne objekty a uvolnena pamat sa hromadi na kocni HEAP. To vsak pri niektorych strategiach alokacie pamate vedie k CASTEMU ALOKOVANIU a DEALOKOVANIU SEGMENTOV z VIRTUAL MEMORY a tym padom aj castemu volaniu relativne pomalych API VirtualAlloc() a VirtualFree(). Preto v .NET bola implementovana specializovana stretegia, ktora volny segment NEUVOLNI, ale iba ho oznaci ako za prazdny segmment, ktory ak je znova treba viac pamate, je pouzity, bez toho aby bol fyzicky uvolneny. Tent mod si vsak CLR HOST musi EXPLICITNE VYZIADAT.
+   B. Pre LARGE OBJECTS HEAP sa NEROBI COMPACT MEMORY a pamat sa fyzicky uvolnuje AZ KYM CELY SEGMENT v LOH NIE JE VOLNY.
+25. Do Large Object Heap (LOH) su ukladane objekty, ktore su >= 85 000 bytes. Vynimnkou tvoria SYSTEMOVE OBJEKTY GC, ktore sa pouzivaju na funkcionalitu GC a tieto mozu byt v LOH, aj ked maju MENEJ ako 85 000 bytes.
+!!! 26. LOH ma odlisny management  pamate, ako Small Object Heap.
+   A. LOH je ROZSIRENIE GENERATION 2 a prikazom '!eeheap -gc' je mozne ziskat jej startovaciu adresu.
+   B. Nad LOH nerobi GC MEMORY COMPACTION, kedze vzhladom na velkost objektov by to bolo neefektivne.
+   C. Uvolneny blok pamate je ulozeny do zoznamu volnych blokov pamate z ktorej sa moze neskor pridelit pamat dalsiemu objektu.
+   D. LOH nevykonava MEMORY COMPACTION, avsak ak sa 2 volne bloky pamate nachadzaju vedla seba, tak v zozname volnych blokov pamate sa tieto dva bloky zlucia do jedneho.
+27. Zobrazit zoznam objektov patriacich do LOH je mozne dvoma sposobmi.
+   A. Prikaz '!DumpHeap -min 85000' zobrazi vsetky objekty >= 85 000 bytes a teda tie, ktore patria do LOH.
+   B. Prikaz '!DumpHeap -startAtLowerBound [LOHAddress]' zobrazi vsetky objekty na LOH, pricom za LOHAddress je treba dat zaciatocnu adresu LOH, ktoru je mozne ziskat prikazom '!eeheap -gc'.
+28. Kedze v SMALL OBJECT HEAPS (GENERATION 0, GENERATION 1 a GENERATION 2) sa po spusteni robi MEMORY COMPACTION, to vedie k PREMIESTNOVANIU OBJEKTOV v PAMATI. To znamena, ze objekty menia svoju poziciu a tym padom sa zmeni i ich adresa. Pri pouzivani .NET to nevadi, ale ak volam API volania cez P/Invoke, alebo COM, tak musim ma PEVNU POZICIU OBJEKTU. To sa robi dvoma sposobmi.
+   A. Pouzitim klucoveho slova 'fixed' v C#.
+   B. Volanim metody GCHandle.Alloc(object,GCHandleType.Pinned).
+!!! 29. PINNED objekt NEMENI SVOJU POZICIU v pamati, co na jednej strane umoznuje bezpecne volanie NATIVE API FUNKCII, avsak na druhej strane ZNEMOZNUJE efektivny MEMORY COMPACTION. Preto tuto techniku je potrebne pouzivat iba ak je to nevyhnutne.
+!!! 30. Objekty v LOH NEMENIA SVOJU POZICIU a TEORETICKY by NEMUSELI BYT PINNED, ani ked sa pouzivaju na volanie NATIVE API. Avsak v praxi by tieto objekty mali byt VZDY PINNED. Dovodom je moznost zmeny vnutornej implementacie LOH v buducnosti, kedy by sa objekty na LOH mohli presuvat, vysledkom coho by bol chybny program.
+31. To ci je dany objekt PINNED je mozne zistit prikazmi '!GCHandles', ktory vypisuje vsetky udaje z HANDLE tabulky, kam patria i PINNED OBJEKTY. Prikazom '!ObjSize' je mozne ziskat informacie o tom, ktory objekt je PINNED.
+!!! 32. HEAP CORRUPTION moze byt sposobena rozlicnymi sposobmi. Najcastejsim je pouzitie nealokovanej, alebo uvolnenej pamate, ci nasmerovanie smernika na nealokovanu pamat ci pretecenie HEAP. CLR nastastie prakticky vsetky chyby riesi bud pomocou GC (nemam pristup k POINTERS), alebo hodenim EXCEPTION, ked je HEAP naplneny.
+!!!!! 33. K HEAP CORRUPTION dochadza prakticky IBA pri praci s NATIVE KODOM (COM, resp. P/Invoke). Ak pri pouziva IBA MANAGED kodu dojde k HEAP CORRUPTION, tak je to prakticky znamena CHYBU samotneho CLR.
+34. Detekcia HEAP CORRUPTION je komplikovana, pretoze k chybe (nekorektnemu prepisu HEAP) dochadza casto OVELA SKOR ako sa chyba prejavi tym, ze CLR hodi AccessViolationException. Na detekovanie skutocnej priciny chyby je mozne pouzit niektore techniky a tipy, ktore mozu blizsie identifikovat povodcu chyby.
+   A. Prikazom '!VerifyHeap' mozem skontrolovat ci HEAP nie je CORRUPTED. Ak prikaz najde CORRUPTION vypise adresu objektu, ktory je CORRUPTED, ako aj adresu POSLEDNEHO KOREKTNEHO OBJEKTU.
+   B. Velmi VHODNOU TECHNIKOU je preskumat POSLEDNY KOREKTNY OBJEKT, ktory ziskam z volania '!VerifyHeap'. Velkost tohto objektu mozem ziskat volanim '!ObjSize [Address]'.
+   C. Preskumanim okolia pamate CORRUPTED objektu je mozne ziskat dodatocne informacie, co sposobilo zlyhanie programu.
+   D. Prikaz '!VerifyHeap' vypisuje aj zoznam objektov, ktore maju svojej MEMBER referovane do tej casti HEAP, ktora je CORRUPTED. Analyzou tychto objektov znova mozem ziskat dalsie informacie o tom co mohlo byt pricinou HEAP CORRUPTION.
+   E. Prikaz '!ListNearObj [Address]' urobi analyzu objektu na adrese Address ako aj PREDCHADZAJUCEHO a NASLEDUJUCEHO objektu na HEAP.
+   !!! F. V konecnom dosledku je potrebne vykonat CODE INSPECTION, na konecnu identifikaciu problemu.
+!!! 35. Prikaz '!VerifyHeap' moze pocas BEHU GC generovat NESPRAVNE VYSLEDKY, kedy vypise HEAP CORRUPTION, aj ked v skutocnosti HEAP je OK. Jednou z moznosti ako to obist je ZAPNUT KONTORLU HEAP PRED a PO spusteni GC, nastavenim ENVIRNOMENTAL VARIABLE 'COMPLUS_HeapVerify=1'. To samozrejme by nemalo byt pouzite v produkcnom prostredi, kde by to znizovalo vykon systemu.
+!!!!! 36. EXTREMNE DOLEZITOU pomockou pri hladani HEAP CORRUPTION je MDA '<gcUnmanagedToManaged />'. Tento MDA sposobuje, ze PO KAZDOM SKONCENI NATIVE CALL je vyvolany GC. To umoznuje prakticky OKAMZITE po OPUSTENI NATIVE CALL zistit, ci NATIVE CALL nesposobil HEAP CORRUPTION. To je OBROVSKY ROZDIEL oproti situacii, ked tento MDA nepouzijem, kde sa HEAP CORRUPTION sposobena NATIVE CALL moze objavit az DALEKO NESKOR pri vykonavani kodu a potom je zistenie priciny, ktora sposobila HEAP CORRUPTION DALEKO NAROCNEJSIE. Sposob pouzitia MDA je nasledovny.
+   A. Zapnem MDA pre dany prorgam vytvorenim suboru ProgramName.exe.mda.config, ktory obsahuje MDA typu '<gcUnmanagedToManaged />'.
+   B. Debuggujem program v NTSD.exe, alebo WinDbg.EXE.
+   C. Pri zapnutom MDA, je po KAZDOM UKONCENI NATIVE CALL spusteni GC a ten ZISTI ci NEDOSLO k HEAP CORRUPTION. Ak ano, tak program je PRERUSENY EXCEPTION AccessViolationException.
+   D. Pomocou prikazu '!ClrStack' je potom mozne vypisat MANAGED CALL STACK a vdaka nemu POLAHKY ZISTIT, ktory NATIVE CALL z .NET sposobil HEAP CORRUPTION.
+!!! 37. HEAP FRAGMENTATION je vdaka AUTOMATICKEJ MEMORY COMPACTION nad VSETKYMI GENERATIONS velmi malo pravdepodobny, avsak pri istych sposboch alokacie mozny. Problemy nastavaju napriklad pri tychto pripadoch.
+   A. Pouzitie PINNED memory. PINNED bloky maju nasledok, ze GC ich nemoze presuvat (nerobi nad nimi MEMORY COMPACTION) a tym padom moze vznikat HEAP FRAGMENTATION.
+   B. Alokacia blokov v LOH. (Bloky pamate nad 85000 bytes.) Na LOH sa NEROBI MEMORY COMPACTION a preto moze byt zdrojom HEAP FRAGMENTATION.
+38. HEAP FRAGMENTATION je mozne detekovat niekolkymi sposobmi.
+   A. Prikaz '!DumpHeap -stat' umoznuje STATISTICKY zoznam TYPOV objektov a mnozstvo pamate, ktore jednotlive objekty zaberaju.
+   B. Prikaz '!HeapStat' je mozne vypisat statistiku danych HEAPS podla generacii.
+   C. Prikaz 'eeheap -gc'vypisuje podrobnosti o HEAP.
+   D. Prikaz '!DumpHeap -type Free' umoznuje zobrazovat vsetky volne bloky.
+   E. Prikaz '!DumpHeap' umoznuje vypisat zoznam VSETKYCH objektov a mnozstvo pamate, ktore jednotlive objekty zaberaju. Je VELMI VHODNY pri hladani HEAP FRAGMENTATION, pretoze je mozne zistit, ktore bloky pamate su zaplnene a ktore prazdne a na zaklade toho zistit, co sposobuje fragmentaciu (vdaka PINNING, alebo LOH).
+   !!! F. Prikaz '!GCHandles' umoznuje zistit KOLKO OBJEKTOV je PINNED. To moze viest k odhaleniu kolko objektov sposobuje HEAP FRAGMENTATION.
+   G. Poslednym krokom je revizia kodu a najdenie objektov, ktore sposobuju HEAP FRAGMENTATION.
+39. Na identifikaciu MEMORY LEAKS veducim k OutOfMemoryException je mozne pouzit viacero nastrojov.
+   A. Task Manager ma stlpec 'Commited Size' urcujuci kolko PAMATE (ci uz RAM, alebo z PAGE FILE) bolo alokovanej. Jej neustaly narast moze znamenat MEMORY LEAK.
+   B. Velmi uzitocnym nastrojom je Windows Reliablity and Performace Monitor (PerfMon.exe), poskytujuci mnozstvo PERFORMANCE COUNTER, ktorymi je mozne zistit, ktora typ pamate vedie k MEMORY LEAKS.
+!!!!! 40. Pri vyskyte OutOfMemoryException, ked program uz SPADOL, sa nedaju pouzit ani Task Manager, ani Windows Reliablity and Performace Monitor. Riesenim je zistenie podporbnosti o EXCEPTION pomocou prikazu '!PrintException [Address]' a nasledne pomocou debuggeru skusit analyzu pricin. Problem je akurat v tom, ze ak to mam spustene v DEBUGGER a ohromne mnozstvo pamate je stale alokovane, nemusim mat pamat ani na vykonanie WinDbg prikazov.
+41. V kluci HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\.NETFramework\ moze byt nastavena DWORD hodnota 'GCBreakOnOOM', ktora urcuje ako sa bude CLR spravat pri vyskyte OutOfMemoryException. Zmena tohto nastavenia ma zmysel ak by napriklad program generujuci OutOfMemoryException pohlcoval tuto EXCEPTION, tak CLR uz pri jej 1. vyskyte vykona prislusnu akciu podla hodnoty tohto parametru.
+   A. Hodnota 1 - zapise sa EVENT LOG.
+   B. Hodnota 2 - okamzite sa spusti DEBUGGER.
+   C. Hodnota 4 - zapise sa podrobnejsi EVENT LOG aj s memory statistikou.
+//-------------------------------------------------------------------------------------------------------
+Alokacia velkych poli
+
+1. V .NET ak dam alokovane velke pole (vacsie ako PAGE SIZE) - povedzme 1 GB, tak v skutocnosti pamate pre sice je COMMITED, ale iba v PAGE FILE. Ziadnu RAM PAMAT taketo pole NEZABERA.
+!!! 2. To vedie k tomu, ze ak napriklad v Task Manager pozriem na velkost pamate, tak v stlpci 'Commit Size' budem mat 1 GB COMMITED MEMORY, aj ked stlpec 'Working Set' bude obsahovat iba povedzme par MB.
+!!! 3. V .NET totizto plati, ze BUNKAM POLA sa rezervuje pamat AZ po PRVOM READ/WRITE do MEMORY PAGE v ktorej sa BUNKA NACHADZA. Az pri prvom pristupe do tejto MEMORY PAGE sa SKUTOCNE ALOKUJE cela PAGE RAM PAMATE.
+!!!!! 4. Ak chcem aby pole o velkosti 1 GB bolo OKAMZITE v RAM, je treba pristupit ku KAZDEMU N-temu zaznamu (kde N je PAGE SIZE - standardne 4096 bytes) a citat z neho, alebo do zapisat. V tomto pripade, kedze pristupim ku KAZDEJ PAGE, vsetky PAGES su OKAMZITE ALOKOVANE na RAM.
+//-------------------------------------------------------------------------------------------------------
+Prikazy pre SOS, SOSEX a WinDbg
+
+1. Prikaz '!Address [Address]' umoznuje zistit informacie o segmente pamate na adrese Address. Pomocou tohto prikazu mozem zistit ci dana pamat je alokovana, commited a podobne.
+2. Prikaz '!DumpHeap' umoznuje vypisat obsah CLR HEAPS. Parameter '-mt [MethodTable]' umoznuje obmedzit vystup prikazu iba na TYPE definovane jeho MethodTable. Parameter '-typ [TypeName]' umoznuje obmedzit vystup iba na type s menom TypeName.
+3. Prikaz '!eeheap -gc' umoznuje vypisat informacie o GENERACIACH, najma adresy od ktorych jednotlive generacie zacinaju a takisto i POZICIU LOH.
+!!! 4. Prikaz '!dumpgen [NumberOfGeneration]' umoznuje vypisat vsetky objekty v danej GENERATION. Prikaz je sucastou SOSEX.
+5. Prikaz '!gcroot [Address]' vypisuje vsetky ROOTS, k danemu objektu. Ak taky ROOT existuje, tak objekt je aktivny a nemoze byt predmetom GC.
+6. Prikaz '!FinalizeQueue' vypisuje obsah jednotlivych FINALIZATION QUEUES, vratene infromacie o tom ake typy objektov obsahuje a startovacej adresy, kde dana FINALIZATION QUEUE je ulozena v pamati. Vdaka tejto adrese mozem vykonat DUMP FINALIZATION QUEUE a zistit ake objekty sa v nej nachadzaju.
+7. Prikaz '~*kn' umoznuje vypisat STACK TRACES VSETKYCH THREADS.
+8. Prikaz '!VerifyObj [Address]' skontroluje ci objekt nie je CORRUPTED pomocou sofistikovanych algoritmov. Ak je, tak vypise pricinu CORRUPTION.
+9. Prikaz '!DumpHeap -startAtLowerBound [LOHAddress]' zobrazi vsetky objekty na LOH, pricom za LOHAddress je treba dat zaciatocnu adresu LOH, ktoru je mozne ziskat prikazom '!eeheap -gc'.
+10. Prikazom '!ObjSize' je okrem dlzky objektu mozne ziskat i informaciu o tom, ktory objekt je PINNED.
+11. Prikaz '!GCHandles' vypisuje obsah HANDLES tabulky, ktora obsahuje ROZLICNE HANDLES (Strong, Weak, Pinned) a pomocou nej zistit kolko objektov je napriklad PINNED.
+!!! 12. Prikaz '!VerifyHeap' kontroluje CELU HEAP a zistuje ci v nej nedoslo ku HEAP CORRUPTION. Ak ano, tak vypise na ktorej adrese a akemu typu corruption doslo a adresu posledneho NE-CORRUPTED objektu.
+!!! 13. Prikaz '!FindRoots -gen any' nastavuje BREAKPOINT, ktory sa vyvola, ked sa NAJBLIZSIE SPUSTI GC.
+!!! 14. Prikaz '!FindRoots [Address]' vypise ROOTS k objektu na adrese Address. Tento prikaz je vsak mozne vola IBA v BREAKPOINT, ktory vznikol prikazom '!FindRoots -gen any'. Inak tato verzia prikazu '!FindRoots' NEFUNGUJE.
+15. Prikaz '!HeapStat' umoznuje vypisat statistiku o to kolko pamate zaberaju jednotlive GENERATION HEAPS, vratane LOH a mnozstvo volnej pamate, ktoru jednotlive HEAPS maju. Moze sluzit pri zisteni HEAP FRAGMENTATION.
+16. Prikaz '!GCWhere [Address]' umoznuje zistit v ktorej GENERATION sa objekt na adrese Address nachadza.
+17. Prikaz '!ListNearObj [Address]' urobi analyzu objektu na adrese Address ako aj PREDCHADZAJUCEHO a NASLEDUJUCEHO objektu na HEAP. Da sa pouzit pri analyze HEAP CORRUPTION.
+18. Prikaz '!AnalyzeOOM' vykona analyzu pricin, ktore viedli k vzniku OutOfMemoryException, vratane poctu spusteni GC po ktorych sa OutOfMemoryException stala.
+19. Prikaz '!eeheap -loader' vypise informacie a velkost LOADER HEAP.
+20. Prikaz '!PrintException [Address]' vypisuje podrobnosti o EXCEPTION na adrese Address.
+//-------------------------------------------------------------------------------------------------------

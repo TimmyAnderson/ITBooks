@@ -1,0 +1,48 @@
+﻿//-------------------------------------------------------------------------------------------------------
+1. Program demonstruje moznosti debuggovania programu, ktory spadol, pomocou vytvorenia DUMP suborov, ktore su debuggovane.
+2. Post-mortem debugging znamena vykonanie nasledujucich krokov.
+   A. Zachytenie udalosti, ked dochadza k chybe v programe.
+   B. Vygenerovanie DUMP suboru s informaciou o stave programu.
+   C. Analyza DUMP suboru na pocitaci, kde je rozbehany debugger. Analyza znamena preskumanie STAVU. NIE JE samozrejme MOZNE STEPPING cez kod, alebo nastavovanie BREAKPOINTS.
+!!!!! 3. DUMP FILE je STATICKY STAV PROGRAMU a preto NIE JE MOZNE SPUSTIT VYKONAVANIE PROGRAMU z DUMP FILE. Je mozne iba preskumat jeho stav.m,ki89
+4. Dump files existuju v dvoch verziach.
+   A. Full dump - je NEKONFIGUROVATLNY dump, ktory obsahuje rozsiahle mnozstvo udajov potrebnych na debugging.
+   B. Mini dump - je KONFIGUROVATELNY, kde mozem definovat ake informacie maju byt v DUMP ulozene.
+5. Dump subor je mozne generovat viacerymi nastrojmi.
+   A. Windows debuggers - podporuju pomocou prikazu '.dump' generovanie ako FULL, tak i MINI DUMP.
+   B. ADPlus - sucast Debugging Tools for Windows, umoznuje monitoring procesov a automaticke generovanie pri pade niektoreho z procesov.
+   C. Windows Error Reporting - platforma umoznujuca odosielat DUMPS na Microsoft servery.
+!!! 6. To aky prikaz sa vykona pri pade programu urcuju REGISTRY KEYS v ceste [HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows NT\CurrentVersion\AeDebug].
+   A. Value 'Auto' typu string urcuje ci sa ma akcia ulozena v 'Debugger' vykonat AUTOMATICKY (1), alebo AZ PO ZOBRAZENI DIALOGOVEHO OKNA a stlaceni tlacitka Debug.
+   B. Value 'Debugger' obsahuje akciu, ktora sa vykona (zvycajne spustenie debuggera) pri pade programu.
+!!! 7. Hodnota [HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows NT\CurrentVersion\AeDebug\Debugger] je mozne zmenit pomocou prikazoveho riadku prislusneho debugger a tym zmenit debugger, ktory sa zavola pri pade programu.
+   A. 'WinDbg -I' - nastavi WinDbg ako POST-MORTEM debugger.
+   B. 'cdb -iae' - nastavi CDB ako POST-MORTEM debugger.
+   C. 'ntsd -iae' - nastavi NTSD ako POST-MORTEM debugger.
+!!! 8. V .NET 3.5. a nizsie boli definovane aj dalsie registry keys (DbgJITDebugLaunchSetting a DbgManagedDebugger v HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\.NETFramework), ktore urcovali ako sa ma DEBUGGOVAT .NET aplikacia. V .NET 4.0. vsak doslo k ZJEDNOTENIU REGISTRY KEYS 'AeDebug' a 'DbgManagedDebugger' a to tak, ze sa pouziva UZ IBA 'AeDebug' na urcenie kedy spustit JIT debugger.
+!!!!! 9. Ak chcem pri PADE PROGRAMU AUTOMATICKY GENEROVAT DUMP, musim v REGISTRY '[HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows NT\CurrentVersion\AeDebug\Debugger]' nastavit hodnotu Debugger, tak aby v PRIKAZOVOM RIADKU SPUSTIL GENEROVANIE DUMP FILE. Pre NTSD je to prikaz 'ntsd –pv –p %ld –c ".dump /u /ma [PathToDumpFile]; .kill; qd"'.
+!!!!! 10. Priklad nastavenia generujuceho POST MORTEM DUMP: '"C:\Program Files\Debugging Tools for Windows (x64)\ntsd.exe" –pv –p %ld –c ".dump /u /ma c:\!Dumps\CrashDump; .kill; qd"'.
+!!! 11. ADPlus (ADPlus.exe) je aplikacia (kedysi skript) zjednodusujuca generovanie DUMPS v pripade padu programu, alebo ked sa proces dostane do HANG stavu. ADPlus musi byt spustany v zavislosti od toho co chcem monitorovat.
+   A. Ak chcem monitorovat HANG programu (vytazenie procesora na 100 percent, alebo program ostane visiet na nejakej instrukcii) je potrebne spustit ADPlus AZ POTOM CO DOSLO k HANG daneho procesu.
+   B. Ak chcem generovat DUMPS pri pade programu je ADPlus nutne spustit AZ PO SPUSTENI PROGRAMU, ale ESTE PREDTYM AKO PADNE. Priklad pouzitia ADPlus v tomto pripade: 'ADPlus.exe -crash -pn SimpleException.exe -o c:\!Dumps\', kde SimpleException.exe je program pri pade ktoreho chcem generovat DUMP.
+!!! 12. Pri vykonavani POST-MORTEM debugging musim zabezpeci, aby na DEBUG pocitaci boli splnene nasledujuce poziadavky.
+   A. Dostupnost SYMBOLS, pretoze DUMP FILES ich NEOBSAHUJU. Samozrejme mozem pouzit SYMBOLS z Microsoft Symbol Servers.
+   B. Rovnaka verzia DATA ACCESS LAYER (mscordacwks.dll) aku pouzival CRASHED program. Verziu mozem nastavit manualne prikazom '.cordll'. DATA ACCESS LAYER (mscordacwks.dll) pouziva SOS na pri realizacii svojich prikazov.
+13. Windows Error Reporting umoznuje zasielat DUMP o pade programu na servre Microsoftu, na ktore sa moze vyrobca SW pripojit a DUMP stiahnut, analyzovat a v pripade objavenia chyby zaslat i opravu, ktora sa pri dalsom pade ponukne pouzivatelovi na instalaciu. WER funguje nasledujucim sposobom.
+   A. Ked program spadne, pouzivatelovi sa zobrazi dialogove okno s moznostou odoslania DUMP informacii na server Microsoftu.
+   B. Po stlaceni tlacitka Send je DUMP cez HTTPS odoslany na servre Microsoftu, kde je DUMP kategorizovany do BUCKETS podla typu chyby, vyrobcu SW a podobne.
+   C. Vyrobca SW ak je zaregistrovany si moze pravidelne stahovat DUMPS z padov svojho SW a analyzovat ich.
+   D. V pripade, ze vyrobca SW opravi chybu, moze ju zverejnit na serveroch Microsoftu. Pri dalsom vyskyte chyby a pripojeni sa na WER, sluzba poskytne informaciu ako problem odstranit.
+!!!!! 14. WER je SPOPLATNENA SLUZBA. Vyrobca SW sa musi zaregistrovat, zadat kreditnu kartu. Realne je vsak IBA ISTA CAST OPERACII nad WER SPOPLATNENA. OSTATNE su ZDARMA.
+!!! 15. WER obsahuje aj Web Service API umoznujuce napisat si program, ktory bude monitorovat ci sa vo WER nenachadza DUMP padnudeho programu a ak ano, je ho mozne stiahnut na dalsiu analyzu. Vdaka tejto API je mozne automatizovat monitoring WER.
+//-------------------------------------------------------------------------------------------------------
+Prikazy pre SOS, SOSEX a WinDbg
+
+1. Prikaz '.dump /f [FileName.dump]' generuje FULL DUMP do suboru FileName.dump.
+2. Prikaz '.dump /m[Options] [FileName.dump]' generuje MINI DUMP do suboru FileName.dump. Za Options je mozne nastavit mnozstvo priznakov urcujucich co bdue MINI DUMP obsahovat. Option 'a' obsahuje VSETKY OPTIONS a tym padom generuje FULL DUMP.
+3. Prikaz 'ntsd -z [FileName.dump]' nacita FileName.dump a umozni jeho debugging.
+4. Prikaz '.ecxr' vypise z DUMP FILE exeption, ktora sposobila pad programu.
+!!!!! 5. Prikaz 'ntsd –pv –p %ld –c ".dump /u /ma [PathToDumpFile]; .kill; qd"' ulozeny do 'Debugger' value v [HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows NT\CurrentVersion\AeDebug\Debugger] sposobi AUTOMATICKE GENEROVANIE DUMP suboru pre POST-MORTEM debugging.
+6. Prikaz 'ADPlus.exe -crash -pn [ApplicationName.exe] -o [PathToStoreDumps]' spusti ADPlus na monitoring UZ PREDTYM SPUSTENEHO programu [ApplicationName.exe] a v pripade jeho padu generuje DUMPS do adresara [PathToStoreDumps].
+7. Prikaz '.cordll [Switches]' umoznuje nastavit aka verzia mscordacwks.dll sa pocas DEBUG SESSION bude pouzivat, ako aj viacero dalsich nastaveni.
+//-------------------------------------------------------------------------------------------------------

@@ -1,0 +1,38 @@
+﻿//-------------------------------------------------------------------------------------------------------
+1. Solution demonstruje rozlicne TOOLS, ktore je mozne pouzit pre efektivny debugging.
+2. PowerDbg je SKRIPT, ktory umoznuje vyuzivat NATIVE DEBUGGERs spolu s PowerShell.
+3. PowerDbg vyzaduje pre sovju cinnost minimalne Power Shell 2.0..
+4. PowerDbg umoznuje zasielat cez PowerShell prikazy do DEBUGGERA a parsovat ich vystup, ktory nasledne moze byt spracovany cez prikazy PowerShell. Vysledkom moze byt napriklad prehladnejsi vypis vystupu prikazov debuggera, alebo moznost CUSTOM SPRACOVANIA VYSLEDKOV PRIKAZOV DEBUGGERA.
+!!! 5. PowerDbg ma VELKE MOZNOSTI ROZSIRENIA vdaka comu mozem BEZNE DEBUGGING TASKS AUTOMATIZOVAT pouzitim prikazov PowerShell.
+6. Visual Studio umoznuje integrovat SOS s VS debuggerom. Na jeho integraciu je potrebne vykonat nasledovne kroky.
+   !!! A. Projekt MUSI BYT PREKOMPILOVANY pre x86. VS je x86 program a NEPODPORUJE nacitanie SOS pre x64 architekturu. Teda SOS vo VS je mozne pouzivat IBA PRE x86 programy.
+   B. V nastaveni projektu je treba povolit option Debug->Enable unmanaged code debugging.
+   C. Spustit Immediate Window a napisat v nom '.load sos'.
+   D. Po nacitani SOS je mozne vyuzivat jeho prikazy, tak ako vo WinDbg ci NTSD.
+!!! 7. Visual Studio umoznuje vykonat SOURCE DEBUGGING nad SOURCE CODES samotneho .NET. MS zverejnil niektore kniznice .NET vo forme SOURCE CODES a tieto do metod tried tychto kniznic sa je mozne vnorit a vykonat klasicky debugging na source codes. VS je vsak nutne nakonfigurovat nasledujucim sposobom.
+   A. V Tools->Options->General je nutne ODSKRTNUT volbu 'Enable Just My Code'.
+   B. V Tools->Options->General je nutne ZASKRTNUT volbu 'Enable source server support'.
+   C. V Tools->Options->Symbols->Symbol file (.pdb) locations je nutne pridat cestu 'http://referencesource.microsoft.com/symbols'.
+   D. V Tools->Options->Symbols->Cache symbols in this directory je treba nastavit cestu, kde sa budu ukladat CACHED SOURCE SUBORY, ktore sa dynamicky stahuju zo serverov MS.
+   E. Nasledne mozem nastavit BREAKPOINT na nejaku metodu .NET kodu a VOJST do NEJ stlacenim F11.
+!!!!! 8. VS 2010 podporuje POST-MORTEM debugging pre programy v .NET 4.0.. Nato aby som mohol DUMP debuggovat je potrebne vykonat nasledujuce operacie.
+   A. FULL DUMP je mozne vygenerovat bud pomocou Task Manager, alebo cez NTSD prikazom: .dump /ma [FileName.DMP]'.
+   !!!!! B. FileName generovaneho DUMP suboru MUSI MAT PRIPONU '.DMP'. Ak je tam INA PRIPONA, tak VS tento subor NEROZOZNA ako DUMP SUBOR.
+   C. Vytvoreny DUMP subor je mozne otvorit pomocou File->Open->File.
+   D. Po otvreni suboru (musi mat koncovku .DMP) je mozne spustit DEBUGGER, ktory zobrazi stav, ked bol DUMP vygenerovany a nasledne je mozne zistit stav programu.
+!!!!! 9. VS 2010, ale IBA ULTIMATE EDITION umoznuje HISTORIC DEBUGGING. Tento debugging ZAZNAMENAVA PRIEBEH PROGRAMU na disk a pri skoku na BREAKPOINT, alebo pade programu je mozne VYSLEDOVAT CINNOST PROGRAMU, NIEKOLKO KROKOV DOZADU. Nato aby HISTORIC DEBUGGING je potrebne vykonat nasledujuce kroky.
+   A. V Options->Debuggin->History je treba nakonfigurovat objem dat, ktory bude sa pri HISTORIC DEBUGGING ukladat. Kedze sa jedna o VELKE KVANTA DAT je ako DEFAULT nastavena moznost 'Events Only'. Ak vsak chcem podrobnejsie informacie, napriklad o volani metod je potrebne zmenit toto nastavenie na 'Methods and Parameters'.
+   B. Po vyskyte BREAKPOINT alebo EXCEPTION je mozne zobrazit okno Debug->Windows->Show Debug History, ktore obsahuje podrobnosti o HISTORII CINNOSTI PROGRAMU z ktorej mozem analyzovat ako sa program dostal do aktualneho stavu.
+!!! 10. VS 2010 umoznuje MIXED DEBUGGING (sucasny debugging NATIVE a MANAGED kodu) aj pre x64. Starsie verzie dokazali robit MIXED DEBUGGING IBA pre x86.
+!!! 11. Zmenou v CLR 4.0. je spracovanie EXCEPTIONS, nad ktorymi NIE JE MOZNA RECOVERY, ako napriklad ACCESS VIOLATION EXCEPTION. V predoslych verziach CLR boli tieto EXCEPTIONS KONVERTOVANE na .NET EXCEPTION a MOHLI BYT ZACHYTENE CATCH BLOKMI. Vysledok bol taky, ze program zvycajne ZLYHAL NESKOR a bolo tazke odhalit pricinu. V CLR 4.0. vznik tychto FATALNYCH EXCEPTIONS OKAMZITE PAD PROGRAMU. Takto je mozne FATALNE CHYBY LEPSIE IDENTIFIKOVAT pomocou DEBUGGERS, pretoze su generovane HNED PRI VZNIKU FATALNEJ SITUACIE.
+12. CLR Profiler umoznuje zistit ako su vyuzivane CLR HEAPS, ci nedochadza k memory leaks, statisticke informacie, mnozstvo udajov ulozenych v jednotlivych GENERATIONS, cinnost GC a podobne.
+13. CLR Profiler je nastroj STIAHNUTELNY zo stranky MS a je momentalne IBA pre CLR 2.0. Obsahuje verzie x86 aj x64.
+!!! 14. CLR Profiler je urceny na profilaciu pamate a spustenie programu v nom ZNACNE SPOMALUJE BEH PROGRAMU (10-100 krat) a preto b sa pocas profilingu nemala merat vykonnost programu, kedze vysledky by boli velmi nepresne.
+!!!!! 15. Pre CLR 4.0. Profiler pre CLR 2.0. PRIAMO NEFUNGUJE. Ak cez neho spustim PROFILING, tak TEN NEBUDE BEZAT. Avsak ak pouzijem '!TraverseHeap [FileName.XML]' a cez PROFILER IMPORTUJE vygenerovany FileName.XML, tak tento XML PROFILER AKCEPTUJE.
+!!! 16. WinDbg obsahuje SPEFICKY PRIKAZ '.cmdtree [Filename.txt]', ktory nacita COMMAND TREE z textoveho suboru a zobrazi okno COMMAND TREE. Z tohto okna mozem potom spustat prikazy iba kliknutim na ne, BEZ TOHO, ABY SOM ICH MUSEL RUCNE PISAT.
+//-------------------------------------------------------------------------------------------------------
+Prikazy pre SOS, SOSEX a WinDbg
+
+1. Prikaz '!TraverseHeap [FileName.XML]' traverzuje HEAP a obsah zapise do FileName.XML, odkial ho CLR Profiler moze citat a spracovat. Vystup je mozne pouzit na PROFILACIU pouzitia pamate. Subor moze byt nacitany pomocou CLR Profiler a zobrazeny.
+2. Prikaz '.cmdtree [Filename.txt]' nacita COMMAND TREE do WinDbg a umozni z neho spustat prikazy pre debugger. Je to SPECIFICKY PRIKAZ pre WinDbg.
+//-------------------------------------------------------------------------------------------------------

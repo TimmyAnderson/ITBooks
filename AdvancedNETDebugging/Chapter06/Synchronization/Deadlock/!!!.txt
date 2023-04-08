@@ -1,0 +1,104 @@
+﻿//-------------------------------------------------------------------------------------------------------
+1. Program demonstruje debugging problemov sposobenych synchronizaciou objektov beziacich v paralelenych THREADS.
+2. NATIVE THREAD obsahuje vsetky informacie o THREADE v internej tabulke, nazyvanej Thread Execution Block (TEB). Tabulka obsahuje cca 100 rozlicnych hodnot popisujucich thread a jeho stav. TEB je mozne vypisat prikazom 'dt _TEB'.
+3. V .NET je analogiou TEB objekt THREAD. Prikazom '!threads' je mozne vypisat vsetky CLR THREADS a ziskat aj adresu na Thread objekt, ktoreho DUMPOM mozem ziskat dodatocne informacie, ako napriklad stav threadu.
+!!! 4. Adresu Thread objektu je mozne ziskat zo stlpca 'ThreadOBJ' po pouziti prikazu '!threads'. Obsah objaktu Thread je potom mozne vypisat napriklad prikazom 'dd [ThreadOBJ]'.
+5. Stav threadu sa nachadza na adrese ThreadOBJ+sizeof(Pointer) a obsahuje hodnotu ThreadState popisujucu stav THREADU.  Tuto hodnotu je mozne pouzit IBA NA DEBUG ucely a program by NIKDY nemal sa SPOLIEHAT na HODNOTU tejto premennej.
+6. Ak chcem zistit v akom stave je AutoResetEvent resp. ManualResetEvent, musim pouzit nasledujuci postup.
+   A. Prikazom '!do [Address]' vypisem podrobnosti o EVENT objekte.
+   B. Z vypisu zistim hodnotu 'waitHandle' co je WRAPPED HANDLE na EVENT.
+   C. Prikazom '!handle [Handle] 0x0f' ziskam podrobnosti o stave EVENTU, vratane toho ci je signalizovany, alebo nie.
+7. Ak chcem zistit v akom stave je Mutex a KTORY THREAD ho VLASTNI, musim pouzit nasledujuci postup.
+   A. Prikazom '!do [Address]' vypisem podrobnosti o MUTEX objekte.
+   B. Z vypisu zistim hodnotu 'waitHandle' co je WRAPPED HANDLE na MUTEX.
+   C. Prikazom '!handle [Handle] 0x0f' ziskam podrobnosti o stave MUTEX, vratane toho ci je OWNED a ak ano, tak ktorym threadom.
+8. Ak chcem zistit v akom stave je Semaphore a aky je stav jeho COUNTER, musim pouzit nasledujuci postup.
+   A. Prikazom '!do [Address]' vypisem podrobnosti o SEMAPHORE objekte.
+   B. Z vypisu zistim hodnotu 'waitHandle' co je WRAPPED HANDLE na SEMAPHORE.
+   C. Prikazom '!handle [Handle] 0x0f' ziskam podrobnosti o stave SEMAPHORE, vratane toho ci je signalizovane (COUNTER>0), alebo nesignalizovany (COUNTER==0).
+!!! 9. Monitor je .NET trieda, ktora na rozdiel od ostatnych synchronizacnych primitiv NIE JE WRAPPER nad NATIVE CLASS, ale je plne implementovana v .NET. Innstancia Monitor sa NEDA VYTVORIT, iba volat jej staticke metody, ako Enter(), Exit(). Dosledkom toho, ze sa z Monitor NEVYTVARA INSTANCIA je, ze NEMA STAV. LOCK STATE namiesto toho si drzi OBJEKT, ktory sa dava ako parameter metodam Enter() a Exit(). Iba pomocou JEHO SYNC BLOCK a prikazu '!syncblk [IndexSyncBlock]' mozem zistit, ktory thread drzi dany LOCK.
+10. Ak chcem zistit v akom stave je ReaderWriterLock a ktory thread drzi nad nim WRITE LOCK, musim pouzit nasledujuci postup.
+   A. Prikazom '!do [Address]' vypisem podrobnosti o ReaderWriterLock objekte.
+   B. Z vypisu zistim nasledujuce hodnoty. Hodnota 'dwState' udava stav ReaderWriterLock. Hodnota 'swWriterID' udava TID MANAGED THREADU, ktory drzi nad ReaderWriterLock WRITE LOCK. Hodnota 'wWriterLevel' udava pocet rekurzivnych WRITER LOCKS.
+11. Ak chcem zistit v akom stave je ReaderWriterLockSlim, musim pouzit nasledujuci postup.
+   A. Prikazom '!do [Address]' vypisem podrobnosti o ReaderWriterLockSlim objekte.
+   B. Z vypisu hodnotu 'state' udavajuci ci je LOCK niekomu prideleny a aj to ci je v READ, alebo WRITE LOCKU.
+12. ThreadPool vykonava automaticky THREAD management, ktory sa stara o vytvaranie a uvolnovanie THREADS podla toho kolko prace je od nich pozadovanych.
+!!! 13. V .NET 4.0. bol ThreadPool OPTIMALIZOVANY, aby napriklad na ukladanie WORK ITEMS pouzival LOCK-FREE sturkturu, ktorou netraba zamykat a odomykat pri kazdom vlozeni a vybrati WORK ITEM z QUEUE.
+!!! 14. Kazdy objekt v .NET obsahuje okrem samotnych dat aj OBJECT HEADER. OBJECT HEADER obsahuje METADATA o objekte. Velkost tychto metadat je VARIABILNA a MOZE sa MENIT v CASE podla toho AKE OPERACIE nad objektov VYKONAM.
+   A. Ak zavolam metody GetHashCode(), OBJECT HEADER sa nalni informaciou o HASH CODE.
+   B. Ak nad objektom spravim LOCK, tak sa do OBJECT HEADER vlozi hodnota INDEXU na SYNC BLOCK.
+!!!!! 15. Objekt typu Thread NEMOZEM VYPISAT cez prikaz '!do [Address]', ale musim pouzit prikaz 'dd [Address].
+16. C# poskytuje pre pouzitie Monitor skratku v podobe klucoveho slova 'lock'. Pouzitie 'lock' sposobi, ze ze sa okolo kodu, ktory ma byt monitorom chraneny vytvori blok TRY-FINALY, kde FINALY sa postara, aby bol LOCK aj pri vyskyte EXCEPTION vzdy UVOLNENY.
+!!!!! 17. CLR 2.0. implementacia 'lock' ma vsak v DEBUG verzii CHYBU, ktora sposobuje, ze moze nastat situacia, kedy pri THREAD ABORT prikaz 'lock' NEZABEZPECI UVOLNENIE MONITORA a ten OSTANE v LOCK STAVE. Dovod je v KODE, ktory C# GENERUJE pre 'lock', ktory je nasledovny.
+   A. Monitor.Enter(XXX).
+   B. NOP.
+   C. TRY.
+   D. TELO 'lock'.
+   E. FINALY { Monitor.Exit(XXX) }.
+!!!!! 18. Instrukcia NOP je tam pridana preto, aby v DEBUG verzii (v RELEASE verzii tam NOP nie je a PROBLEM s ABORT a neuvolnenim LOCK NEMOZE NASTAT) bolo mozne dat breakpoint na 'lock'. Kedze vsak Monitor.Enter() je PRED TRY a oddeluje ich NOP, moze pri volani Thread.Abort() a generovani EXCEPTION ThreadAbortException dojst k tomu, ze sa tato EXCEPTION generuje PRAVE na NOP INSTRUKCII. Dosledkom je to, ze sa FINALY NEZAVOLA a MONITOR sa NEUVOLNI.
+!!!!! 19. V CLR 4.0. bola uz tato CHYBA OPRAVENA a teda aj v DEBUG VERZII prikaz 'lock' generuje prikaz Monitor.Enter() AZ v TRY a tym padom k problemu NEDOCHADZA.
+20. V .NET 4.0. bol implementovany novy synchronizacny object Barrier, ktory umoznuje definovat CHECKPOINTS do ktorych sa musi KAZDY PATICIPANT (THREAD) DOSTAT, aby mohol pokracovat dalej. Teda v momente, ze niektory z THREADOV sa dostane na CHECKPOINT (metoda SignalAndWait()), tak skontroluje ci VSETKY THREADS (definujem maximalny pocet PARTICIPANTS - THREADS) sa dostali do daneho CHECKPOINT. Ak nie, tak je THREAD pozastaveny, az kym VSETCI ostatni PARTICIPANTS - THREADS sa nedostanu do daneho CHECKPOINT. Az potom VSETCI PARTICIPANTS - THREADS mozu pokracovat dalej v algoritme. Definovat mozem viacero CHECKPOINTS, podla potreby daneho algoritmu.
+21. V .NET 4.0. bol implementovany novy synchronizacny object CountdownEvent, ktory umoznuje definovat hodnotu COUNTER a ktory je kazdym volanim Signal() DEKREMENTOVANY a je signalizovany AZ KED COUNTER==0. Je to cosi ako OBRATENY SEMAPHORE.
+22. V .NET 4.0. bol implementovany novy synchronizacny object ManualResetEventSlim, ktory je mozne pouzit iba v ramci JEDNEHO PROCESU avsak na rozdiel od ManualResetEvent implementuje SPINING - teda caka isty pocet cyklov, ci nedojde k uvolneniu LOCK na ktory caka a az ked k nemu nedojde, tak vykona WAIT.
+23. V .NET 4.0. bol implementovany novy synchronizacny object SemaphoreSlim, ktory je mozne pouzit iba v ramci JEDNEHO PROCESU avsak na rozdiel od Semaphore implementuje SPINING - teda caka isty pocet cyklov, ci nedojde k uvolneniu LOCK na ktory caka a az ked k nemu nedojde, tak vykona WAIT.
+24. V .NET 4.0. bol implementovany novy synchronizacny object SpinLock, ktory vykonava SPINING nad LOCK a ak ho za pocas SPINING NEZISKA, tak vrati navratovhu hodnotou, ze sa mu ho NEPODARILO ZISKAT, ale NEPRECHADZA do WAIT STAVU.
+25. V .NET 4.0. bol implementovany novy synchronizacny object SpinWait, ktory vykonava SPINING nad LOCK a ak ho za pocas SPINING NEZISKA, tak PREJDE do WAIT STAVU.
+26. Indikacia DEADLOCK je mozna nasledujucim postupom.
+   A. Prikazom '~*e!clrstack' vypisuje STACK TRACES vsetkych THREADS. Pomocou prikazu mozem vidiet, ci 2, alebo viacero THREADS nestoja na Monitor.Enter(), co MOZE INDIKOVAT DEADLOCK.
+   B. Prikazom '!clrstack -a' vypisem STACK KAZDEHO THREADU a zistit ADRESU v KODE ODKIAL sa volala metoda Monitor.Enter(). Prikazom '!u [Address]' mozem spravit dissasembling kodu a zistit, na ktorom 'lock' bloku stoji dany THREAD. Takto mozem presne zistit na ktorych 'lock' blokoch (Monitor.Enter()) stoja jednotlive threads.
+   C. Ked zistim na ktory Monitor objekt dany THREAD caka, staci ziskat jeho adresu a potom bud nahladom do jeho OBJECT HEADER ('dd Address-4'), alebo SYNC BLOCK ('!syncblk [Index]') (ak data v OBJECT HEADER prekrocili 4 bytes) zistim, ktory THREAD drzi tento LOCK.
+   D. Prikazom '!threads' zistim o ktory thread sa jedna a znova pomocou '!clrstack -a' zistim ci caka na niektory LOCK. Postup je ten isty ako v bode B. Samozrejme este predtym sa musim prepnut do daneho THREADU volanim '~Xs', kde X je cislo threadu.
+   E. Ak 2 threads si vzajomne blokuju LOCKS, tak mam DEADLOCK.
+   F. Nasleduje analyza kodu, ktora urci priciny DEADLOCK a odstrani ho.
+!!! 27. Existuju aj alternativne sposoby ako detekovat moznost vyskytu DEADLOCK.
+   A. Prikaz '!syncblk' vypise vsetky SYNC BLOCKS a moze byt dolezitym voditkom k indikacii DEADLOCK.
+   B. Prikaz '!dumpheap - thinlock' robi TO ISTE AKO '!syncblk', akurat detekuje DEADLOCKS nad THIN LOCKS (ked sa nepuziva SYNC BLOCK, co je vtedy ako OBJECT HEADER ma <= 4 BYTES).
+   !!! C. Prikaz '!dlk' je prikazom SOSEX a umoznuje komplexnu detekciu DEADLOCKS. Zatial vsak NEFUNGUJE na THIN LOCKS. Umoznuje VELMI LAHKO zistit DEADLOCK.
+28. Orpahned LOCKS - teda LOCKS, ktore neuvolnil THREAD predtym nez bol ukonceny, je mozne detekovat naseldujucim sposobom.
+   A. Zistim si adresu LOCK na ktory THREAD caka. Mozem to spravit napriklad pomocou prikazu '!dumpstackobject'.
+   B. Vypisem SYNC BLOCK LOCK objektu. Ak ho vlastni THREAD co sposobil ORPHANED LOCK, tak bude pri vlastnikovy LOCK uvedena nezmyselna hodnota, napriklad 'XXX'.
+   !!! C. Ak este THREAD sposobiaci ORPHANED LOCK je uz ukonceny, ale este nie je finalizovany, je ho mozne vidiet pomocou prikazu '!threads', kde mrtvy thread bude oznaceny symbolom 'XXX'.
+!!!!! 29. Thread.Abort() okrem problemov v DEBUG BUILDS pri pouziti 'lock' v CLR 2.0. moze sposobit aj DEADLOCK, ak nahodou je sputeny vtedy, ked thread, ktory ma byt ABORTED je v CHRANENEJ SEKCII, ako napriklad vo 'finally' a nahodou sa v nom pouzije LOCK (ako to demonstrujue program Abort). ZASADNY PROBLEM je v tom, ze ThreadAbortException sa vo FINALLY NIKDY NEVOLA a program sa dostane do DEADLOCK.
+!!!!! 30. Situaciu, ked Thread.Abort() STVRDNE, lebo ABORTED THREAD je v CHRANENEJ SEKCII (napriklad FINALLY), mozem detekovat zistenim STAVU THREADU volanim '!threads'. Vdaka tomu mozem zistit, ze dany thread bol POZIADANY o ABORT (TS_AbortRequested), ale nevykonal ho a je v DEADLOCK.
+!!! 31. Jednou z moznych pricin OutOfMemoryException je ze FINALIZER THREAD sa dostane do NEKONECNEHO LOCKU (DEADLOCKU s inym threadom). To moze nastavt vtedy, ked kod vo FINALIZER metode sposobi DEADLOCK a FINALIZER, ktory berie objekty za sebou ako su v F-REACHABLE QUEUE ostane na tomto objekte VISIET. Vysledkom je, ze FINALIZER NIE JE SCHOPNY UVOLNIT PAMAT, nasledkom coho po istom case hodi OutOfMemoryException.
+!!! 32. Detekciu stvrdnutia FINALIZER THREAD mozem spravit tak, ze pri naraste pamate si vypisem STACK FINALIZER THREADU a zistim ci nahodou NEOSTAL VISIET v NIEKTORE FINALIZER METODE.
+//-------------------------------------------------------------------------------------------------------
+Object header a THIN LOCK
+
+1. Kazdy objekt v .NET je tvoreny troma castami.
+   A. OBJECT HEADER. Ma 4 BYTES.
+   B. TYPE HANDLE - obsahujuci METADATA o TYPE OBJEKTU. Ma 4 (x86), alebo 8 (x64) BYTES.
+   C. Data objektu.
+!!! 2. Referencia, ktoru ziskam vytvorenim objektu operatorom NEW sa odkazuje na TYPE HANDLE a NIE OBJECT HEADER, alebo data objektu. Ak chcem ziskat hodnotu OBJECT HEADER, musim citat adresu (ObjectAddress-4).
+!!! 3. OBJECT HEADER ma VZDY 4 BYTES a moze obsahovat rozlicne udaje.
+   A. THREAD ID toho THREADU, ktory drzi nad objektom THIN LOCK.
+   B. HASH CODE objektu.
+   C. Domain index.
+   D. COM interoperability data.
+   !!! E. Index na SYNC BLOCK, ktory potom obsahuje informacie z bodov A, B, C, D. Toto sa vsak deje iba ak mnozstvo informacii, ktore sa maju ulozit do OBJECT HEADER > 4 BYTES.
+!!!!! 4. Vsetky spomenude data sa do 4 BYTES vyhradenych pre OBJECT HEADER NEZMESTI, preto CLR zavadza mechanizmus rozsirenia OBJECT HEADER o SYNC BLOCK, ktory funguje nasledovne.
+   A. Do OBJECT HEADER sa pri rozlicnych operaciach (uvalenie LOCK, volanie GetHashCode()) ukladaju potrebne informacie. To, ktora informacia je prave v OBJECT HEADER je dane BITOVOU MASKOU.
+   !!! B. Ak MNOZSTVO dat potrebnych na ulozenie do OBJECT HEADER PRESIAHNE 4 BYTES (napriklad ked nad objektom zavolam GetHashCode() a nasledne este nan uvalim LOCK), je VYTVORENY SYNC BLOCK do ktoreho je nakopirovany CELY OBSAH OBJECT HEADER. Index nan je ulozeny do TABULKY vsetkych SYNC BLOCKS.
+   C. Po presiahnuti 4 BYTES pre OBJECT HEADER a vytvoreni SYNC BLOCK je do OBJECT HEADER (do 4 bytes) ulozeny INDEX na SYNC BLOCK. Vdaka nemu objekt vie ziskat informacie o svojom SYNC BLOCK, ktory teraz obssahuje cely OBJECT HEADER, ktory moze byt vacsi ako 4 BYTES.
+   !!! D. Schopnost CLR DYNAMICKY rozsirit velkost OBJECT HEADER vytvorenim SYNC BLOCK umoznuje efektivnejsie pracovat s LOCKS.
+!!!!! 5. V CLR 1.x. platilo, ze ked som na objekt uvalil LOCK, tak sa VZDY vytvoril SYNC BLOCK. To vsak viedlo k vacsej spotrebe pamate a casu. V CLR 2.0. bolo umoznene NAMIESTO vytvorenia SYNC BLOCK ulozit informaciu o THREADE, ktory UVALIL LOCK PRIAMO do OBJECT HEADER (tzv. THIN LOCK), bez nutnosti vytvorit SYNC BLOCK. SAMOZREJME toto plati, IBA AK OBJECT HEADER NEPREKROCI 4 BYTES, kedy uz MUSI BYT VYTVORENY SYNC BLOCK.
+6. Priklady hodnot v OBJECT HEADER.
+   A. 0x00000000 - OBJECT HEADER neobsahuje ziadne data.
+   B. 0x00000001 - OBJECT HEADER obsahuje THIN LOCK - THREAD ID, ktory drzi THIN LOCK.
+   C. 0x0F0125A9 - OBJECT HEADER obsahuje HASH CODE. Je to mozne zistit z toho, ze je nastaveny bit 0x04000000.
+   D. 0x08000001 - OBJECT HEADER obsahuje INDEX na SYNC BLOCK. SYNC BLOCK potom obsahuje LUBOVOLNE INFORMACIE (HASH CODE, THREAD ID, ktory drzi LOCK nad objektom, DOMAIN ID a podobne).
+!!! 7. THIN LOCK je implementovany ako SPIN LOCK. Teda istu dobu caka na uvolnenie LOCK a ked k tomu nedojde, tak sa thread dostane do WAIT STAVU.
+//-------------------------------------------------------------------------------------------------------
+Prikazy pre SOS, SOSEX a WinDbg
+
+1. Prikaz 'dt _TEB' vypisuje obsah TEB tabulky pre aktualny thread.
+2. Prikaz '!threads' vypisuje zoznam CLR THREADS, vratane informacii ako je pocet LOCKS, ktore dany thread drzi, alebo poslednu EXCEPTION, ktora sa v threade vyskyta.
+3. Prikaz '!handle [Handle] [Flags]' umoznuje vypisat podrobnosti o danom HANDLE (Event, File, Directory, Process, Thread...). Za hodnot [Flags] je treba dat najlepsie 0x0f - vypis kompletnej informacie o HANDLE.
+4. Prikaz '!threadpool' vypisuje statisticke udaje o THREAD POOL.
+5. Prikaz '!syncblk [SyncBlockIndex]' umoznuje vypisat hodnotu SYNC BLOCK na danom indexe. Z jeho hodnoty mozem urcit i to, ktory thread nad nim drzi LOCK.
+6. Prikaz '!dumpheap -thinlock' umoznuje vypisat setky objekty obsahujuce THIN LOCKS.
+7. Prikaz '~*e!clrstack' vypisuje STACK TRACES vsetkych THREADS. Pomocou prikazu mozem vidiet, ci 2, alebo viacero THREADS nestoja na Monitor.Enter(), co MOZE INDIKOVAT DEADLOCK.
+!!! 8. Prikaz '~*e[Command]' vykona Command na VSETKYCH THREADS v procese.
+9. Prikaz '!dlk' je prikazom SOSEX a umoznuje komplexnu detekciu DEADLOCKS. Zatial vsak NEFUNGUJE na THIN LOCKS.
+//-------------------------------------------------------------------------------------------------------

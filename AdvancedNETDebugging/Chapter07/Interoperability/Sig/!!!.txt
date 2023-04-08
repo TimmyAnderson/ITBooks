@@ -1,0 +1,64 @@
+﻿//-------------------------------------------------------------------------------------------------------
+1. Program demonstruje interoperabilitu .NET a NATIVE kodu.
+2. Interoperabilita medzi .NET a NATIVE kodom je mozne zabezpecit pomocou 2 technologii.
+   A. P/Invoke - umoznuje volat z .NET NATIVE DLL kod.
+   B. COM interoperability - umoznuje volat COM objekty z .NET kodu a opacne z COM kodu volat .NET kod.
+3. Na realizovanie volania kodu v DLL kniznici prostrednictvom P/Invoke je nutne vykonat nasledujuce kroky.
+   A. Definovat v MANAGED kode metodu, ktora ma prototyp kompatibilny s DLL funkciou.
+   B. Aplikovat na metodu atribut [DllImport].
+   C. Zavolat MANAGED metodu, ktora sluzi ako WRAPPER. Jej volanim sa nahra NATIVE DLL do pamate procesu a spusti sa DLL funkcia.
+!!! 4. P/Invoke pri volani DLL funkcie realizuje AUTOMATICKY MARSHALING parametrov. Tento AUTOMATIC MARSHALING dokaze marshalovat jednoduche konverzie ako napriklad konverziu retazcov, ci zakladnych typov, avsak pri komplexnych strukturach je nutne vykonat CUSTOM MARSHALING.
+!!! 5. CUSTOM MARHSALING sa vykonava pomocou metod triedy Marshal a jedna sa o pomerne ZLOZITU OPERACIU, ktora je NACHYLNA k CHYBAM.
+!!!!! 6. Ak chcem indikovat ci v CALL STACK je volanie NATIVE funkcie, mozem to spravit vypisanim CALL STACK (prikaz '!ClrStack') a medzi CALL STACK hladam FRAME s nazvom 'NDirectMethodFrameStandalone'. Objekt NDirectMethodFrameStandalone je NEDOKUMENTOVANYM .NET objektom, ktory sa stara o vykonanie P/Invoke volania.
+7. Ak chcem zistit lokalne parametre NATIVE funkcie musim postupovat nasledujucim sposobom.
+   A. Prikazom 'bp [DLLName]![FunctionName]' nastavim breakpoint na NATIVE funkciu.
+   B. Prikazom 'dv' zistim obsah lokalnych premennych v danom SCOPE.
+   !!! C. Niekedy (ak 'dv' nic nevypise) je treba sa trochu vnorit do kodu opakovanym volanim 'p', aby sa SCOPE programu (vykonavana instrukcia) presunula az za bod, kedy su premenne definovane a teda prikaz 'dv' ich moze zobrazit.
+8. COM iteroperability zabezpecuje komunikaciu medzi .NET a COM objektami.
+   A. RCW - zabezpecuje volania COM objektov z .NET metod.
+   B. CCW - zebezpecuje volania .NET metod z COM objektov.
+!!! 9. Na realizaciu komunikacie pomocou RCW je nutne VYGENEROVAT PRIMARY INTEROP ASSEMBLY (PIA), ktora obsahuje PROXY objekt zabezpecujuci vsetky nevyhnutne operacie (prostrednictvom vytvorenia RCW objektu - vytvorenie a destrukciu COM objektov, marshaling parametrov, apartment model) na umoznenie volania COM objektu z .NET triedy.
+!!! 10. PIA je generovana pomocou nastroja TlbImp.exe. VS pouziva tento nastroj automaticky pri pridani referencie na COM objekt.
+!!! 11. PIA obsahuje .NET proxy objekt, ktory POUZIVA OBJEKT TYPU RCW, ktory zabezpecuje vytvorenie COM objektu, odstranovanie ak pocitadlo klesne na 0, volanie funkcii COM objektu, ako aj marshaling parametrov.
+!!! 12. Na volani funkcie COM objektu z .NET participuju nasledovne komponenty.
+   A. .NET program vytvori instanciu PROXY OBJEKTU vygenerovaneho v PIA zapuzdrujuceho volany COM objekt.
+   B. PROXY OBJEKT v PIA interne pouzije RCW objekt na realizaciu volania COM funkcie. RCW vyhlada COM objekt a zavedie jeho instaciu do pamate.
+   C. RCW objekt vykona marshaling parametrov a zavola funkciu COM objektu nad vytvrvorenu instanciou COM objektu.
+   D. RCW drzi pocet referencii na COM objekt (pocitadlo) a ak jeho hodnota klesne na 0, tak je RCW objekt oznaceny za objekt urecny na GC. Proces GC nasledne NEDERETMINISTICKY (ked je vyvolany GC) odstrani COM objekt z pamate procesu.
+!!! 13. RCW standardne NEDERETMINISTICKY odstranuje instancie COM objektu a to vtedy, ked pocitadlo klesne na 0 a RCW je oznaceny na objekt urceny pre GC. Alternativou je DETERMINISTICKE uvolnenie volanim metody Marshal.ReleaseComObject().
+!!! 14. Ak chcem v programe COMInterop nastavit breakpoint na Add(), musim pouzit syntax: 'bp MyCOM!CBasicMathClass::Add'.
+!!! 15. Indikacia, ze kod vola COM interop je ak mam v CLR STACK FRAME s nazvom 'ComPlusMethodFrameStandalone'.
+!!! 16. Velmi castou chybou P/Invoke je ZLA CALLING CONVENTION medzi funkciou v DLL a ja WRAPPER funkciou v C#. Pomocou atributu [DllImport] v parametri CallingConvention je mozne specifikovat aku CALLING CONVENTION ma WRAPPER pouzivat. Ak su rozdielne, tak chovanie programu je CHYBNE.
+????? 17. Neviem preco, ale chybu s CALLING CONVENTION sa mi na x64 NEPODARILO NASIMULOVAT a na x86 sice ANO, ale IBA OBCAS. Pricinu nepoznam. Asi to bola iba NAHODA, ze sa chyba prejavila iba OBCAS. V kazdom pripade plati, ze CALLING CONVENTION MUSI byt v DLL a C# WRAPPER TOTOZNA.
+!!!!! 18. V knihe spominany MDA 'pInvokeStackImbalance' NIE JE v x64 PODPOROVANY. Iba v x86.
+!!!!! 19. OBROVSKY POZOR je treba davat pri zasielani CALLBACKS z MANAGED do NATIVE kodu. Aj ked CALLBACK funkciu vo forme .NET DELEGATE mozem bez problemov zaslat cez P/Invoke, problem moze nastat DELEGAT nedefinujem ako PINNED objekt. Problem spociva v chovani standardnom P/Invoke.
+   A. P/Invoke pred volanim NATIVE DLL VZDY VYKONA PINNING VSETKYCH PARAMETROV. Tym je zabezpecene, ze ak by sa POCAS VOLANIA NATIVE funkcie spusti GC, tak adresy parametrov prenesenych do NATIVE FUNKCIE sa NEZMENIA.
+   B. Ak volanie NATIVE DLL skonci tak sa parametre UNPINNED. Toto je UPLNE OK pre SYNCHRONNE FUNKCIE.
+   !!!!! C. Problemom ASYNCHRONNEJ FUNKCIE (ak zasielam CALLBACK do NATIVE kodu) je v tom, ze objekt DELEGATE, ktory posielam ako smernik na CALLBACK je PINNED IBA POCAS VOLANIA NATIVE kodu. Potom uz je UNPINNED. Ak sa GC spusti SKOR ako NATIVE CALL stihne v INOM THREADE volat CALLBACK, tak GC MOZE posunut adresu .NET objektu DELEGATE (co je regularny .NET objekt podliehajuci pravidlam GC), vysledkom coho je, ze SMERNIK na CALLBACK predany do NATIVE DLL - PRESTANE BYT PLATNY a obsahovat validny KOD. Vysledkom je PAD PROGRAMU.
+   !!! D. Riesenim je, ze CALLBACK musi byt pocas CELEHO VYKONAVANIA ASYNCHRONNEJ OPERACIE (az po volanie CALLBACK) ROOTED OBJEKT (nesmiem stratit jeho referenciu) a ZAROVEN MUSI BYT PINNED OBJEKTOM.
+!!! 20. Pre NATIVE CALLBACK funkcie ako aj marshalovane .NET DELEGATES plati, ze standardne pouzivaju 'stdcall' CALLING CONVENTION. Je treba skontrolovat ci CALLING CONVENTIONS NATIVE aj MANAGED funkcie su skutocne ZHODNE (aj ked nemusia byt 'stdcall' - to je iba default hodnota).
+!!! 21. Pri debuggovani CALLBACKS (cez WinDbg) na detekciu ci CALLBACK nie je volany pre NEEXISTUJUCI (COLLECTED) objekt je mozne pouzit MDA 'callbackOnCollctedDelegate'. Pri chybe vypise, ktory CALLBACK objekt bol uz COLLECTED.
+!!!!! 22. Pri debuggovani P/Invoke je MIMORIADNE VDHODNY MDA 'pInvokeLog', ktory loguje KAZDE P/Invoke volanie a vypisuje ho v WinDbg, alebo NTSD.
+23. V pripade, ze mam podozrenie, ze v NATIVE DLL moze byt chyba sposobujuca MEMORY LEAKS, mozem postupovat pri jej detekcii nasledovne.
+   A. Prikazom '!eeheap -gc' zistim kolko pamate zaberaju CLR objekty. Aj je toto cislo podstatne mensie ako celkova pamat, ktoru zabera program volajuci NATIVE kod, je to jedna z indikacii MEMORY LEAK.
+   B. Prikazom '!address -summary' mozem zistit ako je pamat vyuzivana a ktora typ pamate je najviac zabrana.
+!!! 24. MDA 'raceOnRCWCleanup' umoznuje detekovat chyby sposobene pri predcasnom uvolneni COM objektu volanim Marhsal.ReleaseComObject(), ak je COM objekt este pouzivany.
+//-------------------------------------------------------------------------------------------------------
+Rozsirenia CLR 4.0.
+
+1. CLR 4.0. zmenila nutnost mat KOMPLENTU PIA assembly aby bolo mozne volat COM objekt. V CLR 4.0. je mozne PIA assembly pripojit k projektu pomocou COMPILER priznaku '/link', ktory sposobi, ze sa z PIA VYBERIE IBA TA CAST (tie COM funkcie), ktore sa REALNE VOLAJU a informacie o nich sa ulozia PRIAMO DO KOMPILOVANEJ ASSEMBLY. Vysledkom je, ze NIE JE POTREBNE do projektu vkladat PIA ASSEMBLY, kedze vsetky informacie na prepojenie s COM su obsiahnute v kompilovanej ASSEMBLY.
+2. P/Invoke Interop Assistant je TOOL stiahnutelny z CodePlex, ktory umoznuje generovat .NET WRAPPERS nad NATIVE DLL.
+//-------------------------------------------------------------------------------------------------------
+Prikazy pre SOS, SOSEX a WinDbg
+
+1. Prikaz 'bp [DLLName]![FunctionName]' umoznuje nastavit NATIVE BREAKPOINT na FunctionName, ktora je obsiahnuta v DLL s nazvom DLLName (bez koncovky DLL). Velmi vyhodne sa pouziva pri debugovani P/Invoke.
+2. Prikaz 'bp [COMServerName]![COMObject::FunctionName]' umoznuje nastavit NATIVE BREAKPOINT na FunctionName v COM objekte COMObject, ktory sa nachadza v DLL (resp. EXE) s nazvom COMServerName (bez koncovky DLL/EXE). Velmi vyhodne sa pouziva pri debugovani COM interop.
+3. Prikaz 'ln [Address]' vypisuje zoznam najblizsich SYMBOLS okolo adresy Address.
+4. Prikaz 'dv' umoznuje vypisat hodnoty vsetkych lokalnych premennych v aktualnom SCOPE.
+5. Prikaz '!RCWCleanupList' zobrazuje zoznam RCW, ktore uz nie su pouzivane a su v QUEUE cakajuc na vycistenie.
+6. Prikaz '!threads' obsahuje pri kazdom threade informaciu o tom v akom apartmente sa nachadza.
+7. Prikaz '!syncblk' obsahuje statisticku informaciu kolko RCW a ComClassFactory objektov je aktivnych.
+8. Prikaz '!COMState' obsahuje pre kazdy thread informaciu o jeho APPARTMENT ako aj informaciu o Context.
+!!! 9. Prikaz '.lines', resp. '!lines' umoznuje nacitat RIADKY KODU co je mozne pouzit pri vypise STACK TRACE pomocou prikazu 'k', kde sa popri volanych funkciach vypise aj informacia z ktoreho riadku kodu, bola dana funkcia volana.
+10. Prikaz '!address -summary' robi sumarny vypis o pouzivani pamate programom.
+//-------------------------------------------------------------------------------------------------------

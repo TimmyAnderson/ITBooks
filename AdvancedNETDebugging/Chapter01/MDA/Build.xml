@@ -1,0 +1,64 @@
+<!-- ROOT element pre MSBUILD. -->
+<Project DefaultTargets = "Compile" xmlns="http://schemas.microsoft.com/developer/msbuild/2003" >
+
+    <!-- Definujem kompilacny priznak a kompilacny adresar. -->
+    <PropertyGroup>
+        <Flavor Condition="'$(Flavor)'==''">DEBUG</Flavor>
+        <OutputPath>Bin\</OutputPath>
+    </PropertyGroup>
+
+    <!-- Definujem settings, ked je kompilacny priznak == 'DEBUG'. -->
+    <PropertyGroup Condition="'$(Flavor)'=='DEBUG'">
+        <DebugType>full</DebugType>
+        <Optimize>no</Optimize>
+    </PropertyGroup>
+
+    <!-- Definujem settings, ked je kompilacny priznak == 'RETAIL'. -->
+    <PropertyGroup Condition="'$(Flavor)'=='RETAIL'">
+        <DebugType>pdbonly</DebugType>
+        <Optimize>yes</Optimize>
+    </PropertyGroup>
+
+    <!-- Definujem meno programu. -->
+    <PropertyGroup>
+        <appname>MDASample</appname>
+    </PropertyGroup>
+
+    <!-- Specifikujem subory, ktory sa maju kompilovat. -->
+    <!-- Meno XML ELEMENTU sluzi ako REFERENCIA na subor. -->
+    <ItemGroup>
+        <CSFile Include = "MDASample.cs"/>
+    </ItemGroup>
+
+    <Target Name = "Compile">
+        <!-- Vytvorim vystupny adresar. -->
+        <MakeDir Directories="$(OutputPath)" Condition="!Exists('$(OutputPath)')" />
+
+        <!-- Spustim C# kompilaciu nad subormi referovanymi premennymi  CSFile1 a CSFile2. -->
+        <CSC
+            Sources = "@(CSFile)"
+            DebugType="$(DebugType)"
+            Optimize="$(Optimize)"
+            OutputAssembly = "$(appname).exe">
+            <!-- Nastavim meno assembly a EXE suboru. -->
+            <Output
+                TaskParameter = "OutputAssembly"
+                ItemName = "EXEFile" />
+
+   	    <Output ItemName="OutAssembly"
+                TaskParameter="OutputAssembly" />
+        </CSC>
+
+        <!-- Nakopirujem generovane subory z aktualneho do vystupneho adresara. -->
+        <Copy SourceFiles="@(OutAssembly)" DestinationFolder=".\BIN" />
+        <Copy SourceFiles="$(appname).pdb" DestinationFolder=".\BIN" />
+        <Copy SourceFiles="$(appname).exe.mda.config" DestinationFolder=".\BIN" />
+
+        <!-- Zmazem generovane subory z aktualneho adresara. -->
+        <Delete Files="@(OutAssembly)" />
+        <Delete Files="$(appname).pdb" />
+
+        <!-- Vypisem meno skompilovaneho programu. -->
+        <Message Text="The output file is [@(EXEFile)] !"/>
+    </Target>
+</Project>

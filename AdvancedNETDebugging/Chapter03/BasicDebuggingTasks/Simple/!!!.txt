@@ -1,0 +1,176 @@
+﻿//-------------------------------------------------------------------------------------------------------
+1. Program demonstruje zakladne ulohy pri debugovani.
+2. Pri debugovani prikazy na debugovanie zaslane debuggeru su vykonane v KONTEXTE DEBUGOVANEHO PROCESU, pricom tento proces moze bezat lokalne na to istom PC, alebo i na vzdialenom PC.
+3. Na debuggovanie je mozne pouzit WinDbg.exe, ako aj NTSD.exe. Obe pouzivaju ten isty debugger, iba vystavuju voci nemu greficke, resp. textove rozhranie.
+4. Ak chcem debuggovat program pomocou NTSD musim mat program skompilovany a nasledne spustit NTSD [FileName.EXE], kde FileName.EXE je EXE subor, ktory chcem debuggovat.
+!!! 5. Ked proces spusim z debugger, tak debugger AUTOMATICKY vlozi BREAKPOINT hned na ZACIATOK PROGRAMU a PROGRAM OKAMZITE PO STARTE ZASTAVI, aby som mohol pomocou debuggera nastavit breakpoints a celkovo nakonfigurovat debugging.
+6. Pomocou prikazu NTSD -p [PID] je mozne pripojit debugger k uz beziacemu procesu.
+7. Debbuging Tools for Windows obsahuje i prikaz TLIST.exe, ktory umoznuje vypisat PID vsetkych beziacich procesov.
+!!! 8. Bez ohladu ci proces spusit priamo z debugger, alebo k beziacemu procesu pripojim debugger, v oboch pripadoch debugger OKAMZITE ZASTAVI VYKONAVANIE DEBUGOVANEHO PROGRAMU, aby som mohol napriklad nastavit breakpoints. Okrem tychto 2 sposobov je i TRETI - NEINVAZIVNY, ktory NEZASTAVI PROCES PRI PRIPOJENI DEBUGGER. V tomto stave debugovany proces BEZI DALEJ, avsak v debugger NIE JE MOZNE napriklad NASTAVIT BREAKPOINTS prikazom 'bp'.
+9. Symbols su METADATA ulozene vo formate .PDB suboru, umoznujuce zjedndousene ladenie programov. Symbols SU KLUCOVE pre NATIVE DEBUGGING, ale takisto su dolezite i pre .NET. Assemblies sice maju v sebe metadata s popisom tried a metod, ale nemaju napriklad cisla riadkov ci mena lokalnych premennych. Tieto informacie su ulozene prave v Symbols.
+10. Existuju 2 typy Symbols.
+   A. Private Symbols - su generovane pocas kompilacie a obsahuju VSETKY INFORACIE potrebne pre debugging.
+   B. Public Symbols - su uvolnene Microsoft pre svoje DLL a EXE a obsahuju iba ZAKLADNE INFORMACIE pre debugging. Je to preto, aby si MS chranil svoje intelektualne vlastnictvo. Tieto Symbols sa daju stiahnut z Internetu.
+!!! 11. Pomocou prikazov 'symfix' a 'sympath' je mozne nastavit cesty k PUBLIC, alebo PRIVATE SYMBOLS. Po pouziti 'symfix' a 'sympath' je treba pouzit prikaz 'reload' na nacitanie Symbols z pridanych ciest.
+!!!!! 12. Ak kompilujem kod pomocou VS, tak EXE subor a je JEDNO ci v DEBUG, alebo RELEASE verzii, obsahuje PRIMAO V SEBE FULL PATH na VYGENEROVANY .PDB subor. Preto ak chcem testovat ci 'sympath' skutocne nacita .PDB subor zo zadanej cesty, je potrebne ZMAZAT generovany PDB subor, pretoze AJ KED EXE SUBOR nakopirujem do ineho adresara, aby nebol v tom istom ako .PDB a chcem tym docielit, aby debugger nevedel PDB najst, v skutocnosti ho NAJDE, kedze CESTU k PDB je zapisana PRIAMO v EXE SUBORE.
+????? 13. Ak debugujem RELEASE verziu, tak cisla riadkov su POSUNUTE oproti skutocnosti. Asi to suvisi s OPTIMALIZACIOU KODU, ktora sa robi pocas RELEASE VERZIE. Robi to aj vtedy, ked VYPNEM OPTIMALIZACIU pri RELEASE BUILD.
+14. Prerusenie beziaceho programu je mozne vykonat 3 sposobmi.
+   A. Pocas behu programu stlacenim Control-C debugger automaticky vyvola prerusenie beziaceho programu.
+   B. Nastavenim breakpoint.
+   C. Pri vzniku EXCEPTION a to bud FIRST, alebo SECOND CHANCE.
+!!! 15. Standardne debugger pri nacitani programo ho OKAMZITE prerusi, aby bolo mozne nakonfigurovat debug session. Toto vsak je mozne potlacit	spustenim 'NTSD -g'. Ak spustim 'NTSD -G', tak sa NENASTAVI AUTOMATICKY breakpoint pri KONCI programu.
+16. Prikazy debuggera je mozne rozdelit do 2 kategorii.
+   A. Interne prikazy debuggera - maju prefix '.'.
+   B. Externe prikazy debuggera - maju prefix '!'. Tieto prikazy je mozne pouzit iba ak je prislna EXTENSION DLL nacitana pomocou prikazu '.load'.
+!!! 17. EXTENSION DLL SOS.DLL je ZAVISLA od VERZIE .NET. Pre kazdu novu verziu CLR je i nova verzia SOS.DLL. EXTENSION DLL SOS.DLL je s vyhodou mozne nacitat pomocou prikazu 'loadby SOS clr', kedze CLR.DLL je v tom istom adresari ako SOS.DLL.
+!!!!! 18. Sposob nastavenia BREAKPOINT ZAVISI od toho ci metoda uz BOLA, alebo NEBOLA skompilovana cez JIT kompilator do NATIVNYCH INSTRUKCII.
+19. Postup nastavenia BREAKPOINT na metodu, ktora uz BOLA SKOMPILOVANA JIT kompilatorom.
+   A. Zavediem SOS.DLL.
+   B. Prikazom '!name2ee [ModuleName] [TypeOrMethodName]', kde TypeOrMethodName musi byt PLNE KVALIFIKOVANE meno metody zistim ci METODA UZ BOLA JIT KOMPILOVANA, ako aj ADRESU, kde su NATIVNE INSTRUKCIE SKOMPILOVANEJ METODY.
+   C. Prikazom 'bp [Address]', kde Address je adresa JITTED metody zistena v bode B nastavim BREAKPOINT na ZACIATOK METODY.
+   !!! D. Alternativou k bodom A, B a C je pouzitie prikazu '!bpmd -md [MethodDescriptionAddress]'.
+20. Postup nastavenia BREAKPOINT na metodu, ktora este NEBOLA SKOMPILOVANA JIT kompilatorom.
+   A. Zavediem SOS.DLL.
+   B. Prikazom '!name2ee [ModuleName] [TypeOrMethodName]', kde TypeOrMethodName musi byt PLNE KVALIFIKOVANE meno metody zistim METHOD DESCRIPTOR metody, ktoru chcem debuggovat a ktora este nie je JITTED.
+   C. Prikazom '!bpmd -md [MethodDescriptionAddress]' nastavim breakpoint na tuto metodu.
+!!! 21. Ak metoda NIE JE JITTED, tak '!bpmd' zavedie DEFFERED BREAKPOINT. Ten funguje tak, ze pri KAZDEJ JIT KOMPILACII sa vyvola rutina zaregistrovana prikazom '!bpmd', ktora preveri ci novo skompilovana metoda nie je zhodna s niektorym z DEFFERED BREAKPOINTS. Ak je, tak OKAMZTIE nastavi BREAKPOINT na ZACIATOK tejo metody. Tento breakpoint je volany okamzite po spusteni metody - a potom co dana metoda bola JITTED.
+!!! 22. Ak je assembly PREDKOMPILOVANA cez NGEN, tak debugging je v zasade rovnaky ako v pripade metody, ktora uz bola prekompilovana cez JIT, kedze JIT kompilacia sa vykonala uz pri operacii NGEN.
+!!!!! 23. NGEN kompilacia sa vykonava pomocou NGEN.EXE. Pre generovanie cez NGEN platia naseldujuce pravidla.
+   A. Pocas kompilacie sa okrem kompilacie ROBI i INSTALACIA prekompilovanej assembly do adresara '%windir%\assembly\NativeImages_v4.0.30319_64\' pre x64 systemy.
+   B. .NET pri zavadzani assembly pozrie do adresara '%windir%\assembly\NativeImages_v4.0.30319_64\' ci sa tam nenachadza NGEN image z danej assembly a ak ano, tak ho natiahne odtialto, bez toho aby bola vykonavana JIT kompilacia.
+   C. NGEN kompilacia sa robi pri INSTALACII APLIKACIE na danu plaftormu. Tym padom je zabezpecene, ze generovane assembler instrukcie budu pre ten typ CPU a OS, kde sa dany program nainstaloval.
+   D. Instalacia sa robi prikazom 'ngen install [AssemblyName]'.
+   E. Odinstalacia sa robi prikazom 'ngen uninstall [AssemblyName]'.
+   !!! F. Medzi nepredkompilovanou assembly a NGEN assembly je jediny rozdiel v tom, ze pri NGEN assembly nie je treba robit JIT kompilaciu, pretoze tato je uz spravena a v podobe SOBORU ULOZENA NA DISKU. Pri assemblies, ktore nie su NGEN kompilovane sa musi urobit kompilacia a jej vysledok sa uklada IBA DO PAMATE a NIE NA DISK - ako v pripade NGEN kompilacie.
+   !!!!! G. Po instalovani NGEN assembly je mozne spustit NORMALNU ASSEMBLY z INSTALACNEHO ADRESARA APLIKACIA, ktora samozrejme NIE JE NGEN (pretoze NGEN verzia je v '%windir%\assembly\NativeImages_v4.0.30319_64\') a .NET pri jej zavadzani sa najprv POZRIE DO adresara '%windir%\assembly\NativeImages_v4.0.30319_64\' a AK TAM NAJDE NGEN VERZIU TEJTO ASSEMBLY, tak ZAVEDIE TUTO a uz NEROBI JIT KOMPILACIU.
+   !!! H. NGEN assembly je mozne pomerne lahko odhalit PODLA JEJ MENA. Standardne v adresari '%windir%\assembly\NativeImages_v4.0.30319_64\' je pouzita konvencia [AssemblyName.NI.DLL], resp. [AssemblyName.NI.EXE], kde 'NI' znamena NATIVE IMAGE.
+24. Nastavenie breakpoint na GENERIC triedu, alebo metodu, je TOTOZNE s nastavenim na beznu metodu, s tym rozdielom, ze ked pomocou '!name2ee [ModuleName] [TypeOrMethodName]' zistujem informacie o metode vratanie adresy, kde sa nachadza, tak MUSIM POUZIT SYNTAX: 'GenericTypeOrMethodName`Arity', kde Arity je pocet GENERICS PARAMETROV danej triedy, alebo metody.
+25. .NET pri operacii BOXING vykonava nasledujuce cinnosti.
+   A. Alokuje pamat na HEAP.
+   B. Skopiruje cely obsah VALUE TYPE zo STACK do pamate alokovanej na HEAP. 
+26. .NET pri operacii UNBOXING vykonava nasledujuce cinnosti.
+   A. Alokuje pamat na STACK.
+   B. Skopiruje cely obsah VALUE TYPE z HEAP do pamate alokovanej na STACK. 
+   !!! C. Niekedy vsak NEMUSI pri UNBOXING dojst ku KOPIROVANIU z HEAP na STACK, ale UNBOXNING iba vrati SMERNIK na HEAP, obsahujuci VALUE TYPE, ktory som chcel UNBOXOVAT.
+!!! 27. Pomocou prikazu '!DumpObj [Address]' mozem polahky zistit, ci na danej adrese sa nachadza VALUE, alebo REFERENCE objekt. Ak sa nachadza REFERENCE objekt, tak prikaz vypise jeho obsah. Ak sa nachadza VALUE objekt, tak hodi chybu.
+!!!!! 28. Ak na zastavenie vykonavania programu a skocenie do DEBUGGER pouzijem Control-C, tak sa program bude nachadzat v NATIVNOM THREADE a NIE MANAGEABLE THREADE. Preto je potrebne prepnut sa do MANAGEABLE THREADU pomocou prikazu '~[Number]s', kde [Number] je MANAGED THREAD ID.
+!!! 29. VALUE TYPES objekty je mozne zobrazovat dvoma sposobmi.
+   A. Pouzitim prikazu 'dd [Address]', alebo ineho 'd*' prikazu na MEMORY DUMP. Ako adresu musim dat adresu, kde sa VALUE TYPE objekt nachadza.
+   B. Pouzitim prikazu '!DumpVC [MethodTableAddress] [Address]', kde Address je TAK ISTO ako v bode A adresa, kde sa VALUE TYPE objekt nachadza a MethodTableAddress je adresa METHOD TABLE (popisnych informacii o type) daneho VALUE TYPE, ktory sa na Address nachadza a ktoreho hodnoty chcem vypisat.
+????? 30. DOVOD, preto pri pouziti '!DumpVC' POTREBUJEM METHOD TABLE, zatial co pri pouziti '!DumpObj' ho NEPOTREBUJEM je v tom, ze SMERNIK REFERENCE TYPE odkazuje na TYPE HANDLE (informacie o TYPE a jeho FIELDS - teda 'DumoObj' z toho vie ako ma interpretovat pamat - na ktorom offsete su ake FIELDS), zatial co SMERNIK na VALUE TYPE je smernikom uz PRIAMO na DATA daneho VALUE TYPE. A teda, zatial co prikaz '!DumpObj' si informaciu o tom AKO INTERPRETOVAT PAMAT na ktoru odkazuje REFERENCE TYPE ZISKA z TYPE HANDLE, tak prikaz '!DumpVC' INFORMACIU o tom AKO INTERPERTOVAT pamat na ktoru referuje VALUE TYPE NEMA AKO ZISKAT (VALUE TYPES neodkazuju na TYPE HANDLE - nie su samopopisne) MUSIM pre prikaz '!DumpVC' ZADAT i ADRESU METHOD TABLE daneho VALUE TYPE, aby '!DumpVC' vedel AKO MA PAMAT obsahujucu objekt VALUE TYPE INTEPRETOVAT.
+!!! 31. PLNE KVALIFIKOVANE MENO pre VNORENE TYPES je pomocou znaku '+', teda napriklad: 'ObjTypes.ObjTypes+Coordinate', kde Coordinate je VNORENY typ do typu ObjTypes, ktory sa nachadza v namespace ObjTypes.
+!!! 32. V .NET su vsetky polia potomkami Array. Ich reprezentacia v pamati je vsak zavisla od toho ci prvkami pola su objekty VALUE TYPE, alebo REFERENCE TYPE.
+!!! 33. Ak pole obsahuje prvky VALUE TYPE pamatova reprezentacia je nasledovna.
+   A. Prve 4, resp. 8 bytes (podla toho co som na x86, alebo x64) je METHOD TABLE na ARRAY. Ta ukazuje na METHOD TABLE typu ValueType[].
+   B. Dalsie 4, resp. 8 bytes (podla toho co som na x86, alebo x64) obsahuju dlzku pola.
+   C. Dalsie 4, resp. 8 bytes (podla toho co som na x86, alebo x64) obsahuju uz ITEMS POLA, kde kazdy item ma dlzku rovnu sizeof(ValueType).
+!!! 34. Ak pole obsahuje prvky REFERENCE TYPE pamatova reprezentacia je nasledovna.
+   A. Prve 4, resp. 8 bytes podla typu CPU je METHOD TABLE na ARRAY. Ta ukazuje na METHOD TABLE typu Object[]. Typ je STALE Object[], aj ked polozky pola mozu byt String, ci iny CUSTOM TYPE.
+   B. Dalsie 4, resp. 8 bytes (podla toho co som na x86, alebo x64) obsahuju dlzku pola.
+   C. Dalsie 4, resp. 8 bytes (podla toho co som na x86, alebo x64) je METHOD TABLE na ARRAY ITEM. Ta ukazuje na METHOD TABLE typu ReferenceType[], kde ReferenceType je typ na ktory je definovane pole - ReferenceType[].
+   D. Dalsie 4, resp. 8 bytes (podla toho co som na x86, alebo x64) obsahuju podla typu CPU uz ITEMS POLA, kde kazdy item ma dlzku rovnu sizeof(Pointer).
+35. Informaciu o dlzke objektu je mozne ziskat dvoma sposobmi.
+   A. SHALLOW DEPTH - prikaz 'DumpObj' obsahuje suhrnnu dlzku VSETKYCH FIELDS.
+   B. DEEP DEPTH - prikaz 'ObjSize' vracia DLZKU VSETKYCH FIELDS + DLZKU OBJEKTOV na ktore tieto FIELDS REFERUJU. Teda urobi hlbkovu analyzu a zisti KOMPLETNU DLZKU OBJEKTU i so vsetkymi referovanymi objektami.
+!!!!! 36. .NET EXCEPTIONS su na pozadi realizovane pomocou SEH EXCEPTIONS. Kazda .NET exception ma ERROR CODE 0x434F4D. V .NET 4.0. pod x64 to vsak vyzera, ze mi hadze ERROR CODE 0xE0434352.
+37. Dump EXCEPTION mozem urobit pomocou nasledovneho postupu.
+   A. Nacitam SYMBOLS pomocou .symfix a .reload a zavediem SOS.DLL.
+   B. Prikazom 'sxe clr' povolim zachytavanie .NET EXCEPTIONS debuggerom.
+   C. Pri vyskyte exception (kod 0xE0434352 v .NET 4.0.) vpisem UNMANAGED STACK prikazom 'kb'.
+   D. Najdem 1. argument metody 'clr!RaiseTheExceptionInternalOnly', ktora je adresou EXCEPTION objektu.
+   E. Pomocou '!DumpObj [ExceptionObjectAddress]' zistim informaciu o type EXCEPTION.
+   !!! F. Message danej EXCEPTION mozem ziskat prikazom 'DumpObj [Address]' kde za Address dam value FIELD '_message'.
+   !!! G. Kroky E a F je mozne nahradit volanim prikazu 'PrintException [ExceptionObjectAddress]'.
+!!! 38. Pomocou prikazu 'Threads' mozem zistit POSLEDNU VYHODENU EXCEPTION na DANOM THREADE.
+!!! 39. Pre NATIVE DEBUGGER je CLR STACK iba KUSOM PAMATE, ktory nedokaze nijako identifikovat a nedokaze z neho ani vypisat STACK FRAMES (metody volane na CLR THREADE od SPUSTENIA CLR THREADU).
+40. Ak chcem z prikazu '!Threads' zistit objekt typu Thread musim postupovat nasledovne.
+   A. Pomocou prikazu '!Threads' zistim hodnotu ThreadOBJ pre dany thread.
+   B. ThreadOBJ obsahuje INTERNU STRUKTURU THREADU, ktora NEMA verejny SYMBOL a preto jej presny obsah nie je mozne priamo zistit. No zo specifikacie CLI vyplyva, ze struktura OBSAHUJE Thread objekt TESNE PRED HODNOTOU Windows TID. Staci teda v pamati ziskat hodnotu, ktora je HNED ZA hodnotou WINDOWS TID.
+   C. Pomocou memory dump, napriklad prikazu 'dd' vypisem obsah pamate na adrese ThreadOBJ a najdem miesto, kde miesto, kde sa nachadza WINDOWS TID. Adresa HNED PO TID je adresou na strukturu, ktora obsahuje adresu objektu Thread. Ak objekt na tejto adrese vypisem pomocou prikazu 'DumpObj', tak ziskam hodnoty struktury Thread.
+!!!!! 41. Ak v nejakom prikaze potrebujem definovat MODULE NAME, tak je to vzdy NAZOV DLL, alebo EXE, ale BEZ KONCOVKY DLL, resp. EXE. Teda napriklad ak mam Simple.EXE, tak MODULE NAME je 'Simple'.
+42. Post-Mortem debugging je technika pri ktorej vykonam SNAPSHOT procesu, ktory chcem debugovat a tento na INOM POCITACI analyzujem. Vyuziva sa v pripade, ze beziaci proces nie je mozne priamo debuggovat - pretoze napriklad je nasadeni v beziacom prostredi.
+43. Ak chcem realizovat POST-MORTEM debugging, musim vykonat nasledovne kroky.
+   A. Ziskat SNAPSHOT BEZIACEHO procesu, ktory chcem debuggovat. Ten mozem ziskat i PRIAMO z NTSD pomocou prikazu '.dump'. Prikaz ma vela options, ktore urcuju kolko informacii sa pri DUMO ulozi. Cim viac informacii, tym lepsi POST-MORTEM debugging. Samozrejme existuju aj ine nastroje ako vykonat DUMP, ktore nevyzaduju spustenie a zastavenie procesu debuggerom.
+   B. Ziskany DUMP subor prenesiem na pocitac, kde chcem vykonat debugging a pouzijem priznak '-z' debugera NTSD na definovanie DUMP suboru z ktoreho sa bude debuggovat.
+   !!! C. Pri POST-MORTEM debugging nemozem pouzit uplne vsetky debug prikazy, ale iba obmedzenu sadu. Zavisi to i od toho ako podrobny je DUMP subor.
+//-------------------------------------------------------------------------------------------------------
+Prikazy pre SOS, SOSEX a WinDbg
+
+1. Prikaz '.sympath [FilePath]' NASTAVI adresar k Symbols na FilePath.
+2. Prikaz '.sympath+ [FilePath]' PRIDA dalsi adresar FilePath k existujucemu zoznamu Symbols adresarov.
+3. Prikaz '.symfix [FilePath]' NASTAVI CACHE adresar k MS PUBLIC SYMBOLS na FilePath. Do FilePath sa budu ukladat z MS serverov stiahnute Symbols subory. Ak FilePath NENASTAVIM, tak sa pouzije '\sym' SUBDIRECTORY z instalacneho adresara Debugging Tools for Windows.
+4. Prikaz '.sympath+ [FilePath]' PRIDA dalsi adresar (FilePath) k MS PUBLIC SYMBOLS k existujucemu zoznamu MS PUBLIC SYMBOLS adresarov.
+5. Prikaz '.reload' sposobi znovu nacitanie Symbols. Je ho NUTNE POUZIT po nastaveni ci pridani cesty prikazmi 'symfix', 'symfix+', 'sympath' a 'sympath+'.
+6. Prikaz 'NTSD -g [ProgramName.exe]' potlaci automaticke generovanie BREAKPOINT pri starte programu.
+7. Prikaz 'NTSD -G [ProgramName.exe]' potlaci automaticke generovanie BREAKPOINT pri konci programu.
+8. Prikaz 'q' okamzite ukonci debugger ako i debugovany proces.
+9. Prikaz 'qd' ukonci debugger ale debugovany proces bezi dalej.
+10. Prikaz 'g' pokracuje v behu programu az do vyskytu dalsieho EVENT (Control-C, breakpoint, exception).
+!!! 11. Prikaz 'p' vykona nasledujucu instrukciu. Ak je nasledujuca instrukcia CALL, tak ju CELU VYKONA a pokracuje INSTRUKCIOU ZA CALL.
+!!! 12. Prikaz 't' vykona nasledujucu instrukciu. Ak je nasledujuca instrukcia CALL, tak VOJDE DO NEJ - STEP-INTO.
+13. Prikaz 'pc' vykona vsetky instrukcie az kym nenajde instrukciu CALL, pricom AK PROGRAM PRAVE STOJI na CALL tak ju CELU VYKONA a hlada DALSI CALL.
+14. Prikaz 'pt' vykona vsetky instrukcie az kym nenajde instrukciu RETURN, AK PROGRAM PRAVE STOJI na RETURN tak ho CELY VYKONA a hlada DALSI RETURN.
+15. Prikaz 'tc' vykona vsetky instrukcie az kym nenajde instrukciu CALL, pricom AK PROGRAM PRAVE STOJI na CALL tak sa DONHO VNORI a hlada DALSI CALL.
+16. Prikaz 'tt' vykona vsetky instrukcie az kym nenajde instrukciu RETURN, AK PROGRAM PRAVE STOJI na RETURN tak SA DONHO VNORI a hlada DALSI RETURN. Ak pri hladanie najde CALL, tak donho vstupi a pokracuje v hladanie RETURN.
+17. Prikaz 'load [FileName.DLL]' nacita debugger EXTENSION DLL FileName.DLL do debug session. FileName.DLL musi obsahovat celu cestu, pokial EXTENSION DLL nie je v tom istom adresari ako debugger.
+!!! 18. Prikaz 'loadby [FileName.DLL] [ModuleName]' umoznuje nacitat nacita debugger EXTENSION DLL FileName.DLL z TOHO ISTEHO ADRESARA z akeho sa nacital modul s nazvom ModuleName, ktoru uz bol predtym zavedeny do debug session. Tento prikaz sa s vyhoodou pouziva na nacitanie SOS.DLL, ktory sa nachadza v tom istom adresari ako klucove kniznice CLR a je zavisly od verzie .NET. Prikaz 'loadby SOS clr' nacita SOS.DLL z TEJ ISTEJ CESTY z AKEJ NACITA CLR.DLL - co je klucova kniznica .NET 4.0. a je v TOM ISTOM ADRESARI ako SOS.DLL.
+19. Prikaz '.cordll [Path]' umoznuje nastavit cestu odkial sa bude nahravat dolezita pomocna kniznica mscordacwks.dll. Priznakom '-u' odstranim tuto DLL z debug session.
+!!!!! 20. Prikaz 'x [Module!Symbol]' umoznuje zobrazit vsetky symboly, ktore obsahuju retazec Symbol (znaky '*' ci '?' v retazci maju ten isty vyznam ako vo file system) v module Module. Prikladom pouzitia moze byt prikaz 'X notepad!*Save*' - najde vsetky SYMBOLS (nazvy funkcii, metod, globalych a statickych premennych), ktore obsahuju retazec 'Save' v module NOTEPAD.EXE. Samozrejme SYMBOLS k danemu MODULE MUSIA BYT STIAHNUTE. V pripade NOTEPAD.EXE musia byt stiahnute z MS servera.
+!!!!! 21. Prikaz 'bp [Module!Symbol]' resp. 'bp [Address]' umoznuje nastavit breakpoint na dany SYMBOL 'Module!Symbol', resp. adresu Address.
+22. Prikaz 'u [Address]' vykona disassembling kodu na adrese Address.
+!!! 23. Prikaz '!u [Address]' vykona disassembling kodu na adrese Address a zaroven VYPISE aj .NET SYMBOLS.
+24. Prikaz '!name2ee [ModuleName] [TypeOrMethodName]' umoznuje vypisat podrobne informacie (meno, ci bola JOT skompilovana, adresu skompilovanej funkcie) o .NET triede, alebo metode. Meno typu, resp. metody musi byt FULL .NET NAME - teda [Namespace.Type.MethodName].
+25. Prikaz '!bpmd -md [MethodDescriptionAddress]' umoznuje nastavit breakpoint na metody BEZ OHLADU ci JE, alebo NIE JE JITTED. Ak je dana metoda pretazena, prikaz nastavi breakpoints na VSETKY PRETAZENE METODY.
+!!! 26. Prikaz '!DumpVC [MethodTableAddress] [Address]' vypisuje hodnotu VALUE TYPE objektu na adrese Address. MethodTableAddress MUSI BYT ADRESA METHOD TABLE VALUE TYPE, ktoreho hodnotu na adrese Address chcem vypisat. Je potrebna preto, aby SOS vedel AKO DANY TYP VYZERA (ake ma fields) a popis typu ziska PRAVE z METHOD TABLE.
+!!! 27. Prikaz '!DumpObj [ObjectAddress]', alebo SKRATENE '!do [ObjectAddress]' vypisuje hodnotu REFERENCE TYPE objektu na adrese ObjectAddress.
+28. Prikaz 'dp Address' vypisuje obsah pamate na adrese Address vo formate POINTER. Pointer ma v x86 velkost 4 a v x64 8 bytes.
+29. Prikaz 'db Address' vypisuje obsah pamate na adrese Address vo formate BYTE.
+30. Prikaz 'da Address' vypisuje obsah pamate na adrese Address vo formate ASCII - az do 1.vyskytu '\0'.
+31. Prikaz 'du Address' vypisuje obsah pamate na adrese Address vo formate UNICODE - az do 1.vyskytu '\0'.
+32. Prikaz 'dw Address' vypisuje obsah pamate na adrese Address vo formate WORD.
+33. Prikaz 'dd Address' vypisuje obsah pamate na adrese Address vo formate INT32.
+34. Prikaz 'dd Address' vypisuje obsah pamate na adrese Address vo formate INT64.
+!!! 35. Prikaz '~[Number]s' umoznuje prepnutie do MANAGEABLE THREADU s TID==Number. Zvycajne sa pouziva bud pri multithread aplikaciach, alebo ak zastanem vykonavanie v NATIVE THREAD (napriklad po zastaveni cez Control-C).
+!!! 36. Prikaz '!DumpArray -details Address' umoznuje vypisat vsetky PRVKY POLA nachadzajuceho sa na adrese Address. Pomocou parametra '-start [Number]' je mozne nastavit index od ktoreho sa zacne zobrazovat pole a parametrom '-length [Number]' je mozne urcit kolko prvok pola chcem zobrazit.
+37. Prikaz '!DumpStackObjects', alebo aj 'dso' umoznuje vypisat VSETKY OBJEKTY v STACK pre dany thread. Ak som vnoreny hlboko v metodach, tak VSETKY STACK FRAMES so VSETKYMI OBJEKTAMI su ZOBRAZENE. Ku kazdemu objektu sa vypise kde je jeho referencia v STACK (referenca premenna odkazujuca sa na HEAP), ako aj pozicia objektu v HEAP, ktoru je mozne pouzit na zobrazenie detailov o objekte pomocou prikazu 'dumpobject'.
+38. Prikaz '!ObjSize [Address]' vracia DLZKU VSETKYCH FIELDS + DLZKU OBJEKTOV na ktore tieto FIELDS REFERUJU. Teda urobi hlbkovu analyzu a zisti KOMPLETNU DLZKU OBJEKTU i so vsetkymi referovanymi objektami.
+39. Prikaz 'sxe clr' ZAPINA ZACHYTAVANIE CLR EXCEPTION v debugger. Ak NIE JE POUZITY, tak CLR EXCEPTIONS sa IGNORUJU. Alternativou je pouzit prikaz 'StopOnException'.
+40. Prikaz '!StopOnException [FullyQualifiedExceptionName]' umoznuje NASTAVIT, ktore CLR EXCEPTIONS ma debugger ZACHYTAVAT. Pomocou '-derived' je mozne nastavit, ze i zdedene EXCEPTION maju zastavit debugger. Option '-create' znamena, ze sa ma zastavit pri FIRST CHANCE EXCEPTION a '-create2', ze sa ma zastavit pri SECOND CHANCE EXCEPTION.
+41. Prikaz '!PrintException [ExceptionObjectAddress]', kde ExceptionObjectAddress je adresa EXCEPTION OBJEKTU (je ho mozne zistit ako 1. parameter metody 'clr!RaiseTheExceptionInternalOnly') sluzi na zobrazenie podrobnosti o EXCEPTION, vratane message.
+!!! 42. Prikaz '!Threads' vypisuje vsetky MANAGED THREADS. U kazdeho THREAD vypise i POSLEDNU EXCEPTION, ktore sa na DANOM THREAD VYSKYTLA.
+43. Prikaz 'kb' vypisuje UNMANAGED STACK. Nato, aby bol kompletne vypisany i s funkciami, ktore su sucastou Windows je potrebne nacitat SYMBOLS pomocou '.symfix'.
+44. Prikaz '!ClrStack' vypisuje obsah CLR STACK. Parameter '-l' vypise lokalne premenne pre jednotlive metody v CLR STACK. Parameter '-p' vypisuje parametre vsetkych metod na CLR STACK. Parameter '-a' je kombinacia vypisu lokalnych premennych i parametrov na CLR STACK.
+45. Prikaz '!DumpStack' vypisuje KOMBINOVANY STACK obsahujuci informacie o MANAGED i NATIVE STACK.
+46. Prikaz '!EEStack' vola prikaz '!DumpStack' pre vsetky aktivne threads. Parametr '-short' umoznuje vypisat iba strucne informacie ako napriklad to ci thread je v LOCK, alebo ci nahodou nebol HIJACKED GC - teda prebieha na nom proces GC.
+47. Prikaz '!COMState' zobrazuje COM state kazdeho z THREADS, ako je napriklad jeho apartment model, alebo smernik na TEB tabulku.
+48. Prikaz 'u [Address]' robi DISASSEMBLING kodu na adrese Address, pricom vsak MANAGED metody NEMAJU MENO, ale iba adresu.
+49. Prikaz '!U [Address]' robi DISASSEMBLING kodu na adrese Address, pricom vsak MANAGED metody MAJU PRESNE MENO. Vyzera, ze prikaz '!U' zacne disassembling VZDY na ZACIATKU metody, aj ked dam adresu do stredu metody.
+50. Prikaz '!ip2md [Address]' vracia METHOD DESCRIPTOR a dalsie dalsie informacie pre METODU na DANEJ ADRESE. Hodnota Address moze byt bud adresa PRIAMO NA METODU, alebo adresa vo VNUTRI METODY.
+51. Prikaz '!DumpIL [MethodDescriptior]' zobrazi MSIL instrukcie pre metodu s odpovedajucim MethodDescriptior.
+52. Prikaz '!EEVersion' zobrazuje verziu .NET.
+53. Prikaz '!DumpMT [MethodTable]' vypise obsah METHOD TABLE s hodnotou MethodTable.
+54. Prikaz '!VerifyHeap' skontroluje MANAGED HEAP ci v nej nie su nejake chyby a ak ano, tak ich vypise.
+55. Prikaz '!TraverseHeap [FileName.XML]' traverzuje HEAP a obsah zapise do FileName.XML, odkial ho CLR Profiler moze citat a spracovat.
+56. Prikaz '!DumpHeap' zobrazuje kompletnu MANAGED HEAP.
+57. Prikaz '!FindAppDomain [ObjectAddress]' zisti do akej APP DOMAIN patri objekt na adrese ObjectAddress.
+58. Prikaz '!ProcInfo' zobrazi informacie o debuggovanom procese.
+!!! 59. Prikaz '!mbm [MethodFilter] [ILOfsset] umoznuje nastavit breakpoint na metode zadanej cez MethodFilter (filter ma tvar ModuleName!MethodName, pricom mozem pouzit WILDCARDS a za ModuleName je najlepsie pouzit znak '*', inak pouzit meno modulu co je meno DLL, alebo EXE, ale BEZ KONCOVKY DLL, resp. EXE) na OFFSETE MSIL INSTRUKCIE ILOfsset. Vyuzia sa to vtedy, ked nema .CS zdrojaky k danemu kodu a chcem zastavit vykonavanie programu na niektorej z MSIL instrukcii. Pomocou '/p:[PassConut]' mozem nastavit, ze breakpoint sa odpali az na PassCount prechode kodom. Priznak '/t: [ThreadID]' umoznuje nastavit, ze breakpoint sa vyvola iba ak je vyvolany threadom s danym ThreadID. Priznak '/1' urcuje, ze breakpoint sa pouzije iba raz.
+!!! 60. Prikaz '!mbp [FileName.cs] [LineNumber]' umoznuje nastavit breakpoint v subore FileName.cs na riadku LineNumber.
+61. Prikaz '!mbl' umoznuje vypisat vsetky SOSEX breakpoints. Zobrazuje aj BREAKPOINT ID pre kazdy breakpoint, pomocou ktoreho sa mozem na tento breakpoint odkazovat z inych prikazov.
+62. Prikaz '!mbc [BreakpointID]' vymaze breakpoint. Option '*' vymaze vsetky breakpoints.
+63. Prikaz '!mbd [BreakpointID]' nastavi breakpoint na DISABLED. Option '*' vsetky breakpoints zmeni do stavu DISABLED.
+64. Prikaz '!mbe [BreakpointID]' nastavi breakpoint na ENABLED. Option '*' vsetky breakpoints zmeni do stavu ENABLED.
+!!!!! 65. Prikaz '!mx [SearchString]' umoznuje zistit VSETKY SYMBOLS (triedy, metody) zodpovedajuce SearchString, ktory musi byt vo formate 'ModuleName!ObjectToSearch' pricom mozem pouzit WILD CARDS.
+!!! 66. Prikaz '!mln [Address]' umoznuje zistit, aky typ objektu sa nachadza na danej adrese (ci je to obekt z HEAP, alebo STACK a typ objektu).
+67. Prikaz '!mk' umoznuje vypisat obsah kombinovaneho MANAGED a NATIVE STACKU. Pri kazdom FRAME vypisuje aj FRAME NUMBER, pomocou ktoreho sa na jednotlive FRAMES (metody volane pre dany thread) mozem dotazovat dalsimi prikazmi.
+!!! 68. Prikaz '!mdv [FrameNumber]' umoznuje vypisat lokalne premenne a argumenty daneho FRAME (metody volanej pre dany thread.
+69. Prikaz '!mframe [FrameNumber]' umoznuje nastavit DEFAULT FRAME pre prikaz '!mdv', takze potom uz iba staci volat '!mdv' bez FrameNumber a zobrazi sa ten FRAME, ktoreho FrameNumber som nastavil poslednym volanim '!mframe'.
+!!! 70. Prikaz '!mdt [Address]' umoznuje vypisat podrobnosti o objekte nachadzajucom sa na adrese Address. Vypisuje vsetky hodnoty FIELDS a v pripade pouzitia priznaku '-r' rekurzivne prejde i FILEDS odkazujuce na KOMPLEXNE OBJEKTY obsahujuce dalsie FIELDS.
+71. Prikaz '!syncblk [BlockNumber]' umoznuje vypisat SYNC BLOCK s danym BlockNumber. Parameter '-all' vypisuje vsetky SYNC BLOCKS.
+!!!!! 72. Prikaz '!dlk' identigikuje VSETKY DEADLOCKS v PROCESE a prehadne vypise, ktore threads su v deadlocku a na ktore LOCKS vzajomne cakaju.
+73. Prikaz '!Strings -m:[StringToSearch]' vypisuje vsetky STRINGS, ktore obsahuju StringToSearch, ktory moze obsahovat i WILD CARDS. Parameter '-g' umoznuje obmedzit, ktoru GC generaciou budem prehladavat a parametre '-n' a '-x' urcuju, minimalnu a maximalnu dlzku hladaneho retazca.
+74. Prikaz '!gcgen [Address]' vypisuje cislo GC generacie v ktorej sa objekt na adrese Address nachadza.
+75. Prikaz '!dumpgen [GenerationNumber]' vypisuje vsetky objekty nachadzajuce sa v GC generacii GenerationNumber.
+76. Prikaz '.dump [Filename.DMP]' umoznuje generovat DUMP z beziaceho procesu, ktory neskor mozem OFFLINE debuggovat. Vystup je ulozeny do Filename.DMP.
+77. Prikaz 'NTSD -z [Filename.DMP]' spusta debuggovanie z DUMP suboru ulozeneho do Filename.DMP prikazom '.dump'.
+//-------------------------------------------------------------------------------------------------------

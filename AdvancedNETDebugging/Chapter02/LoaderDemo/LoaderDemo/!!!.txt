@@ -1,0 +1,122 @@
+﻿//-------------------------------------------------------------------------------------------------------
+1. Program demonstruje zakladne aspekty .NET ako napriklad .NET Loader, popis assemblies ci domains.
+2. .NET framework je postaveny z nasledujucich sucasti.
+   A. CLI je SUBOR STANDARDOV definovanych ECMA, ktory obsahuje ZOZNAM PRAVIDIEL, ktore musi RUNTIME implementujuci CLI dodrziavat. Takisto obsahuje i ZAKLADNU KNIZNICU tried, ktoru RUNTIME musi obsahovat aby bol CLI kompatibilny. Takto kniznica sa nazyva Base Class Library (BCL) kniznica.
+   B. CLR je IMPLEMENTACIA CLI zo strany Microsoft. Okrem CLR exisuju i dalsie CLI implementacie, ako napriklad Mono.
+   C. .NET Runtime je CLR + ROZSIRENY SUBOR TRIED ako su napriklad WPF, WCF, EF a dalsie. .NET Runtime teda obsahuje OKREM BCL TRIED, ktore PRIAMO DEFINUJE CLI aj DODATOCNE KNIZNICE ako napriklad WCF, ci WPF, ktore NIE SU SUCASTOU BCL.
+3. Pri zavadzani .NET assembly skompilovaneho ako proces sa vyuziva rozsiritelnost PE formatu suboru EXE. Zavedenie prebieha tak, ze EXE subor ma za adresu 1. instrukcie programu (AddressOfEntryPoint) adresu UNAMANAGED STARTUP STUB, co je UNMANAGED rutina, ktorej cielom je ZAVEDENIE .NET Framework a nasledne spustenie ASSEMBLY v zavedenom .NET Framework.
+4. Proces zavadzania .NET assembly je realizovany v nasledujucich krokoch.
+   A. Windows loader najde v PE subore AddressOfEntryPoint.
+   B. Spusti sa vykonavanie programu na AddressOfEntryPoint, ktora obsahuje instrukciu JMP na _CorExeMain() z mscoree.dll.
+   C. Funkcia _CorExeMain() zavedie CLR podla toho aky typ CLR program potrebuje, inicializuje ho a skoci na jeho Main() funkciu.
+!!! 5. Vo Windows XP a vyssich verziach bol WINDOWS LOADER zmeneny tak, aby AUTOMATICKY dokazal IDENTIFIKOVAT .NET assembly a AUTOMATICKY zaviedol .NET framework.
+6. V .NET je mozne v ramci jedneho procesu vytvarat VIACERO DOMAINS. DOMAIN separuje program na SAMOSTATNE CASTI, ktore su VZAJOMNE NEZAVISLE. Ak sa v jednej DOMAIN vyskytne napriklad UNHANDLED EXCEPTION, tak tato EXCEPTION NEMA VPLYV na OSTATNE DOMAINS. Kazda DOMAIN moze mat i vlastne security nastavenia.
+!!! 7. Po zavedeni .NET framework su v programe vytvorene MINIMALNE 3 DOMAINS.
+   A. System Application Domain - ma na starosti zaviest ostatne 2 DOMAINS, zavedie mscorlib.dll do Shared Applicatiom Domain a inicializuje .NET run-time.
+   B. Shared Applicatiom Domain - obsahuje mscorlib.dll so zakladnymi datovymi typmi.
+   C. Default Application Domain - obsahuje kod programu, ktory sa bude vykonavat.
+??? 8. Assemblies su nahravane ZVLAST pre KAZDU DOMAIN.
+9. Assemblies v .NET su v dvoch verziach.
+   A. Sigle-file assemblies - DRVIVA VACSINA ASSEMBLIES je SINGLE-FILE. Takato assembly obsahuje VSETKY MODULES + MANIFEST v JEDNOM SUBORE.
+   B. Multi-file assemblies - iba VELMI MALO je MULTI-FILE. Takato assembly obsahuje VIACERO SUBOROV, kde kazdy subor obsahuje jeden, alebo viac MODULES. MANIFEST moze byt bud v niektorom z nich, alebo ako SEPARATNY SUBOR.
+10. V .NET su typy rozdelene do 2 kategorii.
+   A. Value types obsahuju male mnozstvo dat (odporuca sa <=16), su ulozene na STACK a su PRENASANE HODNOTOU.
+   B. Referemce types obsahuju velke mnozstvo dat, su ulozene na HEAP a su PRENASANE REFERENCIOU.
+!!! 11. Kazdy REFERENCE objekt v CLR, ktory je ulozeny na HEAP sa sklada z 3 udajov.
+   A. Sync Block Index - su pomocne informacie o objekte, alebo index do tabulky obsahujucej pomocne informacie.
+   B. Type Handle - je HANDLER na TYP, ktoreho je objekt v HEAP typom. Pomocou neho .NET vie o aky typ objektu sa jedna a ako ma data reprezentovat.
+   C. Object Instance - SAMOTNE DATA OBJEKTU.
+12. Sync Block Index obsahuje bud index, alebo SAMOTNE DATA viazuce sa k Sync Block Table. Tato tabulka obsahuje pomocne informacie vyuzivane pri uvaleni LOCK na dany objekt. Obsahuje aj informacie ako napriklad HASH CODE, informacie o interoperabilite ci application domain index.
+!!!!! 13. Sync Block Index sa nachadza na adrese OBJECT_ADDRESS-0x04, teda 4 bytes nad adresou na ktoru ukazuje REFERENCIA. Referenca premenna VZDY ukazuje na hodnotu Type Handle a Sync Block Index, ktoreho dlzka je 4 bytes je PRED NIM.
+14. Sync Block Index moze byt rovny 0, ak dany objekt nema alokovanu ziadny SYNC BLOCK v Sync Block Table.
+!!! 15. Vacsinou je Sync Block Index ==0. Avsak ak napriklad pouzijem tento objekt v lock(), tak je automaticky vytvoreny SYNC BLOCK v Sync Block Table. Obsah Sync Block je mozne pozriet pomocou prikazu '!syncblk'.
+!!!!! 16. Pomocou prikazu '!syncblk' mozem zo SYNC BLOCKU zistit napriklad to, ktory THREAD drzi LOCK nad danym objektom.
+!!!!! 17. Ak mam REFERENCNU PREMENNU (odkazujucu na objekt na HEAP), tak jej HODNOTA je SMERNIK NIE NA SAMOTNE DATA OBJEKTU, ale na TYPE HANDLE.
+!!! 18. TYPE HANDLE je SMERNIK na METHOD TABLE. METHOD TABLE obsahuje informaciu o TYPE medzi ktore patria i tieto udaje. POZOR toto su udaje z KNIHY, avsak vyzera to, ze niektore parametre sa v .NET 4.0. ZMENILI.
+   A. Flags - informacia o aky typ sa jedna, ci je to pole, struct, class, enum a podobne.
+   B. Base Size - celkova velkost OBJEKTU. Je to dlzka vsetkych FIELDS + sizeof(TYPE HANDLE).
+   C. Flags2 - dodatocne flags.
+   D. NumMethods - celkovy pocet metod.
+   E. NumVirtMethods - celkovy pocet virtualnych metod.
+   F. NumInterfaces - pocet implementovanych interfaces, ktory typ implementuje.
+   G. Parent - smernik na METHOD TABLE PARENT typu.
+   I. Smernik na MODULE INFO. Obsahuje smernik na informaciou o MODULE v ktorom je dany typ definovany. Jeho obsah je mozne vypisat prikazom '!DumpModule [ModuleAddress]'.
+   J. Smernik na EEClass.
+   K. Tabulka implementovanych interfaces.
+   L. Tabulka smernikov na vsetky virtualne metody.
+   M. Tabulka smernikov na vsetky metody.
+!!!!! 19. PRAVE FAKT, ze REFERENCE TYPE sa odkazuje na TYPE HANDLE UMOZNUJE .NET ASCOVIOVAT BLOK PAMATE na HEAP s TYPOM a tym padom VIE AKO MA INTERPRETOVAT TENTO BLOK PAMATE.
+20. Ak chcem ziskat informacie z METHOD TABLE, mozem pouzit prikaz '!dumpmt [MethodTableAddress]'.
+21. Z tabulky smernikov na metody (virtualne metody) mozem ziskat smernik na metodu. Jej kod je mozne ziskat prikazom 'u'.
+!!! 22. Ak metoda este NIE JE SKOMPILOVANA pomocou JIT, tak NAMIESTO SKUTOCNEHO KODU, uvidim pomocou 'u' iba STUB, ktory spusta JIT kompilator.
+23. Kazda metoda je popisana pomocou METHOD DESCRIPTOR. Tento je SUCASTOU METHOD TABLE. Pomocou prikazu '!dumpmt -md [MethodTableAddress]' mozem vypisat Method Description Table, obsahujucu zoznam METHOD DESCRIPTIOR pre VSETKY METODY.
+!!! 24. Method Descriptor je SMERNIK na metadata metody (ma 4 bytes v x86 a 8 v x64). Obsahuje napriklad meno metody, informaciu o tom ci dana metoda bola skompilovana, ak ano, tak adresu, kde zacinaju ASSEMBLER (nie MSIL) instrukcie (ak nie je skompilovana obsahuje 0xFFFFFFFFFFFFFFFF), ci adresu METHOD TABLE DANEHO TYPU.
+25. Samotny obsah Method Descriptor sa zobrazuje prikazom '!dumpmd'.
+26. Module obsahuje informacie o vsetkych typoch, metodach, fields, files a dalsich metadadach ASSEMBLY. Prikaz '!dumpmodule' sluzi na vypis informacii o module.
+!!! 27. .NET si uklada METADATA v podobe TABULIEK. Pre ROZLICNE TYPY INFORMACII su definovane ROZLICNE TABULKY.
+   A. Module table.
+   B. Type reference table.
+   C. Type definition table.
+   D. Field definition table.
+   E. Method definition table.
+   F. Parameter definition table.
+   G. Interface implementation table.
+   H. Member reference table.
+   I. Custom attribute table.
+   J. Permission table.
+   K. Signature table.
+   J. Event table.
+   K. Property table.
+   L. Module reference table.
+   M. Type specification table.
+   N. Assembly table.
+   O. Assembly reference table.
+   P. File table.
+   Q. Expotred type table.
+   R. Manifest resource table.
+   S. Generic parameter table.
+   T. Method specification table.
+   U. Generic parameter constraint table.
+ !!!!! 28. KAZDA TABULKA ma ASOCIOVANY 1 BYTE dlhy IDENTIFIKATOR TABULKY. Z toho vyplyva, ze v .NET moze byt maximalne 256 tabuliek s metadatami.
+ !!!!! 29. Metadata pre DANY ELEMENT (type, method, field, file, module) je identifikovany TOKENOM. Token ma 4 BYTES, kde 1. BYTE je IDENTIFIKATOR TABULKY metadat a ostatne 3 BYTES su INDEXOM do TABULKY. Token potom JEDNOZNACNE UDAVA POZICIU do TABULKY METADAT.
+ !!!!! 30. JEDEN ZAZNAM v TABULKE obsahuje ADRESU na METADATA, ktore blizsie popisuju dany element (type, method, field, file, module).
+ ????? 31. V .NET 4.0. to vyzera, ze JEDEN ZAZNAM v TABULKE obsahuje OFFSET, ktory ked PRIPOCITAM k ADRESE na KTOREJ SA OFFSET NACHADZA ziskam SKUTOCNU ADRESU METHOD DESCRIPTOR.
+ 32. EECClass je datova struktura, ktora je LOGICKY TOTOZNA s METHOD TABLE. Obsahuje teda ROVNAKO ako METHOD TABLE informacie o danom type, ako napriklad zoznam jeho metod, fields, smernik na EEClass parent typu a podobne. Fyzicky su vsak METHOD TABLE a EEClass vsak 2 ROZDIELNE STRUKTURY. ??? METHOD TABLE je kvoli RYCHLOSTI a su v nej ulozene TYPES, ku ktorym sa CASTO PRISTUPUJE.
+ !!! 33. EEClass je mozne vypisat pomocou prikazu '!dumpclass [EECClassAddress]', pricom hodnotu EECClassAddress je mozne ziskat pomocou '!dumpmt'.
+//-------------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------------
+!!!!! 1. V X64 ARCHITEKTURACH su VSETKY SMERNIKY a HANDLES 64 BITOVE. Teda MAJU DLZKU 8 BYTES. Tyka sa to napriklad i TYPE HANDLE, ktory sa ODKAZUJE na METHOD TABLE daneho TYPU.
+!!!!! 2. ADRESY v X64 SU VO FORMATE [LO_DWORD] [HI_DWORD] a preto ak napriklad mi WinDbg pri MEMU DUMP pomocou PRIKAZU 'dd' zobrazi: '000330d8 000007ff', znamena to adresu: '000007ff000330d8'. LEPSIE JE PRETO POUZIT PRIKAZ 'DP', ktory SPRAVI MEMORY DUMP o dlzke 8 BYTES a teda vypise: '000007ff`000330d8', ktoru mozno i so symbolom APOSTROF pouzivat v prikazoch WinDbg.
+//-------------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------------
+Nacitanie SOS.DLL a SOSEX.DLL pre .NET 4.0
+
+1. Prikaz '.symfix' - na fixaciu symbolov. Toto NIE JE NEVYHNUTNE.
+2. Prikaz '.reload'. Toto NIE JE NEVYHNUTNE.
+3. Prikaz '.load sosex' - ak SOSEX.DLL NIE JE v TOM ISTOM ADRESARI ako WinDbg.EXE, tak TREBA DAT CELU CESTU.
+4. Prikaz '!mbp [FileName.cs] [FileLine]' - definujem BREAK POINT v subore FileName.cs na riadku FileLine.
+5. Prikaz 'g' - na SPUSTENIE debuggingu.
+6. Prikaz '.loadby sos clr' - na nacitanie SOS.DLL.
+//-------------------------------------------------------------------------------------------------------
+Prikazy pre SOS, SOSEX a WinDbg
+
+1. Prikaz '!dumpdomain' vypise zoznam vsetkych domains v procese.
+2. Prikaz '!dumpdomain [Address]' vypise domenu s adresou [Address].
+3. Prikaz '!dumpassmbly [Address]' vypise assembly s adresou [Address].
+4. Prikaz '!bpsc [Filename.cs] [LineNumber]' nastavi breakpoint v subore [Filename.cs] na riadku [LineNumber]. Tento prikaz je implementovany SOSEX.dll.
+5. Prikaz '!ClrStack -a' vypisuje aktualny obsah CLR STACK.
+6. Prikaz 'dd [Address]' vypisuje obsah pamate po 4 BYTES od adresy [Address].
+7. Prikaz 'dp [Address]' vypisuje obsah pamate po X BYTES od adresy [Address], kde X==sizeof(POINTER) - 4 BYTES v x86 a 8 bytes v x64.
+8. Prikaz '!dumpobj [Address]' vypisuje obsah CLR objektu na adrese [Address] a to tak, ze zoberie jeho adresu a zobrazi hodnotu objektu na tejto adrese.
+9. Prikaz '!dumpvc [MethodTableAddress] [Address]' vypisuje obsah CLR VALUE TYPE na adrese [MethodTableAddress] [Address], kde [MethodTableAddress] je adresa method table.
+10. Prikaz '!syncblk [SyncBlockIndex]' vypisuje obsah SYNC BLOCK pre [SyncBlockIndex].
+11. Prikaz '!DumpModule [ModuleAddress]' vypise zakladne informacie o .NET MODULE nachadzajuceho sa na adrese ModuleAddress.
+12. Prikaz '!dumpmt [MethodTableAddress]' umoznuje vypisat zakladne inormacie o MODULE TABLE na adrese [MethodTableAddress].
+13. Prikaz 'u [Address]' vykona DISASSEMBLING kodu od adresy [Address].
+14. Prikaz '!dumpmt -md [MethodTableAddress]' zobrazuje METHOD DESCRIPTOR TABLE - tabulku so vsetkymi METHOD DESCRIPTORS pre dany typ.
+15. Prikaz '!dumpmd [MethodDescriptor]' zobrazi informacie o danej metode - tzv. METHOD DESCRIPTOR.
+16. Prikaz '!dumpmodule -mt [ModuleAddress]' vypise vsetky typy, ktore dany module obsahuje. Obsahuje i TOKEN pre kazdy TYP.
+17. Prikaz '!EEClass [EECClassAddress]' umoznuje vypisat obsah EEClass.
+//-------------------------------------------------------------------------------------------------------

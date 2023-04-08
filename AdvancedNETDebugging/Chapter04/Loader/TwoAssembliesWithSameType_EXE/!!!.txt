@@ -1,0 +1,43 @@
+﻿//-------------------------------------------------------------------------------------------------------
+1. Program demonstruje riesenie rozlicnych problemov suvisiacich s .NET Loader (nazyvanym aj Fusion).
+!!! 2. .NET Loader pouziva ROZLICNE ALGORITMY pre nacitavanie ASSEMBLIES podla toho v AKOM LOAD-CONTEXT su NACITAVANE. V .NET existujue NASELDUJUCE LOAD-CONTEXTS.
+   A. DEFAULT LOAD CONTEXT. Je pouzity ak sa ASSEMBLY zavadza pomocou niektorej z metod Assembly.Load(). Loader nacitava assembly najprv z GAC, potom z Application Base Path a napokon z Private Bin Path.
+   B. LOAD-FROM CONTEXT. Je pouzity ak sa ASSEMBLY zavadza pomocou niektorej z metod Assembly.LoadFrom(), AppDomain.CreateInstanceFrom() ci AppDomain.ExecuteAssembly(). Assembly su nacitavane z definovanej cesty, ktoru vkladam ako parameter do metod nacitavajucich assembly.
+   C. LOAD-WITHOUT CONTEXT. je pouzity pre GENEROVANE ASSEMBLIES, ktore su generovane DYNAMICKY cez Reflection, alebo Emit.
+3. Loader na urcovanie ci DVE ASSEMBLIES nie su rovnake pouziva IDENTITY. Ta je tvorena nasledujucimi parametrami.
+   A. Assembly name - meno assembly bez pripony EXE, ci DLL.
+   B. Culture.
+   C. Version.
+   D. Public key - pouziva sa IBA PRI STRONGLY NAMED assemblies.
+   E. Processor architecture.
+!!!!! 4. Okrem ASSEMBLY IDENTITY ma KAZDA ASSEMBLY este i UNIKATNY GUID, ktory PLNE identifikuje NIELEN ASSEMBLY, ale aj jej types.
+!!! 5. Plati, ze .NET NIKDY NENAHRA dve IDENTICKE ASSEMBLIES aj ked su na INYCH CESTACH, ale iba ak TIETO 2 ASSEMBLIES su nahravame POMOCOU ROVNAKEHO CONTEXT.
+!!!!! 6. Ak vsak IDENTICKE ASSEMBLIES (s ROZDIELNYM GUID) nahravam pomocou INEHO CONTEXT, potom Loader obe ASSEMBLIES BEZ PROBLEMOV ZAVEDIE. Vyslekom su nasledujuce skutocnosti.
+   A. Ak obe ASSEMBLIES, ktore su pre Loader IDENTICKE obsahuju TYP s ROVNAKYM FULLY-QUALIFIED NAME, tak KOMPILATOR povazuje tieto TYPES za IDENTICKE a pri PRETYPOVANI z jedneho TYPE na DRUHY kompilator NEHLASI CHYBU.
+   B. Kedze vsak tieto ASSEMBLIES pre RUNTIME NIE SU IDENTICKE (maju sice rovnaku IDENTITY, ale INY GUID), tak ani TYPES, ktore definuju AK AJ MAJU ROVANKY FULLY-QUALIFIED NAME identicke NIE SU. Vysledkom je ze pri operacii pretypovania dojde k EXCEPTION InvalidTypeException.
+7. GAC je ulozeny standardne na ceste '%windir%\assembly\GAC_64'. Na tejto ceste sa nachadzaju adresare, kde meno adresara je menom ASSEMBLY. V kazdom adreseri je jeden, alebo viacero adresarov vo formate 'Version_PublicKey'. Cesta teda obsahuje ako Processor architecture, tak i Assembly name, Version a Public key a teda PATH k ASSEMBLY PLNE URCUJE IDENTITU ASSEMBLY.
+8. Pomocou prikazu 'sxe [HRESULT]' je mozne zastavit vykonavanie programu pri vzniku EXCEPTION. To je mozne s vyhodou pouzit pri zachyteni EXCEPTION tykajucej sa neschopnost LOADER nacitat niektoru z DLL a ziskat podrobnosti o EXCEPTION.
+9. Loader je schopny robit PODROBNY LOGGING o PATHS, ktore prehladaval ked hladal danu ASSEMBLY. Pomocou programu FusLogVw.exe (Fusion Log Viewer) je mozne prezriet si log generovany cez Loader.
+!!! 10. Logovanie LOADER je nutne SPUSTIT pomocou FusLogVw.exe, pretoze default je VYPNUTE.
+11. Ak LOADER nedokaze nacitat niektoru ASSEMBLY mozem pouzit FusLogVw.exe na zistenie, ktore cesty boli prehladavane.
+   A. Spustim FusLogVw.exe.
+   B. Zapnem logovanie pomocou tlacitka Settings.
+   C. Spustim program, ktory nevie zaviest niektoru ASSEMBLY.
+   D. Po vyskyte chyby, kliknem na tlacitko Refresh a prezriem podrobne logy, ktore FusLogVw.exe zobrazi.
+12. Chyba LOADER sa casto vyskytuje pri pouziti CUSTOM DOMAINS, ked nie su korektne nastavene PATHS a LOADER nie je schopny nacitat DEPENDENCY ASSEMBLIES. Na riesenie tychto problemov je najlepsie pouzit FusLogVw.exe.
+!!! 13. Alternativou voci FusLogVw.exe moze byt MDA (Managed Debugger Assistant) typu 'bindingFailure' a MDA typu 'loadFromContext', ktore zobrazuju dodatocne informacie od problemoch LOADER.
+   A. MDA je potrebne aktivovat vytvorenim XML suboru MyAppDomainTest.exe.mda.config a jeho nakopirovanim do adresara, kde sa nachadza MyAppDomainTest.exe.
+   B. Potom ked program spustim v NTDS, alebo WinDBG a po vyskyte CHYBY LOADER, poskytne MDA v okne NTDS, resp. WinDBG obsirnejsiu chybu, ktora nastala v LOADER.
+!!! 14. Pri nacitavani NATIVE DLL, alebo COM objects Loader pouziva logiku API LoadLibrary(), resp. registracne udaje v Registry pre COM a nerobi ziadne dodatocne hladanie DLL, ako je tom v pripade .NET ASSEMBLIES.
+!!! 15. .NET pomocou triedy DynamicMethod umoznuje dynamicky generovat METODY a ich MSIL kod.
+????? 16. Debuggovanie DYNAMICKYCH METOD by mal popisovat tento postup. Bohuzial mi NEFUNGOVAL. Je to asi preto, ze v .NET 4.0. sa zmenila MSCORJIT.DLL na CORJIT.DLL a aj vnutorna implementacia je asi rozdielna.
+   A. Pomocou prikazu 'bp mscorjit!CILJit::compileMethod' najdem NATIVE metodu zodpovednu za kompilaciu dynamickej metody a nastavim na nu breakpoint.
+   B. Po vyvolani breakpoint prikazom 'kb' vypisem NATIVE STACK a najdem 3. PARAMETER metody bp mscorjit!CILJit::compileMethod.
+   C. Tento parameter obsahuje ADRESU NA STRUKTURU (mozem si ju vypisat prikazom 'dp'), v ktora 1. POINTER (8 bytes v x64) obsahuje METHOD DESCRIPTOR na DYNAMICKY GENEROVANU METODU.
+   D. Ked uz mam METHOD DESCRIPTOR na dynamicky generovanu metodu mozem na nu nastavit breakpoint prikazom '!bpmd -md [MethodDescriptor]', alebo vypisat jej MSIL prikazom '!DumpIL [MethodDescriptor]'.
+//-------------------------------------------------------------------------------------------------------
+Prikazy pre SOS, SOSEX a WinDbg
+
+1. Prikaz 'lm f' zobrazi vsetky MODULES a cestu odkial boli nacitane.
+2. Prikaz '!error [HRESULT]' zobrazuje textovu reprezentaciu chyby HRESULT.
+//-------------------------------------------------------------------------------------------------------
