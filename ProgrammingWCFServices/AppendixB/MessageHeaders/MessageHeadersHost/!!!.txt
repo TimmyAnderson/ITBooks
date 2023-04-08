@@ -1,0 +1,22 @@
+﻿//--------------------------------------------------------------------------------------------------------------------------------
+1. Porgram demonstruje pouzitie Message Headers.
+2. Message Headers sluzi na zasielanie EXTRA informacii medzi Service a Client - teda zasielanie dodatocnych data okrem parametrov a navratovych hodnot operacii Service.
+3. Message Headers su pristupne pomocou kolekcii IncomingMessageHeaders a OutgoingMessageHeaders, ktore su v triede OperationContext.
+!!! 4. OperationContext na strane Service je pristupna pomocou TLS - cez OperationContext.Current.
+!!!!! 5. Na strane Client nato aby som do TLS dostal OperationContext MUSIM OBALIT VOLANIE operacie Service na Client pomocou OperationContextScope - ktory vytvorim v 'using' a zavolam v nom operaciu Service.
+6. Na strane Client musim na zapis Message Header vykonat nasledujucie operacie.
+   A. Obalim volanie operacie Service pomocou OperationContextScope.
+   B. Pomocou MessageHeader<T>.GetUntypedHeader() vytvorim univezralny objekt MessageHeader, ktoreho typ T MUSIM BYT [DataContract], alebo [Serializable] a REPREZENTUJE DATA PRENASANE v MESSAGE HEADER.
+   C. Vytvoreny objekt MessageHeader zaradim do OutgoingMessageHeaders, ktoru ziskam pomocou OperationContext.Current - samozrejme ak to robim vo VNUTRI 'using' scope OperationContextScope.
+7. Na strane Service musim na citanie MessageHeader vykonat nasledujuce operacie.
+   A. Ziskam kolekciu MessageHeaders pomocou OperationContext.Current.IncomingMessageHeaders.
+   C. Pomocou metody GetHeader<T>(), kde T je [DataContract], alebo [Serializable] typ, ktory reprezentuje DATA Message Header.
+8. Na strane Service na ZAPIS MessageHeader, ktore maju byt odoslane cez RESPONSE MESSAGE spat do klienta, musim vykonat nasledujuce operacie.
+   A. Ziskam kolekciu MessageHeaders pomocou OperationContext.Current.OutgoingMessageHeaders.
+   B. Pomocou MessageHeader<T>.GetUntypedHeader() vytvorim univezralny objekt MessageHeader, ktoreho typ T MUSIM BYT [DataContract], alebo [Serializable] a REPREZENTUJE DATA PRENASANE v MESSAGE HEADER.
+   C. Vytvoreny objekt MessageHeader zaradim do OutgoingMessageHeaders.
+   !!! D. Na strnane CLIENT musim volanie SERVICE, ktore ma mat pristup k HEADERS z RESPONSE MESSAGE obalit pomocou OperationContextScope aby som nasledne po NAVRATE z OPERACIE mohol pristupit ku KOLEKCII IncomingMessageHeaders a ziskat tak HEADERS z RESPONSE MESSAGE.
+!!! 9. Kedze na strane Service je cele volanie Service metody obalene OperationContext, ktory sa uklada do TLS, tak ak z tejto metody vyvolavam objekty, tak aj v nich je vdaka TLS pristupny aj v tychto objektoch. 
+!!!!! 10. Ked volam z kodu Service INY SERVICE, tak MUSIM VYTVORIT NOVY OperationContextScope - pretoze ten aktualny, ktory je v TLS trheadu v ktorom bezi Service operacie je IMMUTABLE a teda MUSI BYT VYTVORENY NOVY.
+!!!!! 11. OperationContextScope by sa mal VZDY pouzivat v 'using' pretoze jeho Dispose OBNOVI POVODNY OperationContext (ak nebol NULL) co je KLUCOVE k spravenu fungovaniu na strane Service.
+//--------------------------------------------------------------------------------------------------------------------------------

@@ -1,0 +1,29 @@
+﻿//-------------------------------------------------------------------------------------------------------
+Poznamky k FAULT Channels - TCP/IP.
+
+1. Ak operacia SERVICE hodi FaultException.
+   A. Client dostane FaultException.
+   B. Channel NIE JE NIKDY vo FAULTED STATE. Proxy mozem dalej pouzivat na volanie operacii Service.
+2. Ak operacia SERVICE hodi INU EXCEPTION ako FaultException.
+   A. Client dostane FaultException.
+   B. Channel sa DOSTANE do FAULTED STATE a NIE JE ho mozne viac POUZIT na volanie operacii Service. Je potrebne VYTVORIT NOVY CHANNEL (nove Proxy).
+3. Ak sa vola operacia SERVICE, ked je SERVICE NEAKTIVNY.
+   A. Client dostane CommunicationException.
+   B. Channel sa DOSTANE do FAULTED STATE a NIE JE ho mozne viac POUZIT na volanie operacii Service. Je potrebne VYTVORIT NOVY CHANNEL (nove Proxy).
+!!! 4. Ak OPERACIA SERVICE hodi FaultException<T> AJ KED operacia NEVYSTAVUJE [FaultContract] - CHANNEL OSTAVA OK a NEPREJDE do FAULTED STATE. Je ho mozne dalej pouzit na volanie operacii Service.
+!!! 5. Ak OPERACIA SERVICE hodi FaultException<T>, ktoru OPERATION NEVYSTAVUJE cez [FaultContract], tak na strane CLIENT sa zachyti ako FaultException, teda NETYPOVANY FaultException.
+6. Ak ONE-WAY operacia SERVICE hodi FaultException.
+   A. Client nedostane ZIADNU EXCEPTION.
+   B. Channel je OK a Proxy mozem dalej pouzivat na volanie operacii Service.
+7. Ak ONE-WAY operacia SERVICE hodi INU EXCEPTION ako FaultException.
+   A. Client nedostane ZIADNU EXCEPTION.
+   B. Channel je vo FAULED STATE.
+   !!! C. Akekolvek DALSIE VOLANIE operacie Service skonci CommunicationException, pretoze CHANNEL je vo FAULTED STATE.
+8. Ak sa vola ONE-operacia SERVICE, ked je SERVICE NEAKTIVNY.
+   A. Client dostane CommunicationException.
+   B. Channel sa DOSTANE do FAULTED STATE a NIE JE ho mozne viac POUZIT na volanie operacii Service. Je potrebne VYTVORIT NOVY CHANNEL (nove Proxy).
+!!! 9. Ak sa vola ONE-WAY operacia SERVICE a Channel JE VO FAULTED STATE (ci uz preto, lebo Service hodil INU EXCEPTION ako FaultException, alebo Service je NEAKTIVNY) Client VZDY DOSTANE COMMUNICATION EXCEPTION.
+!!!!! 10. Inak povedane, pre ONE-WAY plati, ze AK OPERACIA SPOSOBI prechod CHANNEL do FAULTED STATE - NEHODI ZIADNU EXCEPTION, avsak AK pri volani ONE-WAY operacie CHANNEL uz JE VO FAULTED STATE - DOSTANEM na Client CommunicationException.
+!!!!! 11. Alebo este inak povedane, pri ONE-WAY plati, ze CommunicationException je generovana, ked je CHANNEL vo FAULTED STATE - ktoru BUD SPOSOBILO VOLANIE PRECHADZAJUCEJ OPERACIE, alebo to, ze je SERVICE NEAKTIVNY.
+!!!!! 12. Zachytenie FaultException na CLIENT este NEZNAMENA, ze CHANNEL je OK. FaultException sa totizto hadze I VTEDY, ked operacia Service hodi INU EXCEPTION ako FaultException, kedy je CHANNEL dostane do FAULTED STAVE. To znamena, ze I VTEDY, ked zachytim FaultException na CLIENT, MUSIM SKONTROLOVAT ci CHANNEL NIE JE FAULTED a ako ano, tak ho ZNOVA VYTVORIT.
+//-------------------------------------------------------------------------------------------------------

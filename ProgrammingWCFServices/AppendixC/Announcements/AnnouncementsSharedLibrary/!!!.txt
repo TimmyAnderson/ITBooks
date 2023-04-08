@@ -1,0 +1,18 @@
+﻿//-------------------------------------------------------------------------------------------------------
+1. Solution demonstruje pouzitie ANNOUNCEMENTS.
+2. ANNOUNCEMENTS umoznuju odosielat informacie o SPUSTENI a ZASTAVENI SERVICE ostatnym SERVICES.
+!!! 3. Aj ked ANNOUNCEMENTS funguju na podobnom principe ako DISCOVERY (tiez pouzivaju UDP multicast, ci maju podporu SCOPES), tak su NEZAVISLE od DISCOVERY mechanizmu. Teda SERVICE, ktory implementuje ANNOUNCEMENTS MOZE, ale i NEMUSI implementovat DISCOVERY. Je to UPLNE NEZAVISLE.
+4. ANNOUNCEMENTS sluzia na oznamenie inym SERVICES, ze dany SERVICE bol SPUSTENY, alebo ZASTAVENY.
+   A. Automaticky pri SPUSTENI SERVICE, alebo MANUALNE, KEDYKOLVEK na VYZIADANIE zo strany HOST sa zasiela ANNOUNCEMENT typu HELLO.
+   B. Automaticky pri ZASTAVENI SERVICE, alebo MANUALNE, KEDYKOLVEK na VYZIADANIE zo strany HOST sa zasiela ANNOUNCEMENT typu BYE. Ak je HOST ukonceni NASILNE (TERMINATED), tak sa prirodzene BYE NEPOSLE.
+!!! 5. WCF poskytuje VLASTNU IMPLEMENTACIU ANNOUNCEMENT SERVICE (trieda AnnouncementService) a ANNOUNCEMENT PROXY (trieda AnnouncementClient) na implementaciu ANNOUNCEMENTS.
+6. Nato aby SERVICE mohol ZASIELAT ANNOUNCEMENTS, musi vytvorit objekt typu AnnouncementClient co je PROXY OBJEKT k ANNOUNCEMENT SERVICE. Ako ENDPOINT musi pouzit implementovany WCF ENDPOINT pre ANNOUNCEMENTS - triedu UdpAnnouncementEndpoint.
+   A. Pomocou metody AnnouncementClient.AnnounceOnline() sa zasiela sprava typu HELLO.
+   B. Pomocou metody AnnouncementClient.AnnounceOffline() sa zasiela sprava typu BYE.
+7. Nato aby SERVICE mohol PRIJIMAT ANNOUNCEMENTS, musi vytvorit objekt typu AnnouncementService co je SERVICE OBJEKT k ANNOUNCEMENT SERVICE. Postup je nasledovny.
+   A. Vytvori sa objekt typu AnnouncementService, ktory bude sluzit ako SINGLETON pre ANNOUNCEMENT SERVICE.
+   B. Vytvorim instanciu ServiceHost ktorej NASTAVIM ako SINGLETON objekt ten objekt, ktory bol vytvoreny v bode A.
+   C. Pridam ENDPOINT typu UdpAnnouncementEndpoint().
+   D. Zaregistrujem sa na odber EVENTS OnHello a OnBye, ktore su volane vzdy ked ANNOUNCEMENT SERVICE zachyti ANNOUNCEMENT z LUBOVOLNEHO SERVICE v INTRANETE.
+!!! 8. V SERVICE BUS sa WCF ANNOUNCEMENTS NEDAJU POUZIT, kedze su realizovane cez UDP protokol, ktory neprejde INTERNETOM. Je potrebna CUSTOM IMPLEMENTACIA vyuzivajuca NetEventRelayBinding.
+//-------------------------------------------------------------------------------------------------------

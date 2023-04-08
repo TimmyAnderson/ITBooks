@@ -1,0 +1,1 @@
+makecert -sr LocalMachine -ss TrustedPeople -n "CN=MyTestCert" -sky exchange -pe

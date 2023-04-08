@@ -1,0 +1,46 @@
+﻿//-------------------------------------------------------------------------------------------------------
+1. Program demonstruje funkcionalitu TRANSPORT SESSIONS - TS.
+2. TS je Session vytvorena na TRANSPORTNEJ VRSTVE (transportnom protokole), ktora umoznuje Service ASOCIOVANIE KLIENTA so SERVICE CALL. Inak povedane TS umoznuje Service, aby zistila od KTOREHO KLIENTA bol CALL ZASLANY.
+!!! 3. TS vdaka tomu, ze umoznuje Service PRIRADZOVAT JEDNOTLIVE CALLS k danemu klientovi je tak ZAKLADOM pre realizaciu RELIABLE SESSIONS a 'PerSession' InstanceContextMode Services. AK NEAPLIKUJEM TS, tak 'PerSession' InstanceContextMode Services NIE JE MOZNE REALIZOVAT aj KED NASTAVIM 'PerSession' a takisto Reliability je VYPNUTA.
+4. To ci sa pouziva, alebo nepouziva TS je pomerne KOMPLIKOVANE a ZAVISI OD VIACERYCH FAKTOROV.
+   A. Transportna vrstva. Niektore transportne protokoly ako TCP/IP SU VZDY TS-AWARE, kedze su to CONNECTION-FULL PROTOKOLY. Naopak ine ako HTTP su CONNECTION-LESS a teda TS je treba SIMULOVAT pomocou GUID SessionID, ktory sa prenasa medzi klientom a Service a umoznuje Service JEDNOZNACNE IDENTIFIKOVAT od ktoreho KLIENTA prisiel CALL.
+   B. Security. Ak je nastavena, tak sa TS POUZIVA, dokonca AJ KED NASTAVIM <reliableSession enabled="false"/>.
+   C. Nastavenie SessionMode v [ServiceContract]. Ak pouzijem hodnotu 'NotAllowed', potom TS sa NEVYTVORI. Ak mam Binding, ktory podporuje PROTOKOLOVO TS (TCP), tak SERVICE pri vytvarani HODI EXCEPTION.
+!!!!! 5. POZOR. Pri TCP/IP je TRANSPORT SESSION VZDY ZAPNUTA, lebo je to dane povahou TCP/IP protokolu. V pripade HTTP ked pouzivam MESSAGE SECURITY, tak je TIEZ TRANSPORT SESSION ZAPNUTA. Nato aby TRANSPORT SESSION NEBOLA ZAPNUTA, musim mat HTTP BINDING BEZ MESSAGE SECURITY.
+//-------------------------------------------------------------------------------------------------------
+TRANSPORT SESSION a RELIABLE SESSION.
+
+1. TRANSPORT SESSTION a RELIABLE SESSION su DVE ROZDIELNE VECI.
+   A. TRANSPORT SESSION je LOGICKA VAZBA medzi CLIENT a SERVICE, ktora moze byt realizovana vdaka PRENOSOVEMU PROTOKOLU, alebo vdaka KONFIGURACII BINDING.
+   B. RELIABLE SESSION je implementacia protokolu WS-ReliableMessaging, ktory zabezpecuje, ze ak dojde k VYPADKU SPOJENIA MEDZI CLIENT a SERVICE, tak WCF sa pokusi DANY POCET OPAKOVANI a v DANOM TIMEOUT ZNOVA NADVIAZAT SPOJENIE.
+   C. Plati, ze ak medzi CLIENT a SERVICE existuje RELIABLE SESSION, tak ZAROVEN je vytvorena i TRANSPORT SESSION. Typickym prikladom je HTTP protokol, ktory NEPODPORUJE TRANSPORT SESSION, kedze NIE JE CONNECTION-ORIENTED protokol, avsak ak nakonfigurujem RELIABLE SESSION, tak WCF UMELO vytvori EMULACIU TRANSPORT SESSION.
+   D. Plati, ze ak medzi CLIENT a SERVICE existuje TRANSPORT SESSION, tak ZAROVEN NEMUSI EXISTOVAT i RELIABLE SESSION. Prikladom je TCP/IP, ktory PODPORUJE TRANSPORT SESSION, kedze je CONNECTION-ORIENTED, ale moze mat VYPNUTU RELIABLE SESSION, v dosledku coho pri PRVOM VYPADKU KOMUNIKACIE sa WCF NEPOKUSI znona NADVIAZAT SPOJENIE.
+!!! 2. TRANSPORT SESSION moze byt dana bud PRENOSOVY PROTKOLOM, alebo EMULOVANA WCF.
+   A. Prenosovy protokol TCP/IP, alebo IPC maju VZDY TRANSPORT SESSION, kedze su CONNECTION-ORIENTED. Je to dane ich IMPLEMENTACIU a WCF na to NEMA ZIADEN VPLYV.
+   !!! B. Prenosovy protokol HTTP NEMA TRANSPORT SESSION, kedze to NIE JE CONNECTION-ORIENTED protokol. Avsak WCF moze TRANSPORT SESSION EMULOVAT.
+!!! 3. Pri HTTP sa TRANSPORT SESSION EMULUJE v nasledujucich pripadoch.
+   A. Ak na HTTP zapnem RELIABLE SESSION, tak WCF pre potreby RELIABLE SESSION EMULUJE TRANSPORT SESSION.
+   B. Ak na HTTP zapnem MESSAGE SECURITY, tak WCF pre potreby MESSAGE SECURITY EMULUJE TRANSPORT SESSION. V pripade TRANSPORT SECURITY NIE JE TRANSPORT SESSION EMULOVANA.
+//-------------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------------
+NetTcpBinding.
+
+1. CDefaultConfiguration - demonstruje, ze TCP v DEFAULT konfiguracii POUZIVA TS, aj ked SessionID medzi Client a Service su ROZDIELNE.
+2. CTSNotAllowedButBindingAllowsIt - demonstruje, ze ak na Contract VYPNEM TS (SessionMode=SessionMode.NotAllowed) ALE Binding ho POVOLUJE - tak HOST pri vytvarani ZLYHA.
+3. TSRequiredAndBindingIsDefault - demonstruje, ze ak je TS REQUIRED no zaroven NENASTAVIM EXPLICITNE 'ReliableSession' v Bindingu, tak sa TS SICE POUZIJE, no SessionID je medzi Service a Client ROZDIELNE.
+4. CTSRequiredAndBindingEnablesTS - demonstruje, ze ked TS je REQUIRED a zaroven EXPLICITNE NASTAVIM 'ReliableSession' na ENABLED - tak nielenze sa pouzije TS, ale SessionID je medzi CLIENT a SERVICE ZHODNE.
+5. CTSNotAllowedAndDoNotAllowIt - demonstruje, ze aj ked TS je na NOTALLOWED a v NetTcpBinding je TS zablokovany, tak ANI TAK SA N EPODARI VYTVORIT Service, kedze NetTcpBinding JE SESSION ORIENTED. Since both the TCP and IPC protocols maintain a session at the transport level, you cannot configure a service endpoint that uses the NetTcpBinding or the NetNamedPipeBinding to expose a contract marked with SessionMode.NotAllowed, and this is verified at the service load time.
+!!! 6. NetTcpBinding VZDY NA POZDAI POUZIVA TS, aj ked SessionID SEDIA IBA ak je TS NAKONFIGUROVANY. Ak nie je AJ TAK SA POUZIVA - kedze je to dane TCP protokolom.
+//-------------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------------
+WsHttpBinding.
+
+1. CDefaultConfiguration - demonstruje, ze HTTP v DEFAULT konfiguracii POUZIVA TS a aj SessionID su ZHODNE.
+2. CTSNotAllowedButBindingAllowsIt - demonstruje, ze ak nastavim 'SessionMode' na 'NotAllowed', tak WsHttpBinding mi UMOZNI VYTVORIT SERVICE a pripojit sa nanho, ale SessionID je NULL.
+3. CTSRequiredAndBindingIsDefault - demonstruje, ze sa pouziva TS a zaroven sedi aj SessionID.
+4. CTSRequiredAndBindingEnablesTS - demonstruje, ze sa pouziva TS a zaroven sedi aj SessionID.
+5. CTSNotAllowedAndDoNotAllowItNoSecurity - demonstruje, ze TS sa NEPOUZIVA a SessionID je NULL.
+6. CTSDisabledButSecurityUsed - demonstruje, ze AJ KED TS je DISABLED, tak POKIAL POUZIVAM SECURITY (default vo WsHttpBinding), tak TS SA AJ TAK POUZIJE.
+//-------------------------------------------------------------------------------------------------------

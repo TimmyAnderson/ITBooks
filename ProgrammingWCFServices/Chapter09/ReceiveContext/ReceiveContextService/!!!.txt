@@ -1,0 +1,15 @@
+﻿//-------------------------------------------------------------------------------------------------------
+1. Solution demonstruje pouzitie RECEIVE CONTEXT.
+2. NetMsmqBinding umoznuje VACSIU UROVEN KONTORLY nad MSMQ MESSAGES vyberanych z QUEUE pomocou triedy ReceiveContext.
+!!! 3. Ak nastavim MANUALNE pouzitie ReceiveContext, tak MSMQ pri vybere MESSAGE z QUEUE spravi operaciu PEEK a SERVICE SAM ROZHODNE, ci MESSAGE bude SPRACOVANA, kedy sa po skonceni OPERACIE SERVICE ODSTRANI z QUEUE, alebo ZAMIETNUTA, kedy OSTANE v MESSAGE QUEUE.
+!!! 4. Pomocou property NetMsmqBinding.ReceiveContextEnabled je mozne nastavit aby WCF SERVICE pri vyberani MESSAGE z QUEUE spravil iba PEEK a MESSAGE ODSTRANIL z QUEUE AZ KED BUDE USPESNE SPRACOVANA. Pomocou triedy ReceiveContext je potom mozne urobit aj LOCK MESSAGE, aby nebola spracovana INY WCF SERVICE v situacii, ked viacero WCF SERVICES je zavesenych na TU ISTU MSMQ QUEUE.
+!!!!! 5. Pouzitie ReceiveContext je vyhodne najma vtedy, ked VIACERO WCF SERVICES je naviazanych na TU ISTU MSMQ QUEUE. Vtedy je vyhodne pouzit LOCK, ktory je mozne realizovat pomocou triedy ReceiveContext.
+!!! 6. Ak chcem ziskat objekt ReceiveContext musim vykonat nasledujuce nastavenia.
+   A. V OPERATION SERVICE, musi byt OPERATION dekorovana atributom [ReceiveContextEnabled] a jej PROPERTY ManualControl musi byt na TRUE.
+   B. V BINDING musi byt property ReceiveContextEnabled na TRUE.
+7. Trieda ReceiveContext ma nasledujuce metody.
+   A. TryGet() - STATICKA metoda, pomocou ktorej mozem ziskat ReceiveContext.
+   B. Complete() - sposobi, ze MESSAGE z QUEUE bude ODSTRANENA, pretoze je povazovana za uspesne sprocovanu.
+   C. Abandon() - sposobi, ze MESSAGE v QUEUE OSTANE, pretoze NIE je povazovana za uspesne spracovanu.
+!!!!! 8. Program ma 2 SERVICE, ktore bezia voci TEJ ISTE QUEUE. CReceiveContextContract1 robi ABANDON a CReceiveContextContract2 robi COMPLETE. Kedze OBE SERVICES su TRANSAKCNE, tak ABANDON od CReceiveContextContract1 sposobi, ze sa ABANDONED MESSAGES vratia znova do QUEUE a su po 15 sekundach (nastavene v .CONFIG subore) ZNOVA PREHRATE. Toto prehravanie sa robi 2 krat (znova nastavenie v .CONFIG subore). Ak je TA ISTA MESSAGE prehrana VZDY cez CReceiveContextContract1, tak po vyprsani vsetkych opakovani je PRESUNUTA do POISON QUEUE (znova nastavene v .CONFIG subore).
+//-------------------------------------------------------------------------------------------------------

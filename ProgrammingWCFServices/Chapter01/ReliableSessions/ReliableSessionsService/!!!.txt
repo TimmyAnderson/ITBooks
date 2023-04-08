@@ -1,0 +1,65 @@
+﻿//-------------------------------------------------------------------------------------------------------
+1. Program demonstruje Reliable Sessions.
+2. Reliable Session je implementacia WS-Reliable protokolu nad danym kanalom. Je to teda WCF (WS-*) STANDARD na zabezpecenie proti DOCASNYM VYPADKOM SIETOVEHO SPOJENIA (NEDORUCENA SPRAVA SA OPAKUJE).
+!!! 3. TRANSPORT SESSION je UPLNE INY POJEM a popisuje VLASTNOST PRENOSOVEHO PROTOKOLU udrziavat LOGICKE SPOJENIE (KONTROLA CI SPOJENIE NEVYPADLO, INFORMACIA o CHYBE PRI PRENOSE). Je to VNUTORNA VLASTNOST PRENOSOVEHO PROTOKOLU. Niektore prenosove protokoly ako TCP ci IPC ju podporuju zo svojej DEFINICIE (jedna sa o CONNECTED-ORIENTED protokoly), ine ako HTTP ju maju simulovanu posielanim MESSAGES s rovnakym SESSION ID.
+!!!!! 4. TRANSPORT SESSION je teda VLASTNOST PRENOSOVEHO PROTOKOLU (resp. jeho EMULACIE), zatial co RELIABLE SESSION je SPECIALNA IMPLEMENTACIA WS-ReliableSession na odstranenie DOCASTNYCH VYPADKOV SIETE, ktore pri pouziti TRANSPORT SESSION (vypadok TCP/IP) mozu nastat.
+!!!!! 5. ZAKLADNY CIEL Reliable Sessions je poskytnut RELIABILITY cez NESPOLAHLIVE PRENOSOVE CESTY. Pod RELIABILITY sa myslia nasledujuce poziadavky.
+   A. Ak Message nie je dorucena, tak je definovany pocet opakovani, kde sa WCF pokusa o delivery. Po prekroceni poctu RETRIES je CHANNEL oznaceny ako FAULTED.
+   B. Detekcia duplikatnych Messages. Teda ak je Message dorucena viac krat (napriklad pri prenosovych protokoloch, ako UDP) tak je Message spracovana IBA RAZ.
+   C. OPTIONALLY - Message ORDERING. Ak ZAPNEM tuto moznost, tak Messages su spracovavane PRESNE V TAKOM PORADI v AKOM BOLI ODOSLANE. Teda ak napriklad prijme Service Message 5 a po nej 7, tak Message 7 CAKA na dorucenie Message 6 a AZ PO JEJ DORUCENI je spracovana. Toto sa implementuje cez pametove BUFFERS, kde sa Messages, ktore PRISLI OUT-OF-ORDER (pri multi-hop komunikacii) sa BUFFERUJU a cakaju na prichod IN-ORDER Message.
+!!!! 6. Cize CIELOM Reliable Sessions je poskytnutie RELIABLE KOMUNIKACIE pre LUBOVOLNY TRANSPORTNY KANAL a pri LUBOVOLNOM pocte HOPS, medzi Client a Service.
+!!! 7. Reliable Sessions implementuju tzv. TRANSPORT-LEVEL SESSION, ktora NEMA NIC SPOLOCNE s LOGICKYMI SESSIONS, ktore umoznuju aby sa dve volannia z toho iste Clienta boli spracovane tym istym Service objektom. TOTO JE NIECO CELKOM INE.
+8. Reliable Sessions funguju tesne NAD urovnou PRENOSOVEHO PROTOKOLU a implementuju WS-ReliableMessaging protokol.
+9. WS-ReliableMessaging definuje NA UROVNI SOAP HEADERS sposob komunikacie - ako iniciovat (WS-ReliableMessaging) Session, ako ju uzatvorit, ako potvrdzovat Messages a podobne.
+!!! 10. Trieda ReliableSessionBindingElement poskytuje BE realizujuci WS-ReliableMessaging. Pomocou nej mozem realizovat CustomBinding, ktory podporuje WS-ReliableMessaging.
+!!! 11. WCF definuje atribut [DeliveryRequirements] pomocou, ktoreho na danom Contract, alebo celom Service mozem VYNUTIT pouzivanie BINDINGU vyzadujucich Reliable Sessions.
+!!!!! 12. POZOR. Pri TCP/IP je TRANSPORT SESSION VZDY ZAPNUTA, lebo je to dane povahou TCP/IP protokolu. V pripade HTTP ked pouzivam MESSAGE SECURITY, tak je TIEZ TRANSPORT SESSION ZAPNUTA. Nato aby TRANSPORT SESSION NEBOLA ZAPNUTA, musim mat HTTP BINDING BEZ MESSAGE SECURITY.
+//-------------------------------------------------------------------------------------------------------
+TRANSPORT SESSION a RELIABLE SESSION.
+
+1. TRANSPORT SESSTION a RELIABLE SESSION su DVE ROZDIELNE VECI.
+   A. TRANSPORT SESSION je LOGICKA VAZBA medzi CLIENT a SERVICE, ktora moze byt realizovana vdaka PRENOSOVEMU PROTOKOLU, alebo vdaka KONFIGURACII BINDING.
+   B. RELIABLE SESSION je implementacia protokolu WS-ReliableMessaging, ktory zabezpecuje, ze ak dojde k VYPADKU SPOJENIA MEDZI CLIENT a SERVICE, tak WCF sa pokusi DANY POCET OPAKOVANI a v DANOM TIMEOUT ZNOVA NADVIAZAT SPOJENIE.
+   C. Plati, ze ak medzi CLIENT a SERVICE existuje RELIABLE SESSION, tak ZAROVEN je vytvorena i TRANSPORT SESSION. Typickym prikladom je HTTP protokol, ktory NEPODPORUJE TRANSPORT SESSION, kedze NIE JE CONNECTION-ORIENTED protokol, avsak ak nakonfigurujem RELIABLE SESSION, tak WCF UMELO vytvori EMULACIU TRANSPORT SESSION.
+   D. Plati, ze ak medzi CLIENT a SERVICE existuje TRANSPORT SESSION, tak ZAROVEN NEMUSI EXISTOVAT i RELIABLE SESSION. Prikladom je TCP/IP, ktory PODPORUJE TRANSPORT SESSION, kedze je CONNECTION-ORIENTED, ale moze mat VYPNUTU RELIABLE SESSION, v dosledku coho pri PRVOM VYPADKU KOMUNIKACIE sa WCF NEPOKUSI znona NADVIAZAT SPOJENIE.
+!!! 2. TRANSPORT SESSION moze byt dana bud PRENOSOVY PROTKOLOM, alebo EMULOVANA WCF.
+   A. Prenosovy protokol TCP/IP, alebo IPC maju VZDY TRANSPORT SESSION, kedze su CONNECTION-ORIENTED. Je to dane ich IMPLEMENTACIU a WCF na to NEMA ZIADEN VPLYV.
+   !!! B. Prenosovy protokol HTTP NEMA TRANSPORT SESSION, kedze to NIE JE CONNECTION-ORIENTED protokol. Avsak WCF moze TRANSPORT SESSION EMULOVAT.
+!!! 3. Pri HTTP sa TRANSPORT SESSION EMULUJE v nasledujucich pripadoch.
+   A. Ak na HTTP zapnem RELIABLE SESSION, tak WCF pre potreby RELIABLE SESSION EMULUJE TRANSPORT SESSION.
+   B. Ak na HTTP zapnem MESSAGE SECURITY, tak WCF pre potreby MESSAGE SECURITY EMULUJE TRANSPORT SESSION. V pripade TRANSPORT SECURITY NIE JE TRANSPORT SESSION EMULOVANA.
+//-------------------------------------------------------------------------------------------------------
+Komunikacia v WS-ReliableMessaging.
+
+1. Communication initiator (client) sends a <CreateSequence> message. 
+2. Service side responds with a <CreateSequenceResponse>. 
+3. Client sends 1..n messages and buffers them, while waiting for all acknowledgements. 
+4. Service side can and will dispatch the received messages as soon as possible. Now, there are two options: 
+   A. Communication is configured for ordered delivery. First message will be dispatched to the service model as soon as it arrives, noting that it has been processed. Every other message is processed in order. If message number 5 has been processed and the next received message carries sequence number 7, it will not be dispatched until message 6 is received and processed by the service model. 
+   B. Communication allows out-of-order delivery. First message will be dispatched to the service model as soon as it arrives, so will all the following messages. Since we did not demand ordered delivery the processing pipeline does not care on when to process the messages. It will process them as soon as they are received. They are acknowledged as soon as possible, but not before acknowledgement interval.
+5. Service side sends a <SequenceAcknowledgement> message only when all messages have been acknowledged. 
+6. Initiator then stops the sequence with a <TerminateSequence> message.
+
+Poznamky k Reliable Sessions.
+
+1. A reliable session provides for SOAP messages what TCP provides for IP packets. A TCP socket connection provides a singular, in-order transfer of IP packets between nodes.
+2. The reliable channel provides the same type of reliable transfer, but it differs from TCP socket reliability in the following ways.
+   A. The reliability is at the SOAP message level, not for an arbitrarily sized packet of bytes.
+   B. The reliability is in a transport-neutral manner, not just for transfer over TCP.
+   !!! C. The reliability is not tied to a particular transport session (for example, the session a TCP connection provides) and can use multiple transport sessions concurrently or sequentially over the lifetime of the reliable session.
+   D. The reliable session is between the sender and receiver SOAP endpoints, regardless of the number of transport connections required for connectivity between them. In short, TCP reliability ends where the transport connection ends, whereas a reliable session provides end-to-end reliability.
+!!! 3. If the scenario requires two endpoints to be connected over TCP, then TCP may be sufficient to provide reliable message exchange, although it is not necessary to use a reliable session; TCP ensures that the packets arrive in order and only once.
+4. If your scenario has any of the following characteristics, then you must seriously consider using a reliable session.
+   A. SOAP intermediaries, such as SOAP routers.
+   B. Proxy intermediaries or transport bridges.
+   C. Intermittent connectivity.
+   D. Sessions over HTTP.
+5. There are a couple of options available for anyone using the custom binding, in regard to reliable messaging behavior.
+   A. 'acknowledgementInterval' specifies the time lapse duration of message acknowledgement. The default is two seconds, while always acknowledging the first message. This gives you an efficient way to group the acknowledgement messages, thus conserving network traffic. 
+   B. 'flowControlEnabled' enables message sender to acknowledge the receive buffer on the recipient side. It turns out that every acknowledgement message includes a service buffer status and if this attribute is set, sender will not send messages if the recipient buffer is full, thus not occupying network resources. 
+   C. 'inactivityTimeout' defines the absolute duration of a no-message (infrastructure and application messages) session. After the timeout, the session is torn down. 
+   D. 'maxPendingChannels' defines how many reliable channels the service can put in its waiting-to-open queue. If there's a significant load, the pending requests can queue up and the service refuses to open a reliable session (think <CreateSequenceRefused>). 
+   !!! E. 'maxRetryCount' defaults to 8. It defines how many times the infrastructure retries with message delivery. If the limit is achieved, the channel will become faulted. 
+   !!! F. 'maxTransferWindowSize' defines how many messages should be buffered. On service side all messages that have not been acknowledged increase the count. On the client side, all messages which have not received their acknowledgement pair are counted. 
+   G. 'ordered' defines in-order delivery. It's values are true and false.
+//-------------------------------------------------------------------------------------------------------

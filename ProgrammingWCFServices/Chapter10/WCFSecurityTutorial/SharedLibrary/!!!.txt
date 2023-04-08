@@ -1,0 +1,60 @@
+﻿//-------------------------------------------------------------------------------------------------------
+1. Program demonostruje rozlicne aspekty WCF Security.
+!!! 2. IDENTITY Endpointu sa zadava pomocou bud .CONFIG suboru, alebo prostrednictvom EndpointAddress v ktorej konstruktore nastavim EndpointIdentity.
+!!!!! 3. IDENTITY sluzi Clientovi na IDENTIFIKACIU SERVICE. Pomocou nej dokaze Client overit, ze sa SKUTOCNE JEDNA O SERVICE, ku ktoremu chcem pristupovat. Samozrejme na overenie je potrebny za istych okolnosti (pouzity UserName Credentials v Message security) aj Service Certificate ulozeny v prislusnom Certificate Folder.
+!!! 4. Atribut [ServiceContract] umoznuje definovat ProtectionLevel. ProtectionLevel definovany na Contract ci Operation predstavuje OMBEDZENIE, KTORE BIDNINGS MOZEM POUZIVAT. Ak je nastavene EncryptAndSign tak mozem pouzivat iab SECURE BINDIGS - teda taky Binding, ktory ma nastavenu Security.
+!!!!! 5. Pri definovani Security na Service musim specifikovat nasledujuce 3 nastavenia.
+   A. TYP PRENASANYCH CREDENTIALS. Urcuje aky typ Credentials Service pozaduje. TYP CREDENTIALS okrem ineho urcuje aj AKU IDENTITY MUSIM POUZIT na strane Client.
+   B. TYP AUTHENTICATION. Urcuje sposob overenia a je NEZAVISLY NA TYPE CREDENTIALS. Teda Credentials mozem pouzit aj UserName a Authentication nastavit na Windows. Ak logins prenesene ako UserNames ZODPOVEDAJU WINDOWS ACCOUNTS tak Authentication KOREKTNE ZBEHNE.
+   C. TYP AUTHORIZATION. Urcuje sposob autorizacie pri pristupe k Operations. PODOBNE AKO Authentication je NEZAVISLY na TYPE CREDENTIALS.
+!!!!! 6. CELA AUTHENTIFIKACIA AJ AUTHORIZACIA JE ZALOZENA NA CLAIMS.
+!!!!! 7. Ak chcem realizovat CUSTOM ATUHENTICATION musim spravit nasledujuce kroky.
+   1. Musim implementovat triedu SecurityToken, ktora reprezentuje CUSTOM TOKEN.
+   2. Musim implementovat SecurityTokenAuthenticator, ktory realizuje CUSTOM TOKEN AUTHENTIFICATION.
+   3. Do BuildChannelListenerCore<TChannel>() vlozim CUSTOM TOKEN.
+!!!!! 8. Ak chcem realizovat CUSTOM AUTHORIZATION musim spravit nasledujuce kroky.
+   1. Vytvorim CUSTOM UserName Validator - trieda zdedena z UserNamePasswordValidator. Ta overi PLATNOST UserNames.
+   2. Vytvorim CUSTOM IPrincipal.
+   3. Vytvorim CUSTOM IAuthorizationPolicy, ktora MA ZA ULOHU VYTVORIT INSTANCIU CUSTOM IPrincipal, ak dany User patri do pozadovanej ROLE.
+   4. Vytvorim CUSTOM ServiceAuthorizationManager, ktory ma za ulohu OVERIT ACCESS RIGHTS daneho USER pre danu OPERATION.
+   5. Nakonfigurujem .CONFIG file nasledovne.
+      A. Pouzijem Message Security a MUSIM nastavit UserName CREDENTIALS. To vyzaduje aj nastavenie Service Certificate.
+      B. Nastavim 'userNamePasswordValidationMode' na 'Custom' a definujem triedu CUSTOM UserNamePasswordValidator.
+      C. Nastavim 'principalPermissionMode' na 'Custom' a definujem CUSTOM ServiceAuthorizationManager.
+      D. Nastavim 'authorizationPolicies' na CUSTOM triedu implementujucu IAuthorizationPolicy.
+   6. Na proxy nastavim CREDENTIALS v Credentials.UserName.
+   !!!!! 7. Na strane Service mam potom V KAZDEJ OPERATION v Threade.Principal ulozenu CUSTOM INSTANCIU IPrincipal.
+   
+   
+Poznamky k MessageSecurity_UserName
+
+1. Ak pouzivam Message Security a ako Credentials UserName, tak MUSIM DEFINOVAT na strane Service SERVICE CERTIFIKAT.
+??? 2. Service Certificate ASI musim definovat preto, aby BOLO AKO UserName pri prenose KRYPTOVAT - teda bol PRIVATE KEY, ktorym budem tieto NEKRYPTOVANE DATA KRYPTOVAT.
+????? 3. Pri Message Security + Windows Credentials NETREBA Service Certificate. Je to ASI PRETO, lebo Windows Credentials sa KRYPTUJU POMOCOU KERBEROS - ASI Windows ACCOUNT ma ASOCIOVANY CERTICIATE, ktorym je mozne spravit kryptovanie.
+!!!!! 4. Identity Service mozem v tomto pripade overit nasledovnymi sposobmi.
+   A. DnsEndpointIdentity - definovanim SubjectName Service Certificate.
+   B. X509CertificateEndpointIdentity - nastavenim PRIAMO na Service Certificate.
+   C. RsaEndpointIdentity - nastavenim PRIAMO na Service Certificate.
+   
+Poznamky k MessageSecurity_Windows
+
+1. Ak pouzivam ako Credentials Windows, tak NEPOTEREBUJEM ServiceCertificate.
+????? 2. Pri Message Security + Windows Credentials NETREBA Service Certificate. Je to ASI PRETO, lebo Windows Credentials sa KRYPTUJU POMOCOU KERBEROS - ASI Windows ACCOUNT ma ASOCIOVANY CERTICIATE, ktorym je mozne spravit kryptovanie.
+!!!!! 3. Identity Service mozem v tomto pripade overit nasledovnymi sposobmi.
+   A. DnsEndpointIdentity - s menom 'localhost', alebo skutocnym menom PC.
+   B. UpnEndpointIdentity - s menom Usera Account ??? pod ktorym bezi Service Host.
+   C. Nemusim IDENTITY VOBEC POUZIT.
+4.  Ak chcem mozem v Client zadefinovat CUSTOM Windows Credentials. Ak ich nepouzijem zoberie sa AKTUALNE PRIHLASENY USER.
+
+
+Co sa deje na pozadi Security pri Authentication a Authorization
+
+1. Client Credentials, ktorymi sa Client overuje voci Service BEZ OHLADU AKY JE TO TYP CREDENTIALS KONVERTUJE na ClaimSet, ktore zasiela v tele Message do Service.
+2. Credentials v podobe ClaimSet su na strane Service overene zvolenym AUTHENTIFIKACNYM MECHANIZMOM, ktory pracuje s ClaimSet.
+3. AUTHORZIACIA sa robi v 2 fazach.
+   A. Vytvori sa prislusna instancia IPrincipal. Toto sa robi v triede implementujuce IAuthorizationPolicy. Jej cielom je VYTVORIT instanciu IPrincipal na zaklade zaslanych Credentials (vo forme ClaimSet).
+   B. Vola sa CMyLogServiceAuthorizationManager, ktory v metode CheckAccessCore urci ci su splnene AUTHORIZATION RULES - teda ci Client ma pristup k danej OPERACII. To sa signalizuje navratovou hodnotou CheckAccessCore().
+!!! 4. Client teda NEPOSIELA IPrincipal. Posiela IBA ClaimSet a az TIE SA NA SERVICE konvertuju na IPrincipal.
+!!!!! 5. Atribut [PrincipalPermission] NEMA PRIAMO s WCF NIC SPOLOCNE. Je nim iba vyuzivany na deklarativne definovanie Access Rights. Teda ClaimSet urci IPrincipal a ak [PrincipalPermission] definovany, tak .NET CAS (Code Access Security) porovna jeho udaje s IPrincipal a bude povoli, alebo zamierne ACCESS.
+!!!!! 6. Teda [PrincipalPermission] je iba akasi NADSTAVBA nad Claim-based Security, aby sa dala AUTHORIZATION lahsie definovat.
+//-------------------------------------------------------------------------------------------------------

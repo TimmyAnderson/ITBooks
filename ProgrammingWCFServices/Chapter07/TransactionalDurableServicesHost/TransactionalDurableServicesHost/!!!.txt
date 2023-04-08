@@ -1,0 +1,14 @@
+﻿//-------------------------------------------------------------------------------------------------------
+1. Program demonstruje pouzitie Transactional Durable Service.
+2. Durable Services funguju tak, ze sa medzi Client a Service prenasa InstanceID, ktora PRED ZAVOLANIM OPERACIE VYCITA STAV instancie Service - Fields a Properties SERVICE CLASS z PERSISTENT STORE a po skonceni OPERACIE ich zasa ULOZI DO PERSISTENT STORE.
+3. Cinnost operacie Durable Services vyzera nasledovne.
+   A. Z prislusneho Message Header sa nacita hodnota InstanceID.
+   B. Z PS sa nacitaju VSETKY FIELDS a PROPERTIES SERVICE TRIEDY - ktore su oznacene [DataMember]. Cela Service class musi byt oznacena ako [DataContract].
+   C. Operacia vyokna svoju cinnost, pocas ktorej sa hodnoty FIELDS a PROPERTIES MOZU ZMENIT.
+   D. Po skonceni operacie sa VSETKY HODNOTY FIELDS A PROPERTIES oznacene [DataMamber] ULOZIA do PS.
+!!! 4. Transactional Durable Service sa odlisuju v tom, ze CITANIE a UKLADANIE STAVU do PS sa deje ako SUCAST TRANSAKCIE OPERACIE (ak operacie transakciu povoluje) a AK DOJDE k CHYBE tak sa spravi ROLLBACK ako TRANSAKCIE, tak aj HODNOTY v PS a teda FIELDS a PROPERTIES obsahuju TIE ISTE HODNOTY, AKO PRED ZACIATKOM VOLANIA OPERACIE, ktora skoncila v ROLLBACK.
+!!! 5. STANDARDNE i KED PS je RESOURCE MANAGER, tak WCF TRANSAKACIE HO NEVYUZIVAJU a NEPRIDAJU HO MEDZI REGISTROVANE RESOURCE MANAGER do SVOJEJ TRANSAKCIE. Aby sa tak stalo, tak MUSIM v [DurableService] nastavit property 'SaveStateInOperationTransaction' na TRUE. Potom uz i CITANIE STATE z PS a ZAPIS STATE do PS je SUCASTOU WCF TRANSAKCIE A KED TA ZLYHA, tak STATE sa VRATI PRED VOLANIE OPEARCIE.
+!!!!! 6. Pouzitie Transactional Durable Service ma DVE PROBLEMY.
+   A. AK by som ju pouzil PRI PRVEJ OPERACII, ktora VYTVARA WF, tak pri ROLLBACK dojde i k ROLLBACK WF a v DB NEBUDE ZIADEN STAV WF. Pri opetovnom volani WF s tym istym InstanceID WCF NENAJDE zaznam v DB a SKONCI EXCEPTION. Riesenim je aby PRVA OPERACIA NEPOVOLILA TRANSACTION FLOW (TransactionFlowOption.NotAllowed) a teda NEVYZIVALA TRANSAKCIU. Je pouzita IBA NA VYTVORENIE INSTANCIE WF.
+   B. AK by som ju pouzil pri POSLEDNEJ OPERACII, ktora KONCI WF, tak pri ROLLBACK dojde i k ROLLBACK WF a STAV WF sa dostane PRED VOLANIE TEJTO OPERACIE a teda NEZMAZE SA Z DB, co VZDY musi posledna OPERACIE uzatvarajuca WF spravit. Riesenie je podobne a to v pridani operacii, ktora NEPOVOLI TRANSACTION FLOW (TransactionFlowOption.NotAllowed) a teda NEVYZIVA TRANSAKCIU. Je pouzita IBA NA UKONCENIE INSTANCIE WF.
+//-------------------------------------------------------------------------------------------------------

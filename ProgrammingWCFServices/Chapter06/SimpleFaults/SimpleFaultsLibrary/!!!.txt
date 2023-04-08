@@ -1,0 +1,16 @@
+﻿//-------------------------------------------------------------------------------------------------------
+1. Solution demonstruje prenos FAULTS medzi CLIENT a SERVICE.
+2. Ak service vrati EXCEPTION potom plati nasledujuce.
+   A. Ak bol service PerCall dochada k likvidacii instancie servera (standardne chovanie) ale aj proxy - tak sa da uz iba uzvariet cez Close() - ASPON TO TVRDI KNIHA, ALE MNE NESLO ANI TO.
+   B. Ak bol service PerSession dochadza k likvidacii instancie servera (session skonci) ale aj proxy - tak sa da uz iba uzvariet cez Close() - ASPON TO TVRDI KNIHA, ALE MNE NESLO ANI TO.
+   C. Ak bol service Singleton tak instancia sevice prezije ale aj proxy je zlikvidovane - tak sa da uz iba uzvariet cez Close() - ASPON TO TVRDI KNIHA, ALE MNE NESLO ANI TO.
+   D. Ak vsak je zo service vratena EXCEPTION zdedena z FaultException potom SERVICE AJ PROXY PREZIJU.
+3. Ak je pri volani service tento service vrati EXCEPTION potom ho klient obdrzi ako vyninkmu typu FaultException.
+4. Ak dojde k nejakej komunikacnej chyb, alebo service je neaktivny potom volanie proxy odbrzi vynimku bud CommunicationException, alebo ObjectDisposedException.
+5. Moje custom EXCEPTION typu FaultException mozu byt zdedene bud priamo z FaultException, alebo FaultException<T>.
+6. Aj ked sa doporucuje aby trieda s detailami o EXCEPTION (CFaultDetails) by mala byt zdedena z Exception robilo mi to problemy a tak som ju nechal nededenu.
+!!!!! 7. Nato aby sa vratila FaultException<CFaultDetails> aj na stranu klienta musi byt trieada CFaultDetails oznacena na metode ThrowFaultException ako [FaultContract].
+!!! 8. Potomka z FaultException<CFaultDetails> triedu CMyFaultException ak vraciam ako EXCEPTION tak sa my vzdy na kleitnovi zachyti ako FaultException<CFaultDetails> a nie CMyFaultException.
+9. Nastavenie IncludeExceptionDetailInFaults na true umoznuje preniest podrbnosti o vynimke na klienta. Doporucuje sa to zapnut iba na testovanie, pretoze v release to vedie k tomu, ze to nie je bezpecne, kedze potenicalny utocnik polahky odhali slabinu systemu, ked si precita text chyby.
+!!!!! 10. Close() na Proxy uz nejde volat ani po vrateni beznej EXCEPTION (nie FaultException). Iba po vrateni FaultException je moze nielen Porxy uzvariet cez Close() ale aj s nim dalej pracovat.
+//-------------------------------------------------------------------------------------------------------

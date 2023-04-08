@@ -1,0 +1,30 @@
+﻿//-------------------------------------------------------------------------------------------------------
+1. Solution demonstruje pouzitie MESSAGE SECURITY.
+!!!!! 2. Klucova vec je, ze ak chcem pouzit Message security musim pouzivat service certifikat, pretoze SERVICE ho pouziva na KRYPTOVANIE MESSAGES.
+3. Tento certifikat musia pouzivat ako service tak aj klient a mozem si ho vygenerovat cez utilitu makecert.exe.
+4. S certifikatom vygenerovanym cez makecert.exe su vsak dve problemy, ktore je treba riesit.
+   A. Meno certifikatu WCF standardne ocakava, ze bude 'localhost'. Teda bud vytvorim certifkat s takymto menom, alebo ak chcem ine potom musim PRI VYTVARANI PROXY zadefinovat ho cez EndpointAddress a to nasledovne: EndpointAddress	Address=new EndpointAddress(new Uri("SomeEndpointName"),new DnsEndpointIdentity("TestMS")).
+   B. Certifikat musi byt vo Certificates STORE Trusted People a je potrebne pouzit X509CertificateValidationMode bud na hodnote PeerTrust, alebo PeerOrChainTrust, ktore hladaju certifikaty v Trusted People.
+5. Ako autorizaciu a autentifikaciu je mozne pouzit lubovnovlnu poskytovanu vratane Windows ci UserName. TU SA POUZIJE Windows.
+!!! 6. Command line pre makecert.exe pre vygenerovanie certifikatu je v adresari BAT.
+!!! 7. Idealne je na strane CLIENT hodit CERTIFICATE do Trusted People STORE a nastavit aby kazdy CERTIFICATE z tohto STORE bol akceptovany pri komunikacii so SERVICE.
+!!! 8. CLIENT ak chce sa pripojit na SERVICE chraneny cez MESSAGE SECURITY, musi nastavit AUTHENTICATION mod SERVICE CERTIFICATE. Ten urci sposob ako CLIENT overi ci CERTIFICATE SERVICE na ktory sa chce pripojit je akceptovany. AUTHENTICATION mod sa nastavuje pomocou property ClientCredentials.ServiceCertificate.Authentication.CertificateValidationMode a moze nadobudat nasledujuce hodnoty.
+   A. None - AUTHENTICATION SERVICE CERTIFICATE je VYPNUTA.
+   B. PeerTrust - SERVICE CERTIFICATE je akceptovany ak sa na PC CLIENTA nachadza v Trusted People STORE.
+   C. ChainTrust - SERVICE CERTIFICATE je akceptovany ak sa na PC CLIENTA nachadza v Trusted Root Authority STORE.
+   D. PeerOrChainTrust - SERVICE CERTIFICATE je akceptovany ak sa na PC CLIENTA nachadza bud v Trusted People, alebo v Trusted Root Authority STORES.
+//-------------------------------------------------------------------------------------------------------
+TRANSPORT SESSION a RELIABLE SESSION.
+
+1. TRANSPORT SESSTION a RELIABLE SESSION su DVE ROZDIELNE VECI.
+   A. TRANSPORT SESSION je LOGICKA VAZBA medzi CLIENT a SERVICE, ktora moze byt realizovana vdaka PRENOSOVEMU PROTOKOLU, alebo vdaka KONFIGURACII BINDING.
+   B. RELIABLE SESSION je implementacia protokolu WS-ReliableMessaging, ktory zabezpecuje, ze ak dojde k VYPADKU SPOJENIA MEDZI CLIENT a SERVICE, tak WCF sa pokusi DANY POCET OPAKOVANI a v DANOM TIMEOUT ZNOVA NADVIAZAT SPOJENIE.
+   C. Plati, ze ak medzi CLIENT a SERVICE existuje RELIABLE SESSION, tak ZAROVEN je vytvorena i TRANSPORT SESSION. Typickym prikladom je HTTP protokol, ktory NEPODPORUJE TRANSPORT SESSION, kedze NIE JE CONNECTION-ORIENTED protokol, avsak ak nakonfigurujem RELIABLE SESSION, tak WCF UMELO vytvori EMULACIU TRANSPORT SESSION.
+   D. Plati, ze ak medzi CLIENT a SERVICE existuje TRANSPORT SESSION, tak ZAROVEN NEMUSI EXISTOVAT i RELIABLE SESSION. Prikladom je TCP/IP, ktory PODPORUJE TRANSPORT SESSION, kedze je CONNECTION-ORIENTED, ale moze mat VYPNUTU RELIABLE SESSION, v dosledku coho pri PRVOM VYPADKU KOMUNIKACIE sa WCF NEPOKUSI znona NADVIAZAT SPOJENIE.
+!!! 2. TRANSPORT SESSION moze byt dana bud PRENOSOVY PROTKOLOM, alebo EMULOVANA WCF.
+   A. Prenosovy protokol TCP/IP, alebo IPC maju VZDY TRANSPORT SESSION, kedze su CONNECTION-ORIENTED. Je to dane ich IMPLEMENTACIU a WCF na to NEMA ZIADEN VPLYV.
+   !!! B. Prenosovy protokol HTTP NEMA TRANSPORT SESSION, kedze to NIE JE CONNECTION-ORIENTED protokol. Avsak WCF moze TRANSPORT SESSION EMULOVAT.
+!!! 3. Pri HTTP sa TRANSPORT SESSION EMULUJE v nasledujucich pripadoch.
+   A. Ak na HTTP zapnem RELIABLE SESSION, tak WCF pre potreby RELIABLE SESSION EMULUJE TRANSPORT SESSION.
+   B. Ak na HTTP zapnem MESSAGE SECURITY, tak WCF pre potreby MESSAGE SECURITY EMULUJE TRANSPORT SESSION. V pripade TRANSPORT SECURITY NIE JE TRANSPORT SESSION EMULOVANA.
+//-------------------------------------------------------------------------------------------------------

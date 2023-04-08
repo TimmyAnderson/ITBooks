@@ -1,0 +1,28 @@
+﻿//-------------------------------------------------------------------------------------------------------
+1. Solution demonstruje ako je robeny REPLAY MESSAGES, ktore neboli na prvy krat dorucene z RECEIVE QUEUE do WCF SERVICE.
+2. WCF pri komunikacii cez MSMQ moze detekovat 2 chyby.
+   A. Prenosove chyby.
+   B. Chyby prehravania MESSAGE voci WCF SERVICE.
+3. O tom ci PRENOS bol, alebo nebol uspesny posiela MSMQ system specializovane ACK a NACK MSMQ MESSAGES. Na zaklade nich moze CLIENT zistit ci MESSAGE bola USPESNE PRENESENA, alebo jej PRENOS ZLYHAL.
+!!! 4. Okrem PRENOSU, WCF moze cez MSMQ poslat i sama ACK, resp. NACK MESSAGES, ktore vsak NESIGNALIZUJU CHYBU PRENOSU, ale CHYBU SPRACOVANIA MESSAGE na WCF SERVICE.
+!!! 5. Na strane CLIENT WCF MONITORUJE (resp. MSMQ system) prichod ACK a NACK MESSAGES. Ak pride ACK MESSAGE, tak POVODNA MESSAGE ulozena v OUTGOING QUEUE na CLIENT PC je odstranena. Ak vsak dojde NACK MESSAGE, tak POVODNA MESSAGE z OUTGOING QUEUE moze byt PODLA TOHO ci sa pouziva DEAD LETTER QUEUE bud iba TICHO ODSTRANENA, alebo pri nastaveni DEAD LETTER QUEUE je ulozena do tejto QUEUE odkial ju mozem vycitat - napriklad pomocou pre to vytvoreneho WCF SERVICE.
+6. Na strane SERVICE po USPESNOM DORAZENI MESSAGE z CLIENT, je MESSAGE ulozena do QUEUE a ak je WCF SERVICE spusteny, tak sa MESSAGE z QUEUE vyberie a OKAMZTIE sa VYKONA vo WCF SERVICE.
+!!! 7. Ak WCF SERVICE NEDOKAZE MESSAGE SPRACOVAT a hodi EXCEPTION, tak ako je SERVICE TRANSAKNY, tak sa MESSAGE VRATI do QUEUE. WCF obsahuje mechanizmus OPATOVNEHO PREHRATIA MESSAGE, kde WCF SERVICE je volany v casovych intervaloch viacnasobne. Pouziva sa pritom nasledujuci algoritmus.
+   A. Ak SERVICE vrati pri prvom prehrati EXCEPTION, tak MESSAGE je v RYCHLOM SLEDE prehrana este MsmqBindingBase.ReceiveRetryCount krat. Toto opakovanie je oznacene ako 1 BATCH.
+   !!! B. Ak ani po tychto pokusoch nie je MESSAGE uspesne spracovana WCF SERVICE, tak je MESSAGE z DESTINATION QUEUE presunuta do RETRY QUEUE, ktoru si WCF ON-THE-FLY vytvori.
+   C. Teraz sa caka MsmqBindingBase.RetryCycleDelay minut, kym sa ZNOVA NEZACNE PREHRAVANIE i s pripadnym N-NASOBNYM OPAKOVANYM ovanim ak SERVICE stale hadze EXCEPTION. Pocet opakovani je znova rovny MsmqBindingBase.ReceiveRetryCount.
+   D. Pocet opakovani BATCH je urceny parametrom MsmqBindingBase.MaxRetryCycles.
+   !!! E. Ak ani po vykonani VSETKYCH BATCHES nie je MESSAGE spracovana WCF SERVICE, tak MESSAGE je oznacena ako POISON MESSAGE.
+   F. To co sa spravi s POISON MESSAGE urcuje parameter MsmqBindingBase.ReceiveErrorHandling.
+8. Parameter MsmqBindingBase.ReceiveErrorHandling je mozne nastavit na jednu z nasledujucich hodnot.
+   A. Fault - POISON MESSAGE sposobi, ze SERVICE TOTALNE ZLYHA a je ho nutne UZATVORIT a POISON MESSAGE RUCNE ODSTRANIT z DESTINATION QUEUE. To sa da programovo, alebo administrativne.
+   B. Drop - POISON MESSAGE je ZAHODENA, teda vyhodena z DESTINATION QUEUE. Zaroven sa posle na CLIENT PC ACK MESSAGE. Cize CLIENT pri tomto nastaveni NEMA ISTOTU, ci MESSAGE bola, alebo nebola vykonana vo WCF SERVICE.
+   C. Reject - POISON MESSAGE je ZAHODENA, teda vyhodena z DESTINATION QUEUE. Zaroven sa posle na CLIENT PC NACK MESSAGE. MSMQ na CLIENT PC ak je tak nastavene nato moze zareagovat tak, ze presunie MESSAGE z OUTGOING QUEUE do DEAD LETTER QUEUE.
+   D. Move - POISON MESSAGE je PRENESENA do POISON QUEUE.
+!!! 9. V MSMQ 3.0 (XP) funguje iba MsmqBindingBase.ReceiveRetryCount a MsmqBindingBase.ReceiveErrorHandling, kde sa da vyberat iba z Fault a Drop.
+!!! 10. POISON QUEUE je normalna MSMQ QUEUE, ktora ma TAKY ISTY NAZOV ako POVODNA QUEUE s POSTFIXOM ';poison'. Voci POISON QUEUE je mozne postavit WCF SERVICE, ktory bude POISON MESSAGE CITAT a spracovavat lubovolnym sposobom ako to vyzaduju BUSINESS RULES.
+!!!!! 11. Ak chcem realizovat POISON WCF SERVICE, teda SERVICE, ktory by cital POISON QUEUE, musim vykonat nasledujuce kroky.
+   A. POISON SERVICE musi implementovat TEN ISTY CONTRACT, ako POVODNY WCF SERVICE.
+   B. Meno QUEUE musi byt ROVNAKE ako v POVODNOM WCF SERVICE, avsak DOPLNENE o POSTFIX ';poison'.
+   !!! C. SERVICE TRIEDA musi mat v SERVICE BEHAVIOR nastaveny AddressFilterMode=AddressFilterMode.Any. Je to preto, lebo WCF Message v 'To' ma ako DESTINATION nastavenu POVODNU QUEUE a NIE POISON QUEUE, ktora ma v nazve POSTFIX ';poison' a kedze sa 'To' NEZHODUJE s tym ako ocakava POISON SERVICE, tak sa MESSAGE ZAHODI. Preto je treba nastavit tuto PROPERTY.
+//-------------------------------------------------------------------------------------------------------

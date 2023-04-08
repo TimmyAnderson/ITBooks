@@ -1,0 +1,18 @@
+﻿//-------------------------------------------------------------------------------------------------------
+1. Program demonstruje STREAMING.
+2. Imlementujem CUSTOM STREAM z ktoreho cita klient, tak ako sa ten naplna datami.
+!!!!! 3. AKONAHLE VOLANIE FUNKCIE SERVICE SKONCI, tak WCF UZATVORI AUTOMATICKY STREAM. To znaci, ZE ZAPIS DO STREAMU PO JEHO Close() SA UZ NEPRENESIE NA CLIENT.
+!!!!! 4. CIZE PRE SKONCENIM FUNKCIE MUSI BYT STREAM NAPLNENY. Takze ak chcem DYNAMICKY NAPLNAT DATA, tak NESMIEM UKONCIT VOLANIE OPERACIE.
+!!! 5. Streaming sa NEDA pouzit s MESSAGE SECURITY.
+6. Skutocne ZMYSLUPLNNE pouzitie Streaming vyzera nasledovne.
+   A. CLIENT zavola SERVICE OPERATION, ktora ma ako navratovu hodnou objekt typu Stream (eventualne jeho potomka, ten ale musi byt [Serializable]).
+   B. SERVICE UZ NAPLNENY objekty typu Stream obsahujuci VSETKY BYTES, ktore sa maju zo SERVICE na CLIENT preniest VRATI ako NAVRATOVU HODNOTU.
+   !!! C. SERVICE OPERATION vracajuca Stream SKONCI OKAMZITE, BEZ toho aby CAKALA, kym sa CELY OBSAH Stream objektu PRENESIE.
+   D. Na SERVICE OPERATION sice SKONCILA, ale WCF ma ulozenu informaciu, ze sa jedna o STREAMED prenos a ZACNE POSTUPNE PRENASAT BYTES zo Stream objektu na CLIENT, aj ked SERVICE OPERATION uz SKONCILA.
+   E. CLIENT po OKAMZITOM SKONCENI SERVICE OPERATION ziska objekt typu Stream z ktoreho moze ZACAT CITAT BYTES. Tie su citane tak ako PRICHADZAJU cez SIET zo strany SERVICE na CLIENT.
+   F. Ked SERVICE prenesie CELY obsah Stream objektu, tak Stream na strane SERVICE UZATVORI.
+   !!! G. Ked CLIENT nacita cely obsah Stream, tak MUSI UZAVRIET Stream objekt, ktory dostal zo SERVICE OPERATION.
+!!!!! 7. Pri pouziti STREAMING som musel nastavit NIELEN 'maxReceivedMessageSize', ale aj 'maxItemsInObjectGraph'.
+!!!!! 8. Cize STREAMING SLUZI na posielanie UZ NAPLNENEHO Stream objektu, ktory ked vracia SERVICE, tak CLIENT NEMUSI CAKAT, kym CELY obsah Stream objektu bude preneseny, ale volanie SERVICE OPERATION OKAMZITE vrati Stream objekt z ktoreho potom CLIENT moze citat az kym nie je CELY OBSAH Stream objektu preneseny zo SERVICE na CLIENT.
+!!!!! 9. STREAMING NEUMOZNUJE prenos Stream objektu, ktory v CASE ked SERVICE OPERATION vracia Stream objekt este NIE JE KOMPLETNE NAPLNENY. Na prenos takehoto typu dat je potrebny CUSTOM RIESENIE a nie WCF STREAMING.
+//-------------------------------------------------------------------------------------------------------

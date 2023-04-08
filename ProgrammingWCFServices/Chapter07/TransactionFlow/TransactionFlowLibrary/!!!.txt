@@ -1,0 +1,16 @@
+﻿//-------------------------------------------------------------------------------------------------------
+1. Solution demonstruje TRANSACTION FLOW medzi CLIENT a SERVICE vo WCF.
+!!!!! 2. Nato aby program fungoval MUSI BYT POVOLENY WINDOWS SERVICE MS-DTC.
+3. TRANSACTION FLOW umoznuje prenos TRANSACTIONS medzi CLIENT a SERVICE.
+4. TRANSACTION moze byt COMMITED bud EXPLICITNE, alebo IMPLICITNE.
+   A. IMPLICITNE sa realizuje aplikovanim OperationBehavior, kde TransactionScopeRequired=true a TransactionAutoComplete=true.
+   B. EXPLICITNE sa realizuje VOLANIM, alebo NEVOLANIM metody OperationContext.Current.SetTransactionComplete() na konci OPERATION SERVICE.
+5. Pre EXPLICITNE potvrdzovanie TRANSACTIONS platia nasledujuce pravidla.
+   A. Musi byt PerSession, inak ho WCF nepovoli. Ma to logiku, pretoze EXPLICIT VOTING je urceny na sitacie ked potrebujem aby TRANSACTION prezila koniec metody service a skoncila az vtedy ked sam stanovim volanim SetTransactionComplete() v nejakej metode service, ze transakcia ma skoncit. Medzi casom mozem volat niekolko metod service a vsetko bude v JEDNEJ TRANSAKCII.
+   B. TRANSACTION skonci v ROLLBACK vtedy ak sa nezavolala SetTransactionComplete() a zaroven skonci zivotnost instancie service, teda SESSION.
+   C. TRANSACTION skonci v COMMIT v ak zavolam SetTransactionComplete() a metoda service skonci. Po navrate z metody service je instancia service UVOLNENA a teda KONCI SESSION.
+   D. Inak povedane cela filozfia je asi taka, ze pri ukoncovani SESSION sa skontroluje ci je nastaveny bit na COMMIT transakcie an TRUE. Ak ano tak sa spravi COMMIT ak nie tak sa spravi ROLLBACK.
+// !!! 6. Ak mam implicitny voting a service B hodi exception - teda rollbackne transakciu, musi aj service A vratit exception aby doslo ku korektnemu rollbacku. Inak sa sice v DB rollbackne zaznam, ale zaroven klient dostane ProtocolException s hlaskou, ze transakcia bolza zrusena asynchronne.
+// !!!!! 7. Ked som urobil RE-THROW na EXCEPTION v SERVICE A tak CLIENT ju NEZACHYTIL ako FaultException<Exception>, ale ako FaultException. Ak ju vsak vytvorim odznova, teda novu instanicu tak sa na CLIENT chyti ako FaultException<Exception>.
+// !!!!! 8. Plati zasada, ze ked dostanem zo SERVICE B EXCEPTION nemal by som ju RE-THROW, ale vyvorit novu instanciu tejto EXCEPTION a tu poslat von zo SERVICE A, inak ju CLIENT chyti cez FaultException a nie akoby mal - teda cez FaultException<Exception>.
+//-------------------------------------------------------------------------------------------------------

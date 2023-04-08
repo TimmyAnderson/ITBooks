@@ -1,0 +1,19 @@
+﻿//-------------------------------------------------------------------------------------------------------
+1. Solution demonstruje pouzitie DISCOVERY SERVICES.
+2. DISCOVERY SERVICES je nove FEATURE WCF 4.0., ktora umoznuje vyhladavanie adries SERVICES podla rozlicnych kriterii.
+!!! 3. DISCOVERY je implementovane pomocou UDP protokolu, kde na vyhladavnie SERVICES su pouzite UDP MULTICAST ADRESY.
+4. Ak WCF SERVICE ma byt mozne vyhladat pomocou DISCOVERY, tak SERVICE MUSI okrem svojich BUSINESS ENDPOINTS vystavit aj DISCOVERY ENDPOINT. Postup je nasledovny.
+   A. SERVICE musi vystavit DISCOVERY ENDPOINT, ktoru WCF implementuje v triede DiscoveryEndpoint. Tento ENDPOINT je mozne vystavit bud pomocou pridania DiscoveryEndpoint medzi SERVICE ENDPOINTS, alebo pomocou konfiguracie pomocou 'kind="udpDiscoveryEndpoint"'.
+   B. SERVICE musi pridat 'serviceDiscovery' BEHAVIOR, alebo 'endpointDiscovery' BEHAVIOR.
+!!!!! 5. Ak pouzivam DISCOVERY, tak SERVICE ENDPOINTS by NEMALI POUZIVAT v adrese 'localhost' ci '127.0.0.1', pretoze tieto adresy budu vystavene cez DISCOVERY a CLIENT tak NEBUDE MAT ADRESU REALNEHO HOST, ale adresu 'localhost', alebo '127.0.0.1'.
+6. Ak CLIENT ma realizovat DISCOVERY, tak musi pouzit triedu DiscoveryClient - co je PROXY TRIEDA ku DiscoveryEndpoint pomocou, ktorej najde SERVICES, ktore IMPLEMENTUJU KONKRETNY CONTRACT. Postup je nasledovny.
+   A. Vytvorim instanciu objektu DiscoveryClient, ktoremu zadam DISCOVERY ENDPOINT vo forme objektu UdpDiscoveryEndpoint.
+   B. Definujem objekt FindCriteria v ktorom definujem TYP SERVICE CONTRACT, ktory vyhladavam.
+   C. Zavolam metodu Find(), alebo FindAsync() na spustenie DISCOVERY.
+   !!! D. Metody Find(), alebo FindAsync() standardne trvaju 20 SEKUND.
+   E. Po skonceni Find(), alebo FindAsync() objekt FindResponse, ktory obsahuje KOLEKCIU NAJDENYCH ENDPOINTS implementujucich SERVICE CONTRACT definovany vo FindCriteria. Tieto adresy potom je mozne pouzit na vytvorenie PROXY a nasledne na pristup k najdenemu ENDPOINT.
+!!! 7. BEHAVIOR EndpointDiscoveryBehavior umoznuje pridat SCOPES. SCOPE je Uri objekt, ktory BLIZSIE POPISUJE SERVICE. Pomocou neho mozem BLIZSIE POPISAT SERVICE, co sa vyuziva na ROZLISENIE SERVICES, ak VIACERO SERVICE implementuju TEN ISTY SERVICE CONTRACT. Trieda EndpointDiscoveryMetadata (pristup k nej je cez FindResponse.Endpoints) obsahuje property Scopes co je KOLEKCIA VSETKYCH SCOPES, ktore najdeny SERVICE definoval.
+!!! 8. Trieda FindCriteria ma property MaxResults umoznuje nastavit MAXIMALNY POCET HLADANYCH ENDPOINTS. Ak sa dany pocet ENDPOINTS najde tak metoda Find() OKAMZITE SKONCI.
+!!! 9. Pomocou STATICKEJ MEOTDY FindCriteria.CreateMetadataExchangeEndpointCriteria() je mozne vytvorit objekt FindCriteria, ktory bude hladat MEX rozhrania.
+!!! 10. V SERVICE BUS sa WCF DISCOVERY NEDA POUZIT, kedze je realizovane cez UDP protokol, ktory neprejde INTERNETOM. Je potrebna CUSTOM IMPLEMENTACIA vyuzivajuca NetEventRelayBinding.
+//-------------------------------------------------------------------------------------------------------

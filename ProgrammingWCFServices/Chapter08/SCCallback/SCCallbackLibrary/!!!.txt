@@ -1,0 +1,8 @@
+﻿//-------------------------------------------------------------------------------------------------------
+1. Solution demonstruje pouzitie SYNCHRONIZATION CONTEXTS pri CALLBACK volaniach.
+!!! 2. WCF zoberie hodnotu SynchronizationContext.Current pri otvarani CHANNEL, teda bud pri volani Proxy.Open(), prvom volanim operacie SERVICE, alebo pri ChannelFactory<TChannel>.Open().
+3. SYNCHRONIZATION CONTEXT pre CLIENT musi byt nastaveny v momente ked sa otvara PROXY pre CLIENT, teda bud pri volani prvej metody SERVICE, alebo Open() na PROXY.
+4. Ak mam SYNCHRONIZATION CONTEXT z GUI a ak PRIAMO z GUI vyvolam metodu SERVICE, ktora vola spetne CALLBACK, potom dojde k DEADLOCK, kedze volanie SERVICE zablokovalo GUI THREAD a pri smerovani CALLBACK volania tiez do GUI THREADU dochadza k DEADLOCK. Tento problem je mozne riesit dvoma sposobmi.
+   A. Je mozne nastavit UseSynchronizationContext=false - cim zabarnit THREAD AFINITE s GUI THREAD a pouzit metodu SYNCHRONIZATION CONTEXT Post() v CALLBACK metode na asynchronne vyvolanie akcie, ktora sa mala vykonat v GUI THREAD. MUSIM puzit Post() aby hned skoncila - poziadavka sa zaradi do Widnows Queue a callback skonci, tym skonci aj volanie metody SERVICE a v CLIENT nasledne vybrana MESSAGE z Widnows Queue a spracovana.
+   B. Druha moznost je volat metodu service s NON-GUI threadu. Potom k deadlocku nedojde.
+//-------------------------------------------------------------------------------------------------------

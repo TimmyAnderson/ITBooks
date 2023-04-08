@@ -1,0 +1,23 @@
+﻿//-------------------------------------------------------------------------------------------------------
+1. Program demonstruje pouzitie Custom Schema definovanej pomocou XSD a ako je ju mozne pouzit v Services BEZ TOHO aby som definoval CUSTOM DATA CONTRACTS. Inak povedane DATA CONTRACTS NIE SU DEFINOVANE V KODE, ale SU DEFINOVANE POMOCOU XSD, ktora je zvycajne STANDARDIZOVANA.
+2. WCF vystavuje svoje METADATA pomocou WSDL. Vygenerovany WSDL pozostava zo 4 CASTI, kde kazda ma vlastny <NODE>.
+   A. <wsdl:service> - definuje SERVICE.
+   B. <wsdl:binding> - definuje BINDING.
+   C. <wsdl:portType> - definuje CONTRACT.
+   D. <xsd:schema> - definuje SCHEMU - teda VSETKY DATA CONTRACTS, ktora SERVICE POUZIVA. VSETKY DATA CONTRACTS bez ohladu nato ci su serializovane cez DataContractSerializer, alebo XmlSerializer a ci su oznacene [DataContract], alebo [Serializable] su VZDY vo WSDL REPREZENTOVANE v <xsd:schema>.
+!!! 3. Schemu je mozne definovat dvoma sposobmi.
+   A. Definovanim .CS TRIED, ktore oznacim atributmi [DataContract], alebo [Serializable] a dalsimi XML serializacnymi atributmi. Z TYCHTO TRIED sa pri kompilacii GENERUJE WSDL SCHEMA.
+   B. Pomocou XSD SCHEMY, ktora po pregenerovani pomocou 'XSD.EXE' VYGENERUJE .CS TRIEDY, ktore po kompilacii VYGENERUJU WSDL SCHEMU.
+!!!!! 4. Zatial co pouzitie [DataContract] a [Serializable] je CISTO WCF RIESENIE, tak OBROVSKOU VYHODOU definovania XSD schemy je, ze XSD je UNIVERZALNY STANDARD. Teda mozem ju definovat i v INOM PROSTREDI ako WCF a takto importovana schema (pomocou vygenerovania .CS tried cez XSD.EXE) umozni POUZITIE SHCEMY z XSD vo WCF.
+!!!!! 5. Priemyselne STANDARDY su DEFINOVANE POMOCOU XSD a teda ak ich chcem pouzit vo svojom WCF Service MUSIM z nich IMPORTOVAT CUSTOM SCHEMU.
+!!! 6. Pouzitie XSD SCHEMY vo WCF sa realizuje nasledovne.
+   A. Subor XSD pregenerujem pomocou nastroja XSD.EXE do .CS tried.
+   B. Vygenerovane .CS triedy ZARADIM do PROJEKTU. OBSAHUJE SERIALIZABLE .CS TRIEDY, ktore reprezentuju DATA CONTRACTS IMPORTOVANE z XSD.
+   C. V projekte definujem SERVICE, ktory pouziva DATA CONTRACTS z XSD.
+!!!!! 7. NATO, aby som MOHOL POUZIT XSD vo WCF SERVICE musim splnit nasledujuce body.
+   A. Vytorim si XSD (alebo stiahnem z Internetu standard).
+   B. Vygenerujem z neho .CS triedy pomocou XSD.EXE.
+   !!! C. SERVICE NASTAVIM ABY POUZIVAL XmlSerializer. Robi sa to aplikovanim [XmlSerializerFormat] na CONTRACT CLASS.
+   D. V Service operaciach potom mozem POUZIVAT DATA CONTRACTS VYGENEROVANE z XSD v bode B.
+!!! 8. Vygenerovane WSDL OBSAHUJE SCHEMU, ale NIE PRIAMO v HLAVNOM WSDL, ale je zadefinovane pomoocu <wsdl:import> v INOM WSDL dokumente, ktory moj SERVICE VYSTAVUJE.
+//-------------------------------------------------------------------------------------------------------

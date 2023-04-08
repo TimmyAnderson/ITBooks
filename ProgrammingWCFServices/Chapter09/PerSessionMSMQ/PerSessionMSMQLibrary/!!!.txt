@@ -1,0 +1,16 @@
+﻿//-------------------------------------------------------------------------------------------------------
+1. Solution demonstruje PER-SESSION WCF SERVICES cez MSMQ.
+!!! 2. PerSession MSMQ services funguju tak, ze sa vsetky volania v ramci jednej SESSION (voci jednemu WCF PROXY) zlucia do jedinej MSMQ MESSAGE a su zaslane do MSMQ cez MSMQ ako JEDNA MSMQ MESSAGE, ktora je potom na SERVICE NARAZ PREHRANA.
+3. PerSession MSMQ service musi mat nastaveny SessionMode=SessionMode.Required.
+4. Ak sa pouzivaju transakcie tak kazda metoda musi mat TransactionScopeRequired=true a TransactionAutoComplete=false. Ukoncenie takejto transakcie je mozne vykonat nasledujucimi sposobmi.
+   A. Ak existuje OPERATION, ktora je VZDY VOLANA ako POSLEDNA, je mozne pre nu nastavit TransactionAutoComplete=true.
+   B. Ak existuje OPERATION, ktora je VZDY VOLANA ako POSLEDNA, je mozne pouzit OperationContext.Current.SetTransactionComplete().
+   C. Mozem pouzit i [ServiceBehavior] a nastavit TransactionAutoComplete=true.
+!!! 5. Klient MUSI mat ambientnu transakciu pri SessionMode=SessionMode.Required, teda VOLANIA OPERACII SERVICE MUSIA BYT OBALENE v TransactionScope, inak je hodena EXCEPTION.
+!!! 6. Proxy MUSI BYT UZAVRETE ETSE v TransactionScope, dokonca pred volanim TransactionScope.Complete(), inak pri opostani TransactionScope hodi EXCEPTION s tym ze transakcia bola ROLLBACK. Je to dosledok toho, ze Proxy.Close() PRISTUPUJE k AMBIENTNEJ TRANSACTION a ak sa ta ESTE PRED VOLANIM Close() uzatvori, tak dojde k EXCEPTION.
+7. Pokym nie je transakcia skoncena zije aj instancia service a teda session.
+!!! 8. Ak pri realizacii transakcie niekde zvolam OPERATION, ktrora nepuziva transakcie, teda TransactionScopeRequired=false potom dochadza k tomu, ze transakcia zlyha a WCF sa ju pokusi zopakovat, no ale kedze sa zopakuje aj volanie netransakcnej metody tak volanie VZDY ZLYHA.
+!!!!! 9. Ak volam viacero metod v SESSION a jedna z nich zlyha EXCEPTION a teda sa robi ROLLBACK potom WCF ju opakuje a opakuje VSETKY METODY - kedze MSMQ MESSAGE obsahuje VSETKY VOLANIA METOD voci jednej SESSION (volania voci jednemu PROXY na CLIENTOVI). 
+!!!!! 10. Velky pozor si treba dat na MAXIMALNU DLZKU MESSAGE, ktora je v MSMQ (i vo verzii 5.0 pre Windows 7) iba 4M MB. Ak je tato presiahnuta, potom zasielane MESSAGE do MSMQ QUEUE ZLYHA. Najma pri pouziti SESSIONS, ked sa vsetky volania v ramci jednej SESSION ukladaju do JEDNEJ MSMQ MESSAGE, je lahko mozne prekrocit tento limit.
+!!! 11. Pri SESSION services tu OPERACIE SERVICE volane presne v takom poradi v akom ich volal CLIENT.
+//-------------------------------------------------------------------------------------------------------

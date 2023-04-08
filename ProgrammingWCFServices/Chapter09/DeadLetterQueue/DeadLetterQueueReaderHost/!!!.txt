@@ -1,0 +1,23 @@
+﻿//-------------------------------------------------------------------------------------------------------
+1. Cielom programu je demonstrovat VYCITANIE DEAD LETTER QUEUE.
+2. DEAD LETTER QUEUE (DLQ) je QUEUE do ktorej su ukladane MESSAGES, ktorych vykonanie zlyhalo. Dovody mozu byt nasledujuce.
+   A. MSMQ MESSAGE sa NEPODARILO DORUCIT do DESTINATION QUEUE, kvoli komunikacnej chybe. MSMQ sa interne pokusa opakovane spravit DELIVERY do DESTINATION QUEUE, ale ak prekroci isty pocet opakovani, resp. expiruje cas MESSAGE, tak MESSAGE je presunuta do DLQ.
+   B. Ak sa MSMQ MESSAGE sice DORUCI do DESTINATION QUEUE, ale SERVICE bud NEBEZI, alebo ju NEDOKAZE SPRACOVAT.
+!!!!! 3. DEAD LETTER QUEUES su VZDY IBA NA CLIENT SIDE. Teda su zalezitostou CLIENTA a NIE SERVICE. Tieto QUEUES sluzia na NOTIFIKACIU CLIENTA, ze doslo k chyba pri komunikacii cez MSMQ BINDING.
+4. MSMQ podporuje 2 typy DQL.
+   A. SYSTEM DLQ je QUEUE na urovni pocitaca. Kazdy pocitac ma 2 SYSTEM DLQ - TRANSACTIONAL SYSTEM DLQ a NON-TRANSACTIONAL SYSTEM DLQ.
+   B. Od verzie MSMQ 4.0 (Vista a vyssie) je mozne vytvarat CUSTOM DLQ.
+!!!!! 5. MSMQ MESSAGE ked odosielam do QUEUE na INOM PC tak jej spracovanie je nasledovne.
+   A. MSMQ MESSAGE je zaslana do OUTGOING QUEUE na PC kde je spusteny CLIENT.
+   B. MSMQ MESSAGE je prenesena do DESTINATION QUEUE na ktorom bezi SERVICE.
+   C. Ak prenos prebehne OK, MSMQ z PC kde bezi SERVICE posle ACK MESSAGE na PC kde bezi CLIENT. MSMQ na PC kde bezi CLIENT na to zareaguje tak, ze ODSTRANI MESSAGE z OUTGOING QUEUE.
+   D. Ak prenos prebehne ZLYHA, MSMQ posle NACK MESSAGE na PC kde bezi CLIENT. MSMQ na PC kde bezi CLIENT na to zareaguje tak, ze PRESUNIE MESSAGE z OUTGOING QUEUE do DEAD LETTER QUEUE - ak je specifikovana. Ak nie je, tak MESSAGE je iba odstranena z OUTGOING QUEUE a ZAHODENA.
+   !!! E. NACK MESSAGE moze dojst bud pri problemy pri prenose MESSAGE do DESTINATION QUEUE, alebo ked SERVICE je NESCHOPNY VYKONAT MESSAGE a zaroven je nastaveny aby poslal NACK. Vtedy je NACK posielana AZ po NEUSPESNOM VYKONANI (to sa moze opakovat) MSMQ MESSAGE na WCF SERVICE.
+!!! 6. DLQ je v podstate BEZNA QUEUE voci ktorej JE MOZNE POSTAVIT WCF SERVICE, ktory bude vycitavat MSMQ MESSAGES (WCF MESSAGES ulozene ako MSMQ MESSAGES) SERVICE a tento SERVICE potom moze realizovat nejaku BUSINESS LOGIKU. Napriklad moze MESSAGES z DLQ zapisat do LOGU, alebo sa pokusit o RE-SEND, poslam mail administratorovi, ci akukolvek inu cinnost.
+!!!!! 7. Realizacia DLQ SERVICE je v MSMQ 3.0. KOMPLIKOVANA tym, ze existuje iba SYSTEM DLQ. Ak na PC bezi VIACERO SERVICES pracujucich s MSMQ BINDING, ktore maju ROZLICNE CONTRACTS, tak SYSTEM DLQ bude obsahovat ROZLICNE TYPY WCF MESSAGES, ktore NIE JE MOZNE SPRACOVAT BEZNYM CONTRACT, kedze WCF MESSAGES pochadzajuce z viacerych SERVICES maju ROZDIELNE CONTRACTS. Riesenim je pouzit SERVICE CONTRACT s JEDINOU OPERACIOU, ktora bude mat nastaveny Action="*".
+!!! 8. Vytvorenie DLQ SERVICE v MSMQ 4.0. je PODSTATNE JEDNODUCHSIE, kedze pre KAZDY SERVICE mozem definovat CUSTOM DLQ. Dosledkom toho je, ze CUSTOM DLQ obsahuje IBA MESSAGES pre KONKRETNY CONTRACT a DLQ SERVICE potom moze postavit tak, ze bude implementovat CONTRACT POVODNEJ SERVICE (ktorej zlyhanie sposobuje dorucenie MESSAGE do DLQ) a tento SERVICE potom dokaze VYBERAT MESSAGES s MSMQ a spustat ich voci DLQ SERVICE, ktory ma ROVNAKY CONTRACT ako POVODONY SERVICE.
+!!!!! 9. DLQ SERVICE moze pomocou triedy MsmqMessageProperty ziskat aj informaciu o tom preco MESSAGE ZLYHALA. Objekt MsmqMessageProperty mozem ziskat z OperationContext.Current.IncomingMessageProperties[MsmqMessageProperty.Name].
+!!!!! 10. Vycitanie z DEAD LETTER QUEUE (a je JEDNO ci sa jednoa o MSMQ 3.0., alebo MSMQ 4.0.) komplikuje to, ze vo WCF Message Address cast 'To' odkazuje ma QUEUE do ktorej som ZASIELAL MESSAGE a NIE DEAD LETTER QUEUE. Dalsim problemom je Contract. Ten MUSI BYT BUD ZHODNY s TYM, DO KTOREHO MALA BYT POVODNE SMEROVANA MESSAGE, ALEBO potom MUSI mat Action="*". Riesenie problemu s adresou JE MOZNE POMOCOU SERVICE BEHAVIOR AddressFilterMode, ktory nastavim na 'AddressFilterMode.Any'. Potom uz VSETKY MESSAGES, ktore POVODNE BOLI SMEROVANE DO DESTINATION QUEUE, ale SKONCILI v DEAD LETTER QUEUE BUDEM VEDIET CITAT, lebo 'To' zlozka adresy, ktora obsahuje POVODNU MSMQ QUEUE bude IGNOROVANA.
+!!! 11. Program zaroven demonstruje AKO JE MOZNE VYCITA MSMQ MESSAGE QUEUE, kde je okrem ineho I PRICINA CHYBY ked MSMQ MESSAGE NIE JE DORUCENA.
+!!! 12. VELMI DOLEZITE. AK NEDORAZI MESSAGE do QUEUE, na ZISTENIE CHYBY musim ZAPNUT ZACHYTAVANIE EXCEPTIONS a TAM MI ZOBRAZI PRESNU CHYBU, ktoru INAK NEVIDIM.
+//-------------------------------------------------------------------------------------------------------

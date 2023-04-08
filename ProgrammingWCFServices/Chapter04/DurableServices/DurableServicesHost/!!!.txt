@@ -1,0 +1,49 @@
+﻿//-------------------------------------------------------------------------------------------------------
+1. Program demonstruje pouzitie Durable Services vo WCF. POZOR NEJEDNA SA o pouzitie WF, ale o VSEOBECNU implementaciu Durable Services.
+2. Durable Services sa vyznacuju tym, ze STAV SERVICE sa uklada do PERSISTENT STORE. Teda KAZDA OPERACIA na svojom zaciatku vycita stav Durable Service z PERSISTENT STORE a na svojom konci ulozi stav Durable Service do PERSISTENT STORE.
+!!! 3. Vyhodou Durable Services je, ze stav je PERSISTED a NIE JE ULOZENY V PAMETI. To umoznuje nielen vyssiu priepustnost, ale najme BEH LONG-TIME SERVICES, ktore mozu trvat dlhu dobu (dni, tyzdne, mesiace), bez toho aby bolo medzi Client a Service nutne udrziavat CONNECT.
+!!! 4. Pouzitie Durable Services vo WCF je podobne ako PerCall STATE-AWARE InstanceContextMode a preto aj Durable Services sa NAJCASTEJSIE vyuziva spolu s 'PerCall'.
+5. LONG-RUNNING Durable Service musi na zaciatku ULOZIT STAV do PERSISTENT STORE, aby ho odtial mohol neskor (resp. ine Services) vytiahnut a naopak na konci LONG-RUNNING Durable Service musi byt stav WF odstraneny z PESRISTENT STORE.
+6. Nato, aby Service bol schopny pristupovat k PERSISTENT STORE, musi ziskat InstanceID, co je identifikator jednoznacne identifikujuci Durable Service.
+!!!!! 7. InstanceID UKLADA si KLIENT, ktory realizuje VOLANIA DURABLE SERVICES, pricom ho uklada tiez do nejakeho KLIENTSKEHO DURABLE STORE - napriklad suboru a pri VOLANI OPERACIE DURABLE SERVICE ho zasle danemu DURABLE SERVICE.
+8. PERSISTENT STORE je zas STORE, ktore je tvale a ma format Dictionary, kde KEY je InstanceID a hodnota STAV DURABLE SERVICE.
+//-------------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------------
+Implementacia DURABLE SERVICES vo WCF.
+
+1. Durable Services su vo WCF realizovane nasledujucim sposobom.
+   A. Durable Service reprezentuje WORKFLOW, ktory je pocas zivota ukladany do Persistent Store, ktory musim nakonfigurovat pre dany Service pomocou Service Behavior - PersistenceProviderBehavior.
+   B. TRIEDA Durable Service MUSI BYT SERIALIZOVATELNA, pretoze PRAVE JEJ FIELDS A PROPERTIES su STAVOM WF a ukladaju sa do PS.
+   C. Korelacia, ktory SERVICE CALL patri, ktoreho WF (instancii Service class v PS) je dane pomocou InstanceId ulozenom v Contexte.
+   D. InstanceId je ulozeny v Context - co je DICTIONARY typu Dictionary<string,string>, kde kluc MUSI MAT MENO: 'instanceId' a jeho hodnota je IDENTIFIKATOR WF - GUID v podobe string.
+   E. InstanceId sa prenasa pomocou CONTEXT BINDING, co je Binding, ktory MUSI OBSAHOVAT ContextBindingElement.
+   F. Ak vytvaram WF PRVYM volanim operacie na Durable Service, tak InstanceId je NULL.
+   G. AK VSAK uz WF existuje, tak MUSIM DO PROXY ulozit hodnotu InstanceId.
+   !!! H. NATO, aby Service bol DURABLE, musi klient VZDY ZASLAT ZODPOVEDAJUCE InstanceId. Ak WF trva dlho, tak sa aj InstanceId NA STRANE KLIENTA uklada do nejakeho KLIENTESKEHO PERSISTENT STORE - napriklad suboru. Takto ziskam DURABLE SERVICE, ktory prezije aj restart PC.
+2. WCF poskytuje niekolko Bindings, ktore podporuju prenos InstanceID - tzv. ContextID, co sluzi ako identitikator Workflow. ContextBinding OBSAHUJE ContextBindingElement, ktory realizuje prenos Contextu medzi Client a Service.
+3. Nato aby som SERVICE mohol realizovat ako DURABLE SERVICE musia byt splnene nasledujuce podmienky.
+   A. Service trieda musi byt oznacena atributom [DurableService].
+   B. Service trieda MUSI BYT SERIZLIZOVATELNA a to bud oznacenim atributom [Serializable], alebo [DataContract], pricom v pripade [DataContract] musim vsetky Fileds a Properties, ktore TVORIA STAV SERVICE oznacit atributom [DataMember]. POTOM mozem s Fields a Properties Service class pracovat akoby sa jednalo o PER-SESSION Service.
+   C. Service musi byt nastaveny na PerSession, aj ked v skutocnosti sa realizuje ako PerCall a zdanie SESSION (Fields a Properties su uchovane medzi volaniami) je zabezpecene serializaciou a deserializaciou Service class pri KAZDOM VOLANI JEJ OPERACIE.
+   D. Musim pouzit niektory z ContextBindings.
+   E. TS musi NESMIE byt zakazana.
+   F. Musim nakonfigurovat PERSISTENT PROVIDER.
+4. Kazda operacia pomocou atributu [DurableOperation] moze byt oznacena ako operacia, ktora ZACNE, alebo UKONCI Workflow DURABLE SERVICES. Po ukonceni Workflow je stav z PERSISTENT STATE vymazany a Proxy sa MUSI ZLIKVIDOVAT. Teda nemozno ho uz viac pouzit.
+5. WCF poskytuje triedu DurableOperationContext, ktoru mozem pouzit na PROGRAMOVE ukoncenie ci abort Workflow, ako aj ziskanie InstanceID daneho Workflow.
+!!! 6. InstanceId spolu s PERSISTENT STORE je klucom k realizacii persistent Workflows. InstanceID MUSIM ZALSAT do Durable Service pomocou PROXY a to jeho nastavenim a to nasledovnym sposobom.
+   A. Pri vytvarani Proxy zistim ci sa ContextBindingElement nachadza v danom Bindingu. Iba ak sa nachadza tak pouzivam ContextBinding.
+   B. Pomocou metody GetProperty<>() ziskam instnaciu IContextManager.
+   C. Zavolam metodu IContextManager.SetContext() pomocou, ktore nastavim CONTEXT.
+!!! 7. WCF umoznuje implementaciu CUSTOM PERSISTENT STORE implementaciu triedy PersistenceProvider.
+//-------------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------------
+Poznamky ku Context Bindings.
+
+1. WCF podporuje 3 Context Bindings: BasicHttpContextBinding, NetTcpContextBinding a WSHttpContextBinding.
+2. Vsetky CB maju ContextBindingElement, ktory realizuje prenos Context medzi Client a Service.
+3. Context je vo forme IDictionary<string,string> a je NEMENNY. Teda vytvori (resp. ho v kode nastavim) sa bud pri vytvoreni Proxy, alebo pri volani 1 operacie Service - ked sa koreluje Context medzi Client a Service.
+4. NA STRANE PROXY je mozne citat a nastavit Context pomocou rozhrania IContextManager, ktory ziskam pomocou ClientBase<TChannel>.InnerChannel.GetProperty<IContextManager>(). IContextManager ma metodu GetContext(), ktora vracia NEMODIFIKOVATELNU KOPIU CONTEXT (IDictionary<string,string>) a metoda SetContext() zas umoznuje nastavit Context - samozrejme IBA pri VYTVARANI PROXY.
+5. NA STRANE SERVICE je mozne citat Context pomocou IncomingMessageProperties triedy OperationContext, kde do tejto Dictionary pouzijem ako KEY ContextMessageProperty.Name a ziskam Context - CO JE TIEZ DICTIONARY typu IDictionary<string,string>.
+//-------------------------------------------------------------------------------------------------------

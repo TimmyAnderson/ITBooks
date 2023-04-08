@@ -1,0 +1,25 @@
+﻿//-------------------------------------------------------------------------------------------------------
+1. Program demonstruje pouzitie Reliable sessions (RS) pri detekcii VYPADKU KOMUNIKACIE so SERVEROM.
+!!!!! 2. RS umoznuje DETEKOVAT VYPADOK SIETOVEHO SPOJENIA medzi KLIENTOM a SERVEROM tym, ze PROXY OBJEKT zasle 'Faulted' EVENT.
+!!!!! 3. RS event sa odpali v ZAVISLOSTI od POUZITEHO BINDING.
+   A. WS HTTP BIDNING - kedze pracuje s HTTP protokolom, ktory je CONNECTION-LESS (nedetekuje vypadok spojenia), tak WCF NIE JE schopna OKAMZITE detekovat vypadok spojenia a AK ZHODIM SERVER, tak sa 'Faulted' EVENT OKAMZITE NEZAVOLA. Avsak po UPLYNUTI casu MAX(receiveTimeout,inactivityTimeout) ZASIELA HTTP KEEP ALIVE EVENT a TEN KED NEPREJDE, tak je OKAMZITE v PROXY objekte ODPALENY 'Faulted' EVENT. Kedze stadardny cas 'inactivityTimeout' je 10 minut, tak ak NEZMENIM OBE 'inactivityTimeout' a 'receiveTimeout' na KRATSI CAS, tak AZ PO 10 MINUTACH od zaslania POSLEDNEJ MESSAGE, dostanem 'Faulted' EVENT na PROXY.
+   B. TCP BINING - kedze pracuje s TCP/IP protokolom, ktory je CONNECTION-ORIENTED (OKAMZITE DETEKUJE VYPADOK SPOJENIA, pretoze posiela medzi oboma stranami PINGY), tak WCF JE schopna OKAMZITE detekovat vypadok spojenia a AK ZHODIM SERVER, tak sa 'Faulted' EVENT OKAMZITE VYVOLA.
+!!!!! 4. TCP BINING pri zapnutej RS UDRZUJE CONNECTION po dobu MAX(receiveTimeout,inactivityTimeout) CONNECTION. Ak vsak NEPOSLEM pocas tohto timeout ZIADNU DALSIU MESSAGE, tak po jej uplynuti sa CONNECION AUTOMATICKY ZHODI, o com je PROXY NOTIFIKOVANE volanim 'Faulted' EVENT.
+!!!!! 5. Ak RS NIE JE ZAPNUTA, tak potom sa 'Faulted' EVENT pri VYPADKU SPOJENIA NIKDY NEVOLA a ZAVOLA sa AZ, KED SA POSLE DALSIA MESSAGE na SERVER, ktory uz je padnuty. Az potom je volany 'Faulted' EVENT.
+!!! 6. Samozrejme nevyhodou RS je pomaly nabeh pri volani funkcie Open(), kedze RS sa OPAKOVANE pokusa o spojenie ktore ak je server padnuty nema sancu nadviazat.
+!!!!! 7. POZOR. Pri TCP/IP je TRANSPORT SESSION VZDY ZAPNUTA, lebo je to dane povahou TCP/IP protokolu. V pripade HTTP ked pouzivam MESSAGE SECURITY, tak je TIEZ TRANSPORT SESSION ZAPNUTA. Nato aby TRANSPORT SESSION NEBOLA ZAPNUTA, musim mat HTTP BINDING BEZ MESSAGE SECURITY.
+//-------------------------------------------------------------------------------------------------------
+TRANSPORT SESSION a RELIABLE SESSION.
+
+1. TRANSPORT SESSTION a RELIABLE SESSION su DVE ROZDIELNE VECI.
+   A. TRANSPORT SESSION je LOGICKA VAZBA medzi CLIENT a SERVICE, ktora moze byt realizovana vdaka PRENOSOVEMU PROTOKOLU, alebo vdaka KONFIGURACII BINDING.
+   B. RELIABLE SESSION je implementacia protokolu WS-ReliableMessaging, ktory zabezpecuje, ze ak dojde k VYPADKU SPOJENIA MEDZI CLIENT a SERVICE, tak WCF sa pokusi DANY POCET OPAKOVANI a v DANOM TIMEOUT ZNOVA NADVIAZAT SPOJENIE.
+   C. Plati, ze ak medzi CLIENT a SERVICE existuje RELIABLE SESSION, tak ZAROVEN je vytvorena i TRANSPORT SESSION. Typickym prikladom je HTTP protokol, ktory NEPODPORUJE TRANSPORT SESSION, kedze NIE JE CONNECTION-ORIENTED protokol, avsak ak nakonfigurujem RELIABLE SESSION, tak WCF UMELO vytvori EMULACIU TRANSPORT SESSION.
+   D. Plati, ze ak medzi CLIENT a SERVICE existuje TRANSPORT SESSION, tak ZAROVEN NEMUSI EXISTOVAT i RELIABLE SESSION. Prikladom je TCP/IP, ktory PODPORUJE TRANSPORT SESSION, kedze je CONNECTION-ORIENTED, ale moze mat VYPNUTU RELIABLE SESSION, v dosledku coho pri PRVOM VYPADKU KOMUNIKACIE sa WCF NEPOKUSI znona NADVIAZAT SPOJENIE.
+!!! 2. TRANSPORT SESSION moze byt dana bud PRENOSOVY PROTKOLOM, alebo EMULOVANA WCF.
+   A. Prenosovy protokol TCP/IP, alebo IPC maju VZDY TRANSPORT SESSION, kedze su CONNECTION-ORIENTED. Je to dane ich IMPLEMENTACIU a WCF na to NEMA ZIADEN VPLYV.
+   !!! B. Prenosovy protokol HTTP NEMA TRANSPORT SESSION, kedze to NIE JE CONNECTION-ORIENTED protokol. Avsak WCF moze TRANSPORT SESSION EMULOVAT.
+!!! 3. Pri HTTP sa TRANSPORT SESSION EMULUJE v nasledujucich pripadoch.
+   A. Ak na HTTP zapnem RELIABLE SESSION, tak WCF pre potreby RELIABLE SESSION EMULUJE TRANSPORT SESSION.
+   B. Ak na HTTP zapnem MESSAGE SECURITY, tak WCF pre potreby MESSAGE SECURITY EMULUJE TRANSPORT SESSION. V pripade TRANSPORT SECURITY NIE JE TRANSPORT SESSION EMULOVANA.
+//-------------------------------------------------------------------------------------------------------

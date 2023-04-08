@@ -1,0 +1,23 @@
+﻿//-------------------------------------------------------------------------------------------------------
+1. Program demonstruje ROZDIELY medzi pouzitim PerCall Service ak pouzijem a ak nepouzijem TRANSPORT SESSION a ZAROVEN je NASTAVENY CONCURRENCY MODE na 'Single'.
+!!! 2. Konfiguracia programu je nasledovna.
+   A. Mam 2 SERVICES, jeden PODPORUJE TS a druhy NEPODPORUJE TS.
+   B. Ku obom Services pristupujem z JEDNEHO PROXY, ktory PARALELNE ODOSLE CALL z 2 THREADS - teda mam PARALELNE BEZICE 2 CALLS nad TOU ISTOU INSTANCIOU PROXY.
+   C. OBE SERVICES su PER CALL a SINGLE CONCURRENCY MODE.
+!!!!! 3. Cely rozdiel spociva v tom, ze KED POUZIVAM TS, tak aj volanie Dispose() BEZI SYNCHRONNE. Inak povedane Service s TS BLOKUJE 2. CALL (z toho isteho proxy, ale ineho klientskeho Threadu) az POKYM NESKONCI VOLANIE Dispose(), zatial co CALL BEZ TS vykonava Dispose() ASYNCHRONNE a pocas jej vykonavania uz 2. CALL moze pristupovat k Service.
+!!!!! 4. POZOR. Pri TCP/IP je TRANSPORT SESSION VZDY ZAPNUTA, lebo je to dane povahou TCP/IP protokolu. V pripade HTTP ked pouzivam MESSAGE SECURITY, tak je TIEZ TRANSPORT SESSION ZAPNUTA. Nato aby TRANSPORT SESSION NEBOLA ZAPNUTA, musim mat HTTP BINDING BEZ MESSAGE SECURITY.
+//-------------------------------------------------------------------------------------------------------
+TRANSPORT SESSION a RELIABLE SESSION.
+
+1. TRANSPORT SESSTION a RELIABLE SESSION su DVE ROZDIELNE VECI.
+   A. TRANSPORT SESSION je LOGICKA VAZBA medzi CLIENT a SERVICE, ktora moze byt realizovana vdaka PRENOSOVEMU PROTOKOLU, alebo vdaka KONFIGURACII BINDING.
+   B. RELIABLE SESSION je implementacia protokolu WS-ReliableMessaging, ktory zabezpecuje, ze ak dojde k VYPADKU SPOJENIA MEDZI CLIENT a SERVICE, tak WCF sa pokusi DANY POCET OPAKOVANI a v DANOM TIMEOUT ZNOVA NADVIAZAT SPOJENIE.
+   C. Plati, ze ak medzi CLIENT a SERVICE existuje RELIABLE SESSION, tak ZAROVEN je vytvorena i TRANSPORT SESSION. Typickym prikladom je HTTP protokol, ktory NEPODPORUJE TRANSPORT SESSION, kedze NIE JE CONNECTION-ORIENTED protokol, avsak ak nakonfigurujem RELIABLE SESSION, tak WCF UMELO vytvori EMULACIU TRANSPORT SESSION.
+   D. Plati, ze ak medzi CLIENT a SERVICE existuje TRANSPORT SESSION, tak ZAROVEN NEMUSI EXISTOVAT i RELIABLE SESSION. Prikladom je TCP/IP, ktory PODPORUJE TRANSPORT SESSION, kedze je CONNECTION-ORIENTED, ale moze mat VYPNUTU RELIABLE SESSION, v dosledku coho pri PRVOM VYPADKU KOMUNIKACIE sa WCF NEPOKUSI znona NADVIAZAT SPOJENIE.
+!!! 2. TRANSPORT SESSION moze byt dana bud PRENOSOVY PROTKOLOM, alebo EMULOVANA WCF.
+   A. Prenosovy protokol TCP/IP, alebo IPC maju VZDY TRANSPORT SESSION, kedze su CONNECTION-ORIENTED. Je to dane ich IMPLEMENTACIU a WCF na to NEMA ZIADEN VPLYV.
+   !!! B. Prenosovy protokol HTTP NEMA TRANSPORT SESSION, kedze to NIE JE CONNECTION-ORIENTED protokol. Avsak WCF moze TRANSPORT SESSION EMULOVAT.
+!!! 3. Pri HTTP sa TRANSPORT SESSION EMULUJE v nasledujucich pripadoch.
+   A. Ak na HTTP zapnem RELIABLE SESSION, tak WCF pre potreby RELIABLE SESSION EMULUJE TRANSPORT SESSION.
+   B. Ak na HTTP zapnem MESSAGE SECURITY, tak WCF pre potreby MESSAGE SECURITY EMULUJE TRANSPORT SESSION. V pripade TRANSPORT SECURITY NIE JE TRANSPORT SESSION EMULOVANA.
+//-------------------------------------------------------------------------------------------------------

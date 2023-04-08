@@ -1,0 +1,86 @@
+﻿//-------------------------------------------------------------------------------------------------------
+1. Program demonstruje Reentrancy vo WCF.
+!!! 2. To ci JE, alebo NIE JE mozne realizovat VIACERO OPERACII PARALELNE zavisi od nasledujuceho.
+   A. Nastavenia ConcurrencyMode.
+   B. Nastavenia InstanceContextMode.
+   C. Pouzitia Transport Session.
+   D. Ci operacia vola CALLBACK pocas svojho behu.
+   E. Ci volam operacie z jedneho, alebo viacerych proxies.
+!!!!! 3. VSETKY BODY spomenute v 2 MAJU VPLYV nato ci sa 2 operacie budu volat sekvencne, alebo paralelne.
+4. V zasade plati, ze CHRANENA je VZDY INSTANCIA SERVICE. Ak pristupujem k INSTANCII SERVICE a pouzivam ConcurrencyMode na 'Single', alebo 'Reentrant', tak INSTANCIA JE CHRANENA pred PARALELNYM VOLANIM 2 OPERACII. AVSAK SU TU VYNIMKY.
+5. ConcurrencyMode na 'Multiple' znamena ZA KAZDYCH OKOLNOSTI (bez ohladu na ostatne nastavenia) VZDY PARALELNY BEH. Je pritom jedno ci mam 1, alebo 2 Proxies, ci je TS pouzita, aka je hodnota InstanceContextMode, ci sa vola Callback. VZDY JE BEH PARALELNY.
+6. ConcurrencyMode na 'Reentrant' AK SA NEVOLA CALLBACK tak BRANI VYVOLANIU 2 OPERACII NAD TYM ISTYM PROXY.
+!!!!! 7. ConcurrencyMode na 'Reentrant' AK SA VOLA CALLBACK, tak sa LOCK nad instanciu UVOLNI a LUBOVOLNA INA OPERACIE (NIELEN CALLBACK) MOZE PRISTUPIT POCAS BEHU CALLBACK k INSTANCII. Ak CALLBACK sa chce vratit, a INA OPERACI DRZI LOCK, tak CALLBACK MUSI POCKAT na JEJ SKONCENIE.
+8. ConcurrencyMode na 'Single' znamena ochranu pred PARALELNYM VOLANIM NAD dvoma operaciami TOHO ISTEHO PROXY.
+!!!!! 9. ConcurrencyMode na 'Single' SA VSAK CHOVA SPECIALNE pri InstanceContextMode na 'PerCall' a ZAPNUTEJ TS. VTEDY AJ KED SA JEDNA o 2 INSTANCIE (kazdy PerCall je realizovany v inej instancii) TAK BEZIA SEKVENCNE. Je to preto, lebo LOCK je aplikovany I na TRANSPORT CHANNEL. Je to ZVLASTNOST WCF na ktoru si treba dat pozor.
+10. Pri InstanceContextMode je treba davat pozor na 'Single'. VTEDY i 2 INSTANCIE PROXIES SA VZAJOMNE BLOKUJU - kedze OBE PRISTUPUJU k TEJ ISTEN INSTANCIE SERVICE.
+!!!!! 11. OBROVSKY POZOR SI TREBA dat na STRAT PROXY. POKYM NIE JE NASTARTOVANE, tak VSETKY DOVTEDY ZAVOLANE OPERACIE SU VYKONANE SEKVENCNE. Teda ak spustim proxy a natlacim do nej velmi rychlo z 10 Threads 10 volani, pricom PROXY SA ESTE NEOTVORILO - negociacia zo Service tvra niekolko 10tok ms, tak TIETO OPERACIE SA VYKONAJU SEKVENCNE.
+
+
+
+!!!!! NASLEDUJUCE TABULKY BOLI VYTVORENE, pri ZAPNUTEJ TRANSPORT SESSION.
+!!!!! AK by TRANSPORT SESSION NEBOLA zapnuta VYSLEDKY BY SA LISILI u PerCall SERVICES.
+
+TA ISTA PROXY - 2 THREADS:
+InstanceContextMode			ConcurrencyMode			PARALELIZMUS.
+
+Single						Single					SEKVENCNE.
+Single						Reentrant				SEKVENCNE.
+Single						Multiple				PARALELNE.
+
+PerSession					Single					SEKVENCNE.
+PerSession					Reentrant				SEKVENCNE.
+PerSession					Multiple				PARALELNE.
+
+PerCall						Single					!!! SEKVENCNE.
+PerCall						Reentrant				PARALELNE.
+PerCall						Multiple				PARALELNE.
+
+
+DVE ROZNE PROXIES - 2 THREADS:
+InstanceContextMode			ConcurrencyMode			PARALELIZMUS.
+
+Single						Single					!!! SEKVENCNE.
+Single						Reentrant				!!! SEKVENCNE.
+Single						Multiple				PARALELNE.
+
+PerSession					Single					PARALELNE.
+PerSession					Reentrant				PARALELNE.
+PerSession					Multiple				PARALELNE.
+
+PerCall						Single					PARALELNE.
+PerCall						Reentrant				PARALELNE.
+PerCall						Multiple				PARALELNE.
+
+
+TA ISTA PROXY - 2 THREADS - JEDNA OPERACIA VOLA CALLBACK:
+InstanceContextMode			ConcurrencyMode			PARALELIZMUS.
+
+Single						Single					N/A.
+Single						Reentrant				!!! PARALELNE.
+Single						Multiple				PARALELNE.
+
+PerSession					Single					N/A.
+PerSession					Reentrant				!!! PARALELNE.
+PerSession					Multiple				PARALELNE.
+
+PerCall						Single					N/A.
+PerCall						Reentrant				!!! PARALELNE.
+PerCall						Multiple				PARALELNE.
+
+
+DVE ROZNE PROXIES - 2 THREADS - JEDNA OPERACIA VOLA CALLBACK:
+InstanceContextMode			ConcurrencyMode			PARALELIZMUS.
+
+Single						Single					N/A.
+Single						Reentrant				PARALELNE.
+Single						Multiple				PARALELNE.
+
+PerSession					Single					N/A.
+PerSession					Reentrant				PARALELNE.
+PerSession					Multiple				PARALELNE.
+
+PerCall						Single					N/A.
+PerCall						Reentrant				PARALELNE.
+PerCall						Multiple				PARALELNE.
+//-------------------------------------------------------------------------------------------------------

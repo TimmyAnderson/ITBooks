@@ -1,0 +1,78 @@
+﻿//-------------------------------------------------------------------------------------------------------
+1. Solution demonstruje pouzitie RELAY SERVICE v Service Bus.
+!!!!! 2. Tento SOLUTION NIE JE FUNKCNY, kedze NEMAM PLATNY ACCOUNT v AZURE prostredi.
+!!! 3. Nato aby som mohol pouzivat klucovu DLL Service Bus - Microsoft.ServiceBus.dll, bolo treba stiahnut Windows Azure AppFabric SDK V1.0.
+4. AppFabric ServiceBus je JEDNOU zo SUCASTI AZURE PLATFORM, ktora umoznuje CONNECTIVITY medzi CLIENT a SERVICE v ramci Internetu.
+5. ServiceBus sluzi ako RELAY SERVICE, kde SERVICE i CLIENT sa musia zaregistrovat voci RELAY SERVICE beziacom na CLOUD. RELAY SERVICE potom zabezpeci, aby volania zo strany CLIENT boli odosielane na SERVICE.
+!!!!! 6. CLIENT i SERVICE na ROZDIEL OD SERVICES BEZIACICH na CLOUD NIE su HOSTED na Microsoft serveroch, ale jedna sa o BEZNE SERVICES, ktore bezia na PC a RELAY SERVICE sluzi iba na PREPOJENIE CLIENT a SERVICE.
+!!!!! 7. Na to aby ServiceBus mohol fungovat musi CLIENT i SERVICE mat nastavenu INTRANET siet tak, aby DOVEROVALA AZURE CLOUD a NEBLOKOVALA KOMUNIKACIU s NOU.
+8. Pri pouzivani ServiceBus je nutne pouzivat nasledujucu adresovu schemu: [Scheme]://[ServiceNamespace].[ServiceBusAddress]. Za hodnotu Scheme je mozne dosadit bud HTTP, HTTPS, alebo SB. Za hodnotu ServiceNamespace je nutne dosadit NAMESPACE, ktory ziskam pri ZAREGISTROVANI AZURE ACCOUNT. Hodnota ServiceBusAddress je momentalne VZDY 'servicebus.windows.net', co je DNS na ktorom bezi ServiceBus.
+!!! 9. V ServiceBus adrese sluzi ServiceNamespace (ktory ziskam zaregistrovani v AZURE) ako ANALOGIA voci MACHINE NAME, alebo DOMAIN NAME pri INTRANET WCF aplikaciach. ServiceBus adresa MUSI BYT UNIKATNA pre KAZDY SERVICE. To znaci, ze NEMOZE pre 2 SERVICES pouzit nasledujuce adresy: [sb://MyNamespace.servicebus.windows.net/] a [sb://MyNamespace.servicebus.windows.net/MyService]. Toto ServiceBus NEUMOZNI.
+10. ServiceBus podporuje nasledujuce BINDINGS.
+   A. NetTcpRelayBinding - sluzi na najrychlejsie spojenie medzi WCF SERVICE a WCF CLIENT. Podporuje i HTTP protokol. Ako JEDINY BINDING podporuje i DUPLEX komunikaciu, ktora je na urovni WCF realizovana UPLNE ROVNAKO ako pri beznych WCF DUPLEX SERVICES.
+   B. WS2007HttpRelayBinding - sluzi na komunikaciu medzi NON-WCF CLIENT a NON-WCF SERIVCES.
+   C. NetOneWayRelayBinding - sluzi na ONE WAY komunikaciu. Sprava odosielana na SERVICE sa ulozi do BUFFER v SERVICE BUS a nasledne je poslana do SERVICE. Ak vsak SERVICE NEBEZI v case odoslania MESSAGE, tak PROXY na strane CLIENT obdrzi EXCEPTION.
+   D. NetEventRelayBinding - je zdedeny z NetOneWayRelayBinding sa sluzi na implementaciu SUBSCRIBER patternu. SERVICES sa prihlasuju pomocou tohto BINDING na odber udalosti. Ak CLIENT ulozi spravu na adresu, ktoru monitoruje VIACERO SERVICES cez NetEventRelayBinding, tak vsetky SERVICES tuto spravu obdrzia.
+   E. WebHttpRelayBinding - je RELAY analogiou k WebHttpBinding.
+   F. BasicHttpRelayBinding - je RELAY analogiou k BasicHttpBinding.
+!!! 11. Najcastejsie pouzivanym BINIDNG je NetTcpRelayBinding, ktory podporuje 3 CONNECTION MODES.
+   A. RELAYED - komunikacia medzi CLIENT a SERVICE je VZDY realizovana cez RELAY SERVICE.
+   B. HYBRID - komunikacia medzi CLIENT a SERVICE je realizovana bud cez RELAY SERVICE, alebo PRIAMO komunikaciu z CLIENT na SERVICE.
+   C. DUPLEX - komunikacia medzi CLIENT a SERVICE je DUPLEXNA.
+12. ServiceBus adresu je mozne vytvorit pomocou metody ServiceBusEnvironment.CreateServiceUri(), kde parametrami su Scheme, ServiceNamespace a ServicePath.
+13. ServiceBus pomocou ServiceBus Registry poskytuje ATOM FEED o tom, ktore SERVICES su na danom SERVICE NAMESPACE implementovane.
+!!! 14. Standardne registracia v ServiceBus Registry NIE JE podporovana. Nato, aby bol je potrebne ho zapnut pomocou BEHAVIOR ServiceRegistrySettings, ktory musi SERVICE pridat do KAZDEHO VYSTAVENEHO ENDPOINT. Nasledne bude pri PRIHLASENI SERVICE do CLOUD tento ZVEREJNENY v ServiceBus Registry.
+15. ServiceBus podporuje BUFFERING WCF MESSAGES. Umoznuje vytvorit BUFFER s adresou v SERVICE NAMESPACE ako SUB-URI (napriklad [sb://MyNamespace.servicebus.windows.net/MyBuffer]). BUFFERS v ServiceBus maju nasledujuce vlastnosti.
+   A. Umoznuju uskladovat WCF MESSAGES, teda instancie objektu Message.
+   B. BUFFERS NIE su DURABLE. Teda su ulozene v PAMATI na MS DATACENTER SERVERCH a ak by nahodou DATACENTER SERVERS SKOLABOVALI, tak MESSAGES PRESTANU EXISTOVAT.
+   C. BUFFERS NIE su TRANSAKCNE.
+   D. MESSAGE v BUFFER je ulozena MAXIMALNE 10 MINUT. Dlhsi EXPIRATION TIMEOUT NIE JE MOZNE NASTAVIT.
+   E. BUFFER moze obsahovat MAXIMALNE 50 MESSAGES.
+   F. MAXIMALNA dlzka MESSAGE je 64 KB.
+   !!! G. CLIENT a SERVICE mozu do a z BUFFER NEZAVISLE ZASIELAT a VYBERAT MESSAGES. Ak CLIENT zasiela MESSAGE do BUFFER, tak SERVICE NEMUSI BEZAT, ale UPLNE NEZAVISLE si moze z BUFFER vyberat MESSAGES, samozrejme az kym nie je prekroceny MESSAGE EXPIRATION TIMEOUT.
+   !!! H. Praca s BUFFERS vyzaduje ONE-WAY komunikaciu, kedze SERVICE NEMUSI BYT SPUSTENY, ked CLIENT zasiela MESSAGE do BUFFER.
+   !!! I. Z vyssie uvedeneho vyplyva, ze SERVICE BUFFERS NIE SU analogiou MSMQ, kedze poskytuju DALEKO MENEJ FEATURES ako MSMQ BUFFERS.
+   I. Ich realne vyuzitie je na osetrenie ak spojenie medzi CLIENT a CLOUD, alebo SERVICE a CLOUD je NESTALE a DOCASNE VYPADAVA.
+16. Trieda MessageBufferPolicy sluzi na NASTAVENIE CHOVANIA sa daneho BUFFER. Umoznuje nastavit nasledujuce vlastnosti.
+   A. DISCOVERABILITY POLICY - ci BUFFER bude zverejneny s SERVICE BUS REGISTRY.
+   B. Expiracny cas MESSAGE.
+   C. Maximalny pocet MESSAGES v BUFFER.
+   D. OVERFLOW POLICY - cas ma stat ak BUUFER sa naplni. Zatial jedina moznost je, ze CLIENT dostante EXCEPTION.
+   E. AUTHORZATION POLICY - ci je autorizacia pri pristupe k BUFFER nutna.
+   F. TRANSPORT PROTECTION POLICY - uroven TRANSFER SECURITY.
+!!! 17. Na administraciu MESSAGE BUFFERS sluzi trieda MessageBufferClient. Ma nasledujuce metody.
+   A. Staticka metoda CreateMessageBuffer() umoznuje VYTVORIT BUFFER. Vracia instanciu objektu MessageBufferClient.
+   B. Staticka metoda GetMessageBuffer() vrati instanciu EXISTUJUCEHO BUFFER.
+   C. Metoda DeleteMessageBuffer() umoznuje ODSTRANIT BUFFER.
+   D. Metoda GetPolicy() vracia MessageBufferPolicy obsahujucu informacie o nastaveni BUFFER.
+   E. Metoda Send() umoznuje ZASLAT MESSAGE do BUFFER.
+   F. Metoda Retrieve() umoznuje NACITAT MESSAGE z BUFFER.
+!!!!! 18. ServiceBus NIJAKYM SPOSOBOM momentane NEPODPORUJE BUFFERS na strane CLIENT ci SERVICE. NIE JE MOZNE vytvorit PROXY, ani HOST objekt, ktory by PRIAMO PRACOVAL s BUFFERS. BUFFERS teda nemaju ZIADNU PODPORU zo strany WCF BINDINGS.
+19. Do ServiceBus SERVICE je mozne pridat i MEX ENDPOINT a to nasledujucim sposobom.
+   A. Do SERVICE musim pridat ServiceMetadataBehavior. Toto MUSI BYT 1. KROK, inak volanie AddServiceEndpoint() v nasledujucom kroku HODI EXCEPTION.
+   B. Zavolam AddServiceEndpoint() s rozhranim IMetadataExchange a NORMALNYM SERVICE BUS BINDING, napriklad NetTcpRelayBinding. WCF momentalne NEPODPORUJE SPECIALIZOVANY BIDNING pre MEX ENDPOINT pre SERVICE BUS.
+   C. Do MEX ENDPOINT pridam CREDENTIALS.
+!!! 20. Momentalne WCF NEPODPORUJE PRIAMO VYCITANIE METADAT z MEX ENDPOINT vystaveneho SERVICE. Je potrebny pouzit pomerne komplikovany sposob, ktory je popisany v knihe.
+21. Ak chce SERVICE, alebo CLIENT pracovat s RELAY SERVICE v SERVICE BUS, tak musi vykonat AUTHENTICATION.
+   A. SERVICE MUSI VZDY vykonat AUTHENTICATION pri prihlasovani do SERVICE BUS.
+   B. CLIENT NEMUSI vykonat AUTHENTICATION, ak SERVICE EXPLICITNE UMOZNI, aby sa k nemu prihlasovali aj CLIENTS, ktory NIE SU AUTHENTICATED.
+!!! 22. AUTHENTICATION sa nastavuje ako pre SERVICE, tak i pre CLIENT nasledujucim sposobom.
+   A. Vytvorim instanciu TransportClientEndpointBehavior co je ENDPOINT BEHAVIOR, ktory je potrebne pridat pre ENDPOINT, ktory ma byt AUTHENTICATED.
+   B. Pomocou property Credentials typu TransportClientCredentialType nastavim TYP AUTHENTICATION na SharedSecret, alebo Unauthenticated, ak nechcem pouzivat AUTHENTICATION.
+   C. Ak nastavim TransportClientCredentialType na SharedSecret, tak pomocou property SharedSecret typu SharedSecretCredentials nastavim hodnoty IssuerName a IssuerSecret. Tieto hodnoty ziskam pri VYTVARANI NAMESPACE v SERVICE BUS, kde na WEB PAGE je mozne ziskat i hodnotu ISSUER NAME a ISSUER SECRET.
+!!! 23. Ak SERVICE NECHCE od CLIENT vyzadovat AUTHENTICATION, tak musim nastavit hodnotu property Security.RelayClientAuthenticationType triedy NetTcpRelayBinding na hodnotu None. Standardne property RelayClientAuthenticationType je nastaveny na hodnotu RelayAccessToken, co znaci, ze AUTHENTICATION daneho CLIENT je NEVYHNUTA. Hodnota None umozni, aby CLIENT NEMUSEL vykonat AUTHENTICATION.
+24. SERVICE BUS poskytuje viacere moznosti SECURE prenosu MESSAGES medzi CLIENT a SERVICE. Pouzita SECURITY zavisi od hodnoty parametru NetTcpRelayBinding.Security.Mode, ktory moze nadobudat nasledujuce hodnoty.
+   A. None - MESSAGES NIE SU KRYPTOVANE.
+   B. Transport - MESSAGES su kryptovane pri prenose z CLIENT na SERVICE BUS a SERVICE BUS na SERVICE. Avsak NIE SU KRYPTOVANE, pri prenose SAMOTNYM SERVICE BUS. Na kryptovanie sa pouziva SSL.
+   C. Message - MESSAGES su kryptovane pocas CELEHO PRENOSU vdaka pouzitiu PRIVATE-PUBLIC KEY. SERVICE MUSI mat nastaveny SERVICE CERTIFICATE v ktorom sa nachadza PRIVATE KEY sluziaci na KRYPTOVANIE MESSAGES.
+   D. TransportWithMessageCredential - na KRYPTOVANIE MESSAGE pouziva TRANSPORT SECURITY, ale CREDENTIALS, ktore su obsiahnute v MESSAGE su KRYPTOVANE pomocou MESSAGE SECURITY.
+!!! 25. Nastavenie SECURITY pre SERVICE BUS je VELMI PODOBNE nastaveniu pre STANDARDNE WCF BINDINGS. Platia nasledujuce zasady.
+   A. Typ pouzitej SECURITY sa nastavuje pomocou NetTcpRelayBinding.Security.Mode, ak pouzivam ako BINING triedu NetTcpRelayBinding.
+   B. Parametre TRANSPORT SECURITY sa nastavuju v property NetTcpRelayBinding.Security.Transport typu TcpRelayTransportSecurity. Pri TRANSPORT SECURITY je mozne nastavit i ProtectionLevel.
+   C. Parametre MESSAGE SECURITY sa nastavuju v property NetTcpRelayBinding.Security.Message typu MessageSecurityOverRelayConnection. Pri MESSAGE SECURITY je mozne nastavit v property ClientCredentialType i TYP PRENASANYCH CREDENTIALS, ktore sa ulozia v MESSAGE a budu prenasat medzi CLIENT a SERVICE. Tieto CREDENTIALS sluzia na AUTHENTICATION a AUTHORIZATION na strane SERVICE.
+   D. Pri pouziti MESSAGE SECURITY je NUTNE nastavit SERVICE CERTIFICATE, aby sa pomocou neho mohli MESSAGES KRYPTOVAT.
+   E. Ak pouzivam TRANSPORT SECURITY, tak NIE JE MOZNE pouzit HYBRIDNU KOMUNIKACIU, ale iba RELAYED KOMUNIKACIU. Naopak pri MESSAGE SECURITY je mozne pouzit i HYBRIDNU KOMUNIKACIU, teda priamu komunikaciu medzi CLIENT a SERVICE bez prechodu na SERVICE BUS.
+   !!! F. Ak sa prenasaju CREDENTIALS v MESSAGE, tak SERVICE ich moze pouzit na CUSTOM AUTHENTICATION a AUTHORIZATION.
+26. Pri Ws2007HttpRelayBinding je nastavenie SECURITY PODOBNE ako v pripade NetTcpRelayBinding. Jedinym rozdielom je, ze adresa musi byt typu HTTPS.
+27. Pri NetOneWayRelayBinding je znova nastavenie SECURITY PODOBNE ako v pripade NetTcpRelayBinding, avsak CLIENT MUSI pri MESSAGE SECURITY poskytnut SERVICE CERTIFICATE, kedze NEGOCIATION medzi CLIENT a SERVICE NIE JE pri ONE WAY BINDING mozny. Tento BINDING takisto NEPODPORUJE MIXED SECUTITY.
+//-------------------------------------------------------------------------------------------------------

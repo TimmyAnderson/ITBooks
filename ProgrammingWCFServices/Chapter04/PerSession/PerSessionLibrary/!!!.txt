@@ -1,0 +1,33 @@
+﻿//-------------------------------------------------------------------------------------------------------
+1. Solution demonstruje INSTANCE MODE PerSession.
+2. PerSession rezim sa urci definovanim [ServiceBehavior(InstanceContextMode=InstanceContextMode.PerSession)] na SERVICE CLASS.
+!!! 3. V PerSession volani sa vytvara instancia SERVICE OBJEKTU pri vytvreni PROXY a jeho zivtnost tvra do skoncenia zivotnosti PROXY kedy sa na SERVICE OBBJEKTE vola Dispose() ak ho trieda SERVICE implementuje. Dispose() sa vola na WORKER THREADE BEZ OPERATION CONTEXT.
+4. Ak spadne CONNECTION tym, ze spravil PROCESS-KILL na CLIENT, potom VDAKA EXISTENCII TRANSPORT SESSION SERVICE po uplynuti INACTIVITY TIMEOUT detekuje, ze doslo k rozpadu CONNECTION a zavola sa Dispose() na SERVICE OBJEKTE.
+!!!!! 5. Ak chcem dosiahnut to, ze SERVICE OBJEKT bude mat ROVNAKU ZIVOTNOST ako PROXY OBJEKT (klasicky priklad Client-Server PATTERN), potom musim WCF nakonfigurovat nasledovne.
+   A. Musim zapnut PerSession INSTANCE MODE aplikovanim [ServiceBehavior(InstanceContextMode=InstanceContextMode.PerSession)] na SERVICE CLASS.
+   B. Musim zapnut TRANSPORT SESSION nastavenim [ServiceContract(SessionMode=SessionMode.Allowed)], alebo [ServiceContract(SessionMode=SessionMode.Required)].
+   C. Pouzit a nastavit BINDING, aby pouzival TRANSPORT SESSION. V pripade TCP/IP a IPC plati, ze tieto BINDING VZDY POUZIVAJU TRANSPORT SESSION.
+!!! 6. POZOR. Zapnutie TRANSPORT SESSION NIE JE NEVYHNUTNOU PODMIENKOU na realizaciu PerSession INSTANCE MODE.
+!!!!! 7. Kedze TCP/IP je CONNECTION-ORIENTED PROTOCOL, tak VZDY si DRZI TRANSPORT SESSION, aj ked nastavim ReliableSession.Enable na FALSE.
+8. Pri PerSession sa doprucjue aktivovat aj reliablity nastavenim ReliableSession na ENABLED v BINDING ako na SERVICE tak aj na CLIENT.
+9. Session trva pokym zije Proxy. Session==trvanie proxy. Ak to je zatvorene session konci a pre novu session sa geenruje nove session ID.
+10. Session moze byt terminovana aj po uplynuti timeout a ten je mozne nastavit cez ReliableSession.InactivityTimeout pre service aj klienta. Ak uplynie timeout potom sa zrusi objekt na serveri a ak proxy by zavolal takyto objekt dostane EXCEPTION.
+!!!!! 11. To ci medzi CLIENT a SERVICE bude existovat SESSION, teda ci sa zachova vyznam PerSession INSTANCE MODE zavisi od VIACERYCH FAKTOROV.
+   A. TCP/IP ma VZDY ZAPNUTU TRANSPORT SESSION, aj ked nastavim ReliableSession na FALSE. Je to dane povahou TCP/IP protokolu, ktory si UDRZUJE VZDY SESSION.
+   B. Pri HTTP MUSIM ZAPNUT TRANSPORT SESSION (nastavit ReliableSession na TRUE) ak sa ma ZACHOVAT PerSession INSTANCE MODE.
+   !!! C. Pre HTTP vsak PLATI VYNIMKA, ze ak je ZAPNUTA MESSAGE SECURITY - co je DEFAULT SETTING, tak TRANPORT SESSION je UDRZIAVANA VZDY, aj ked ReliableSession je nastaveny na FALSE.
+//-------------------------------------------------------------------------------------------------------
+TRANSPORT SESSION a RELIABLE SESSION.
+
+1. TRANSPORT SESSTION a RELIABLE SESSION su DVE ROZDIELNE VECI.
+   A. TRANSPORT SESSION je LOGICKA VAZBA medzi CLIENT a SERVICE, ktora moze byt realizovana vdaka PRENOSOVEMU PROTOKOLU, alebo vdaka KONFIGURACII BINDING.
+   B. RELIABLE SESSION je implementacia protokolu WS-ReliableMessaging, ktory zabezpecuje, ze ak dojde k VYPADKU SPOJENIA MEDZI CLIENT a SERVICE, tak WCF sa pokusi DANY POCET OPAKOVANI a v DANOM TIMEOUT ZNOVA NADVIAZAT SPOJENIE.
+   C. Plati, ze ak medzi CLIENT a SERVICE existuje RELIABLE SESSION, tak ZAROVEN je vytvorena i TRANSPORT SESSION. Typickym prikladom je HTTP protokol, ktory NEPODPORUJE TRANSPORT SESSION, kedze NIE JE CONNECTION-ORIENTED protokol, avsak ak nakonfigurujem RELIABLE SESSION, tak WCF UMELO vytvori EMULACIU TRANSPORT SESSION.
+   D. Plati, ze ak medzi CLIENT a SERVICE existuje TRANSPORT SESSION, tak ZAROVEN NEMUSI EXISTOVAT i RELIABLE SESSION. Prikladom je TCP/IP, ktory PODPORUJE TRANSPORT SESSION, kedze je CONNECTION-ORIENTED, ale moze mat VYPNUTU RELIABLE SESSION, v dosledku coho pri PRVOM VYPADKU KOMUNIKACIE sa WCF NEPOKUSI znona NADVIAZAT SPOJENIE.
+!!! 2. TRANSPORT SESSION moze byt dana bud PRENOSOVY PROTKOLOM, alebo EMULOVANA WCF.
+   A. Prenosovy protokol TCP/IP, alebo IPC maju VZDY TRANSPORT SESSION, kedze su CONNECTION-ORIENTED. Je to dane ich IMPLEMENTACIU a WCF na to NEMA ZIADEN VPLYV.
+   !!! B. Prenosovy protokol HTTP NEMA TRANSPORT SESSION, kedze to NIE JE CONNECTION-ORIENTED protokol. Avsak WCF moze TRANSPORT SESSION EMULOVAT.
+!!! 3. Pri HTTP sa TRANSPORT SESSION EMULUJE v nasledujucich pripadoch.
+   A. Ak na HTTP zapnem RELIABLE SESSION, tak WCF pre potreby RELIABLE SESSION EMULUJE TRANSPORT SESSION.
+   B. Ak na HTTP zapnem MESSAGE SECURITY, tak WCF pre potreby MESSAGE SECURITY EMULUJE TRANSPORT SESSION. V pripade TRANSPORT SECURITY NIE JE TRANSPORT SESSION EMULOVANA.
+//-------------------------------------------------------------------------------------------------------

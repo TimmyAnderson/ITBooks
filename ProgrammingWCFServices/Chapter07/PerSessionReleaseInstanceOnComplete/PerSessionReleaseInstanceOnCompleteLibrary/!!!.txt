@@ -1,0 +1,25 @@
+﻿//-------------------------------------------------------------------------------------------------------
+1. Solution demonstruje PROPERTY ReleaseServiceInstanceOnTransactionComplete a jej vplyv na realizaciu TRANSACTIONS.
+!!! 2. WCF umoznuej 2 sposoby PerSession objektu s podporou TRANSACTIONS.
+   A. Ten isty SERVICE objekt NESKONCI ZIVOTNOST s koncom TRANSACTION a teda SERVCE OBJEKT MOZE BYT PRISTUPOVANY zo VIACERYCH TRANSACTIONS.
+   B. SERVICE objekt konci svoju zivotnost na KONCI TRANSACTION pricom pocas svojho zivota mozu byt na SERVICE objekte volane VIACERE OPERATIONS.
+3. ReleaseServiceInstanceOnTransactionComplete urcuje ci sa pri ukonceni TRANSACTION sa ma uvolnit aj SESSION. Standardne je hodnota TRUE.
+!!! 4. ReleaseServiceInstanceOnTransactionComplete ci uz na TRUE, alebo FALSE je mozne nastavit IBA ak ConcurrencyMode je nastaveny na SINGLE a ASPON 1 OPERATION ma v atribute [OperationBehavior] nastaveny TransactionScopeRequired na TRUE. Ak toto nenastavim WCF hodi EXCEPTION.
+!!!!! 5. Nastavenie hodnoty ReleaseServiceInstanceOnTransactionComplete na TRUE znamena, ze vo chvili, ked sa TRANSACTION UKONCI, tak sa ZLIKVIDUJE SERVICE OBJEKT. Avsak PRED TYM ako sa UKONCI TRANSACTION je mozne volat VIACERO OPERATIONS, ktore su volane na TOM ISTOM SERVICE OBJEKTE. Ten sa likviduje AZ KED sa TRANSACTION UKONCI. Cize NIE JE TO ISTE ako PerCall INSTANCE MODE.
+!!! 6. Nastavenie hodnoty ReleaseServiceInstanceOnTransactionComplete na FALSE sposobi, ze SERVICE OBJEKT sa NEUVOLNI, ked SKONCI TRANSACTION. Takto nastaveny SERVICE sposobuje, ze TEN ISTY SERVICE OBJEKT moze OBSLUZIT VIACERO TRANSACTIONS, teda, ze jeho ZIVOTNOST PRESAHUJE ZIVOTNOST 1 TRANSACTION.
+!!! 7. Priznak TransactionAutoCompleteOnSessionClose urcuje, ze pri skonceni ZIVOTNOSTI SERVICE OBJEKT sa spravi COMMIT TRANSACTION. Ak vsakk NIEKTORE z OPERATION daneho SERVICE OBJEKTU hodi EXCEPTION, tak sa zivotnost objektu OKAMZITE SKONCI a TRANSACTION skonci v ROLLBACK.
+//-------------------------------------------------------------------------------------------------------
+TRANSPORT SESSION a RELIABLE SESSION.
+
+1. TRANSPORT SESSTION a RELIABLE SESSION su DVE ROZDIELNE VECI.
+   A. TRANSPORT SESSION je LOGICKA VAZBA medzi CLIENT a SERVICE, ktora moze byt realizovana vdaka PRENOSOVEMU PROTOKOLU, alebo vdaka KONFIGURACII BINDING.
+   B. RELIABLE SESSION je implementacia protokolu WS-ReliableMessaging, ktory zabezpecuje, ze ak dojde k VYPADKU SPOJENIA MEDZI CLIENT a SERVICE, tak WCF sa pokusi DANY POCET OPAKOVANI a v DANOM TIMEOUT ZNOVA NADVIAZAT SPOJENIE.
+   C. Plati, ze ak medzi CLIENT a SERVICE existuje RELIABLE SESSION, tak ZAROVEN je vytvorena i TRANSPORT SESSION. Typickym prikladom je HTTP protokol, ktory NEPODPORUJE TRANSPORT SESSION, kedze NIE JE CONNECTION-ORIENTED protokol, avsak ak nakonfigurujem RELIABLE SESSION, tak WCF UMELO vytvori EMULACIU TRANSPORT SESSION.
+   D. Plati, ze ak medzi CLIENT a SERVICE existuje TRANSPORT SESSION, tak ZAROVEN NEMUSI EXISTOVAT i RELIABLE SESSION. Prikladom je TCP/IP, ktory PODPORUJE TRANSPORT SESSION, kedze je CONNECTION-ORIENTED, ale moze mat VYPNUTU RELIABLE SESSION, v dosledku coho pri PRVOM VYPADKU KOMUNIKACIE sa WCF NEPOKUSI znona NADVIAZAT SPOJENIE.
+!!! 2. TRANSPORT SESSION moze byt dana bud PRENOSOVY PROTKOLOM, alebo EMULOVANA WCF.
+   A. Prenosovy protokol TCP/IP, alebo IPC maju VZDY TRANSPORT SESSION, kedze su CONNECTION-ORIENTED. Je to dane ich IMPLEMENTACIU a WCF na to NEMA ZIADEN VPLYV.
+   !!! B. Prenosovy protokol HTTP NEMA TRANSPORT SESSION, kedze to NIE JE CONNECTION-ORIENTED protokol. Avsak WCF moze TRANSPORT SESSION EMULOVAT.
+!!! 3. Pri HTTP sa TRANSPORT SESSION EMULUJE v nasledujucich pripadoch.
+   A. Ak na HTTP zapnem RELIABLE SESSION, tak WCF pre potreby RELIABLE SESSION EMULUJE TRANSPORT SESSION.
+   B. Ak na HTTP zapnem MESSAGE SECURITY, tak WCF pre potreby MESSAGE SECURITY EMULUJE TRANSPORT SESSION. V pripade TRANSPORT SECURITY NIE JE TRANSPORT SESSION EMULOVANA.
+//-------------------------------------------------------------------------------------------------------

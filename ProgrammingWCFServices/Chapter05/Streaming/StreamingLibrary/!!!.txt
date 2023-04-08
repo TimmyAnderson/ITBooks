@@ -1,0 +1,14 @@
+﻿//-------------------------------------------------------------------------------------------------------
+1. Solution demonstruje STREAMING vo WCF.
+2. Ak je parameter Stream (pozor FileStream nemoze byt lebo nie je synchronizovatelny) potom je mozne zapnut na Binding steaming prenos kedy sa parameter Stream medzi klientom a serverom prenasa postupne ako je Stream plneny.
+!!!!! 3. NASLEDUJUCE TVRDENIE NEZODOVEDA PRIKLADOM Z MSDN. TAM UZATVARAJU STREAM HNED PO ODOSLANI STREAMU S VYNIMKOU STREAMU VRATENEHO AKO NAVRATOVA HODNOTA ALEBO OUT/REF PARAMETER. TIE WCF OZAJ UZAVRIE - OTESTOVANE. Ak zasielam do WCF stream potom ZASIELACIA STRANA NESMIE UZAVRIET STREAM, kedze nevie kedy ho prijmacia strana bude pouzivat. Moze to byt aj po dost dlhom case. To zavisi iba na prijmacej strane. Prijmacia strana musi uzavriet stream. Na vysielacej strane ho UZATVARA WCF. Je pritom jedno ci vysielacia strana je klient (volanie metody service), alebo service (navratova hodnota). To iste plati aj pre prijmaciu stranu.
+!!! 4. Prijmacia strana nevie iba cisto zo Streamu zistit kedy strema skoncil, takze by to malo byt definovane kontextom Streamu.
+5. Tato technika je nevhodna na state-full objekty.
+!!! 6. ReliableSession nie je podprovana pre streaming.
+!!! 7. Ani Session nie je podprovana pre streaming.
+!!! 8. Stream je aktivny IBA POCAS TRVANIE METODY SERVICE a tato metoda je volanna SYNCHRONNE voci klientovi.
+!!!!! 9. AKONAHLE VOLANIE FUNKCIE SERVICE SKONCI, tak WCF UZATVORI AUTOMATICKY STREAM. To znaci, ZE ZAPIS DO STREAMU PO JEHO Close() SA UZ NEPRENESIE NA CLIENT.
+!!! 10. Standardna dlzka message je 64 kB a preto pri velkych message je ju treba zvecsit cez parameter bindingu MaxReceivedMessageSize.
+!!! 11. Stream pri odosielani je nutne presunut na zaciatok.
+12. V PRIKLADOCH POUZIVAM VLASTNU IMPLEMENTACIU STREAM - TRIEDU: CMyStream, ktora ma umyselne spomalene citanie cez Sleep().
+//-------------------------------------------------------------------------------------------------------

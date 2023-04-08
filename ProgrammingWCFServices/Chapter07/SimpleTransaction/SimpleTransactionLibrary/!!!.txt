@@ -1,0 +1,22 @@
+﻿//-------------------------------------------------------------------------------------------------------
+1. Solution demonstruje zakladne pouzitie TRANSACTIONS vo WCF.
+2. Pri transakciach musim nastavit nasledujuce 4 parametre.
+   A. Atribut [TransactionFlow] na metode v ROZHRANIE CONTRACT.
+   B. Atribut [OperationBehavior(TransactionScopeRequired)] na metode v TRIEDE SERVICE. 
+   C. Atribut [OperationBehavior(TransactionAutoComplete)] na metode v TRIEDE SERVICE.
+   D. TCPBinding.TransactionFlow na Binding ak na servri tak aj na klientovi.
+3. Ak nastavim TransactionAutoComplete=true potom transakcia prebehne ak volanie metody service nehodi exception. Ak hodi potom sa urobi Rollback().
+4. Ak nastavim TransactionAutoComplete=false potom sa skonci Commit() iba ak zavolam OperationContext.Current.SetTransactionComplete().
+!!!!! 5. Voting cez SetTransactionComplete() je mozny iba ked mam service PerSession.
+6. Ak sa zapoji do transakcie aj druhy Resource potom nastane toto.
+   A. Transakcia sa stava distrubovana.
+   B. Ambientna transakcie okamzite ziskava Distriubted ID.
+   C. Je zaradena do DTC ako transakcia.
+!!!!! 7. AK MAM PerSession A TRANSAKCIA SA SKONCI, POTOM SA KONCI AJ SESSION, TEDA ZAVOLA SA DESTRUCTOR SERVICE A PRI DALSOM BOLANI METODY SERVICE KONSTRUKTOR. PROXY ZIJE DALEJ. Je pritom jedno ci sa jedna o deklarativny, alebo explicit voting.
+!!! 8. Distibuovana transakcia je aj pri 2 zapisoch do 2 tabuliek tej istej DB, ak su kazda realizovana v inej DB-connection.
+9. Po volani SetTransactionComplete() sa okamzite ukonci transakcia a zmizne z DTC.
+!!!!! 10. Ak pouzivam explicitny voting (SetTransactionComplete()) potom musim dodorziavat nasledujuce.
+   A. Ak ma transakcia skoncit Commit() musim volat SetTransactionComplete() ako POSLEDNU OPERACIU NAD DB.
+   B. Ak ma transakcia skoncit Rollback() MUSIM GENEROVAT VYNIMKU, KOTRA VYBEHNE z metody service.
+   C. Aby by som EXCEPTION v pripade Rollback() negeneroval OSTANE TRANSAKCIE by ostali VISIET.
+//-------------------------------------------------------------------------------------------------------
