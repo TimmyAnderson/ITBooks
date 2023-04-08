@@ -1,0 +1,189 @@
+//----------------------------------------------------------------------------------------------------------------------
+1. Solution demonstruje pouzitie pokrocilych technik ASP.NET CORE IDENTITY v ASP.NET CORE APPLICATIONS.
+2. AUTHENTICATION je proces overenia IDENTITY daneho USER. IDENTITA daneho USER sa overuje kontrolou USER CREDENTIALS, ci tieto sedia s USER CREDENTIALS ulozenymi v IDENTITY DB. USER CREDENTIALS su spravidla USER NAME a PASSWORD.
+3. AUTHORIZATION je proces urcenia ci dany USER, ktory uz presiel procesom AUTHENTICATION ma ACCESS RIGHTS k danemu RESOURCE. AUTHORIZATION je mozne vykonat az po vykonani AUTHENTICATION.
+4. AUTHENTICATION a AUTHORIZATION je vykonavana pomocou nasledujucich MIDDLEWARE COMPONENTS.
+   A. CLASS [AuthenticationMiddleware] vykonava AUTHENTICATION. Do HTTP REQUEST PIPELINE sa pridava volanim METHOD [IApplicationBuilder IApplicationBuilder.UseAuthentication()].
+   B. CLASS [AuthorizationMiddleware] vykonava AUTHORIZATION. Do HTTP REQUEST PIPELINE sa pridava volanim METHOD [IApplicationBuilder IApplicationBuilder.UseAuthorization()].
+!!!!! 5. Pre MIDDLEWARE COMPONENTS vykonavajuce AUTHENTICATION a AUTHORIZATION platia nasledujuce fakty.
+   !!!!! A. Obe MIDDLEWARE COMPONENTS by mali byt do REQUEST PIPELINE pridane AZ po volani METHOD [IApplicationBuilder IApplicationBuilder.UseRouting()], aby sa na LOGIN PAGE aplikovali ROUTE RULES.
+   !!! B. METHOD [IApplicationBuilder IApplicationBuilder.UseAuthentication()] by mala byt volana za METHOD [IApplicationBuilder IApplicationBuilder.UseRouting()].
+   !!! C. METHOD [IApplicationBuilder IApplicationBuilder.UseAuthorization()] by mala byt volana za METHOD [IApplicationBuilder IApplicationBuilder.UseAuthentication()].
+!!! 6. Proces AUTHENTICATION sa vykonava v nasledujucich krokoch.
+   A. AUTHENTICATION MIDDLEWARE COMPONENT kontroluje ci HTTP REQUEST obsahuje AUTHENTICATION COOKIE. Ak ho obsahuje a je platny, USER je povazovany za AUTHENTICATED. Ak HTTP REQUEST neobsahuje AUTHENTICATION COOKIE, spusta sa proces AUTHENTICATION.
+   B. Na zaciatku procesu AUTHENTICATION je WEB BROWSER REDIRECTED na LOGIN PAGE URL. LOGIN PAGE URL je mozne explicitne nastavit volanim METHOD [IServiceCollection IServiceCollection.ConfigureApplicationCookie(Action<CookieAuthenticationOptions> Configure)], pricom LOGIN PAGE URL sa nastavuje v PROPERTY [CookieAuthenticationOptions.LoginPath].
+   C. Na LOGIN PAGE USER zada svoje CREDENTIALS, ktore su overene ci su platne voci IDENTITY DB.
+   !!! D. V pripade, ze su CREDENTIALS platne, USER je AUTHENTICATED a ASP.NET CORE vytvori AUTHENTICATION COOKIE, ktory nasledne bude BROWSER az do ukoncenia SECURE SESSION pridavat do dalsieho HTTP REQUEST. Ak LOGIN PAGE obsahovala aj REDIRECT URL, tak BROWSER je REDIRECTED na REDIRECT URL.
+   !!! E. V pripade, ze su CREDENTIALS neplatne, LOGIN PAGE spravidla zobrazi ERROR a umozni ich zadat znova.
+!!! 7. Proces AUTHORIZATION sa vykonava v nasledujucich krokoch.
+   A. Ak USER pozaduje pristup k PROTECTED RESOURCE, ktory vyzaduje AUTHORIZATION, ASP.NET CORE overi ci aktualny USER je AUTHENTICATED.
+   B. Ak USER NIE je AUTHENTICATED, ASP.NET CORE vykona REDIRECTION na LOGIN PAGE, pricom ako RETURN URL sa nastavi URL PROTECTED RESOURCE ku ktoremu chce USER pristupit.
+   !!! C. Ak USER je AUTHENTICATED, potom ASP.NET CORE vykona kontrolu ci USER splna podmienky AUTHORIZATION. Medzi podmienkami pre AUTHORIZATION moze byt clenstvo v niektore z ROLES, splnenie SECURITY POLICY, ci CUSTOM CONDITION.
+   D. Ak kontrola prebehne uspesne, je pristup k PROTECTED RESOURCE umozneny.
+   E. Ak kontrola zlyha, AUTHORIZATION ZLYHA a BROWSER je REDIRECTED na ACCESS DENIED URL. ACCESS DENIED URL je mozne explicitne nastavit volanim METHOD [IServiceCollection IServiceCollection.ConfigureApplicationCookie(Action<CookieAuthenticationOptions> Configure)], pricom ACCESS DENIED URL sa nastavuje v PROPERTY [CookieAuthenticationOptions.AccessDeniedPath].
+8. AUTHENTICATION COOKIE, ktore ASP.NET CORE vytvori po uspesnej AUTHENTICATION ma NAME [.AspNetCore.Identity.Application].
+9. LOGIN a LOGOUT sa v ASP.NET CORE vykonava pomocou CLASS [SignInManager<TUserType>]. CLASS ma nasledujuce MEMBERS.
+   A. METHOD [Task SignInAsync(TUserType User, AuthenticationProperties AuthenticationProperties, string AuthenticationMethod)] vykonava prihlasenie USER. Zaroven sa vytvara AUTHENTICATION COOKIE, ktory BROWSER nasledne prida do kazdeho HTTP REQUEST.
+   B. METHOD [Task<SignInResult> PasswordSignInAsync(TUserType User, string Password, bool IsPersistent, bool LockoutOnFailure)] vykonava prihlasenie USER na zaklade zadaneho PASSWORD. Zaroven sa vytvara AUTHENTICATION COOKIE, ktory BROWSER nasledne prida do kazdeho HTTP REQUEST.
+   C. METHOD [MSignInManager.SignOutAsync()] vykonava odhlasenie prihlaseneho USER. Zaroven sa odstranuje AUTHENTICATION COOKIE.
+10. ASP.NET CORE pomocou CLASS [SignInManager<TUserType>] podporuje aj TWO FACTOR AUTHENTICATION, kedy okrem PASSWORD je prihlasenie treba potvrdit napriklad kodom zaslanym v SMS.
+11. ASP.NET CORE IDENTITY podporuje CLAIMS BASED AUTHENTICATION, kde vysledkom AUTHENTICATION je zoznam CLAIMS o danom USER. Tieto CLAIMS je mozne pouzit ako USER IDENTITY ako aj na vykonanie AUTHORIZATION.
+12. ASP.NET CORE IDENTITY podporuje CLAIMS BASED AUTHORIZATION, kde AUTHORIZATION je vykonavana na zaklade CLAIMS, ktore boli danemu USER priradene pocas AUTHENTICATION. Tieto CLAIMS su vyuzivane na overenie ci USER je AUTHORIZED k pristupu k danemu PROTECTED RESOURCE.
+13. CLAIM reprezentuje informaciu o USER. CLAIM obsahuje nasledujuce informacie.
+   A. TYPE obsahuje TYPE informacie o danom USER.
+   B. VALUE obsahujucu informaciu o danom USER.
+   C. ISSUER obsahuje ISSUER, ktory vydal dany CLAIM.
+14. CLAIM je v ASP.NET CORE reprezentovany CLASS [Claim]. CLASS ma nasledujuce MEMBERS.
+   A. PROPERTY [Type] TYPE [string] obsahuje TYPE daneho CLAIM.
+   B. PROPERTY [Subject] TYPE [ClaimsIdentity] obsahuje CLAIMS IDENTITY USER, na ktory CLAIM referuje.
+   C. PROPERTY [Issuer] TYPE [string] obsahuje ISSUER daneho CLAIM.
+   D. PROPERTY [ValueType] TYPE [string] obsahuje VALUE TYPE daneho CLAIM.
+   E. PROPERTY [Value] TYPE [string] obsahuje VALUE daneho CLAIM.
+15. CLASS [ClaimsIdentity] obsahuje IDENTITY daneho USER, ktora je odvodena z CLAIMS. CLASS [ClaimsIdentity] implementuje INTERFACE [IIdentity] a ma nasledujuce MEMBERS.
+   A. PROPERTY [AuthenticationType] TYPE [string] obsahuje AUTHENTICATION TYPE.
+   B. PROPERTY [Name] TYPE [string] obsahuje NAME USER.
+   C. PROPERTY [IsAuthenticated] TYPE [bool] obsahuje informaciu ci USER je AUTHENTICATED.
+   D. PROPERTY [Claims] TYPE [IEnumerable<Claim>] obsahuje zoznam CLAIMS, ktore su asociovane s danym USER.
+   E. PROPERTY [NameClaimType] TYPE [string] obsahuje CLAIM TYPE, ktory sa pouziva na urcenie NAME prihlaseneho USER.
+   F. PROPERTY [RoleClaimType] TYPE [string] obsahuje CLAIM TYPE, ktory sa pouziva na urcenie ROLE prihlaseneho USER.
+   G. METHOD [void AddClaim(Claim Claim)] pridava CLAIM do CLAIM IDENTITY.
+   H. METHOD [void AddClaims(IEnumerable<Claim> Claims)] pridava CLAIMS do CLAIM IDENTITY.
+   I. METHOD [void RemoveClaim(Claim Claim)] odstranuje CLAIM z CLAIM IDENTITY.
+   J. METHOD [bool HasClaim(Predicate<Claim> Match)] vracia informaciu ci CLAIM IDENTITY obsahuje dany CLAIM.
+16. CLASS [ClaimsPrincipal] obsahuje PRINCIPAL daneho USER, ktory je odvodeny z CLAIMS. CLASS [ClaimsPrincipal] implementuje INTERFACE [IPrincipal] a ma nasledujuce MEMBERS.
+   A. PROPERTY [Identity] TYPE [IIdentity] obsahuje IDENTITY daneho USER.
+   B. PROPERTY [Identities] TYPE [IEnumerable<ClaimsIdentity>] obsahuje IDENTITIES daneho USER.
+   C. PROPERTY [Claims] TYPE [IEnumerable<Claim>] obsahuje zoznam CLAIMS, ktore su asociovane s danym USER.
+   D. METHOD [Claim FindFirst(Predicate<Claim> Match)] vracia prvy CLAIM, ktory zodpoveda danemu PREDICATE.
+   E. METHOD [IEnumerable<Claim> FindAll(Predicate<Claim> Match)] vracia vsetky CLAIMS, ktore zodpovedaju danemu PREDICATE.
+   F. METHOD [bool HasClaim(Predicate<Claim> Match)] vracia informaciu ci CLAIMS PRINCIPAL obsahuje CLAIM, ktory zodpoveda danemu PREDICATE.
+   G. METHOD [bool IsInRole(string Role)] vracia informaciu ci sa USER nachadza v danej ROLE.
+17. CLAIMS, ktore su asociovane s USER mozu byt priamo ulozene do IDENTITY DB pomocou CLASS [UserManager<TUserType>]. CLASS [UserManager<TUserType>] ma nasledujuce METHODS, ktore umoznuju vkladat CLAIMS priamo do IDENTITY DB.
+   A. METHOD [Task<IdentityResult> AddClaimAsync(TUserType User, Claim Claim)] prida CLAIM k danemu USER.
+   B. METHOD [Task<IdentityResult> AddClaimsAsync(TUserType User, IEnumerable<Claim> Claims)] prida CLAIMS k danemu USER.
+   C. METHOD [Task<IdentityResult> RemoveClaimAsync(TUserType User, Claim Claim)] odstrani CLAIM z daneho USER.
+   D. METHOD [Task<IdentityResult> RemoveClaimsAsync(TUserType User, IEnumerable<Claim> Claims)] odstrani CLAIMS z daneho USER.
+18. S CLAIMS PRINCIPAL je mozne asociovat CUSTOM CLAIMS. Tieto CUSTOM CLAIMS mozu pochadzat z inych SOURCES ako je IDENTITY DB, ako su napriklad EXTERNE SOURCES. Pridavanie CUSTOM CLAIMS do CLAIMS PRINCIPAL sa vykonava nasledujucim sposobom.
+   A. Definuje sa CUSTOM CLASS, ktora implementuje INTERFACE [IClaimsTransformation]. Tato CLASS v METHOD [Task<ClaimsPrincipal> TransformAsync(ClaimsPrincipal Principal)] pridava do CLAIMS PRINCIPAL CUSTOM CLAIMS, pricom moze vyuzit EXTERNAL SOURCES.
+   B. CUSTOM CLASS, ktora implementuje INTERFACE [IClaimsTransformation] sa zaregistruje ako SERVICE v DEPENDENCY INJECTION FRAMEWORK.
+19. AUTHORIZATION sa v CONTROLLERS, ACTION METHODS a RAZOR PAGES vykonava aplikovanim ATTRIBUTE [AuthorizeAttribute] na CONTROLLER, RAZOR PAGE, alebo ACTION METHOD. ATTRIBUTE [AuthorizeAttribute] ma nasledujuce MEMBERS.
+   !!! A. EMPTY CONSTRUCTOR sposobuje, ze pristup k PROTECTED RESOURCE maju VSETCI AUTHENTICATED USERS.
+   B. PROPERTY [Roles] TYPE [string] obsahuje ciarkou oddeleny zoznam ROLES, ktore maju pristup k PROTECTED RESOURCE.
+   C. PROPERTY [Policy] TYPE [string] obsahuje POLICY, voci ktorej je vykonana AUTHORIZATION. POLICY obsahuje zoznam AUTHORIZATION REQUIREMENTS, ktore urcuju REQUIREMENTS, ktore musi USER splnat, aby bol AUTHORIZED k pristupu k danemu PROTECTED RESOURCE.
+   D. PROPERTY [AuthenticationSchemes] TYPE [string] obsahuje ciarkou oddeleny zoznam SCHEMES z ktorych su USER INFORMATION vytvorene.
+!!! 20. Ak ma by ACTION METHOD, RAZOR PAGE, alebo ACTION METHOD byt pristupny UNAUTHORIZED USERS, je nutne na ACTION METHOD, RAZOR PAGE, alebo ACTION METHOD aplikovat ATTRIBUTE [AllowAnonymousAttribute].
+21. ASP.NET CORE umoznuje vykonavat AUTHORIZATION pomocou AUTHORIZATION POLICIES. Pre AUTHORIZATION pomocou AUTHORIZATION POLICIES platia nasledujuce fakty.
+   A. AUTHORIZATION POLICY je subor AUTHORIZATION REQUIREMENTS, ktore musi prihlaseny USER splnat, aby bol AUTHORIZED pre volanie ACTION METHOD. AUTHORIZATION REQUIREMENT musi byt niektory z AUTHORIZATION REQUIREMENTS definovanych ASP.NET CORE, alebo CUSTOM AUTHORIZATION REQUIREMENT.
+   B. AUTHORIZATION POLICY sa vytvara volanim METHOD [void AddPolicy(string Name, Action<AuthorizationPolicyBuilder> ConfigurePolicy)], kde PARAMETER 'Name' je nazov AUTHORIZATION POLICY a PARAMETER 'ConfigurePolicy' sluzi na vytvaranie AUTHORIZATION POLICY.
+   C. AUTHORIZATION POLICY sa aplikuje na ACTION METHOD aplikovanim ATTRIBUTE [AuthorizeAttribute] na ktorom je nastavena PROPERTY [Policy] na nazov AUTHORIZATION POLICY pod ktorou bola AUTHORIZATION POLICY zaregistrovana.
+22. CLASS [AuthorizationOptions] umoznuje definovat AUTHORIZATION POLICIES. CLASS [AuthorizationOptions] ma nasledujuce MEMBERS.
+   A. PROPERTY [DefaultPolicy] TYPE [AuthorizationPolicy] definuje DEFAULT AUTHORIZATION POLICY, ktoru musi kazdy AUTHORIZED USER splnat.
+   B. METHOD [void AddPolicy(string Name, Action<AuthorizationPolicyBuilder> ConfigurePolicy)] pridava CUSTOM AUTHORIZATION POLICY. PARAMETER 'Name' je nazov AUTHORIZATION POLICY a PARAMETER 'ConfigurePolicy' sluzi na vytvaranie AUTHORIZATION POLICY.
+   C. METHOD [AuthorizationPolicy GetPolicy(string Name)] vracia CUSTOM AUTHORIZATION POLICY s danym nazvom.
+23. CLASS [AuthorizationPolicyBuilder] umoznuje definovat CUSTOM AUTHORIZATION POLICY. Ma nasledujuce MEMBERS.
+   A. METHOD [AuthorizationPolicyBuilder RequireAuthenticatedUser()] pridava do POLICY AUTHORIZATION REQUIREMENT, ze USER MUSI byt AUTHENTICATED.
+   B. METHOD [AuthorizationPolicyBuilder RequireRole(params string[] Roles)] pridava do POLICY AUTHORIZATION REQUIREMENT, ze USER MUSI byt clenom niektorej zo zadanych GROUPS.
+   C. METHOD [AuthorizationPolicyBuilder RequireUserName(string UserName)] pridava do POLICY AUTHORIZATION REQUIREMENT, ze USER MUSI mat definovany NAME.
+   D. METHOD [AuthorizationPolicyBuilder RequireRole(params string[] Roles)] pridava do POLICY AUTHORIZATION REQUIREMENT, ze USER MUSI byt clenom niektorej zo zadanych GROUPS.
+   E. METHOD [AuthorizationPolicyBuilder RequireClaim(string ClaimType)] pridava do POLICY AUTHORIZATION REQUIREMENT, ze USER MUSI mat pozadovany CLAIM.
+   F. METHOD [AuthorizationPolicyBuilder RequireClaim(string ClaimType, params string[] AllowedValues)] pridava do POLICY AUTHORIZATION REQUIREMENT, ze USER MUSI mat pozadovany CLAIM, ktory obsahuje jednu z definovanych VALUES.
+   G. METHOD [AuthorizationPolicyBuilder AddRequirements(params IAuthorizationRequirement[] Requirements)] pridava do POLICY CUSTOM AUTHORIZATION REQUIREMENT.
+24. Okrem DEFUALT AUTHORIZATION REQUIREMENTS, ktore definuje ASP.NET CORE je mozne definovat aj CUSTOM AUTHORIZATION REQUIREMENTS. CUSTOM AUTHORIZATION REQUIREMENTS sa definuju nasledujucim sposobom.
+   A. Definuje sa CUSTOM AUTHORIZATION REQUIREMENT co je CLASS, ktora implementuje INTERFACE [IAuthorizationRequirement]. Tato CLASS definuje data, ktore sa pouziju pri kontrole CUSTOM AUTHORIZATION REQUIREMENTS.
+   B. Definuje sa CUSTOM AUTHORIZATION REQUIREMENT HANDLER, ktory vykonava kontrolu CUSTOM AUTHORIZATION REQUIREMENT. CUSTOM AUTHORIZATION REQUIREMENT HANDLER implementuje CLASS, ktora implementuje INTERFACE [IAuthorizationHandler], alebo ako CLASS, ktora je DERIVED z CLASS [AuthorizationHandler<TRequirementType>]. V CUSTOM AUTHORIZATION REQUIREMENT HANDLER sa vykonava kontrola CUSTOM AUTHORIZATION REQUIREMENT.
+   C. CUSTOM AUTHORIZATION REQUIREMENT HANDLER je nutne ako SERVICE zaregistrovat v DEPENDENCY INJECTION FRAMEWORK.
+   D. CUSTOM AUTHORIZATION REQUIREMENT je nutne zaregistrovat volanim METHOD [AuthorizationPolicyBuilder AuthorizationPolicyBuilder.AddRequirements(params IAuthorizationRequirement[] Requirements)].
+25. CLASS [AuthorizationHandler<TRequirementType>] reprezentuje BASE CLASS pre CUSTOM AUTHORIZATION REQUIREMENT HANDLERS. IMPLEMENTUJE INTERFACE [IAuthorizationHandler]. CLASS ma nasledujuce MEMBERS.
+   A. METHOD [Task HandleAsync(AuthorizationHandlerContext Context)] vykonava kontrolu CUSTOM AUTHORIZATION REQUIREMENT.
+   B. METHOD [Task HandleRequirementAsync(AuthorizationHandlerContext Context, TRequirementType Requirement)] vykonava kontrolu CUSTOM AUTHORIZATION REQUIREMENT, pricom ako PARAMETER ma CUSTOM AUTHORIZATION REQUIREMENT.
+26. CLASS [AuthorizationHandlerContext] definuje CONTEXT, umoznujuci vyhodnocovat CUSTOM AUTHORIZATION REQUIREMENT. CLASS ma nasledujuce MEMBERS.
+   A. PROPERTY [HasSucceeded] TYPE [bool] vracia TRUE, ak USER splnil CUSTOM AUTHORIZATION REQUIREMENT.
+   B. PROPERTY [HasFailed] TYPE [bool] vracia TRUE, ak USER nesplnil CUSTOM AUTHORIZATION REQUIREMENT.
+   C. PROPERTY [Requirements] TYPE [IEnumerable<IAuthorizationRequirement>] vracia vsetky AUTHORIZATION REQUIREMENTS.
+   D. PROPERTY [PendingRequirements] TYPE [IEnumerable<IAuthorizationRequirement>] vracia dosial nespracovane AUTHORIZATION REQUIREMENTS.
+   E. PROPERTY [Resource] TYPE [object] vracia RESOURCE asociovany s danym CUSTOM AUTHORIZATION REQUIREMENT.
+   F. PROPERTY [User] TYPE [ClaimsPrincipal] vracia CLAIMS PRINCIPAL USER, ktory je AUTHORIZED.
+   G. METHOD [void Succeed(IAuthorizationRequirement Requirement)] je volana, ak USER splnil CUSTOM AUTHORIZATION REQUIREMENT.
+   H. METHOD [void Fail()] je volana, ak USER nesplnil CUSTOM AUTHORIZATION REQUIREMENT.
+!!! 27. PROPERTY [AuthorizationHandlerContext.Resource] je mozne vyuzit na RESOURCE AUTHORIZATION, ktora vyhodnocuje nie to ci USER ma pristup k danej METHOD na zaklade statickych CLAIMS, ale na zaklade toho k akemu RESOURCE chce ACTION METHOD pristupit. RESOURCE AUTHORIZATION sa implmentuje nasledujucim sposobom.
+   A. Vytvori sa AUTHORIZATION POLICY, ktora definuje CUSTOM AUTHORIZATION REQUIREMENT a CUSTOM AUTHORIZATION REQUIREMENT HANDLER. Tento CUSTOM AUTHORIZATION REQUIREMENT HANDLER pristupuje k PROPERTY [AuthorizationHandlerContext.Resource] a na zaklade CUSTOM LOGIC vyhodnocuje ci prihlaseny USER ma mat ACCESS k danemu RESOURCE.
+   B. V CONTROLLER sa definuje FIELD TYPE [IAuthorizationService], ktory sa naplni cez DEPENDENCY INJECTION FRAMEWORK.
+   !!! C. V ACTION METHOD sa zavola METHOD [Task<AuthorizationResult> IAuthorizationService.AuthorizeAsync(ClaimsPrincipal User, object Resource, string PolicyName)], kde PARAMETER 'Resource' definuje RESOURCE, u ktoreho sa ma skontrolovat ci je k nemu USER AUTHORIZED. PARAMETER 'PolicyName' urcuje nazov AUTHORIZATION POLICY voci ktorej sa ma kontrola vykonat.
+28. INTERFACE [IAuthorizationService] definuje AUTHORIZATION SERVICE, ktory je mozne pouzit na RESOURCE AUTHORIZATION. INTERFACE ma nasledujuce MEMBERS.
+   A. METHOD [Task<AuthorizationResult> AuthorizeAsync(ClaimsPrincipal User, object Resource, string PolicyName)] umoznuje vykonat RESOURCE AUTHORIZATION voci definovanej AUTHORIZATION POLICY.
+   B. METHOD [Task<AuthorizationResult> AuthorizeAsync(ClaimsPrincipal User, object Resource, IEnumerable<IAuthorizationRequirement> Requirements)] umoznuje vykonat RESOURCE AUTHORIZATION voci definovanemu zoznamu CUSTOM AUTHORIZATION REQUIREMENTS.
+29. Overenie ci bol USER AUTHENTICATED je mozne pomocou PROPERTY [ControllerBase.User], ktora obsahuje instanciu CLASS [ClaimsPrincipal]. CLASS [ClaimsPrincipal] ma nasledujuce MEMBERS.
+   A. PROPERTY [Identity] TYPE [IIdentity] obsahuje IDENTITU daneho USER.
+   B. PROPERTY [Claims] TYPE [IEnumerable<Claim>] obsahuje vsetky CLAIMS daneho USER.
+   C. METHOD [bool IsInRole(string Role)] vracia informaciu ci USER sa nachadza v danej ROLE.
+30. INTERFACE [IIdentity] obsahuje IDENTITU daneho USER. Ma nasledujuce MEMBERS.
+   A. PROPERTY [IsAuthenticated] TYPE [bool] obsahuje informaciu ci bol USER AUTHENTICATED.
+   B. PROPERTY [AuthenticationType] TYPE [string] obsahuje nazov AUTHENTICATION TYPE.
+   C. PROPERTY [Name] TYPE [string] obsahuje nazov meno daneho USER.
+31. ASP.NET CORE umoznuje vykonavat AUTHENTICATION a AUTHORIZATION aj voci EXTERNAL IDENTITY PROVIDERS ako su GOOGLE ci MICROSOFT. AUTHENTICATION a AUTHORIZATION voci EXTERNAL IDENTITY PROVIDERS sa vykonava nasledujucim sposobom.
+   A. ACTION METHOD, ktora ma spustit LOGIN PROCESS zavola METHOD [AuthenticationProperties SignInManager<TUserType>.ConfigureExternalAuthenticationProperties(string Provider, string RedirectUrl, string UserId)], ktora nastavi AUTHENTICATION PROPERTIES pre dany EXTERNAL IDENTITY PROVIDER. PARAMETER 'RedirectUrl' obsahuje URL na ktoru ma byt BROWSER REDIRECTED v pripade uspene vykonaneho LOGIN.
+   B. ACTION METHOD, ktora ma spustit LOGIN PROCESS vracia ako RETURN VALUE instanciu CLASS [ChallengeResult], ktora spusti LOGIN PROCES voci EXTERNAL IDENTITY PROVIDER.
+   C. Po vykonani LOGIN je BROWSER REDIRECTED na REDIRECT URL, ktora bola zadava v METHOD [AuthenticationProperties SignInManager<TUserType>.ConfigureExternalAuthenticationProperties(string Provider, string RedirectUrl, string UserId)].
+   D. ASP.NET CORE prelozi danu REDIRECT URL na volanie ACTION METHOD daneho CONTROLLER.
+   E. ACTION METHOD zavola METHOD [Task<ExternalLoginInfo> SignInManager<TUserType>.GetExternalLoginInfoAsync(string ExpectedXsrf)], ktora vracia informaciu o prihlasenom USER. Informacia je ulozene v PROPERTY [ExternalLoginInfo.Principal], ktora obsahuje instanciu CLASS [ClaimsPrincipal].
+   F. Ak METHOD [Task<ExternalLoginInfo> SignInManager<TUserType>.GetExternalLoginInfoAsync(string ExpectedXsrf)] uspesne vratila AUTHENTICATED USER, ACTION METHOD zavola METHOD [Task<SignInResult> SignInManager<TUserType>.ExternalLoginSignInAsync(string LoginProvider, string ProviderKey, bool IsPersistent, bool BypassTwoFactor)], ktora vykona overenie ci sa dany USER nachadza v IDENTITY DB.
+   G. Nasledne ACTION METHOD vykona REDIRECTION na WEB PAGE, ktora vyzaduje AUTHENTICATION, kde sa vykona AUTHORIZATION prihlaseneho USER.
+32. BLAZOR COMPONENTS mozu byt SECURED podobne ako CONTROLLERS, ACTION METHODS a RAZOR PAGES. SECURITY BLAZOR COMPONENTS sa lisi na zaklade toho ci sa BLAZOR COMPONENT pouziva BLAZOR ROUTING, alebo nie.
+33. Ak ROOT BLAZOR COMPONENT nepouziva BLAZOR ROUTING, SECURITY sa realizuje nasledujucim sposobom.
+   A. Ak ROOT BLAZOR COMPONENT nepouziva BLAZOR ROUTING, VIEW, alebo RAZOR PAGE obsahuje priamo ROOT BLAZOR COMPONENT.
+   !!! B. Na zabezpecenie VIEW, alebo RAZOR PAGE obsahujucej ROOT BLAZOR COMPONENT je potrebne na CONTROLLER CLASS, ACTION METHOD, alebo RAZOR PAGE aplikovat ATTRIBUTE [AuthorizeAttribute]. ATTRIBUTE [AuthorizeAttribute] moze definovat ROLES, alebo POLICIES, ktore musia byt splnene, aby VIEW, alebo RAZOR PAGE mohol byt danemu USER zobrazeny.
+   !!! C. V pripade, ze sa vykonat PROTECTED ACTION, alebo PROTECTED RAZOR PAGE, ASP.NET CORE spusti proces AUTHENTICATION vyvolanim LOGIN PAGE.
+   !!! D. Po uspesnej AUTHENTICATION sa vykona AUTHORIZATION, pricom, ak ma dany USER ACCESS RIGHTS na VIEW, alebo RAZOR PAGE obsahujuci ROOT BLAZOR COMPONENT, ROOT BLAZOR COMPONENT sa zobrazi.
+   !!!!! E. VIEW, alebo RAZOR PAGE moze obsahovat LOGOUT BUTTON, ktory vyvola ACTION METHOD, alebo RAZOR PAGE HANDLERS, ktory moze vykonat LOGOUT. LOGOUT BUTTON sa NIKDY NESMIE nachadzat PRIAMO v BLAZOR COMPONENT, pretoze NEBUDE FUNGOVAT. Musi sa vykonat v ACTION METHOD, alebo RAZOR PAGE HANDLER HOSTING VIEW, alebo HOSTING RAZOR PAGE.
+34. Ak ROOT BLAZOR COMPONENT pouziva BLAZOR ROUTING, SECURITY sa realizuje nasledujucim sposobom.
+   !!! A. Ak ROOT BLAZOR COMPONENT pouziva BLAZOR ROUTING, VIEW, alebo RAZOR PAGE obsahuje ROUTING BLAZOR COMPONENT.
+   !!! B. Na zabezpecenie VIEW, alebo RAZOR PAGE obsahujucej ROUTING BLAZOR COMPONENT je potrebne na CONTROLLER CLASS, ACTION METHOD, alebo RAZOR PAGE aplikovat ATTRIBUTE [AuthorizeAttribute]. Standardne by tento ATTRIBUTE NEMAL obsahovat ZIADNE ROLES, ani POLICIES, pretoze tie sa budu vyhodnocovat az pocas ROUTING BLAZOR COMPONENTS.
+   !!!!! C. ROUTING BLAZOR COMPONENT MUSI obsahovat BLAZOR COMPONENT [AuthorizeRouteView]. BLAZOR COMPONENT [AuthorizeRouteView] je podobna BLAZOR COMPONENT [RouteView], akurat s tym rozdielom, ze pocas ROUTING vykonava AUTHORIZATION na zaklade toho ako su aplikovane ATTRIBUTES [AuthorizeAttribute] na jednotlive ROOT BLAZOR COMPONENTS, ktore su ROUTED pomocou ROUTING BLAZOR COMPONENT.
+   !!!!! D. Ak ASP.NET CORE zisti pokus o pristup k ACTION METHOD, alebo RAZOR PAGE HANDLER, ktora zobrazuje VIEW, alebo RAZOR PAGE obsahujuci ROOT BLAZOR COMPONENT, ASP.NET CORE spusti proces AUTHENTICATION vyvolanim LOGIN PAGE.
+   !!!!! E. Po uspesnej AUTHENTICATION (predpoklada sa, ze ATTRIBUTE [AuthorizeAttribute]) povolil ACCESS vsetkym AUTHENTICATED USERS je spusena BLAZOR COMPONENT [AuthorizeRouteView].
+   !!!!! F. BLAZOR COMPONENT [AuthorizeRouteView] na zaklade URL zisti, ktora ROOT BLAZOR COMPONENT sa ma zobrazit. Ak je na tuto ROOT BLAZOR COMPONENT aplikovany ATTRIBUTE [AuthorizeAttribute], BLAZOR COMPONENT [AuthorizeRouteView] spusti proces AUTHORIZATION.
+   !!!!! G. BLAZOR COMPONENT [AuthorizeRouteView] vykona AUTHORIZATION a v pripade, ze USER je AUTHORIZED, tak sa ROOT BLAZOR COMPONENT zobrazi. Ak USER NIE je AUTHORIZED, potom sa zobrazi HTML CODE, ktory bol definovany v CHILD HTML ELEMENT [NotAuthorized] BLAZOR COMPONENT [AuthorizeRouteView].
+   !!!!! H. VIEW, alebo RAZOR PAGE moze obsahovat LOGOUT BUTTON, ktory vyvola ACTION METHOD, alebo RAZOR PAGE HANDLERS, ktory moze vykonat LOGOUT. LOGOUT BUTTON sa NIKDY NESMIE nachadzat PRIAMO v BLAZOR COMPONENT, pretoze NEBUDE FUNGOVAT. Musi sa vykonat v ACTION METHOD, alebo RAZOR PAGE HANDLER HOSTING VIEW, alebo HOSTING RAZOR PAGE.
+35. ATTRIBUTE [AuthorizeAttribute] je mozne aplikovat IBA na ROOT BLAZOR COMPONENTS, a nie CHILD BLAZOR COMPONENTS.
+36. ASP.NET CORE definuje BLAZOR COMPONENT [AuthorizeRouteView], ktora umoznuje aplikovat ATTRIBUTE [AuthorizeAttribute] na jednotlive BLAZOR COMPONENTS a tym padom dosiahnut vyssiu granularitu pri urceni voci ktorym BLAZOR COMPONENTS ma byt USER AUTHORIZED. Pre BLAZOR COMPONENT [AuthorizeRouteView] platia nasledujuce fakty.
+   A. BLAZOR COMPONENT [AuthorizeRouteView] je ROUTE BLAZOR COMPONENT, ktora nahrazduje BLAZOR COMPONENT [RouteView], ktora zabezpecuje ROUTING BLAZOR COMPONENTS, bez definovania HTML SECTION, ktora sa ma zobrazit ak USER nie je na pristup k danej BLAZOR COMPONENT AUTHORIZED.
+   B. BLAZOR COMPONENT [AuthorizeRouteView] umoznuje v HTML ELEMENT [NotAuthorized] definovat HTML CONENT, ktory sa zobrazi ako USER NEBOL AUTHORIZED pristup k danej BLAZOR COMPONENT.
+!!! 37. ASP.NET CORE definuje BLAZOR COMPONENT [AuthorizeView], ktora umoznuje zobrazovat casti HTML CODE na zaklade toho v akych ROLES sa AUTHENTICATED USER nachadza. Pre BLAZOR COMPONENT [AuthorizeView] platia nasledujuce fakty.
+   A. PROPERTY [Roles] TYPE [string] obsahuje ciarkou oddeleny zoznam ROLES, pre ktory sa dany BLAZOR COMPONENT [AuthorizeView] aplikuje.
+   B. HTML SECTION [Authorized] definuje HTML CODE, ktory sa zobrazi ak je USER AUTHORIZED.
+   C. HTML SECTION [NotAuthorized] definuje HTML CODE, ktory sa zobrazi ak je USER UNAUTHORIZED.
+!!! 38. CLASS [AuthenticationStateProvider] poskytuje informaciu o AUTHENTICATED USER v BLAZOR COMPONENTS. CLASS [AuthenticationStateProvider] ma nasledujuce MEMBERS.
+   A. EVENT [AuthenticationStateChanged] TYPE [AuthenticationStateChangedHandler] je volany, ak dojde k zmene AUTHENTICATION STATE.
+   B. METHOD [Task<AuthenticationState> GetAuthenticationStateAsync()] vracia informaciu o aktualne AUTHENTICATED USER.
+!!! 39. Ak maju byt WEB SERVICES SECURED, je NUTNE vypnut automaticky REDIRECTION na LOGIN PAGE a ACCESS DENIED PAGE, pretoze CLIENT WEB SERVICE je PROGRAM, ktory nedokaze vyplnit LOGIN PAGE ci zobrazit ACCESS DENIED ERROR MESSAGE. Pre WEB SERVICES je nutne v pripade, ze CLIENT nie je AUTHORIZED vrati HTTP ERROR CODE. Vypnutie sa vykonava nasledujucim sposobom pomocou CLASS [CookieAuthenticationEvents], ktora ma nasledujuce MEMBERS.
+   A. PROPERTY [OnSigningIn] TYPE [Func<CookieSigningInContext,Task>] obsahuje DELEGATE na METHOD, ktora sa vola na zaciatku procesu SIGN IN.
+   B. PROPERTY [OnSignedIn] TYPE [Func<CookieSigningInContext,Task>] obsahuje DELEGATE na METHOD, ktora sa vola pri ukoceni procesu SIGN IN.
+   C. PROPERTY [OnRedirectToReturnUrl] TYPE [Func<RedirectContext<CookieAuthenticationOptions>,Task>] obsahuje DELEGATE na METHOD, ktora sa vola ked ma dost k REDIRECTION na RETURN URL.
+   D. PROPERTY [OnRedirectToLogin] TYPE [Func<RedirectContext<CookieAuthenticationOptions>,Task>] obsahuje DELEGATE na METHOD, ktora sa vola pri REDIRECTION na LOGIN PAGE.
+   E. PROPERTY [OnRedirectToLogout] TYPE [Func<RedirectContext<CookieAuthenticationOptions>,Task>] obsahuje DELEGATE na METHOD, ktora sa vola pri REDIRECTION na LOGOUT PAGE.
+   F. PROPERTY [OnRedirectToAccessDenied] TYPE [Func<RedirectContext<CookieAuthenticationOptions>,Task>] obsahuje DELEGATE na METHOD, ktora sa vola pri REDIRECTION na ACCESS DENIED PAGE.
+   G. PROPERTY [OnSigningOut] TYPE [Func<CookieSigningOutContext,Task>] obsahuje DELEGATE na METHOD, ktora sa vola na zaciatku procesu SIGN OUT.
+   H. PROPERTY [OnValidatePrincipal] TYPE [Func<CookieValidatePrincipalContext,Task>] obsahuje DELEGATE na METHOD, ktora sa vola pri validacii PRINCIPAL.
+40. ASP.NET CORE umoznuje vykonat AUTHENTICATION daneho USER pomocou COOKIES. Pre AUTHENTICATION pomocou COOKIES platia nasledujuce pravidla.
+   A. AUTHENTICATION pomocou COOKIES by sa mala VZDY robit cez HTTPS, kedze inak by boli COOKIES viditelne pri prenose medzi CLIENT SIDE a SERVER SIDE.
+   B. AUTHENTICATION pomocou COOKIES sa vykonava tak, ze CLIENT vykona LOGIN zaslanim CREDENTIALS do LOGIN ACTION METHOD, ktora po uspesnej AUTHENTICATION vrati AUTHENTICATION COOKIE. Tento COOKIE potom CLIENT moze opakovane pouzit az do jeho EXSPIRACIE.
+   !!! C. SERVER SIDE NIJAKO NEKONTROLUJE, ako HTTP REQUEST ziskal COOKIE. To znaci, ze COOKIE NESMIE byt UKRADNUTY, inak by doslo ku UNAUTHORIZED ACCESS. Preto pri pouziti COOKIES je NUTNE pouzit HTTPS.
+41. AUTHENTICATION pomocou COOKIES sa v ASP.NET CORE nastavuje nasledujucim sposobom.
+   A. Pomocou METHOD [AuthenticationBuilder IServiceCollection.AddAuthentication(Action<AuthenticationOptions> ConfigureOptions)] sa nastavi PROPERTY [AuthenticationOptions.DefaultScheme] na VALUE [CookieAuthenticationDefaults.AuthenticationScheme].
+   B. Pomocou METHOD [AuthenticationBuilder IServiceCollection.AddAuthentication(Action<AuthenticationOptions> ConfigureOptions)] sa nastavi PROPERTY [AuthenticationOptions.DefaultChallengeScheme] na VALUE [CookieAuthenticationDefaults.AuthenticationScheme].
+   C. Pomocou METHOD [AuthenticationBuilder AuthenticationBuilder.AddCookie(Action<CookieAuthenticationOptions> ConfigureOptions)] sa nastaveni PROPERTY [CookieAuthenticationEvents.OnRedirectToLogin] zrusi REDIRECTION na LOGIN PAGE a namiesto toho je vrateny HTTP ERROR CODE.
+   D. Pomocou METHOD [AuthenticationBuilder AuthenticationBuilder.AddCookie(Action<CookieAuthenticationOptions> ConfigureOptions)] sa nastaveni PROPERTY [CookieAuthenticationEvents.OnRedirectToAccessDenied] zrusi REDIRECTION na ACCESS DENIED PAGE a namiesto toho je vrateny HTTP ERROR CODE.
+42. ASP.NET CORE umoznuje vykonat AUTHENTICATION daneho USER pomocou BEARER TOKEN. Pre AUTHENTICATION pomocou BEARER TOKEN platia nasledujuce pravidla.
+   A. AUTHENTICATION pomocou BEARER TOKENS by sa mala VZDY robit cez HTTPS, kedze inak by boli BEARER TOKENS viditelne pri prenose medzi CLIENT SIDE a SERVER SIDE.
+   B. BEARER TOKEN je pre CLIENT SIDE OPAQUE ENCRYPTED STRING, ktory ziskava pri vykonani LOGIN. Po ziskani BEARER TOKEN musi byt tento pribaleny do kazdej dalsej HTTP REQUEST MESSAGE. Ak SERVCE SIDE zisti pritomnost BEARER TOKEN vykona jeho DECRYPTION a z udajov v nom ulozenych ziska USER NAME a USER CLAIMS.
+   !!! C. SERVER SIDE NIJAKO NEKONTROLUJE, ako HTTP REQUEST ziskal BEARER TOKEN. To znaci, ze BEARER TOKEN NESMIE byt UKRADNUTY, inak by doslo ku UNAUTHORIZED ACCESS. Preto pri pouziti BEARER TOKENS je NUTNE pouzit HTTPS.
+   D. Casto pouzivanym typom BEARER TOKEN je JSON WEB TOKEN (JWT), co je specifikacia obsahujuca ake data ma BEARER TOKEN obsahovat.
+   !!! E. CLIENT ziskava BEARER TOKEN zavolanim WEB SERVICE ACTION METHOD, do ktorej zasle USERNAME a PASSWORD ako PARAMETERS (napr. ako HTTP BODY). WEB SERVICE ACTION METHOD po uspesnej AUTHENTICATION vrati TOKEN.
+   !!!!! F. CLIENT zasiela ziskany BEARER TOKEN na SERVER SIDE pri volani ACTION METHOD jeho pridanim do HTTP REQUEST HEADER [Authentication], ktoreho VALUE je ma tvar [Bearer BEARER_TOKEN], kde VALUE 'BEARER_TOKEN' je VALUE BEARER TOKEN.
+43. AUTHENTICATION pomocou JWT BEARER TOKENS sa v ASP.NET CORE nastavuje nasledujucim sposobom.
+   A. Pomocou METHOD [AuthenticationBuilder IServiceCollection.AddAuthentication(Action<AuthenticationOptions> ConfigureOptions)] sa ziska instancia CLASS [AuthenticationBuilder].
+   B. Pomocou METHOD [AuthenticationBuilder AuthenticationBuilderAddJwtBearer(Action<JwtBearerOptions> ConfigureOptions)] sa nakonfiguruje JWT BEARER TOKEN AUTHENTICATION nastavenim PROPERTY CLASS [JwtBearerOptions].
+   C. Pomocou PROPERTY [JwtBearerEvents.OnTokenValidated] TYPE [Func<TokenValidatedContext,Task>] sa nastavi VALIDATION METHOD, ktora vykona VALIDATION JWT BEARER TOKEN.
+   !!! D. VALIDATION METHOD musi na zaklade USER NAME, ktory ziska z PRINCIPAL nacitat vsetky CLAIMS daneho USER z IDENTITY DB a nasledne vytvorit novy PRINCIPAL so vsetkymi USER CLAIMS, ktory sa ulozi do PROPERTY [TokenValidatedContext.Principal].
+!!! 44. Pri vykonavani AUTHENTICATION pomocou JWT BEARER TOKENS, je nutne v ATTRIBUTE [AuthorizeAttribute] pridat do PROPERTY [AuthenticationSchemes] VALUE [Bearer].
+//----------------------------------------------------------------------------------------------------------------------

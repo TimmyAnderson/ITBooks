@@ -1,0 +1,126 @@
+//----------------------------------------------------------------------------------------------------------------------
+1. Solution demonstruje vytvaranie WEB SERVICES v ASP.NET CORE APPLICATIONS.
+2. ASP.NET CORE umoznuje implementaciu WEB SERVICES, kedy HTTP REQUESTS a HTTP RESPONSES obsahuju DATA (spravidla v JSON FORMAT), a NIE HTML CODE. Tieto DATA su prenasane cez HTTP/HTTPS PROTOCOLS.
+3. REST SERVICES su WEB SERVICES, ktore silne zviazane s HTTP/HTTPS. Pre REST SERVICES platia nasledujuce fakty.
+   A. Typ vykonavanej OPERATION nad zaslanymi datami urcuje HTTP VERB HTTP REQUEST MESSAGE.
+   B. OBJECT nad ktorym sa ma vykonat dana OPERATION je urcena URL HTTP REQUEST MESSAGE.
+4. HTTP PROTOCOL podporuje nasledujuce typy HTTP VERBS.
+   A. GET vykonava READ OBJECT.
+   B. POST vykonava INSERT OBJECT.
+   C. PUT vykonava UPDATE OBJECT.
+   D. PATCH vykonava UPDATE casti OBJECT.
+   E. DELETE vykonava DELETE OBJECT.
+5. DATA su vo WEB SERVICE spravidla prenasane vo FORMATE JSON.
+6. ASP.NET CORE umoznuje implementovat WEB SERVICES nasledujucimi sposobmi.
+   A. Pomocou ENDPOINTS.
+   B. Pomocou API CONTROLLERS.
+7. Pre WEB SERVICES implementovane pomocou ENDPOINTS platia nasledujuce fakty.
+   A. WEB SERVICES registruju svoje METHODS, ktorymi spracovavaju HTTP REQUEST MESSAGES pomocou METHODS INTERFACE [IEndpointRouteBuilder].
+   B. INTERFACE [IEndpointRouteBuilder] definuje pre kazdy HTTP VERB specialnu METHOD, ktorym je mozne zaregistrovat C# METHOD WEB SERVICE, ktora bude dany HTTP VERB spracovavat.
+8. Pre WEB SERVICES implementovane pomocou API CONTROLLERS platia nasledujuce fakty.
+   A. Pomocou METHOD [IMvcBuilder IServiceCollection.AddControllersWithViews()] sa zaregistruje ASP.NET MVC FRAMEWORK SERVICE, ktory umoznuje pouzitie CONTROLLERS.
+   B. Pomocou METHODS INTERFACE [IEndpointRouteBuilder] sa zaregistruju ROUTES pre API CONTROLLERS.
+   C. Definuju sa API CONTROLLERS. API CONTROLLERS su spravidla definovane ako CLASSES, ktore su DERIVED z BASE CLASS [Controller].
+   !!! D. Pre kazdu OPERATION, ktoru ma dany API CONTROLLER sa definuje jedna ACTION METHOD. ACTION METHODS mozu mat PARAMETERS a RETURN VALUES, ktore ASP.NET CORE AUTOMATICKY SERIALIZUJE a DESERIALIZUJE do DATA FORMAT, ktorym je spravidla JSON.
+9. CONTROLLER je v ASP.NET CORE C# CLASS, ktora obsahuje ACTION METHODS. Pre CONTROLLERS platia nasledujuce fakty.
+   A. CONTROLLERS su C# CLASSES, ktore musia mat v nazve POSTFIX 'Controller', alebo musia byt zdedene z CLASS [Controller]. CONTROLLERS spravidla splnaju obe podmienky.
+   B. CONTROLLERS maju ACTION METHODS, ktore su PUBLIC METHODS spracujuce HTTP REQUESTS.
+   C. ACTION METHODS maju za ulohu generovat HTTP RESPONSE. HTTP RESPONSE moze byt bud v tvare HTML CODE, ktory je vygenerovany pomocou VIEWS, alebo HTTP STATUS CODE v pripade vzniku ERROR ci REDIRECTION.
+10. ASP.NET CORE spracovava HTTP REQUESTS v CONTROLLERS nasledujucim sposobom.
+   A. ASP.NET CORE pomocou ROUTING SYSTEM urci, ktory CONTROLLER a ACTION METHOD ma HTTP REQUEST spracovat. ROUTING SYSTEM moze HTTP REQUEST, tak ako kazdy MIDDLEWARE spracovat aj okamzite vygenerovanim HTTP RESPONSE.
+   B. ASP.NET CORE vytvori instanciu CONTROLLER, ktory ma HTTP REQUEST spracovat.
+   C. ASP.NET CORE zavola vybranu ACTION METHOD vytvorenej instancie vybraneho CONTROLLER.
+   D. ACTION METHOD vraci RETURN VALUE, ktora sa moze lisit v zavislosti ci ACTION METHOD vracia VIEW obsahujuci HTML CODE, DATA, ktore su spravidla posielane v JSON FORMAT, alebo HTTP STATUS CODE.
+   E. ASP.NET CORE na zaklade typu RETURN VALUE, ktoru vratil ACTION METHOD vygeneruje prisluny HTTP RESPONSE.
+11. ASP.NET CORE pri vyhladavani CONTROLLERS a ACTION METHODS postupuje nasledujucim sposobom.
+   A. ASP.NET CORE vyhlada vsetky PUBLIC CLASSES, ktorych nazov obsahuje POSTFIX 'Controller', alebo na ktore je aplikovany ATTRIBUTE [ControllerAttribute]. Tieto CLASSES povazuje za CONTROLLERS, aj ked NEDEDIA z CLASS [Controller].
+   B. ASP.NET CORE vyhlada vsetky PUBLIC METHODS, ktore CONTROLLERS implementuju a povazuje ich za ACTION METHODS.
+!!! 12. ASP.NET CORE umoznuje definiciu POCO CONTROLLERS co su POCO CLASSES, ktore NIE su DERIVED z CLASS [Controller].
+13. CONTROLLERS, ktore su DERIVED z CLASS [Controller] mozu ku CONTEXT DATA pristupovat pomocou nasledujucich PROPERTIES.
+   A. PROPERTY [Request] vracia instanciu CLASS [HttpRequest], ktora obsahuje informacie o HTTP REQUEST, ktory viedol k vyvolaniu ACTION METHOD.
+   B. PROPERTY [Response] vracia instanciu CLASS [HttpResponse], ktora umoznuje ACTION METHOD vytvorit HTTP RESPONSE.
+   C. PROPERTY [HttpContext] vracia instanciu CLASS [HttpContext], ktora umoznuje pristup k mnozstvu CONTEXT OBJECTS ako napriklad k SESSION OBJECT.
+   D. PROPERTY [RouteData] vracia instanciu CLASS [RouteData], ktora umoznuje pristup k ROUTE DATA, ktore vrati ROUTING SYSTEM.
+   E. PROPERTY [ModelState] vracia instanciu CLASS [ModelStateDictionary], ktora sa pouziva na validaciu DATA zaslanych z CLIENT.
+   F. PROPERTY [User] vracia instanciu CLASS [ClaimsPrincipal], ktora obsahuje informacie o prihlasenom USER.
+14. ASP.NET CORE definuje sadu ATTRIBUTES, ktorymi je mozne definovat, cez ake HTTP VERBS je mozne dane ACTION METHODS volat.
+   A. ATTRIBUTE [AcceptVerbsAttribute] umoznuje definovat zoznam HTTP VERBS pre ktore moze byt dana ACTION METHOD volana.
+   B. ATTRIBUTE [HttpGetAttribute] urcuje, ze ACTION METHOD moze byt volana iba pre HTTP VERB GET.
+   C. ATTRIBUTE [HttpPostAttribute] urcuje, ze ACTION METHOD moze byt volana iba pre HTTP VERB POST.
+   D. ATTRIBUTE [HttpDeleteAttribute] urcuje, ze ACTION METHOD moze byt volana iba pre HTTP VERB DELETE.
+   E. ATTRIBUTE [HttpPutAttribute] urcuje, ze ACTION METHOD moze byt volana iba pre HTTP VERB PUT.
+   F. ATTRIBUTE [HttpPatchAttribute] urcuje, ze ACTION METHOD moze byt volana iba pre HTTP VERB PATCH.
+   G. ATTRIBUTE [HttpHeadAttribute] urcuje, ze ACTION METHOD moze byt volana iba pre HTTP VERB HEAD.
+15. CONTROLLERS mozu vyuzivat DEPENDENCY INJECTION bude pomocou CONSTRUCTOR PARAMETERS, alebo ACTION METHODS PARAMETERS.
+!!! 16. ASP.NET CORE umoznuje vykonavat DEPENDENCY INJECTION aj na urovni ACTION METHODS.
+   A. PARAMETERS ACTION METHODS, ktore maju byt RESOLVED pomocou DEPENDENCY INJECTION MUSIA byt oznacene pomocou ATTRIBUTE [FromServicesAttribute].
+   B. ASP.NET CORE pri volani ACTION METHOD, ked zisti, ze niektore jej PARAMETERS su oznacene pomocou ATTRIBUTE [FromServicesAttribute], tak vykona DEPENDENCY INJECTION RESOLVING pre tieto PARAMETERS.
+   !!! C. Vyhoda DEPENDENCY INJECTION na urovni ACTION METHODS spociva v tom, ze ked je vytvaranie instancii CLASSES zaregistrovanych v DEPENDENCY INJECTION FRAMEWORK casovo narocne, pricom tieto OBJECTS sa vyuzivaju iba v NIEKTORYCH ACTION METHODS, potom je zbytocne vytvarat tieto instancie v CONSTRUCTORS pri volani kazdej ACTION METHOD. DEPENDENCY INJECTION na urovni ACTION METHODS umoznuje vytarat instancie CLASS, iba ked sa realne pouziju.
+!!! 17. Standardne BROWSERS NEUMOZNUJU spusat JAVASCRIPTS, ktore maju URL z ineho ENDPOINT (rozdielny SCHEME, HOST, alebo PORT) ako ENDPOINT z ktoreho HTML DOCUMENT pochadza. Tym padom by vsak v HTML DOCUMENTS nebolo mozne pouzivat napriklad 3. PARTY LIBRARIES, ktore su casto stahovane z EXTERNYCH URLs. RIESENIM je pouzitie techniky CROSS ORIGIN REQUEST SHARING (CORS), ktora umoznuje, aby pociatocny HTTP REQUEST stiahol aj JAVASCRIPT FILES z ineho ENDPOINT ako ten z ktoreho bol HTML DOCUMENT stiahnuty. CORS sa v ASP.NET povoluje volanim METHOD [IApplicationBuilder IApplicationBuilder.UseCors()].
+!!! 18. ASP.NET CORE definuje INTERFACE [IAsyncEnumerable<TType>], ktory umoznuje ASYNCHRONNU ENUMERACIU cez COLLECTION RESULTS. INTERFACE [IAsyncEnumerable<TType>] sa pouziva nasledujucim sposobom.
+   A. Definuje sa PRODUCER METHOD, ktora vracia TYPE [IAsyncEnumerable<TType>]. PRODUCER METHOD generuje jednotlive RESULTS a vracia ich pomocou KEYWORD [yield return].
+   B. CONSUMER METHOD spracuvava COLLECTION RESULTS pomocou KEYWORD [await foreach()].
+   !!! C. Vdaka pouzitiu INTERFACE [IAsyncEnumerable<TType>] moze CONSUMER METHOD spracuvavat jednotlive RESULTS POSTUPNE ako su GENEROVANE este skor ako je cela COLLECTION vygenerovana.
+!!! 19. OVER-BINDING je problem, ktory nastava ako pri INSERT do DB je do WEB SERVICE zasielany DATA OBJECT, ktory umoznuje definovat aj ID vkladaneho OBJECT. To moze sposobit problemy s funkcnostou PROGRAMU ako aj SECURITY ISSUES, ked moze dojst k tomu, ze sa spravi INSERT do DB s ID, ktore urci USER. Riesenim je pouzit tak MODEL OBJECT, ktory NEOBSAHUJE ID a tym padom USER nemoze definovat OBJECT ID.
+!!! 20. ACTION METHODS mozu vracat RETURN VALUES, ktore implementuju INTERFACE [IActionResult]. Pre RETURN VALUES, ktore implementuju INTERFACE [IActionResult] platia nasledujuce fakty.
+   !!! A. INTERFACE [IActionResult] definuje METHOD [Task ExecuteResultAsync(ActionContext Context)], ktorej ulohou je vygenerovat HTTP RESPONSE. Instanciu CLASS [HttpResponse] je pristupna pomocou PROPERTY [ActionContext.HttpContext.Response].
+   B. Ked ASP.NET zavola ACTION METHOD, ktora vracia instanciu CLASS implementujucu INTERFACE [IActionResult], tak zavola METHOD [Task ExecuteResultAsync(ActionContext Context)] pomocou ktorej je vygenerovany HTTP RESPONSE.
+   !!! C. Je plne na implementacii METHOD [Task ExecuteResultAsync(ActionContext Context)], aky HTTP RESULT bude vygenerovany. Moze to byt iba HTTP STATUS CODE pri vzniku ERROR, REDIRECTION HTTP STATUS CODE pri REDIRECTION, alebo HTML CODE.
+21. ASP.NET CORE umoznuje vracat namiesto HTML CODE aj ine typy RESULTS pre ktore su vytvorene osobitne ACTION RESULTS.
+   A. ACTION RESULT TYPE [JsonResult] moze byt vytvoreny pomocou HELPER METHOD [Json()]. ACTION RESULT TYPE [JsonResult] vracia OBJECT serializovany do formatu JSON.
+   B. ACTION RESULT TYPE [ContentResult] moze byt vytvoreny pomocou HELPER METHOD [Content()]. ACTION RESULT TYPE [ContentResult] vracia OBJECT serializovany do formatu STRING s CUSTOM MIME TYPE.
+   C. ACTION RESULT TYPE [ObjectResult] moze byt vytvoreny pomocou HELPER METHOD [StatusCode()]. ACTION RESULT TYPE [ObjectResult] vracia OBJECT, ktory je odoslany na CLIENT s CUSTOM HTTP STATUS CODE. ACTION RESULT TYPE [ObjectResult] zaroven spusta proces CONTENT NEGOTIATION, kde ASP.NET generuje typ CONTENT, ktory preferencii WEB CLIENT vyjadrenych v ACCEPT HEADER.
+   D. ACTION RESULT TYPE [OkObjectResult] moze byt vytvoreny pomocou HELPER METHOD [Ok()]. ACTION RESULT TYPE [OkObjectResult] vracia OBJECT, ktory je odoslany na CLIENT s HTTP STATUS CODE 200. ACTION RESULT TYPE [OkObjectResult] zaroven spusta proces CONTENT NEGOTIATION, kde ASP.NET generuje typ CONTENT, ktory preferencii WEB CLIENT vyjadrenych v ACCEPT HEADER.
+   E. ACTION RESULT TYPE [NotFoundObjectResult] moze byt vytvoreny pomocou HELPER METHOD [NotFound()]. ACTION RESULT TYPE [NotFoundObjectResult] vracia OBJECT, ktory je odoslany na CLIENT s HTTP STATUS CODE 404. ACTION RESULT TYPE [NotFoundObjectResult] zaroven spusta proces CONTENT NEGOTIATION, kde ASP.NET generuje typ CONTENT, ktory preferencii WEB CLIENT vyjadrenych v ACCEPT HEADER.
+22. ASP.NET CORE podporuje ACTION RESULT TYPES, ktore umoznuju vratit FILE CONTENT.
+   A. ACTION RESULT TYPE [FileContentResult] moze byt vytvoreny pomocou HELPER METHOD [File()]. ACTION RESULT TYPE [FileContentResult] vracia BYTE ARRAY spolu s CUSTOM MIME TYPE.
+   B. ACTION RESULT TYPE [FileStreamResult] moze byt vytvoreny pomocou HELPER METHOD [File()]. ACTION RESULT TYPE [FileStreamResult] vracia BYTE ARRAY spolu s CUSTOM MIME TYPE. BYTE ARRAY je nacitany zo zadaneho STREAM.
+   C. ACTION RESULT TYPE [VirtualFileResult] moze byt vytvoreny pomocou HELPER METHOD [File()]. ACTION RESULT TYPE [VirtualFileResult] vracia BYTE ARRAY spolu s CUSTOM MIME TYPE. BYTE ARRAY je nacitany FILE zadaneho pomocou jeho VIRTUAL PATH.
+   D. ACTION RESULT TYPE [PhysicalFileResult] moze byt vytvoreny pomocou HELPER METHOD [PhysicalFile()]. ACTION RESULT TYPE [PhysicalFileResult] vracia BYTE ARRAY spolu s CUSTOM MIME TYPE. BYTE ARRAY je nacitany FILE zadaneho pomocou jeho PHYSICAL PATH.
+23. ASP.NET CORE podporuje ACTION RESULT TYPES, ktore umoznuju vratit HTTP STATUS CODE.
+   A. ACTION RESULT TYPE [StatusCodeResult] moze byt vytvoreny pomocou HELPER METHOD [StatusCode()]. ACTION RESULT TYPE [StatusCodeResult] vracia CUSTOM HTTP STATUS CODE.
+   B. ACTION RESULT TYPE [OkResult] moze byt vytvoreny pomocou HELPER METHOD [Ok()]. ACTION RESULT TYPE [OkResult] vracia HTTP STATUS CODE 200.
+   C. ACTION RESULT TYPE [CreatedResult] moze byt vytvoreny pomocou HELPER METHOD [Created()]. ACTION RESULT TYPE [CreatedResult] vracia HTTP STATUS CODE 201.
+   D. ACTION RESULT TYPE [CreatedAtActionResult] moze byt vytvoreny pomocou HELPER METHOD [CreatedAtAction()]. ACTION RESULT TYPE [CreatedAtActionResult] vracia HTTP STATUS CODE 201 pricom v HEADER 'Location' vracia URL generovany odkazom na CONTROLLER a ACTION METHOD.
+   E. ACTION RESULT TYPE [CreatedAtRouteResult] moze byt vytvoreny pomocou HELPER METHOD [CreatedAtRoute()]. ACTION RESULT TYPE [CreatedAtRouteResult] vracia HTTP STATUS CODE 201 pricom v HEADER 'Location' vracia URL generovany definovanou ROUTE.
+   F. ACTION RESULT TYPE [BadRequestResult] moze byt vytvoreny pomocou HELPER METHOD [BadRequest()]. ACTION RESULT TYPE [BadRequestResult] vracia HTTP STATUS CODE 400.
+   G. ACTION RESULT TYPE [UnauthorizedResult] moze byt vytvoreny pomocou HELPER METHOD [Unauthorized()]. ACTION RESULT TYPE [UnauthorizedResult] vracia HTTP STATUS CODE 401.
+   H. ACTION RESULT TYPE [NotFoundResult] moze byt vytvoreny pomocou HELPER METHOD [NotFound()]. ACTION RESULT TYPE [NotFoundResult] vracia HTTP STATUS CODE 404.
+   I. ACTION RESULT TYPE [UnsupportedMediaTypeResult] vracia HTTP STATUS CODE 415.
+24. ASP.NET CORE podporuje ACTION RESULT TYPES, ktore maju specialne pouzitie.
+   A. ACTION RESULT TYPE [PartialViewResult] moze byt vytvoreny pomocou HELPER METHOD [PartialView()]. ACTION RESULT TYPE [PartialViewResult] vracia HTTP RESULT umoznujuci vyber daneho PARTIAL VIEW.
+   B. ACTION RESULT TYPE [ViewComponentResult] moze byt vytvoreny pomocou HELPER METHOD [ViewComponent()]. ACTION RESULT TYPE [ViewComponentResult] vracia HTTP RESULT umoznujuci vyber daneho VIEW COMPONENT.
+   C. ACTION RESULT TYPE [ChallengeResult] vracia HTTP RESPOSNE inicializujuci dodrzanie SECURITY POLICIES.
+   D. ACTION RESULT TYPE [EmptyResult] vracia EMPTY HTTP RESPOSNE.
+!!! 25. ASP.NET CORE pre niektore RETURN VALUES ACTION METHODS BY-DEFAULT vracia konkretny TYPE ACTION RESULT. BY-DEFAULT funkcionalitu je mozne zmenit, napriklad implementaciou CUSTOM MIDDLEWARE, ktory bude modifikovat HTTP RESPONSE MESSAGES.
+   A. Ak ACTION METHOD vracia TYPE [void] a ACTION METHOD skonci bez hodenia EXCEPTION, tak ako RETURN VALUE je generovana instancia TYPE [OkResult], ktory NEMA nastaveny CONTENT.
+   B. Ak ACTION METHOD vracia TYPE [TType] a ACTION METHOD skonci bez hodenia EXCEPTION, tak ako RETURN VALUE je generovana instancia TYPE [OkResult], ktory MA nastaveny CONTENT na ACTION METHOD RETURN VALUE.
+   C. Ak ACTION METHOD hodi EXCEPTION, tak ako RETURN VALUE je generovana instancia TYPE [ObjectResult], ktory ma nastaveny HTTP STATUS CODE na 500.
+   D. Ak ACTION METHOD vracia VALUE [null], tak ako RETURN VALUE je generovana instancia TYPE [NoContent].
+26. CLASS [Controller] definuje sadu HELPER METHODS pomocou, ktorych je mozne vracat rozlicne HTTP RESPONSE MESSAGES. CLASS [Controller] definuje nasledujuce HELPER METHODS.
+   A. METHOD [OkObjectResult Ok(object Value)] umoznuje ACTION METHOD vratit HTTP STATUS CODE 404.
+   B. METHOD [NoContentResult NoContent()] umoznuje ACTION METHOD vratit HTTP STATUS CODE 204.
+   C. METHOD [BadRequestObjectResult BadRequest(object Error)] umoznuje ACTION METHOD vratit HTTP STATUS CODE 400.
+   D. METHOD [FileContentResult File(byte[] FileContents, string ContentType)] umoznuje ACTION METHOD vratit FILE CONTENT.
+   E. METHOD [NotFoundObjectResult NotFound(object Value)] umoznuje ACTION METHOD vratit HTTP STATUS CODE 404.
+   F. METHOD [RedirectResult Redirect(string Url)] umoznuje ACTION METHOD spravit REDIRECT na zadanu URL.
+   G. METHOD [RedirectResult RedirectPermanent(string Url)] umoznuje ACTION METHOD spravit PERMANENT REDIRECT na zadanu URL.
+   H. METHOD [LocalRedirectResult LocalRedirect(string LocalUrl)] umoznuje ACTION METHOD spravit REDIRECT na zadanu LOCAL URL.
+   I. METHOD [LocalRedirectResult LocalRedirectPermanent(string LocalUrl)] umoznuje ACTION METHOD spravit PERMANENT REDIRECT na zadanu LOCAL URL.
+   J. METHOD [RedirectToRouteResult RedirectToRoute(string RouteName, object RouteValues, string Fragment)] umoznuje ACTION METHOD spravit REDIRECT podla zadanej ROUTE NAME.
+   K. METHOD [RedirectToRouteResult RedirectToRoutePermanent(string RouteName, object RouteValues, string Fragment)] umoznuje ACTION METHOD spravit PERMANENT REDIRECT podla zadanej ROUTE NAME.
+   L. METHOD [RedirectToActionResult RedirectToAction(string ActionName, string ControllerName, string Fragment)] umoznuje ACTION METHOD spravit REDIRECT na zadany MVC CONTROLLER a ACTION METHOD.
+   M. METHOD [RedirectToActionResult RedirectToActionPermanent(string ActionName, string ControllerName, string Fragment)] umoznuje ACTION METHOD spravit PERMANENT REDIRECT na zadany MVC CONTROLLER a ACTION METHOD.
+   N. METHOD [RedirectToPageResult RedirectToPage(string PageName, string PageHandler, string Fragment)] umoznuje ACTION METHOD spravit REDIRECT na zadanu RAZOR PAGE.
+   O. METHOD [RedirectToPageResult RedirectToPagePermanent(string PageName, object RouteValues, string Fragment)] umoznuje ACTION METHOD spravit PERMANENT REDIRECT na zadanu RAZOR PAGE.
+   P. METHOD [ObjectResult StatusCode(int StatusCode, object Value)] umoznuje ACTION METHOD vratit CUSTOM HTTP STATUS CODE.
+27. WEB SERVICES mozu vykonavat DATA VALIDATION INPUT PARAMETERS, aby sa tak uistili, ze ACTION METHODS WEB SERVICES spracuvaju VALID DATA. DATA VALIDATION sa vykonava v nasledujucich krokoch.
+   A. MODEL OBJECT, ktory je INPUT PARAMETER do ACTION METHOD je oznaceny pomocou VALIDATION ATTRIBUTES. ASP.NET CORE definuje standardne VALIDATION ATTRIBUTES, no je mozne definovat aj CUSTOM VALIDATION ATTRIBUTES.
+   B. V ACTION METHOD sa zisti VALUE PROPERTY [ModelStateDictionary.IsValid], ktora urcuje ci VALIDATION prebehla uspesne, alebo zlyhala. Ak ZLYHALA, je mozne zoznam ERROR MESSAGES zistit pomocou PROPERTY [ModelStateDictionary.Values].
+!!! 28. CONTROLLERS implementujuce WEB SERVICES je mozne oznacit pomocou ATTRIBUTE [ApiController]. Ak sa na CONTROLLER aplikuje [ApiController] chovanie ACTION METHODS je modifikovane nasledujucim sposobom.
+   A. COMPLEX TYPE PARAMETERS v ACTION METHODS NEMUSIA byt oznacene ATTRIBUTE [FromBodyAttribute], pretoze CONTROLLER automaticky predpoklada, ze PARAMETERS su nacitane z HTTP REQUEST MESSAGE BODY.
+   B. NIE je NUTNE vykonavat MANUALNU VALIDATION, pretoze ACTION METHODS vykonavaju AUTOMATICKU VALIDATION. Ak VALIDATION ZLYHA, tak je AUTOMATICKY generovana HTTP RESPONSE MESSAGE s ERROR HTTP STATUS CODE.
+   !!!!! C. V pripade, ze CONTROLLER zisti VALIDATION ERROR, je generovana HTTP RESPONSE MESSAGE s HTTP STATUS CODE 400, pricom CONTENT obsahuje instanciu CLASS [ValidationProblemDetails].
+29. ASP.NET CORE JSON SERIALIZER je mozne konfigurovat volanim METHOD [IServiceCollection IServiceCollection.Configure<JsonOptions>(Action<JsonOptions> ConfigureOptions)]. V CALLBACK METHOD je mozne nakonfigurovat PROPERTIES JSON SERIALIZER ako napriklad ci ma SERIALIZER ignorovat NULL VALUES.
+30. NEWTON-SOFT CORE JSON SERIALIZER je mozne konfigurovat volanim METHOD [IMvcBuilder NewtonsoftJsonMvcBuilderExtensions.AddNewtonsoftJson(Action<MvcNewtonsoftJsonOptions> SetupAction)]. V CALLBACK METHOD je mozne nakonfigurovat PROPERTIES JSON SERIALIZER ako napriklad ci ma SERIALIZER ignorovat NULL VALUES.
+//----------------------------------------------------------------------------------------------------------------------

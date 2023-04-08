@@ -1,0 +1,268 @@
+//----------------------------------------------------------------------------------------------------------------------
+1. Solution demonstruje pouzitie FILTERS v ASP.NET CORE APPLICATIONS.
+2. FILTER COMPONENT obsahujuci CODE, ktory sa casto a opakovane pouziva v ACTION METHOD. Aby tento CODE nebolo potrebne kopirovat do kazdej ACTION METHOD, je ho mozne definovat ako REUSABLE FILTER, ktory je nasledne aplikovany na ACTION METHOD. Typickym prikladom FILTERS je LOGGING ci AUTHORIZATION.
+!!! 3. V ASP.NET existuje viacero typov FILTERS podla toho aku cinnost vykonavaju.
+!!! 4. FILTERS sa v ASP.NET spravidla implementuju ako CUSTOM ATTRIBUTES. Ak je nutne implementovat FILTER, definuje sa CUSTOM ATTRIBUTE, ktory je DERIVED z ATTRIBUTE TYPE, ktory je definovany pre dany typ FILTRA.
+!!!!! 5. FILTERS sa v ASP.NET je mozne implementovat aj priamou implementaciou INTERFACE, ktory implementuje INTERFACE [IFilterMetadata]. ASP.NET definuje sadu INTERFACES, ktore implemenuju INTERFACE [IFilterMetadata] a umoznuju aplikovat FILTERS na rozlicne typy funkcionalit ako je napriklad kontrola HTTP REQUESTS, spracovanie HTTP RESPONSES ci spracovanie EXCEPTIONS.
+6. FILTERS mozu byt aplikovane na rozlicnych urovniach.
+   A. FILTER je aplikovany na urovni ACTION METHOD ak FILTER ATTRIBUTE je aplikovany na danu ACTION METHOD.
+   B. FILTER je aplikovany na urovni CONTROLLERS (RAZOR PAGES) ak FILTER ATTRIBUTE je aplikovany na dany CONTOLLER. Takyto FILTER sa aplikuje na kazdu ACTION METHOD (RAZOR PAGE HANDLERS) daneho CONTROLLER (RAZOR PAGE).
+   C. GLOBALNY FILTER sa aplikuje na vsetky ACTION METHODS (RAZOR PAGE HANDLERS) vsetkych CONTROLLERS (RAZOR PAGES).
+!!! 7. V RAZOR PAGES moze byt FILTER aplikovany IBA na RAZOR PAGES, ale NIE na jednotlive RAZOR PAGE HANDLERS.
+!!! 8. V ASP.NET vsetky FILTERS MUSIA implementovat INTERFACE [IFilterMetadata]. Tento INTERFACE je PRAZDY. To znaci, ze NEOBSAHUJE ZIADNE MEMBERS.
+9. Pre konkretny typ FILTER ASP.NET definuje SPECIALIZOVANE INTERFACES, ktore implementuju INTERFACE [IFilterMetadata].
+   A. INTERFACE [IAuthorizationFilter] definuje AUTHORIZATION FILTER, ktory sa vola pred volanim ACTION METHOD a umoznuje vykonanie AUTHORIZATION prihlaseneho USER.
+   B. INTERFACE [IAsyncAuthorizationFilter] je ASYNCHRONNA verzia INTERFACE [IAuthorizationFilter].
+   C. INTERFACE [IResourceFilter] definuje RESOUCE FILTER, ktory sa vola po AUTHORIZATION FILTER a umoznuje spracovat HTTP MESSAGE. RESOUCE FILTERS sa pouzivaju napriklad na implementaciu CACHING.
+   D. INTERFACE [IAsyncResourceFilter] je ASYNCHRONNA verzia INTERFACE [IResourceFilter].
+   E. INTERFACE [IActionFilter] definuje ACTION FILTER, ktory umoznuje spustit CUSTOM CODE PRED a PO vykonani ACTION METHOD.
+   F. INTERFACE [IAsyncActionFilter] je ASYNCHRONNA verzia INTERFACE [IActionFilter].
+   G. INTERFACE [IPageFilter] definuje ACTION FILTER, ktory umoznuje spustit CUSTOM CODE PRED a PO vykonani RAZOR PAGE HANDLER.
+   H. INTERFACE [IAsyncPageFilter] je ASYNCHRONNA verzia INTERFACE [IPageFilter].
+   I. INTERFACE [IResultFilter] definuje RESULT FILTER, ktory umoznuje spustit CUSTOM CODE PRED a PO spracovani RESULT vrateny ACTION METHOD. Aplikuje sa IBA na ACTION METHODS CONTROLLERS.
+   J. INTERFACE [IAsyncResultFilter] je ASYNCHRONNA verzia INTERFACE [IResultFilter].
+   K. INTERFACE [IExceptionFilter] definuje EXCEPTION FILTER, ktory umoznuje spracovat EXCEPTION, ktoru vygenerovala ACTION METHOD.
+   L. INTERFACE [IAsyncExceptionFilter] je ASYNCHRONNA verzia INTERFACE [IExceptionFilter].
+10. ASP.NET definuje vzdy dvojicu FILTER INTERFACES. Jeden pre SYNCHRONNE a druhy pre ASYNCHRONNE spracovanie.
+!!! 11. ASP.NET definuje PEVNE PORADIE v akom su jednotlive typy FILTERS volane. Ak v ACTION METHOD (RAZOR PAGE HANDLER NEDOSLO k vzniku EXCEPTION, je poradie volania FILTERS nasledujuce.
+   A. AUTHORIZATION FILTERS su volane ako prve.
+   B. RESOURCE FILTERS su volane po AUTHORIZATION FILTERS.
+   C. ACTION/PAGE FILTERS su volane po RESOURCE FILTERS.
+   !!! D. Je zavolana ACTION METHOD, alebo RAZOR PAGE HANDLER, ktora negeneruje EXCEPTION.
+   E. Znova su volane ACTION/PAGE FILTERS, ktore mozu spracovat RESPONSE.
+   F. Zavolaju sa RESULT FILTERS, ktore mozu dalej spracovat RESPONSE.
+   G. Zavolaju sa RESOURCE FILTERS, ktore mozu spracovat RESPONSE.
+!!! 12. ASP.NET definuje PEVNE PORADIE v akom su jednotlive typy FILTERS volane. Ak v ACTION METHOD (RAZOR PAGE HANDLER DOSLO k vzniku EXCEPTION, je poradie volania FILTERS nasledujuce.
+   A. AUTHORIZATION FILTERS su volane ako prve.
+   B. RESOURCE FILTERS su volane po AUTHORIZATION FILTERS.
+   C. ACTION/PAGE FILTERS su volane po RESOURCE FILTERS.
+   !!! D. Je zavolana ACTION METHOD, alebo RAZOR PAGE HANDLER, ktora generuje EXCEPTION.
+   E. Znova su volane ACTION/PAGE FILTERS, ktore mozu spracovat RESPONSE.
+   !!!!! F. V pripade, ze niektory z ACTION/PAGE FILTERS spracoval EXCEPTION (nastavenim PROPERTY [ActionExecutedContext.ExceptionHandled] na TRUE) su volane RESULT FILTERS, ktore mozu dalej spracovat RESPONSE.
+   !!!!! G. V pripade, ze ZIADEN z ACTION/PAGE FILTERS nespracoval EXCEPTION (nastavenim PROPERTY [ActionExecutedContext.ExceptionHandled] na TRUE) su volane EXCEPTION FILTERS, ktore mozu vykonat HANDLING vzniknutej EXCEPTION.
+   H. Po volani RESULT FILTERS, alebo EXCEPTION FILTERS su znova volane RESOURCE FILTERS, ktore mozu spracovat RESPONSE.
+!!!!! 13. Ak aj EXCEPTION FILTERS spracuju EXCEPTION nastavenim PROPERTY [ExceptionContext.ExceptionHandled] na TRUE, RESULT FILTERS uz NIE SU VOLANE. RESULT FILTERS su volane IBA ak ACTION/PAGE FILTERS spracovali EXCEPTION nastavenim PROPERTY [ActionExecutedContext.ExceptionHandled] na TRUE.
+14. METHODS FILTER INTERFACES definuju ako PARAMETERS FILTER CONTEXT OBJECTS, ktore mozu FILTERS vyuzit pri vykonavani svojej cinnosti. Vsetky FILTER CONTEXT OBJECTS maju ako spolocny BASE CLASS CLASS [FilterContext], ktora ma nasledujuce MEMBERS.
+   A. PROPERTY [ActionDescriptor] vracia instanciu CLASS [ActionDescriptor], ktora vracia informacie o ACTION METHOD, ktora bude ci bola vyvolana.
+   B. PROPERTY [HttpContext] vracia instanciu CLASS [HttpContext], ktora umoznuje pristup k mnozstvu CONTEXT OBJECTS ako napriklad k SESSION OBJECT.
+   C. PROPERTY [ModelState] vracia instanciu CLASS [ModelStateDictionary], ktora sa pouziva na validaciu DATA zaslanych z CLIENT.
+   D. PROPERTY [RouteData] vracia instanciu CLASS [RouteData], ktora umoznuje pristup k ROUTE DATA, ktore vrati ROUTING SYSTEM.
+   E. PROPERTY [Filters] vracia instanciu CLASS [IList<Filters>], ktora obsahuje vsetky FILTERS, ktore su na danu ACTION METHOD aplikovane.
+15. INTERFACE [IAuthorizationFilter] reprezentuje SYNCHRONNU verziu AUTHORIZATION FILTER. Ma jedinu METHOD [void OnAuthorization(AuthorizationFilterContext Context)].
+16. INTERFACE [IAsyncAuthorizationFilter] reprezentuje ASYNCHRONNU verziu AUTHORIZATION FILTER. Ma jedinu METHOD [Task OnAuthorizationAsync(AuthorizationFilterContext Context)].
+!!! 17. CLASS [AuthorizationFilterContext] reprezentuje FILTER CONTEXT OBJECT pre AUTHORIZATION FILTERS. Je DERIVED z CLASS [FilterContext]. Ma PROPERTY [AuthorizationFilterContext.Result], ktora umoznuje nastavit RESULT v pripade, ze AUTHORIZATION zlyhala.
+18. SYNCHRONOUS AUTHORIZATION FILTERS funguju nasledujucim sposobom.
+   A. AUTHORIZATION FILTERS su volane VZDY ako PRVE, este PRED vykonanim ACTION METHOD (RAZOR PAGE HANDLER).
+   B. ASP.NET vyvola METHOD [void IAuthorizationFilter.OnAuthorization(AuthorizationFilterContext Context)].
+   !!! C. Ak FILTER zisti, ze HTTP MESSAGE je UNAUTHORIZED, tak MUSI vo svojom CODE nastavit PROPERTY [AuthorizationFilterContext.Result]. Ak ASP.NET zisti, ze PROPERTY [AuthorizationFilterContext.Result] je nastavena, tak NEVOLA ACTION METHOD (RAZOR PAGE HANDLER), ale vrati RESULT nastaveny v tejto PROPERTY ako HTTP RESPONSE.
+19. ASYNCHRONOUS AUTHORIZATION FILTERS funguju nasledujucim sposobom.
+   A. AUTHORIZATION FILTERS su volane VZDY ako PRVE, este PRED vykonanim ACTION METHOD (RAZOR PAGE HANDLER).
+   B. ASP.NET vyvola METHOD [Task IAsyncAuthorizationFilter.OnAuthorizationAsync(AuthorizationFilterContext Context)].
+   !!! C. Ak FILTER zisti, ze HTTP MESSAGE je UNAUTHORIZED, tak MUSI vo svojom CODE nastavit PROPERTY [AuthorizationFilterContext.Result]. Ak ASP.NET zisti, ze PROPERTY [AuthorizationFilterContext.Result] je nastavena, tak NEVOLA ACTION METHOD (RAZOR PAGE HANDLER), ale vrati RESULT nastaveny v tejto PROPERTY ako HTTP RESPONSE.
+20. INTERFACE [IResourceFilter] reprezentuje SYNCHRONNU verziu RESOURCE FILTER. Ma nasledujuce MEMBERS.
+   A. METHOD [void OnResourceExecuting(ResourceExecutingContext Context)] je volana PREDTYM ako je vykonany MODEL BINDING a PREDTYM vyvolana ACTION METHOD (RAZOR PAGE HANDLER). RESOURCE FILTER moze vykonat SHORT-CIRCUIT (nezavola sa ACTION METHOD), ak nastavi hodnotu PROPERTY [ResourceExecutingContext.Result].
+   !!! B. METHOD [void OnResourceExecuted(ResourceExecutedContext Context)] je volana POTOM ako je vyvolana ACTION METHOD (RAZOR PAGE HANDLER) a POTOM ako bola vygenerovana HTTP RESPONSE. RESOURCE FILTER NEMOZE zmenit hodnotu RESULT nastavenim PROPERTY [ResourceExecutedContext.Result], pretoze HTTP RESPONSE MESSAGE uz bola vygenerovana. No moze si ulozit hodnotu RESULT a pouzit ju pre dalsie HTTP REQUEST MESSAGES pri implementacii CACHING.
+21. INTERFACE [IAsyncResourceFilter] reprezentuje ASYNCHRONNU verziu RESOURCE FILTER. Ma jedinu METHOD [Task OnResourceExecutionAsync(ResourceExecutingContext Context, ResourceExecutionDelegate Next)].
+22. CLASS [ResourceExecutingContext] reprezentuje FILTER CONTEXT OBJECT pre METHOD [void OnResourceExecuting(ResourceExecutingContext Context)]. Je DERIVED z CLASS [FilterContext]. Ma nasledujuce MEMBERS.
+   A. PROPERTY [ValueProviderFactories] TYPE [IList<IValueProviderFactory>] obsahuje OBJECTS vykonavajucich MODEL BINDING.
+   !!! B. PROPERTY [Result] TYPE [IActionResult] obsahuje RESULT. Ak je tato PROPERTY nastavena, tak sa ACTION METHOD (RAZOR PAGE HANDLER) NEVOLA.
+23. CLASS [ResourceExecutedContext] reprezentuje FILTER CONTEXT OBJECT pre METHOD [void OnActionExecuted(ActionExecutedContext Context)]. Je DERIVED z CLASS [FilterContext]. Ma nasledujuce MEMBERS.
+   A. PROPERTY [Cancelled] TYPE [bool] obsahuje informaciu ci vykonanie ACTION METHOD bolo SHORT-CIRCUITED.
+   B. PROPERTY [Exception] TYPE [Exception] obsahuje EXCEPTION, ak doslo k UNHANDLED EXCEPTION pocas vykonavania ACTION METHOD (RAZOR PAGE HANDLER).
+   C. PROPERTY [ExceptionDispatchInfo] TYPE [ExceptionDispatchInfo] obsahuje EXCEPTION DISPATCH INFO, ak doslo k UNHANDLED EXCEPTION pocas vykonavania ACTION METHOD (RAZOR PAGE HANDLER).
+   D. PROPERTY [ExceptionHandled] TYPE [bool] obsahuje informaciu ci UNHANDLED EXCEPTION, ktoru hodila ACTION METHOD (RAZOR PAGE HANDLER) bola v RESOURCE FILTER HANDLED.
+   !!!!! E. PROPERTY [Result] TYPE [IActionResult] obsahuje RESULT. RESOURCE FILTER NEMOZE zmenit hodnotu RESULT nastavenim PROPERTY [ResourceExecutedContext.Result], pretoze HTTP RESPONSE MESSAGE uz bola vygenerovana. No moze si ulozit hodnotu RESULT a pouzit ju pre dalsie HTTP REQUEST MESSAGES pri implementacii CACHING.
+24. DELEGATE [Task<ResourceExecutedContext> ResourceExecutionDelegate()] sa pouziva v INTERFACE [IAsyncResourceFilter] na spustenie ACTION METHOD (RAZOR PAGE HANDLER), a ZAROVEN na ziskanie instancie CLASS [ResourceExecutedContext], ktora moze vykonat cinnost PO vykonani ACTION METHOD (RAZOR PAGE HANDLER).
+25. SYNCHRONOUS RESOURCE FILTERS funguju nasledujucim sposobom.
+   A. RESOURCE FILTERS sa volaju po vykonani AUTHORIZATION FILTERS.
+   B. ASP.NET vola METHOD [void OnResourceExecuting(ResourceExecutingContext Context)] RESOURCE FILTER.
+   C. Ak RESOURCE FILTER NENASTAVI PROPERTY [ResourceExecutingContext.Result], tak ASP.NET vyvola ACTION METHOD (RAZOR PAGE HANDLER). Ak RESOURCE FILTER NASTAVI PROPERTY [ResourceExecutingContext.Result], tak sa ACTION METHOD (RAZOR PAGE HANDLER) NEZAVOLA.
+   D. Ak nedoslo k SHORTCUT, ASP.NET zavola ACTION METHOD (RAZOR PAGE HANDLER).
+   !!! E. ASP.NET vygeneruje z RESULT HTTP RESPONSE MESSAGE.
+   !!!!! F. ASP.NET vola METHOD [void OnResourceExecuted(ResourceExecutedContext Context)], kde ACTION FILTER (RAZOR PAGE HANDLER) NEMOZE MODIFIKOVAT RESULT, pretoze HTTP RESPONSE MESSAGE uz bola generovana, no moze si RESULT ulozit a pouzit ho pri nasledujucich HTTP REQUEST pri implementacii CACHING. METHOD moze vykonat EXCEPTION HANDLING, ak ACTION METHOD (RAZOR PAGE HANDLER) hodil UNHANDLED EXCEPTION.
+26. ASYNCHRONOUS RESOURCE FILTERS funguju nasledujucim sposobom.
+   A. RESOURCE FILTERS sa volaju po vykonani AUTHORIZATION FILTERS.
+   B. ASP.NET vola METHOD [Task OnResourceExecutionAsync(ResourceExecutingContext Context, ResourceExecutionDelegate Next)].
+   C. METHOD [Task OnResourceExecutionAsync(ResourceExecutingContext Context, ResourceExecutionDelegate Next)] moze spustit lubovolny CODE PRED vykonanim ACTION METHOD (RAZOR PAGE HANDLER).
+   D. METHOD [Task OnResourceExecutionAsync(ResourceExecutingContext Context, ResourceExecutionDelegate Next)] nasledne na zaklade CUSTOM LOGIC spusti vykonanie ACTION METHOD (RAZOR PAGE HANDLER) volanim DELEGATE [ResourceExecutionDelegate].
+   E. Ak nedoslo k SHORTCUT, ASP.NET zavola ACTION METHOD (RAZOR PAGE HANDLER).
+   !!! F. ASP.NET vygeneruje z RESULT HTTP RESPONSE MESSAGE.
+   !!!!! G. METHOD [Task OnResourceExecutionAsync(ResourceExecutingContext Context, ResourceExecutionDelegate Next)] po vykonani ACTION METHOD (RAZOR PAGE HANDLER) moze pomocou RETURN VALUE DELEGATE [ResourceExecutionDelegate] NEMOZE MODIFIKOVAT RESULT, pretoze HTTP RESPONSE MESSAGE uz bola generovana, no moze si RESULT ulozit a pouzit ho pri nasledujucich HTTP REQUEST pri implementacii CACHING. METHOD moze vykonat EXCEPTION HANDLING, ak ACTION METHOD (RAZOR PAGE HANDLER) hodil UNHANDLED EXCEPTION.
+27. INTERFACE [IActionFilter] reprezentuje SYNCHRONNU verziu ACTION FILTER. Ma nasledujuce MEMBERS.
+   A. METHOD [void OnActionExecuting(ActionExecutingContext Context)] je volana PO vykonani MODEL BINDING, ale PREDTYM ako je vyvolana ACTION METHOD. ACTION FILTER moze vykonat SHORT-CIRCUIT (nezavola sa ACTION METHOD), ak nastavi hodnotu PROPERTY [ActionExecutedContext.Result].
+   B. METHOD [void OnActionExecuted(ActionExecutedContext Context)] je volana POTOM ako je vyvolana ACTION METHOD, ale PREDTYM ako bola vygenerovana HTTP RESPONSE. ACTION FILTER moze zmenit hodnotu RESULT z ktorej sa bude generovat HTTP RESPONSE nastavenim PROPERTY [ActionExecutingContext.Result].
+28. INTERFACE [IAsyncActionFilter] reprezentuje ASYNCHRONNU verziu ACTION FILTER. Ma jedinu METHOD [Task OnActionExecutionAsync(ActionExecutingContext Context, ActionExecutionDelegate Next)].
+29. CLASS [ActionExecutingContext] reprezentuje FILTER CONTEXT OBJECT pre METHOD [void OnActionExecuting(ActionExecutingContext Context)]. Je DERIVED z CLASS [FilterContext]. Ma nasledujuce MEMBERS.
+   A. PROPERTY [Controller] TYPE [object] obsahuje CONTROLLER, ktory dany HTTP REQUEST spracovava.
+   B. PROPERTY [ActionArguments] TYPE [IDictionary<string,object>] obsahuje COLLECTION PARAMETERS volanej ACTION METHOD.
+   !!! C. PROPERTY [Result] TYPE [IActionResult] obsahuje RESULT. Ak je tato PROPERTY nastavena, tak sa ACTION METHOD NEVOLA.
+30. CLASS [ActionExecutedContext] reprezentuje FILTER CONTEXT OBJECT pre METHOD [void OnActionExecuted(ActionExecutedContext Context)]. Je DERIVED z CLASS [FilterContext]. Ma nasledujuce MEMBERS.
+   A. PROPERTY [Controller] TYPE [object] obsahuje CONTROLLER, ktory dany HTTP REQUEST spracoval.
+   B. PROPERTY [Cancelled] TYPE [bool] obsahuje informaciu ci vykonanie ACTION METHOD bolo SHORT-CIRCUITED.
+   C. PROPERTY [Exception] TYPE [Exception] obsahuje EXCEPTION, ak doslo k UNHANDLED EXCEPTION pocas vykonavania ACTION METHOD.
+   D. PROPERTY [ExceptionDispatchInfo] TYPE [ExceptionDispatchInfo] obsahuje EXCEPTION DISPATCH INFO, ak doslo k UNHANDLED EXCEPTION pocas vykonavania ACTION METHOD.
+   E. PROPERTY [ExceptionHandled] TYPE [bool] obsahuje informaciu ci UNHANDLED EXCEPTION, ktoru hodila ACTION METHOD bola v ACTION FILTER HANDLED.
+   !!! F. PROPERTY [Result] TYPE [IActionResult] obsahuje RESULT. ACTION FILTER moze hodnotu RESULT zmenit.
+31. DELEGATE [Task<ActionExecutedContext> ActionExecutionDelegate()] sa pouziva v INTERFACE [IAsyncActionFilter] na spustenie ACTION METHOD, a ZAROVEN na ziskanie instancie CLASS [ActionExecutedContext], ktora moze vykonat cinnost PO vykonani ACTION METHOD.
+32. SYNCHRONOUS ACTION FILTERS funguju nasledujucim sposobom.
+   A. ACTION FILTERS sa volaju po vykonani AUTHORIZATION FILTERS.
+   B. ASP.NET vola METHOD [void OnActionExecuting(ActionExecutingContext Context)] ACTION FILTER.
+   C. Ak ACTION FILTER NENASTAVI PROPERTY [ActionExecutingContext.Result], tak ASP.NET vyvola ACTION METHOD. Ak ACTION FILTER NASTAVI PROPERTY [ActionExecutingContext.Result], tak sa ACTION METHOD NEZAVOLA.
+   D. Ak nedoslo k SHORTCUT, ASP.NET zavola ACTION METHOD.
+   E. ASP.NET vola METHOD [void OnActionExecuted(ActionExecutedContext Context)], kde ACTION FILTER moze modifikovat RESULT generovany ACTION METHOD, eventualne vykonat EXCEPTION HANDLING, ak ACTION METHOD hodil UNHANDLED EXCEPTION.
+33. ASYNCHRONOUS ACTION FILTERS funguju nasledujucim sposobom.
+   A. ACTION FILTERS sa volaju po vykonani AUTHORIZATION FILTERS.
+   B. ASP.NET vola METHOD [Task OnActionExecutionAsync(ActionExecutingContext Context, ActionExecutionDelegate Next)].
+   C. METHOD [Task OnActionExecutionAsync(ActionExecutingContext Context, ActionExecutionDelegate Next)] moze spustit lubovolny CODE PRED vykonanim ACTION METHOD.
+   D. METHOD [Task OnActionExecutionAsync(ActionExecutingContext Context, ActionExecutionDelegate Next)] nasledne na zaklade CUSTOM LOGIC spusti vykonanie ACTION METHOD volanim DELEGATE [ActionExecutionDelegate].
+   E. Ak nedoslo k SHORTCUT, ASP.NET zavola ACTION METHOD.
+   F. METHOD [Task OnActionExecutionAsync(ActionExecutingContext Context, ActionExecutionDelegate Next)] po vykonani ACTION METHOD moze pomocou RETURN VALUE DELEGATE [ActionExecutionDelegate] nastavit PROPERTIES CLASS [ActionExecutedContext].
+!!! 34. CLASS [Controller] taktiez implementuje INTERFACE [IActionFilter] a INTERFACE [IAsyncActionFilter], takze technicky vzate je tiez ACTION FILTER. METHODS tychto INTERFACES su ASP.NET volane, ako keby bol na CONTROLLER aplikovany ACTION FILTER.
+!!! 35. Pri POCO CONTROLLERS ASP.NET kontroluje ci POCO CONTROLLERS neimplementuju METHODS INTERFACE [IActionFilter], alebo METHODS INTERFACE [IAsyncActionFilter], a ak ano, tak ich ASP.NET automaticky vola.
+36. INTERFACE [IPageFilter] reprezentuje SYNCHRONNU verziu PAGE FILTER. Ma nasledujuce MEMBERS.
+   A. METHOD [void OnPageHandlerSelected(PageHandlerSelectedContext Context)] je volana PRED vykonanim MODEL BINDING, POTOM ako bol vybraty RAZOR PAGE HANDLER, ale PREDTYM ako bol vybraty RAZOR PAGE HANDLER volany. METHOD moze vykonat zmenu RAZOR PAGE HANDLER, ktory bude volany nastavenim PROPERTY [PageHandlerSelectedContext.HandlerMethod].
+   B. METHOD [void OnPageHandlerExecuting(PageHandlerExecutingContext Context)] je volana PO vykonani MODEL BINDING, ale PREDTYM ako je vyvolany RAZOR PAGE HANDLER. PAGE FILTER moze vykonat SHORT-CIRCUIT (nezavola sa RAZOR PAGE HANDLER), ak nastavi hodnotu PROPERTY [PageHandlerExecutingContext.Result].
+   C. METHOD [void OnPageHandlerExecuted(PageHandlerExecutedContext Context)] je volana POTOM ako je vyvolany RAZOR PAGE HANDLER, ale PREDTYM ako bola vygenerovana HTTP RESPONSE. PAGE FILTER moze zmenit hodnotu RESULT z ktorej sa bude generovat HTTP RESPONSE nastavenim PROPERTY [PageHandlerExecutedContext.Result].
+37. INTERFACE [IAsyncPageFilter] reprezentuje ASYNCHRONNU verziu PAGE FILTER. Ma nasledujuce MEMBERS.
+   A. METHOD [Task OnPageHandlerSelectionAsync(PageHandlerSelectedContext Context)] je volana PRED vykonanim MODEL BINDING, POTOM ako bol vybraty RAZOR PAGE HANDLER, ale PREDTYM ako bol vybraty RAZOR PAGE HANDLER volany. METHOD moze vykonat zmenu RAZOR PAGE HANDLER, ktory bude volany nastavenim PROPERTY [PageHandlerSelectedContext.HandlerMethod].
+   B. METHOD [Task OnActionExecutionAsync(ActionExecutingContext Context, ActionExecutionDelegate Next)] je volana PO vykonani MODEL BINDING, ale PREDTYM ako je vyvolany RAZOR PAGE HANDLER. Pomocou PARAMETER 'Next' METHOD explicitne vola RAZOR PAGE HANDLER. Po zavolani RAZOR PAGE HANDLER moze METHOD zmenit hodnotu RESULT z ktorej sa bude generovat HTTP RESPONSE nastavenim PROPERTY [PageHandlerExecutedContext.Result].
+38. CLASS [PageHandlerSelectedContext] reprezentuje FILTER CONTEXT OBJECT pre METHOD [void OnPageHandlerSelected(PageHandlerSelectedContext Context)]. Je DERIVED z CLASS [FilterContext]. Ma nasledujuce MEMBERS.
+   A. PROPERTY [ActionDescriptor] TYPE [CompiledPageActionDescriptor] obsahuje DESCRIPTOR RAZOR PAGE, ktora dany HTTP REQUEST spracovava.
+   B. PROPERTY [HandlerInstance] TYPE [object] obsahuje RAZOR PAGE, ktora dany HTTP REQUEST spracovava.
+   !!! C. PROPERTY [HandlerMethod] TYPE [HandlerMethodDescriptor] obsahuje DESCRIPTOR RAZOR PAGE HANDLER, ktory dany HTTP REQUEST spracovava. Nastavenim PROPERTY je mozne zmenit HANDLER, ktory spracuje HTTP REQUEST.
+39. CLASS [PageHandlerExecutingContext] reprezentuje FILTER CONTEXT OBJECT pre METHOD [void OnPageHandlerExecuting(PageHandlerExecutingContext Context)]. Je DERIVED z CLASS [FilterContext]. Ma nasledujuce MEMBERS.
+   A. PROPERTY [ActionDescriptor] TYPE [CompiledPageActionDescriptor] obsahuje DESCRIPTOR RAZOR PAGE, ktora dany HTTP REQUEST spracovava.
+   B. PROPERTY [HandlerInstance] TYPE [object] obsahuje RAZOR PAGE, ktora dany HTTP REQUEST spracovava.
+   C. PROPERTY [HandlerMethod] TYPE [HandlerMethodDescriptor] obsahuje DESCRIPTOR RAZOR PAGE HANDLER, ktory dany HTTP REQUEST spracovava.
+   D. PROPERTY [HandlerArguments] TYPE [IDictionary<string,object>] obsahuje COLLECTION PARAMETERS volaneho RAZOR PAGE HANDLER.
+   !!! E. PROPERTY [Result] TYPE [IActionResult] obsahuje RESULT. Ak je tato PROPERTY nastavena, tak sa RAZOR PAGE HANDLER NEVOLA.
+40. CLASS [PageHandlerExecutedContext] reprezentuje FILTER CONTEXT OBJECT pre METHOD [void OnPageHandlerExecuted(PageHandlerExecutedContext Context)]. Je DERIVED z CLASS [FilterContext]. Ma nasledujuce MEMBERS.
+   A. PROPERTY [ActionDescriptor] TYPE [CompiledPageActionDescriptor] obsahuje DESCRIPTOR RAZOR PAGE, ktora dany HTTP REQUEST spracovala.
+   B. PROPERTY [Cancelled] TYPE [bool] obsahuje informaciu ci vykonanie RAZOR PAGE HANDLER bolo SHORT-CIRCUITED.
+   C. PROPERTY [Exception] TYPE [Exception] obsahuje EXCEPTION, ak doslo k UNHANDLED EXCEPTION pocas vykonavania RAZOR PAGE HANDLER.
+   D. PROPERTY [ExceptionDispatchInfo] TYPE [ExceptionDispatchInfo] obsahuje EXCEPTION DISPATCH INFO, ak doslo k UNHANDLED EXCEPTION pocas vykonavania RAZOR PAGE HANDLER.
+   E. PROPERTY [ExceptionHandled] TYPE [bool] obsahuje informaciu ci UNHANDLED EXCEPTION, ktoru hodila ACTION METHOD bola v RAZOR PAGE HANDLER HANDLED.
+   F. PROPERTY [HandlerInstance] TYPE [object] obsahuje RAZOR PAGE, ktora dany HTTP REQUEST spracovala.
+   G. PROPERTY [HandlerMethod] TYPE [HandlerMethodDescriptor] obsahuje DESCRIPTOR RAZOR PAGE HANDLER, ktory dany HTTP REQUEST spracovala.
+   !!! H. PROPERTY [Result] TYPE [IActionResult] obsahuje RESULT. PAGE FILTER moze hodnotu RESULT zmenit.
+41. DELEGATE [Task<PageHandlerExecutedContext> PageHandlerExecutionDelegate()] sa pouziva v INTERFACE [IAsyncPageFilter] na spustenie RAZOR PAGE HANDLER, a ZAROVEN na ziskanie instancie CLASS [PageHandlerExecutedContext], ktora moze vykonat cinnost PO vykonani RAZOR PAGE HANDLER.
+42. SYNCHRONOUS PAGE FILTERS funguju nasledujucim sposobom.
+   A. PAGE FILTERS sa volaju po vykonani AUTHORIZATION FILTERS.
+   B. ASP.NET vola METHOD [void OnPageHandlerSelected(PageHandlerSelectedContext Context)] este pred vykonanim MODEL BINDING, ale uz po vybere RAZOR PAGE HANDLER. V tejto METHOD je vsak mozne vybraty RAZOR PAGE HANDLER zmenit.
+   C. ASP.NET vola METHOD [void OnPageHandlerExecuting(PageHandlerExecutingContext Context)] PAGE FILTER.
+   D. Ak PAGE FILTER NENASTAVI PROPERTY [PageHandlerExecutingContext.Result], tak ASP.NET vyvola RAZOR PAGE HANDLER. Ak PAGE FILTER NASTAVI PROPERTY [PageHandlerExecutingContext.Result], tak sa RAZOR PAGE HANDLER NEZAVOLA.
+   E. Ak nedoslo k SHORTCUT, ASP.NET zavola RAZOR PAGE HANDLER.
+   F. ASP.NET vola METHOD [void OnPageHandlerExecuted(PageHandlerExecutedContext Context)], kde PAGE FILTER moze modifikovat RESULT generovany RAZOR PAGE HANDLER, eventualne vykonat EXCEPTION HANDLING, ak RAZOR PAGE HANDLER hodil UNHANDLED EXCEPTION.
+43. ASYNCHRONOUS PAGE FILTERS funguju nasledujucim sposobom.
+   A. PAGE FILTERS sa volaju po vykonani AUTHORIZATION FILTERS.
+   B. ASP.NET vola METHOD [Task OnPageHandlerSelectionAsync(PageHandlerSelectedContext Context)] este pred vykonanim MODEL BINDING, ale uz po vybere RAZOR PAGE HANDLER. V tejto METHOD je vsak mozne vybraty RAZOR PAGE HANDLER zmenit.
+   C. ASP.NET vola METHOD [Task OnPageHandlerExecutionAsync(PageHandlerExecutingContext Context, PageHandlerExecutionDelegate Next)].
+   D. METHOD [Task OnPageHandlerExecutionAsync(PageHandlerExecutingContext Context, PageHandlerExecutionDelegate Next)] moze spustit lubovolny CODE PRED vykonanim RAZOR PAGE HANDLER.
+   E. METHOD [Task OnPageHandlerExecutionAsync(PageHandlerExecutingContext Context, PageHandlerExecutionDelegate Next)] nasledne na zaklade CUSTOM LOGIC spusti vykonanie RAZOR PAGE HANDLER volanim DELEGATE [PageHandlerExecutionDelegate].
+   F. Ak nedoslo k SHORTCUT, ASP.NET zavola RAZOR PAGE HANDLER.
+   G. METHOD [Task OnPageHandlerExecutionAsync(PageHandlerExecutingContext Context, PageHandlerExecutionDelegate Next)] po vykonani RAZOR PAGE HANDLER moze pomocou RETURN VALUE DELEGATE [PageHandlerExecutionDelegate] nastavit PROPERTIES CLASS [PageHandlerExecutedContext].
+!!! 44. CLASS [PageModel] taktiez implementuje INTERFACE [IPageFilter] a INTERFACE [IAsyncPageFilter], takze technicky vzate je tiez PAGE FILTER. METHODS tychto INTERFACES su ASP.NET volane, ako keby bol na RAZOR PAGE aplikovany PAGE FILTER.
+45. INTERFACE [IResultFilter] reprezentuje SYNCHRONNU verziu RESULT FILTER. Ma nasledujuce MEMBERS.
+   !!! A. METHOD [void OnResultExecuting(ResultExecutingContext Context)] je volana POTOM ako bola zavolana ACTION METHOD (RAZOR PAGE HANDLER), ale PREDTYM ako bol RESULT vrateny ACTION METHOD (RAZOR PAGE HANDLER) pouzity na generovanie HTTP RESPONSE.
+   !!! B. METHOD [void OnResultExecuted(ResultExecutedContext Context)] je volana POTOM ako bola zavolana ACTION METHOD (RAZOR PAGE HANDLER) a POTOM ako bol RESULT vrateny ACTION METHOD (RAZOR PAGE HANDLER) pouzity na generovanie HTTP RESPONSE. To znaci, ze HTTP RESPONSE pocas volania tejto METHOD uz bol vygenerovany.
+46. INTERFACE [IAsyncResultFilter] reprezentuje ASYNCHRONNU verziu RESULT FILTER. Ma jedinu METHOD [Task OnResultExecutionAsync(ResultExecutingContext Context, ResultExecutionDelegate Next)].
+47. CLASS [ResultExecutingContext] reprezentuje FILTER CONTEXT OBJECT pre METHOD [void OnResultExecuting(ResultExecutingContext Context)]. Je DERIVED z CLASS [FilterContext]. Ma nasledujuce MEMBERS.
+   A. PROPERTY [Controller] TYPE [object] obsahuje CONTROLLER, ktory dany HTTP REQUEST spracoval.
+   B. PROPERTY [Cancel] TYPE [bool] umoznuje vykonat CANCELLATION HTTP RESPONSE a to aj napriek tomu, ze ACTION METHOD (RAZOR PAGE HANDLER) uz vratila RESULT.
+   !!! C. PROPERTY [Result] TYPE [IActionResult] obsahuje RESULT, ktory vratila ACTION METOD (RAZOR PAGE HANDLER). RESULT FILTER moze tento RESULT nahradit inym RESULT.
+48. CLASS [ResultExecutedContext] reprezentuje FILTER CONTEXT OBJECT pre METHOD [void OnResultExecuted(ResultExecutedContext Context)]. Je DERIVED z CLASS [FilterContext]. Ma nasledujuce MEMBERS.
+   A. PROPERTY [Controller] TYPE [object] obsahuje CONTROLLER, ktory dany HTTP REQUEST spracoval.
+   B. PROPERTY [Cancelled] TYPE [bool] obsahuje informaciu ci vykonanie ACTION METHOD (RAZOR PAGE HANDLER) bolo SHORT-CIRCUITED.
+   C. PROPERTY [Exception] TYPE [Exception] obsahuje EXCEPTION, ak doslo k UNHANDLED EXCEPTION pocas vykonavania ACTION METHOD (RAZOR PAGE HANDLER).
+   D. PROPERTY [ExceptionDispatchInfo] TYPE [ExceptionDispatchInfo] obsahuje EXCEPTION DISPATCH INFO, ak doslo k UNHANDLED EXCEPTION pocas vykonavania ACTION METHOD (RAZOR PAGE HANDLER).
+   E. PROPERTY [ExceptionHandled] TYPE [bool] obsahuje informaciu ci UNHANDLED EXCEPTION, ktoru hodila ACTION METHOD (RAZOR PAGE HANDLER) bola v RESULT FILTER HANDLED.
+   !!! F. PROPERTY [Result] TYPE [IActionResult] obsahuje RESULT, ktory bol pouzity na vygenerovanie HTTP RESPONSE. PROPERTY ma uz IBA GETTER, kedze HTTP RESPONSE uz BOL VYGENEROVANY.
+!!! 49. DELEGATE [Task<ResultExecutedContext> ResultExecutionDelegate()] sa pouziva v INTERFACE [IAsyncResultFilter] na spustenie dalsich FILTERS danej ACTION METHOD (RAZOR PAGE HANDLER), ktore sa maju vykonat po dokonceni spracovania HTTP REQUEST. RETURN VALUE zaroven sluzi na ziskanie instancie CLASS [ResultExecutedContext], ktora moze vykonat cinnost PO spracovani vsetkych FILTERS danej ACTION METHOD (RAZOR PAGE HANDLER).
+50. SYNCHRONOUS RESULT FILTERS funguju nasledujucim sposobom.
+   A. RESULT FILTERS sa volaju po vykonani ACTION/PAGE FILTERS. RESULT FILTERS sa takisto volaju, ak ACTION METHOD (RAZOR PAGE HANDLER) hodila UNHANDLED EXCEPTION, pritom tato UNHANDLED EXCEPTION bola spracovana v niektorom z ACTION/PAGE FILTERS.
+   !!!!! B. ASP.NET zavola NAJPRV ACTION METHOD (RAZOR PAGE HANDLER).
+   C. Nasledne ASP.NET vola METHOD [void OnResultExecuting(ResultExecutingContext Context)] RESULT FILTER, ktora moze MODIFIKOVAT RESULT, ktory vratila ACTION METHOD (RAZOR PAGE HANDLER) nastavenim PROPERTY [ResultExecutingContext.Result].
+   D. ASP.NET nasledne vola vsetky ostatne FILTERS, ktore boli aplikovane na ACTION METHOD (RAZOR PAGES) a maju sa vykonat pred vygenerovanim HTTP RESULT.
+   !!!!! E. ASP.NET vykona vygenerovanie HTTP RESPONSE z RESULT ulozeneho v PROPERTY [ResultExecutingContext.Result] volanim METHOD [Task IActionResult.ExecuteResultAsync(ActionContext Context)].
+   F. ASP.NET vola METHOD [void OnResultExecuted(ResultExecutedContext Context)], ktora moze vykonat CUSTOM CODE.
+   !!! G. ASP.NET nasledne vola vsetky ostatne FILTERS, ktore boli aplikovane na ACTION METHOD (RAZOR PAGE) a maju sa vykonat po vygenerovani HTTP RESULT.
+51. ASYNCHRONOUS RESULT FILTERS funguju nasledujucim sposobom.
+   A. RESULT FILTERS sa volaju po vykonani ACTION/PAGE FILTERS. RESULT FILTERS sa takisto volaju, ak ACTION METHOD (RAZOR PAGE HANDLER) hodila UNHANDLED EXCEPTION, pritom tato UNHANDLED EXCEPTION bola spracovana v niektorom z ACTION/PAGE FILTERS.
+   !!!!! B. ASP.NET zavola NAJPRV ACTION METHOD (RAZOR PAGE HANDLER).
+   C. ASP.NET vola METHOD [Task OnResultExecutionAsync(ResultExecutingContext Context, ResultExecutionDelegate Next)].
+   D. METHOD [Task OnResultExecutionAsync(ResultExecutingContext Context, ResultExecutionDelegate Next)] moze spustit lubovolny CODE PRED vykonanim vygenerovanim HTTP RESPONSE.
+   !!!!! E. METHOD [Task OnResultExecutionAsync(ResultExecutingContext Context, ResultExecutionDelegate Next)] nasledne spusti vykonanie ACTION METHOD (RAZOR PAGE HANDLER) volanim DELEGATE [ResultExecutionDelegate], ktory vola vsetky ostatne FILTERS, ktore boli aplikovane na ACTION METHOD (RAZOR PAGE) a maju sa vykonat pred vygenerovanim HTTP RESULT.
+   !!!!! F. ASP.NET vykona vygenerovanie HTTP RESPONSE z RESULT ulozeneho v PROPERTY [ResultExecutingContext.Result] volanim METHOD [Task IActionResult.ExecuteResultAsync(ActionContext Context)].
+   G. METHOD [Task OnResultExecutionAsync(ResultExecutingContext Context, ResultExecutionDelegate Next)] moze vykonat CUSTOM CODE, ktory sa vykonava az po vygenerovani HTTP RESPONSE.
+   !!! H. ASP.NET nasledne vola vsetky ostatne FILTERS, ktore boli aplikovane na ACTION METHOD (RAZOR PAGE) a maju sa vykonat po vygenerovani HTTP RESULT.
+52. ASP.NET implementuje CLASS [ActionFilterAttribute], ktora reprezentuje zjednotenie ACTION FILTER a RESULT FILTER. CLASS [ActionFilterAttribute] implementuje nasledujuce INTERFACES.
+   A. INTERFACE [IFilterMetadata] ozacuje CLASS ako FILTER CLASS.
+   B. INTERFACE [IOrderedFilter] umoznuje definovat poradie vykonavania CODE jednotlivych FILTERS.
+   C. INTERFACE [IActionFilter] reprezentuje SYNCHRONNU VERZIU ACTION FILTER.
+   D. INTERFACE [IAsyncActionFilter] reprezentuje ASYNCHRONNU VERZIU ACTION FILTER.
+   E. INTERFACE [IResultFilter] reprezentuje SYNCHRONNU VERZIU RESULT FILTER.
+   F. INTERFACE [IAsyncResultFilter] reprezentuje ASYNCHRONNU VERZIU RESULT FILTER.
+53. ASP.NET definuje ALWAYS RESULT FILTERS. Pre ALWAYS RESULT FILTERS platia nasledujuce fakty.
+   A. INTERFACE [IAlwaysRunResultFilter] predstavuje SYNCHRONOUS VERSION ALWAYS RESULT FILTER. INTERFACE [IAlwaysRunResultFilter] je identicky s INTERFACE [IResultFilter].
+   B. INTERFACE [IAsyncAlwaysRunResultFilter] predstavuje ASYNCHRONOUS VERSION ALWAYS RESULT FILTER. INTERFACE [IAsyncAlwaysRunResultFilter] je identicky s INTERFACE [IAsyncResultFilter].
+   !!! C. ALWAYS RESULT FILTERS su volane aj vtedy, ak doslo k SHORTCUT v ACTION/PAGE FILTERS.
+   !!!!! D. ALWAYS RESULT FILTERS su volane aj vtedy, ak v ACTION METHOD (RAZOR PAGE HANDLER) doslo k EXCEPTION, ktora vsak bola v ACTION/PAGE FILERS, alebo v EXCEPTION FILTERS HANDLED. Ak EXCEPTION NEBOLA NAHDLED, tak sa ALWAYS RESULT FILTERS NEVOLAJU.
+54. INTERFACE [IExceptionFilter] reprezentuje SYNCHRONNU verziu EXCEPTION FILTER. Ma jedinu METHOD [void OnException(ExceptionContext Context)].
+55. INTERFACE [IAsyncExceptionFilter] reprezentuje ASYNCHRONNU verziu EXCEPTION FILTER. Ma jedinu METHOD [Task OnExceptionAsync(ExceptionContext Context)].
+!!! 56. CLASS [ExceptionContext] reprezentuje FILTER CONTEXT OBJECT pre EXCEPTION FILTERS. Je DERIVED z CLASS [FilterContext]. Ma nasledujuce MEMBERS.
+   A. PROPERTY [Exception] TYPE [Exception] obsahuje EXCEPTION, ak doslo k UNHANDLED EXCEPTION pocas vykonavania ACTION METHOD (RAZOR PAGE HANDLER).
+   B. PROPERTY [ExceptionDispatchInfo] TYPE [ExceptionDispatchInfo] obsahuje EXCEPTION DISPATCH INFO, ak doslo k UNHANDLED EXCEPTION pocas vykonavania ACTION METHOD (RAZOR PAGE HANDLER).
+   C. PROPERTY [ExceptionHandled] TYPE [bool] obsahuje informaciu ci UNHANDLED EXCEPTION, ktoru hodila ACTION METHOD (RAZOR PAGE HANDLER) bola v EXCEPTION FILTER HANDLED.
+   !!! D. PROPERTY [Result] TYPE [IActionResult] obsahuje RESULT, ktory bude pouzity na vygenerovanie HTTP RESPONSE. EXCEPTION FILTER moze tuto PROPERTY nastavit.
+57. SYNCHRONOUS EXCEPTION FILTERS funguju nasledujucim sposobom.
+   A. EXCEPTION FILTERS su volane ak v ACTION METHOD (RAZOR PAGE HANDLER) doslo k hodeniu UNHANDLED EXCEPTION a ZIADEN z ACTION/PAGE FILTER tuto EXCEPTION NESPRACOVAL.
+   B. ASP.NET vyvola METHOD [void OnException(ExceptionContext Context)].
+   !!! C. Ak FILTER dokaze EXCEPTION spracovat, tak vo svojom CODE musi nastavit PROPERTY [ExceptionContext.Result] a ZAROVEN nastavit PROPERTY [ExceptionContext.ExceptionHandled] na TRUE. ASP.NET pouzije hodnotu na vygenerovanie HTTP RESPONSE.
+58. ASYNCHRONOUS EXCEPTION FILTERS funguju nasledujucim sposobom.
+   A. EXCEPTION FILTERS su volane ak v ACTION METHOD (RAZOR PAGE HANDLER) doslo k hodeniu UNHANDLED EXCEPTION a ZIADEN z ACTION/PAGE FILTER tuto EXCEPTION NESPRACOVAL.
+   B. ASP.NET vyvola METHOD [Task OnExceptionAsync(ExceptionContext Context)].
+   !!! C. Ak FILTER dokaze EXCEPTION spracovat, tak vo svojom CODE musi nastavit PROPERTY [ExceptionContext.Result] a ZAROVEN nastavit PROPERTY [ExceptionContext.ExceptionHandled] na TRUE. ASP.NET pouzije hodnotu na vygenerovanie HTTP RESPONSE.
+!!! 59. FILTERS, ktore su implementovane ako ATTRIBUTE CLASSES su standardne vytvarane ako SINGLETON OBJECT. To znaci, ze pre kazdu aplikaciu FILTER na ACTION METHOD (RAZOR PAGE HANDLER) je vytvorena 1 SINGLETON instancia FILTER, ktora je REUSED.
+60. ASP.NET ASP.NET umoznuje definovat CUSTOM LIFETIME FILTER CLASSES nasledujucimi sposobmi.
+   A. Implementaciou INTERFACE [IFilterFactory], ktory je zodpovedny za vytvaranie instancii FILTERS.
+   B. Aplikaciou FILTERS na CONTROLLERS (RAZOR PAGES) a ACTION METHODS pomocou ATTRIBUTE [TypeFilterAttribute].
+   C. Aplikaciou FILTERS na CONTROLLERS (RAZOR PAGES) a ACTION METHODS pomocou ATTRIBUTE [ServiceFilterAttribute].
+61. INTERFACE [IFilterFactory] umoznuje vytvarat instancie FILTERS. INTERFACE [IFilterFactory] ma nasledujuce MEMBERS.
+   A. PROPERTY [IsReusable] TYPE [bool] urcuje ci vytvoreny FILTER moze byt REUSED.
+   B. METHOD [IFilterMetadata CreateInstance(IServiceProvider ServiceProvider)] vytvara novu instanciu daneho FILTER.
+!!! 62. ASP.NET umoznuje vytvarat instancie FILTER CLASSES pomocou INTERFACE [IFilterFactory] nasledujucim sposobom.
+   A. FILTER CLASS, ktory implementuje dany FILTER musi implementovat INTERFACE [IFilterFactory].
+   B. FILTER CLASS v METHOD [IFilterMetadata CreateInstance(IServiceProvider ServiceProvider)] musi vytvorit instanciu daneho FILTER.
+   C. FILTER CLASS mozu mat v CONSTRUCTORS definovane INTERFACES (eventualne BASE CLASSES) na ktore sa ma aplikovat DEPENDENCY INJECTION.
+!!! 63. Ak FILTER CLASS implementuje INTERFACE [IFilterFactory], moze byt tento FILTER zaregistrovany ako SERVICE v DEPENDENCY INJECTION FRAMEWORK. Podla pouzitej registracnej METHOD potom je mozne definovat LIFETIME daneho FILTER.
+!!! 64. ASP.NET umoznuje vytvarat instancie FILTER CLASSES pomocou ATTRIBUTE [TypeFilterAttribute]. Pre pouzitie ATTRIBUTE [TypeFilterAttribute] platia nasledujuce fakty.
+   A. FILTER CLASSES vytvorene pomocou ATTRIBUTE [TypeFilterAttribute] implementuju FILTER INTERFACES.
+   !!! B. FILTER CLASSES vytvorene pomocou ATTRIBUTE [TypeFilterAttribute] NIE su implementovane ako ATTRIBUTE CLASSES, pretoze sa na CONTROLLERS, ACTION METHODS ci RAZOR PAGES NEAPLIKUJU ako specificke ATTRIBUTES.
+   C. FILTER CLASSES vytvorene pomocou ATTRIBUTE [TypeFilterAttribute] maju v CONSTRUCTORS definovane INTERFACES (eventualne BASE CLASSES) na ktore sa ma aplikovat DEPENDENCY INJECTION.
+   !!! D. FILTER CLASSES vytvorene pomocou ATTRIBUTE [TypeFilterAttribute] sa na CONTROLLERS (RAZOR PAGES), alebo ACTION METHODS aplikuju pomocou ATTRIBUTE [TypeFilterAttribute], do ktoreho sa ako PARAMETER dava TYPE FILTER CLASS.
+   !!!!! E. Pri aplikacii ATTRIBUTE [TypeFilterAttribute] ASP.NET vytvara instancie FILTER CLASSES s TRANSIENT LIFETIME. To znaci, ze pre kazde pouzitie FILTER CLASS je vytvorena nova instancia FILTER CLASS.
+   !!! F. Samotne instancie FILTER CLASSES NIE su vytvorene priamo pomocou DEPENDENCY INJECTION CONTAINER, alebo pomocou DEPENDENCY INJECTION OBJECT FACTORY.
+!!! 65. ASP.NET umoznuje vytvarat instancie FILTER CLASSES pomocou ATTRIBUTE [ServiceFilterAttribute]. Pre pouzitie ATTRIBUTE [ServiceFilterAttribute] platia nasledujuce fakty.
+   A. FILTER CLASSES vytvorene pomocou ATTRIBUTE [ServiceFilterAttribute] implementuju FILTER INTERFACES.
+   !!! B. FILTER CLASSES vytvorene pomocou ATTRIBUTE [ServiceFilterAttribute] NIE su implementovane ako ATTRIBUTE CLASSES, pretoze sa na CONTROLLERS, ACTION METHODS a RAZOR PAGES NEAPLIKUJU ako specificke ATTRIBUTES.
+   C. FILTER CLASSES vytvorene pomocou ATTRIBUTE [ServiceFilterAttribute] maju v CONSTRUCTORS definovane INTERFACES (eventualne BASE CLASSES) na ktore sa ma aplikovat DEPENDENCY INJECTION.
+   !!! D. FILTER CLASSES vytvorene pomocou ATTRIBUTE [ServiceFilterAttribute] sa na CONTROLLERS (RAZOR PAGES), alebo ACTION METHODS aplikuju pomocou ATTRIBUTE [ServiceFilterAttribute], do ktoreho sa ako PARAMETER dava TYPE FILTER CLASS.
+   !!!!! E. Instancia FILTER TYPE MUSI byt zaregistrovana v DEPENDENCY INJECTION FRAMEWORK, pretoze ASP.NET FILTERS, ktore su aplikovane pomocou ATTRIBUTE [ServiceFilterAttribute] vytvara prostrednictvom DEPENDENCY INJECTION FRAMEWORK.
+   !!!!! F. LIFESCOPE FILTER CLASSES vytvorene pomocou ATTRIBUTE [ServiceFilterAttribute] je urceny METHOD, ktora bola pouzita na zaregistrovanie FILTER TYPE v DEPENDENCY INJECTION FRAMEWORK. To znaci, ze LIFESCOPE FILTERS moze byt TRANSIENT, SCOPED, alebo SINGLETON.
+66. ASP.NET umoznuje definovanie GLOBAL FILTERS. Pre GLOBAL FILTERS platia nasledujuce fakty.
+   A. GLOBAL FILTERS su aplikovane na VSETKY ACTION METHODS (RAZOR PAGE HANDLERS) v PROGRAME.
+   !!! B. GLOBAL FILTERS je mozne zaregistrovat volanim METHOD [MvcOptions.Filters.Add<TFilter>()]. Pri pouziti tejto METHOD NIE je NUTNE mat FILTER TYPE zaregistrovany v DEPENDENCY INJECTION FRAMEWORK, kde instancie FILTER TYPE NIE su vytvarane DEPENDENCY INJECTION FRAMEWORK. LIFESCOPE daneho GLOBAL FILTER je VZDY TRANSIENT.
+   !!!!! C. GLOBAL FILTERS je mozne zaregistrovat volanim METHOD [MvcOptions.Filters.AddService()]. Pri pouziti tejto METHOD je NUTNE mat FILTER TYPE zaregistrovany v DEPENDENCY INJECTION FRAMEWORK, ktory vytvara instancie FILTER TYPE a zaroven urcuje LIFESCOPE daneho GLOBAL FILTER.
+67. Ak na ACTION METHOD je aplikovanych viacero FILTERS rovnakeho typu, poradie ich volania zavisi od toho ci FILTER TYPE implementuje INTERFACE [IOrderedFilter].
+   A. Ak FILTER TYPE neimplementuje INTERFACE [IOrderedFilter], potom poradie volanie FILTERS rovnakeho TYPE urcuje poradie v akom su FILTERS aplikovane na ACTION METHODS a CONTROLLERS.
+   B. Ak FILTER TYPE implementuje INTERFACE [IOrderedFilter], potom poradie volanie FILTERS rovnakeho TYPE urcuje hodnota PROPERTY [IOrderedFilter.Order].
+68. Ak FILTER TYPE neimplementuje INTERFACE [IOrderedFilter], potom poradie volanie FILTERS rovnakeho TYPE je nasledujuce.
+   A. Ako prve sa volaju GLOBAL FILTERS v poradi v akom su zaregistrovane.
+   B. Nasledne su volane CONTROLLER (RAZOR PAGE) FILTERS v poradi v akom su aplikovane na CONTROLLER (RAZOR PAGE).
+   C. Ako posledne su volane ACTION METHOD FILTERS v poradi v akom su aplikovane na ACTION METHOD.
+   !!! D. Pre ACTION/PAGE FILTERS a RESULT FILTERS su METHOD [void IActionFilter.OnActionExecuted(ActionExecutedContext Context)], METHOD [void IPageFilter.OnPageHandlerExecuted(PageHandlerExecutedContext Context)] a METHOD [void IResultFilter.OnResultExecuted(ResultExecutedContext Context)] volane v OBRATENOM PORADI.
+69. Ak FILTER TYPE implementuje INTERFACE [IOrderedFilter], potom poradie volanie FILTERS rovnakeho TYPE je nasledujuce.
+   A. FILTERS su zoradene podla hodnoty PROPERTY [IOrderedFilter.Order], pricom pre GLOBAL FILTERS je nastavena hodnota PROPERTY [IOrderedFilter.Order], ktora bola specifikovana ako PARAMETER METHOD [MvcOptions.Filters.Add()], alebo METHOD [MvcOptions.Filters.AddService()].
+   B. FILTERS su volane podla hodnoty PROPERTY [IOrderedFilter.Order], pricom ako prve su volane FILTERS s NAJMENSOU hodnotou PROPERTY [IOrderedFilter.Order].
+   !!! C. Pre ACTION/PAGE FILTERS a RESULT FILTERS su METHOD [void IActionFilter.OnActionExecuted(ActionExecutedContext Context)], METHOD [void IPageFilter.OnPageHandlerExecuted(PageHandlerExecutedContext Context)] a METHOD [void IResultFilter.OnResultExecuted(ResultExecutedContext Context)] volane v OBRATENOM PORADI.
+//----------------------------------------------------------------------------------------------------------------------

@@ -1,0 +1,138 @@
+//----------------------------------------------------------------------------------------------------------------------
+1. Solution demonstruje pouzitie PLATFORM FEATURES a ASP.NET CORE APPLICATIONS.
+2. COOKIES su textove data, ktore mozu byt pridane do HTTP RESPONSE MESSAGE. WEB BROSER po prijati COOKIES zabezpecuje, ze kazda dalsia HTTP REQUEST MESSAGE na rovnaku SITE bude obsahovat vsetky COOKIES. COOKIES je tak mozne pouzit na ukladanie CONTENT DATA na CLIENT SIDE, ktore su pri kazdej HTTP REQUEST MESSAGE odoslane na SERVER SIDE.
+3. S COOKIES v HTTP REQUEST MESSAGE je mozne pracovat pomocou PROPERTY [Cookies] TYPE [IRequestCookieCollection]. INTERFACE [IRequestCookieCollection] implementuje INTERFACE [IEnumerable<KeyValuePair<string,string>>] ma nasledujuce MEMBERS.
+   A. PROPERTY [Count] TYPE [int] obsahuje pocet COOKIES v HTTP REQUEST MESSAGE.
+   B. PROPERTY [Keys] TYPE [ICollection<string>] obsahuje NAMES vsetkych COOKIES v HTTP REQUEST MESSAGE.
+   C. INDEXER [this[string Key]] umoznuje ziskat COOKIE z HTTP REQUEST MESSAGE pomocou jeho NAME.
+   D. METHOD [bool ContainsKey(string Key)] vracia informaciu ci HTTP REQUEST MESSAGE obsahuje COOKIE s danym NAME.
+   E. METHOD [bool TryGetValue(string Key, out string Value)] sa poukusi vybrat z HTTP REQUEST MESSAGE COOKIE s danym NAME.
+4. S COOKIES v HTTP RESPONSE MESSAGE je mozne pracovat pomocou PROPERTY [Cookies] TYPE [IResponseCookies]. INTERFACE [IResponseCookies] ma nasledujuce MEMBERS.
+   A. METHOD [Append(string Key, string Value)] pridava do HTTP RESPONSE MESSAGE novu COOKIE, alebo ak COOKIE existuje, tak existujucu COOKIE VALUE nahradi novou.
+   B. METHOD [void Append(string Key, string Value, CookieOptions Options)] pridava do HTTP RESPONSE MESSAGE novu COOKIE, alebo ak COOKIE existuje, tak existujucu COOKIE VALUE nahradi novou. METHOD umoznuje definovat aj COOKIE OPTIONS ako je napriklad EXPIRATION TIME.
+   C. METHOD [void Delete(string Key)] odstranuje COOKIE z HTTP RESPONSE MESSAGE.
+   D. METHOD [void Delete(string Key, CookieOptions Options)] odstranuje COOKIE z HTTP RESPONSE MESSAGE. METHOD umoznuje definovat aj COOKIE OPTIONS ako je napriklad EXPIRATION TIME.
+5. CLASS [CookieOptions] umoznuje nastavovat rozlicne aspekty COOKIES. CLASS [CookieOptions] ma nasledujuce MEMBERS.
+   A. PROPERTY [Domain] TYPE [string] urcuje nazov DOMAIN s ktorou je dana COOKIE asociovana. Standardne je COOKIE asociovana s DOMAIN WEB SITE, kde bola vytvorena.
+   B. PROPERTY [Expires] TYPE [DateTimeOffset?] obsahuje EXPIRATION TIME danej COOKIE.
+   C. PROPERTY [HttpOnly] TYPE [bool] urcuje ci COOKIE ma byt posielana iba pri vykonavani HTTP REQUESTS, alebo aj JAVASCRIPT REQUESTS.
+   D. PROPERTY [IsEssential] TYPE [bool] urcuje ci COOKIE je klucova pre fungovanie ASP.NET CORE PROGRAM. Ak ano, potom sa nevyzaduje USER CONSENT.
+   E. PROPERTY [MaxAge] TYPE [TimeSpan?] obsahuje EXPIRATION TIME danej COOKIE. Starsie BROWSERS tuto funkcionalitu nepodporuju.
+   F. PROPERTY [Path] TYPE [string] obsahuje URL PATH, ktoru musi URL obsahovat, aby bola COOKIE zaslana na SERVER SIDE.
+   G. PROPERTY [SameSite] TYPE [SameSiteMode] urcuje ci COOKIE ma byt pouzita aj pri CROSS SITE REQUESTS.
+   H. PROPERTY [Secure] TYPE [bool] urcuje ci COOKIE ma byt posielana vylucne iba cez HTTPS PROTOCOL.
+6. ASP.NET CORE umoznuje aplikovat COOKIE POLICY co je zoznam POLICIES, ktore musia COOKIES splnat, ako je napriklad dodrziavanie GDPR. COOKIE POLICY sa nastavuje nasledujucim sposobom.
+   A. Do REQUEST PIPELINE je nutne pridat MIDDLEWARE COMPONENT [CookiePolicyMiddleware] volanim METHOD [IApplicationBuilder IApplicationBuilder.UseCookiePolicy()].
+   B. Konfiguracia COOKIE POLICIES sa vykonava volanim METHOD [IServiceCollection IServiceCollection.Configure<CookiePolicyOptions>(Action<CookiePolicyOptions> ConfigureOptions)].
+   C. COOKIE POLICIES sa nastavuju pomocou CLASS [CookiePolicyOptions].
+7. CLASS [CookiePolicyOptions] umoznuje nastavit COOKIE POLICIES. CLASS ma nasledujuce MEMBERS.
+   A. PROPERTY [CheckConsentNeeded] TYPE [Func<HttpContext,bool>] definuje METHOD, ktora je volana pre instanciu CLASS [HttpContext]. METHOD umoznuje urcit ci pre danu instanciu CLASS [HttpContext] sa ma vykonat kontrola COOKIE CONSENT.
+   B. PROPERTY [ConsentCookie] TYPE [CookieBuilder] obsahuje OBJECT, ktory sa pouziva na konfiguraciu COOKIE CONSENT.
+   C. PROPERTY [HttpOnly] TYPE [HttpOnlyPolicy] urcuje ci COOKIES ma byt posielane iba pri vykonavani HTTP REQUESTS, alebo aj JAVASCRIPT REQUESTS.
+   D. PROPERTY [SameSite] TYPE [MinimumSameSitePolicy] urcuje ci COOKIES maju byt pouzite aj pri CROSS SITE REQUESTS.
+   E. PROPERTY [Secure] TYPE [CookieSecurePolicy] urcuje ci COOKIES maju byt posielane vylucne iba cez HTTPS PROTOCOL.
+   F. PROPERTY [OnAppendCookie] TYPE [Action<AppendCookieContext>] definuje METHOD, ktora je volana pri pridani noveho COOKIE.
+   G. PROPERTY [OnDeleteCookie] TYPE [Action<DeleteCookieContext>] definuje METHOD, ktora je volana pri odstraneni existujuceho COOKIE.
+8. COOKIE CONSENT je mozne spravovat pomocou INTERFACE [ITrackingConsentFeature]. INTERFACE [ITrackingConsentFeature] ma nasledujuce MEMBERS.
+   A. PROPERTY [CanTrack] TYPE [bool] urcuje ci je nutne vykonat COOKIE CONSENT, alebo COOKIE CONSENT uz bol udeleny.
+   B. PROPERTY [HasConsent] TYPE [bool] urcuje ci COOKIE CONSENT uz bol udeleny.
+   C. PROPERTY [IsConsentNeeded] TYPE [bool] urcuje ci je nutne vykonat COOKIE CONSENT.
+   D. METHOD [string CreateConsentCookie()] vytvara CONSENT COOKIE, ktory sa pouziva z JAVASCRIPTS.
+   E. METHOD [void GrantConsent()] prida CONSENT COOKIE do HTTP RESPONSE MESSAGE, ktory garantuje udelenie CONSENT.
+   F. METHOD [void WithdrawConsent()] odstrani CONSENT COOKIE, ktory garantuje udelenie CONSENT.
+!!! 9. SESSION je mechanizmus, ktory umoznuje ukladat data asociovane s danym USER, podobne ako COOKIES. Pre SESSION platia nasledujuce fakty.
+   A. SESSION uklada data na SERVER SIDE do niektorej zo SERVER SIDE STORAGE, ktora moze byt but PERSISTENT (DB), alebo NON-PERSISTENT (MEMORY).
+   !!! B. Na identifikaciu USER SESSION pouziva SESSION COOKIE. SESSION COOKIE NEOBSAHUJE konkretne data, ale iba UNIQUE IDENTIFIER daneho USER, pricom data su ulozene na SERVER SIDE.
+   C. SESSION MIDDLEWARE COMPONENT pri spracovavani HTTP REQUEST MESSAGE nacita hodnotu SESSION COOKIE z HTTP REQUEST MESSAGE. Ak takato hodnota v SESSION STORAGE existuje, tak zaroven nacita aj SESSION DATA asociovane s danym USER. Ak takato hodnota v SESSION STORAGE neexistuje, potom sa vytvori NOVA SESSION.
+   D. SESSION DATA su pristupne pomocou PROPERTY [HttpContext.Session] TYPE [ISession].
+10. Pristup k SESSION DATA sa vykonava pomocou INTERFACE [ISession]. INTERFACE [ISession] ma nasledujuce MEMBERS.
+   A. PROPERTY [Id] TYPE [string] vracia UNIQUE IDENTIFIER danej SESSION.
+   B. PROPERTY [IsAvailable] TYPE [bool] vracia informaciu ci SESSION DATA boli nacitane.
+   C. PROPERTY [Keys] TYPE [IEnumerable<string>] vracia vsetkych KEYS SESSION DATA.
+   D. METHOD [Task LoadAsync(CancellationToken CancellationToken)] sa pokusi nacitat SESSION DATA zo SESSION STORAGE. METHOD moze hodit EXCEPTION.
+   !!! E. METHOD [Task CommitAsync(CancellationToken CancellationToken)] sa pokusi zapisat SESSION DATA do SESSION STORAGE. METHOD moze hodit EXCEPTION. SESSION DATA je vhodne EXPLICITNE ukladat do SESSION STORAGE volanim tejto METHOD, pretoze aj ked SESSION MIDDLEWARE COMPONENT vykonava automaticky zapis SESSION DATA do SESSION STORAGE, zapis moze ZLYHAT a to moze viest k nekonzistencii PROGRAMU.
+   F. METHOD [bool TryGetValue(string Key, out byte[] Value)] cita SESSION DATA zo SESSION.
+   G. METHOD [void Set(string Key, byte[] Value)] zapisuje SESSION DATA do SESSION.
+   H. METHOD [void Remove(string Key)] odstranuje SESSION DATA identifikovane danym KEY zo SESSION.
+   I. METHOD [void Clear()] odstranuje vsetky SESSION DATA zo SESSION.
+   J. EXTENSION METHOD [byte[] ISession.Get(string Key)] cita SESSION DATA zo SESSION.
+   K. EXTENSION METHOD [int? ISession.GetInt32(string Key)] cita SESSION DATA zo SESSION.
+   L. EXTENSION METHOD [string ISession.GetString(string Key)] cita SESSION DATA zo SESSION.
+   M. EXTENSION METHOD [void ISession.SetInt32(string Key, int Value)] zapisuje SESSION DATA do SESSION.
+   N. EXTENSION METHOD [void ISession.SetString(string Key, string Value)] zapisuje SESSION DATA do SESSION.
+11. SESSION sa v ASP.NET CORE konfiguruje nasledujcim sposobom.
+   A. Nakonfiguruje sa SESSION STORAGE.
+   B. Nakonfiguruje sa SESSION OPTIONS.
+   C. Prida sa SESSION MIDDLEWARE COMPONENT do REQUEST PIPELINE.
+12. SESSION STORAGE sa konfiguruje volanim niektorej z nasledujucich METHOD.
+   A. METHOD [IServiceCollection IServiceCollection.AddDistributedMemoryCache(Action<MemoryDistributedCacheOptions> SetupAction)] zaregistruje IN-MEMORY CACHE PROVIDER. CACHE PROVIDER uklada data v MEMORY a teda CACHE ENTRIES NIE SU PERSISTENT ani SHARED medzi WEB SERVERS.
+   B. METHOD [IServiceCollection IServiceCollection.AddDistributedSqlServerCache(Action<SqlServerCacheOptions> SetupAction)] zaregistruje SQL SERVER CACHE PROVIDER. CACHE PROVIDER uklada data v SQL SERVER DB a teda CACHE ENTRIES SU PERSISTENT a SHARED medzi WEB SERVERS.
+   C. METHOD [IServiceCollection IServiceCollection.AddDistributedRedisCache(Action<RedisCacheOptions> SetupAction)] zaregistruje REDIS CACHE PROVIDER. CACHE PROVIDER uklada data v REDIS DB a teda CACHE ENTRIES SU PERSISTENT a SHARED medzi WEB SERVERS.
+13. SESSION OPTIONS sa konfiguruju volanim METHOD [IServiceCollection AddSession(Action<SessionOptions> Configure)].
+14. SESSION MIDDLEWARE COMPONENT sa pridava do REQUEST PIPELINE nasledujucim sposobom.
+   A. SESSION MIDDLEWARE COMPONENT sa pridava do REQUEST PIPELINE volanim METHOD [IApplicationBuilder IApplicationBuilder.UseSession()].
+   !!! B. Pozicia SESSION MIDDLEWARE COMPONENT v je REQUEST PIPELINE DOLEZITA, pretoze az potom ako HTTP REQUEST MESSAGE prejde cez SESSION MIDDLEWARE COMPONENT su SESSION DATA pristupne.
+15. SESSION sa konfiguruje pomocou CLASS [SessionOptions]. CLASS [SessionOptions] ma nasledujuce MEMBERS.
+   A. PROPERTY [Cookie] TYPE [CookieBuilder] umoznuje konfigurovat SESSION COOKIE PROPERTIES.
+   B. PROPERTY [IdleTimeout] TYPE [TimeSpan] definuje cas zivotnosti SESSION COOKIE.
+   C. PROPERTY [IOTimeout] TYPE [TimeSpan] definuje maximalny cas na nacitanie a zapis SESSION DATA do SESSION STORAGE.
+16. CLASS [CookieBuilder] umoznuje nakonfigurovat SESSION COOKIE PROPERTIES. CLASS [CookieBuilder] ma nasledujuce MEMBERS.
+   A. PROPERTY [Domain] TYPE [string] urcuje nazov DOMAIN s ktorou je dana SESSION COOKIE asociovana. Standardne je SESSION COOKIE asociovana s DOMAIN WEB SITE, kde bola vytvorena.
+   B. PROPERTY [Expiration] TYPE [TimeSpan?] obsahuje EXPIRATION TIME danej SESSION COOKIE.
+   C. PROPERTY [HttpOnly] TYPE [bool] urcuje ci SESSION COOKIE ma byt posielana iba pri vykonavani HTTP REQUESTS, alebo aj JAVASCRIPT REQUESTS.
+   D. PROPERTY [IsEssential] TYPE [bool] urcuje ci SESSION COOKIE je klucova pre fungovanie ASP.NET CORE PROGRAM. Ak ano, potom sa nevyzaduje USER CONSENT.
+   E. PROPERTY [MaxAge] TYPE [TimeSpan?] obsahuje EXPIRATION TIME danej SESSION COOKIE. Starsie BROWSERS tuto funkcionalitu nepodporuju.
+   F. PROPERTY [Name] TYPE [string] urcuje nazov SESSION COOKIE.
+   G. PROPERTY [Path] TYPE [string] obsahuje URL PATH, ktoru musi URL obsahovat, aby bola SESSION COOKIE zaslana na SERVER SIDE.
+   H. PROPERTY [SameSite] TYPE [SameSiteMode] urcuje ci SESSION COOKIE ma byt pouzita aj pri CROSS SITE REQUESTS.
+   I. PROPERTY [SecurePolicy] TYPE [CookieSecurePolicy] urcuje ci SESSION COOKIE ma byt posielana vylucne iba cez HTTPS PROTOCOL.
+17. ASP.NET CORE podporuje HTTPS PROTOCOL. HTTPS PROTOCOL umoznuje prenos dat cez TRANSPORT LAYER SECURITY (TLS), ktory vykonava ENCRYPTION pomocou KEYS ulozenych v CERTIFICATE.
+18. ASP.NET CORE umoznuje generovat TEST CERTIFICATES, ktore vyuziva TRANSPORT LAYER SECURITY (TLS) na ENCRYPTED prenos dat. TEST CERTIFICATES je mozne vytvarat pomocou COMMAND LINE COMMANDS.
+   A. COMMAND [dotnet dev-certs https --clean] odstranuje existujuci TEST CERTIFICATE.
+   B. COMMAND [dotnet dev-certs https --trust] vygeneruje novy TEST CERTIFICATE.
+19. ASP.NET CORE umoznuje zistit ci dana HTTP REQUEST MESSAGE bola zaslana cez HTTPS PROTOCOL pomocou PROPERATY [HttpRequest.IsHttps].
+20. ASP.NET CORE umoznuje vynutit pouzitie HTTPS PROTOCOL pomocou HTTPS REDIRECTION MIDDLEWARE COMPONENT. Pre HTTPS REDIRECTION MIDDLEWARE COMPONENT platia nasledujuce fakty.
+   A. HTTPS REDIRECTION MIDDLEWARE COMPONENT vracia REDIRECTION HTTP RESPONSE CODE, ak HTTP REQUEST MESSAGE bola zaslana cez HTTP PROTOCOL. To prinuti BROWSER, aby vykonal REDIRECTION a pouzil HTTPS PROTOCOL.
+   B. HTTPS REDIRECTION MIDDLEWARE COMPONENT je mozne nakonfigurovat volanim METHOD [IServiceCollection IServiceCollection.AddHttpsRedirection(Action<HttpsRedirectionOptions> ConfigureOptions)]. METHOD umoznuje nastavit HTTP STATUS CODE na REDIRECTION ako aj nastavit PORT na ktorom je pouzity HTTPS PROTOCOL.
+   C. HTTPS REDIRECTION MIDDLEWARE COMPONENT sa pridava do REQUEST PIPELINE volanim METHOD [IApplicationBuilder IApplicationBuilder.UseHttpsRedirection()].
+   !!! D. HTTPS REDIRECTION MIDDLEWARE COMPONENT by mala byt pridana co najblizsie pri zaciatku REQUEST PIPELINE, aby vsetky HTTP REQUEST MESSAGES boli zasielane cez HTTPS PROTOCOL.
+21. ASP.NET CORE podporuje HTTP STRICT TRANSPORT SECURITY (HSTS). Pre HTTP STRICT TRANSPORT SECURITY platia nasledujuce fakty.
+   A. Pri prvom HTTP REQUEST MESSAGE na WEB SITE, ktory podporuje HSTS je v HTTP RESPONSE MESSAGE vrateny HSTS HEADER.
+   B. HSTS HEADER prikazuje WEB BROWSER, aby vsetky nasledujuce HTTP REQUEST MESSAGES posielal cez HTTPS PROTOCOL.
+   C. HSTS HEADER ma EXPIRATION TIME po exspiracii ktoreho straca HSTS HEADER platnost.
+   !!! D. Informaciu o HSTS HEADER si BROWSER INTERNE ULOZI do vlastnej DB. Ak WEB BROWSER po opatovnom zapnuti chce vykonat HTTP REQUEST na WEB SITE, WEB BROWSER skontroluje ci pre tuto WEB SITE nema ulozeny HSTS HEADER. Ak ma a HSTS HEADER este nie je EXPIRED, tak WEB BROWSER AUTOMATICKY zasle HTTP REQUEST MESSAGE cez PROTOCOL HTTPS.
+   !!!!! E. Vyhodou pouzitia HTST HEADER oproti HTTPS REDIRECTION je v tom, ze informaciu o HTST HEADER si WEB BROWSER drzi v INTERNEJ DB. To znaci, ze aj po vypnuti WEB BROWSER je tato informacia ulozena v PERMANENT STORAGE a pri kazdom dalsom pokuse o pristup k danej WEB SITE, WEB BROWSER AUTOMATICKY zasle zasle HTTP REQUEST MESSAGE cez PROTOCOL HTTPS. Naopak, v pripade HTTPS REDIRECTION tato informacie nie je PERSISTENT a WEB BROWSER musi VZDY PRVY HTTP REQUEST MESSAGE odoslat cez PROTOCOL HTTP, aby bol nasledne REDIRECTED na PROTOCOL HTTPS. To vsak predstacuje zvyseny SECURITY RISK. V pripade HTST HEADER je cez HTTP PROTOCOL zasielna iba PRVA HTTP REQUEST MESSAGE, ktora bola kedy zaslana na WEB SERVER. A aj toto riziko sa da obist, ak je WEB SITE zaregistrovana medzi WELL KNOWN WEB SITES, ktore vyzaduju PROTOCOL HTTPS.
+22. HTTP STRICT TRANSPORT SECURITY (HSTS) sa v ASP.NET CORE konfiguruje nasledujucim sposobom.
+   A. HSTS MIDDLEWARE COMPONENT je mozne nakonfigurovat volanim METHOD [IServiceCollection IServiceCollection.AddHsts(Action<HstsOptions> ConfigureOptions)], nastavenim PROPERTIES CLASS [HstsOptions].
+   B. HSTS MIDDLEWARE COMPONENT sa pridava do REQUEST PIPELINE volanim METHOD [IApplicationBuilder IApplicationBuilder.UseHsts()].
+23. CLASS [HstsOptions] umoznuje nakonfigurovat HSTS MIDDLEWARE COMPONENT. CLASS [HstsOptions] obsahuje nasledujuce MEMBERS.
+   !!! A. PROPERTY [ExcludedHosts] TYPE [IList<string>] obsahuje zoznam WEB SITES, pre ktore sa NEMA pouzit HSTS. BY-DEFAULT je v tejto COLLECTION aj WEB SITE [localhost].
+   B. PROPERTY [IncludeSubDomains] TYPE [bool] obsahuje informaciu ci sa ma HSTS HEADER aplikovat aj na vsetky SUBDOMAINS aktualnej WEB SITE.
+   C. PROPERTY [MaxAge] TYPE [TimeSpan] definuje EXPIRATION TIME HSTS HEADER. Ak HSTS HEADER je EXPIRED, ASP.NET CORE zasle nasledujuce HTTP REQUEST MESSAGE cez HTTP PROTOCOL.
+   D. PROPERTY [Preload] TYPE [bool] nastavi PRELOAD PARAMETER v HSTS HEADER. WEB BROWSER na zaklade hodnoty toho PARAMETER moze nacitat HARD-CODED LIST WEB SITES pre ktore ma byt pouzity HTTPS PROTOCOL zo svojej INTERNEJ DB.
+!!!!! 24. Na to, aby HTTP STRICT TRANSPORT SECURITY (HSTS) v ASP.NET CORE naozaj fungoval, MUSI HTTP PROTOCOL bezat na PORTE 80 a HTTPS PROTOCOL bezat na PORTE 443.
+25. BY-DEFAULT, ASP.NET CORE pri vzniku UNHANDLED EXCEPTION vracia HTTP STATUS CODE 500 (INTERNAL SERVER ERROR). Pri DEVELOPMENT procese vsak takato indikacia ERROR prilis vseobecna. Riesenim je pouzit DEVELOPER EXCEPTION PAGE MIDDLEWARE COMPONENT generujuci HTML PAGE s podrobnymi informaciami o EXCEPTION.
+   A. Volanim METHOD [IApplicationBuilder IApplicationBuilder.UseDeveloperExceptionPage()] je do REQUEST PIPELINE mozne pridat DEVELOPER EXCEPTION PAGE MIDDLEWARE COMPONENT, ktory pri vzniku UNHANDLED EXCEPTION vygeneruje podrobnu HTML PAGE popisujucu danu EXCEPTION.
+   B. DEVELOPER EXCEPTION PAGE MIDDLEWARE COMPONENT by mal byt pridany na zaciatku REQUEST PIPELINE, aby zachytil EXCEPTIONS generovane vsetkymi nasledujucimi MIDDLEWARE COMPONENTS.
+   C. DEVELOPER EXCEPTION PAGE MIDDLEWARE COMPONENT by mal byt pouzity IBA v DEVELOPMENT ENVIRONMENT, lebo podrobnosti o EXCEPTION by v PRODUCTION ENVIRONMENT nemali byt NIKDY zasielane.
+26. Alternativou pouzitia DEVELOPER EXCEPTION PAGE MIDDLEWARE COMPONENT je pouzitie EXCEPTION HANDLER MIDDLEWARE COMPONENT. Pre EXCEPTION HANDLER MIDDLEWARE COMPONENT platia nasledujuce fakty.
+   A. EXCEPTION HANDLER MIDDLEWARE COMPONENT negeneruje v pripade UNAHDLED EXCEPTION HTML PAGE, ale vykona REDIRECTION na zadanu URL, alebo na alternativnu REQUEST PIPELINE.
+   B. Po vykonani REDIRECTION moze ASP.NET CORE APPLICATION vygenerovat CUSTOM HTML PAGE obsahujuci informaciu o vzniku ERROR.
+   C. EXCEPTION HANDLER MIDDLEWARE COMPONENT sa pridava volanim METHOD [IApplicationBuilder IApplicationBuilder.UseExceptionHandler(ExceptionHandlerOptions Options)].
+27. Pre HTTP STATUS CODES v intervale <400,599> poskytuje ASP.NET CORE STATUS CODE PAGES MIDDLEWARE COMPONENT. Pre STATUS CODE PAGES MIDDLEWARE COMPONENT platia nasledujuce fakty.
+   A. STATUS CODE PAGES MIDDLEWARE COMPONENT umoznuje generovat CUSTOM HTML PAGES pre HTTP STATUS CODES v intervale <400,599>.
+   !!! B. STATUS CODE PAGES MIDDLEWARE COMPONENT NEFUNGUJE, ak uz HTTP RESPONSE MESSAGE BODY zacala byt niektorym z MIDDLEWARE COMPONENT generovany.
+   C. STATUS CODE PAGES MIDDLEWARE COMPONENT NESPRACUVAVA EXCEPTIONS. Iba generuje HTTP RESPONSE MESSAGE BODY pre HTTP STATUS CODES v intervale <400,599>.
+28. STATUS CODE PAGES MIDDLEWARE COMPONENT je mozne zaregistrovat volanim nasledujucich METHODS.
+   A. Volanim METHOD [IApplicationBuilder IApplicationBuilder.UseStatusCodePages(StatusCodePagesOptions Options)] sa registruje STATUS CODE PAGES MIDDLEWARE COMPONENT, ktory definuje CALLBACK METHOD zodpovednu za generovanie HTTP RESPONSE MESSAGE BODY.
+   B. Volanim METHOD [IApplicationBuilder IApplicationBuilder.UseStatusCodePagesWithRedirects(string LocationFormat)] sa registruje STATUS CODE PAGES MIDDLEWARE COMPONENT, ktory umoznuje vykona REDIRECT na URL, cez ktoru je mozne vygenerovat HTTP RESPONSE MESSAGE.
+   C. Volanim METHOD [IApplicationBuilder IApplicationBuilder.UseStatusCodePagesWithReExecute(string PathFormat, string QueryFormat)] sa registruje STATUS CODE PAGES MIDDLEWARE COMPONENT, ktory umoznuje znova spustit spracovanie HTTP REQUEST MESSAGE v novou REQUEST PIPELINE, ktora umoznuje vygenerovat HTTP RESPONSE MESSAGE.
+29. HTTP SPECIFICATION vyzaduje do HTTP REQUEST MESSAGES pridavat HOST HEADERS. HOST HEADERS umoznuju WEB SERVERS implementovat VIRTUAL WEB SERVERS na zaklade hodnoty HOST HEADERS.
+30. ASP.NET CORE definuje HOST HEADER FILTERING MIDDLEWARE COMPONENT, ktory umoznuje filtraciu HTTP REQUEST MESSAGES na zaklade hodnoty HOST HEADER. Pre HOST HEADER FILTERING MIDDLEWARE COMPONENT platia nasledujuce fakty.
+   A. HOST HEADER FILTERING MIDDLEWARE COMPONENT sa konfiguruje volanim METHOD [IServiceCollection IServiceCollection.Configure<HostFilteringOptions>(Action<HostFilteringOptions> ConfigureOptions)].
+   C. HOST HEADER FILTERING MIDDLEWARE COMPONENT sa pridava do REQUEST PIPELINE volanim METHOD [IApplicationBuilder IApplicationBuilder.UseHostFiltering()].
+31. CLASS [HostFilteringOptions] umoznuje konfiguraciu HOST HEADER FILTERING MIDDLEWARE COMPONENT. CLASS [HostFilteringOptions] ma nasledujuce MEMBERS.
+   A. PROPERTY [AllowedHosts] TYPE [IList<string>] definuje zoznam VALUES HOST HEADERS, ktore moze HOST HEADER HTTP REQUEST MESSAGE spracovat. Pre HOST HEADERS, ktore nie su v tomto LISTE vracia HOST HEADER FILTERING MIDDLEWARE COMPONENT HTTP STATUS CODE 400.
+   B. PROPERTY [AllowEmptyHosts] TYPE [bool] urcuje ci maju byt HTTP REQUEST MESSAGES, ktore nemaju definovany HOST HEADER spracovane.
+   C. PROPERTY [IncludeFailureMessage] TYPE [bool] urcuje ci v pripade ze HOST HEADER nebosahuje povolenu VALUE ma HOST HEADER FILTERING MIDDLEWARE COMPONENT do HTTP RESPONSE MESSAGE pridat aj HTTP CONTENT BODY.
+//----------------------------------------------------------------------------------------------------------------------

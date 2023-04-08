@@ -1,0 +1,148 @@
+//----------------------------------------------------------------------------------------------------------------------
+1. Solution demonstruje pouzitie URL ROUTING v ASP.NET CORE APPLICATIONS.
+2. URL ROUTING je subsystem ASP.NET CORE implementovany ako MIDDLEWARE, ktory zabezpecuje nasledujuce cinnosti.
+   A. Mapovanie URL ADDRESSES na volanie ENDPOINTS.
+   B. Generovanie URL ADDRESSES, ktore generuje ASP.NET CORE v HTTP RESPONSES.
+3. URL ROUTING funguje v ASP.NET CORE nasledujucim sposobom.
+   A. ENDPOINT je MIDDLEWARE COMPONENT, ktora spracovava HTTP REQUEST generovanim HTTP RESPONSE.
+   B. URL ROUTING definuje MIDDLEWARE, ktoreho ulohou je vykonat mapovanie URL HTTP REQUESTS na prislusne ENDPOINTS.
+   C. URL ROUTING vykonava mapovanie na zaklade zoznamu ROUTES, ktore su zadefinovane pri starte WEB APPLICATION. URL ROUTING pre dany HTTP REQUEST prechadza zoznamom ROUTES a hlada ENDPOINT, ktory ma by pre dany HTTP REQUEST volany.
+4. URL ROUTING sa v ASP.NET CORE konfiguruje volanim nasledujucich METHODS.
+   A. METHOD [IApplicationBuilder IApplicationBuilder.UseRouting()] pridava do PIPELINE MIDDLEWARE COMPONENT [EndpointRoutingMiddleware], ktory je zodpovedny za mapovanie URLs na ENDPOINTS.
+   B. METHOD [IApplicationBuilder IApplicationBuilder.UseEndpoints(Action<IEndpointRouteBuilder> Configure)] pridava do PIPELINE MIDDLEWARE COMPONENT [EndpointMiddleware], ktory je zodpovedny za volanie ENDPOINTS, ktore vybral MIDDLEWARE COMPONENT [EndpointRoutingMiddleware]. MIDDLEWARE COMPONENT [EndpointMiddleware] je zaroven zodpoveny za definovanie ROUTES, ktore pouziva MIDDLEWARE COMPONENT [EndpointRoutingMiddleware] na vykonanie mapovania URLs na ENDPOINTS.
+!!!!! 5. URL ROUTING SYSTEM je v ASP.NET implementovany nasledujucim sposobom.
+   A. URL ROUTING SYSTEM je tvoreny MIDDLEWARE COMPONENT [EndpointRoutingMiddleware] a MIDDLEWARE COMPONENT [EndpointMiddleware].
+   !!! B. MIDDLEWARE COMPONENT [EndpointRoutingMiddleware] je zodpovedna za mapovanie URL na ENDPOINTS, ktore su zaregistrovane v MIDDLEWARE COMPONENT [EndpointMiddleware]. MIDDLEWARE COMPONENT [EndpointRoutingMiddleware] vsak ENDPOINT NEVOLA, iba vykona mapovanie a urci, ktory ENDPOINT sa ma pouzit.
+   !!! C. MIDDLEWARE COMPONENT [EndpointMiddleware] je zodpovedny za volanie ENDPOINTS, ktore urcil MIDDLEWARE COMPONENT [EndpointRoutingMiddleware], ze sa pre danu URL maju zavolat. To znaci, ze az tento MIDDLEWARE COMPONENT je zodpovedny za volanie najdeneho ENDPOINT.
+   !!! D. MIDDLEWARE COMPONENT [EndpointMiddleware] vo svojej konfiguracii zaroven obsahuje zoznam ROUTES, ktore urcuju pre ktore URLs sa ma volat dany ENDPOINT.
+   !!!!! E. URL ROUTING SYSTEM je trochu bizarny v tom, ze zatial co MIDDLEWARE COMPONENT [EndpointMiddleware] obsahuje ROUTES, je to MIDDLEWARE COMPONENT [EndpointRoutingMiddleware], ktory vykonava samotne mapovanie URLs na ENDPOINTS, no nasledne az MIDDLEWARE COMPONENT [EndpointMiddleware] vybratu ENPOINT zavola.
+   !!!!! F. Ak sa v PIPELINE medzi MIDDLEWARE COMPONENT [EndpointRoutingMiddleware] a MIDDLEWARE COMPONENT [EndpointMiddleware] nechadza nejaky dalsi MIDDLEWARE COMPONENT, tento je po najdeny ENPOINT v MIDDLEWARE COMPONENT [EndpointRoutingMiddleware] volany ESTE SKOR, ako je vyvolany ENDPOINT, pretoze ten je volany MIDDLEWARE COMPONENT [EndpointMiddleware].
+6. INTERFACE [IEndpointRouteBuilder] definuje METHODS, ktorymi je mozne pridavat ROUTES do URL ROUTING.
+   A. METHOD [IEndpointConventionBuilder Map(string Pattern, RequestDelegate RequestDelegate)] pridava ROUTE s definovanym PATTERN pre vsetky HTTP REQUESTS.
+   B. METHOD [IEndpointConventionBuilder MapMethods(string Pattern, IEnumerable<string> HttpMethods, RequestDelegate RequestDelegate)] pridava ROUTE s definovanym PATTERN pre HTTP REQUESTS, ktore maju definovany VERB.
+   C. METHOD [IEndpointConventionBuilder MapGet(string Pattern, RequestDelegate RequestDelegate)] pridava ROUTE s definovanym PATTERN pre HTTP REQUESTS, ktore pouzivaju VERB GET.
+   D. METHOD [IEndpointConventionBuilder MapPost(string Pattern, RequestDelegate RequestDelegate)] pridava ROUTE s definovanym PATTERN pre HTTP REQUESTS, ktore pouzivaju VERB POST.
+   E. METHOD [IEndpointConventionBuilder MapPut(string Pattern, RequestDelegate RequestDelegate)] pridava ROUTE s definovanym PATTERN pre HTTP REQUESTS, ktore pouzivaju VERB PUT.
+   F. METHOD [IEndpointConventionBuilder MapDelete(string Pattern, RequestDelegate RequestDelegate)] pridava ROUTE s definovanym PATTERN pre HTTP REQUESTS, ktore pouzivaju VERB DELETE.
+7. ENDPOINTS su v ASP.NET CORE definovane ako MIDDLEWARE COMPONENTS, ktore musia implementovat DELEGATE [RequestDelegate]. Kedze aj MIDDLEWARE COMPONENTS implementuju DELEGATE [RequestDelegate], tak kazdy MIDDLEWARE COMPONENT moze byt pouzity ako ROUTING ENDPOINT.
+!!!!! 8. URL ROUTING vykonava mapovanie URL na ENDPOINTS a nasledne spustenie vybratych ENDPOINTS nasledujucim sposobom.
+   A. HTTP REQUEST prechadza postupne vsetky MIDDLEWARE COMPONENTS, ktore su zaregistrovane v PIPELINE.
+   !!! B. V pripade, ze HTTP REQUEST dorazi do MIDDLEWARE COMPONENT [EndpointRoutingMiddleware], MIDDLEWARE COMPONENT [EndpointRoutingMiddleware] zacne s procesom vyhladavania ENDPOINT pre danu URL.
+   !!!!! C. MIDDLEWARE COMPONENT [EndpointRoutingMiddleware] pouzije zoznam ROUTES (trochu NELOGICKY) zaregistrovanych v MIDDLEWARE COMPONENT [EndpointMiddleware] na najdenie takej ROUTE, ktorej PATTERN by vyhovoval zadanej URL. Ak takuto ROUTE NAJDE, poznaci ju do CONTEXT INFORMATION.
+   !!!!! D. ASP.NET vola MIDDLEWARE COMPONENTS, ktore sa nechadzaju medzi MIDDLEWARE COMPONENT [EndpointRoutingMiddleware] a MIDDLEWARE COMPONENT [EndpointMiddleware]. Tieto MIDDLEWARE COMPONENTS pomocou METHOD [Endpoint HttpContext.GetEndpoint()] mozu ziskat informaciu, ktory ENDPOINT bol zavolany.
+   !!! E. Ked REQUEST dorazi v PIPELINE do MIDDLEWARE COMPONENT [EndpointMiddleware], tak volanim METHOD [Endpoint HttpContext.GetEndpoint()] zisti, ci MIDDLEWARE COMPONENT [EndpointRoutingMiddleware] nasiel pre URL danej MESSAGE zodpovedajuci ENDPOINT.
+   !!!!! F. Ak MIDDLEWARE COMPONENT [EndpointRoutingMiddleware] NASIEL pre danu URL ENDPOINT, MIDDLEWARE COMPONENT [EndpointMiddleware] ho vyvola. ENDPOINT vygeneruje HTTP RESPONSE, ktory sa nasledne vracia smerom nahor cez PIPELINE, az kym sa nedostane na CLIENT SIDE.
+   !!!!! G. Ak MIDDLEWARE COMPONENT [EndpointRoutingMiddleware] NENASIEL pre danu URL ENDPOINT, tak vola nasledujucu MIDDLEWARE COMPONENT v PIPELINE, aby sa ten pokusil spracovat HTTP REQUEST MESSAGE a vygenerovat HTTP RESPONSE MESSAGE.
+9. ENDPOINT je reprezentovany CLASS [Endpoint], ktora ma nasledujuce MEMBERS.
+   A. PROPERTY [DisplayName] TYPE [string] obsahuje DISPLAY NAME daneho ENDPOINT.
+   B. PROPERTY [Metadata] TYPE [EndpointMetadataCollection] obsahuje kolekciu METADATA, ktore su asociovane s danym ENDPOINT.
+   !!! C. PROPERTY [RequestDelegate] TYPE [RequestDelegate] obsahuje REQUEST DELEGATE, ktory obsahuje CODE daneho ENDPOINT.
+!!! 10. URL ROUTING SYSTEM vyhladava ROUTE do ktorej ENDPOINT posle HTTP REQUEST nasledujucim sposobom.
+   A. URL ROUTING SYSTEM prejde vsetkych ROUTES, vykona URL MATCHING na zaklade ROUTE PATTERN a prideli jej ciselne SCORE.
+   B. URL ROUTING SYSTEM vyberie tu ROUTE, ktore ma NAJNIZSIU hodnotu vypocitaneho SCORE.
+   !!! C. Ak viacero ROUTES ma ROVNAKU hodnotu SCORE, tak URL ROUTING SYSTEM hodi EXCEPTION s tym, ze sa mu nepodarilo najst jednoznacnu ROUTE.
+11. Pre ROUTES platia nasledujuce fakty.
+   A. ROUTES obsahuju PATTERN, ktory definuje ako ma URL pre dany ROUTE vyzerat.
+   !!! B. ROUTE PATTERN definuje ake a kolko URL SEGMENTS (casti URL oddelene CHARACTER '/') na URL obsahovat. ROUTE PATTERN definuje aj to na ktore CUSTOM ROUTE VARIABLES sa jednotlive URL SEGMENTS maju mapovat, ako aj CONSTRAINS jednotlivych URL SEGMENTS.
+   !!! C. ROUTES vyhodnocuju IBA URL SEGMENTS, ktore tvoria LOCAL PATH. To znaci, ze sa NEVYHODNOCUJE SCHEME, ani HOSTNAME.
+   D. ROUTES umoznuju v URL definovat STATIC URL SEGMENTS. URL moze obsahovat cele URL SEGMENTS v tvare STATIC STRINGS. Takato ROUTE je MATCHED, iba ak obsahuje vsetky tieto STATIC URL SEGMENTS.
+   E. ASP.NET umoznuje definovat ROUTE VARIABLES, ktore su mapovane na jednotlive URL SEGMENTS. ROUTE VARIABLES mozu byt RESERVED ROUTE VARIABLES, ktore definuje ASP.NET a CUSTOM ROUTE VARIABLES, ktore sa definuju priamo ako sucast ROUTE.
+12. ASP.NET pri definicii ROUTES umoznuju pouzivat RESERVED ROUTE VARIABLES ako i definovat CUSTOM ROUTE VARIABLES. ASP.NET definuje nasledujuce RESERVED ROUTE VARIABLES.
+   A. VARIABLE 'Controller' definuje nazov CONTROLLER, ktory ma spracovat dany HTTP REQUEST.
+   B. VARIABLE 'Action' definuje nazov ACTION METHOD, ktora ma spracovat dany HTTP REQUEST.
+   C. VARIABLE 'Area' definuje nazov AREA.
+   D. VARIABLE 'Page' definuje nazov PAGE.
+   E. VARIABLE 'Handler' definuje nazov PAGE HANDLER.
+13. ASP.NET umoznuje definovat CUSTOM ROUTE VARIABLES. Pre CUSTOM ROUTE VARIABLES platia nasledujuce fakty.
+   A. V ROUTE sa CUSTOM ROUTE VARIABLE definuje pomocou SYNTAXE [{VARIABLE_NAME}], kde 'VARIABLE_NAME' je nazov CUSTOM ROUTE VARIABLE.
+   B. CUSTOM ROUTE VARIABLES, tak ako RESERVED ROUTE VARIABLES mozu mat DEFAULT VALUES. Tie sa pouziju ak prislusny URL SEGMENT v URL nebol nastaveny.
+   C. V ACTION METHODS je mozne k hodnotam ROUTE VARIABLES pristupovat pomocou PROPERTY [HttpRequest.RouteValues], ktora obsahuje DICTIONARY [RouteValueDictionary] vsetkych ROUTE VARIABLES.
+   !!! D. PROPERTY [HttpRequest.RouteValues] obsahuje ako CUSTOM ROUTE VARIABLES, tak aj RESERVED ROUTE VARIABLES.
+   !!!!! E. Ak ACTION METHOD ma PARAMETERS, ktorych nazvy su ZHODNE s nazvami CUSTOM ROUTE VARIABLES, tak ASP.NET pomocou procesu MODEL BINDING sa pokusi namapovat CUSTOM ROUTE VARIABLES na PARAMETERS. V pripade, ze nesedia TYPES, tak vykona aj prislusne konverzie. To zjednodusuje pouzivanie CUSTOM ROUTE VARIABLES.
+   F. ROUTE moze definovat lubovolny pocet CUSTOM ROUTE VARIABLES.
+   !!! G. ASP.NET umoznuje vycitat z 1 SEGMENT aj viacero ROUTE VARIABLES, ak su tieto oddelene STATIC STRING. Napriklad je mozne pouzit PATTERN [SEGMENT_1/{Filename}.{Extension}/SEGMENT_2], ktory vybera 2 CUSTOM ROUTE VARIABLES z jedneho SEGMENT.
+14. URL ROUTING SYSTEM pri vyhodnocovani ci danu ROUTE moze pouzit postupuje nasledovnym sposobom.
+   A. URL ROUTING SYSTEM pouzije ROUTE pre danu URL IBA VTEDY, ak pocet URL SEGMENTS je ZHODNY s poctom SEGMENTS, ktore pozaduje dana ROUTE.
+   B. V pripade, ze pocet URL SEGMENTS je NIZSI, ako pocet SEGMENTS, ktore pozaduje dana ROUTE, URL ROUTING SYSTEM zisti ci na chybajuce SEGMENTS, ak tieto su mapovane na ROUTE VARIABLES nie je mozne aplikovat DEFAULT VALUES. Ak ano, tak ich aplikuje a v pripade, ze pocet URL SEGMENTS je ZHODNY s poctom SEGMENTS, ktore pozaduje dana ROUTE, tak sa ROUTE pouzije.
+   C. V pripade, ze pocet URL SEGMENTS je VYSSI, ako pocet SEGMENTS, ktore pozaduje dana ROUTE, je ROUTE automaticky ZAMIETNUTA a pre danu URL sa NEPOUZIJE.
+   !!! D. Pri vyhodnocovani ROUTES sa beru aj do uvahy CONSTRAINS, ktore mozu byt aplikovane na ROUTE VARIABLES. V pripade, ze URL SEGMENT nesplna pozadovanu ROUTE VARIABLE CONSTRAINT, tak ROUTE pre danu URL NEPOUZIJE.
+15. CLASS [RouteValueDictionary] umoznuje pristup k ROUTE VARIABLES. Ma nasledujuce MEMBERS.
+   A. INDEXER TYPE [string] umoznuje pristup k ROUTE VARIABLE s danym NAME.
+   B. PROPERTY [Keys] TYPE [ICollection<string>] obsahuje vsetky NAMES ROUTE VARIABLES.
+   C. PROPERTY [Values] TYPE [ICollection<object>] obsahuje vsetky VALUES ROUTE VARIABLES.
+   D. PROPERTY [Count] TYPE [int] obsahuje pocet ROUTE VARIABLES.
+   E. METHOD [bool ContainsKey(string Key)] vracia informaciu ci sa ROUTE VARIABLE s danym NAME v instancii CLASS [RouteValueDictionary] nachadza, alebo nie.
+!!! 16. CLASS [RouteValueDictionary] obsahuje nastavene ROUTE VARIABLES, iba ak URL ROUTING SYSTEM nasiel vyhovujucu ROUTE. Ak ju nenasiel, tak logicky CLASS [RouteValueDictionary] nemoze obsahovat ZIADNE ROUTE VARIABLES, kedze sa nenasiel ROUTE PATTERN, ktory by vykonal mapovanie SEGMENTS na ROUTE VARIABLES.
+17. AREAS je ASP.NET mechanizmus, ktory umoznuje rozdelit rozsiahle ASP.NET APPLICATIONS na mensie casti. Pre AREAS platia nasledujuce fakty.
+   A. Vsetky AREAS su ulozene v DIRECTORY [Areas].
+   B. Pre kazdu AREA je nutne v DIRECTORY [Areas] vytvorit SUBDIRECTORY, ktorej nazov je zhodny s nazvom AREA.
+   C. V SUBDIRECTORY pre danu AREA su vytvorene standardne SUBRDIRECTORIES ako v beznej ASP.NET APPLICATION.
+   D. V SUBDIRECTORY [Areas/AREA_NAME/Controllers] by mali byt ulozene vsetky CONTROLLERS.
+   E. V SUBDIRECTORY [Areas/AREA_NAME/Views] by mali byt ulozene vsetky VIEWS.
+   F. V SUBDIRECTORY [Areas/AREA_NAME/Models] by mali byt ulozene vsetky MODEL CLASSES.
+   !!! G. V ROUTING SYSTEM musi byt definovana ROUTE, ktora akceptuje nazov AREAS. AREA SEGMENT sa v ROUTE PATTERN definuje pomocou RESERVED ROUTE VARIABLE [{area}].
+   !!! H. Pre CONTROLLERS, ak maju byt asociovane s konkretnou AREA je NUTNE na CONTROLLER CLASSES aplikovat ATTRIBUTE [AreaAttribute].
+   !!! I. V LINKS na CONTROLLERS a ACTION METHODS v AREAS MUSIA mat definovanu nastavenu RESERVED ROUTE VARIABLE [asp-route-area] na nazov AREA.
+   !!! J. OUTGOING URLs generovane z VIEWS, ktore su sucastou nejakej AREA AUTOMATICKY obsahuju nazov AREA. V pripade, ze je nutne referovat na inu AREA, tak je potrebne nastavit nazov AREA pomocou RESERVED ROUTE VARIABLE [asp-route-area].
+18. ROUTES zaregistrovane v URL ROUTING SYSTEM je mozne vyuzit aj na generovanie OUTGOING URLs. Generovanie OUTGOING URLs pomocou ROUTES zaregistrovanych v URL ROUTING SYSTEM sa vykonava nasledujucim sposobom.
+   A. URLs sa generuju pomocou METHODS CLASS [LinkGenerator], ktoru je NUTNE ziskat cez DEPENDENCY INJECTION.
+   B. Ak sa OUTGOING URLs generuju pomocou ROUTES zaregistrovanych v URL ROUTING SYSTEM, potom tieto ROUTES musia mat prideleny NAME. NAME sa ROUTES priraduje volanim METHOD [IEndpointConventionBuilder IEndpointConventionBuilder.WithMetadata(params object[] Items)], kde sa ako PARAMETER da instancia CLASS [RouteNameMetadata].
+19. CLASS [LinkGenerator] sluzi na vytvaranie URLs z ROUTES. CLASS [LinkGenerator] ma nasledujuce METHODS.
+   A. METHOD [string GetUriByRouteValues(string RouteName, object Values, string Scheme, HostString Host, PathString PathBase, FragmentString Fragment, LinkOptions Options)] generuje ASBOLUTE URL pre zadanu NAMED ROUTE. Ako 2. PARAMETER je ANONYMOUS OBJECT, ktory obsahuje VALUES ROUTE VARIABLES.
+   B. METHOD [string GetUriByAddress<TAddress>(TAddress Address, RouteValueDictionary Values, string Scheme, HostString Host, PathString PathBase, FragmentString Fragment, LinkOptions Options)] generuje ASBOLUTE URL pre zadanu ADDRESS. Ako ADDRESS TYPE sa moze pouzit CLASS [RouteValuesAddress].
+   C. METHOD [string GetUriByName(string EndpointName, object Values, string Scheme, HostString Host, PathString PathBase, FragmentString Fragment, LinkOptions Options)] generuje ASBOLUTE URL pre zadany ENDPOINT NAME. ENDPOINT NAME sa zadava pomocou ATTRIBUTE [RouteAttribute].
+   D. METHOD [string GetUriByAction(string Action, string Controller, object Values, string Scheme, HostString Host, PathString PathBase, FragmentString Fragment, LinkOptions Options)] generuje ASBOLUTE URL pre zadany CONTROLLER a ACTION METHOD.
+   E. METHOD [string GetUriByPage(string Page, string Handler, object Values, string Scheme, HostString Host, PathString PathBase, FragmentString Fragment, LinkOptions Options)] generuje ASBOLUTE URL pre zadany RAZOR PAGE a RAZOR PAGE HANDLER. PATH MUSI zacinat CHARACTER '/'.
+   F. METHOD [string GetPathByRouteValues(string RouteName, object Values, PathString PathBase, FragmentString Fragment, LinkOptions Options)] generuje RELATIVE URL pre zadanu NAMED ROUTE. Ako 2. PARAMETER je ANONYMOUS OBJECT, ktory obsahuje VALUES ROUTE VARIABLES.
+   G. METHOD [string GetPathByAddress<TAddress>(HttpContext HttpContext, TAddress Address, RouteValueDictionary Values, RouteValueDictionary AmbientValues, PathString? PathBase, FragmentString Fragment, LinkOptions Options)] generuje RELATIVE URL pre zadanu ADDRESS. Ako ADDRESS TYPE sa moze pouzit CLASS [RouteValuesAddress].
+   H. METHOD [string GetPathByName(string EndpointName, object Values, PathString PathBase, FragmentString Fragment, LinkOptions Options)] generuje RELATIVE URL pre zadany ENDPOINT NAME. ENDPOINT NAME sa zadava pomocou ATTRIBUTE [RouteAttribute].
+   I. METHOD [string GetPathByAction(string Action, string Controller, object Values, PathString PathBase, FragmentString Fragment, LinkOptions Options)] generuje RELATIVE URL pre zadany CONTROLLER a ACTION METHOD.
+   J. METHOD [string GetPathByPage(string Page, string Handler, object Values, PathString PathBase, FragmentString Fragment, LinkOptions Options)] generuje RELATIVE URL pre zadany RAZOR PAGE a RAZOR PAGE HANDLER. PATH MUSI zacinat CHARACTER '/'.
+20. ROUTES mozu mat pre jednotlive SEGMENTS definovane DEFAULT VALUES. DEFUALT VALUES substituuju VALUES danych SEGMENTS ak tieto nie su v URL zadane. DEFAULT VALUES sa v ROUTES mozne zadavaju priamo ako sucast PATTTERN, kde priamo pri definovani mapovania daneho SEGMENT na CUSTOM ROUTE VARIABLE sa definuje DEFAULT VALUE. Prikladom moze byt nasledujuca SYNTAXT ROUTE PATTERN [{FirstName=Timmy}/{LastName=Anderson}], kde obe CUSTOM ROUTE VARIABLES maju DEFAULT VALUES.
+21. ASP.NET umoznuje pomocou SYNTAXE [{VARIABLE_NAME?}] definovat OPTIONAL CUSTOM ROUTE VARIABLES, ktore nemusia byt vyplnene ani nemusia mat nastavenu DEFAULT VALUE, aby bola dana URL akceptovana tymto ROUTE.
+22. ASP.NET umoznuje definovat CATCH-ALL CUSTOM ROUTE VARIABLES, ktore mozu obsahovat lubovolny pocet URL SEGMENTS, ktore sa nechadzaju na konci URL. Pre CATCH-ALL CUSTOM ROUTE VARIABLES plati nasledujuce pravidla.
+   A. Jeden ROUTE moze obsahovat iba 1 CATCH-ALL CUSTOM ROUTE VARIABLE.
+   B. CATCH-ALL CUSTOM ROUTE VARIABLE sa definuje pomocou SYNTAXE [{*VARIABLE_NAME}], kde 'VARIABLE_NAME' je nazov CATCH-ALL CUSTOM ROUTE VARIABLE.
+   C. CATCH-ALL CUSTOM ROUTE VARIABLE ma tvar [SEGMENT_1/SEGMENT_2/.../SEGMENT_N].
+   D. V ENDPOINTS je mozne k hodnote CATCH-ALL CUSTOM ROUTE VARIABLE pristupovat pomocou PROPERTY [HttpRequest.RouteValues].
+23. ASP.NET pri definicii CUSTOM ROUTE VARIABLES umoznuje definovat CONSTRAINTS. Pre CONSTRAINTS platia nasledujuce pravidla.
+   !!! A. CONSTRAINTS sa aplikuju na URL SEGMENTS, kde CONSTRAINTS urcuju za akych podmienok je dany SEGMENT vyhlaseny ako VALIDNY a tym padom dana ROUTE takyto SEGMENT AKCEPTUJE. Cele URL je akceptovane IBA ak su VSETKY SEGMENTS daneho ROUTE akceptovane.
+   B. CONSTRAINTS sa aplikuju INLINE sposobom pomocou SYNTAX [{VARIABLE_NAME:CONSTRAINT_1:...:CONSTRAINT_N}], kde 'VARIABLE_NAME' je nazov CUSTOM ROUTE VARIABLE a VALUE 'CONSTRAINT_1' az VALUE 'CONSTRAINT_N' su nazvy CONSTRAINTS.
+   !!!!! C. CONSTRAINTS je mozne aplikovat aj na RESERVED ROUTE VARIABLES.
+   !!! D. Ak ROUTE VARIABLE NEMA nastavenu VALUE, ale ma definovanu DEFAULT VALUE, tak najprv sa aplikuje DEFAULT VALUE a az potom sa vykona kontrola CONSTRAINTS.
+   E. Ak ROUTE VARIABLE je OPTIONAL a jej VALUE nie je zadana, tak sa CONSTRAINTS na tuto ROUTE VARIABLE NEAPLIKUJU.
+24. ASP.NET definuje mnozstvo CONSTRAINTS, ktore je mozne pouzit.
+   A. CLASS [AlphaRouteConstraint] (INLINE verzia [alpha]) povoluje SEGMENTS, ktore obsahuju iba CHARACTERS [A-z] a [a-z].
+   B. CLASS [BoolRouteConstraint] (INLINE verzia [bool]) povoluje SEGMENTS, ktore obsahuju iba BOOLEAN VALUES.
+   C. CLASS [DateTimeRouteConstraint] (INLINE verzia [datetime]) povoluje SEGMENTS, ktore obsahuju iba DATE-TIME VALUES.
+   D. CLASS [DecimalRouteConstraint] (INLINE verzia [decimal]) povoluje SEGMENTS, ktore obsahuju iba DECIMAL VALUES.
+   E. CLASS [DoubleRouteConstraint] (INLINE verzia [double]) povoluje SEGMENTS, ktore obsahuju iba DOUBLE VALUES.
+   F. CLASS [FileNameRouteConstraint] (INLINE verzia [file]) povoluje SEGMENTS, ktore obsahuju iba FILENAMES VALUES.
+   G. CLASS [FloatRouteConstraint] (INLINE verzia [float]) povoluje SEGMENTS, ktore obsahuju iba FLOAT VALUES.
+   H. CLASS [GuidRouteConstraint] (INLINE verzia [guid]) povoluje SEGMENTS, ktore obsahuju iba GUID VALUES.
+   I. CLASS [IntRouteConstraint] (INLINE verzia [int]) povoluje SEGMENTS, ktore obsahuju iba INTEGER VALUES.
+   J. CLASS [LongRouteConstraint] (INLINE verzia [long]) povoluje SEGMENTS, ktore obsahuju iba LONG VALUES.
+   K. CLASS [LengthRouteConstraint] (INLINE verzia [length(LENGTH)], alebo [length(MIN,MAX)]) povoluje SEGMENTS, ktore obsahuju pocet CHARACTERS rovny VALUE 'LENGTH', alebo pocet CHARACTERS je v INTERVALE <MIN,MAX>.
+   L. CLASS [MinLengthRouteConstraint] (INLINE verzia [minlength(LENGTH)]) povoluje SEGMENTS, ktore obsahuju minimalne 'LENGTH' CHARACTERS.
+   M. CLASS [MaxLengthRouteConstraint] (INLINE verzia [maxlength(LENGTH)]) povoluje SEGMENTS, ktore obsahuju maximalne 'LENGTH' CHARACTERS.
+   N. CLASS [MinRouteConstraint] (INLINE verzia [min(VALUE)]) povoluje SEGMENTS, ktore obsahuju INTEGER VALUE, a zaroven VALUE je VACSIA ako VALUE 'VALUE'.
+   O. CLASS [MaxRouteConstraint] (INLINE verzia [max(VALUE)]) povoluje SEGMENTS, ktore obsahuju INTEGER VALUE, a zaroven VALUE je MENSIA ako VALUE 'VALUE'.
+   P. CLASS [NonFileNameRouteConstraint] (INLINE verzia [nonfile]) povoluje SEGMENTS, ktore NEOBSAHUJU FILENAMES VALUES.
+   Q. CLASS [RangeRouteConstraint] (INLINE verzia [range(MIN,MAX)]) povoluje SEGMENTS, ktore obsahuju INTEGER VALUE, a zaroven VALUE je v INTERVALE <MIN,MAX>.
+   R. CLASS [RegexRouteConstraint] (INLINE verzia [regex(EXPRESSION)]) povoluje SEGMENTS, pre ktore je splneny REGULAR EXPRESSION 'EXPRESSION'.
+25. ASP.NET umonzuje definovavat CUSTOM ROUTE CONSTRAINTS. Pre CUSTOM ROUTE CONSTRAINTS platia nasledujuce fakty.
+   A. CUSTOM ROUTE CONSTRAINTS sa implementuju ako CUSTOM CLASSES, ktore implementuju INTERFACE [IRouteConstraint].
+   B. CUSTOM ROUTE CONSTRAINTS musia implementovat METHOD [bool IRouteConstraint.Match(HttpContext Context, IRouter Route, string RouteKey, RouteValueDictionary Values, RouteDirection Direction)], ktora vyhodnocuje ci dany CONSTRAINT bol, alebo nebol splneny.
+   C. CUSTOM ROUTE CONSTRAINTS mozu byt aplikovane aj pomocou INLINE SYNTAX, no CUSTOM ROUTE CONSTRAINT MUSI byt pridana do COLLECTION v PROPERTY [RouteOptions.ConstraintMap], kde sa vykona mapovanie INLINE CONSTRAINT NAME na CUSTOM ROUTE CONSTRAINT CLASS NAME.
+   !!! D. V pripade, ze CUSTOM ROUTE CONSTRAINTS maju PARAMETRIZED CONSTRUCTOR, tak tieto CONSTRUCTORS je mozne volat pomocou INLINE SYNTAX zadanim tychto PARAMETERS pomocou SYNTAXE [{ROUTE_VARIABLE:CUSTOM_ROUTE_CONSTRAINT(PARAMETER_1,...PARAMETER_N)}].
+26. URL ROUTING SYSTEM umoznuje definovat FALLBACK ROUTES. FALLBACK ROUTES su ROUTES, ktore su volane v pripade, ze ZIADNA INA ROUTE nebola URL ROUTING SYSTEM vybrata. FALLBACK ROUTES sa nastavuju nasledujucimi EXTENSION METHODS INTERFACE [IEndpointRouteBuilder].
+   A. METHOD [IEndpointConventionBuilder MapFallback(RequestDelegate RequestDelegate)] zaregistruje ENDPOINT, ktory sa vola pre vsetky NON-FILE-NAMES URLs, pre ktore nebola najdena ina ROUTE.
+   B. METHOD [IEndpointConventionBuilder MapFallbackToFile(string FilePath)] zaregistruje STATIC FILE ENDPOINT vracajuci FILE CONTENT, ktory sa vola pre vsetky NON-FILE-NAMES URLs, pre ktore nebola najdena ina ROUTE.
+   C. METHOD [IEndpointConventionBuilder MapFallbackToController(string Action, string Controller)] zaregistruje ACTION METHOD daneho CONTROLLER, ktora sa vola pre vsetky NON-FILE-NAMES URLs, pre ktore nebola najdena ina ROUTE.
+   D. METHOD [IEndpointConventionBuilder MapFallbackToPage(string Page)] zaregistruje RAZOR PAGE, ktora sa vola pre vsetky NON-FILE-NAMES URLs, pre ktore nebola najdena ina ROUTE.
+!!! 27. Standardne, ak URL ROUTING SYSTEM najde viacero ROUTES, ktore ohodnoti rovnakym SCORE, tak hodi EXCEPTION, ze sa nepodarilo najst jedinecnu ROUTE, ktore by sa mala aplikovat. URL ROUTING SYSTEM umoznuje definovat PRIORITY jednotlivych ROUTES, takze ak sa 2 ci viacero ROUTES dostanu do konfliktu, URL ROUTING SYSTEM moze jednoznacne urcit, ktoru ROUTE ma pouzit. PRIORITA ROUTES sa definuje nasledujucim sposobom.
+   A. Pre konfliktnu ROUTE sa zavola METHOD [void IEndpointConventionBuilder.Add(Action<EndpointBuilder> Convention)]. Ako PARAMETER tejto METHOD je ACTION DELEGATE TYPE [Action<EndpointBuilder>], ktory ocakava CALLBACK METHOD.
+   B. V CALLBACK METHOD je treba spravit CASTING PARAMETER TYPE [EndpointBuilder] na TYPE [RouteEndpointBuilder].
+   C. PRIORITY sa nastavuje nastavenim PROPERTY [RouteEndpointBuilder.Order].
+   !!! D. Nim NIZSIA VALUE PRIORITY, tym VYSSIU PREFERENCIU ma dana ROUTE.
+//----------------------------------------------------------------------------------------------------------------------

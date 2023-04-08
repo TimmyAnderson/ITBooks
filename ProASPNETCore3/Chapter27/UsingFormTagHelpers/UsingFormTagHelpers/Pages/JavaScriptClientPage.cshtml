@@ -1,0 +1,53 @@
+﻿@page
+@model UsingFormTagHelpers.Pages.JavaScriptClientPageModel
+@{
+    Layout = null;
+}
+
+<!DOCTYPE html>
+
+<html>
+<head>
+    <meta name="viewport" content="width=device-width" />
+	<link rel="stylesheet" href="~/StaticFiles/Styles/Styles.css" />
+	<link rel="stylesheet" href="~/StaticFiles/ClientLibraries/Bootstrap/dist/css/bootstrap.css" />
+    <title>JavaScriptClientPage</title>
+
+	<script type="text/javascript">
+		async function SendRequest()
+		{
+			const												Token=document.cookie.replace(/(?:(?:^|.*;\s*)XSRF-TOKEN\s*\=\s*([^;]*).*$)|^.*$/, "$1");
+			let													Form=new FormData();
+
+			// !!! Simuluje sa naplnenie FORM DATA, ktore by normalne bolo naplnene USER cez FORM.
+			Form.append("ID", 0);
+			Form.append("FirstName", "Josh");
+			Form.append("LastName", "Hurt");
+			Form.append("Age", 12);
+
+			// !!!!! Vykona sa POST na RAZOR PAGE 'JavaScriptClientViewNamesPage', ktora zapise data do STORAGE a spravi REDIRECT na SAMU SEBA, kde zobrazi vsetky RECORDS zo STORAGE.
+			// !!!!! HTTP POST obsahuje aj ANITFORGERY TOKEN ulozeny v HEADER HTTP POST.
+			let													Response=await fetch("@Url.Page("JavaScriptClientViewNamesPage")",
+																{
+																	method: "POST",
+																	headers: { "X-XSRF-TOKEN": Token },
+																	body: Form
+																});
+
+			document.getElementById("Content").innerHTML=await Response.text();
+		}
+
+		document.addEventListener("DOMContentLoaded", () => document.getElementById("Submit").onclick = SendRequest);
+	</script>
+</head>
+<body>
+	<div class="OUTER_BOX">
+		<!-- !!! Po sltaceni BUTTON sa vykona HTTP POST, ktory ulozi FORM DATA. -->
+		<button class="btn btn-primary m-2" id="Submit">Submit JavaScript FORM DATA !</button>
+
+		<!-- !!! HTML ELEMENT predstavuje AREA, kde sa zobrazia RECORDS zo STORAGE po vykonani HTTP POST. -->
+		<div class="INNER_BOX" id="Content">
+		</div>
+	</div>
+</body>
+</html>

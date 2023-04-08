@@ -1,0 +1,89 @@
+//----------------------------------------------------------------------------------------------------------------------
+1. Solution demonstruje MODEL BINDING v ASP.NET CORE APPLICATIONS.
+2. MODEL BINDING je proces vytvarania .NET OBJECTS z dat zaslanych v HTTP REQUEST, ktore su nasledne ako PARAMETERS posielane do ACTION METHODS a RAZOR PAGES HANDLERS.
+3. MODEL BINDING je zavisly na MODEL BINDERS. MODEL BINDER je COMPONENT, ktory je schopny PARSOVAT a NACITAT VALUE z daneho DATA SOURCE. ASP.NET definuje MODEL BINDERS pre nasledujuce typy DATA SOURCE.
+   A. FORM DATA VALUES.
+   B. HTTP REQUEST MESSAGE BODY. Tento MODEL BINDER sa aplikuje iba na API CONTROLLERS.
+   C. ROUTING VARIABLES.
+   D. QUERY STRINGS.
+   E. HTTP REQUEST HEADERS.
+!!! 4. ASP.NET BY-DEFAULT aplikuje MODEL BINDERS v poradi akom su definovane v MODEL BINDER COLLECTION. Ak niektory MODEL BINDER najde (podla NAME) pozadovanu VARIABLE, tak dalsi MODEL BINDER uz NIE JE POUZITY. BY-DEFAULT ASP.NET definuje nasledujuce poradie MODEL BINDERS.
+   A. FORM DATA VALUES.
+   B. HTTP REQUEST MESSAGE BODY. Tento MODEL BINDER sa aplikuje iba na API CONTROLLERS.
+   C. ROUTING VARIABLES.
+   D. QUERY STRINGS.
+   !!! E. HTTP REQUEST HEADERS NIE su sucastou DEFAULT MODEL BINDING.
+!!!!! 5. Ak VIACERO DATA SOURCES obsahuje tu istu VARIABLE, tak ASP.NET zoberie tu VALUE, ktora bola definovana v PRIORITNEJSOM DATA SOURCE. To znamena, ze BY DEFAULT ak napriklad danu VARIABLE obsahuje ROUTING VARIABLES DATA SOURCE aj QUERY STRINGS DATA SOURCE, tak sa zoberie VALUE z ROUTING VARIABLES DATA SOURCE, kedze tento BINDER sa aplikuje skor ako BINDER pre QUERY STRINGS.
+!!! 6. Pomocou ATTRIBUTES aplikovanych na PARAMETERS ACTION METHODS (RAZOR PAGE HANDLERS) je mozne explicitne definovat z ktoreho DATA SOURCE sa ma dana VARIABLE nacitat.
+!!!!! 7. ASP.NET BY-DEFAULT vyvola ACTION METHOD (RAZOR PAGE HANDLER) aj vtedy, ak MODEL BINDERS NEDOKAZALI najst VALUES pre vsetky PARAMETERS ACTION METHOD (RAZOR PAGE HANDLER). PARAMETERS pre ktore neboli najdene VALUES su substituovane za DEFAULT VALUES daneho TYPE.
+8. Pre BINDING SIMPLE TYPES platia nasledujuce pravidla.
+   A. Za SIMPLE TYPES su povazovane vsetky PRIMITIVE TYPES, DATES a TIMES, ENUM VALUES a TYPE [string].
+   B. Ak MODEL BINDING nie je schopny najst VALUE pre danu VARIABLE, ktora je SIMPLE TYPE, tak ju nahradi VALUE [default(SIMPLE_TYPE)].
+   !!! C. Ak je potrebne rozlisit ci VALUE VARIABLE SIMPLE TYPE bola najdena MODEL BINDING, alebo nebola a MODEL BINDING ju substituoval za DEFAULT VALUE, je mozne ako PARAMETER TYPE pouzit TYPE [TYPE?]. V pripade, ze VARIABLE TYPE [TYPE?] NEBOLA MODEL BINDING najdena, tak je nastavena na VALUE [null].
+!!! 9. MODEL BINDING SIMPLE TYPES pre RAZOR PAGES ma nasledujuce SPECIFIKA.
+   A. RAZOR PAGES ako MODEL OBJECT maju nastaveny RAZOR PAGE MODEL OBJECT.
+   B. RAZOR PAGE MODEL OBJECT spravidla obsahuje PROPERTY na MODEL OBJECT, ktory obsahuje PROPERTIES na ktore maju byt jednotlive INPUT HTML ELEMENTS MAPPED.
+   C. INPUT HTML ELEMENTS v HTML ATTRIBUTE [asp-for] pouzivaju SYNTAX [XXX.YYY], kde VALUE 'XXX' je nazov PROPERTY RAZOR PAGE MODEL OBJECT, ktora referuje na MODEL OBJECT a VALUE 'YYY' je PROPERTY MODEL OBJECT na ktoru ma byt dany INPUT HTML ELEMENT MAPPED.
+   !!!!! D. Pouzitie SYNTAXE [XXX.YYY] ZNEMOZNUJE vykonat MODEL BINDING na PARAMETERS RAZOR PAGE HANDLERS, ktore MODEL BINDER nedokaze nazvu 'XXX.YYY' priradit ziaden PARAMETER RAZOR PAGE HANDLER, pretoze PARAMETERS NEMOZU mat nazov 'XXX.YYY' (CHARACTER '.' NIE je pripustny v nazve PARAMETER C# METHOD).
+   !!!!! E. Riesenim je pre kazdy INPUT HTML ELEMENT okrem HTML ATTRIBUTE [asp-for], kde sa pouziva SYNTAX [XXX.YYY] este definovat aj HTML ATTRIBUTE [name], kde sa ako VALUE nastavi PRESNY NAZOV PARAMETER RAZOR PAGE HANDLER. MODEL BINDER potom na zaklade zhodneho nazvu HTML ATTRIBUTE [name] a PARAMETRU RAZOR PAGE HANDLER dokaze USPESNE vykonat MODEL BINDING.
+10. Pre BINDING COMPLEX TYPES platia nasledujuce pravidla.
+   A. Za COMPLEX TYPES su povazovane vsetky TYPES okrem PRIMITIVE TYPES, DATES a TIMES, ENUM VALUES a TYPE [string].
+   B. Ak MODEL BINDING detekuje COMPLEX TYPE, potom sa pre kazdu PUBLIC PROPERTY pokusa pomocou MODEL BINDERS najst jej VALUE. Tu potom ulozi do tejto PUBLIC PROPERTY.
+   !!! C. Ak MODEL BINDING NENAJDE pre niektore PUBLIC PROPERTIES COMPLEX TYPE ich VALUES, tak tieto PROPERTIES su nastavene na VALUE [default(TYPE)].
+   !!! D. Ak COMPLEX TYPE obsahuje NESTED COMPLEX TYPE, tak proces vyhladavania pokracuje rovnakym sposobom. To znaci, ze, znova sa MODEL BINDERS pokusia pre kazdu PUBLIC PROPERTY najst jej VALUE a ulozit ju do tejto PUBLIC PROPERTY.
+   !!!!! E. Ak COMPLEX TYPE obsahuje NESTED COMPLEX TYPE, tak BY-DEFAULT nazov takejto PROPERTY je [PARENT_PROPERTY_NAME.CHILD_PROPERTY_NAME], kde VALUE 'PARENT_PROPERTY_NAME' je PROPERTY v PARENT COMPLEXT TYPE, ktory odkazuje na CHILD COMPLEX TYPE a VALUE 'CHILD_PROPERTY_NAME' je nazov PROPERTY v CHILD COMPLEX TYPE. Pomocou tejto CONVENTION je ASP.NET schopny jednoznacne mapovat PROPERTIES COMPLEX TYPES, ktore obsahuju ine COMPLEX TYPES. Standardne ak v HTML ELEMENTS sa pouzivaju TAG HELPERS, tak tieto prideluju HTML ELEMENTS NAMES podla tejto konvencie. Ak vsak sa nepouzivaju TAG HELPERS, ale VALUES jednotlivych HTML ATTIBUTES sa nastavuju MANUALNE, tak je NUTNE dodrzat tuto konvenciu, aby MODEL BIDNING dokazal spravne mapovat VALUES do PROPERTIES COMPLEX TYPES.
+   !!! F. Ak COMPLEX TYPE obsahuje NESTED COMPLEX TYPE, pricom NESTED COMPLEX TYPE moze byt nastaveny na NULL, potom je nutne pri zobrazovani PROPERTIES NESTED COMPLEX TYPE vykonat kontrolu ci PROPERTY NIE JE NULL. Najjednoduchsie je to vykonat pomocou OPERATOR [?.].
+!!! 11. MODEL BINDING COMPLEX TYPES pre RAZOR PAGES ma nasledujuce SPECIFIKA.
+   A. RAZOR PAGES ako MODEL OBJECT maju nastaveny RAZOR PAGE MODEL OBJECT.
+   B. RAZOR PAGE MODEL OBJECT spravidla obsahuje PROPERTY na MODEL OBJECT, ktory obsahuje PROPERTIES na ktore maju byt jednotlive INPUT HTML ELEMENTS MAPPED.
+   C. INPUT HTML ELEMENTS v HTML ATTRIBUTE [asp-for] pouzivaju SYNTAX [XXX.YYY], kde VALUE 'XXX' je nazov PROPERTY RAZOR PAGE MODEL OBJECT, ktora referuje na MODEL OBJECT a VALUE 'YYY' je PROPERTY MODEL OBJECT na ktoru ma byt dany INPUT HTML ELEMENT MAPPED.
+   !!!!! D. PROBLEM pouzitia HTML ATTRIBUTE [asp-for] je v tom, ze COMPLEX TYPE MODEL OBJECT, ktoreho PROPERTIES su MAPPED sa pouzivaju IBA pre NAPLNANIE INPUT HTML ELEMENTS. Tieto PROPERTIES vsak NIE SU POUZITE pri UKLADANI VALUES z INPUT HTML ELEMENTS. Preto ako RAZOR PAGE POST HANLDER NEMOZE zobrat PROPERTIES COMPLEX TYPE MODEL OBJECT, pretoze tento ma VALUE [null].
+   !!!!! E. Ak RAZOR PAGE POST HANDLER definuje ako PARAMETER COMPLEX TYPE, tak MODEL BINDING tento PARAMETER KORKETNE NAPLNI VALUES nacitanymi z INPUT HTML ELEMENTS. PROBLEM tohto pristupuju je, ze COMPLEX TYPE MODEL OBJECT ulozeny v PROPERTY RAZOR PAGE COMPLEX TYPE MODEL OBJECT a PARAMETER RAZOR PAGE POST HANDLER su UPLNE NEZAVISLE VALUES, ktore nevzajom nemaju NIC SPOLOCNE.
+   !!! F. Elegantnejsim riesenim ako definovat PROPERTY obsahujucu COMPLEX TYPE MODEL OBJECT a zaroven RAZOR PAGE POST HANDLER s PARAMETROM COMPLEX TYPE je pouzitie ATTRIBUTE [BindPropertyAttribute].
+!!! 12. MODEL BINDING COMPLEX TYPES pre RAZOR PAGES by malo byt implementovane nasledujucim sposobom.
+   A. RAZOR PAGE obsahuje v RAZOR PAGE MODEL OBJECT PROPERTY, ktora je COMPLEX TYPE a reprezentuje MODEL OBJECT pre RAZOR PAGE.
+   !!! B. Na PROPERTY, ktora je COMPLEX TYPE a reprezentuje MODEL OBJECT pre RAZOR PAGE sa aplikuje ATTRIBUTE [BindPropertyAttribute], ktory umozni, aby RAZOR PAGES do PROPERTIES tohto OBJECT ulozil VALUES z INPUT HTML ELEMENTS.
+   !!!!! C. RAZOR PAGE POST HANDLER NEOBSAHUJE ZIADEN PARAMETER, pretoze VALUES z INPUT HTML ELEMENTS su MAPOVANE PRIAMO do PROPERTIES MODEL OBJECT, a preto RAZOR PAGE POST HANDLER moze pouzit MODEL OBJECT na spracovanie dat, ktore zadal USER.
+   !!! D. Ak PROPERTY, ktora je COMPLEX TYPE a reprezentuje MODEL OBJECT sa ma pouzit aj na ukladanie VALUES INPUT HTML ELEMENTS pri pouziti HTTP GET VERBS, potom je potrebne nastavit PROPERTY [BindPropertyAttribute.SupportsGet] na VALUE [true].
+13. ATTRIBUTE [BindPropertyAttribute] je mozne aplikovat aj na CLASS cim vsetky PROPERTIES danej CLASS mozu byt BOUND v RAZOR PAGES. ATTRIBUTE [BindPropertyAttribute] ma nasledujuce MEMBERS.
+   A. PROPERTY [Name] TYPE [string] obsahuje nazov PREFIX z ktoreho sa ma vykonat mapovanie na PARAMETER ACTION METHOD (RAZOR PAGE HANDLER).
+   B. PROPERTY [SupportsGet] TYPE [bool] urcuje ci sa ma PROPERTY (CLASS) na ktoru je aplikovany ATTRIBUTE pouzit pri naplnani INPUT HTML ELEMENTS pre HTTP GET VERBS.
+14. ATTRIBUTE [BindAttribute] aplikovany na CLASSES, alebo ACTION METHODS (RAZOR PAGE HANDLERS) PARAMETERS umoznuje vykonat CUSTOMIZATION MODEL BINDING. ATTRIBUTE [BindAttribute] ma nasledujuce MEMBERS.
+   A. PROPERTY [PropertyFilter] TYPE [Func<ModelMetadata,bool>] vracia FILTER, ktory urcuje, ktore PROPERTIES COMPLEX OBJECT maju byt BOUND pomocou MODEL BINDING.
+   B. PROPERTY [Include] TYPE [string[]] obsahuje nazov PROPERTIES COMPLEX OBJECT oddelenych CHARACTER ',', ktore maju byt BOUND pomocou MODEL BINDING. Ostatne PROPERTIES COMPLEX OBJECT nebudu BOUND.
+   C. PROPERTY [Prefix] TYPE [string] obsahuje nazov PREFIX z ktoreho sa ma vykonat mapovanie na PARAMETER ACTION METHOD (RAZOR PAGE HANDLER).
+15. Ak je ATTRIBUTE [BindAttribute] aplikovany na CLASS, potom je platny pre vsetky ACTION METHODS (RAZOR PAGE HANDLERS), ktore instanciu daneho CLASS implementuju.
+16. ATTRIBUTE [BindRequiredAttribute] aplikovany na CLASS, PROPERTY, alebo PARAMETER ACTION METHOD (RAZOR PAGE HANDLER) urcuje, ze PROPERTIES danej CLASS, dana PROPERTY, alebo PARAMETER ACTION METHOD (RAZOR PAGE HANDLER) MUSIA byt BOUND, inak dojde k VALIDATION ERROR.
+17. ATTRIBUTE [BindNeverAttribute] aplikovany na CLASS, PROPERTY, alebo PARAMETER ACTION METHOD (RAZOR PAGE HANDLER) urcuje, ze PROPERTIES danej CLASS, dana PROPERTY, alebo PARAMETER ACTION METHOD (RAZOR PAGE HANDLER) nebudu BOUND.
+18. ASP.NET podporuje MODEL BINDING pre ARRAYS a COLLECTIONS SIMPLE TYPES. Pre tento MODEL BINDING vo VIEWS platia nasledujuce fakty.
+   A. FORM musi definovat VIACERO INPUT HTML ELEMENTS, ktore maju HTML ELEMENT [name] nastavenu na TU ISTU VALUE.
+   B. ASP.NET zoberie VALUES vsetkych INPUT HTML ELEMENTS, ktore maju HTML ELEMENT [name] s ROVNAKOU VALUE a vykona z nich BINDING na ARRAY (COLLECTION) SIMPLE TYPE.
+   C. Pri vykonavani MODEL BINDING z FORM ASP.NET namapuje ARRAY (COLLECTION) SIMPLE TYPE na PARAMETER ACTION METHOD.
+   !!! D. Alternativne, HTML ELEMENT [name] moze byt nastaveny na VALUE [[INDEX]], kde VALUE 'INDEX' je ciselny INDEX. ASP.NET potom vykona BINDING na ARRAY ITEMS s danym ciselnym INDEX.
+   !!! E. Ak HTML ELEMENT [name] je nastaveny na VALUE [VARIABLE_NAME[KEY]], kde VALUE 'VARIABLE_NAME' je nazov VARIABLE a VALUE 'KEY' je KEY, potom ASP.NET vykona BINDING na DICTIONARY.
+19. ASP.NET podporuje MODEL BINDING pre ARRAYS a COLLECTIONS SIMPLE TYPES. Pre tento MODEL BINDING vo VIEWS platia nasledujuce fakty.
+   A. FORM musi definovat VIACERO INPUT HTML ELEMENTS, ktore maju HTML ELEMENT [name] nastavenu na na VALUE [MODEL_OBJECT_PROPERTY], kde VALUE 'MODEL_OBJECT_PROPERTY' je PROPERTY odkazujuca sa v RAZOR PAGE MODEL OBJECT.
+   !!! B. Na PROPERTY 'MODEL_OBJECT_PROPERTY' refereujucu v RAZOR PAGE MODEL OBJECT na MODEL OBJECT MUSI byt aplikovany ATTRIBUTE [BindPropertyAttribute]. Standardne ASP.NET vykonava BINDING na tuto PROPERTY podla jej NAME, no tento NAME je mozne zmenit nastavenim PROPERTY [BindPropertyAttribute.Name].
+   C. ASP.NET zoberie VALUES vsetkych INPUT HTML ELEMENTS, ktore maju HTML ELEMENT [name] s ROVNAKOU VALUE a vykona z nich BINDING na ARRAY (COLLECTION) SIMPLE TYPE.
+   D. RAZOR PAGE HANDLER moze z PROPERTY 'MODEL_OBJECT_PROPERTY' nacitat zadane VALUES a spracovat ich.
+   !!! E. Alternativne, HTML ELEMENT [name] moze byt nastaveny na VALUE [MODEL_OBJECT_PROPERTY[INDEX]], kde VALUE 'MODEL_OBJECT_PROPERTY' je PROPERTY odkazujuca sa v RAZOR PAGE MODEL OBJECT na MODEL OBJECT a VALUE 'INDEX' je ciselny INDEX. ASP.NET potom vykona BINDING na ARRAY ITEMS s danym ciselnym INDEX.
+   !!! F. Ak HTML ELEMENT [name] je nastaveny na VALUE [PROPERTY_NAME[KEY]], kde VALUE 'PROPERTY_NAME' je nazov PROPERTY a VALUE 'KEY' je KEY, potom ASP.NET vykona BINDING na DICTIONARY.
+20. ASP.NET podporuje MODEL BINDING pre ARRAYS a COLLECTIONS COMPLEX TYPES. Pre tento MODEL BINDING vo VIEWS platia nasledujuce fakty.
+   A. FORM musi definovat VIACERO INPUT HTML ELEMENTS s HTML ATTRIBUTE [name] nastavenu na VALUE [[INDEX].PROPERTY_NAME], kde VALUE 'INDEX' je ciselny INDEX a VALUE 'PROPERTY_NAME' je nazov PROPERTY COMPLEX OBJECT.
+   B. ASP.NET zoberie VALUES INPUT HTML ELEMENTS, ktore maju ROVNAKU VALUE ciselneho INDEXU a tieto VALUES namapuje na prislusne PROPERTIES COMPLEX TYPE. Ciselny INDEX urcuje poziciu PROPERTY v COMPLEX OBJECT ARRAY (COLLECTION).
+   C. Pri vykonavani MODEL BINDING z FORM ASP.NET namapuje ARRAY (COLLECTION) COMPLEX TYPE na PARAMETER ACTION METHOD.
+21. ASP.NET podporuje MODEL BINDING pre ARRAYS a COLLECTIONS COMPLEX TYPES. Pre tento MODEL BINDING v RAZOR PAGES platia nasledujuce fakty.
+   A. FORM musi definovat VIACERO INPUT HTML ELEMENTS s HTML ATTRIBUTE [name] nastavenu na VALUE [MODEL_OBJECT_PROPERTY[[INDEX].PROPERTY_NAME]], kde VALUE 'MODEL_OBJECT_PROPERTY' je PROPERTY odkazujuca sa v RAZOR PAGE MODEL OBJECT na MODEL OBJECT, VALUE 'INDEX' je ciselny INDEX a VALUE 'PROPERTY_NAME' je nazov PROPERTY COMPLEX OBJECT.
+   !!! B. Na PROPERTY 'MODEL_OBJECT_PROPERTY' refereujucu v RAZOR PAGE MODEL OBJECT na MODEL OBJECT MUSI byt aplikovany ATTRIBUTE [BindPropertyAttribute]. Standardne ASP.NET vykonava BINDING na tuto PROPERTY podla jej NAME, no tento NAME je mozne zmenit nastavenim PROPERTY [BindPropertyAttribute.Name].
+   C. ASP.NET zoberie VALUES INPUT HTML ELEMENTS, ktore maju ROVNAKU VALUE ciselneho INDEXU a tieto VALUES namapuje na prislusne PROPERTIES COMPLEX TYPE. Ciselny INDEX urcuje poziciu PROPERTY v COMPLEX OBJECT ARRAY (COLLECTION).
+   D. RAZOR PAGE HANDLER moze z PROPERTY 'MODEL_OBJECT_PROPERTY' nacitat zadane VALUES a spracovat ich.
+22. ASP.NET umoznuje pomocou ATTRIBUTES definovat z akeho SOURCE sa budu PARAMETERS ACTION METHODS (RAZOR PAGE HANDLERS) BOUND. ATTRIBUTES mozu byt aplikovane na PROPERTIES COMPLEX TYPES, alebo na PARAMETERS ACTION METHODS (RAZOR PAGE HANDLERS). ASP.NET definuje nasledujuce ATTRIBUTES.
+   A. ATTRIBUTE [FromForm] urcuje, ze PARAMETER ACTION METHOD (RAZOR PAGE HANDLER) (PROPERTY COMPLEX TYPE) ma byt BOUND z FORM DATA. Pomocou PROPERTY [Name] je mozne definovat z ktorej FORM DATA VALUE sa ma VALUE nacitat.
+   B. ATTRIBUTE [FromRoute] urcuje, ze PARAMETER ACTION METHOD (RAZOR PAGE HANDLER) (PROPERTY COMPLEX TYPE) ma byt BOUND z ROUTE PARAMETERS. Pomocou PROPERTY [Name] je mozne definovat z ktorej ROUTE PARAMETERS VALUE sa ma VALUE nacitat.
+   C. ATTRIBUTE [FromQuery] urcuje, ze PARAMETER ACTION METHOD (RAZOR PAGE HANDLER) (PROPERTY COMPLEX TYPE) ma byt BOUND z QUERY STRING PARAMETERS. Pomocou PROPERTY [Name] je mozne definovat z ktorej QUERY STRING PARAMETERS VALUE sa ma VALUE nacitat.
+   D. ATTRIBUTE [FromHeader] urcuje, ze PARAMETER ACTION METHOD (RAZOR PAGE HANDLER) (PROPERTY COMPLEX TYPE) ma byt BOUND z HTTP REQUEST HEADERS. Pomocou PROPERTY [Name] je mozne definovat z ktorej HTTP REQUEST HEADERS VALUE sa ma VALUE nacitat.
+   !!!!! E. ATTRIBUTE [FromBody] urcuje, ze PARAMETER ACTION METHOD (RAZOR PAGE HANDLER) (PROPERTY COMPLEX TYPE) ma byt BOUND z HTTP REQUEST BODY. HTTP REQUEST BODY moze byt BINDING SOURCE, ak HTTP REQUEST BODY NEOBSAHUJE FORM ENCODED DATA. ATTRIBUTE [FromBody] moze byt aplikovany iba na JEDEN PARAMETER ACTION METHOD (RAZOR PAGE HANDLER). V pripade, ze je aplikovany na viacero PARAMETERS ACTION METHOD (RAZOR PAGE HANDLER), ASP.NET hodi EXCEPTION.
+23. ASP.NET umoznuje vykonanie MANUAL BINDING pre VIEWS aj RAZOR PAGES.
+   A. V CONTROLLERS CLASS [ControllerBase] definuje METHOD [Task<bool> TryUpdateModelAsync<TModel>(TModel Model, string Prefix, params Expression<Func<TModel,object>>[] IncludeExpressions)], ktora umoznuje vykonat MANUAL BINDING.
+   B. V RAZOR PAGES CLASS [PageModel] definuje METHOD [Task<bool> TryUpdateModelAsync<TModel>(TModel Model, string Name, params Expression<Func<TModel,object>>[] IncludeExpressions)], ktora umoznuje vykonat MANUAL BINDING.
+//----------------------------------------------------------------------------------------------------------------------

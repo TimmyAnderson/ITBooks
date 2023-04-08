@@ -1,0 +1,86 @@
+//-----------------------------------------------------------------------------
+1. Solution demonstruje pouzitie VIEW COMPONENTS v ASP.NET CORE APPLICATIONS.
+2. VIEW COMPONENTS su CLASSES, ktore umoznuju integrovat APPLICATION LOGIC napisanu v C# s PARTIAL VIEWS na vytvorenie REUSABLE COMPONENTS obsahujucich HTML CODE a C# CODE.
+3. VIEW COMPONENTS umoznuju definovat CUSTOM LOGIC ako napriklad citanie dat z DB s PARTIAL VIEWS, vdaka comu vznikaju REUSABLE COMPONENTS.
+4. VIEW COMPOMENTS mozu byt vytvorene nasledujucimi sposobmi.
+   A. Ako POCO OBJECTS, ktorych nazov ma POSTFIX [ViewComponent].
+   B. Ako CLASSES, ktore su DERIVED z CLASS [ViewComponent].
+   C. Ako CLASSES oznacene pomocou ATTRIBUTE [ViewComponentAttribute].
+5. Pre POCO VIEW COMPONENTS platia nasledujuce fakty.
+   A. POCO VIEW COMPONENTS su C# CLASSES, ktorych nazov musi mat POSTFIX [ViewComponent].
+   !!! B. POCO VIEW COMPONENTS MUSIA mat definovanu METHOD [RETURN_TYPE Invoke()], alebo METHOD [Task<RETURN_TYPE> InvokeAsync()], ktora vracia instanciu TYPE 'RETURN_TYPE', ktora reprezentuje CONTENT, ktory POCO VIEW COMPONENT zobrazuje.
+   C. POCO VIEW COMPONENT CLASSES mozu byt umiestnene kdekolvek, no podla konvencie je ich vhodne umiestnovat do DIRECTORY [Components].
+   !!!!! D. Ak POCO VIEW COMPONENT chce zobrazit PARTIAL VIEW, tak METHOD [ViewViewComponentResult Invoke()] (alebo METHOD [Task<ViewViewComponentResult> InvokeAsync()]) MUSI mat ako RETURN VALUE TYPE CLASS [ViewViewComponentResult], ktora umoznuje zadefinovat nazov PARTIAL VIEW, ktory ma VIEW COMPONENT zobrazit.
+6. Pre VIEW COMPONENTS, ktore su DERIVED z CLASS [ViewComponent] platia nasledujuce fakty.
+   A. VIEW COMPONENTS su C# CLASSES, ktorych nazov moze byt LUBOVOLNY.
+   B. VIEW COMPONENTS MUSIA byt DERIVED z CLASS [ViewComponent].
+   !!! C. VIEW COMPONENTS MUSIA mat definovanu METHOD [RETURN_TYPE Invoke()], alebo METHOD [Task<RETURN_TYPE> InvokeAsync()], ktora vracia instanciu TYPE 'RETURN_TYPE', ktora reprezentuje CONTENT, ktory VIEW COMPONENT zobrazuje. BASE CLASS [ViewComponent] tuto METHOD NEDEFINUJE.
+   !!!!! D. Ak VIEW COMPONENT chce zobrazit PARTIAL VIEW, tak METHOD [ViewViewComponentResult Invoke()] (alebo METHOD [Task<ViewViewComponentResult> InvokeAsync()]) MUSI mat ako RETURN VALUE TYPE CLASS [ViewViewComponentResult], ktora umoznuje zadefinovat nazov PARTIAL VIEW, ktory ma VIEW COMPONENT zobrazit.
+   E. VIEW COMPONENTS, ktore su DERVIED z CLASS [ViewComponent], mozu pouzivat HELPER METHODS tejto CLASS na zjedodusene vytvaranie RETURN VALUES.
+   F. VIEW COMPONENT CLASSES mozu byt umiestnene kdekolvek, no podla konvencie je ich vhodne umiestnovat do DIRECTORY [Components].
+7. VIEW COMPONENTS je mozne vo VIEWS a RAZOR PAGES aplikovat nasledujucimi sposobmi.
+   A. Pouzitim KEYWORD [@await Component.InvokeAsync(COMPOMENT_NAME)], kde VALUE 'COMPOMENT_NAME' je nazov COMPONENT BEZ POSTFIX [ViewComponent]. KEYWORD [@await Component.InvokeAsync(COMPOMENT_NAME)] vyvolava METHOD [Task<IHtmlContent> IViewComponentHelper.InvokeAsync(string Name)].
+   B. Pouzitim TAG HELPERS.
+8. Na pridanie VIEW COMPONENTS do VIEWS a RAZOR PAGES pomocou TAG HELPERS je nutne vykonat nasledujuce kroky.
+   A. Pouzit KEYWORD [@addTagHelper *,XXX], kde VALUE 'XXX' je nazov PROJECT. Pouzitim tohto KEYWORD sa spristupnia TAG HELPERS, ktore su asociovane s VIEW COMPONENTS.
+   B. Pouzit TAG HELPERS pomocou vlozenim HTML ELEMENT [<vc:XXX/>], kde VALUE 'XXX' je nazov VIEW COMPONENT v LOWER CASE, kde jednotlive slova su oddelene znakom '-'.
+   !!! C. TAG HELEPER [<vc:XXX PARAMETER_1="VALUE_1" ... PARAMETER_N="VALUE_N"/>] moze obsahovat aj CUSTOM ATTRIBUTES, ktore su zaslane ako PARAMETERS do METHOD [RETURN_TYPE Invoke(PARAMETERS)], alebo METHOD [Task<RETURN_TYPE> InvokeAsync(PARAMETERS)]. Nazvy PARAMETERS MUSIA byt v LOWER CASE a jednotlive slova oddelene znakom '-'.
+!!! 9. RAZOR PAGES mozu pouzivat VIEW COMPONENTS uplne rovnako ako VIEWS.
+10. VIEW COMPONENTS mozu vracat v METHODS [RETURN_TYPE Invoke()] (alebo METHOD [Task<RETURN_TYPE> InvokeAsync()]) lubovolny TYPE. VIEW COMPONENTS zvycajne vracaju instancie CLASSES, ktore implementuju INTERFACE [IViewComponentResult]. ASP.NET definuje nasledujuce CLASSES, ktore implementuju INTERFACE [IViewComponentResult].
+   A. CLASS [ViewViewComponentResult] umoznuje VIEW COMPONENTS zobrazovat PARTIAL VIEWS. VIEW COMPONENTS, ktore su DERIVED z CLASS [ViewComponent] mozu vytvarat instancie CLASS [ViewViewComponentResult] volanim HELPER METHOD [ViewViewComponentResult View(string PartialViewName, object Model)].
+   B. CLASS [ContentViewComponentResult] umoznuje VIEW COMPONENTS zobrazovat TEXT, ktory pred zobrazenim bude bezpecne HTML ENCODED. To znaci, ze HTML ELEMENTS su ENCODED, aby NEBOLI zobrazene ako HTML ELEMENTS, ale iba ako PLAIN TEXT. VIEW COMPONENTS, ktore su DERIVED z CLASS [ViewComponent] mozu vytvarat instancie CLASS [ViewViewComponentResult] volanim HELPER METHOD [ContentViewComponentResult Content(string Content)]. V pripade, ze METHODS [RETURN_TYPE Invoke()] (alebo METHOD [Task<RETURN_TYPE> InvokeAsync()]) vracaju TYPE [string], tak ASP.NET automaticky obali RETURN VALUE do instancie CLASS [ContentViewComponentResult].
+   C. CLASS [HtmlContentViewComponentResult] umoznuje VIEW COMPONENTS zobrazovat HTML TEXT, ktory NEBUDE pred zobrazenim bezpecne HTML ENCODED. To znaci, ze ak TEXT obsahuje HTML ELEMENTS, tak budu zobrazene a interpretovane ako HTML ELEMENTS. V pripade, ze METHODS [RETURN_TYPE Invoke()] (alebo METHOD [Task<RETURN_TYPE> InvokeAsync()]) vracaju CLASS implementujucu INTERFACE [IHtmlContent], tak ASP.NET automaticky obali RETURN VALUE do instancie CLASS [HtmlContentViewComponentResult].
+11. VIEW COMPONENTS mozu zobrazovat PARTIAL VIEWS. Pre zobrazovanie PARTIAL VIEWS platia nasledujuce fakty.
+   A. VIEW COMPONENTS zobrazuju PARTIAL VIEWS, ak implementuju METHOD [ViewViewComponentResult Invoke()] (alebo METHOD [Task<ViewViewComponentResult> InvokeAsync()]).
+   B. VIEW COMPONENTS, ktore su DERIVED z CLASS [ViewComponent] mozu vytvarat instancie CLASS [ViewViewComponentResult] volanim HELPER METHOD [ViewViewComponentResult View(string PartialViewName, object Model)].
+   C. Ak su VIEW COMPONENTS pouzite vo VIEWS, VIEW COMPONENTS vyhladavaju PARTIAL VIEWS v DIRECTORY [Views/CONTROLLER_NAME/Components/VIEW_COMPONENT_NAME], DIRECTORY [Views/Shared/Components/VIEW_COMPONENT_NAME] a DIRECTORY [Pages/Shared/Components/VIEW_COMPONENT_NAME].
+   D. Ak su VIEW COMPONENTS pouzite v RAZOR PAGES, VIEW COMPONENTS vyhladavaju PARTIAL VIEWS v DIRECTORY [Pages/Components/VIEW_COMPONENT_NAME], DIRECTORY [Pages/Shared/Components/VIEW_COMPONENT_NAME] a DIRECTORY [Views/Shared/Components/VIEW_COMPONENT_NAME].
+   !!! E. VIEW COMPONENTS mozu obsahovat FULL PATH k PARTIAL VIEW, ktory ma byt zobrazeny.
+!!! 12. Ak su VIEW COMPONENTS pouzite vo VIEWS, PARTIAL VIEWS pre tieto VIEW COMPONENTS su vyhladavane v nasledujucich DIRECTORIES.
+   A. DIRECTORY [Views/CONTROLLER_NAME/Components/VIEW_COMPONENT_NAME], kde VALUE 'CONTROLLER_NAME' je nazov CONTROLLER a VALUE 'VIEW_COMPONENT_NAME' je nazov VIEW COMPONENT NAME.
+   B. DIRECTORY [Views/Shared/Components/VIEW_COMPONENT_NAME], kde VALUE 'VIEW_COMPONENT_NAME' je VIEW COMPONENT NAME.
+   C. DIRECTORY [Pages/Shared/Components/VIEW_COMPONENT_NAME], kde VALUE 'VIEW_COMPONENT_NAME' je VIEW COMPONENT NAME.
+!!! 13. Ak su VIEW COMPONENTS pouzite v RAZOR PAGES, PARTIAL VIEWS pre tieto VIEW COMPONENTS su vyhladavane v nasledujucich DIRECTORIES.
+   A. DIRECTORY [Pages/Components/VIEW_COMPONENT_NAME], kde VALUE 'CONTROLLER_NAME' je nazov CONTROLLER a VALUE 'VIEW_COMPONENT_NAME' je nazov VIEW COMPONENT NAME.
+   B. DIRECTORY [Pages/Shared/Components/VIEW_COMPONENT_NAME], kde VALUE 'VIEW_COMPONENT_NAME' je VIEW COMPONENT NAME.
+   C. DIRECTORY [Views/Shared/Components/VIEW_COMPONENT_NAME], kde VALUE 'VIEW_COMPONENT_NAME' je VIEW COMPONENT NAME.
+!!! 14. V METHOD [ViewResult View(string PartialViewName, object Model)] je mozne zadat aj FULL PATH k PARTIAL VIEW, ktory sa ma zobrazit. Pred FULL PATH platia nasledujuce pravidla.
+   A. FULL PATH k PARTIAL VIEW sa MUSI zacinat CHARACTERS [~/], alebo CHARACTER [/].
+   B. FULL PATH k PARTIAL VIEW MUSI obsahovat FILE EXTENSION [.cshtml].
+15. CLASS [ViewComponentContext] poskytuje VIEW COMPONENTS dodatocne informacie vykonavanom HTTP REQUEST ako aj data z PARENT VIEW, ktore moze VIEW COMPONENT pouzit na zobrazenie svojho CONTENT. CLASS [ViewComponentContext] ma nasledujuce MEMBERS.
+   A. PROPERTY [Arguments] TYPE [IDictionary<string,object>] obsahuje zoznam ARGUMENTS, ktore moze VIEW zaslat do VIEW COMPONENT.
+   B. PROPERTY [HtmlEncoder] TYPE [HtmlEncoder] obsahuje HELPER OBJECT, ktory je mozne pouzit bezpecny ENCODING HTML CODE.
+   C. PROPERTY [ViewComponentDescriptor] TYPE [ViewComponentDescriptor] obsahuje popis VIEW COMPONENT.
+   D. PROPERTY [ViewContext] TYPE [ViewContext] obsahuje OBJECT [ViewContext] z PARENT VIEW.
+   E. PROPERTY [ViewData] TYPE [ViewDataDictionary] obsahuje VIEW DATA, ktore boli do VIEW COMPONENT zaslane z CONTROLLER.
+16. CLASS [ViewComponent] definuje viacero MEMBERS, ktore ulahncuju implementaciu VIEW COMPONENTS.
+   A. PROPERTY [ViewComponentContext] TYPE [ViewComponentContext] obsahuje dodatocne informacie o CONTEXT pre ktory je vyvolana VIEW COMPONENT.
+   B. PROPERTY [HttpContext] TYPE [HttpContext] obsahuje HTTP CONTEXT, ktory okrem ineho obsahuje aj HTTP REQUEST MESSAGE a HTTP RESPONSE MESSAGE.
+   C. PROPERTY [User] TYPE [IPrincipal] obsahuje informacie o prihlasenom USER.
+   D. PROPERTY [RouteData] TYPE [RouteData] umoznuje pristup k ROUTE DATA, ktore vratil ROUTING SYSTEM.
+   E. PROPERTY [ViewBag] TYPE [dynamic] obsahuje VIEW BAG OBJECT.
+   F. PROPERTY [ModelState] TYPE [ModelStateDictionary] obsahuje STATE MODEL OBJECT.
+   G. PROPERTY [ViewContext] TYPE [ViewContext] obsahuje OBJECT [ViewContext] z PARENT VIEW.
+   H. PROPERTY [ViewData] TYPE [ViewDataDictionary] obsahuje VIEW DATA, ktore boli do VIEW COMPONENT zaslane z CONTROLLER.
+   I. PROPERTY [Url] TYPE [IUrlHelper] umoznuje generovat URLs, ktore su v sulade s ROUTES v ROUTE SYSTEM.
+17. Do VIEW COMPONENTS mozu PARENT VIEWS zasielat PARAMETERS. PARAMETERS sa zasielaju nasledujucim sposobom.
+   A. VIEW COMPONENT musi implementovat METHOD [RETURN_TYPE Invoke(PARAMETER_1,...,PARAMETER_N)] (alebo METHOD [Task<RETURN_TYPE> InvokeAsync(PARAMETER_1,...,PARAMETER_N)]), kde 'PARAMETER_*' su PARAMETERS, ktore VIEW COMPONENT vyzaduje.
+   B. Pri zobrazovani VIEW COMPOMENT je nutne doplnit PARARMETERS [@await Component.InvokeAsync(COMPOMENT_NAME,new{PARAMETER_1=VALUE_1,...,PARAMETER_N=VALUE_N})], kde 'PARAMETER_*' su PARAMETERS, ktore VIEW COMPONENT vyzaduje a 'VALUE_*' su VALUES tychto PARAMETERS.
+   !!! C. Pri pouziti TAG HELEPER [<vc:XXX PARAMETER_1="VALUE_1" ... PARAMETER_N="VALUE_N"/>] su PARAMETERS definovatn ako CUSTOM ATTRIBUTES, ktore su nasledne zaslane ako PARAMETERS do METHOD [RETURN_TYPE Invoke(PARAMETERS)], alebo METHOD [Task<RETURN_TYPE> InvokeAsync(PARAMETERS)]. Nazvy PARAMETERS MUSIA byt v LOWER CASE a jednotlive slova oddelene znakom '-'.
+!!! 18. ASP.NET umoznuje integrovat funkcionalitu RAZOR PAGES a VIEW COMPONENTS do jednej RAZOR PAGE HYBRID VIEW COMPONENT, ktora dokaze tak ako regularny RAZOR PAGE spracuvavat HTTP REQUESTS a zaroven vystupovat ako VIEW COMPONENT s PARTIAL VIEW. Pre RAZOR PAGE HYBRID VIEW COMPONENTS platia nasledujuce fakty.
+   !!!!! A. RAZOR PAGE HYBRID VIEW COMPONENT je specialny typ RAZOR PAGE a zaroven VIEW COMPONENT, ktory moze byt pouzity ako NEZAVISLY RAZOR PAGE, alebo ako VIEW COMPONENT, ktory pouziva iny VIEW ci RAZOR PAGE.
+   B. RAZOR PAGE VIEW COMPONENT je C# CLASS, ktory je DERIVED z CLASS [PageModel]. Je to teda plnohodnotny RAZOR PAGE MODEL OBJECT, ktory moze mat implementovane vlastne METHODS [RETURN_VALUE OnXXX()].
+   C. RAZOR PAGE HYBRID VIEW COMPONENT musi mat aplikovany ATTRIBUTE [ViewComponentAttribute], ktory ASP.NET povie, ze C# CLASS je zaroven aj VIEW COMPONENT.
+   D. RAZOR PAGE HYBRID VIEW COMPONENT musi mat definovany RAZOR PAGE VIEW, ktory sa pouziva na zobrazenie CONTENT, ak je RAZOR PAGE HYBRID VIEW COMPONENT pouzivany ako RAZOR PAGE.
+   !!! D. RAZOR PAGE HYBRID VIEW COMPONENT MUSI mat definovanu METHOD [RETURN_TYPE Invoke()], alebo METHOD [Task<RETURN_TYPE> InvokeAsync()], ktora sa vola ak je RAZOR PAGE HYBRID VIEW COMPONENT pouzivany ako VIEW COMPONENT.
+   !!! E. RAZOR PAGE HYBRID VIEW COMPONENT moze mat definovanu METHOD [RETURN_VALUE OnXXX(PARAMETERS)], alebo METHOD [Task<RETURN_VALUE> OnXXXAsync(PARAMETERS)], ktora je volana pri prichode HTTP MESSAGE VERB 'XXX', ak je RAZOR PAGE HYBRID VIEW COMPONENT pouzita ako nezavisla RAZOR PAGE.
+!!! 19. ASP.NET umoznuje integrovat funkcionalitu CONTROLLERS a VIEW COMPONENTS do jednej CONTROLLER HYBRID VIEW COMPONENT, ktora dokaze tak ako regularny CONTROLLER spracuvavat HTTP REQUESTS v ACTION METHODS a zaroven vystupovat ako VIEW COMPONENT s PARTIAL VIEW. Pre CONTROLLER HYBRID VIEW COMPONENTS platia nasledujuce fakty.
+   !!!!! A. CONTROLLER PAGE HYBRID VIEW COMPONENT je specialny typ CONTROLLER a zaroven VIEW COMPONENT, ktory moze byt pouzity ako NEZAVISLY CONTROLLER, alebo ako VIEW COMPONENT, ktory pouziva iny VIEW ci RAZOR PAGE.
+   B. CONTROLLER HYBRID VIEW COMPONENT je C# CLASS, ktory je DERIVED z CLASS [Controller]. Je to teda plnohodnotny CONTROLLER, ktory moze mat implementovane vlastne ACTION METHODS.
+   C. CONTROLLER HYBRID VIEW COMPONENT musi mat aplikovany ATTRIBUTE [ViewComponentAttribute], ktory ASP.NET povie, ze C# CLASS je zaroven aj VIEW COMPONENT.
+   !!!!! D. CONTROLLER HYBRID VIEW COMPONENT MUSI mat definovanu METHOD [RETURN_TYPE Invoke()], alebo METHOD [Task<RETURN_TYPE> InvokeAsync()], ktora sa vola ak je CONTROLLER HYBRID VIEW COMPONENT volany z VIEW pomocou KEYWORD [@await Component.InvokeAsync(COMPOMENT_NAME)], alebo pomocou TAG HELPER. Tato METHOD sa vola IBA ak je CONTROLLER HYBRID VIEW COMPONENT pouzita ako VIEW COMPONENT.
+   E. CONTROLLER HYBRID VIEW COMPONENT moze mat definovane VIEWS, ktore sa pouzivaju na zobrazenie RESULTS z ACTION METHODS.
+   !!! F. CONTROLLER HYBRID VIEW COMPONENT moze mat definovane PARTIAL VIEWS, ktore su vratene METHOD [RETURN_TYPE Invoke()], alebo METHOD [Task<RETURN_TYPE> InvokeAsync()], pri zobrazeni CONTROLLER HYBRID VIEW COMPONENT z VIEW pomocou KEYWORD [@await Component.InvokeAsync(COMPOMENT_NAME)].
+   !!!!! G. LINKS, ktore su definovane v PARTIAL VIEWS MUSIA mat definovany CONTROLLER odkazujuci na HYBRID VIEW COMPONENT, inak LINK sa prelozi na URL odkazujuci na PARENT CONTROLLER.
+!!!!! 20. Obrovskou VYHODOU HYBRID VIEW COMPONENTS, ze mozu mat KOMPLETNU FUNKCIONALITU, ktora zahrna BUSINESS LOGIKU v ACTION METHODS, ktore su vyvolavane ako reakcie na LINKS a BUTTONS obsiahnute v PARTIAL VIEWS CONTROLLER HYBRID VIEW COMPONENTS.
+//-----------------------------------------------------------------------------

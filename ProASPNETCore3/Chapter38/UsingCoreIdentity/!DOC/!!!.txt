@@ -1,0 +1,57 @@
+//----------------------------------------------------------------------------------------------------------------------
+1. Solution demonstruje pouzitie ASP.NET CORE IDENTITY v ASP.NET CORE APPLICATIONS.
+2. ASP.NET CORE IDENTITY umoznuje vykonavat USER a ROLE MANAGEMENET ako aj AUTHENTICATION a AUTHORIZATION USERS.
+3. USER je v ASP.NET CORE IDENTITY reprezentovany CLASS [IdentityUser]. PROGRAM moze pridat nove PROPERTIES vytvorenim CLASS, ktora je DERIVED z CLASS [IdentityUser]. CLASS [IdentityUser] ma nasledujuce MEMBERS.
+   A. PROPERTY [Id] TYPE [string] obsahuje UNIQUE IDENTIFIER daneho USER.
+   B. PROPERTY [UserName] TYPE [string] obsahuje NAME daneho USER.
+   C. PROPERTY [Email] TYPE [string] obsahuje EMAIL daneho USER.
+   D. PROPERTY [PasswordHash] TYPE [string] obsahuje PASSWORD HASH daneho USER.
+   E. PROPERTY [PhoneNumber] TYPE [string] obsahuje PHONE NUMBER daneho USER.
+   F. PROPERTY [SecurityStamp] TYPE [string] obsahuje SECURITY STAMP daneho USER. VALUE SECURITY STAMP sa meni vtedy, ak dojde k zmene PROPERTIES CLASS [IdentityUser], ako je napriklad zmena PASSWORD.
+4. ROLE je v ASP.NET CORE IDENTITY reprezentovana CLASS [IdentityRole]. PROGRAM moze pridat nove PROPERTIES vytvorenim CLASS, ktora je DERIVED z CLASS [IdentityRole]. CLASS [IdentityRole] ma nasledujuce MEMBERS.
+   A. PROPERTY [Id] TYPE [string] obsahuje UNIQUE IDENTIFIER danej ROLE.
+   B. PROPERTY [RoleName] TYPE [string] obsahuje NAME danej ROLE.
+   C. PROPERTY [ConcurrencyStamp] TYPE [string] obsahuje CONCURRENCY STAMP danej ROLE. VALUE CONCURRENCY STAMP sa meni vtedy, ak dojde k ulozenie ROLE do PERSISTENT STORE.
+!!! 5. ASP.NET CORE IDENTITY definuje CLASS [IdentityDbContext<TUserType,TRoleType,TKeyType>], kde VALUE 'TUserType' reprezentuje USER TYPE, VALUE 'TRoleType' reprezentuje ROLE TYPE a VALUE 'TKeyType' reprezentuje TYPE USER a ROLE KEYS. CLASS [IdentityDbContext<TUserType,TRoleType,TKeyType>] sluzi ako BASE CLASS pre ENTITY FRAMEWORK DB CONTEXT, DATABASE, ktora uklada USERS a ROLES.
+6. METHOD [IApplicationBuilder IApplicationBuilder.UseAuthentication()] pridava AUTHENTICATION MIDDLEWARE COMPONENT do REQUEST PIPELINE. AUTHENTICATION MIDDLEWARE COMPONENT je zodpovedny za vykonanie AUTHENTICATION prichadzajucich HTTP REQUEST MESSAGES.
+7. METHOD [IdentityBuilder IServiceCollection.AddIdentity<TUser,TRole>()] prida IDENTITY SERVICE do DEPENDENCY INJECTION FRAMEWORK.
+!!! 8. CLASS [UserManager<TUserType>] umoznuje pristup k USERS, ktori su ulozeni v DB. CLASS [UserManager<TUserType>] umoznuje aj pridavanie a odoberanie USERS do a z ROLES. CLASS [UserManager<TUserType>] ma nasledujuce MEMBERS.
+   A. PROPERTY [Users] TYPE [IQueryable<TUserType>] vracia COLLECTION USERS, ktori su ulozeni v DB.
+   B. METHOD [Task<IdentityResult> CreateAsync(TUserType User, string Password)] vytvara noveho USER v DB. RETURN VALUE CLASS [IdentityResult] obsahuje informaciu ci operacia bola uspesna, a ak nie, tak obsahuje zoznam ERRORS, ku ktorym doslo.
+   C. METHOD [Task<IdentityResult> UpdateAsync(TUserType User)] vykonava UPDATE existujuceho USER v DB. RETURN VALUE CLASS [IdentityResult] obsahuje informaciu ci operacia bola uspesna, a ak nie, tak obsahuje zoznam ERRORS, ku ktorym doslo.
+   D. METHOD [Task<IdentityResult> DeleteAsync(TUserType User)] vykonava DELETE existujuceho USER v DB. RETURN VALUE CLASS [IdentityResult] obsahuje informaciu ci operacia bola uspesna, a ak nie, tak obsahuje zoznam ERRORS, ku ktorym doslo.
+   E. METHOD [Task<TUserType> FindByIdAsync(string UserId)] vracia USER ulozeneho v DB na zaklade jeho ID.
+   F. METHOD [Task<IdentityResult> AddToRoleAsync(TUserType User, string Role)] pridava daneho USER do zadanej ROLE v DB. RETURN VALUE CLASS [IdentityResult] obsahuje informaciu ci operacia bola uspesna, a ak nie, tak obsahuje zoznam ERRORS, ku ktorym doslo.
+   G. METHOD [Task<IdentityResult> RemoveFromRoleAsync(TUserType User, string Role)] odstranuje daneho USER do zadanej ROLE v DB. RETURN VALUE CLASS [IdentityResult] obsahuje informaciu ci operacia bola uspesna, a ak nie, tak obsahuje zoznam ERRORS, ku ktorym doslo.
+   H. METHOD [Task<IList<string>> GetRolesAsync(TUserType User)] vracia zoznam vsetkych ROLES v ktorych sa dany USER nachadza.
+   I. METHOD [Task<IList<TUserType>> GetUsersInRoleAsync(string RoleName)] vracia zoznam vsetkych USERS, ktori su zaradeni do danej ROLE.
+   J. METHOD [Task<bool> IsInRoleAsync(TUserType User, string Role)] vracia informaciu ci sa dany USER nachadza v zadanej ROLE.
+9. CLASS [RoleManager<TRoleType>] umoznuje pristup k ROLES, ktore su ulozene v DB. CLASS [RoleManager<TRoleType>] ma nasledujuce MEMBERS.
+   A. PROPERTY [Roles] TYPE [IQueryable<TRoleType>] vracia COLLECTION ROLES, ktore su ulozene v DB.
+   B. METHOD [Task<IdentityResult> CreateAsync(TRoleType Role)] vytvara novu ROLE v DB. RETURN VALUE CLASS [IdentityResult] obsahuje informaciu ci operacia bola uspesna, a ak nie, tak zoznam obsahuje ERRORS, ku ktorym doslo.
+   C. METHOD [Task<IdentityResult> UpdateAsync(TRoleType Role)] vykonava UPDATE existujucej ROLE v DB. RETURN VALUE CLASS [IdentityResult] obsahuje informaciu ci operacia bola uspesna, a ak nie, tak obsahuje zoznam ERRORS, ku ktorym doslo.
+   D. METHOD [Task<IdentityResult> DeleteAsync(TRoleType Role)] vykonava DELETE existujucej ROLE v DB. RETURN VALUE CLASS [IdentityResult] obsahuje informaciu ci operacia bola uspesna, a ak nie, tak obsahuje zoznam ERRORS, ku ktorym doslo.
+   E. METHOD [Task<TRoleType> FindByIdAsync(string RoleID)] vracia ROLE ulozenu v DB podla jej ID.
+   F. METHOD [Task<TRoleType> FindByNameAsync(string RoleName)] vracia ROLE ulozenu v DB podla jej NAME.
+   G. METHOD [Task<bool> RoleExistsAsync(string RoleName)] vracia informaciu ci ROLE s danym NAME existuje v DB.
+10. ASP.NET CORE IDENTITY umoznuje definovat PASSWORD POLICIES, ktore urcuju ako silny ma byt PASSWORD. PASSWORD POLICIES sa nastavuju pomocou CLASS [PasswordOptions] v METHOD [IdentityBuilder IServiceCollection.AddIdentity<TUserType,TRoleType>(Action<IdentityOptions> SetupAction)]. CLASS [PasswordOptions] ma nasledujuce MEMBERS.
+   A. PROPERTY [RequiredLength] TYPE [int] urcuje minimalnu dlzku PASSWORD.
+   B. PROPERTY [RequiredUniqueChars] TYPE [int] urcuje minimalny pocet UNIQUE CHARACTERS, ktory musi PASSWORD obsahovat.
+   C. PROPERTY [RequireNonAlphanumeric] TYPE [bool] urcuje ci PASSWORD MUSI obsahovat aspon 1 NON-ALPHANUMERIC CHARACTER.
+   D. PROPERTY [RequireLowercase] TYPE [bool] urcuje ci PASSWORD MUSI obsahovat aspon 1 LOWERCASE CHARACTER.
+   E. PROPERTY [RequireUppercase] TYPE [bool] urcuje ci PASSWORD MUSI obsahovat aspon 1 UPPERCASE CHARACTER.
+   F. PROPERTY [RequireDigit] TYPE [bool] urcuje ci PASSWORD MUSI obsahovat aspon 1 DIGIT CHARACTER.
+11. ASP.NET CORE IDENTITY umoznuje definovat CUSTOM PASSWORD VALIDATOR, ak DEFAULT PASSWORD VALIDATOR nie je vyhovujuci. CUSTOM PASSWORD VALIDATOR je mozne implementovat nasledujucimi sposobmi.
+   A. Implementaciou INTERFACE [IPasswordValidator<TUserType>].
+   B. Vytvorenim CLASS, ktora je DERIVED z CLASS [PasswordValidator<TUserType>].
+12. INTERFACE [IPasswordValidator<TUserType>] definuje METHOD [Task<IdentityResult> ValidateAsync(UserManager<TUserType> Manager, TUserType User, string Password)], ktora umoznuje vykonat CUSTOM VALIDATION PASSWORD.
+!!! 13. CUSTOM PASSWORD VALIDATOR sa pridava ako SERVICE do DEPENDENCY SERVICE COLLECTION.
+14. ASP.NET CORE IDENTITY umoznuje definovat USER POLICIES, ktore urcuju poziadavky na USER NAME a USER PROPERTIES. USER POLICIES sa nastavuju pomocou CLASS [UserOptions] v METHOD [IdentityBuilder IServiceCollection.AddIdentity<TUserType,TRoleType>(Action<IdentityOptions> SetupAction)]. CLASS [UserOptions] ma nasledujuce MEMBERS.
+   A. PROPERTY [AllowedUserNameCharacters] TYPE [string] obsahuje zoznam vsetkych CHARACTERS, ktore moze obsahovat USER NAME.
+   B. PROPERTY [RequireUniqueEmail] TYPE [bool] urcuje ci EMAIL MUSI byt UNIQUE.
+15. ASP.NET CORE IDENTITY umoznuje definovat CUSTOM USER VALIDATOR, ak DEFAULT PASSWORD VALIDATOR nie je vyhovujuci. CUSTOM USER VALIDATOR je mozne implementovat nasledujucimi sposobmi.
+   A. Implementaciou INTERFACE [IUserValidator<TUserType>].
+   B. Vytvorenim CLASS, ktora je DERIVED z CLASS [UserValidator<TUserType>].
+16. INTERFACE [IUserValidator<TUserType>] definuje METHOD [Task<IdentityResult> ValidateAsync(UserManager<TUserType> Manager, TUserType User)], ktora umoznuje vykonat CUSTOM USER PASSWORD.
+!!! 17. CUSTOM USER VALIDATOR sa pridava ako SERVICE do DEPENDENCY SERVICE COLLECTION.
+//----------------------------------------------------------------------------------------------------------------------

@@ -1,0 +1,82 @@
+//----------------------------------------------------------------------------------------------------------------------
+1. Solution demonstruje pouzitie PLATFORM FEATURES a ASP.NET CORE APPLICATIONS.
+2. ASP.NET CORE podporuje ukladanie CONFIGURATION DATA do rozlicnych STORAGES. Pre ASP.NET CORE CONFIGURATION platia nasledujuce fakty.
+   A. CONFIGURATION je implementovany ako SERVICE imlementujuci INTERFACE [IConfiguration], ktory je pridany do DEPENDENCY INJECTION FRAMEWORK.
+   !!! B. CONFIGURATION SERVICE je konfigurovany pomocou INTERFACE [IConfigurationBuilder] a je spravidla konfigurovany este v [Program.cs].
+   !!! C. CONFIGURATION SERVICE cita CONFIGURATION DATA zo vsetkych SOURCES, ktore boli pomocou INTERFACE [IConfigurationBuilder] definovane. Medzi mozne CONFIGURATION DATA SOURCES patria COMMAND LINE ARGUMENTS, JSON FILES, ENVIRONMENTAL VARIABLES ci USER SECRETS STORAGES.
+   !!! D. Ak CONFIGURATION SERVICE cita CONFIGURATION DATA z VIACERYCH JSON FILES tak CONTENT tychto JSON FILES KOMBINUJE a to tak, ze JSON FILE, ktory bol pridany NESKOR v pripade zhody CONFIGURATION DATA NAMES prepise VALUE JSON FILE, ktory bol pridany skor.
+   E. CONFIGURATION DATA su HIERARCHICKE, kde jeden CONFIGURATION DATA ITEM moze obsahovat OBJECT, ktory moze obsahovat PROPERTIES, ktore mozu byt tiez OBJECTS.
+   F. Pristup ku CONFIGURATION DATA sa vykonava cez INDEXER INTERFACE [IConfiguration].
+   !!! G. Pristup ku HIERARCHYCKYM CONFIGURATION DATA je pomocou SYNTAXE [OBJECT_NAME_1:...:OBJECT_NAME_N:PROPERTY_NAME], kde VALUE 'OBJECT_NAME_1' az VALUE 'OBJECT_NAME_N' su nazvy hierarchickych OBJECTS a VALUE 'PROPERTY_NAME' je nazov PROPERTY v OBJECT 'OBJECT_NAME_N'.
+3. INTERFACE [IConfiguration] umoznuje pristup ku CONFIGURATION DATA. INTERFACE [IConfiguration] ma nasledujuce MEMBERS.
+   A. INDEXER [this[string Key]] umoznuje nacistat, alebo zapisat KEY/VALUE CONFIGURATION DATA. Pristup ku HIERARCHYCKYM CONFIGURATION DATA je pomocou SYNTAXE [OBJECT_NAME_1:...:OBJECT_NAME_N:PROPERTY_NAME], kde VALUE 'OBJECT_NAME_1' az VALUE 'OBJECT_NAME_N' su nazvy hierarchickych OBJECTS a VALUE 'PROPERTY_NAME' je nazov PROPERTY v OBJECT 'OBJECT_NAME_N'.
+   B. METHOD [IConfigurationSection GetSection(string Key)] vracia CONFIGURATION SECTION s KEY 'Key'. CONFIGURATION SECTION je v JSON FILE reprezentovany ako JSON OBJECT. INTERFACE [IConfigurationSection] je zdedeny z INTERFACE [IConfiguration].
+   C. EXTENSION METHOD [TType IConfiguration.GetValue<TType>(string Key, TType DefaultValue)] vracia VALUE pre KEY 'Key', ale DEFAULT VALUE, ak KEY 'Key' NEEXISTUJE.
+4. INTERFACE [IConfigurationSection] reprezentuje CONFIGURATION SECTION. CONFIGURATION SECTION je v JSON FILE reprezentovany ako JSON OBJECT. INTERFACE [IConfigurationSection] je zdedeny z INTERFACE [IConfiguration] a ma nasledujuce MEMBERS.
+   A. PROPERTY [Key] TYPE [string] vracia KEY danej CONFIGURATION SECTION.
+   B. PROPERTY [Value] TYPE [string] umoznuje nacitat a zapisat VALUE danej CONFIGURATION SECTION.
+   C. PROPERTY [Path] TYPE [string] vracia PATH danej CONFIGURATION SECTION.
+5. FILE [launchSettings.json] obsahuje CONFIGURATION SETTINGS pre spustenie ASP.NET CORE PLATFORM ako su cisla PORTS na ktorych ASP.NET CORE APPLICATIONS bezi ci ENVIRONMENT TYPE.
+6. To v akom ENVIRONMENT ASP.NET CORE PROGRAM bezi je mozne zistit volanim EXTENSION METHODS INTERFACE [IWebHostEnvironment]. INTERFACE [IWebHostEnvironment] je implementovany ako SERVICE a ma nasledujuce EXTENSION METHODS.
+   A. EXTENSION METHOD [bool IHostEnvironment.IsEnvironment(string EnvironmentName)] vracia informaciu ci ASP.NET CORE PROGRAM bezi v zadanom ENVIRONMENT.
+   B. EXTENSION METHOD [bool IHostEnvironment.IsDevelopment()] vracia informaciu ci ASP.NET CORE PROGRAM bezi v DEVELOPMENT ENVIRONMENT.
+   C. EXTENSION METHOD [bool IHostEnvironment.IsStaging()] vracia informaciu ci ASP.NET CORE PROGRAM bezi v STAGING ENVIRONMENT.
+   D. EXTENSION METHOD [bool IHostEnvironment.IsProduction()] vracia informaciu ci ASP.NET CORE PROGRAM bezi v PRODUCTION ENVIRONMENT.
+7. ASP.NET CORE umoznuje ukladat USER SECRETS. Pre USER SECRETS platia nasledujuce fakty.
+   A. USER SECRETS su CONFIGURATION DATA, ktore su SECRET ako je CONNECTION STRINGS ci PASSWORDS, no su potrebne pocas DEVELOPMENT.
+   B. USER SECRETS ako CONFIGURATION DATA su ulozene v SPECIALNYCH FILES, ktore by NIKDY NEMALI byt ulozene do VERSION CONTROL SYSTEM REPOSITORIES, aby USER SECRETS neboli viditelne aj ostatnymi USERS, ktori maju pristup do VERSION CONTROL SYSTEM REPOSITORIES.
+   C. ASP.NET CORE automaticky zlucuje obsah CONFIGURATION FILES a USER SECRETS FILES.
+   D. USER SECRETS FILES by sa mali pouzivat iba ak je ENVIRONMENT nastaveny na DEVELOPMENT.
+!!! 8. Podpora USER SECRETS FILES sa pridava volanim METHOD [IConfigurationBuilder IConfigurationBuilder.AddUserSecrets(Assembly Assembly)].
+9. USER SECRETS je mozne editovat pomocou VISUAL STUDIO COMMAND [SOLUTION EXPLORER -> PROJECT -> CONTEXT MENU -> Manage User Secrets].
+10. USER SECRETS je mozne editovat pomocou COMMAND LINE TOOL [dotnet user-secrets]. COMMAND LINE TOOL [dotnet user-secrets] podporuje nasledujuce COMMANDS.
+   !!! A. COMMAND [dotnet user-secrets init] inicializuje USER SECRETS STORAGE. Zaroven do PROJECT FILE [.CSPROJ] je pridany IDENTIFIKATOR USER SECRETS.
+   B. COMMAND [dotnet user-secrets set "KEY" "VALUE"] vklada novy USER SECRET KEY/VALUE do USER SECRETS STORAGE. VALUE 'KEY' je KEY daneho USER SECRET a VALUE 'VALUE' je VALUE daneho USER SECRET.
+   C. COMMAND [dotnet user-secrets remove "KEY"] vklada novy USER SECRET KEY/VALUE do USER SECRETS STORAGE. VALUE 'KEY' je KEY daneho USER SECRET.
+   D. COMMAND [dotnet user-secrets list] zobrazi zoznam USER SECRETS ulozenych v USER SECRETS STORAGE.
+11. ASP.NET CORE podporuje LOGGING. Pre LOGGING platia nasledujuce fakty.
+   A. LOGGING vykonava zapis LOG MESSAGES do LOG PROVIDERS.
+   B. LOGGING moze mat naraz nakonfigurovanych viacero LOG PROVIDERS.
+   C. LOGGING je implementovany ako SERVICE v DEPENDENCY INJECTION FRAMEWORK.
+   D. LOGGING sa vykonava pomocou INTERFACE [ILogger<TCategoryNameType>], kde TYPE 'TCategoryNameType' je podla konvencie TYPE, ktory vykonava zapis danej LOG MESSAGE. TYPE 'TCategoryNameType' urcuje LOG CATEGORY danej LOG MESSAGE.
+12. LOGGING SERVICE sa pridava do DEPENDENCY INJECTION FRAMEWORK volanim METHOD [IServiceCollection IServiceCollection.AddLogging(Action<ILoggingBuilder> Configure)].
+13. INTERFACE [ILogger<TCategoryNameType>] umoznuje zapis LOG MESSAGE do LOG PROVIDERS. INTERFACE [ILogger<TCategoryNameType>] implementuje INTERFACE [ILogger] a ma nasledujuce MEMBERS.
+   A. METHOD [void Log<TStateType>(LogLevel LogLevel, EventId EventId, TStateType State, Exception Exception, Func<TStateType,Exception,string> Formatter)] vykonava zapis LOG MESSAGE do LOG PROVIDERS.
+   B. METHOD [IDisposable BeginScope<TStateType>(TStateType State)] vytvara v novy logicky SCOPE v LOGGER.
+   C. METHOD [bool IsEnabled(LogLevel LogLevel)] vracia informaciu ci dany LOG LEVEL je povoleny.
+   D. EXTENSION METHOD [void ILogger.LogTrace(EventId EventId, Exception Exception, string Message, params object[] Args)] zapisuje TRACE LOG MESSAGE do LOG PROVIDERS.
+   E. EXTENSION METHOD [void ILogger.LogDebug(EventId EventId, Exception Exception, string Message, params object[] Args)] zapisuje DEBUG LOG MESSAGE do LOG PROVIDERS.
+   F. EXTENSION METHOD [void ILogger.LogInformation(EventId EventId, Exception Exception, string Message, params object[] Args)] zapisuje INFORMATION LOG MESSAGE do LOG PROVIDERS.
+   G. EXTENSION METHOD [void ILogger.LogWarning(EventId EventId, Exception Exception, string Message, params object[] Args)] zapisuje WARNING LOG MESSAGE do LOG PROVIDERS.
+   H. EXTENSION METHOD [void ILogger.LogError(EventId EventId, Exception Exception, string Message, params object[] Args)] zapisuje ERROR LOG MESSAGE do LOG PROVIDERS.
+   I. EXTENSION METHOD [void ILogger.LogCritical(EventId EventId, Exception Exception, string Message, params object[] Args)] zapisuje CRITICAL LOG MESSAGE do LOG PROVIDERS.
+14. LOGGER CONFIGURATION je mozne vykonat nasledujucimi sposobmi.
+   A. V CONFIGURATION FILE, ak bola zavolana METHOD [ILoggingBuilder ILoggingBuilder.AddConfiguration(IConfiguration configuration)].
+   B. V CODE volanim METHODS INTERFACE [ILoggingBuilder].
+15. STATIC FILE MIDDLEWARE COMPONENT umoznuje vracat STATIC FILES, ktore su sucastou ASP.NET CORE PROJECT. Pre STATIC FILE MIDDLEWARE COMPONENT platia nasledujuce fakty.
+   A. STATIC FILE MIDDLEWARE COMPONENT vracia CONTENT STATIC FILES, ktore su sucastou ASP.NET CORE PROJECT.
+   B. STATIC FILE MIDDLEWARE COMPONENT sa pridava do REQUEST PIPELINE volanim METHOD [IApplicationBuilder IApplicationBuilder.UseStaticFiles(StaticFileOptions Options)], kde instancia CLASS [StaticFileOptions] umoznuje nakonfigurovat STATIC FILE MIDDLEWARE COMPONENT.
+   C. STATIC FILE MIDDLEWARE COMPONENT je optimalne pridavat na zaciatok REQUEST PIPELINE.
+   D. STATIC FILE MIDDLEWARE COMPONENT je mapovana na DIRECTORY z ktoreho cita STATIC FILES.
+   !!! E. REQUEST PIPELINE moze obsahovat aj VIACERO STATIC FILE MIDDLEWARE COMPONENTS, kde kazda STATIC FILE MIDDLEWARE COMPONENT moze byt mapovana na iny DIRECTORY.
+16. CLASS [StaticFileOptions] umoznuje nakonfigurovat STATIC FILE MIDDLEWARE COMPONENT. CLASS [StaticFileOptions] ma nasledujuce MEMBERS.
+   A. PROPERTY [FileProvider] TYPE [IFileProvider] definuje FILE PROVIDER, ktory je zodpovedny za vyhladanie STATIC FILE v DIRECTORY na ktory je STATIC FILE MIDDLEWARE COMPONENT mapovany. FILE PROVIDER definuje DIRECTORY v ktorom su STATIC FILES vyhladavane.
+   B. PROPERTY [RequestPath] TYPE [PathString] obsahuje URL, ktora je mapovana na dany DIRECTORY.
+   C. PROPERTY [ContentTypeProvider] TYPE [IContentTypeProvider] obsahuje CONTENT TYPE PROVIDER, ktory je zodpovedny za vygenerovanie MIME TYPE s FILE EXTENSION STATIC FILE umiestneneho v namapovanom DIRECTORY.
+   D. PROPERTY [DefaultContentType] TYPE [string] obsahuje DEFUALT MIME TYPE, ktory sa pouzije, ak CONTENT TYPE PROVIDER nedokazal namapovat STATIC FILE na MIME TYPE.
+   E. PROPERTY [ServeUnknownFileTypes] TYPE [bool] urcuje ci STATIC FILE MIDDLEWARE COMPONENT ma odoslat STATIC FILE, aj ked prenho nebol najdeny jeho MIME TYPE.
+   F. PROPERTY [OnPrepareResponse] TYPE [Action<StaticFileResponseContext>] definuje CALLBACK METHOD, ktora je volana potom ako STATIC FILE MIDDLEWARE COMPONENT nastavil HTTP STATUS CODE a HEADER na HTTP RESPONSE MESSAGE, no predtym ako bol naplneny HTTP RESPONSE MESSAGE BODY. V CALLBACK METHOD je mozne zmenit obsah HEADERS.
+17. LIBRARY MANAGER je PACKAGE MANAGER, ktory umoznuje pouzivanie CLIENT LIBRARIES obsahujucich [.JS] FILES, [.CSS] FILES, IMAGES a dalsieho obsahu, ktory sa posiela na CLIENT SIDE (do BROWSERA) v ASP.NET CORE APPLICATIONS. Pre LIBRARY MANAGER platia nasledujuce fakty.
+   A. LIBRARY MANAGER je PACKAGE MANAGER, ktory umoznuje pouzivanie CLIENT LIBRARIES obsahujucich [.JS] FILES, [.CSS] FILES, IMAGES a dalsieho obsahu, ktory sa posiela na CLIENT SIDE (do BROWSERA) v ASP.NET CORE APPLICATIONS.
+   B. V ASP.NET CORE APPLICATIONS sa pouziva LIBRARY MANAGER [LibMan].
+   C. LIBRARY MANAGER [LibMan] je mozne instalovat pomocou COMMAND LINE COMMAND [dotnet tool install --global Microsoft.Web.LibraryManager.Cli].
+   D. CLIENT LIBRARIES, ktore VISUAL STUDIO PROJECT obsahuje su ulozene vo FILE [libman.json]. Tento FILE je mozne do PROJECT vykonanim COMMAND [Project->Manage Client-Side Libraries].
+   E. VISUAL STUDIO obsahuje aj VISUAL TOOL na jednoduchsiu editaciu FILE [libman.json]. TOOL sa spusta pomocou COMMAND [CONTEXT MENU na PROJECT->Add->Client-Side Library].
+   F. Pri editacii FILE [libman.json] VISUAL STUDIO poskytuje INTELLISENSE zobrazujuci nazov PACKAGES.
+   !!! G. Po vykonani SAVE FILE [libman.json] VISUAL STUDIO stiahne nove PACKAGES.
+   H. Pomocou COMMAND [CONTEXT MENU na [libman.json]->Restore Client-Side Libraries] je mozne vykonat obnovenie CLIENT SIDE LIBRARIES.
+   I. Pomocou COMMAND [CONTEXT MENU na [libman.json]->Clean Client-Side Libraries] je mozne vykonat odstranit CLIENT SIDE LIBRARIES.
+   J. Pomocou COMMAND [CONTEXT MENU na [libman.json]->Enable Restore Client-Side Libraries on Build] je mozne povolit automaticke obnovenie CLIENT SIDE LIBRARIES pri REBUILD.
+18. Pomocou COMMAND LINE COMMAND [libman init -p PROVIDER] vytvori FILE [libman.json], ktory bude mat nastaveny PROVIDER na VALUE 'PROVIDER'. Najcastejsie pouzivanym PROVIDER je [cdnjs].
+19. Pomocou COMMAND LINE COMMAND [libman install CLIENT_SIDE_LIBRARY -d DIRECTORY] je mozne do FILE [libman.json] vlozit CLIENT SIDE LIBRARY 'CLIENT_SIDE_LIBRARY'. Tato CLIENT SIDE LIBRARY bude ulozena do DIRECTORY 'DIRECTORY'.
+//----------------------------------------------------------------------------------------------------------------------

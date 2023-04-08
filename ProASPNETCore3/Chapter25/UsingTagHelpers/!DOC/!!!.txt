@@ -1,0 +1,86 @@
+//-----------------------------------------------------------------------------
+1. Solution demonstruje vytvaranie a pouzitie TAG HELPERS v ASP.NET CORE APPLICATIONS.
+2. TAG HELPER je C# CLASS, ktory umoznuje manipulovat s HTML ELEMENTS vo VIEWS a RAZOR PAGES ich modifikaciu, pridanim novych HTML ELEMENTS, alebo nahradenim inymi HTML ELEMENTS. Pre TAG HELPERS platia nasledujuce fakty.
+   A. TAG HELPERS MUSIA byt zdedene z BASE CLASS [TagHelper].
+   !!! B. TAG HELPERS MUSIA vykonat OVERRIDE METHOD [void Process(TagHelperContext Context, TagHelperOutput Output)], alebo METHOD [Task ProcessAsync(TagHelperContext Context, TagHelperOutput Output)]. Prave v tychto METHODS TAG HELPERS vykonavaju svoju cinnost.
+   !!! C. TAG HELPERS mozu definovat CUSTOM C# PROPERTIES. Tieto C# PROPERTIES je mozne pomocou HTML ATTRIBUTES nastavit v HTML ELEMENTS na ktore su TAG HELPERS aplikovane. ASP.NET sa pre kazdy HTML ATTRIBUTE nastaveny na HTML ELEMENT na ktory sa aplikuje TAG HELPER pokusa najst zodpovedajucu CUSTOM C# PROPERTY. CUSTOM C# PROPERTY podla nazvu HTML ATTRIBUTE. V pripade, za CUSTOM C# PROPERTY je najdena, ASP.NET nastavi hodnotu CUSTOM C# PROPRTY, pricom vykonava konverziu na TYPE danej CUSTOM C# PROPERTY.
+   !!!!! D. TAG HELPERS modifikuju HTML CONTENT pristupom k MEMBERS CLASS [TagHelperOutput]. Tato CLASS umoznuje generovat HTML CONTENT modifikaciou HTML ELEMENT na ktory bol TAG HELPER aplikovany, alebo pridavanim novych HTML ELEMENTS okolo HTML ELEMENT na ktory bol TAG HELPER aplikovany.
+   !!!!! E. TAG HELPERS je mozne aplikovat aj na CUSTOM HTML ELEMENTS, ktore nie su sucastou HTML SPECIFICATION. TAG HELPERS vsak musia tieto HTML ELEMENTS transformovat na HTML ELEMENTS, ktore su sucastou HTML SPECIFICATION, inak ich bude BROWSER ignorovat.
+!!! 3. HTML ELEMENT na ktory sa dany TAG HELPER aplikuje je mozne definovat nasledujucimi sposobmi.
+   A. Pomocou TAG HELPER NAME. Ak TAG HELPER ma NAME 'XXXTagHelper', kde VALUE 'XXX' je nazov HTML ELEMENT, tak sa dany TAG HELPER aplikuje na tento HTML ELEMENT.
+   B. Pomocou ATTRIBUTE [HtmlTargetElementAttribute], ktory sa aplikuje na TAG HELPER CLASS.
+4. HTML ELEMENTS na ktore su aplikovane TAG HELPERS mozu definovat CUSTOM HTML ATTRIBUTES, ktorych hodnoty moze TAG HELPER pouzit. Hodnoty CUSTOM HTML ATTRIBUTES je mozne v TAG HELPER CLASSES ziskat nasledujucimi sposobmi.
+   A. Pristupom ku COLLECTION [TagHelperContext.AllAttributes], ktora obsahuje hodnoty vsetkych CUSTOM HTML ATTRIBUTES, ktore pre dany HTML ELEMENT TAG HELPER definoval.
+   B. Definovanim CUSTOM PROPERTY v TAG HELPER CLASS do ktorej ASP.NET automaticky mapuje CUSTOM HTML ATTRIBUTES na zaklade ich mena.
+5. Pre pristup k hodnotam CUSTOM HTML ATTRIBUTES z TAG HELPER CLASS cez COLLECTION [TagHelperContext.AllAttributes] platia nasledujuce fakty.
+   A. COLLECTION [TagHelperContext.AllAttributes] obsahuje hodnoty vsetkych CUSTOM HTML ATTRIBUTES, ktore HTML ELEMENT na ktory je aplikovany dany TAG HELPER definoval.
+   B. COLLECTION obsahuje HTML ATTRIBUTES zoradene podla ich nazvu a INDEXU.
+6. Pre pristup k hodnotam CUSTOM HTML ATTRIBUTES z TAG HELPER CLASS pomocou definovania CUSTOM C$ PROPERTIES v TAG HELPER CLASS platia nasledujuce fakty.
+   A. TAG HELPER CLASS moze definovat CUSTOM C# READ-WRITE PROPERTIES do ktorych sa ASP.NET pokusi ulozit VALUES CUSTOM HTML ATTRIBUTES.
+   B. ASP.NET pri mapovani hodnot HTML ATTRIBUTES, ktore boli definovane v HTML ELEMENT na ktory je dany TAG HELPER aplikovany vyhladava zodpovedajuce C# PROPERTIES podla nazvu HTML ATTRIBUTE a nazvu C# PROPERTY.
+   !!!!! C. Ak na C# PROPERTY NIE JE aplikovany ATTRIBUTE [HtmlAttributeNameAttribute], tak DEFAULT NAME HTML ATTRIBUTE, ktory sa mapuje na tuto C# PROPERTY je v KEBAB-CASE (LOWER CASE, kde slova su oddelene znakom '-').
+   !!! D. Ak je na C# PROPERTY aplikovany ATTRIBUTE [HtmlAttributeNameAttribute], tak pomocou tohto ATTRIBUTE je mozne definovat CUSTOM NAME C# PROPERTY, cez ktoru bude ASP.NET vyhladavat zodpovedajuci HTML ATTRIBUTE.
+   !!! E. Pri mapovani CUSTOM HTML ATTRIBUTES na C# PROPERTIES ASP.NET vykonava konverziu zadanych VALUES na TYPES C# PROPERTIES.
+   !!! F. Ak je na C# PROPERTY aplikovany ATTRIBUTE [HtmlAttributeNotBoundAttribute], tak tato PROPERTY NIE je mapovana na HTML ATTRIBUTE.
+   !!!!! G. Ak ma C# PROPERTY TYPE [ModelExpression] a zaroven VALUE jej HTML ATTRIBUTE je rovnaka ako PROPERTY MODEL OBJECT, ktory VIEW (RAZOR PAGE) pouziva, ASP.NET naplni tuto PROPERTY instanciou CLASS [ModelExpression], ktora obsahuje detailne informacie MODEL OBJECT PROPERTY na ktoru je namapovana.
+!!! 7. Ak TAG HELPER NEOBSAHUJE pre HTML ATTRIBUTE v HTML ELEMENT na ktory je TAG HELPER aplikovany C# PROPERTY, tak tento HTML ATTRIBUTE sa AUTOMATICKY prenesie do generovaneho HTML ELEMENT. V pripade, ze HTML ATTRIBUTE ma definovanu C# PROPERTY, tak sa jeho hodnota AUTOMATICKY NEPRENESIE do generovaneho HTML ELEMENT.
+8. TAG HELPERS v METHOD [void Process(TagHelperContext Context, TagHelperOutput Output)], alebo METHOD [Task ProcessAsync(TagHelperContext Context, TagHelperOutput Output)] definuju PARAMETER TYPE [TagHelperContext]. Tato CLASS ma nasledujuce MEMBERS.
+   A. PROPERTY [AllAttributes] TYPE [ReadOnlyTagHelperAttributeList] umoznuje pristup ku CUSTOM HTML ATTRIBUTES, ktore boli definovane pre HTML ELEMENT na ktory je aplikovany TAG HELPER.
+   B. PROPERTY [Items] TYPE [IDictionary<object,object>] umoznuje koordinaciu medzi PARENT CHILD HMTL ELEMENTS, na ktore su aplikovane TAG HELPERS.
+   C. PROPERTY [UniqueId] TYPE [string] obsahuje unikatny identifikator HTML ELEMENT na ktory bol TAG HELPER aplikovany.
+9. TAG HELPERS modifikuju HTML CONTENT pristupom k MEMBERS CLASS [TagHelperOutput]. Tato CLASS umoznuje generovat HTML CONTENT modifikaciou HTML ELEMENT na ktory bol TAG HELPER aplikovany, alebo pridavanim novych HTML ELEMENTS okolo HTML ELEMENT na ktory bol TAG HELPER aplikovany. CLASS [TagHelperOutput] ma nasledujuce MEMBERS.
+   A. PROPERTY [TagName] TYPE [string] umoznuje citat a nastavovat nazov HTML OUTPUT ELEMENT, ktory TAG HELPER generuje.
+   B. PROPERTY [Attributes] TYPE [TagHelperAttributeList] umoznuje pridavat do HTML OUTPUT ELEMENT, ktory TAG HELPER generuje nove ATTRIBUTES, alebo modifikovat existujuce ATTRIBUTES.
+   C. PROPERTY [Content] TYPE [TagHelperContent] umoznuje citat a nastavovat CONTENT HTML OUTPUT ELEMENT, ktory TAG HELPER generuje.
+   D. PROPERTY [PreElement] TYPE [TagHelperContent] umoznuje vkladat HTML CONTENT PRED HTML OUTPUT ELEMENT, ktory TAG HELPER generuje.
+   E. PROPERTY [PostElement] TYPE [TagHelperContent] umoznuje vkladat HTML CONTENT ZA HTML OUTPUT ELEMENT, ktory TAG HELPER generuje.
+   F. PROPERTY [PreContent] TYPE [TagHelperContent] umoznuje vkladat HTML CONTENT PRED CONENT HTML OUTPUT ELEMENT, ktory TAG HELPER generuje.
+   G. PROPERTY [PostContent] TYPE [TagHelperContent] umoznuje vkladat HTML CONTENT ZA CONENT HTML OUTPUT ELEMENT, ktory TAG HELPER generuje.
+   H. PROPERTY [TagMode] TYPE [TagMode] umoznuje urcit ako bude HTML OUTPUT ELEMENT, ktory TAG HELPER generuje zapisany do OUTPUT HTML STREAM.
+   !!! I. METHOD [void SuppressOutput()] umoznuje ZAKAZAT zapis HTML OUTPUT ELEMENT, ktory TAG HELPER generuje do OUTPUT HTML STREAM. Nezobrazia sa ani HTML ELEMENTS, ktore boli pridane pomocou inych PROPERTIES CLASS [TagHelperOutput].
+   !!! J. METHOD [Task<TagHelperContent> GetChildContentAsync()] vracia CONTENT HTML ELEMENT (a CHILD HTML ELEMENTS) na ktory je TAG HELPER aplikovany.
+10. CLASS [TagHelperContent] umzonuje modifikovat CONTENT generovaneho HTML ELEMENT. Ma nasledujuce MEMBERS.
+   A. METHOD [string GetContent()] vracia CONTENT generovaneho HTML ELEMENT.
+   B. METHOD [TagHelperContent SetContent(string Unencoded)] umoznuje nastavit CONTENT generovaneho HTML ELEMENT, pricom tento CONTENT bude pred zapisanim do OUTPUT STREAM HTML ENCODED.
+   C. METHOD [TagHelperContent SetHtmlContent(IHtmlContent HtmlContent)] umoznuje nastavit CONTENT generovaneho HTML ELEMENT, pricom tento CONTENT uz NEBUDE pred zapisanim do OUTPUT STREAM HTML ENCODED.
+   D. METHOD [TagHelperContent Append(string Unencoded)] umoznuje pridat CONTENT generovaneho HTML ELEMENT, pricom tento CONTENT bude pred zapisanim do OUTPUT STREAM HTML ENCODED.
+   E. METHOD [TagHelperContent AppendHtml(IHtmlContent HtmlContent)] umoznuje pridat CONTENT generovaneho HTML ELEMENT, pricom tento CONTENT uz NEBUDE pred zapisanim do OUTPUT STREAM HTML ENCODED.
+   F. METHOD [TagHelperContent Clear()] odstranuje obsah CONTENT.
+!!! 11. Aby TAG HELPERS mohli byt pouzite vo VIEWS (RAZOR PAGES) MUSIA byt ZAREGISTROVANE pomocou RAZOR VIEW ENGINE KEYWORD [@addTagHelper XXX, YYY], kde VALUE 'XXX' je TAG HELPER FULL CLASS NAME a VALUE 'YYY' je nazov ASSEMBLY kde je TAG HELPER definovany. VALUE 'XXX' moze obsahovat aj WILDCARS ako CHARACTER '*', ktory umoznuje pouzit VSETKY TAG HELPERS s danym NAMESPACE.
+12. SCOPE RAZOR VIEW ENGINE KEYWORD [@addTagHelper XXX, YYY] zavisi od toho, kde je tento KEYWORD pouzity. Moze byt pouzity na urovni jednotlivych VIEWS (RAZOR PAGES), na urovni VIEW (RAZOR PAGE) IMPORT FILES v danom DIRECTORY, alebo VIEW (RAZOR PAGE) IMPORT FILES, ktore sa aplikuju na vsetky VIEWS (RAZOR PAGES).
+!!!!! 13. BY-DEFAULT TAG HELPERS zaregistrovane v danom VIEW (RAZOR PAGE) pre dany HTML ELEMENT sa aplikuju na VSETKY VYSKYTY daneho HTML ELEMENT v danom VIEW (RAZOR PAGE). TAG HELPERS sa aplikuju aj na tie HTML ELEMENTS, ktore NENASTAVILI ZIADNU PROPERTY daneho TAG HELPER.
+14. Aj ked BY-DEFAULT su TAG HELPERS aplikovane na VSETKY HTML ELEMENTS daneho TYPE, pomocou ATTRIBUTE [HtmlTargetElementAttribute] je mozne toto chovanie zmenit.
+   A. Pomocou CONSTRUCTOR ATTRIBUTE [HtmlTargetElementAttribute] je mozne definovat na aky HTML ELEMENT sa moze dany TAG HELPER aplikovat. V pripade, ze sa pouzije DEFUALT CONSTRUCTOR, tak sa TAG HELPER aplikuje na kazdy HTML ELEMENT.
+   B. Pomocou PROPERTY [HtmlTargetElementAttribute.Attributes] je mozne definovat CIARKOU ODDELENY ZOZNAM HTML ATTRIBUTES, ktore musi mat dany HTML ELEMENT nastavene, aby sa nan aplikoval TAG HELPER. Pri definicii vyzadovanych HTML ATTRIBUTES je mozne pouzit aj WILDCARD CHARACTER '*'. Takisto je mozne pouzit CSS SELECTOR SYNTAX.
+   C. Pomocou PROPERTY [HtmlTargetElementAttribute.ParentTag] je mozne definovat v ako PARENT HTML ELEMENT sa ma dany HTML ELEMENT nachadzat, aby nan bol aplikovany TAG HELPER.
+   D. Pomocou PROPERTY [HtmlTargetElementAttribute.TagStructure] je mozne definovat aku strukturu musi mat HTML ELEMENT, aby sa nan aplikoval TAG HELPER.
+   !!! E. Na TAG HELPER CLASS je mozne aplikovat VIACERO ATTRIBUTES [HtmlTargetElementAttribute] a tym definovat na ktore HTML ELEMENTS sa bude dany TAG HELPER aplikovat.
+   !!! F. V pripade, ze na dany HTML ELEMENTS sa aplikuje viacero TAG HELPERS, ich poradie v akom budu aplikovane je mozne urcit pomocou PROPERTY [TagHelper.Order]. NIZSIA VALUE znamena, ze sa dany TAG ELEMENT vykona SKOR.
+   !!!!! G. Pomocou PROPERTY [HtmlTargetElementAttribute.Attributes] je mozne definovat nielen poziadavku, aby HTML ELEMENT mal konkretny HTML ATTRIBUTE, alebo pomocou SYNTAX [[ATTRIBUTE_NAME=VALUE]] je mozne definovat podmienku, ze HTML ATTRIBUTE 'ATTRIBUTE_NAME' musi obsahovat VALUE 'VALUE'.
+15. ATTRIBUTE [HtmlTargetElementAttribute] sa pouziva na konfiguraciu SCOPE daneho TAG HELPER, urcujuc na ktore HTML ELEMETNS sa bude dany TAG HELPER aplikovat. ATTRIBUTE [HtmlTargetElementAttribute] ma nasledujuce MEMBERS.
+   A. PROPERTY [Tag] TYPE [string] obsahuje nazov HTML ELEMENT na ktory bude TAG HELPER aplikovany. V pripade, ze VALUE je PRAZDNA, alebo obsahuje WILDCARD CHARACTER '*', tak TAG HELPER moze byt aplikovany na lubovolny HTML ELEMENT.
+   B. PROPERTY [Attributes] TYPE [string] definuje CIARKOU ODDELENY zoznam HTML ATTRIBUTES, ktore musi dany HTML ELEMENT mat nastavene, aby bol TAG HELPER na dany HTML ELEMENT aplikovany.
+   C. PROPERTY [ParentTag] TYPE [string] definuje nazov PARENT HTML ELEMENT v ktorom sa dany HTML ELEMENT musi nachadzat, aby nan bol aplikovany TAG HELPER.
+   D. PROPERTY [TagStructure] TYPE [TagStructure] definuje to aku strukturu musi mat HTML ELEMENT, aby nan bol aplikovany TAG HELPER.
+16. TAG HELPER CLASS moze vyuzivat pre svoju cinnost aj instanciu CLASS [ViewContext], ktora obsahuje informacie o HTTP REQUEST MESSAGE. CLASS [ViewContext] je v TAG HELPER CLASSES pristupna nasledujucim sposobom.
+   A. TAG HELPER CLASS musi definovat PROPERTY, ktora je TYPE [ViewContext].
+   B. PROPERTY TYPE [ViewContext] musi byt oznacena pomocou ATTRIBUTE [ViewContextAttribute], ktora pre ASP.NET identifikuje PROPERTY, ktoru ma naplnit instanciu CLASS [ViewContext].
+   C. PROPERTY TYPE [ViewContext] by mala byt oznacena pomocou [HtmlAttributeNotBoundAttribute], aby nebola mapovana na HTML ATTRIBUTE.
+17. TAG HELPERS mozu pouzivat vo svojich CONSTRUCTORS DEPENDENCY INJECTION.
+18. TAG HELPERS mozu prenasat CUSTOM VALUES z PARENT HTML ELEMENTS do CHILD HTML ELEMENTS. Prenos sa vykonava nasledujucim sposobom.
+   A. TAG HELPER aplikovany na PARENT HTML ELEMENT ulozi CUSTOM VALUES do PROPERTY [TagHelperContext.Items]. PROPERTY je TYPE [IDictionary<object,object>].
+   B. TAG HELPER aplikovany na CHILD HTML ELEMENT moze z PROPERTY [TagHelperContext.Items] nacitat CUSTOM VALUES, ktore do nej ulozil TAG HELPER aplikovany na PARENT HTML ELEMENT.
+!!! 19. TAG HELPERS NIE su aplikovane na HTML ELEMENTS, ktore boli vygenerovane inymi TAG HELPERS. To znaci, ze ak VIEW (RAZOR PAGE) obsahuje CUSTOM HTML ELEMENTS, ktore nie su sucastou HTML SPECIFICATION a tieto su pomocou TAG HELPERS transformovane na HTML ELEMENTS, ktore uz su sucastou HTML SPECIFICATION, tak na tieto generovane TAG HELPERS NIE SU ZNOVA aplikovane TAG HELPERS. Aplikovane su iba na HTML ELEMENTS, ktore su priamo definovane vo VIEW (RAZOR PAGE).
+20. ASP.NET umoznuje aplikovat TAG HELPERS ako SERVICES pomocou TAG HELPER COMPONENTS. Pre TAG HELPER COMPONENTS platia nasledujuce fakty.
+   A. TAG HELPER COMPONENTS su C# CLASSES, ktora musia byt DERIVED z CLASS [TagHelperComponent].
+   !!! B. TAG HELPER COMPONENTS MUSIA vykonat OVERRIDE METHOD [void Process(TagHelperContext Context, TagHelperOutput Output)], alebo METHOD [Task ProcessAsync(TagHelperContext Context, TagHelperOutput Output)]. Prave v tychto METHODS TAG HELPER COMPONENTS vykonavaju svoju cinnost.
+   !!! C. TAG HELPER COMPONENTS NEDEFINUJU zoznam HTML ELEMENTS na ktore su aplikovane. BY-DEFAULT su TAG HELPER COMPONENTS aplikovane na HTML ELEMENT [<head>] a HTML ELEMENT [<body>].
+   !!!!! D. TAG HELPER COMPONENTS su registrovane ako SERVICES v DEPENDENCY INJECTION FRAMEWORK, ako CLASSES, ktore implementuju INTERFACE [ITagHelperComponent].
+   !!!!! E. TAG HELPER COMPONENTS sa aplikuju na UPLNE VSETKY VIEWS a PAGES v celom PROJECT.
+   !!!!! F. Pre TAG HELPER COMPONENTS na rozdiel od TAG HELPERS ASP.NET NEMAPUJE VALUES HTML ATTRIBUTES na prislusne C# PROPERTIES TAG HELPER COMPONENTS. Vsetky HTML ATTRIBUTES aplikovane na HTML ELEMENTS na ktore sa aplikuju TAG HELPER COMPONENTS su vsak pristupne pomocou PROPERTY [TagHelperContext.AllAttributes].
+21. BY-DEFAULT su TAG HELPER COMPONENTS aplikovane na HTML ELEMENT [<head>] a HTML ELEMENT [<body>]. V pripade, ze TAG HELPER COMPONENTS maju byt aplikovane aj na ine HTML ELEMENTS, je potrebne implementovat TAG HELPER COMPONENT TAG HELPER. TAG HELPER COMPONENT TAG HELPER sa implementuje nasledujucim sposobom.
+   A. Definovat TAG HELPER COMPONENT TAG HELPER CLASS, ktora implementuje CLASS [TagHelperComponentTagHelper].
+   B. Na TAG HELPER COMPONENT TAG HELPER CLASS aplikovat ATTRIBUTES [HtmlTargetElementAttribute], ktore obsahuju zoznam HTML ELEMENTS pre ktore budu VSETKY TAG HELPER COMPONENTS aplikovane.
+   !!!!! C. TAG HELPER COMPONENT TAG HELPER je specialny typ TAG HELPER a ak sa teda ma aplikovat v danom VIEW ci RAZOR PAGE, MUSI byt v tomto VIEW ci RAZOR PAGE zaregistrovany volanim RAZOR VIEW ENGINE KEYWORD [@addTagHelper XXX, YYY], kde VALUE 'XXX' je TAG HELPER FULL CLASS NAME a VALUE 'YYY' je nazov ASSEMBLY kde je TAG HELPER definovany.
+   !!!!! D. Ak PROJECT definuje TAG HELPER COMPONENT TAG HELPER, a zaroven pre dany VIEW (RAZOR PAGE) je zaregistrovany dany TAG HELPER COMPONENT TAG HELPER pomocou RAZOR VIEW ENGINE KEYWORD [@addTagHelper XXX, YYY], potom TAG HELPER COMPONENT TAG HELPER sa aplikuje na VSETKY TAG HELPER COMPONENTS, ktore boli v PROJECT definovane. Inak povedane, nie je mozne definovat, aby sa konkretny TAG HELPER COMPONENT aplikoval iba na specificke HTML ELEMENTS. Ak sa pouziva TAG HELPER COMPONENT TAG HELPER tak VSETKY TAG HELPERS COMPONENTS definovane v PROJECT su aplikovane na definovane HTML ELEMENTS.
+//-----------------------------------------------------------------------------

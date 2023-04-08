@@ -1,0 +1,93 @@
+//----------------------------------------------------------------------------------------------------------------------
+1. Solution demonstruje pokrocile vlastnosti BLAZOR SERVER ako je ROUTING ci COMPONENT LIFETIME.
+2. BLAZOR FRAMEWORK umoznuje prepojit ASP.NET CORE ROUTING SYSTEM s BLAZOR COMPONENTS tak, ze BLAZOR COMPOMENTS mozu samy definovat ROUTES (URL ADDRESSES) cez ktoreho budu pomocou ASP.NET CORE ROUTING SYSTEM pristupne.
+3. Prepojenie medzi ASP.NET CORE ROUTING SYSTEM a BLAZOR COMPONENTS je realizovane nasledovne.
+   A. BLAZOR FRAMEWORK definuje BLAZOR COMPONENT [Router], ktora zabezpecuje prepojenie medzi ASP.NET CORE ROUTING SYSTEM a BLAZOR COMPONENTS.
+   !!! B. V APPLICATION je NUTNE definovat CUSTOM ROUTER BLAZOR COMPONENT, ktora pouziva BLAZOR COMPONENT [Router]. V HTML SUBELEMENT [<Found>] definuje CUSTOM ROUTER BLAZOR COMPONENT HTML CONTENT, ktory sa zobrazi ak ASP.NET CORE ROUTING SYSTEM nasiel hladanu BLAZOR COMPONENT. V HTML SUBELEMENT [<NotFound>] definuje CUSTOM ROUTER BLAZOR COMPONENT HTML CONTENT, ktory sa zobrazi ak ASP.NET CORE ROUTING SYSTEM nenasiel hladanu BLAZOR COMPONENT.
+   !!! C. Instanciu CUSTOM ROUTER BLAZOR COMPONENT je NUTNE vlozit do VIEW, alebo RAZOR PAGE, ktora ma zobrazovat BLAZOR COMPONENTS.
+   !!!!! D. Ak VIEW obsahuje instanciu CUSTOM ROUTER BLAZOR COMPONENT, VIEW je NUTNE zaregistrovat ako FALLBACK ROUTE v ASP.NET CORE ROUTING SYSTEM volanim METHOD [IEndpointConventionBuilder IEndpointRouteBuilder.MapFallbackToController(string Action, string Controller)].
+   !!!!! E. Ak RAZOR PAGE obsahuje instanciu CUSTOM ROUTER BLAZOR COMPONENT, RAZOR PAGE je NUTNE zaregistrovat ako FALLBACK ROUTE v ASP.NET CORE ROUTING SYSTEM volanim METHOD [IEndpointConventionBuilder IEndpointRouteBuilder.MapFallbackToPage(string Page)].
+   !!! F. Po zaregistrovani CUSTOM ROUTER BLAZOR COMPONENT je mozne na jednotlivych BLAZOR COMPONENTS, ktore maju byt pristupne priamo cez ASP.NET CORE ROUTING SYSTEM definovat ich ROUTES pomocou KEYWORD [@page].
+   !!! G. BLAZOR COMPONENTS mozu byt pristupne aj cez viacero ROUTES viacnasobnou aplikaciou KEYWORD [@page].
+!!!!! 4. Prepojenie medzi ASP.NET CORE ROUTING SYSTEM a BLAZOR COMPONENTS je vykonavane ASP.NET nasledovne.
+   A. ASP.NET ROUTING SYSTEM sa pre prichadzajucu HTML MESSAGE pokusa hladat vhodny ENDPOINT prechadzanim vsetkych zaregistrovanych ROUTES.
+   !!!!! B. Kedze ROUTE definovane pomocou KEYWORD [@page] v BLAZOR COMPONENTS ASP.NET ROUTING SYSTEM NEPOZNA, prichadzajucu HTML MESSAGE NENAJDE ZIADNU ROUTE, ktora by vyhovovala URL HTML MESSAGE.
+   !!!!! C. Kedze ROUTE nebola najdena, pouzije sa FALLBACK MECHANISM, co znamnena, ze pre prichadzajucu HTML MESSAGE sa zobrazi FALLBACK VIEW, alebo FALLBACK RAZOR PAGE, ktora bola zaregistrovana v STARTUP CLASS.
+   !!! D. VIEW, alebo RAZOR PAGE obsahuje instanciu CUSTOM ROUTER BLAZOR COMPONENT, ktora obsahuje instanciu BLAZOR COMPONENT [Router].
+   !!!!! E. BLAZOR COMPONENT [Router] zoberie URL prichadzajucej HTML MESSAGE a prejde vsetky BLAZOR COMPONENTS ci neobsahuju ROUTES definovane pomocou KEYWORD [@page]. Ak BLAZOR COMPONENTS obsahuju ROUTES, BLAZOR COMPONENT [Router] sa pokusi vykonat URL MATCHING.
+   !!!!! F. Ak pomocou URL MATCHING je vyhladana BLAZOR COMPONENT, BLAZOR COMPONENT [Router] zobrazi HTML CONTENT, ktory ma definovany v HTML SUBELEMENT [<Found>]. HTML SUBELEMENT [<Found>] spravidla obsahuje HTML ELEMENT [<RouteView RouteData="@context" />], ktory zobrazi CONTENT najdenej BLAZOR COMPONENT.
+   !!!!! G. V pripade, ze URL MATCHING nenajde ziadnu BLAZOR COMPONENT, BLAZOR COMPONENT [Router] zobrazi HTML CONTENT, ktory ma definovany v HTML SUBELEMENT [<NotFound>].
+5. ASP.NET ROUTING SYSTEM umoznuje vykonat navigaciu medzi rozlicnymi BLAZOR COMPONENTS, ktore maju definovanu ROUTE. Navigacia medzi BLAZOR COMPONENTS sa vykonava BEZ zasielania HTTP REQUEST, VYLUCNE cez PERSISTENT CONNECTION medzi CLIENT SIDE a SERVER SIDE. Navigaciu medzi BLAZOR COMPONENTS je mozne vykonat nasledujucimi sposobmi.
+   A. Deklarativne pomocou HTML ELEMENT [<NavLink>].
+   B. V CODE pomocou CLASS [NavigationManager].
+6. Deklarativna navigacia medzi BLAZOR COMPONENTS sa realizuje nasledovne.
+   A. Do BLAZOR COMPONENT sa vlozi HTML ELEMENT [<NavLink>], ktoreho HTML ATTRIBUTE [href] musi odkazovat na URL, ktory definuje DESTINATION BLAZOR COMPONENT pomocou KEYWORD [@page].
+   B. BLAZOR FRAMEWORK pre HTML ELEMENT [<NavLink>] generuje HTML ELEMENT [<a>] s linkou na DESTINATION BLAZOR COMPONENT.
+7. Navigacia medzi BLAZOR COMPONENTS v CODE sa realizuje nasledovne.
+   A. SOURCE BLAZOR COMPONENT musi definovat C# PROPERTY TYPE [NavigationManager], na ktoru je aplikovany ATTRIBUTE [InjectAttribute], aby ju naplnil DEPENDENCY INJECTION.
+   B. SOURCE BLAZOR COMPONENT v [.RAZOR] CODE definuje BUTTON, ktory po kliknuti vola C# METHOD. Tato C# METHOD zavola METHOD [void NavigationManager.NavigateTo(string Uri, bool ForceLoad)], ktora vykona NAVIGATION na DESTINATION BLAZOR COMPONENT. 2. PARAMETER tejto METHOD urcuje ci sa ma na komunikaciu so SERVER SIDE pri vykonani NAVIGATION vyuzit PERSISTENT CONNECTION, alebo zaslat HTTP MESSAGE ci sa spravi FULL POSTBACK.
+8. BLAZOR COMPONENT [NavLink] ma nasledujuce MEMBERS.
+   A. PROPERTY [ActiveClass] TYPE [string] obsahuje jeden alebo viacero CSS CLASSES, ktore su aplikovane ak CURRENT URL sa zhoduje s VALUE HTML ATTRIBUTE [href].
+   B. PROPERTY [CssClass] TYPE [string] vracia aktualne nastavenie CSS CLASS HTML ELEMENT [NavLink].
+   C. PROPERTY [Match] TYPE [NavLinkMatch] obsahuje VALUE, ktora urcuje URL MATCHING BEHAVIOR.
+9. ENUM [NavLinkMatch] definuje nasledujuce VALUES.
+   A. VALUE [Prefix] urcuje, ze na HTML ELEMENT [NavLink] sa maju aplikovat CSS CLASSES definovane v PROPERTY [NavLink.ActiveClass], ak VALUE HTML ATTRIBUTE [href] sa zhoduje s PREFIX CURRENT URL.
+   B. VALUE [All] urcuje, ze na HTML ELEMENT [NavLink] sa maju aplikovat CSS CLASSES definovane v PROPERTY [NavLink.ActiveClass], ak VALUE HTML ATTRIBUTE [href] sa CELA zhoduje s CURRENT URL.
+10. CLASS [NavigationManager] umoznuje vykonat NAVIGATION medzi BLAZOR COMPONENTNS. Ma nasledujuce MEMBERS.
+   A. PROPERTY [Uri] TYPE [string] obsahuje URI aktualnej BLAZOR COMPONENT.
+   B. EVENT [LocationChanged] TYPE [EventHandler<LocationChangedEventArgs>] je vyvolany ked dojde k NAVIGATION medzi BLAZOR COMPONENTS.
+   C. METHOD [Uri ToAbsoluteUri(string RelativeUri)] konvertuje RELATIVE URL na ABSOLUTE URL.
+   D. METHOD [string ToBaseRelativePath(string Uri)] konvertuje ABSOLUTE URL na RELATIVE URL.
+   !!! E. METHOD [void NavigateTo(string Uri, bool ForceLoad)] vykonava NAVIGATION na DESTINATION BLAZOR COMPONENT. 2. PARAMETER urcuje ci sa ma na komunikaciu so SERVER SIDE pri vykonani NAVIGATION vyuzit PERSISTENT CONNECTION, alebo zaslat HTTP MESSAGE ci sa spravi FULL POSTBACK.
+11. ASP.NET ROUTING SYSTEM umoznuje v BLAZOR COMPONENTS mapovat hodnoty URL SEGMENTS na C# PROPERTIES BLAZOR COMPONENTS.
+   A. BLAZOR COMPONENT musi definovat C# PROPERTY do ktorej sa ulozi hodnota urceneho URL SEGMENT.
+   !!! B. C# PROPERTY do ktorej sa ulozi hodnota urceneho URL SEGMENT MUSI byt oznacena ATTRIBUTE [ParameterAttribute].
+   C. BLAZOR COMPONENT pomocou KEYWORD [@page] definuje SEGMENT VARIABLES, ktore sa budu mapovat na C# PROPERTIES BLAZOR COMPONENT. Pouziva sa pri tom standardna SYNTAX aka sa pouziva pri definovani ROUTES.
+   !!! D. Ak KEYWORD [@page] pre jednotlive SEGMENT VARIABLES NEDEFINUJE ich TYPE, tak C# PROPERTIES MUSIA byt TYPE [string]. Na rozdiel od standardneho ROUTING sa teda NEROBI AUTOMATICKA TYPOVA KONVERZIA.
+   !!! E. SEGMENT VARIABLES je mozne pouzit aj v URLs, ktore sa pouzivaju pri NAVIGATION medzi BLAZOR COMPONENT a to ci uz v HTML ELEMENT [<NavLink>], alebo pri definovani LINK pomocou CLASS [NavigationManager].
+12. BLAZOR FRAMEWORK umoznuje definovat BLAZOR COMPONENT LAYOUTS. BLAZOR COMPONENT LAYOUTS sa implementuju nasledujucim sposobom.
+   A. BLAZOR COMPONENT LAYOUT musi byt definovany vo FILE [.RAZOR].
+   B. BLAZOR COMPONENT LAYOUT MUSI na zaciatku [.RAZOR] FILE pouzit KEYWORD [@inherits LayouComponentBase], ktory sa urci, ze vygenerovana CLASS bude DERIVED z CLASS [LayouComponentBase], ktora urcuje, ze [.RAZOR] FILE obsahuje BLAZOR COMPONENT LAYOUT.
+   !!! C. BLAZOR COMPONENT LAYOUT urcuju miesto, kde sa CONTENT BLAZOR COMPONENT, ktora dany BLAZOR COMPONENT LAYOUT pouziva bude renderovat pomocou KEYWORD [@Body].
+13. BLAZOR COMPONENT LAYOUTS je mozne na BLAZOR COMPONENTS aplikovat nasledujucimi sposobmi.
+   A. BLAZOR COMPONENT moze pomocou KEYWORD [@layout] definovat BLAZOR COMPONENT LAYOUT, ktory pouzije.
+   B. PARENT BLAZOR COMPONENT moze aplikovat BLAZOR COMPONENT LAYOUT na CHILD BLAZOR COMPONENT tym, ze ju obali BLAZOR COMPONENT [<LayoutView>].
+   C. CUSTOM ROUTER BLAZOR COMPONENT moze aplikovat BLAZOR COMPONENT LAYOUT pridani, HTML ATTRIBUTE [DefaultLayout] do HTML ELEMENT [<RouteView>>].
+14. BLAZOR COMPONENTS mozu implementovat INTERFACE [IDisposable]. To BLAZOR FRAMEWORK vola, ak su BLAZOR COMPONENTS uvolnene, napriklad pri navigacii na inu BLAZOR COMPONENT.
+15. CLASS [ComponentBase] definuje viacero METHODS, ktore su volane pri zmenach STATE BLAZOR COMPONENTS.
+   A. METHOD [void OnInitialized()] je volana ak BLAZOR COMPONENT bola INITIALIZED a PARAMETERS, ktore nastavil PARENT BLAZOR COMPONENT (VIEW, RAZOR PAGE) su nastavene.
+   B. METHOD [Task OnInitializedAsync()] je asynchronna verzia METHOD [void OnInitialized()].
+   C. METHOD [void OnParametersSet()] je volana ak vsetky PARAMETERS BLAZOR COMPONENT, ktore nastavil PARENT BLAZOR COMPONENT (VIEW, RAZOR PAGE) boli priradene do C# PROPERTIES.
+   D. METHOD [Task OnParametersSetAsync()] je asynchronna verzia METHOD [void OnParametersSet()].
+   E. METHOD [bool ShouldRender()] je volana pred vykonanim RENDERINGU BLAZOR COMPONENT, ktory je mozne vratenim VALUE [false] potlacit. INITIAL RENDERING vsak nie je mozne pomocou tejto METHOD potlacit.
+   !!! F. METHOD [void OnAfterRender(bool FirstRender)] je volana po vykonani RENDERINGU BLAZOR COMPONENT. PARAMETER urcuje ci sa jedna o INITIAL RENDERING. METHOD je volana pri KAZDOM RENDERINGU. To znaci, ze ak dojde k zmene HTML CONTENT danej BLAZOR COMPONENT, tak sa METHOD vola PRI KAZDEJ ZMENE HTML CONTENT.
+   G. METHOD [Task OnAfterRenderAsync(bool FirstRender)] je asynchronna verzia METHOD [void OnAfterRender(bool FirstRender)].
+!!! 16. KEYWORD [@ref="EXPRESSION"] aplikovany na HTML ELEMENT reprezentujuci CHILD BLAZOR COMPONENT umoznuje priradit vytvorenu instanciu tohto BLAZOR COMPONENT do C# EXPRESSION. PARENT BLAZOR COMPONENT moze potom vyuzit tieto instancie CHILD BLAZOR COMPONENTS na pristup k ich PROPERTIES a volanie ich METHODS.
+   A. EXPRESSION MUSI byt EXPRESSION do ktorej je mozne priradit instanciu CHILD HTML ELEMENT. Spravidla je to C# PROPERTY, no moze to byt aj EXPRESSION [DICTIONARY[KEY]], ci [ARRAY[INDEX], ale je ARRAY uz ALOKOVANY pre dany pocet CHILD BLAZOR ELEMENTS.
+   B. PROPERTIES do ktorych sa ukladaju REFERENCIE na CHILD BLAZOR COMPONENTS su naplnene AZ po volani METHOD [void OnAfterRender(bool FirstRender)], resp. METHOD [Task OnAfterRenderAsync(bool FirstRender)].
+!!! 17. KEYWORD [@ref="EXPRESSION"] je mozne aplikovat aj na BEZNY HTML ELEMENT. V takom pripade EXPRESSION 'EXPRESSION' MUSI referovat na TYPE [ElementReference].
+!!! 18. C# CODE, ktory je sucastou BLAZOR COMPONENTS NIE JE mozne volat PRIAMO z inych casti PROJECT, ktore NIE SU SUCASTOU BLAZOR COMPONENTS. C# CODE, ktory je sucastou BLAZOR COMPONENTS je mozne volat IBA v CONTEXT BLAZOR FRAMEWORK. BLAZOR FRAMEWORK na interoperability s NON-BLAZOR CODE poskytuje nasledujuce METHODS CLASS [ComponentBase].
+   !!! A. METHOD [Task InvokeAsync(Action WorkItem)] resp. METHOD [Task InvokeAsync(Func<Task> WorkItem)] vykona DELEGATE zaslany ako PARAMETER v CONTEXT BLAZOR FRAMEWORK.
+   !!! B. METHOD [void StateHasChanged()] sposobi, ze dojde k RENDERINGU BLAZOR COMPONENT. METHOD sa spravidla vola v DELEGATE, ktory je zaslany do METHOD [Task InvokeAsync(Action WorkItem)] resp. METHOD [Task InvokeAsync(Func<Task> WorkItem)], aby notifikoval BLAZOR FRAMEWORK, ze doslo k zmene BLAZOR COMPONENT z EXTERNEHO PROSTREDIA a ze teda ma spravit RENDERING zmenenej BLAZOR COMPONENT.
+!!!!! 19. AK EXTERNAL CODE zavola CODE BLAZOR COMPONENT, pricom sa NEPOUZIJE METHOD [Task InvokeAsync(Action WorkItem)] resp. METHOD [Task InvokeAsync(Func<Task> WorkItem)], tak CODE je vykonany v INOM CONTEXT v akom bezi BLAZOR FRAMEWORK a BLAZOR FRAMEWORK pri volani METHODS BLAZOR RUNTIME hodi EXCEPTION.
+20. BLAZOR FRAMEWORK umoznuje vyvolavat so svojho C# CODE JAVASCRIPT FUNCTIONS. Vyvolanie JAVASCRIPT FUNCTIONS z C# CODE sa realizuje nasledujucim sposobom.
+   A. Do VIEW, alebo RAZOR PAGE je nutne vlozit [.JS] FILE, ktory obsahuje JAVASCRIPT FUNCTIONS, ktore maju byt volane z C# CODE.
+   B. Do BLAZOR COMPONENT je nutne vlozit C# PROPERTY TYPE [IJSRuntime], ktoru je nutne oznacit ATTRIBUTE [InjectAttribute], aby PROPERTY naplnil DEPENDENCY INJECTION FRAMEWORK.
+   C. Nasledne je mozne pouzit METHODS INTERFACE [IJSRuntime] na volanie JAVASCRIPT FUNCTIONS.
+21. INTERFACE [IJSRuntime] ma nasledujuce METHODS.
+   A. METHOD [ValueTask<TValue> InvokeAsync<TValue>(string Identifier, object[] Args)] zavola JAVASCRIPT FUNCTION 'Identifier' s PARAMETERS 'Args' a RETURN TYPE 'TValue'.
+   B. METHOD [ValueTask<TValue> InvokeAsync<TValue>(string Identifier, CancellationToken CancellationToken, object[] Args)] zavola JAVASCRIPT FUNCTION 'Identifier' s PARAMETERS 'Args' a RETURN TYPE 'TValue'. CANCELLATION vykonavania JAVASCRIPT FUNCTION je mozne vykonat pomocou PARAMETER 'CancellationToken'.
+   C. METHOD [ValueTask InvokeVoidAsync(string Identifier, params object[] Args)] zavola JAVASCRIPT FUNCTION 'Identifier' s PARAMETERS 'Args' a RETURN TYPE VOID.
+   D. METHOD [ValueTask InvokeVoidAsync(string Identifier, CancellationToken CancellationToken, params object[] Args)] zavola JAVASCRIPT FUNCTION 'Identifier' s PARAMETERS 'Args' a RETURN TYPE VOID. CANCELLATION vykonavania JAVASCRIPT FUNCTION je mozne vykonat pomocou PARAMETER 'CancellationToken'.
+22. Do JAVASCRIPT FUNCTION je mozne zaslat aj REFERENCE na HTML ELEMENT, ktory je ziskany v BLAZOR COMPONENT pomocou KEYWORD [@ref="EXPRESSION"]. Postup je nasledovny.
+   A. Do BLAZOR COMPONENT sa prida C# PROPERTY TYPE [ElementReference] do ktorej sa ulozi REFERENCE na HTML ELEMENT.
+   B. Na HTML ELEMENT, ktore REFERENCE sa ma ulozit sa aplikuje KEYWORD [@ref="EXPRESSION"], ktory odkazuje na C# PROPERTY TYPE [ElementReference].
+   C. VALUE C# PROPERTY TYPE [ElementReference] je mozne ako PARAMETER zaslat do JAVASCRIPT FUNCTION.
+23. JAVASCRIPT FUNCTIONS mozu vykonavat volanie STATIC C# METHODS. Volanie tychto METHODS sa realizuje nasledovne.
+   A. STATIC METHOD, ktora ma byt volana z JAVASCRIPT FUNCTIONS MUSI byt oznacena ako STATIC a MUSI na nu byt aplikovany ATTRIBUTE [JSInvokableAttribute].
+   B. JAVASCRIPT FUNCTIONS mozu vyvolat STATIC C# METHODS pomocou CODE [DotNet.invokeMethodAsync(ASSEMBLY_NAME,METHOD_NAME,PARAMETERS)], kde VALUE 'ASSEMBLY_NAME' je nazov ASSEMBLY v ktorej sa C# METHOD nachadza, VALUE 'METHOD_NAME' je nazov C# METHOD, ktora sa ma volat a VALUE 'PARAMETERS' je zoznam PARAMETERS C# METHOD.
+24. JAVASCRIPT FUNCTIONS mozu vykonavat volanie NON-STATIC C# METHODS. Volanie tychto METHODS sa realizuje nasledovne.
+   A. NON-STATIC METHOD, ktora ma byt volana z JAVASCRIPT FUNCTIONS MUSI byt oznacena ATTRIBUTE [JSInvokableAttribute].
+   B. Do JAVASCRIPT METHOD je NUTNE zaslat REFERENCIU na OBJECT, ktory obsahuje NON-STATIC METHOD. REFERENCIA sa vytvara volanim METHOD [DotNetObjectReference.Create(OBJECT)], kde VALUE 'OBJECT' je C# OBJECT pre ktory sa ma volat NON-STATIC METHOD.
+   C. JAVASCRIPT FUNCTIONS mozu vyvolat NON-STATIC C# METHODS pomocou CODE [OBJECT.invokeMethodAsync(METHOD_NAME,PARAMETERS)], kde VALUE 'OBJECT' je C# OBJECT pre ktory sa ma volat NON-STATIC METHOD, VALUE 'ASSEMBLY_NAME' je nazov ASSEMBLY v ktorej sa C# METHOD nachadza, VALUE 'METHOD_NAME' je nazov C# METHOD, ktora sa ma volat a VALUE 'PARAMETERS' je zoznam PARAMETERS C# METHOD.
+//----------------------------------------------------------------------------------------------------------------------

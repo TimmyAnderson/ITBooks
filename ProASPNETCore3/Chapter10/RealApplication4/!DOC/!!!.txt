@@ -1,0 +1,120 @@
+//----------------------------------------------------------------------------------------------------------------------
+1. Solution demonstruje rozsirenie realnej APPLICATION v ASP.NET CORE o funkcionalitu ADMINISTRATION.
+2. BLAZOR je ASP.NET CORE COMPONENT, ktora umoznuje lepsiu CLIENT SIDE INTERACTIVITY ako tradicne ASP.NET CORE APPLICATIONS.
+3. BLAZOR existuje v 2 verziach.
+   A. BLAZOR SERVER. Pri BLAZOR SERVER BLAZOR FRAMEWORK bezi na SERVER.
+   B. BLAZOR WEB ASSEMBLY. Pri BLAZOR WEB ASSEMBLY BLAZOR FRAMEWORK bezi na CLIENT (BROWSER).
+4. Zakladom BLAZOR APPLICATIONS su BLAZOR COMPONENTS, ktore vykonavaju komunikaciu medzi CLIENT SIDE a SERVER SIDE. EVENTS, ktore su vykonane na CLIENT SIDE su okamzite odosielane na SERVER SIDE, ktory zasiela ako RESPONSE na CLIENT SIDE UPDATED HTML CODE.
+!!! 5. BLAZOR COMPONENTS su ZAVISLE na existencii PERSISTENT HTTP CONNECTION medzi CLIENT SIDE a SERVER SIDE.
+!!! 6. NEVYHODOU klasickych ASP.NET CORE APPLICATIONS, ktore sa pokusa BLAZOR riesit je fakt, ze pri klasickych ASP.NET CORE APPLICATIONS pri kazdej interakcii medzi CLIENT SIDE a SERVER SIDE je zasielana HTTP REQUEST MESSAGE, ktoru musi SERVER SIDE spracovat, vygenerovat HTTP RESPONSE MESSAGE, ktora je odoslana na CLIENT SIDE, ktory ju musi spracovat. To vedie k prenosu mnozstva dat medzi CLIENT SIDE a SERVER SIDE ako aj vysokej zatazi SERVER SIDE, kedze ta musi vykonat PARSING HTTP REQUEST MESSAGE a vygenerovanie HTTP RESPONSE MESSAGE.
+7. BLAZOR SERVER funguje nasledujucim sposobom.
+   A. Pri PRVOM HTTP REQUEST na BLAZOR PAGE je na SERVER SIDE pre kazdu BLAZOR COMPONENT vygenerovany je STATE a na zaklade tychto STATES je na CLIENT SIDE v HTTP RESPONSE.
+   !!! B. HTTP RESPONSE okrem BLAZOR COMPONENTS STATES obsahuje aj specialny JAVA SCRIPT FILE, ktory po spusteni na CLIENT SIDE okamizte otvori PERSISTENT HTTP CONNECTION na SERVER SIDE.
+   C. V pripade, ze USER na CLIENT SIDE vykona nejaky EVENT (napriklad stlaci BUTTON), JAVA SCRIPT zabezpeci odoslanie informacie o tejto zmene cez PERSISTENT HTTP CONNECTION na SERVER SIDE.
+   D. SERVER SIDE vykona analyzu EVENT, modifikuje STATES dotknutych BLAZOR COMPONENTS a vygeneruje ROZDIELOVY HTML CODE, ktory je zaslany cez PERSISTENT HTTP CONNECTION na CLIENT SIDE.
+   E. CLIENT SIDE na zaklade obdrzaneho HTML CODE vykona vizualny UPDATE na BROWSERI.
+!!! 8. Aj ked BLAZOR SERVER vyzaduje existenciu PERSISTENT HTTP CONNECTION, mnozstvo dat, ktore su posielane medzi CLIENT SIDE a SERVER SIDE je VYRAZNE NIZSIE ako pri klasickych ASP.NET CORE APPLICATIONS.
+9. PERSISTENT HTTP CONNECTION medzi CLIENT SIDE a SERVER SIDE je zabezpecena pomocou MICROSOFT LIBRARY SIGNALR, ktora umoznuje komunikovat medzi CLIENT SIDE a SERVER SIDE pomocou viacerych podporovanych CHANNELS, pricom pri nadvazovani CHANNEL sa vybera ten najvhodnejsi, ktory CLIENT SIDE aj SERVER SIDE podporuju.
+10. BLAZOR SERVER sa v ASP.NET CORE PROGRAMS konfiguruje volanim nasledujucich METHODS v STARTUP CLASS.
+   A. METHOD [IServerSideBlazorBuilder IServiceCollection.AddServerSideBlazor(Action<CircuitOptions> Configure] pridava BLAZOR SERVER SERVICE do zoznamu SERVICES.
+   B. METHOD [ComponentEndpointConventionBuilder IEndpointRouteBuilder.MapBlazorHub(string Path, Action<HttpConnectionDispatcherOptions> ConfigureOptions)] prida SIGNALR HUB pre BLAZOR SERVER.
+!!! 11. Na to, aby BLAZOR SERVER mohol vykonavat komunikaciu medzi CLIENT SIDE a SERVER SIDE, je v kazdom VIEW a RAZOR PAGE nutne pridat nasledujuce HTML ELEMENTS.
+   A. HTML ELEMENT [<base href="~/" />] specifikuje ROOT URL daneho ASP.NET CORE PROGRAMU.
+   !!! B. HTML ELEMENT [<script src="_framework/blazor.server.js" ></script>] definuje FILE, ktory je potrebny na zabezpecenie komunikacie medzi CLIENT SIDE a SERVER SIDE. FILE je generovany MIDDLEWARE COMPONENT, ktory bol pridany volanim METHOD [IServerSideBlazorBuilder IServiceCollection.AddServerSideBlazor(Action<CircuitOptions> Configure] v STARTUP CLASS.
+12. RAZOR COMPONENTS pouzivaju vlastny IMPORT FILE. IMPORT FILE musi mat nazov [_Imports.razor] a MUSI byt v ROOT DIRECTORY celeho PROJECT.
+13. BLAZOR COMPONENTS su zakladom BLAZOR FRAMEWORK. Pre BLAZOR COMPONENTS platia nasledujuce fakty.
+   A. BLAZOR COMPONENT je FILE, ktory ma NAME [XXX.razor], kde VALUE 'XXX' je nazov BLAZOR COMPONENT, pricom ten MUSI zacinat VELKYM PISMENOM.
+   B. BLAZOR COMPONENTS mozu byt ulozene hocikde, ale podla konvencie je ich dobre ukladat do spolocneho DIRECTORY.
+   !!! C. BLAZOR COMPONENTS obsahuju HTML CODE a C# CODE. Na rozdiel od RAZOR PAGES NEMAJU BACKEND [.CS] FILE a teda C# CODE MUSI byt ulozeny PRIAMO v [.razor] FILES.
+   !!! D. BLAZOR COMPONENTS NEMAJU CONSTRUCTORS.
+   E. Ak BLAZOR COMPONENTS potrebuju cez DEPENDENCY INJECTION FRAMEWORK ziskat hodnotu nejakej PROPERTY, MUSIA na tuto PROPERTY aplikovat ATTRIBUTE [InjectAttribute], aby ju DEPENDENCY INJECTION FRAMEWORK naplnil.
+   !!! F. KEYWORD [@bind="PROPERTY_NAME"] vykonava 2 WAY BINDING medzi VALUE HTML ELEMENT a VALUE C# PROPERTY.
+14. BLAZOR FRAMEWORK umoznuje prepojit ASP.NET CORE ROUTING SYSTEM s BLAZOR COMPONENTS tak, ze BLAZOR COMPOMENTS mozu samy definovat ROUTES (URL ADDRESSES) cez ktoreho budu pomocou ASP.NET CORE ROUTING SYSTEM pristupne.
+15. Prepojenie medzi ASP.NET CORE ROUTING SYSTEM a BLAZOR COMPONENTS je realizovane nasledovne.
+   A. BLAZOR FRAMEWORK definuje BLAZOR COMPONENT [Router], ktora zabezpecuje prepojenie medzi ASP.NET CORE ROUTING SYSTEM a BLAZOR COMPONENTS.
+   !!! B. V APPLICATION je NUTNE definovat CUSTOM ROUTER BLAZOR COMPONENT, ktora pouziva BLAZOR COMPONENT [Router]. V HTML SUBELEMENT [<Found>] definuje CUSTOM ROUTER BLAZOR COMPONENT HTML CONTENT, ktory sa zobrazi ak ASP.NET CORE ROUTING SYSTEM nasiel hladanu BLAZOR COMPONENT. V HTML SUBELEMENT [<NotFound>] definuje CUSTOM ROUTER BLAZOR COMPONENT HTML CONTENT, ktory sa zobrazi ak ASP.NET CORE ROUTING SYSTEM nenasiel hladanu BLAZOR COMPONENT.
+   !!! C. Instanciu CUSTOM ROUTER BLAZOR COMPONENT je NUTNE vlozit do VIEW, alebo RAZOR PAGE, ktora ma zobrazovat BLAZOR COMPONENTS.
+   !!!!! D. Ak VIEW obsahuje instanciu CUSTOM ROUTER BLAZOR COMPONENT, VIEW je NUTNE zaregistrovat ako FALLBACK ROUTE v ASP.NET CORE ROUTING SYSTEM volanim METHOD [IEndpointConventionBuilder IEndpointRouteBuilder.MapFallbackToController(string Action, string Controller)].
+   !!!!! E. Ak RAZOR PAGE obsahuje instanciu CUSTOM ROUTER BLAZOR COMPONENT, RAZOR PAGE je NUTNE zaregistrovat ako FALLBACK ROUTE v ASP.NET CORE ROUTING SYSTEM volanim METHOD [IEndpointConventionBuilder IEndpointRouteBuilder.MapFallbackToPage(string Page)].
+   !!! F. Po zaregistrovani CUSTOM ROUTER BLAZOR COMPONENT je mozne na jednotlivych BLAZOR COMPONENTS, ktore maju byt pristupne priamo cez ASP.NET CORE ROUTING SYSTEM definovat ich ROUTES pomocou KEYWORD [@page].
+   !!! G. BLAZOR COMPONENTS mozu byt pristupne aj cez viacero ROUTES viacnasobnou aplikaciou KEYWORD [@page].
+!!!!! 16. Prepojenie medzi ASP.NET CORE ROUTING SYSTEM a BLAZOR COMPONENTS je vykonavane ASP.NET CORE nasledovne.
+   A. ASP.NET CORE ROUTING SYSTEM sa pre prichadzajucu HTML MESSAGE pokusa hladat vhodny ENDPOINT prechadzanim vsetkych zaregistrovanych ROUTES.
+   !!!!! B. Kedze ROUTE definovane pomocou KEYWORD [@page] v BLAZOR COMPONENTS ASP.NET CORE ROUTING SYSTEM NEPOZNA, prichadzajucu HTML MESSAGE NENAJDE ZIADNU ROUTE, ktora by vyhovovala URL HTML MESSAGE.
+   !!!!! C. Kedze ROUTE nebola najdena, pouzije sa FALLBACK MECHANISM, co znamnena, ze pre prichadzajucu HTML MESSAGE sa zobrazi FALLBACK VIEW, alebo FALLBACK RAZOR PAGE, ktora bola zaregistrovana v STARTUP CLASS.
+   !!! D. VIEW, alebo RAZOR PAGE obsahuje instanciu CUSTOM ROUTER BLAZOR COMPONENT, ktora obsahuje instanciu BLAZOR COMPONENT [Router].
+   !!!!! E. BLAZOR COMPONENT [Router] zoberie URL prichadzajucej HTML MESSAGE a prejde vsetky BLAZOR COMPONENTS ci neobsahuju ROUTES definovane pomocou KEYWORD [@page]. Ak BLAZOR COMPONENTS obsahuju ROUTES, BLAZOR COMPONENT [Router] sa pokusi vykonat URL MATCHING.
+   !!!!! F. Ak pomocou URL MATCHING je vyhladana BLAZOR COMPONENT, BLAZOR COMPONENT [Router] zobrazi HTML CONTENT, ktory ma definovany v HTML SUBELEMENT [<Found>]. HTML SUBELEMENT [<Found>] spravidla obsahuje HTML ELEMENT [<RouteView RouteData="@context" />], ktory zobrazi CONTENT najdenej BLAZOR COMPONENT.
+   !!!!! G. V pripade, ze URL MATCHING nenajde ziadnu BLAZOR COMPONENT, BLAZOR COMPONENT [Router] zobrazi HTML CONTENT, ktory ma definovany v HTML SUBELEMENT [<NotFound>].
+17. ASP.NET CORE ROUTING SYSTEM umoznuje vykonat navigaciu medzi rozlicnymi BLAZOR COMPONENTS, ktore maju definovanu ROUTE. Navigacia medzi BLAZOR COMPONENTS sa vykonava BEZ zasielania HTTP REQUEST, VYLUCNE cez PERSISTENT CONNECTION medzi CLIENT SIDE a SERVER SIDE. Navigaciu medzi BLAZOR COMPONENTS je mozne vykonat nasledujucimi sposobmi.
+   A. Deklarativne pomocou HTML ELEMENT [<NavLink>].
+   B. V CODE pomocou CLASS [NavigationManager].
+18. Deklarativna navigacia medzi BLAZOR COMPONENTS sa realizuje nasledovne.
+   A. Do BLAZOR COMPONENT sa vlozi HTML ELEMENT [<NavLink>], ktoreho HTML ATTRIBUTE [href] musi odkazovat na URL, ktory definuje DESTINATION BLAZOR COMPONENT pomocou KEYWORD [@page].
+   B. BLAZOR FRAMEWORK pre HTML ELEMENT [<NavLink>] generuje HTML ELEMENT [<a>] s linkou na DESTINATION BLAZOR COMPONENT.
+19. BLAZOR FRAMEWORK definuje nasledujuce BLAZOR FORM COMPONENTS pre jednotlive FORM HTML ELEMENTS.
+   A. BLAZOR COMPONENT [EditForm].
+   B. BLAZOR COMPONENT [InputText].
+   C. BLAZOR COMPONENT [InputCheckbox].
+   D. BLAZOR COMPONENT [InputDate<TValue>].
+   E. BLAZOR COMPONENT [InputNumber<TValue>].
+   F. BLAZOR COMPONENT [InputSelect<TValue>].
+   G. BLAZOR COMPONENT [InputTextArea].
+20. Pre BLAZOR COMPONENT [EditForm] platia nasledujuce fakty.
+   A. BLAZOR COMPONENT [EditForm] vykonava RENDERING HTML ELEMENT [<form>].
+   B. BLAZOR COMPONENT [EditForm] musi byt PARENT BLAZOR COMPONENT pre vsetky BLAZOR FORM COMPONENTS.
+   C. BLAZOR COMPONENT [EditForm] definuje PROPERTY [Model] TYPE [object], ktora obsahuje MODEL OBJECT pre FORM.
+   D. BLAZOR COMPONENT [EditForm] zvazuje jednotlive BLAZOR FORM COMPONENTS pre vykonavanie DATA VALIDATION.
+21. Pre BLAZOR COMPONENT [InputText] platia nasledujuce fakty.
+   A. BLAZOR COMPONENT [InputText] vykonava RENDERING HTML ELEMENT [<input>].
+   B. BLAZOR COMPONENT [InputText] definuje PROPERTY [Value] TYPE [string], ktora umoznuje BINIDNG na C# PROPERTY TYPE [string].
+   C. BLAZOR COMPONENT [InputText] definuje PROPERTY [ValueChanged] TYPE [EventCallback<string>], ktora realizuje CALLBACK volanie pri zmene C# PROPERTY [InputText.Value].
+22. Pre BLAZOR COMPONENT [InputCheckbox] platia nasledujuce fakty.
+   A. BLAZOR COMPONENT [InputCheckbox] vykonava RENDERING HTML ELEMENT [<input>], ktora ma HTML ATTRIBUTE [type] nastavenu na VALUE [checkbox].
+   B. BLAZOR COMPONENT [InputCheckbox] definuje PROPERTY [Value] TYPE [bool], ktora umoznuje BINIDNG na C# PROPERTY TYPE [bool].
+   C. BLAZOR COMPONENT [InputCheckbox] definuje PROPERTY [ValueChanged] TYPE [EventCallback<bool>], ktora realizuje CALLBACK volanie pri zmene C# PROPERTY [InputCheckbox.Value].
+23. Pre BLAZOR COMPONENT [InputDate<TValue>] platia nasledujuce fakty.
+   A. BLAZOR COMPONENT [InputDate<TValue>] vykonava RENDERING HTML ELEMENT [<input>], ktora ma HTML ATTRIBUTE [type] nastavenu na VALUE [date].
+   !!! B. BLAZOR COMPONENT [InputDate<TValue>] moze mat ako TYPE PARAMETER [TValue] pouzity TYPE [DateTime], alebo TYPE [DateTimeOffset].
+   C. BLAZOR COMPONENT [InputDate<TValue>] definuje PROPERTY [Value] TYPE [TValue], ktora umoznuje BINIDNG na C# PROPERTY TYPE [TValue].
+   D. BLAZOR COMPONENT [InputDate<TValue>] definuje PROPERTY [ValueChanged] TYPE [EventCallback<TValue>], ktora realizuje CALLBACK volanie pri zmene C# PROPERTY [InputDate<TValue>.Value].
+24. Pre BLAZOR COMPONENT [InputNumber<TValue>] platia nasledujuce fakty.
+   A. BLAZOR COMPONENT [InputNumber<TValue>] vykonava RENDERING HTML ELEMENT [<input>], ktora ma HTML ATTRIBUTE [type] nastavenu na VALUE [number].
+   !!! B. BLAZOR COMPONENT [InputNumber<TValue>] moze mat ako TYPE PARAMETER [TValue] pouzity TYPE [int], TYPE [long], TYPE [float], TYPE [double], alebo TYPE [decimal].
+   C. BLAZOR COMPONENT [InputNumber<TValue>] definuje PROPERTY [Value] TYPE [TValue], ktora umoznuje BINIDNG na C# PROPERTY TYPE [TValue].
+   D. BLAZOR COMPONENT [InputNumber<TValue>] definuje PROPERTY [ValueChanged] TYPE [EventCallback<TValue>], ktora realizuje CALLBACK volanie pri zmene C# PROPERTY [InputNumber<TValue>.Value].
+25. Pre BLAZOR COMPONENT [InputSelect<TValue>] platia nasledujuce fakty.
+   A. BLAZOR COMPONENT [InputSelect<TValue>] vykonava RENDERING HTML ELEMENT [<select>].
+   !!! B. BLAZOR COMPONENT [InputSelect<TValue>] moze mat ako TYPE PARAMETER [TValue] pouzity lubovolny TYPE.
+   C. BLAZOR COMPONENT [InputSelect<TValue>] definuje PROPERTY [Value] TYPE [TValue], ktora umoznuje BINIDNG na C# PROPERTY TYPE [TValue].
+   D. BLAZOR COMPONENT [InputSelect<TValue>] definuje PROPERTY [ValueChanged] TYPE [EventCallback<TValue>], ktora realizuje CALLBACK volanie pri zmene C# PROPERTY [InputSelect<TValue>.Value].
+   E. BLAZOR COMPONENT [InputSelect<TValue>] moze obsahovat CHILD HTML ELEMENTS [<option>], ktore definuju VALUES COMBOBOX.
+26. Pre BLAZOR COMPONENT [InputTextArea] platia nasledujuce fakty.
+   A. BLAZOR COMPONENT [InputTextArea] vykonava RENDERING HTML ELEMENT [<textarea>].
+   B. BLAZOR COMPONENT [InputTextArea] definuje PROPERTY [Value] TYPE [string], ktora umoznuje BINIDNG na C# PROPERTY TYPE [string].
+   C. BLAZOR COMPONENT [InputTextArea] definuje PROPERTY [ValueChanged] TYPE [EventCallback<string>], ktora realizuje CALLBACK volanie pri zmene C# PROPERTY [InputTextArea.Value].
+!!! 27. Kazdy BLAZOR FORM COMPONENT okrem BLAZOR COMPONENT [EditForm] MUSI mat PARENT BLAZOR COMPONENT [EditForm], inak BLAZOR RUNTIME hodi EXCEPTION.
+28. CUSTOM BLAZOR COMPONENTS je mozne vytvarat dedenim z BLAZOR FORM COMPONENTS.
+29. BLAZOR FRAMEWORK podporuje vykonavanie DATA VALIDATION. DATA VALIDATION sa realizuje nasledujucim sposobom.
+   A. PROPERTIES MODEL OBJECT su oznacene DATA VALIDATION ATTRIBUTES, ktore urcuju podmienky za ktorych su VALUES jednotlivych C# PROPERTIES validne.
+   B. BLAZOR FRAMEWORK definuje sadu BLAZOR COMPONENTS, ktore je potrebne vlozit ako CHILD BLAZOR COMPONENTS BLAZOR COMPONENT [EditForm]. Tieto BLAZOR COMPONENTS detekuju VALIDATION ERRORS a zobrazuju textovy popis ERRORS ako aj menia CSS STYLES HTML INPUT ELEMENTS, ktorych VALUES nie je VALID.
+30. BLAZOR FRAMEWORK definuje nasledujuce BLAZOR DATA VALIDATION COMPONENTS.
+   A. BLAZOR COMPONENT [DataAnnotationsValidator].
+   B. BLAZOR COMPONENT [ValidationSummary].
+   C. BLAZOR COMPONENT [ValidationMessage<TValue>].
+31. Pre BLAZOR COMPONENT [DataAnnotationsValidator] platia nasledujuce fakty.
+   A. BLAZOR COMPONENT [DataAnnotationsValidator] vykonava VALIDATION VALIDATION ATTRIBUTES, ktore su aplikovane na C# PROPERTIES MODEL OBJECTS.
+   B. BLAZOR COMPONENT [DataAnnotationsValidator] musi byt CHILD voci BLAZOR COMPONENT [EditForm].
+32. Pre BLAZOR COMPONENT [ValidationSummary] platia nasledujuce fakty.
+   A. BLAZOR COMPONENT [ValidationSummary] vykonava VALIDATION celeho MODEL OBJECT.
+   B. BLAZOR COMPONENT [ValidationSummary] musi byt CHILD voci BLAZOR COMPONENT [EditForm].
+   C. BLAZOR COMPONENT [ValidationSummary] definuje PROPERTY [Model] TYPE [object], ktora obsahuje MODEL OBJECT.
+   D. BLAZOR COMPONENT [ValidationSummary] v pripade existencie VALIDATION ERRORS generuje HTML ELEMENT [<ul>] obsahujuci UNORDERED LIST na ktory aplikuje CSS CLASS [validation-errors].
+   E. BLAZOR COMPONENT [ValidationSummary] v pripade existencie VALIDATION ERRORS generuje pre KAZDU VALIDATION ERROR HTML ELEMENT [<li>], ktory vlozi do HTML ELEMENT [<ul>]. Na kazdy HTML ELEMENT [<li>] je aplikovany CSS CLASS [validation-message].
+33. Pre BLAZOR COMPONENT [ValidationMessage<TValue>] platia nasledujuce fakty.
+   A. BLAZOR COMPONENT [ValidationMessage<TValue>] zobrazuje ERROR MESSAGES, ktore vznikli pri VALIDATION danej C# PROPERTY.
+   B. BLAZOR COMPONENT [ValidationMessage<TValue>] musi byt CHILD voci BLAZOR COMPONENT [EditForm].
+   C. BLAZOR COMPONENT [ValidationMessage<TValue>] definuje PROPERTY [For] TYPE [Expression<Func<TValue>>], ktora definuje C# PROPERTY, ktorej VALIDATION sa ma vykonat.
+   D. BLAZOR COMPONENT [ValidationMessage<TValue>] v pripade existencie VALIDATION ERRORS generuje pre HTML ELEMENT [<div>] do ktoreho zapise VALIDATION ERRORS. Na HTML ELEMENT [<div>] je aplikovany CSS CLASS [validation-message].
+   !!! E. BLAZOR COMPONENT [ValidationMessage<TValue>] NIE VZDY dokaze spravne odvodit TYPE C# PROPERTY. V takom pripade je nutne na BLAZOR COMPONENT [ValidationMessage<TValue>] aplikovat HTML ATTRIBUTE [TValue], ktory obsahuje TYPE C# PROPERTY.
+//----------------------------------------------------------------------------------------------------------------------

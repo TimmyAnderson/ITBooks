@@ -1,0 +1,119 @@
+﻿<div class="OUTER_BOX">
+	<table class="table table-bordered table-striped">
+		<tr>
+			<th>ID</th>
+			<th>First name</th>
+			<th>Last name</th>
+			<th>Age</th>
+			<th>Sex</th>
+		</tr>
+
+		@foreach(CChild Child in Children)
+		{
+			<!-- !!! Ak sa SEX zhoduje so SELECTED SEX, tak sa zmeni farba celeho riadku. -->
+			<tr class="@GetClass(Child.Sex)">
+				<td>
+					[@Child.ID]
+				</td>
+						
+				<td>
+					[@Child.FirstName]
+				</td>
+						
+				<td>
+					[@Child.LastName]
+				</td>
+						
+				<td>
+					[@Child.Age]
+				</td>
+						
+				<td>
+					[@Child.Sex] !
+				</td>
+			</tr>
+		}
+	</table>
+</div>
+
+<div class="OUTER_BOX">
+	<label for="SelectSex">Sex:</label>
+	<!-- !!! KEYWORD [@bind] vykonava 2 WAY BINDING medzi HTML ELEMENT VALUE a C# PROPERTY VALUE. -->
+	<select class="form-control" name="SelectSex" @bind="SelectedSex">
+		<option disabled selected>Select Sex</option>
+		@foreach(string Sex in GetSexes())
+		{
+			<option value="@Sex" selected="@(Sex==SelectedSex)">
+				@Sex
+			</option>
+		}
+	</select>
+</div>
+
+
+@code
+{
+	//----------------------------------------------------------------------------------------------------------------------
+	private IChildProvider                                      MChildProvider;
+	private string                                              MSelectedSex;
+	//----------------------------------------------------------------------------------------------------------------------
+	//----------------------------------------------------------------------------------------------------------------------
+	//----------------------------------------------------------------------------------------------------------------------
+	// !!! PROPERTY bude naplnena DEPENDENCY INJECTION FRAMEWORK.
+	[Inject]
+	public IChildProvider                                      ChildProvider
+	{
+		get
+		{
+			return(MChildProvider);
+		}
+		set
+		{
+			MChildProvider=value;
+		}
+	}
+	//----------------------------------------------------------------------------------------------------------------------
+	public string                                               SelectedSex
+	{
+		get
+		{
+			return(MSelectedSex);
+		}
+		set
+		{
+			MSelectedSex=value;
+		}
+	}
+	//----------------------------------------------------------------------------------------------------------------------
+	private CChild[]                                            Children
+	{
+		get
+		{
+			CChild[]                                            Value=MChildProvider.GetChildren();
+
+			return(Value);
+		}
+	}
+	//----------------------------------------------------------------------------------------------------------------------
+	//----------------------------------------------------------------------------------------------------------------------
+	//----------------------------------------------------------------------------------------------------------------------
+	public string[] GetSexes()
+	{
+		string[]                                                Sexes=Enum.GetNames(typeof(ESex));
+
+		return(Sexes);
+	}
+	//----------------------------------------------------------------------------------------------------------------------
+	public string GetClass(ESex Sex)
+	{
+		if (Sex.ToString()==MSelectedSex)
+		{
+			return("bg-info text-white");
+		}
+		else
+		{
+			return("");
+		}
+	}
+	//----------------------------------------------------------------------------------------------------------------------
+}

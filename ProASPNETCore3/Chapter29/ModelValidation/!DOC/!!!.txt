@@ -1,0 +1,99 @@
+//----------------------------------------------------------------------------------------------------------------------
+1. Solution demonstruje MODEL VALIDATION v ASP.NET CORE APPLICATIONS.
+2. MODEL VALIDATION je mechanizmus kontrolujuci ci DATA zadane USER splnaju nastavene kriteria.
+3. MODEL VALIDATION je sucastou MODEL BINDING.
+4. MODEL VALIDATION pozostava z nasledujucich casti.
+   A. Detekcie ci zadane DATA su VALIDNE.
+   B. Zobrazenia ERROR, ktore naviguju USERS k zadaniu korektnych dat.
+5. Okrem automatickeho MODEL VALIDATION, ktory je sucastou MODEL BINDING moze PROGRAM v CONTROLLERS ci RAZOR PAGE HANDLERS vykonavat aj CUSTOM VALIDATION.
+6. ASP.NET implementuje CLASS [ModelStateDictionary], ktora sluzi na zaznamenavanie VALIDATION ERRORS. CLASS [ModelStateDictionary] ma nasledujuce MEMBERS.
+   A. PROPERTY [IsValid] TYPE [bool] vracia informaciu ci instancia CLASS [ModelStateDictionary] obsahuje nejake ERRORS.
+   B. METHOD [void AddModelError(string Key, string ErrorMessage)] pridava novu ERROR MESSAGE do CLASS [ModelStateDictionary], pricom PARAMETER 'Key' by mal byt nastaveny na PROPERTY, ktore VALIDATION ZLYHALA.
+   C. METHOD [ModelValidationState GetValidationState(string Key)] vracia informaciu ci PROPERTY 'Key' bola MODEL BINDING VALIDATED.
+   D. METHOD [void Clear()] odstranuje vsetky ERRORS a vykonava RESET ERROR STATE.
+7. METHOD [ModelValidationState ModelStateDictionary.GetValidationState(string Key)] vracia informaciu ci PROPERTY 'Key' bola MODEL BINDING VALIDATED. METHOD vracia nasledujuce RETURN VALUES.
+   A. VALUE [ModelValidationState.Unvalidated] znamena, ze VALIDATION NEBOLA vykonana. Tato VALUE je spravidla vratena, ak sa PROPERTY 'Key' NENACHADZA vo VALIDATED OBJECT.
+   B. VALUE [ModelValidationState.Invalid] znamena, ze VALIDATION ZLYHALA.
+   C. VALUE [ModelValidationState.Valid] znamena, ze VALIDATION bola vykonana USPESNE.
+   D. VALUE [ModelValidationState.Skipped] znamena, ze VALIDATION bola preskocena, pretoze bolo najdenych tolko VALIDATION ERRORS, ze nemalo zmysel pokracovat vo vykonavani VALIDATION.
+8. MANUAL VALIDATION sa vykonava nasledujucim sposobom.
+   A. V ACTION METHOD, alebo RAZOR PAGE HANDLER sa volanim METHOD [ModelStateDictionary.GetValidationState()] vykona verifikacia vsetkych PROPERTIES COMPLEX OBJECT, ktory obsahuje FORM DATA. V pripade detekcie ERROR sa volanim METHOD [ModelStateDictionary.AddModelError()] sa prida ERROR do instancie CLASS [ModelStateDictionary].
+   !!! B. V ACTION METHOD, alebo RAZOR PAGE HANDLER je mozne vykonat aj dodatocne CUSTOM VALIDATIONS, ako napriklad ci je NUMERIC VALUE v urcitom INTERVALE, alebo ci STRING VALUE nie je PRAZDNA. V pripade detekcie ERROR sa volanim METHOD [ModelStateDictionary.AddModelError()] sa prida ERROR do instancie CLASS [ModelStateDictionary].
+   !!! C. Po skonceni VALIDATION by ACTION METHOD, alebo RAZOR PAGE HANDLER mal zistit VALUE PROPERTY [ModelStateDictionary.IsValid]. V pripade, ze je TRUE, je VALIDATION USPESNA moze pokracovat v dalsej cinnosti. V pripade, ze je FALSE, mala by zobrazit TEN ISTY VIEW, ktoreho VALIDATION ZLYHALA.
+   !!!!! D. Ak sa zobrazi TEN ISTY VIEW, ktoreho VALIDATION ZLYHALA, ASP.NET AUTOMATICKY pre vsetky INPUT HTML ELEMENTS, ktorych VALIDATION ZLYHALA prida do ich CSS CLASSES novu CSS CLASS 'input-validation-error'. Pomocou CSS CLASS 'input-validation-error' je mozne zmenit vizual INPUT HTML ELEMENTS, ktorych VALIDATION ZLYHALA.
+!!!!! 9. Ak VALIDATION (MANUALNA, alebo AUTOMATICKA) ZLYHA a ACTION METHOD, alebo RAZOR PAGE HANDLER zobrazia TEN ISTY VIEW (RAZOR PAGE), kde VALIDATION ZLYHALA, ASP.NET AUTOMATICKY pre vsetky INPUT HTML ELEMENTS, ktorych VALIDATION ZLYHALA prida do ich CSS CLASSES novu CSS CLASS 'input-validation-error'. Pomocou CSS CLASS 'input-validation-error' je mozne zmenit vizual INPUT HTML ELEMENTS, ktorych VALIDATION ZLYHALA.
+!!! 10. ASP.NET rozdeluje VALIDATION ERRORS na nasledujuce typy.
+   A. PROPERTY VALIDATION ERROR je asociovana s konkretnou PROPERTY, ktore VALUE je nespravna. Ak pri volani METHOD [void AddModelError(string Key, string ErrorMessage)] ma PARAMETER 'Key' nastaveny na nazov PROPERTY, tak ERROR je povazovana za PROPERTY VALIDATION ERROR.
+   B. MODEL VALIDATION ERROR nie je asociovana so ziadnou konkretnou PROPERTY, ale s celym MODEL. Ak pri volani METHOD [void AddModelError(string Key, string ErrorMessage)] ma PARAMETER 'Key' nastaveny na nazov EMPTY STRING, tak ERROR je povazovana za MODEL VALIDATION ERROR.
+11. TAG HELPER CLASS [ValidationSummaryTagHelper] umoznuje zobrazit VALIDATION ERRORS v HTML ELEMENT [<div>]. TAG HELPER CLASS [ValidationSummaryTagHelper] ma nasledujuce MEMBERS.
+   A. PROPERTY [Generator] TYPE [IHtmlGenerator] vracia HTML GENERATOR, ktory generuje HTML so zoznamom VALIDATION ERRORS.
+   B. PROPERTY [ValidationSummary] TYPE [ValidationSummary], ktora je mapovana na HTML ATTRIBUTE [asp-validation-summary] umoznuje nastavit, ktore VALIDATION ERROR sa budu generovat.
+12. ENUM [ValidationSummary] moze nadobudat nasledujuce VALUES.
+   A. VALUE [None] znamena, ze sa nezobrazia ZIADNE VALIDATION ERRORS.
+   B. VALUE [ModelOnly] znamena, ze sa zobrazia iba MODEL VALIDATION ERRORS, ale nie PROPERTY VALIDATION ERRORS.
+   C. VALUE [All] znamena, ze sa zobrazia MODEL VALIDATION ERRORS aj PROPERTY VALIDATION ERRORS.
+13. ASP.NET umoznuje vykonat CUSTOMIZATION VALIDATION ERROR MESSAGES pomocou METHODS CLASS [DefaultModelBindingMessageProvider]. Pomocou METHODS tejto CLASS je mozne zmenit DEFAULT ERROR MESSAGES za CUSTOM ERROR MESSAGES. CLASS [DefaultModelBindingMessageProvider] ma nasledujuce MEMBERS.
+   A. METHOD [void SetAttemptedValueIsInvalidAccessor(Func<string,string,string> AttemptedValueIsInvalidAccessor)] nastavi MESSAGE, ktora sa ma zobrazit ak MODEL BINDING nedokazal vykonat konverziu na ocakavany C# TYPE.
+   B. METHOD [void SetMissingBindRequiredValueAccessor(Func<string,string> MissingBindRequiredValueAccessor)] nastavi MESSAGE, ktora sa ma zobrazit ak REQUIRED PROPERTY neobsahuje VALUE.
+   C. METHOD [void SetMissingKeyOrValueAccessor(Func<string> MissingKeyOrValueAccessor)] nastavi MESSAGE, ktora sa ma zobrazit ak KEYS, alebo VALUES, ktore su REQUIRED pre DICTIONARY obsahuju NULL.
+   D. METHOD [void SetMissingRequestBodyRequiredValueAccessor(Func<string> MissingRequestBodyRequiredValueAccessor)] nastavi MESSAGE, ktora sa ma zobrazit ak HTTP REQUEST BODY neobsahuje pozadovanu VALUE.
+   E. METHOD [void SetNonPropertyAttemptedValueIsInvalidAccessor(Func<string,string> NonPropertyAttemptedValueIsInvalidAccessor)] nastavi MESSAGE, ktora sa ma zobrazit ak sa PROPERTY VALUE nepodarilo nastavit.
+   F. METHOD [void SetNonPropertyUnknownValueIsInvalidAccessor(Func<string> NonPropertyUnknownValueIsInvalidAccessor)] nastavi MESSAGE, ktora sa ma zobrazit ak PROPERTY VALUE ma UNKNOWN VALUE.
+   G. METHOD [void SetNonPropertyValueMustBeANumberAccessor(Func<string> NonPropertyValueMustBeANumberAccessor)] nastavi MESSAGE, ktora sa ma zobrazit ak PROPERTY VALUE NIE je NUMERIC VALUE.
+   H. METHOD [void SetUnknownValueIsInvalidAccessor(Func<string,string> UnknownValueIsInvalidAccessor)] nastavi MESSAGE, ktora sa ma zobrazit ak VALUE je UNKNOWN.
+   I. METHOD [void SetValueMustBeANumberAccessor(Func<string,string> ValueMustBeANumberAccessor)] nastavi MESSAGE, ktora sa ma zobrazit ak PROPERTY VALUE nemoze byt PARSED ako NUMERIC VALUE.
+   J. METHOD [void SetValueMustNotBeNullAccessor(Func<string,string> ValueMustNotBeNullAccessor)] nastavi MESSAGE, ktora sa ma zobrazit ak PROPERTY VALUE obsahuje NULL VALUE.
+   K. METHOD [void SetValueIsInvalidAccessor(Func<string,string> ValueIsInvalidAccessor)] nastavi MESSAGE, ktora sa ma zobrazit pri vzniku inej ERROR, ake podporuju METHODS CLASS [DefaultModelBindingMessageProvider].
+14. TAG HELPER CLASS [ValidationMessageTagHelper] umoznuje zobrazit VALIDATION ERRORS, ktore su asociovane s danym INPUT HTML ELEMENT v HTML ELEMENT [<span>]. TAG HELPER CLASS [ValidationMessageTagHelper] ma nasledujuce MEMBERS.
+   A. PROPERTY [Generator] TYPE [IHtmlGenerator] vracia HTML GENERATOR, ktory generuje HTML so zoznamom VALIDATION ERRORS.
+   B. PROPERTY [For] TYPE [ModelExpression], ktora je mapovana na HTML ATTRIBUTE [asp-validation-for] obsahuje nazov INPUT HTML ELEMENT, ktoreho VALIDATION ERRORS ma TAG HELPER CLASS [ValidationMessageTagHelper] zobrazit.
+15. AUTOMATIC VALIDATION sa vykonava nasledujucim sposobom.
+   A. Na PROPERTIES MODEL OBJECT sa aplikuju VALIDATION ATTRIBUTES. VALIDATION ATTRIBUTES okrem CONDITION mozu definovat aj CUSTOM PROPERTY ERROR MESSAGE.
+   !!! B. VALIDATION ATTRIBUTES su aplikovane este PRED zavolanim ACTION METHODS (RAZOR PAGE HANDLERS), takze ACTION METHODS (RAZOR PAGE HANDLERS) mozu pouzivat MEMBERS CLASS [ModelStateDictionary].
+   C. Ak VALIDATION ATTRIBUTE nedefinuje CUSTOM PROPERTY ERROR MESSAGE, tak je vhodne aplikovat na PROPERTY ATTRIBUTE [DisplayAttribute], ktora definuje PROPERTY NAME, ktora sa vlozi do PROPERTY ERROR MESSAGE.
+16. ASP.NET definuje nasledujuce VALIDATION ATTRIBUTES.
+   A. ATTRIBUTE [CompareAttribute] umoznuje porovnat VALUES 2 PROPERTIES na ci su zhodne. PROPERTY, ktora sa ma porovnat je urcena pomocou PROPERTY [CompareAttribute.OtherProperty].
+   B. ATTRIBUTE [RangeAttribute] umoznuje definovat RANGE v ktorom sa ma VALUE danej PROPERTY nachadzat.
+   C. ATTRIBUTE [RegularExpressionAttribute] umoznuje spravit VALIDATION VALUE danej PROPERTY voci REGULAR EXPRESSION.
+   D. ATTRIBUTE [RequiredAttribute] umoznuje vykonat VALIDATION ci VALUE danej PROPERTY je nastavena.
+   E. ATTRIBUTE [StringLengthAttribute] umoznuje vykonat VALIDATION ci STRING VALUE ma zadany pocet CHARACTERS.
+   F. ATTRIBUTE [CustomValidationAttribute] umoznuje vykonat CUSTOM VALIDATION VALUE danej PROPERTY.
+   G. ATTRIBUTE [MinLengthAttribute] umoznuje vykonat VALIDATION ci STRING VALUE, alebo ARRAY VALUE ma zadany pocet CHARACTERS/ITEMS.
+   H. ATTRIBUTE [MaxLengthAttribute] umoznuje vykonat VALIDATION ci STRING VALUE, alebo ARRAY VALUE nema vacsi ako zadany pocet CHARACTERS/ITEMS.
+!!! 17. CONTROLLERS na ktore je aplikovany ATTRIBUTE [ApiControllerAttribute] NEMUSIA vykonava kontrolu ci sa DATA VALIDNE, pretoze ASP.NET v pripade, ze MODEL BIDNING pre PARAMETERS ACTION METHOD ZLYHA, tak ACTION METHOD VOBEC NEVOLAJU a hned vratia HTTP RESPONSE CODE na CLIENT SIDE. To znaci, ze ked sa ACTION METHOD CONTROLLERS na ktore je aplikovany ATTRIBUTE [ApiControllerAttribute] zavola, tak MODEL BINDING PREBEHOL USPESNE.
+18. ASP.NET umoznuje definovat CUSTOM VALIDATION ATTRIBUTES. CUSTOM VALIDATION ATTRIBUTES sa implementuju nasledujucim sposobom.
+   A. Definuje sa ATTRIBUTE CLASS, ktory je DERIVED z CLASS [Attribute] a zaroven implementuje INTERFACE [IModelValidator].
+   B. ATTRIBUTE CLASS musi implementovat METHOD [IEnumerable<ModelValidationResult> Validate(ModelValidationContext Context)]. METHOD musi vykonat VALIDATION a v pripade detekcie VALIDATION ERRORS musi vratit COLLECTION instancii CLASS [ModelValidationResult].
+!!! 19. CUSTOM VALIDATION ATTRIBUTES je mozne definovat bud na urovni PROPERTIES VALIDATED OBJECTS (ATTRIBUTE je aplikovany na PROPERTY), alebo na urovni celeho VALIDATED OBJECT (ATTRIBUTE je aplikovany na CLASS).
+20. CLASS [ModelValidationContext] obsahuje CONTEXT pre MODEL VALIDATION. CLASS [ModelValidationContext] ma nasledujuce MEMBERS.
+   A. PROPERTY [Model] TYPE [object] vracia VALUE PROPERTY, ktorej VALIDATION sa ma vykonat.
+   B. PROPERTY [Container] TYPE [object] vracia OBJECT, ktory obsahuje PROPERTY, ktorej VALIDATION sa ma vykonat.
+   C. PROPERTY [ActionContext] TYPE [ActionContext] vracia CONTEXT DATA, ktore popisuju ACTION METHOD (RAZOR PAGE HANDLER), pre ktoru sa VALIDATION vykonava.
+   D. PROPERTY [ModelMetadata] TYPE [ModelMetadata] vracia METADATA popisujuce MODEL CLASS, ktory ma byt VALIDATED.
+21. Pri pouziti AUTOMATIC VALIDATION (ked su PROPERTIES MODEL OBJECT oznacene pomocou VALIDATION ATTRIBUTES) ASP.NET podporuje kombinaciu CLIENT a SERVER VALIDATION. CLIENT a SERVER VALIDATION je vykonane nasledujucim sposobom.
+   A. Pri pouziti AUTOMATIC VALIDATION ASP.NET do INPUT HTML ELEMENTS, ktore maju byt VALIDATED pridava CUSTOM HTML ATTRIBUTES, ktore obsahuju VALIDATION CONDITIONS a VALIDATION ERROR MESSAGES, ktore umoznuju JAVA SCRIPT CLIENT VALIDATION LIBRARIES vykonat CLIENT VALIDATION.
+   B. Do VIEW (RAZOR PAGE) musia byt pridane JAVA SCRIPT CLIENT SIDE VALIDATION LIBRARIES, ktore vykonavaju CLIENT VALIDATION.
+   !!! C. Po stlaceni SUBMIT BUTTON, JAVA SCRIPT CLIENT SIDE VALIDATION LIBRARIES prejdu vsetky INPUT HTML ELEMENTS a vykonaju CLIENT SIDE VALIDATION vyuzivajuc CUSTOM HTML ATTRIBUTES, ktore pridal ASP.NET do INPUT HTML ELEMENTS. V pripade zistenia VALIDATION ERRORS, JAVA SCRIPT CLIENT SIDE VALIDATION LIBRARIES zobrazia ERRORS MESSAGES.
+   !!! D. V pripade, ze CLIENT SIDE VALIDATION uspesne prejde a FORM DATA su odoslane na SERVER SIDE, ASP.NET vykonava SERVER SIDE VALIDATION. SERVER SIDE VALIDATION okrem opatovnej VALIDATION tych RULES, ktore boli skontrolovane na CLIENT SIDE moze obsahovat aj CUSTOM VALIDATION RULES, ktore boli pridane pomocou CUSTOM VALIDATION ATTRIBUTES, alebo sa jedna o VALIDATION RULES aplikovane na PROPERTIES ci MODEL OBJECT, ktore obsahuju CUSTOM C# CODE.
+   !!!!! E. Vyhodou kombinacie CLIENT SIDE VALIDATION a SERVER SIDE VALIDATION je ze SERVER SIDE VALIDATION moze vykonavat aj CUSTOM VALIDATIONS, ktore su napisane v C# CODE a ktore nemozu byt prelozene do JAVA SCRIPT CODE. Vyhodou je takisto vyssia SECURITY, pretoze CLIENT by mohol emulovat zaslanie chybnych FORM DATA, ktore by nepresli cez JAVA SCRIPT CLIENT SIDE VALIDATION LIBRARIES neboli by VALIDATED. Preto SERVER SIDE VALIDATION je NEVYHTNE vykonat, bez ohladu na to ci sa CLIENT SIDE VALIDATION vykonala, alebo nie.
+22. CLIENT SIDE VALIDATION je vykonavana pomocou nasledujucich LIBRARIES, ktore musia byt vlozene do VIEW (RAZOR PAGE) v nasledujucom poradi.
+   A. LIBRARY [jquery].
+   B. LIBRARY [jquery-validate].
+   C. LIBRARY [jquery-validation-unobtrusive].
+23. REMOTE VALIDATION je CLIENT SIDE VALIDATION, ktory spusta SERVER SIDE METHOD na vykonanie VALIDATION. REMOTE VALIDATION funguje nasledujucim sposobom.
+   A. REMOTE VALIDATION je nastaveny na PROPERTIES MODEL OBJECT.
+   B. Ak vo VIEW (RAZOR PAGE) dojde k zmene INPUT HTML ELEMENT, ktory vyzaduje REMOTE VALIDATION, JAVA SCRIPT LIBRARY zavola pomocou AJAX SERVER SIDE METHOD, ktora vykona VALIDATION.
+   C. Ak VALIDATION danej PROPERTY ZLYHA, JAVA SCRIPT LIBRARY zobrazi ERROR MESSAGE, ktoru SERVER SIDE METHOD vyvolala.
+24. REMOTE VALIDATION sa v ASP.NET implementuje nasledujucim sposobom.
+   !!! A. VIEW (RAZOR PAGE) MUSI obsahovat tie iste CLIENT LIBRARIES, ako pri CLIENT VALIDATION, inak REMOTE VALIDATION NEFUNGUJE.
+   B. SERVER SIDE musi implementovat pre kazdy REMOTE VALIDATION CONTROLLER a ACTION METHOD, ktora bude vykonavat REMOTE VALIDATION.
+   !!! C. SERVER SIDE VALIDATION METHOD MUSI mat nazov PARAMETER zhodny s nazvom PROPERTY, ktora ma byt VALIDATED, pricom ako TYPE tohto PARAMETER sa doporucuje TYPE [string]. To preto, lebo ak by napriklad sa jednalo o PROPERTY TYPE [int] a USER by do prislusneho INPUT HTML ELEMENT zadal NON-INTEGER VALUE, tak by sa SERVER SIDE VALIDATION METHOD VOBEC NEZAVOLALA. Preto sa odporuca ako PARAMETER TYPE VZDY pouzivat TYPE [string].
+   !!! D. SERVER SIDE VALIDATION METHOD MUSI vracat instanciu CLASS [JsonResult], kde v pripade, ze VALIDATION presla uspesne, tak je potrebne vratit VALUE 'true' a v pripade, ze VALIDATION ZLYHALA, vratit MESSAGE obsahujucu popis ERROR.
+   E. Na PROPERTIES MODEL OBJECT, pre ktore ma byt vykonany REMOTE VALIDATION MUSI byt aplikovany ATTRIBUTE [RemoteAttribute], ktory by mal v CONSTRUCTOR definovat nazov CONTROLLER a ACTION METHOD v SERVER SIDE VALIDATION METHOD.
+25. REMOTE VALIDATION funguje aj pre RAZOR PAGES obdobne ako pre VIEWS. Rozdiely v implementacii su nasledovne.
+   A. SERVER SIDE VALIDATION METHOD musi byt implementovana v CONTROLLER, kedze RAZOR PAGES NEPODPORUJU vratenie ineho CONTENT ako je HTML CONTENT. SERVER SIDE VALIDATION METHOD naopak potrebuje vratit JSON CONTENT.
+   B. Pri REMOTE VALIDATION je volana SERVER SIDE VALIDATION METHOD, ktorej QUERY STRING pouziva nazov PARAMETER [XXX.YYY], kde VALUE 'XXX' je nazov RAZOR PAGE MODEL OBJECT PROPERTY a VALUE 'YYY' je nazov PROPERTY MODEL OBJECT. To je rozdiel oproti VIEWS, kde QUERY STRING pouziva nazov PARAMETER [YYY], kde VALUE 'YYY' je nazov PROPERTY MODEL OBJECT.
+   !!! C. Na spravne mapovanie QUERY STRING PARAMETER musi mat SERVER SIDE VALIDATION METHOD ako PARAMETER TYPE [string], ktory moze mat LUBOVLNY NAME, no MUSI nan byt aplikovany ATTRIBUTE [BindAttribute] s hodnotou PROPERTY [BindAttribute.Prefix] nastavenou na VALUE [XXX.YYY].
+   D. Pri tejto konfiguracii ASP.NET dokaze korektne namapovat QUERY STRING na PARAMETER SERVER SIDE VALIDATION METHOD.
+!!! 26. REMOTE VALIDATION sa vykonava pomocou AJAX REQUESTS na SERVER SIDE pri akejkolvek zmene prislusneho INPUT HTML ELEMENT. Preto moze byt pomerne narocna na BANDWIDTH i SERVER RESOURCES.
+//----------------------------------------------------------------------------------------------------------------------

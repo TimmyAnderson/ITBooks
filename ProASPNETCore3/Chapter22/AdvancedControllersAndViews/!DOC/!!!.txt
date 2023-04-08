@@ -1,0 +1,63 @@
+//----------------------------------------------------------------------------------------------------------------------
+1. Solution demonstruje pokrocile pouzitie CONTROLLERS a VIEWS v ASP.NET CORE APPLICATIONS.
+2. CONTROLLERS mozu do VIEWS zasielat data nastavenim PROPERTY [Controller.ViewBag]. Pre PROPERTY [Controller.ViewBag] platia nasledujuce fakty.
+   A. PROPERTY [Controller.ViewBag] je DYNAMIC PROPERTY oznacena KEYWORD [dynamic]. C# v RUNTIME generuje CODE, ktory vykonava DYNAMIC BINDING, ktory pri pristupe k FIELDS, PROPERTIES a METHODS overi ci dane FIELDS, PROPERTIES a METHODS PROPERTY [Controller.ViewBag] obsahuje.
+   B. VIEW BAG sluzi ako KEY-VALUE CONTAINER umoznujuci CONTROLLERS zaslat do VIEW lubovolne data.
+   !!! C. RAZOR VIEW ENGINE sa odkazuje na VIEW BAG pomocou CODE [@ViewBag.XXX], kde 'XXX' je meno VIEW BAG PROPERTY, alebo pomocou CODE [@ViewBag.XXX()], kde 'XXX' je nazov METHOD.
+3. Prenos dat pomocou VIEW BAGS sa vykonava nasledujucim sposobom.
+   A. CONTROLLER nastavi hodnoty PROPERTIES PROPERTY [Controller.ViewBag] na CUSTOM VALUES. Kedze PROPERTY [Controller.ViewBag] je TYPE [dynamic], je do nej mozne ulozit ANONYMOUS TYPES.
+   B. V RAZOR VIEW je VIEW BAG pristupny pomocou RAZOR VIEW KEYWORD [@ViewBag].
+4. Pri vykonani REDIRECT ASP.NET CORE umoznuje prenos dat medzi HTTP RESPONSE obsahujucim REDIRECT HTTP STATUS CODE a naslednym HTTP REQUEST na REDIRECTED URL pomocou TEMPORARY SESSION DATA. Pre TEMPORARY SESSION DATA platia nasledujuce fakty.
+   A. ACTION METHOD, ktora generuje REDIRECT HTTP RESPONSE STATUS CODE, moze ulozit CUSTOM DATA do PROPERTY [Controller.TempData]. PROPERTY [Controller.TempData] obsahuje COLLECTION KEY VALUE dat.
+   B. PROPERTY [Controller.TempData] reprezentuje SESSION DATA, ktore su ukladane do APPLICATION SESSION. To znaci, ze pred odoslanim HTTP RESPONSE su do SESSION STORAGE ulozene DATA z PROPERTY [Controller.TempData] a HTTP RESPONSE obsahuje IDENTIFIKATOR tychto TEMPORARY SESSION DATA.
+   C. Ked BROWSER prijme REDIRECT HTTP RESPONSE STATUS CODE, do HTTP REQUEST na REDIRECTED URL zasle IDENTIFIKATOR TEMPORARY SESSION DATA.
+   D. ASP.NET na zaklade IDENTIFIKATORA TEMPORARY SESSION DATA naplni hodnoty COLLECTION v PROPERTY [Controller.TempData], takze ACTION METHOD spracuvajuca HTTP REQUEST ma tieto data pristupne.
+   !!!!! E. VALUES ulozene v COLLECTION pristupnej pomocou PROPERTY [Controller.TempData] su standardne po prvom pristupe k nim OZNACENE na ODSTRANENIE. Ak maju ostat zachovane aj pre dalsie HTTP REQUESTS je nutne vola METHOD [ITempDataDictionary.Keep()], ktora vyberie data BEZ TOHO, aby ich oznacila ako data urcene na odstranenie.
+   !!! F. Kedze TEMPORARY SESSION DATA pouzivaju ASP.NET CORE SESSIONS, tak SESSIONS MUSIA byt POVOLENE, aby tato funkcionalita fungovala.
+   !!!!! G. Ak funkcionalita ASP.NET CORE SESSIONS nie je aktivovana, TEMP DATA su ukladane do COOKIE.
+!!! 5. PROPERTY [Controller.TempData] je DICTIONARY, ktora umoznuje prenasat DATA medzi rozlicnymi VIEWS a CONTROLLERS pocas vykonavania REDIRECTION. Pre TEMP DATA platia nasledujuce fakty.
+   A. TEMP DATA je DICTIONARY TYPE [ITempDataDictionary], ktora umoznuje prenasat DATA v tvare KEY-VALUE.
+   !!!!! B. TEMP DATA su platne dovtedy kym ich CONTENT nie je NACITANY. Po ich nacitani je ich CONTENT oznaceny na zmazanie, pricom po spracovani HTTP REQUEST tieto DATA budu znamzane.
+   C. TEMP DATA su sucastou SESSION DATA. Ak SESSION nie je ENABLED, tak TEMP DATA su ukladane do TEMPORARY COOKIE.
+   !!! D. Kedze TEMP DATA su sucastou SESSION DATA, tak TEMP DATA su preposielane medzi VIACERYMI HTTP REQUESTS, az kym nie je ich CONTENT nacitany. VIEW BAG DATA su naopak iba sucast JEDNEHO HTTP REQUEST a sluzia na prenos dat medzi CONTROLLER a VIEW. Po spracovani VIEW a zaslani HTTP RESPONSE su VIEW BAG DATA okamzite ODSTRANENE.
+   E. TEMP DATA mozu byt pomocou METHOD [ITempDataDictionary.Keep()] a METHOD [ITempDataDictionary.Peek()] nacitane aj BEZ toho, aby boli VYMAZANE.
+!!! 6. TEMP DATA je mozne ulozit aj do PROPERTIES CONTROLERS, ak su tieto oznacene pomocou ATTRIBUTE [TempDataAttribute]. Takto oznacene PROPERTIES CONTROLLERS su automaticky prenesene cez TEMP DATA.
+7. LAYOUTS v ASP.NET CORE MVC reprezentuje mechanizmus ako je mozne vytvorit HTML TEMPLATE pre viacero VIEWS. Tento TEMPLATE predstavuje HTML CODE, ktory bude tvorit TEMPLATE pre HTML PAGES na ktore dany LAYOUT aplikuju. Pre LAYOUTS platia nasledujuce fakty.
+   A. LAYOUTS predstavuju specialny typ VIEW, ktory moze obsahovat RAZOR VIEW ENGINE KEYWORDS pomocou ktorych mozu VIEWS vkladat do LAYOUTS svoj obsah.
+   B. LAYOUTS su ulozene v [.cshtml] FILES, ktore obsahuju HTML CODE, ktory sluzi ako HTML TEMPLATE pre VIEWS.
+   !!! C. LAYOUTS sa podla konvencie ukladaju do DIRECTORY [Views/Shared] a MUSI mat PREFIX '_'. LAYOUTS je vsak mozne ulozit aj do DIRECTORY, ktoreho NAME je zhodny s nazvom CONTROLLER.
+   D. LAYOUTS sa v danom VIEW aplikuju nastavenim PROPERTY [RazorPage<MODEL_TYPE>.Layout]. V RAZOR VIEW ENGINE je na to mozne pouzit KEYWORD [@{}].
+   !!! E. LAYOUTS urcuju miesto kde VIEWS budu renderovat svoj obsah volanim CODE [@RenderBody()], ktory spusti METHOD [RazorPage.RenderBody()], ktora zobrazi obsah VIEW, ktory LAYOUT pouziva.
+   !!! F. LAYOUTS mozu definovat viacero SECTIONS. VIEWS, ktore tieto LAYOUTS pouzivaju mozu definovat CONTENT pre kazdu SECTION daneho LAYOUT.
+8. VALUE PROPERTY [RazorPage<MODEL_TYPE>.Layout] je mozne nastavit aj v START PAGE co je FILE [_ViewStart.cshtml] ulozeny v DIRECTORY [Views]. Takto nastaveny LAYOUT sa aplikuje na vsetky VIEWS v DIRECTORY, kde sa FILE nachadza a vsetkych jeho SUBDIRECTORIES.
+9. Ak je PROPERTY [RazorPage<MODEL_TYPE>.Layout] nastavena v START PAGE a zaroven je nastavena aj priamo na VIEW, tak nastavenie na VIEW ma PREDNOST pred nastavenim v START PAGE. Nastavenie PROPERTY [RazorPage<MODEL_TYPE>.Layout] na NULL znamena, ze VIEW ZIADEN LAYOUT NEPOUZIJE.
+10. ASP.NET CORE vyhladava LAYOUTS v nasledujucich DIRECTORIES.
+   A. ASP.NET CORE vyhladava LAYOUT v DIRECTORY [Views/CONTROLLER_NAME/LAYOUT_NAME.cshtml], kde VALUE 'CONTROLLER_NAME' je nazov CONTROLLER a VALUE 'LAYOUT_NAME' je nazov LAYOUT.
+   B. Ak LAYOUT nebol najde, ASP.NET CORE ho vyhladava v DIRECTORY [Views/Shared/LAYOUT_NAME.cshtml], kde VALUE 'LAYOUT_NAME' je nazov LAYOUT.
+11. LAYOUT SECTIONS su casti VIEWS, ktore je mozne zobrazovat v LAYOUTS. Pre LAYOUT SECTIONS platia nasledujuce fakty.
+   A. LAYOUT SECTIONS sa definuju vo VIEWS pomocou KEYWORD [@section SECTION_NAME {SECTION_BODY}], kde 'SECTION_NAME' je nazov SECTION, ktory je referovany v LAYOUT a 'SECTION_BODY' je kombinacia HTML CODE a C# CODE.
+   !!! B. HTML CODE a C# CODE definovany vo VIEW, ktory sa NENACHADZA v ZIADNEJ SECTION je povazovany za BODY SECTION.
+   !!! C. V LAYOUTS sa LAYOUT SECTIONS zobrazuju pomocou KEYWORD [@RenderSection(SECTION_NAME)], ktora vola METHOD [HtmlString HtmlString RazorPage.RenderSection(string Name)]. BY-DEFAULT, ak sa SECTION NENACHADZA vo VIEW, tak ASP.NET hodi EXCEPTION. Avsak pri pouziti METHOD [HtmlString RazorPage.RenderSection(string Name, bool Required)] je mozne pomocou 2. PARAMETRA urcit ci je SECTION OPTIONAL, a ak ano, tak v pripade, ze SECTION NEEXISTUJE, tak sa volanie METHOD [HtmlString RazorPage.RenderSection(string Name, bool Required)] IGNORUJE.
+   !!!!! D. V LAYOUTS sa BODY SECTION zobrazuje pomocou KEYWORD [@RenderBody()], ktora vola METHOD [IHtmlContent RenderBody()].
+   !!! E. VIEW NESMIE obsahovat SECTIONS, ktore by neboli pouzite v danom LAYOUT. Ak sa takato SECTION nachadza vo VIEW, tak ASP.NET hodi EXCEPTION.
+   F. LAYOUTS mozu testovat existenciu SECTIONS volanim METHOD [bool IsSectionDefined(string Name)].
+12. RAZOR VIEW ENGINE podporuje SHARING HTML CONTENT pomocou PARTIAL VIEWS. Pre PARTIAL VIEWS platia nasledujuce pravidla.
+   A. PARTIAL VIEWS mozu obsahovat HMTL CONTENT, vratane C# CODE.
+   B. PARTIAL VIEWS su ulozene vo FILES [.cshtml].
+   C. PARTIAL VIEWS mozu byt UNTYPED PARTIAL VIEWS a STRONGLY TYPED PARTIAL VIEWS. STRONGLY TYPED PARTIAL VIEWS definuju MODEL OBJECT TYPE pomocou KEYWORD [@model].
+   D. PARTIAL VIEWS su na DISKU vyhladavane tym istym algoritmom ako normalne VIEWS.
+   !!! E. Do VIEWS je mozne vlozit obsah PARTIAL VIEWS pomocou volania METHOD [Task<IHtmlContent> IHtmlHelper.PartialAsync(string PartialViewName, object Model)], kde PARAMETER 'PartialViewName' obsahuje nazov PARTIAL VIEW a PARAMETER 'Model' obsahuje MODEL OBJECT.
+   !!! F. Alternativne do VIEWS je mozne vlozit obsah PARTIAL VIEWS pomocou volania TAG HELPER CLASS [PartialTagHelper]. TAG HELPER pouziva SYNTAX [<partial name="PARTIAL_VIEW_NAME" model="MODEL_NAME"/>], kde VALUE 'PARTIAL_VIEW_NAME' je nazov PARTIAL VIEW a VALUE 'MODEL_NAME' je OPTIONAL MODEL OBJECT zasielany do STRONGLY TYPED PARTIAL VIEWS.
+13. TAG HELPER CLASS [PartialTagHelper] umoznuje jednoduchym sposobom vkladat PARTIAL VIEWS do VIEWS. Ma nasledujuce MEMBERS.
+   A. PROPERTY [Name] TYPE [string] obsahuje nazov PARTIAL VIEW, ktory sa ma do VIEW vlozit.
+   B. PROPERTY [Model] TYPE [object] obsahuje MODEL OBJECT, ktory zasiela VIEW do PARTIAL VIEW.
+   C. PROPERTY [For] TYPE [ModelExpression] obsahuje EXRESSION pomocou ktorej sa vybera MODEL OBJECT, ktory VIEW zasle do PARTIAL VIEW.
+   D. PROPERTY [ViewData] TYPE [ViewDataDictionary] obsahuje COLLECTION s CUSTOM DATA, ktore VIEW zasle do PARTIAL VIEW.
+14. ASP.NET CORE umoznuje obmedzenie duplikacie HTML CONTENT vo VIEWS pouzitim TEMPLATED DELEGATES. Pre TEMPLATED DELEGATES platia nasledujuce fakty.
+   A. TEMPLATED DELEGATE je FUNCTION, ktora je defiovana vo VIEW CODE BLOCK.
+   B. TEMPLATED DELEGATE ma TYPE [Func<CUSTOM_TYPE,object>].
+   C. TEMPLATED DELEGATE sa na PARAMETER TYPE 'CUSTOM_TYPE' referuje vo svoje CODE pomocou KEYWORD [item].
+   D. TEMPLATED DELEGATE sa vo VIEW vola pomocou EXPRESSION SYNTAX [@TEMPLATE_DELEGATE(PARAMETER)], kde VALUE 'TEMPLATE_DELEGATE' je nazov TEMPLATED DELEGATE a VALUE 'PARAMETER' je PARAMETER, ktory sa do TEMPLATED DELEGATE zasle.
+15. Standardne VIEWS interpretuju vsetok STATIC CONTENT vo VIEW ako HTML CODE. Ak je vsak do VIEW vlozeny DYNAMIC CONTENT (napr. VALUE PROPERTY MODEL OBJECT), tento je HTML ENCODED (HTML ELEMENTS NIE su INTERPRETOVANE ako HTML ELEMENTS, ale iba ako RAW TEXT), aby sa predislo moznosti vlozenia MALICIOUS HTML CODE do VIEW. Ak je potrebne, aby DYNAMIC CONTENT nebol HTML ENCODED a teda, aby HTML ELEMENTS v DYNAMIC CONTENT bol interpretovany ako HTML ELEMENTS, je mozne vo VIEWS pouzit METHOD [@Html.Raw(OBJECT)].
+16. ASP.NET CORE umoznuje pomocou RAZOR KEYWORD [@Json.Serialize(OBJECT)] vkladat do VIEWS SERIALIZED JSON OBJECTS.
+//----------------------------------------------------------------------------------------------------------------------

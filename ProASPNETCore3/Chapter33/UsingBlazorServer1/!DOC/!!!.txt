@@ -1,0 +1,95 @@
+//----------------------------------------------------------------------------------------------------------------------
+1. Solution demonstruje pouzitie a zakladne vlastnosti BLAZOR SERVER.
+2. BLAZOR je ASP.NET CORE COMPONENT, ktora umoznuje lepsiu CLIENT SIDE INTERACTIVITY ako tradicne ASP.NET CORE APPLICATIONS.
+3. BLAZOR existuje v 2 verziach.
+   A. BLAZOR SERVER. Pri BLAZOR SERVER BLAZOR FRAMEWORK bezi na SERVER.
+   B. BLAZOR WEB ASSEMBLY. Pri BLAZOR WEB ASSEMBLY BLAZOR FRAMEWORK bezi na CLIENT (BROWSER).
+4. Zakladom BLAZOR APPLICATIONS su BLAZOR COMPONENTS, ktore vykonavaju komunikaciu medzi CLIENT SIDE a SERVER SIDE. EVENTS, ktore su vykonane na CLIENT SIDE su okamzite odosielane na SERVER SIDE, ktory zasiela ako RESPONSE na CLIENT SIDE UPDATED HTML CODE.
+!!! 5. BLAZOR COMPONENTS su ZAVISLE na existencii PERSISTENT HTTP CONNECTION medzi CLIENT SIDE a SERVER SIDE.
+!!! 6. NEVYHODOU klasickych ASP.NET CORE APPLICATIONS, ktore sa pokusa BLAZOR riesit je fakt, ze pri klasickych ASP.NET CORE APPLICATIONS pri kazdej interakcii medzi CLIENT SIDE a SERVER SIDE je zasielana HTTP REQUEST MESSAGE, ktoru musi SERVER SIDE spracovat, vygenerovat HTTP RESPONSE MESSAGE, ktora je odoslana na CLIENT SIDE, ktory ju musi spracovat. To vedie k prenosu mnozstva dat medzi CLIENT SIDE a SERVER SIDE ako aj vysokej zatazi SERVER SIDE, kedze ta musi vykonat PARSING HTTP REQUEST MESSAGE a vygenerovanie HTTP RESPONSE MESSAGE.
+7. BLAZOR SERVER funguje nasledujucim sposobom.
+   A. Pri PRVOM HTTP REQUEST na BLAZOR PAGE je na SERVER SIDE pre kazdu BLAZOR COMPONENT vygenerovany je STATE a na zaklade tychto STATES je na CLIENT SIDE v HTTP RESPONSE.
+   !!! B. HTTP RESPONSE okrem BLAZOR COMPONENTS STATES obsahuje aj specialny JAVA SCRIPT FILE, ktory po spusteni na CLIENT SIDE okamizte otvori PERSISTENT HTTP CONNECTION na SERVER SIDE.
+   C. V pripade, ze USER na CLIENT SIDE vykona nejaky EVENT (napriklad stlaci BUTTON), JAVA SCRIPT zabezpeci odoslanie informacie o tejto zmene cez PERSISTENT HTTP CONNECTION na SERVER SIDE.
+   D. SERVER SIDE vykona analyzu EVENT, modifikuje STATES dotknutych BLAZOR COMPONENTS a vygeneruje ROZDIELOVY HTML CODE, ktory je zaslany cez PERSISTENT HTTP CONNECTION na CLIENT SIDE.
+   E. CLIENT SIDE na zaklade obdrzaneho HTML CODE vykona vizualny UPDATE na BROWSERI.
+!!! 8. Aj ked BLAZOR SERVER vyzaduje existenciu PERSISTENT HTTP CONNECTION, mnozstvo dat, ktore su posielane medzi CLIENT SIDE a SERVER SIDE je VYRAZNE NIZSIE ako pri klasickych ASP.NET CORE APPLICATIONS.
+9. PERSISTENT HTTP CONNECTION medzi CLIENT SIDE a SERVER SIDE je zabezpecena pomocou MICROSOFT LIBRARY SIGNALR, ktora umoznuje komunikovat medzi CLIENT SIDE a SERVER SIDE pomocou viacerych podporovanych CHANNELS, pricom pri nadvazovani CHANNEL sa vybera ten najvhodnejsi, ktory CLIENT SIDE aj SERVER SIDE podporuju.
+10. BLAZOR SERVER sa v ASP.NET PROGRAMS konfiguruje volanim nasledujucich METHODS v STARTUP CLASS.
+   A. METHOD [IServerSideBlazorBuilder IServiceCollection.AddServerSideBlazor(Action<CircuitOptions> Configure] pridava BLAZOR SERVER SERVICE do zoznamu SERVICES.
+   B. METHOD [ComponentEndpointConventionBuilder IEndpointRouteBuilder.MapBlazorHub(string Path, Action<HttpConnectionDispatcherOptions> ConfigureOptions)] prida SIGNALR HUB pre BLAZOR SERVER.
+!!! 11. Na to, aby BLAZOR SERVER mohol vykonavat komunikaciu medzi CLIENT SIDE a SERVER SIDE, je v kazdom VIEW a RAZOR PAGE nutne pridat nasledujuce HTML ELEMENTS.
+   A. HTML ELEMENT [<base href="~/" />] specifikuje ROOT URL daneho ASP.NET PROGRAMU.
+   !!! B. HTML ELEMENT [<script src="_framework/blazor.server.js" ></script>] definuje FILE, ktory je potrebny na zabezpecenie komunikacie medzi CLIENT SIDE a SERVER SIDE. FILE je generovany MIDDLEWARE COMPONENT, ktory bol pridany volanim METHOD [IServerSideBlazorBuilder IServiceCollection.AddServerSideBlazor(Action<CircuitOptions> Configure] v STARTUP CLASS.
+12. RAZOR COMPONENTS pouzivaju vlastny IMPORT FILE. IMPORT FILE musi mat nazov [_Imports.razor] a MUSI byt v ROOT DIRECTORY celeho PROJECT.
+13. BLAZOR COMPONENTS su zakladom BLAZOR FRAMEWORK. Pre BLAZOR COMPONENTS platia nasledujuce fakty.
+   A. BLAZOR COMPONENT je FILE, ktory ma NAME [XXX.razor], kde VALUE 'XXX' je nazov BLAZOR COMPONENT, pricom ten MUSI zacinat VELKYM PISMENOM.
+   B. BLAZOR COMPONENTS mozu byt ulozene hocikde, ale podla konvencie je ich dobre ukladat do spolocneho DIRECTORY.
+   !!! C. BLAZOR COMPONENTS obsahuju HTML CODE a C# CODE. Na rozdiel od RAZOR PAGES NEMAJU BACKEND [.CS] FILE a teda C# CODE MUSI byt ulozeny PRIAMO v [.razor] FILES.
+   !!! D. BLAZOR COMPONENTS NEMAJU CONSTRUCTORS.
+   E. Ak BLAZOR COMPONENTS potrebuju cez DEPENDENCY INJECTION FRAMEWORK ziskat hodnotu nejakej PROPERTY, MUSIA na tuto PROPERTY aplikovat ATTRIBUTE [InjectAttribute], aby ju DEPENDENCY INJECTION FRAMEWORK naplnil.
+   !!! F. KEYWORD [@bind="PROPERTY_NAME"] vykonava 2 WAY BINDING medzi VALUE HTML ELEMENT a VALUE C# PROPERTY.
+!!!!! 14. ASP.NET CORE pre kazdy BLAZOR COMPONENT generuje C# CLASS, ktora ma rovnaky NAME ako nazov BLAZOR COMPONENT FILE.
+15. BLAZOR COMPONENTS je mozne pouzivat vo VIEWS a RAZOR PAGES pomocou HTML ELEMENT [<component>]. Pre HTML ELEMENT [<component>] je definovana TAG HELPER CLASS [ComponentTagHelper], ktora ma nasledujuce PROPERTIES.
+   A. PROPERTY [ComponentType] TYPE [Type] urcuje C# TYPE BLAZOR COMPONENT.
+   B. PROPERTY [RenderMode] TYPE [RenderMode] urcuje sposob, akym bude BLAZOR COMPONENT zobrazovat.
+   C. PROPERTY [Parameters] TYPE [IDictionary<string,object>] obsahuje COLLECTION PARAMETERS danej BLAZOR COMPONENT.
+16. ENUM [RenderMode] urcuje sposob, akym bude BLAZOR COMPONENT zobrazovat. Ma nasledujuce VALUES.
+   A. VALUE [Static] znamena, ze BLAZOR COMPONENT sa bude zobrazovat ako STATICKE HTML BEZ CLIENT SIDE podpory.
+   B. VALUE [Server] znamena, ze HTML PAGE obsahujuca BLAZOR COMPONENTS bude zaslana na CLIENT SIDE, pricom namiesto BLAZOR COMPONENTS budu zobrazene iba PLACEHOLDERS. Tieto PLACEHOLDERS sa nahradia HTML CONTENT az potom ako cez PERSISTENT CONNECTION sa naviaze CONNECTION so SERVER SIDE a ten zasle pre jednotlive BLAZOR COMPONENTS ich HTML CONTENT.
+   C. VALUE [ServerPrerendered] znamena, ze HTML PAGE obsahujuca BLAZOR COMPONENTS bude zaslana na CLIENT SIDE, pricom HTML CONTENT BLAZOR COMPONENTS je STATICKY PRE-RENDERED. Tento STATICKY PRE-RENDERED HTML CONTENT sa nahradi REALNYM HTML CONTENT az potom ako cez PERSISTENT CONNECTION sa naviaze CONNECTION so SERVER SIDE a ten zasle pre jednotlive BLAZOR COMPONENTS ich HTML CONTENT. STATICKY PRE-RENDERED HTML CONTENT ma sluzit na to, aby USER okamzite videl predbezny vizual BLAZOR COMPONENTS, kym bude nadviazana PERSISTENT CONNECTION so SERVER SIDE a tento CONTENT sa nahradi REALNYM CONTENT.
+!!! 17. Ak CLIENT SIDE BLAZOR RUNTIME strati CONNECTION na SERVER SIDE, kvoli vypadku na sieti, tak sa ho pokusi obnovit pri obnoveni siete. Pokial vsak dojde k vypadku celeho SERVER na SERVER SIDE a k jeho RESTART, tak su vsetky STATE DATA stratene a CLIENT SIDE musi spravit PAGE RELOAD na nove nacitanie PROGRAMU.
+!!! 18. BLAZOR COMPONENTS mozu spracovavat JAVA SCRIPT EVENTS, ktore generuju HTML ELEMENTS. Pre spracovanie JAVA SCRIPT EVENTS platia nasledujuce pravidla.
+   A. Ak BLAZOR COMPONENTS chcu spracovat JAVA SCRIPT EVENT, musia pouzit HTML ATTRIBUTE SYNTAX [@JAVA_SCRIPT_EVENT="CSHARP_EVENT_METHOD"], kde VALUE 'JAVA_SCRIPT_EVENT' je nazov JAVA SCRIPT EVENT a VALUE 'CSHARP_EVENT_METHOD' je nazov C# EVENT METHOD, ktora bude na SERVER SIDE spustena ako reakcia na JAVA SCRIPT EVENT.
+   !!! B. C# EVENT METHOD je METHOD, ktora sa vykonava na SERVER SIDE ako reakcia na JAVA SCRIPT EVENT. Jej PROTOTYPE je [void METHOD_NAME(EVENT_TYPE Parameters)], kde VALUE 'EVENT_TYPE' MUSI byt TYPE [EventArgs], alebo niektory z TYPES, ktore su DERIVED z TYPE [EventArgs].
+   !!! C. Kazdy typ JAVA SCRIPT EVENT definuje PARAMETER TYPE C# EVENT METHOD.
+19. BLAZOR COMPONENTS pri spracovavani JAVA SCRIPT EVENTS vykonavaju nasledujuce kroky.
+   A. Pri vzniku JAVA SCRIPT EVENT BLAZOR FRAMEWORK zasle cez PERSISTENT HTTP CONNECTION informaciu na SERVER SIDE o vzniku JAVA SCRIPT EVENT.
+   B. SERVER SIDE v reakcii na prijatu informaciu o vzniku JAVA SCRIPT EVENT spusti C# EVENT METHOD, ktora bola s danym JAVA SCRIPT EVENT asociovana.
+   C. C# EVENT METHOD vykona modifikaciu HTTP CONTENT.
+   !!! D. BLAZOR FRAMEWORK vykona porovnanie povodneho HTTP CONTENT a noveho HTTP CONTENT a vygeneruje rozdielovy HTTP CONTENT, ktory zasle na CLIENT SIDE.
+   !!! E. CLIENT SIDE obdrzi rozdielovy HTTP CONTENT a vykona jeho RENDERING.
+20. BLAZOR definuje nasledujuce mapovanie medzi JAVA SCRIPT EVENTS a PARAMETER TYPE C# EVENT METHOD.
+   A. EVENT TYPE [ChangeEventArgs] sa pouziva pri JAVA SCRIPT EVENTS [onchange] a [oninput].
+   B. EVENT TYPE [ClipboardEventArgs] sa pouziva pri JAVA SCRIPT EVENTS [oncopy], [oncut] a [onpaste].
+   C. EVENT TYPE [DragEventArgs] sa pouziva pri JAVA SCRIPT EVENTS [ondrag], [ondragend], [ondragenter], [ondragleave], [ondragover], [ondragstart] a [ondrop].
+   D. EVENT TYPE [ErrorEventArgs] sa pouziva pri JAVA SCRIPT EVENT [onerror].
+   E. EVENT TYPE [FocusEventArgs] sa pouziva pri JAVA SCRIPT EVENTS [onblur], [onfocus], [onfocusin] a [onfocusout].
+   F. EVENT TYPE [KeyboardEventArgs] sa pouziva pri JAVA SCRIPT EVENTS [onkeydown], [onkeypress] a [onkeyup].
+   G. EVENT TYPE [MouseEventArgs] sa pouziva pri JAVA SCRIPT EVENTS [onclick], [oncontextmenu], [ondblclick], [onmousedown], [onmousemove], [onmouseout], [onmouseover], [onmouseup], [onmousewheel] a [onwheel].
+   H. EVENT TYPE [PointerEventArgs] sa pouziva pri JAVA SCRIPT EVENTS [ongotpointercapture], [onlostpointercapture], [onpointercancel], [onpointerdown], [onpointerenter], [onpointerleave], [onpointermove], [onpointerout], [onpointerover] a [onpointerup].
+   I. EVENT TYPE [ProgressEventArgs] sa pouziva pri JAVA SCRIPT EVENTS [onabort], [onload], [onloadend], [onloadstart], [onprogress] a [ontimeout].
+   J. EVENT TYPE [TouchEventArgs] sa pouziva pri JAVA SCRIPT EVENTS [ontouchcancel], [ontouchend], [ontouchenter], [ontouchleave], [ontouchmove] a [ontouchstart].
+   K. EVENT TYPE [EventArgs] sa pouziva pri JAVA SCRIPT EVENTS [onactivate], [onbeforeactivate], [onbeforecopy], [onbeforecut], [onbeforedeactivate], [onbeforepaste], [oncanplay], [oncanplaythrough], [oncuechange], [ondeactivate], [ondurationchange], [onemptied], [onended], [onfullscreenchange], [onfullscreenerror], [oninvalid], [onloadeddata], [onloadedmetadata], [onpause], [onplay], [onplaying], [onpointerlockchange], [onpointerlockerror], [onratechange], [onreadystatechange], [onreset], [onscroll], [onseeked], [onseeking], [onselect], [onselectionchange], [onselectstart], [onstalled], [onstop], [onsubmit], [onsuspend], [ontimeupdate], [onvolumechange] a [onwaiting].
+21. BLAZOR COMPONENTS mozu spracovavat JAVA SCRIPT EVENTS aj pomocou LAMBDA EXPRESSIONS. LAMBDA EXPRESSIONS musia pouzit SYNTAX [@JAVA_SCRIPT_EVENT="@(LAMBDA_EXPRESSION)"], kde VALUE 'JAVA_SCRIPT_EVENT' je nazov JAVA SCRIPT EVENT a VALUE 'LAMBDA_EXPRESSION' je C# LAMBDA EXPRESSION.
+22. BLAZOR FRAMEWORK umoznuje modifikovat BEHAVIOR JAVA SCRIPT EVENTS pomocou PARAMETERS.
+   A. PARAMETER [@onXXX:preventDefault="VALUE"] umoznuje nastavit ci sa ma aplikovat DEFAULT BEHAVIOR JAVA SCRIPT EVENT 'XXX'. V pripade, ze je tento PARAMETER nastaveny na 'TRUE', tak sa ZABRANI vykonaniu DEFAULT BEHAVIOR JAVA SCRIPT EVENT. Typickym prikladom je HTML ELEMENT [<button>], ktory sa nachadza v HTML ELEMENT [<form>]. DEFAULT BEHAVIOR takehoto BUTTON je vykonanie POSTBACK na SERVER SIDE. No v pripade, ze PARAMETER je nastaveny na 'TRUE', tak sa POSTBACK NEVYKONA.
+   B. PARAMETER [@onXXX:stopPropagation="VALUE"] umoznuje nastavit ci sa ma JAVA SCRIPT EVENT 'XXX' propagovat do PARENT HTML ELEMENTS. V pripade, ze je tento PARAMETER nastaveny na 'TRUE', tak sa PROPAGATION do PARENT HTML ELEMENTS zastavi.
+23. BLAZOR FRAMEWORK umoznuje definovat 2-WAY BINDING medzi VALUE INPUT HTML ELEMENT a VALUE C# PROPERTY. Pri 2-WAY BINDING kazda modifikacia VALUE INPUT HTML ELEMENT sa ulozi do VALUE C# PROPERTY a naopak, kazda zmena VALUE C# PROPERTY sa ulozi do VALUE INPUT HTML ELEMENT. BLAZOR FRAMEWORK podporuje 2 typy 2-WAY BINDINGS.
+   A. DEFAULT 2-WAY BINDING.
+   B. CUSTOM EVENT 2-WAY BINDING.
+24. Pre DEFAULT 2-WAY BINDING platia nasledujuce fakty.
+   A. DEFAULT 2-WAY BINDING sa nastavuje pomocou HTML ATTRIBUTE [@bind="CSHARP_PROPERTY"], ktora sa aplikuje na dany INPUT HTML ELEMENT.
+   B. HTML ATTRIBUTE [@bind="CSHARP_PROPERTY"] urcuje na ktoru C# PROPERTY sa bude viazat VALUE HTML ELEMENT.
+   !!! C. DEFAULT 2-WAY BINDING sa viaze na VALUE daneho HTML ELEMENT a EVENT 'onchange', ktory je volany, ked INPUT ELEMENT STRATI FOCUS.
+   !!!!! D. DEFAULT 2-WAY BINDING AUTOMATICKY generuje pre JAVA SCRIPT EVENT 'onchange' C# EVENT METHOD, ktora modifikuje VALUE C# PROPERTY. Tato C# EVENT METHOD je volana z CLIENT SIDE pri zmene VALUE HTML ELEMENT a jej CODE modifikuje VALUE C# PROPERTY.
+25. Pre CUSTOM EVENT 2-WAY BINDING platia nasledujuce fakty.
+   A. CUSTOM EVENT 2-WAY BINDING sa nastavuje pomocou HTML ATTRIBUTE [@bind-value="CSHARP_PROPERTY"] a pomocou HTML ATTRIBUTE [@bind-value:event="JAVA_SCRIPT_EVENT"].
+   B. HTML ATTRIBUTE [@bind-value="CSHARP_PROPERTY"] urcuje na ktoru C# PROPERTY sa bude viazat VALUE HTML ELEMENT.
+   !!! C. HTML ATTRIBUTE [@bind-value:event="JAVA_SCRIPT_EVENT"] urcuje JAVA SCRIPT EVENT 'JAVA_SCRIPT_EVENT' na ktory sa bude viazat vykonanie 2-WAY BINDING.
+   !!!!! D. BLAZOR FRAMEWORK definuje, ze HTML ATTRIBUTE [@bind-value:event="JAVA_SCRIPT_EVENT"] je mozne viazat iba s tymi JAVA SCRIPT EVENTS, ktore maju EVENT PARAMETER mapovany na TYPE [ChangeEventArgs]. V BLAZOR FRAMEWORK iba JAVA SCRIPT EVENT [onchange] a JAVA SCRIPT EVENT [oninput] maju EVENT PARAMETER TYPE [ChangeEventArgs] a teda iba tieto JAVA SCRIPT EVENTS je mozne pouzit.
+   !!!!! E. CUSTOM 2-WAY BINDING AUTOMATICKY generuje pre JAVA SCRIPT EVENT 'JAVA_SCRIPT_EVENT' C# EVENT METHOD, ktora modifikuje VALUE C# PROPERTY. Tato C# EVENT METHOD je volana z CLIENT SIDE pri zmene VALUE HTML ELEMENT a jej CODE modifikuje VALUE C# PROPERTY.
+26. BLAZOR FRAMEWORK definuje specialnu podporu BINDING pre TYPE [DateTime].
+   A. PARAMETER [@bind:culture="CULTURE"] (pri CUSTOM BINDING [@bind-value:culture="CULTURE"]) umoznuje nastavit CULTURE 'CULTURE', ktora sa bude aplikovat na HTML INPUT ELEMENT zobrazujuci TYPE [DateTime].
+   B. PARAMETER [@bind:format="FORMAT"] (pri CUSTOM BINDING [@bind-value:format="FORMAT"]) umoznuje nastavit FORMAT 'FORMAT', ktory sa bude aplikovat na HTML INPUT ELEMENT zobrazujuci TYPE [DateTime].
+27. BLAZOR FRAMEWORK podporuje vytvaranie BLAZOR COMPONENTS, ktore maju C# CODE ulozeny v OSOBITNOM C# FILE. Vytvaranie BLAZOR COMPONENTS, ktore maju C# CODE ulozeny v OSOBITNOM C# FILE sa realizuje nasledovne.
+   A. Vytvori sa [XXX.razor] FILE, ktory obsahuje HTML CODE BLAZOR COMPONENT.
+   B. Vytvori sa FILE [XXX.cs], ktory obsahuje CLASS 'XXX', ktora MUSI byt DERIVED z CLASS [ComponentBase].
+   !!! C. C# CLASS NESMIE mat CONSTRUCTOR.
+   !!! D. C# CLASS MUSI byt definovana v ROVNAKOM NAMESPACE ako [XXX.razor] FILE.
+   !!! E. C# CLASS MUSI byt oznacena KEYWORD [partial].
+28. BLAZOR FRAMEWORK umoznuje vytvarat BLAZOR COMPONENTS kompletne v C# CODE. BLAZOR COMPONENTS je mozne vytvorit kompletne v C# CODE nasledujucim sposobom.
+   A. Vytvori sa C# CLASS v [.CS] FILE, ktora je DERIVED z CLASS [ComponentBase].
+   B. Pretazi sa METHOD [void ComponentBase.BuildRenderTree(RenderTreeBuilder Builder)] v ktorej sa definuju HTML ELEMENTS s HTML ATTRIBUTES, ktory ma dany BLAZOR COMPONENT obsahovat.
+   C. C# CLASS moze obsahovat PROPERTIES s METHODS, ktore su mapovane v HTML ELEMENTS rovnako ako je to u klasickych BLAZOR COMPONENTS.
+//----------------------------------------------------------------------------------------------------------------------

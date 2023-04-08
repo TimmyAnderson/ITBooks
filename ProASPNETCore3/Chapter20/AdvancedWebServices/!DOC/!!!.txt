@@ -1,0 +1,44 @@
+//----------------------------------------------------------------------------------------------------------------------
+1. Solution demonstruje pokrocile techniky WEB SERVICES v ASP.NET CORE APPLICATIONS.
+2. ASP.NET CORE umoznuje pouzitie PATCH VERB nasledujucim sposobom.
+   A. PATCH VERB umoznuje modifikovat iba vybrane PROPERTIES daneho OBJECT na SERVER SIDE.
+   B. ACTION METHOD spracujuca PATCH VERB MUSI mat PARAMETER TYPE [JsonPatchDocument<TYPE>], kde 'TYPE' je TYPE OBJECT, na ktory je aplikovana operacia PATCH.
+   C. CLASS [JsonPatchDocument<TYPE>] obsahuje zoznam OPERATIONS, ktore sa maju na OBJECT TYPE 'TYPE' aplikovat. Medzi OPERATIONS, ktore sa aplikuju na PROPERTIES daneho OBJECT patria ADD, REMOVE, REPLACE, MOVE, COPY a TEST.
+   !!!!! D. Na to, aby PATCH VERB v ASP.NET CORE fungoval korektne, je NUTNE pouzit NEWTONSOFT SERIALIZER. Ten sa zapina volanim METHOD [IMvcBuilder IMvcBuilder.AddNewtonsoftJson(Action<MvcNewtonsoftJsonOptions> SetupAction)].
+   !!!!! E. PATCH VERB umoznuje aplikaciu komplexnych operacii na dany OBJECT. RFC 6902 definuje kompletnu specifikaciu pouzitia PATCH VERB na modifikaciu OBJECTS.
+3. CONTENT NEGOTIATION je proces, ktory prebieha pri spracovani HTTP REQUEST medzi BROWSER a ASP.NET CORE a ktoreho vysledkom je vyber spravneho FORMATU, ktorym budu data zaslane v HTTP RESPONSE ENCODED. CONTENT NEGOTIATION zavisi od nasledujucich faktorov.
+   A. Obsah ACCEPT HEADER, ktory CLIENT zasle v HTTP REQUEST na SERVER. ACCEPT HEADER obsahuje zoznam FORMATS, ktore CLIENT podporuje.
+   B. Zoznam FORMATS, ktore podporuje ASP.NET CORE. To zavisi od toho ako je ASP.NET CORE nastavene.
+   C. CONTENT POLICY, ktora je aplikovana na ACTION METHOD.
+   D. RETURN VALUE TYPE, ktory vracia ACTION METHOD.
+4. ASP.NET CORE implementuje DEFAULT CONTENT POLICY, ktora pozostava z nasledujucich pravidiel.
+   A. V pripade, ze RETURN VALUE ACTION METHOD je TYPE [string], tak CONTENT je formatovany ako CONTENT TYPE [text/plain]. To znaci, ze BODY HTTP RESPONSE je formatovany ako PLAIN TEXT.
+   B. V pripade, ze RETURN VALUE ACTION METHOD NIE je TYPE [string], tak CONTENT je formatovany ako CONTENT TYPE [application/json]. To znaci, ze BODY HTTP RESPONSE je formatovany ako JSON OBJECT.
+5. ACCEPT HEADER umoznuje definovat WEB CLIENTS, ake FORMATS preferuje. Pre pouzitie ACCEPT HEADER platia nasledujuce fakty.
+   A. Pri kazdom FORMATE moze ACCEPT HEADER zadat vahu v INTERVALE <0,1> s akou dany FORMAT preferuje. Ak SERVER SIDE podporuje viacero FORMATS ACCEPT HEADER, potom by mal zaslat DATA vo FORMATE s NAJVYSSOU preferenciou.
+   !!! B. To v akom FORMATE budu RESPONSE DATA napokon ENCODED nezavisi iba od ACCEPT HEADER. ASP.NET CORE moze kompletne IGNOROVAT ACCEPT HEADER, ak napriklad nepodporuje ziaden z FORMATS, ktore boli zadane v ACCEPT HEADER. V takomto pripade ASP.NET zasle data na zaklade DEFAULT CONTENT POLICY.
+!!! 6. ASP.NET CORE umoznuje definovat CUSTOM FORMATTERS.
+   A. BASE CLASS [InputFormatter] je BASE CLASS pre INPUT FORMATTERS, ktore sa pouzivaju na PARSING CONTENT BODY.
+   B. BASE CLASS [OutputFormatter] je BASE CLASS pre OUTPUT FORMATTERS, ktore sa pouzivaju na GENEROVANIE CONTENT BODY.
+7. ASP.NET CORE implementuje XML FORMATTERS. XML FORMATTER je mozne povolit nasledujucimi sposobmi.
+   A. XML DATA CONTRACT SERIALIZER sa povoluje volanim METHOD [IMvcBuilder IMvcBuilder.AddXmlDataContractSerializerFormatters(Action<MvcXmlOptions> SetupAction)].
+   B. XML SERIALIZER sa povoluje volanim METHOD [IMvcBuilder IMvcBuilder.AddXmlSerializerFormatters(Action<MvcXmlOptions> SetupAction)].
+8. BY-DEFAULT ASP.NET CORE v pripade, ze ACCEPT HEADER obsahuje UNSUPPORTED FORMAT, tak pri DEFAULT CONTENT POLICY je CONTENT je formatovany ako CONTENT TYPE [application/json]. Ak toto spravanie nie je ziaduce, je ho mozne modifikovat nasledujucimi nastaveniami.
+   A. PROPERTY [MvcOptions.RespectBrowserAcceptHeader] TYPE [bool] umoznuje ASP.NET CORE IGNOROVAT VALUE '*/*' v ACCEPT HEADER cim umoznuje FULL CONTENT NEGOTIATION.
+   B. PROPERTY [MvcOptions.ReturnHttpNotAcceptable] TYPE [bool] umoznuje ASP.NET CORE vratit HTTP RESPONSE CODE v pripade, ze CONTENT NEGOTIATION zlyha.
+!!! 9. ASP.NET CORE umoznuje pomocou FILTER ATTRIBUTE [ProducesAttribute] definovat FORMAT v akom ma byt CONTENT HTTP RESPONSE formatovany. Toto nastavenie znamena, ze sa ignoruje CONTENT NEGOTIATION.
+10. ASP.NET CORE umoznuje urcit FORMAT, ktory bude FORMATTED CONTENT HTTP RESPONSE aj pomocou SEGMENTU v ROUTE, alebo PARAMETRI v QUERY STRING. Urcenie FORMATU cez SEGMENT v ROUTE, alebo PARAMETER v QUERY STRING sa vykonava nasledujucim sposobom.
+   A. V STARTUP CLASS volanim METHOD [void FormatterMappings.SetMediaTypeMappingForFormat(string Format, MediaTypeHeaderValue ContentType)] sa nastavi MAPPING medzi FORMAT NAME a MIME TYPE daneho FORMATU.
+   B. Na ACTION METHOD je treba aplikovat ATTRIBUTE [FormatFilterAttribute].
+   !!! C. V pripade, ze ROUTE obsahuje ROUTE VARIABLE [{Format}], tak FILTER [FormatFilterAttribute] zoberie jeho hodnotu a skontroluje ci pren existuje MAPPING na MIME TYPE zaregistrovany volanim METHOD [void FormatterMappings.SetMediaTypeMappingForFormat(string Format, MediaTypeHeaderValue ContentType)]. V pripade, ze ano, tak sa tento MIME TYPE pouzije ako FORMAT pre generovanie CONTENT HTTP RESPONSE.
+   !!!!! D. V pripade, ze ROUTE NEOBSAHUJE ROUTE VARIABLE [{Format}], tak FILTER [FormatFilterAttribute] skontroluje QUERY STRING. Ak QUERY STRING obsahuje PARAMETER [Format], tak FILTER [FormatFilterAttribute] zoberie hodnotu tohto PARAMETER a skontroluuje ci existuje MAPPING na MIME TYPE zaregistrovany volanim METHOD [void FormatterMappings.SetMediaTypeMappingForFormat(string Format, MediaTypeHeaderValue ContentType)]. V pripade, ze ano, tak sa tento MIME TYPE pouzije ako FORMAT pre generovanie CONTENT HTTP RESPONSE.
+!!! 11. ASP.NET CORE umoznuje specifikovat, ktora ACTION METHOD sa na zaklade FORMATU CONTENT HTTP REQUEST ma volat.
+   A. Aplikovanim ATTRIBUTE [ConsumesAttribute] je mozne urcit pre ktory MIME TYPE sa ma dana ACTION METHOD volat. ACTION METHOD MUSI mat HTTP REQUEST MESSAGE CONTENT.
+   !!! B. ASP.NET CORE pri volani ACTION METHOD pre dany VERB analyzuje vsetky ACTION METHODS, ktore mozu byt volane pre dany VERB a v pripade, ze na ne je aplikovany ATTRIBUTE [ConsumesAttribute], tak skontroluje hodnotu MIME TYPE HTTP REQUEST a podla toho vola prislusnu ACTION METHOD.
+12. OPEN API je SPECIFICATION, ktora umoznuje implementovat DOCUMENTATION k WEB SERVICES. Pre OPEN API platia nasledujuce fakty.
+   A. OPEN API je implementovane pomocou LIBRARY SWAGGER [Swashbuckle.AspNetCore].
+   B. OPEN API umoznuje AUTOMATICKE generovanie DOCUMENTATION WEB SERVICES.
+   C. OPEN API vystavuje INTERFACE pomocou, ktoreho je mozne DOCUMENTATION spracovavat PROGRAMMATICALLY.
+   D. OPEN API vystavuje USER INTERFACE, ktory umoznuje manualne testovanie API ACTION METHODS WEB SERVICES.
+!!! 13. Aj ked OPEN API dokaze generovat automaticku DOCUMENTATION z CONTROLLERS a ACTION METHODS, tato automaticka DOCUMENTATION nedokaze reflektovat ak CODE ACTION METHOD vracia rozlicne typy HTTP RESPONSE CODES. Riesenim je aplikovat ATTRIBUTE [ProducesResponseTypeAttribute] na ACTION METHODS, kde kazda aplikacia ATTRIBUTE urci aky typ HTTP RESPONSE CODE dana ACTION METHOD vracia. Na zaklade aplikacie ATTRIBUTE [ProducesResponseTypeAttribute] dokaze OPEN API generovat presnejsiu DOCUMENTATION.
+//----------------------------------------------------------------------------------------------------------------------

@@ -1,0 +1,56 @@
+//----------------------------------------------------------------------------------------------------------------------
+1. Solution demonstruje rozsirenie realnej APPLICATION v ASP.NET CORE o funkcionalitu SECURE PAGES, ktore su pristupne na zaklade AUTHENTICATION a AUTHORIZATION.
+2. ASP.NET CORE IDENTITY umoznuje vykonavat USER a ROLE MANAGEMENET ako aj AUTHENTICATION a AUTHORIZATION USERS.
+3. USER je v ASP.NET CORE IDENTITY reprezentovany CLASS [IdentityUser]. PROGRAM moze pridat nove PROPERTIES vytvorenim CLASS, ktora je DERIVED z CLASS [IdentityUser]. CLASS [IdentityUser] ma nasledujuce MEMBERS.
+   A. PROPERTY [Id] TYPE [string] obsahuje UNIQUE IDENTIFIER daneho USER.
+   B. PROPERTY [UserName] TYPE [string] obsahuje NAME daneho USER.
+   C. PROPERTY [Email] TYPE [string] obsahuje EMAIL daneho USER.
+   D. PROPERTY [PasswordHash] TYPE [string] obsahuje PASSWORD HASH daneho USER.
+   E. PROPERTY [PhoneNumber] TYPE [string] obsahuje PHONE NUMBER daneho USER.
+   F. PROPERTY [SecurityStamp] TYPE [string] obsahuje SECURITY STAMP daneho USER. VALUE SECURITY STAMP sa meni vtedy, ak dojde k zmene PROPERTIES CLASS [IdentityUser], ako je napriklad zmena PASSWORD.
+4. ROLE je v ASP.NET CORE IDENTITY reprezentovana CLASS [IdentityRole]. PROGRAM moze pridat nove PROPERTIES vytvorenim CLASS, ktora je DERIVED z CLASS [IdentityRole]. CLASS [IdentityRole] ma nasledujuce MEMBERS.
+   A. PROPERTY [Id] TYPE [string] obsahuje UNIQUE IDENTIFIER danej ROLE.
+   B. PROPERTY [RoleName] TYPE [string] obsahuje NAME danej ROLE.
+   C. PROPERTY [ConcurrencyStamp] TYPE [string] obsahuje CONCURRENCY STAMP danej ROLE. VALUE CONCURRENCY STAMP sa meni vtedy, ak dojde k ulozenie ROLE do PERSISTENT STORE.
+!!! 5. ASP.NET CORE IDENTITY definuje CLASS [IdentityDbContext<TUserType,TRoleType,TKeyType>], kde VALUE 'TUserType' reprezentuje USER TYPE, VALUE 'TRoleType' reprezentuje ROLE TYPE a VALUE 'TKeyType' reprezentuje TYPE USER a ROLE KEYS. CLASS [IdentityDbContext<TUserType,TRoleType,TKeyType>] sluzi ako BASE CLASS pre ENTITY FRAMEWORK DB CONTEXT, DATABASE, ktora uklada USERS a ROLES.
+6. AUTHENTICATION je proces overenia IDENTITY daneho USER. IDENTITA daneho USER sa overuje kontrolou USER CREDENTIALS, ci tieto sedia s USER CREDENTIALS ulozenymi v IDENTITY DB. USER CREDENTIALS su spravidla USER NAME a PASSWORD.
+7. AUTHORIZATION je proces urcenia ci dany USER, ktory uz presiel procesom AUTHENTICATION ma ACCESS RIGHTS k danemu RESOURCE. AUTHORIZATION je mozne vykonat az po vykonani AUTHENTICATION.
+8. AUTHENTICATION a AUTHORIZATION je vykonavana pomocou nasledujucich MIDDLEWARE COMPONENTS.
+   A. CLASS [AuthenticationMiddleware] vykonava AUTHENTICATION. Do HTTP REQUEST PIPELINE sa pridava volanim METHOD [IApplicationBuilder IApplicationBuilder.UseAuthentication()].
+   B. CLASS [AuthorizationMiddleware] vykonava AUTHORIZATION. Do HTTP REQUEST PIPELINE sa pridava volanim METHOD [IApplicationBuilder IApplicationBuilder.UseAuthorization()].
+!!!!! 9. Pre MIDDLEWARE COMPONENTS vykonavajuce AUTHENTICATION a AUTHORIZATION platia nasledujuce fakty.
+   !!!!! A. Obe MIDDLEWARE COMPONENTS by mali byt do REQUEST PIPELINE pridane AZ po volani METHOD [IApplicationBuilder IApplicationBuilder.UseRouting()], aby sa na LOGIN PAGE aplikovali ROUTE RULES.
+   !!! B. METHOD [IApplicationBuilder IApplicationBuilder.UseAuthentication()] by mala byt volana za METHOD [IApplicationBuilder IApplicationBuilder.UseRouting()].
+   !!! C. METHOD [IApplicationBuilder IApplicationBuilder.UseAuthorization()] by mala byt volana za METHOD [IApplicationBuilder IApplicationBuilder.UseAuthentication()].
+!!! 10. Proces AUTHENTICATION sa vykonava v nasledujucich krokoch.
+   A. AUTHENTICATION MIDDLEWARE COMPONENT kontroluje ci HTTP REQUEST obsahuje AUTHENTICATION COOKIE. Ak ho obsahuje a je platny, USER je povazovany za AUTHENTICATED. Ak HTTP REQUEST neobsahuje AUTHENTICATION COOKIE, spusta sa proces AUTHENTICATION.
+   B. Na zaciatku procesu AUTHENTICATION je WEB BROWSER REDIRECTED na LOGIN PAGE URL. LOGIN PAGE URL je mozne explicitne nastavit volanim METHOD [IServiceCollection IServiceCollection.ConfigureApplicationCookie(Action<CookieAuthenticationOptions> Configure)], pricom LOGIN PAGE URL sa nastavuje v PROPERTY [CookieAuthenticationOptions.LoginPath].
+   C. Na LOGIN PAGE USER zada svoje CREDENTIALS, ktore su overene ci su platne voci IDENTITY DB.
+   !!! D. V pripade, ze su CREDENTIALS platne, USER je AUTHENTICATED a ASP.NET CORE vytvori AUTHENTICATION COOKIE, ktory nasledne bude BROWSER az do ukoncenia SECURE SESSION pridavat do dalsieho HTTP REQUEST. Ak LOGIN PAGE obsahovala aj REDIRECT URL, tak BROWSER je REDIRECTED na REDIRECT URL.
+   !!! E. V pripade, ze su CREDENTIALS neplatne, LOGIN PAGE spravidla zobrazi ERROR a umozni ich zadat znova.
+!!! 11. Proces AUTHORIZATION sa vykonava v nasledujucich krokoch.
+   A. Ak USER pozaduje pristup k PROTECTED RESOURCE, ktory vyzaduje AUTHORIZATION, ASP.NET CORE overi ci aktualny USER je AUTHENTICATED.
+   B. Ak USER NIE je AUTHENTICATED, ASP.NET CORE vykona REDIRECTION na LOGIN PAGE, pricom ako RETURN URL sa nastavi URL PROTECTED RESOURCE ku ktoremu chce USER pristupit.
+   !!! C. Ak USER je AUTHENTICATED, potom ASP.NET CORE vykona kontrolu ci USER splna podmienky AUTHORIZATION. Medzi podmienkami pre AUTHORIZATION moze byt clenstvo v niektore z ROLES, splnenie SECURITY POLICY, ci CUSTOM CONDITION.
+   D. Ak kontrola prebehne uspesne, je pristup k PROTECTED RESOURCE umozneny.
+   E. Ak kontrola zlyha, AUTHORIZATION ZLYHA a BROWSER je REDIRECTED na ACCESS DENIED URL. ACCESS DENIED URL je mozne explicitne nastavit volanim METHOD [IServiceCollection IServiceCollection.ConfigureApplicationCookie(Action<CookieAuthenticationOptions> Configure)], pricom ACCESS DENIED URL sa nastavuje v PROPERTY [CookieAuthenticationOptions.AccessDeniedPath].
+12. NUGET PACKAGE [Microsoft.AspNetCore.Identity.EntityFrameworkCore] umoznuje ukladanie IDENTITY DATA do DB pomocou ENTITY FRAMEWORK CORE.
+13. IDENTITY MODEL v ASP.NET CORE podporuje ukladanie informacii o USERS a ROLES do DB pomocou ENTITY FRAMEWORK CORE.
+!!! 14. CLASS [IdentityDbContext<TUserType,TRoleType,TKeyType>] reprezentuje BASE DB CONTENT pre pristup k informaciam o USERS a ROLES. TYPE 'TUserType' reprezentuje USER TYPE, ktory sa pouziva na reprezentaciu USER. TYPE 'TRoleType' reprezentuje ROLE TYPE, ktory sa pouziva na reprezentaciu ROLE. PROGRAMS by mali vytvorit CLASSES, ktore su DERIVED z CLASS [IdentityDbContext<TUserType,TRoleType,TKeyType>].
+!!! 15. CLASS [IdentityUser] reprenzentuje DEFAULT IMPLEMENTATION dat o danom USER. PROGRAMS mozu definovat CUSTOM CLASSES, ktore budu obsahovat data o USERS.
+!!! 16. CLASS [IdentityRole] reprenzentuje DEFAULT IMPLEMENTATION dat o danej ROLE. PROGRAMS mozu definovat CUSTOM CLASSES, ktore budu obsahovat data o ROLES.
+17. AUTHORIZATION sa v CONTROLLERS, ACTION METHODS a RAZOR PAGES vykonava aplikovanim ATTRIBUTE [AuthorizeAttribute] na CONTROLLER, RAZOR PAGE, alebo ACTION METHOD. ATTRIBUTE [AuthorizeAttribute] ma nasledujuce MEMBERS.
+   !!! A. EMPTY CONSTRUCTOR sposobuje, ze pristup k PROTECTED RESOURCE maju VSETCI AUTHENTICATED USERS.
+   B. PROPERTY [Roles] TYPE [string] obsahuje ciarkou oddeleny zoznam ROLES, ktore maju pristup k PROTECTED RESOURCE.
+   C. PROPERTY [Policy] TYPE [string] obsahuje POLICY, voci ktorej je vykonana AUTHORIZATION. POLICY obsahuje zoznam AUTHORIZATION REQUIREMENTS, ktore urcuju REQUIREMENTS, ktore musi USER splnat, aby bol AUTHORIZED k pristupu k danemu PROTECTED RESOURCE.
+   D. PROPERTY [AuthenticationSchemes] TYPE [string] obsahuje ciarkou oddeleny zoznam SCHEMES z ktorych su USER INFORMATION vytvorene.
+18. LOGIN a LOGOUT sa v ASP.NET CORE vykonava pomocou CLASS [SignInManager<TUserType>]. CLASS ma nasledujuce MEMBERS.
+   A. METHOD [Task SignInAsync(TUserType User, AuthenticationProperties AuthenticationProperties, string AuthenticationMethod)] vykonava prihlasenie USER. Zaroven sa vytvara AUTHENTICATION COOKIE, ktory BROWSER nasledne prida do kazdeho HTTP REQUEST.
+   B. METHOD [Task<SignInResult> PasswordSignInAsync(TUserType User, string Password, bool IsPersistent, bool LockoutOnFailure)] vykonava prihlasenie USER na zaklade zadaneho PASSWORD. Zaroven sa vytvara AUTHENTICATION COOKIE, ktory BROWSER nasledne prida do kazdeho HTTP REQUEST.
+   C. METHOD [MSignInManager.SignOutAsync()] vykonava odhlasenie prihlaseneho USER. Zaroven sa odstranuje AUTHENTICATION COOKIE.
+19. SETTINGS pre PRODUCTION DEPLOYMENT sa ukladaju do FILE [appsettings.Production.json].
+20. METHOD [IWebHostEnvironment.IsDevelopment()] urcuje ci PROGRAM bezi v DEVELOPMENT, alebo PRODUCTION ENVIRONMENT.
+21. METHOD [IApplicationBuilder.UseExceptionHandler()] zaregistruje EXCEPTION HANDLER, co je WEB PAGE, ktora sa zobrazi pri vzniku ERROR. ERROR WEB PAGE moze obsahovat lubovolny CONTENT, no nemala by obsahovat ziadne detaily o ERRORS.
+22. V pripade, ze COMMAND LINE COMMANDS maju pouzivat PRODUCTION SETTINGS ulozeny vo FILE [appsettings.Production.json], je NUTNE nastavit ENVIRONMENT VARIABLE 'ASPNETCORE_ENVIRONMENT' na VALUE 'Production'.
+!!! 23. Vo VISUAL STUDIO je mozne nastavit, aby sa DEBUGGER spustal v PRODUCTION ENVIRONMENT nastavenim ENVIRONMENT VARIABLE 'ASPNETCORE_ENVIRONMENT' na VALUE 'Production'. To sa robi v [PROJECT SETTINGS->Debug->Environment variables].
+//----------------------------------------------------------------------------------------------------------------------

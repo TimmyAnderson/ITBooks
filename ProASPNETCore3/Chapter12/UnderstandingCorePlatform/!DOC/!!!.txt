@@ -1,0 +1,124 @@
+//----------------------------------------------------------------------------------------------------------------------
+1. Solution demonstruje pouzitie ASP.NET CORE PLATFORM v ASP.NET CORE APPLICATIONS.
+2. ASP.NET CORE spracovava HTTP REQUEST MESSAGES v REQUEST PRIPELINES. Pre REQUEST PRIPELINES platia nasledujuce fakty.
+   A. REQUEST PIPELINE je kolekcia MIDDLEWARE COMPONENTS cez ktore prechadzaju HTTP REQUEST MESSAGES a HTTP RESPONSE MESSAGES.
+   B. REQUEST PIPELINE je vytvorena ako QUEUE, kde MIDDLEWARE COMPONENTS su usporiadane v pevnom poradi. To znamena, ze jednotlive MIDDLEWARE COMPONENTS nemozu byt preskocene pri spracovani HTTP REQUESTS a HTTP RESPONSES. To znaci, ze dana MIDDLEWARE COMPONENT ma pristup VZDY iba k NASLEDUJUCEJ a PREDCHADZAJUCEJ MIDDLEWARE COMPONENTS v REQUEST PIPELINE.
+   C. REQUEST PIPELINE sa vytvara v METHOD [void Configure(IApplicationBuilder App, IHostingEnvironment Env)] STARTUP CLASS.
+3. HTTP REQUEST MESSAGES su v REQUEST PIPELINE spracovavane nasledujucim sposobom.
+   A. Ak ASP.NET CORE WEB SERVER HOST zachyti HTTP REQUEST MESSAGE, posle ju do prvej MIDDLEWARE COMPONENT v REQUEST PIPELINE.
+   B. Ak MIDDLEWARE COMPONENT pre HTTP REQUEST MESSAGE nevygeneruje HTTP RESPONSE MESSAGE, zasle ju do MIDDLEWARE COMPONENT NIZSIE v REQUEST PIPELINE.
+   C. Ak MIDDLEWARE COMPONENT pre HTTP REQUEST MESSAGE vygeneruje HTTP RESPONSE, tak HTTP RESPONSE MESSAGE je poslana na spracovanie do MIDDLEWARE COMPONENT VYSSIE v REQUEST PIPELINE.
+   D. Ak HTTP RESPONSE MESSAGE dorazi na TOP REQUEST PIPELINE, tak je odoslana na CLIENT.
+   !!! E. HTTP REQUEST MESSAGE dorazi na BOTTOM REQUEST PIPELINE, tak ASP.NET CORE AUTOMATICKY vygeneruje HTTP RESPONSE MESSAGE s HTTP STATUS CODE 404 a posle ju do MIDDLEWARE COMPONENT VYSSIE v REQUEST PIPELINE.
+4. MIDDLEWARE COMPONENTS su COMPONENTS, ktore vytvaraju REQUEST PIPELINE. Pre MIDDLEWARE COMPONENTS platia nasledujuce fakty.
+   A. REQUEST PIPELINE je kolekcia MIDDLEWARE COMPONENTS cez ktore prechadzaju HTTP REQUEST MESSAGES a HTTP RESPONSE MESSAGES.
+   B. REQUEST PIPELINE je vytvorena ako QUEUE, kde MIDDLEWARE COMPONENTS su usporiadane v pevnom poradi. To znamena, ze jednotlive MIDDLEWARE COMPONENTS nemozu byt preskocene pri spracovani HTTP REQUEST MESSAGES a HTTP RESPONSE MESSAGES. To znaci, ze dana MIDDLEWARE COMPONENT ma pristup VZDY iba k NASLEDUJUCEJ a PREDCHADZAJUCEJ MIDDLEWARE COMPONENTS v REQUEST PIPELINE.
+   C. HTTP REQUEST MESSAGE prechadza cez jednotlive MIDDLEWARE COMPONENT, pricom kazdy MIDDLEWARE COMPONENT sa moze rozhodnut ci dany HTTP REQUEST MESSAGE preposle do NASLEDUJUCEJ MIDDLEWARE COMPONENT v REQUEST PIPELINE, alebo vykona SHORTCUT, ked pre HTTP REQUEST MESSAGE vytvori HTTP RESPONSE MESSAGE, ktoru zasle do PREDCHADZAJUCEJ MIDDLEWARE COMPONENT v REQUEST PIPELINE.
+   D. Kazda MIDDLEWARE COMPONENT moze HTTP REQUEST MESSAGE a HTTP RESPONSE MESSAGE lubovolne MODIFIKOVAT.
+   E. Pri navrate HTTP RESPONSE MESSAGE tato prechadza VSETKYMI MIDDLEWARE COMPONENTS, ktore predtym spracovali prislusnu HTTP REQUEST MESSAGE pre ktoru bola HTTP RESPONSE MESSAGE generovana, pricom kazda MIDDLEWARE COMPONENT moze HTTP RESPONSE MESSAGE modifikovat, tak ako mohla modifikovat predtym HTTP REQUEST MESSAGE.
+   !!! F. MVC je v ASP.NET CORE taktiez implementovany ako MIDDLEWARE COMPONENT.
+   !!!!! G. ASP.NET CORE na konci REQUEST PIPELINE automaticky pridava BACKSTOP MIDDLEWARE COMPONENT, ktora generuje HTTP RESPONSE MESSAGE obsahujucu HTTP RESPONSE CODE 404, ktoru nasledne zasle do PREDCHADZAJUCEJ MIDDLEWARE COMPONENT.
+5. SERVICES su v ASP.NET CORE CUSTOM OBJECTS, ktore poskytuju LUBOVOLNU CUSTOM funkcionalitu pre zbytok ASP.NET CORE APPLICATION. Pre SERVICES platia nasledujuce fakty.
+   A. SERVICES su OBJECT CUSTOM CLASSES, ktore mozu vykonavat absolutne lubovolnu cinnost. Nevyzaduje sa od nich, aby mali nejake specificke METHODS, ale implementovali specificke INTERFACES.
+   B. SERVICES MUSIA byt zaregistrovane v STARTUP CLASS [void ConfigureServices(IServiceCollection Services)] volanim EXTENSION METHODS INTERFACE [IServiceCollection].
+   C. SERVICES su do ASP.NET CORE CLASSES ako napriklad CONTROLLERS najcastejsie prenasane pomocou CONSTRUCTORS. Ak ASP.NET CORE pri vytvarani CONTROLLERS ci inych CLASSES, ktore vytvara zisti, ze v ich CONSTRUTOR je PARAMETER, ktoreho TYPE je zaregistrovany ako SERVICE, tak aplikovanim principu DEPENDENCY INJECTION zasle do CONSTRUTOR tejto CLASS OBJECT daneho SERVICE. SERVICES vsak mozu byt prenasane aj ako PARAMETERS METHODS, ktore vola ASP.NET CORE FRAMEWORK.
+   D. ASP.NET CORE je plne zodpovedny za vytvaranie instancii SERVICE OBJECTS. V zavislosti na type registracie SERVICE OBJECTS mozu byt vytvarane pre kazdy OBJECT osobitne, alebo su vytvarane ako SINGLETON OBJECTS.
+   E. Velka cast funkcionality samotneho ASP.NET CORE je implementovana pomocou SERVICES.
+6. ASP.NET CORE MVC PROJECT moze obsahovat viacere dolezite DIRECTORIES a FILES.
+   A. DIRECTORY [/Areas] sluzi na rozdelenie rozsiahlej WEB APPLICATION na mensie celky.
+   B. DIRECTORY [/Dependencies] obsahuje zoznam vsetkych PACKAGES, na ktorych je PROJECT zavisly.
+   C. DIRECTORY [/Components] obsahuje VIEW COMPONENT CLASSES, ktore vytvaraju logicke COMPONENTS, ktore je mozne opakovane pouzit.
+   !!! D. DIRECTORY [/Controllers] podla CONVENTION obsahuje CONTROLLERS. DIRECTORY je len CONVENTION a CONTROLLERS sa mozu nachadzat aj v inych DIRECTORIES.
+   !!! E. DIRECTORY [/Data] podla CONVENTION obsahuje DATA CLASSES, ktore obsahuju OPERATIONS nad DATA STORE. DIRECTORY je len CONVENTION a DATA CLASSES sa mozu nachadzat aj v inych DIRECTORIES.
+   F. DIRECTORY [/Data/Migrations] obsahuje ENTITY FRAMEWORK DATABASE MIGRATIONS, co umoznuje automaitcky DEPLOYMENT a UPDATE DATABASES.
+   !!! G. DIRECTORY [/Models] podla CONVENTION obsahuje MODEL CLASSES. DIRECTORY je len CONVENTION a MODEL CLASSES sa mozu nachadzat aj v inych DIRECTORIES.
+   !!! H. DIRECTORY [/Views] podla CONVENTION obsahuje VIEWS. VIEWS, ktore su asociovane s jednym CONTROLLER su ukladane do rovnakeho SUBDIRECTORY DIRECTORY [/Views].
+   !!! I. DIRECTORY [/Views/Shared] podla CONVENTION obsahuje SHARED VIEWS, ktore su SPOLOCNE pre VSETKY CONTROLLERS.
+   !!!!! J. FILE [/Views/_ViewImports.cshtml] obsahuje zoznam .NET NAMESPACES, ktore sa vlozia do RAZOR VIEW ENGINE, vdaka comu je mozne C# CLASSES vo VIEWS pouzit bez zadania FULL CLASS NAME. FILE takisto obsahuje INCLUDES pre TAG HELPERS.
+   K. FILE [/Views/_ViewStart.cshtml] obsahuje DEFAULT LAYOUT pre RAZOR VIEW ENGINE.
+   !!! L. DIRECTORY [/Pages] podla CONVENTION obsahuje RAZOR PAGES.
+   !!!!! M. FILE [/Pages/_ViewImports.cshtml] obsahuje zoznam .NET NAMESPACES, ktore sa vlozia do RAZOR VIEW ENGINE, vdaka comu je mozne C# CLASSES v RAZOR PAGES pouzit bez zadania FULL CLASS NAME. FILE takisto obsahuje INCLUDES pre TAG HELPERS.
+   N. FILE [/libman.json] obsahuje zoznam PACKAGES, ktore su pouzivane v LIBMAN PACKAGE MANAGER.
+   O. FILE [/project.csproj] obsahuje nastavenia PROJECT, vratane zoznamu NUGET PACKAGES.
+   P. FILE [Program.cs] obsahuje MAIN METHOD, ktora nastavuje HOSTING PLATFORM v ktorej bude bezat WEB APPLICATION.
+   Q. FILE [Startup.cs] sluzi na nakonfigurovanie WEB APPLICATION.
+   !!! R. DIRECTORY [/wwwroot] sluzi na ukladanie STATIC FILES ako su .CSS, .JS ci IMAGE FILES. Ukladaju sa sem aj BOWER PACKAGES. Je to iba DEFAULT LOCATION, ktoru je mozne zmenit volanim METHOD [void IWebHostEnvironment.UseStaticFiles(StaticFileOptions Options)].
+   S. FILE [/appsettings.json] obsahuje CONFIGURATION ASP.NET CORE APPLICATION.
+   T. FILE [/Properties/launchSettings.json] obsahuje CONFIGURATION, ktora sa aplikuje pri starte ASP.NET CORE APPLICATION.
+7. FILE [Program.cs] obsahuje inicializaciu ASP.NET CORE APPLICATION. Interne vyuziva FILE [Startup.cs].
+8. FILE [Startup.cs] obsahuje konfiguraciu SERVICES a zakladnu konfiguraciu celej ASP.NET CORE APPLICATION.
+9. ASP.NET CORE PROJECT FILES maju EXTENSION [.CSPROJ]. Su to XML FILES, ktore maju nasledujucu strukturu.
+   A. ELEMENT [Project] je ROOT XML ELEMENT [.CSPROJ] FILE.
+   B. ELEMENT [PropertyGroup] na PATH [Project] zdruzuje vsetky PROJECT PROPERTIES obsahujuce nastavenia PROJECT.
+   C. ELEMENT [TargetFramework] na PATH [Project\PropertyGroup] obsahuje verziu .NET FRAMEWORK voci ktoremu dana ASP.NET CORE APPLICATION bezi.
+   D. ELEMENT [ItemGroup] na PATH [Project] zdruzuje ITEMS, ktore su sucastou ASP.NET CORE APPLICATION. Spravidla sa jedna o FILES, DIRECTORIES a PACKAGES, ktore ma PROJECT obsahovat.
+   E. ELEMENT [Folder] na PATH [Project\ItemGroup] obsahuje DIRECTORY, ktory ma byt sucastou ASP.NET CORE APPLICATION PROJECT. ATTRIBUTE [Include] obsahuje nazov DIRECTORY, ktory ma byt do PROJECT vlozeny.
+   F. ELEMENT [PackageReference] na PATH [Project\ItemGroup] obsahuje NUGET PACKAGE, ktory ma byt sucastou ASP.NET CORE APPLICATION PROJECT. ATTRIBUTE [Include] obsahuje nazov NUGET PACKAGE, ktory ma byt do PROJECT vlozeny. ATTRIBUTE [Version] obsahuje verziu NUGET PACKAGE, ktory ma byt do PROJECT vlozeny.
+   G. ELEMENT [DotNetCliToolReference] na PATH [Project\ItemGroup] obsahuje NUGET PACKAGE rozsirujuci TOOLSET, ktory ma byt sucastou ASP.NET APPLICATION PROJECT. ATTRIBUTE [Include] obsahuje nazov NUGET PACKAGE, ktory ma byt do PROJECT vlozeny. ATTRIBUTE [Version] obsahuje verziu NUGET PACKAGE, ktory ma byt do PROJECT vlozeny.
+10. V ASP.NET CORE je mozne definovat CUSTOM MIDDLEWARE COMPONENTS. CUSTOM MIDDLEWARE COMPONENTS je mozne definovat nasledujucimi sposobmi.
+   A. CUSTOM MIDDLEWARE COMPONENT definovana ako METHOD.
+   B. CUSTOM MIDDLEWARE COMPONENT definovana ako CLASS.
+11. Pre CUSTOM MIDDLEWARE COMPONENTS, ktore su definovane ako METHODS platia nasledujuce fakty.
+   A. CUSTOM MIDDLEWARE COMPONENT definovana ako METHOD MUSI mat PROTOTYPE [Task MiddlewareCallback(HttpContext Context, Func<Task> NextMiddleware)]. Meno METHOD je lubovolne.
+   B. CUSTOM MIDDLEWARE COMPONENT moze vykonat lubovolnu cinnost, vratane modifikacie HTTP REQUEST MESSAGE a HTTP RESPONSE MESSAGE, predtym nez je HTTP REQUEST MESSAGE zaslana do MIDDLEWARE COMPONENT NIZSIE v REQUEST PIPELINE.
+   C. CUSTOM MIDDLEWARE COMPONENT zasiela HTTP REQUEST MESSAGE do MIDDLEWARE COMPONENT NIZSIE v REQUEST PIPELINE volanim METHOD v PARAMETER 'NextMiddleware'.
+   !!!!! D. CUSTOM MIDDLEWARE COMPONENT moze modifikovat HTTP RESPONSE MESSAGE BODY, potom ako zaslala HTTP REQUEST MESSAGE do MIDDLEWARE COMPONENT NIZSIE v REQUEST PIPELINE. CUSTOM MIDDLEWARE COMPONENT pri pokuse o zmenu HTTP STATUS CODE ci HTTP HEADERS generovanej HTTP RESPONSE MESSAGE MUSI vykonat kontrolu ci HTTP HEADERS HTTP RESPONSE MESSAGES uz neboli odoslane na CLIENT kontrolou PROPERTY [HttpResponse.HasStarted]. Ak HTTP HEADERS HTTP RESPONSE MESSAGES uz BOLI odoslane na CLIENT, pokus o modifikaciu HTTP STATUS CODE ci HTTP HEADERS hodi EXCEPTION.
+   !!! E. CUSTOM MIDDLEWARE COMPONENT, ktora je definovana ako METHOD je registrovana volanim METHOD [IApplicationBuilder IApplicationBuilder.Use(Func<HttpContext,Func<Task>,Task> Middleware)].
+12. Pre CUSTOM MIDDLEWARE COMPONENTS, ktore su definovane ako CLASSES platia nasledujuce fakty.
+   A. CUSTOM MIDDLEWARE COMPONENT je CUSTOM CLASS, ktora NEMUSI mat implementovany ZIADEN SPECIALNY INTERFACE.
+   B. CUSTOM MIDDLEWARE COMPONENT CLASS MUSI mat CONSTRUCTOR, ktory prijma v 1. PARAMETRI TYPE [RequestDelegate] co je DELEGATE, ktory sa pouziva na volanie MIDDLEWARE COMPONENT NIZSIE v REQUEST PIPELINE.
+   !!!!! C. CUSTOM MIDDLEWARE COMPONENT CLASS MUSI mat implementovanu METHOD [Task Invoke(HttpContext Context)] v ktorej vykonava svoju cinnost. METHOD moze mat aj dalsie PARAMETERS, ktore su naplnene cez DEPENDENCY INJECTION FRAMEWORK.
+   D. CUSTOM MIDDLEWARE COMPONENT moze vykonat lubovolnu cinnost, vratane modifikacie HTTP REQUEST MESSAGE a HTTP RESPONSE MESSAGE, predtym nez je HTTP REQUEST MESSAGE zaslana do MIDDLEWARE COMPONENT NIZSIE v REQUEST PIPELINE.
+   E. CUSTOM MIDDLEWARE COMPONENT zasiela HTTP REQUEST MESSAGE do MIDDLEWARE COMPONENT NIZSIE v REQUEST PIPELINE volanim DELEGATE TYPE [RequestDelegate], ktory ziskal cez CONSTRUCTOR danej CLASS.
+   !!!!! F. CUSTOM MIDDLEWARE COMPONENT moze modifikovat HTTP RESPONSE MESSAGE BODY, potom ako zaslala HTTP REQUEST MESSAGE do MIDDLEWARE COMPONENT NIZSIE v REQUEST PIPELINE. CUSTOM MIDDLEWARE COMPONENT pri pokuse o zmenu HTTP STATUS CODE ci HTTP HEADERS generovanej HTTP RESPONSE MESSAGE MUSI vykonat kontrolu ci HTTP HEADERS HTTP RESPONSE MESSAGES uz neboli odoslane na CLIENT kontrolou PROPERTY [HttpResponse.HasStarted]. Ak HTTP HEADERS HTTP RESPONSE MESSAGES uz BOLI odoslane na CLIENT, pokus o modifikaciu HTTP STATUS CODE ci HTTP HEADERS hodi EXCEPTION.
+   G. CUSTOM MIDDLEWARE COMPONENT moze mat v CONSTRUCTOR okrem 1. PARAMETER TYPE [RequestDelegate] aj dalsie PARAMETERS, ktore obsahuju zaregistrovane SERVICE TYPES. Pre tieto PARAMETERS ich ASP.NET CORE nahradi za SERVICE OBJECTS.
+   !!! H. CUSTOM MIDDLEWARE COMPONENT sa registruje volanim EXTENSION METHOD [IApplicationBuilder IApplicationBuilder.UseMiddleware<TMiddlewareType>(params object[] Args)]. PARAMETER 'Args' umoznuje do CONSTRUCTOR CUSTOM MIDDLEWARE COMPONENT preniest CUSTOM PARAMETERS.
+   !!!!! I. CUSTOM MIDDLEWARE COMPONENT CLASS MUSI byt THREAD SAFE, pretoze je pouzivana ako SINGLETON.
+!!! 13. CUSTOM MIDDLEWARE COMPONENTS mozu vykonat SHORTCUT, kedy HTTP REQUEST MESSAGE NEZASLU do MIDDLEWARE COMPONENTS NIZSIE v REQUEST PIPELINE, ale rovno vygeneruju HTTP RESPONSE MESSAGE a ukoncia svoju cinnost. Typickym prikladom SHORTCUT MIDDLEWARE COMPONENT je MIDDLEWARE COMPONENT [StaticFileMiddleware], ktory v pripade, ze HTTP REQUEST MESSAGE obsahuje poziadavku na vratenie STATIC FILE vykona SHORTCUT priamym generovanim HTTP RESPONSE MESSAGE, bez toho, aby HTTP REQUEST MESSAGE bola zasielana do MIDDLEWARE COMPONENTS NIZSIE v REQUEST PIPELINE.
+14. ASP.NET CORE umoznuje vykonavat BRANCHING MIDDLEWARE COMPONENTS. Pre BRANCHING MIDDLEWARE COMPONENTS platia nasledujuce fakty.
+   A. BRANCH MIDDLEWARE COMPONENTS znamena nezavislu vetvu MIDDLEWARE COMPONENTS v REQUEST PIPELINE, ktora spracovava HTTP REQUEST MESSAGES a generuje HTTP RESPONSE MESSAGES.
+   B. Kazda MIDDLEWARE COMPONENTS BRANCH moze obsahovat lubovolny pocet MIDDLEWARE COMPONENTS.
+   C. REQUEST PIPELINE moze mat lubovolny pocet NEZAVISLYCH MIDDLEWARE COMPONENTS BRANCHES.
+   D. To ktora BRANCH sa pouzije na spracovanie danej HTTP REQUEST MESSAGE urcuje sposob registracie BRANCH, kde BRANCH moze byt vyvolana na zaklade URL, alebo na zaklade lubovolnej PROPERTY HTTP REQUEST MESSAGE.
+   E. Pomocou METHOD [IApplicationBuilder IApplicationBuilder.Map(PathString PathMatch, Action<IApplicationBuilder> Configuration)] je mozne zaregistrovat BRANCH, ktora sa vykona ak HTTP REQUEST MESSAGE URL vyhovuje PARAMETER 'PathMatch'.
+   F. Pomocou METHOD [IApplicationBuilder IApplicationBuilder.MapWhen(Func<HttpContext,bool> Predicate, Action<IApplicationBuilder> Configuration)] je mozne zaregistrovat BRANCH, ktora sa vykona ak HTTP REQUEST MESSAGE splna PREDICATE v PARAMETER 'Predicate'.
+   !!!!! G. BRANCHES mozu definovat aj vlastne NEZAVISLE ENDPOINTS zaregistrovane pomocou METHOD [IEndpointConventionBuilder IEndpointRouteBuilder.Map*(string Pattern, RequestDelegate RequestDelegate)].
+15. ASP.NET CORE umoznuje definovat TERMINAL MIDDLEWARE COMPONENTS. Pre TERMINAL MIDDLEWARE COMPONENTS platia nasledujuce fakty.
+   A. TERMINAL MIDDLEWARE COMPONENTS su MIDDLEWARE COMPONENTS, ktore su umiestnene na BOTTOM REQUEST PIPELINE.
+   B. TERMINAL MIDDLEWARE COMPONENTS NESMU volat nasledujucu MIDDLEWARE COMPONENT, kedze ziadna nasledujuca MIDDLEWARE COMPONENT sa v REQUEST PIPELINE za TERMINAL MIDDLEWARE COMPONENT NENACHADZA.
+   C. TERMINAL MIDDLEWARE COMPONENTS su registrovane ako METHOD MIDDLEWARE COMPONENTS a maju PROTOTYPE [Task MiddlewareCallback(HttpContext Context)].
+   D. TERMINAL MIDDLEWARE COMPONENTS sa registruju volnim METHOD [void IApplicationBuilder.Run(RequestDelegate Handler)].
+   !!! E. Vsetky MIDDLEWARE COMPONENTS, ktore su v REQUEST PIPELINE umiestnene za TERMINAL MIDDLEWARE COMPONENT NEBUDU NIKDY ZAVOLANE. ASP.NET CORE vsak umoznuje aj takuto registraciu MIDDLEWARE COMPONENTS.
+16. ASP.NET CORE umoznuje konfigurovat MIDDLEWARE COMPONENTS. Konfiguracia MIDDLEWARE COMPONENTS sa vykonava nasledujucim sposobom.
+   A. Pre MIDDLEWARE COMPONENT sa definuje CUSTOM CONFIGURATION CLASS, ktora obsahuje vsetky konfiguracne parametre danej MIDDLEWARE COMPONENT.
+   !!! B. V DEPENDENCY INJECTION FRAMEWORK sa zaregistruje CONFIGURATION CLASS volanim METHOD [IServiceCollection IServiceCollection.Configure<TOptionsType>(Action<TOptions> ConfigureOptions)], kde TYPE 'TOptionsType' reprezentuje TYPE CUSTOM CONFIGURATION CLASS. CALLBACK METHOD prijima uz VYTVORENU INSTANCIU CUSTOM CONFIGURATION CLASS, ktorej PROPERTY musi naplnit VALUES.
+   C. Pomocou DEPENDENCY INJECTION FRAMEWORK sa v MIDDLEWARE COMPONENT vyberie instancia CONFIGURATION CLASS.
+17. CLASS [HttpContext] je pouzivana v MIDDLEWARE COMPONENTS na spracovanie HTTP REQUEST MESSAGES a generovanie HTTP RESPONSE MESSAGES. Ma nasledujuce MEMBERS.
+   A. PROPERTY [Connection] TYPE [ConnectionInfo] obsahuje informacie o CONNECTION ako je LOCAL a REMOTE IP ADDRESSES a PORTS ci TYPE pouziteho PROTOCOL.
+   B. PROPERTY [Request] TYPE [HttpRequest] reprezentuje HTTP REQUEST MESSAGE.
+   C. PROPERTY [Response] TYPE [HttpResponse] reprezentuje HTTP RESPONSE MESSAGE.
+   D. PROPERTY [RequestServices] TYPE [IServiceProvider] umoznuje pristup k SERVICES zaregistrovanych v DEPENDENCY INJECTION FRAMEWORK.
+   E. PROPERTY [Session] TYPE [ISession] umoznuje pristup k SESSION DATA.
+   F. PROPERTY [User] TYPE [ClaimsPrincipal] obsahuje PRINCIPAL identifikujuci prihlaseneho USER.
+   G. PROPERTY [Features] TYPE [IFeatureCollection] umoznuje pristup k FEATURES, ktore umoznuje LOW LEVEL ASPECTS HTTP REQUEST MESSAGE HANDLING.
+18. CLASS [HttpRequest] reprezentuje HTTP REQUEST MESSAGE. Ma nasledujuce MEMBERS.
+   A. PROPERTY [Body] TYPE [Stream] obsahuje HTTP REQUEST MESSAGE BODY.
+   B. PROPERTY [ContentLength] TYPE [long?] obsahuje VALUE HEADER [Content-Length].
+   C. PROPERTY [ContentType] TYPE [string] obsahuje VALUE HEADER [Content-Type].
+   D. PROPERTY [Cookies] TYPE [IRequestCookieCollection] obsahuje HTTP REQUEST MESSAGE COOKIES.
+   E. PROPERTY [Form] TYPE [IFormCollection] vracia reprezentaciu HTTP REQUEST MESSAGE BODY ako FORM DATA.
+   F. PROPERTY [Headers] TYPE [IHeaderDictionary] obsahuje HTTP REQUEST MESSAGE HEADERS.
+   G. PROPERTY [IsHttps] TYPE [bool] vracia informaciu ci HTTP REQUEST MESSAGE bol zaslany cez PROTOCOL HTTPS.
+   H. PROPERTY [Method] TYPE [string] vracia HTTP REQUEST MESSAGE VERB.
+   I. PROPERTY [Path] TYPE [PathString] vracia PATH SECTION HTTP REQUEST MESSAGE URL.
+   J. PROPERTY [Query] TYPE [IQueryCollection] vracia QUERY SECTION HTTP REQUEST MESSAGE URL.
+19. CLASS [HttpResponse] reprezentuje HTTP RESPONSE MESSAGE. Ma nasledujuce MEMBERS.
+   A. PROPERTY [ContentLength] TYPE [long?] obsahuje VALUE HEADER [Content-Length].
+   B. PROPERTY [ContentType] TYPE [string] obsahuje VALUE HEADER [Content-Type].
+   C. PROPERTY [Cookies] TYPE [IResponseCookies] obsahuje HTTP RESPONSE MESSAGE COOKIES.
+   D. PROPERTY [HasStarted] TYPE [bool] vracia informaciu ci HTTP RESPONSE MESSAGE HEADERS uz boli odoslane na CLIENT a tym padom ich NIE JE MOZNE MODIFIKOVAT.
+   E. PROPERTY [Headers] TYPE [IHeaderDictionary] obsahuje HTTP RESPONSE MESSAGE HEADERS.
+   F. PROPERTY [StatusCode] TYPE [int] vracia HTTP RESPONSE MESSAGE HTTP STATUS CODE.
+   G. METHOD [Task HttpResponse.WriteAsync(string Text, CancellationToken CancellationToken)] zapisuje CONTENT do HTTP RESPONSE MESSAGE BODY.
+   H. METHOD [void Redirect(string Location)] nastavi HTTP RESPONSE MESSAGE na REDIRECTION na zadanu URL.
+//----------------------------------------------------------------------------------------------------------------------

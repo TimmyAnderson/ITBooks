@@ -1,0 +1,125 @@
+//----------------------------------------------------------------------------------------------------------------------
+1. Solution demonstruje pouzitie CONTROLLERS a VIEWS v ASP.NET CORE APPLICATIONS.
+2. VIEWS su FILES TYPE [.cshtml]. Tieto FILES obsahuju okrem HTML CODE aj RAZOR CODE, ktory interpretuje RAZOR VIEW ENGINE.
+3. ASP.NET CORE definuje VIEW ENGINE, ktory je zodpovedny za transformaciu VIEWS na HTTP RESPONSE MESSAGES. VIEW ENGINE je CLASS, ktora implementuje INTERFACE [IViewEngine].
+4. ASP.NET CORE implementuje DEFAULT VIEW ENGINE RAZOR, ktory vykonava transformaciu RAZOR VIEWS na HTTP RESPONSE MESSAGES.
+5. Na to, aby RAZOR VIEW ENGINE, aby mohol zobrazovat VIEWS je nutne v konfiguracii ASP.NET APPLICATION vykonat nasledujuce zmeny.
+   A. RAZOR VIEW ENGINE je implementovany ako SERVICE. Volanim METHOD [IMvcBuilder IServiceCollection.AddControllersWithViews()] je RAZOR VIEW ENGINE pridany do DEPENDENCY INJECTION FRAMEWORK.
+   B. Pomocou METHOD [ControllerActionEndpointConventionBuilder IEndpointRouteBuilder.MapControllerRoute(string Name, string Pattern, object Defaults, object Constraints, object DataTokens)] je mozne pridat CUSTOM ROUTES podla, ktorych sa bude vykonavat ROUTING medzi ACTION METHODS CONTROLLERS, ktore zobrazuju VIEWS.
+6. CONTROLLER je v ASP.NET CORE C# CLASS, ktora obsahuje ACTION METHODS. Pre CONTROLLERS platia nasledujuce fakty.
+   A. CONTROLLERS su C# CLASSES, ktore musia mat v nazve POSTFIX 'Controller', alebo musia byt zdedene z CLASS [Controller]. CONTROLLERS spravidla splnaju obe podmienky.
+   B. CONTROLLERS maju ACTION METHODS, ktore su PUBLIC METHODS spracujuce HTTP REQUESTS.
+   C. ACTION METHODS maju za ulohu generovat HTTP RESPONSE. HTTP RESPONSE moze byt bud v tvare HTML CODE, ktory je vygenerovany pomocou VIEWS, alebo HTTP STATUS CODE v pripade vzniku ERROR ci REDIRECTION.
+   !!! D. ASP.NET CORE umoznuje definiciu POCO CONTROLLERS co su POCO CLASSES, ktore NIE su DERIVED z CLASS [Controller].
+7. ASP.NET CORE spracovava HTTP REQUESTS v CONTROLLERS nasledujucim sposobom.
+   A. ASP.NET CORE pomocou ROUTING SYSTEM urci, ktory CONTROLLER a ACTION METHOD ma HTTP REQUEST spracovat. ROUTING SYSTEM moze HTTP REQUEST, tak ako kazdy MIDDLEWARE spracovat aj okamzite vygenerovanim HTTP RESPONSE.
+   B. ASP.NET CORE vytvori instanciu CONTROLLER, ktory ma HTTP REQUEST spracovat.
+   C. ASP.NET CORE zavola vybranu ACTION METHOD vytvorenej instancie vybraneho CONTROLLER.
+   D. ACTION METHOD vraci RETURN VALUE, ktora sa moze lisit v zavislosti ci ACTION METHOD vracia VIEW obsahujuci HTML CODE, DATA, ktore su spravidla posielane v JSON FORMAT, alebo HTTP STATUS CODE.
+   E. ASP.NET CORE na zaklade typu RETURN VALUE, ktoru vratil ACTION METHOD vygeneruje prislusny HTTP RESPONSE.
+8. ASP.NET CORE pri vyhladavani CONTROLLERS a ACTION METHODS postupuje nasledujucim sposobom.
+   A. ASP.NET CORE vyhlada vsetky PUBLIC CLASSES, ktorych nazov obsahuje POSTFIX 'Controller', alebo na ktore je aplikovany ATTRIBUTE [ControllerAttribute]. Tieto CLASSES povazuje za CONTROLLERS, aj ked NEDEDIA z CLASS [Controller].
+   B. ASP.NET CORE vyhlada vsetky PUBLIC METHODS, ktore CONTROLLERS implementuju a povazuje ich za ACTION METHODS.
+!!! 9. ACTION METHODS mozu vracat RETURN VALUES, ktore implementuju INTERFACE [IActionResult]. Pre RETURN VALUES, ktore implementuju INTERFACE [IActionResult] platia nasledujuce fakty.
+   !!! A. INTERFACE [IActionResult] definuje METHOD [Task ExecuteResultAsync(ActionContext Context)], ktorej ulohou je vygenerovat HTTP RESPONSE. Instanciu CLASS [HttpResponse] je pristupna pomocou PROPERTY [ActionContext.HttpContext.Response].
+   B. Ked ASP.NET zavola ACTION METHOD, ktora vracia instanciu CLASS implementujucu INTERFACE [IActionResult], tak zavola METHOD [Task ExecuteResultAsync(ActionContext Context)] pomocou ktorej je vygenerovany HTTP RESPONSE.
+   !!! C. Je plne na implementacii METHOD [Task ExecuteResultAsync(ActionContext Context)], aky HTTP RESULT bude vygenerovany. Moze to byt iba HTTP STATUS CODE pri vzniku ERROR, REDIRECTION HTTP STATUS CODE pri REDIRECTION, alebo HTML CODE.
+10. Pri pouziti CONTROLLERS a VIEWS ROUTING funguje na zaklade ROUTES. Pre ROUTING v CONTROLLERS a VIEWS platia nasledujuce pravidla.
+   A. Jednotlive ROUTES sa pridavaju volanim METHOD [METHOD [ControllerActionEndpointConventionBuilder IEndpointRouteBuilder.MapControllerRoute(string Name, string Pattern, object Defaults, object Constraints, object DataTokens)]].
+   B. ROUTES obsahuju PATTERN, ktory definuje ako ma URL pre dany ROUTE vyzerat.
+   C. ASP.NET CORE vyhodnocuje vsetky ROUTES a hlada najvhodnejsiu ROUTE, ktora zodpoveda zadanemu URL. Ak taku najde, tak ju pouzije. Inak ROUTING SYSTEM hodi ERROR.
+   !!! D. ROUTES vyhodnocuju IBA URL SEGMENTS, ktore tvoria LOCAL PATH. To znaci, ze sa NEVYHODNOCUJE SCHEME, ani HOSTNAME.
+11. DEFAULT ROUTE je standardne definovany ako VALUE [{Controller}/{Action}/{ID?}]. Tento ROUTE je vyhodnocovany nasledujucim sposobom.
+   A. Pocet SEGMENTS MUSI byt PRESNE 2, alebo 3. Ak ma URL iny pocet SEGMENTS, tak sa sa ROUTE NEAPLIKUJE.
+   B. Prvy SEGMENT je VZDY mapovany na CONTROLLER.
+   C. Druhy SEGMENT je VZDY mapovany na ACTION METHOD.
+   D. Treti SEGMENT je OPTIONAL. Ak je zadany, je mapovany na PARAMETER 'ID' ACTION METHOD.
+   E. ROUTE NEKONTROLUJE obsah jednotlivych SEGMENTS. Jednoducho ich priamo mapuje na CONTROLLER, ACTION METHOD a PARAMETER 'ID' bez ohladu na to aky obsah tieto SEGMENTS maju.
+12. ASP.NET definuje sadu ATTRIBUTES, ktore mozu ovplyvnit, ktore CLASSES a METHODS ma ASP.NET povazovat za CONTROLLERS a ACTION METHODS.
+   A. ATTRIBUTE [ControllerAttribute] oznacuje CLASS za CONTROLLER, aj ked jej nazov neobsahuje POSTFIX 'Controller'.
+   B. ATTRIBUTE [NonControllerAttribute] oznaci, ze CLASS NIE JE CONTROLLER, aj ked jej nazov obsahuje POSTFIX 'Controller', alebo je DERIVED z CLASS [Controller].
+   C. ATTRIBUTE [NonActionAttribute] oznaci, ze METHOD NIE JE ACTION METHOD, aj ked sa nachadza v CONTROLLER a je to PUBLIC METHOD.
+13. ASP.NET vyhladava VIEWS podla definovaneho algoritmu. V pripade, ze VIEWS sa nenachadzaju v AREA, potom je poradie vyhladavanie VIEWS nasledujuce.
+   A. Ako prvy sa vyhladava FILE [VIEW_NAME.cshtml] v DIRECTORY [Views/CONTROLLER_NAME].
+   B. Ak FILE nebol najdeny, vyhladava sa FILE [VIEW_NAME.cshtml] v DIRECTORY [Views/Shared].
+   C. Ak FILE [VIEW_NAME.cshtml] nebol najdeny, ASP.NET CORE vyhodi ERROR.
+14. ASP.NET vyhladava VIEWS podla definovaneho algoritmu. V pripade, ze VIEWS sa nachadzaju v AREA, potom je poradie vyhladavanie VIEWS nasledujuce.
+   A. Ako prvy sa vyhladava FILE [VIEW_NAME.cshtml] v DIRECTORY [Areas/AREA_NAME/Views/CONTROLLER_NAME].
+   B. Ak FILE nebol najdeny, vyhladava sa FILE [VIEW_NAME.cshtml] v DIRECTORY [Areas/AREA_NAME/Views/Shared].
+   C. Ak FILE nebol najdeny, vyhladava sa FILE [VIEW_NAME.cshtml] v DIRECTORY [Views/Shared].
+   D. Ak FILE [VIEW_NAME.cshtml] nebol najdeny, ASP.NET CORE vyhodi ERROR.
+!!! 15. Ak v PARAMETER 'ViewName' METHOD [ViewResult View(string ViewName, object Model)] je definovany FULL PATH k VIEW, ktory zacina CHARACTER '/' a FILE NAME ma EXTENSION [.cshtml], tak ASP.NET CORE vyhladava VIEW na danej PATH. Ak tam VIEW nenajde, hodi ERROR.
+16. VIEWS umoznuje pouzitie MODEL OBJECTS na prenos TYPE DATA medzi CONTROLLERS a VIEWS. Pre MODEL OBJECTS platia nasledujuce fakty.
+   A. MODEL OBJECTS su do VIEWS prenasane z CONTROLLERS do VIEWS pomocou METHOD [ViewResult Controller.View(string ViewName, object Model)], kde 2. PARAMETER obsahuje MODEL OBJECT.
+   B. VIEW moze, alebo nemusi explicitne definovat TYPE MODEL OBJECT. TYPE MODEL OBJECT sa definuje vo VIEW pomocou RAZOR VIEW KEYWORD [@model MODEL_TYPE], kde 'MODEL_TYPE' je TYPE MODEL OBJECT.
+   !!! C. Ak VIEW NEDEFINUJE TYPE MODEL OBJECT, potom ASP.NET CORE pouzije TYPE [dynamic] a teda az v RUNTIME vykonava EVALUATION PROPERTIES a METHODS, ktore su volane vo VIEW.
+   D. V RAZOR VIEW je MODEL OBJECT pristupny pomocou RAZOR VIEW KEYWORD [@Model].
+17. ASP.NET CORE umoznuje v zavislosti od pouzitia MODEL OBJECTS vo VIEWS definovat 2 typy VIEWS.
+   A. UNTYPED VIEWS.
+   B. STRONGLY TYPED VIEWS.
+18. UNTYPED VIEWS sa pouzivaju nasledujucim sposobom.
+   A. CONTROLLER pre INSTANCIU CLASS [ViewResult] nastavi jeho MODEL OBJECT.
+   B. V RAZOR VIEW je MODEL OBJECT pristupny pomocou RAZOR VIEW KEYWORD [@Model].
+   !!! C. Kedze MODEL OBJECT TYPE je pri UNTYPED VIEWS nastaveny na TYPE [dynamic], EVALUATION PROPERTIES a METHODS, ktore su na MODEL OBJECT volane je vykonavana v RUNTIME.
+19. TYPED VIEWS sa pouzivaju nasledujucim sposobom.
+   A. CONTROLLER pre INSTANCIU CLASS [ViewResult] nastavi jeho MODEL OBJECT.
+   B. V RAZOR VIEW sa pomocou RAZOR VEW KEYWORD [@model MODEL_TYPE] nastavi MODEL OBJECT TYPE na TYPE 'MODEL_TYPE'.
+   C. V RAZOR VIEW je MODEL OBJECT pristupny pomocou RAZOR VIEW KEYWORD [@Model].
+   !!! D. Kedze MODEL OBJECT TYPE je pri STRONGLY TYPED VIEWS nastaveny na SPECIFICKY TYPE, k PROPERTIES a METHODS MODEL OBJECT je mozne pristupovat PRIAMO v COMPILE TIME.
+20. CLASS [RazorPage] predstavuje BASE CLASS pre vsetky C# CLASSES generovane RAZOR VIEW ENGINES pre vsetky VIEWS.
+   A. PROPERTY [Context] TYPE [HttpContext] obsahuje HTTP CONTEXT, ktory okrem ineho obsahuje aj HTTP REQUEST MESSAGE a HTTP RESPONSE MESSAGE.
+   B. PROPERTY [Layout] TYPE [string] obsahuje nazov LAYOUT, ktory VIEW pouziva.
+   C. PROPERTY [TempData] TYPE [ITempDataDictionary] obsahuje TEMP OBJECT.
+   D. PROPERTY [ViewBag] TYPE [dynamic] obsahuje VIEW BAG OBJECT.
+   E. PROPERTY [ViewContext] TYPE [ViewContext] obsahuje data, ktore VIEW moze pouzit na CONTENT RENDERING.
+   F. PROPERTY [User] TYPE [ClaimsPrincipal] obsahuje informacie o prihlasenom USER.
+   G. PROPERTY [HtmlEncoder] TYPE [HtmlEncoder] obsahuje HELPER OBJECT, ktory je mozne pouzit bezpecny ENCODING HTML CODE.
+   H. METHOD [void Write(object Value)] zapisuje OBJECT do OUTPUT STREAM. Zapisana VALUE je HTML ENCODED.
+   I. METHOD [void Write(string Value)] zapisuje STRING do OUTPUT STREAM. Zapisana VALUE je HTML ENCODED.
+   J. METHOD [void WriteLiteral(object Value)] zapisuje OBJECT do OUTPUT STREAM. Zapisana VALUE NIE je HTML ENCODED.
+   K. METHOD [void WriteLiteral(string Value)] zapisuje STRING do OUTPUT STREAM. Zapisana VALUE NIE je HTML ENCODED.
+   L. METHOD [HtmlString RenderSection(string Name)] nachadzajuca sa v LAYOUT vykonava zapis SECTION daneho VIEW do LAYOUT.
+   M. METHOD [IHtmlContent RenderBody()] nachadzajuca sa v LAYOUT vykonava zapis VSETKEHO VIEW CONTENT, ktory sa NENACHADZA v ZIADNEJ SECTION do LAYOUT.
+   N. METHOD [bool IsSectionDefined(string Name)] vracia informaciu ci VIEW definuje SECTION.
+   O. METHOD [Task ExecuteAsync()] vykonava CONTENT RENDERING daneho VIEW.
+21. CLASS [RazorPage<TYPE>] predstavuje BASE CLASS pre vsetky C# CLASSES generovane RAZOR VIEW ENGINES pre vsetky TYPED VIEWS. CLASS [RazorPage<TYPE>] je DERIVED z CLASS [RazorPage] a ma nasledujuce PROPERTIES.
+   A. PROPERTY [Model] TYPE [TYPE] obsahuje MODEL OBJECT.
+   B. PROPERTY [ViewData] TYPE [ViewDataDictionary<TModel>] obsahuje VIEW DATA, ktore boli do VIEW zaslane z CONTROLLER.
+!!!!! 22. RAZOR ENGINE transformuje RAZOR VIEWS nasledujucim sposobom.
+   A. ASP.NET CORE transformuje kazdy [.cshtml] FILE na C# CLASS, ktora ma mennu konvenciu [ASPV_XXX_YYY_ZZZ_cshtml], kde VALUE 'XXX' je PROJECT NAME, VALUE 'YYY' je CONTROLLER NAME a VALUE 'ZZZ' je VIEW NAME.
+   !!! B. Ak RAZOR VIEW predstavuje UNTYPED VIEW, tak C# CLASS dedi z CLASS [RazorPage]. Ak RAZOR VIEW predstavuje TYPED VIEW, tak C# CLASS dedi z CLASS [RazorPage<TYPE>], kde TYPE 'TYPE' je MODEL OBJECT TYPE daneho VIEW.
+   !!! C. ASP.NET CORE vytvara z RAZOR VIEWS C# CLASSES v MEMORY. A hned su aj COMPILED. Generovane C# CLASSES su ulozene na disku v DIRECTORY [obj/Razor/Views].
+   !!!!! D. Klucovou METHOD vygenerovanej C# CLASS je METHOD [public Task ExecuteAsync()]. Tato METHOD je zodpovedna za CONTENT RENDERING a je DERIVED z BASE CLASS [RazorPage].
+   !!!!! E. ASP.NET generuje CODE METHOD [public Task ExecuteAsync()] z obsahu VIEW [.cshtml] FILE.
+   F. METHOD [Task ExecuteAsync()] pri renderovani STATIC CONTENT pouziva METHOD [void RazorPage.WriteLiteral()]. Tato METHOD zapisuje STRING do OUTPUT STREAM bez toho, aby do CONTENT pridavala ESCAPE STRINGS.
+   !!! G. METHOD [Task ExecuteAsync()] pri renderovani DYNAMIC CONTENT (casti VIEW napisane v C# ako je napriklad pristup k PROPERTIES MODEL OBJECT) pouziva METHOD [void RazorPage.Write()]. Tato METHOD vklada pri zapise STRING OUTPUT STREAM aj ESCAPE STRINGS, aby sa zabranilo, moznosti vkladat HTML CODE cez C# VIEW CODE. To by predstavovalo bezpecnostne riziko a preto METHOD [void RazorPage.Write()] pouziva ESCAPE STRINGS.
+!!! 23. ASP.NET CORE do CLASSES, ktore pre kazdy VIEW vygeneruje pridava nasledujuce MEMBERS.
+   A. PROPERTY [Component] TYPE [IViewComponentHelper] obsahuje HELPER CLASS pre pracu s VIEW COMPONENTS.
+   B. PROPERTY [Html] TYPE [IHtmlHelper<MODEL_TYPE>] umoznuje vykonavat SAFE ENCODING HTML CODE.
+   C. PROPERTY [Json] TYPE [IJsonHelper] umoznuje vykonavat ENCODING OBJECT do JSON FORMAT.
+   D. PROPERTY [ModelExpressionProvider] TYPE [IModelExpressionProvider] umoznuje pristup k EXPRESSIONS, ktorym sa vyberaju PROPERTIES z MODEL OBJECT a umoznuje ich EVALUATION.
+   E. PROPERTY [Url] TYPE [IUrlHelper] obsahuje HELPER CLASS pre pracu s URLs.
+24. VIEWS mozu mat v MAIN VIEW DIRECTORY definovany FILE [_ViewImports.cshtml] reprezentujuci VIEW IMPORT FILE. VIEW IMPORT FILE umoznuje definovat casti VIEWS, ktore su spolocne pre vsetky VIEWS. Spravidla tento FILE sluzi na definovanie USING NAMESPACES.
+!!! 25. K VIEWS, ktorych nazvy sa zacinaju PREFIX '_' nie je mozne priamo pristupovat z WEB BROWSERS. Tieto VIEWS sa iba vkladaju do inych VIEWS, aby vytvorili spolocny obsah vygenerovaneho CONTENT.
+26. RAZOR ENGINE definuje nasledujuce KEYWORDS, ktore je mozne pouzit v RAZOR VIEWS.
+   A. KEYWORD [@model] definuje MODEL OBJECT TYPE.
+   B. KEYWORD [@Model] umoznuje pristup k MODEL OBJECT.
+   C. KEYWORD [@using] vykonava IMPORT NAMESPACE.
+   D. KEYWORD [@page] oznacuje, ze FILE obsahuje RAZOR PAGE. Zaroven umoznuje definovat ROUTE.
+   E. KEYWORD [@section] oznacuje LAYOUT SECTION.
+   F. KEYWORD [@addTagHelper] pridava TAG HELPER TYPES, ktore je mozne pouzit vo FILE.
+   G. KEYWORD [@namespace] definuje NAMESPACE v ktorom sa bude CLASS, ktory vygeneruje RAZOR ENGINE z daneho FILE.
+   H. KEYWORD [@functions] umoznuje do CLASS, ktoru vygeneruje RAZOR ENGINE z daneho FILE pridat CUSTOM PROPERTIES a CUSTOM METHODS.
+   I. KEYWORD [@attribute] umoznuje na CLASS, ktoru vygeneruje RAZOR ENGINE z daneho FILE aplikovat CUSTOM C# ATTRIBUTES.
+   J. KEYWORD [@implements] umoznuje pre CLASS, ktoru vygeneruje RAZOR ENGINE z daneho FILE definovat INTERFACE, ktory vygenerovana CLASS implementuje.
+   K. KEYWORD [@inherits] umoznuje pre CLASS, ktoru vygeneruje RAZOR ENGINE z daneho FILE definovat BASE CLASS z ktorej je vygenerovana CLASS DERIVED.
+   L. KEYWORD [@inject] umoznuje pre CLASS, ktoru vygeneruje RAZOR ENGINE z daneho FILE definovat PROPERTIES, ktore budu naplnene pomocou DEPENDENCY INJECTION.
+   M. KEYWORD [@EXPRESSION] umoznuje v RAZOR VIEW pouzit LUBOVOLNU C# EXPRESSION.
+   N. KEYWORD [@if] umoznuje v RAZOR VIEW pouzit C# KEYWORD [if].
+   O. KEYWORD [@switch] umoznuje v RAZOR VIEW pouzit C# KEYWORD [switch].
+   P. KEYWORD [@foreach] umoznuje v RAZOR VIEW pouzit C# KEYWORD [foreach].
+   Q. KEYWORD [@try] umoznuje v RAZOR VIEW pouzit C# KEYWORD [try].
+   R. KEYWORD [@await] umoznuje v RAZOR VIEW pouzit C# KEYWORD [await].
+   S. KEYWORD [@{}] umoznuje v RAZOR VIEW pouzit lubovolny C# CODE.
+   T. KEYWORD [@:] umoznuje do RAZOR VIEW vlozit HTML CODE.
+//----------------------------------------------------------------------------------------------------------------------

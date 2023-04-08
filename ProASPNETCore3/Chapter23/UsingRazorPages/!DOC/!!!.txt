@@ -1,0 +1,92 @@
+//-----------------------------------------------------------------------------
+1. Solution demonstruje pouzitie RAZOR PAGES v ASP.NET CORE APPLICATIONS.
+2. RAZOR PAGES umoznuju vracat HTML CONTENT BEZ pouzitia MVC PATTERN.
+3. RAZOR PAGES mozu vracat iba HTML CONTENT, co znaci, ze ich NIE JE mozne pouzit na vytvarani WEB SERVICES.
+4. ASP.NET umoznuje kombinovat MVC FRAMEWORK s RAZOR PAGES v jednom PROJECT.
+5. RAZOR PAGES sa konfiguruju v STARTUP FILE nasledujucim sposobom.
+   A. METHOD [IMvcBuilder IServiceCollection.AddRazorPages()] nastavuje SERVICE, ktory je potrebny pre pouzitie RAZOR PAGES.
+   B. METHOD [PageActionEndpointConventionBuilder IEndpointRouteBuilder.MapRazorPages()] pridava ROUTING pre RAZOR PAGES.
+6. RAZOR PAGES pozostavaju z nasledujucich casti.
+   A. FILE [XXX.cshtml], obsahuje RAZOR PAGE VIEW so vsetkym HTML CODE, ktory RAZOR PAGE zobrazuje.
+   B. FILE [XXX.cshtml.cs] C# CLASS reprezentujuci RAZOR PAGE MODEL. RAZOR PAGE MODEL obsahuje data, ktore RAZOR PAGE VIEW zobrazuje.
+!!! 7. RAZOR PAGE FILES BY-DEFAULT MUSIA byt ulozene v DIRECTORY [Pages].
+8. RAZOR PAGE VIEW je [.cshtml] FILE obsahujuci HTML CODE a RAZOR ENGINE KEYWORDS. Pre RAZOR PAGE VIEWS platia nasledujuce fakty.
+   A. RAZOR PAGE VIEW MUSI mat na zaciatku FILE KEYWORD [@page] ci sa FILE identifikuje ako RAZOR PAGE VIEW.
+   !!! B. RAZOR PAGE VIEW referuje na RAZOR PAGE MODEL CLASS pomocou RAZOR ENGINE KEYWORD [@model XXX].
+   !!! C. RAZOR PAGE VIEW FILE moze obsahovat cely CONTENT RAZOR PAGE MODEL pomocou RAZOR ENGINE KEYWORD [@functions{}]. V tomto pripade, v KEYWORD [@functions{}] je definovany RAZOR PAGE MODEL CLASS a tym padom RAZOR PAGE VIEW ulozeny v separatnom FILE [XXX.cshtml.cs] uz NIE JE POTREBNY.
+9. RAZOR PAGE MODEL je C# CLASS, ktory obsahuje MODEL DATA pre RAZOR PAGE. Pre RAZOR PAGE MODELS platia nasledujuce fakty.
+   A. RAZOR PAGE MODEL CLASS MUSI byt DERIVED z CLASS [PageModel].
+   B. RAZOR PAGE MODEL CLASS moze mat CONSTRUCTOR, ktoreho PARAMETERS su substituovane pomocou DEPENDENCY INJECTION FRAMEWORK.
+   !!! C. RAZOR PAGE MODEL CLASS musi definovat MODEL OBJECT DATA, ktore potrebuje RAZOR PAGE VIEW zobrazovat.
+   !!!!! D. RAZOR PAGE MODEL CLASS pre KAZDY HTTP VERB, ktory podporuje musi definovat jednu z dvojice METHODS METHOD [RETURN_TYPE OnXXX(PARAMETERS)], alebo METHOD [Task<RETURN_TYPE> OnXXXAsync(PARAMETERS)], kde VALUE 'XXX' je nazov HTTP VERB.
+   !!!!! E. RAZOR PAGE MODEL CLASS je VZDY asociovany iba s JEDNYM RAZOR PAGE VIEW. To znaci, ze RAZOR PAGE MODEL NEMOZE vracat rozlicne RAZOR PAGE VIEWS, kedze je VZDY asociovany s jedinym RAZOR PAGE VIEW.
+10. RAZOR PAGE MODEL MUSI mat pre kazdy VERB, ktory RAZOR PAGE podporuje definovanu niektoru z METHODS METHOD [RETURN_TYPE OnXXX(PARAMETERS)], alebo METHOD [Task<RETURN_TYPE> OnXXXAsync(PARAMETERS)]. Pre tieto METHODS platia nasledujuce fakty.
+   A. METHOD [RETURN_TYPE OnXXX(PARAMETERS)], kde VALUE 'XXX' je nazov HTTP VERB je SYNCHRONNA verzia METHOD, ktoru vyvolava ASP.NET pri prichode HTTP REQUEST MESSAGE.
+   B. METHOD [Task<RETURN_TYPE> OnXXXAsync(PARAMETERS)], kde VALUE 'XXX' je nazov HTTP VERB je ASYNCHRONNA verzia METHOD, ktoru vyvolava ASP.NET pri prichode HTTP REQUEST MESSAGE.
+   !!! C. METHODS mozu mat PARAMETERS. Standardne su tieto PARAMETERS naplnane pomocou MODEL BINDING z QUERY STRING URL spracovavanej HTTP REQUEST, no pomocou CUSTOM ROUTING je mozne jednotlive PARAMETERS mozne namapovat na SEGMENTS URL spracovavanej HTTP REQUEST.
+   D. Ak METHODS mozu ako RETURN TYPE obsahovat bud TYPE implementujuci INTERFACE [IAsyncResult], alebo TYPE [void].
+   !!! E. Ak METHODS maju RETURN TYPE TYPE implementujuci INTERFACE [IAsyncResult], potom mozu pomocou HELPER METHODS CLASS [PageModel] bud vratit RAZOR PAGE VIEW asociovany s dany RAZOM PAGE, alebo vratit HTTP STATUS CODE ako napriklad REDIRECT ci NOT FOUND.
+   !!!!! F. Ak Ak METHODS maju RETURN TYPE TYPE [void], tak ASP.NET na pozadi VZDY zobrazi RAZOR PAGE VIEW asociovany s dany RAZOM PAGE.
+   !!!!! G. Alternativne RAZOR PAGE moze definovat aj METHOD [RETURN_TYPE OnXXXYYY(PARAMETERS)] a METHOD [Task<RETURN_TYPE> OnXXXYYYAsync(PARAMETERS)], kde VALUE 'XXX' je nazov HTTP VERB a VALUE 'YYY' je CUSTOM NAME. Tieto METHODS su volane NAMIESTO METHOD [RETURN_TYPE OnXXX(PARAMETERS)] a METHOD [Task<RETURN_TYPE> OnXXXAsync(PARAMETERS)] vtedy, ak QUERY STRING, alebo SEGMENT (ak je pouzity CUSTOM ROUTING) ma definovanu VARIABLE [Handler], ktora ma VALUE 'YYY'. Ak tato VARIABLE NIE JE DEFINOVANA, tak sa volaju METHOD [RETURN_TYPE OnXXX(PARAMETERS)] a METHOD [Task<RETURN_TYPE> OnXXXAsync(PARAMETERS)].
+!!!!! 11. RAZOR ENGINE transformuje RAZOR PAGES nasledujucim sposobom.
+   A. ASP.NET transformuje kazdy RAZOR PAGE na C# CLASS, ktora ma mennu konvenciu [XXX_YYY], kde VALUE 'XXX' je DIRECTORY NAME, kde sa RAZOR PAGE nachadza a VALUE 'YYY' je RAZOR PAGE NAME.
+   B. C# CLASS je DERIVED z CLASS [Page].
+   !!!!! C. Klucovou METHOD vygenerovanej C# CLASS je METHOD [public Task ExecuteAsync()]. Tato METHOD je zodpovedna za CONTENT RENDERING a je DERIVED z BASE CLASS [Page].
+   !!!!! D. ASP.NET generuje CODE METHOD [public Task ExecuteAsync()] z obsahu VIEW [.cshtml] FILE.
+   E. METHOD [public Task ExecuteAsync()] pri renderovani STATIC CONTENT pouziva METHOD [Page.WriteLiteral()]. Tato METHOD zapisuje STRING do OUTPUT STREAM bez toho, aby do CONTENT pridavala ESCAPE STRINGS.
+   !!! F. METHOD [public Task ExecuteAsync()] pri renderovani DYNAMIC CONTENT (casti VIEW napisane v C# ako je napriklad pristup k PROPERTIES MODEL OBJECT) pouziva METHOD [Page.Write()]. Tato METHOD vklada pri zapise STRING OUTPUT STREAM aj ESCAPE STRINGS, aby sa zabranilo, moznosti vkladat HTML CODE cez C# VIEW CODE. To by predstavovalo bezpecnostne riziko a preto METHOD [Page.Write()] pouziva ESCAPE STRINGS.
+   !!!!! G. V pripade, ze RAZOR PAGE VIEW FILE [XXX.cshtml] obsahuje aj RAZOR PAGE MODEL CLASS vlozenu pomocou KEYWORD [@functions{}], tak CONTENT RAZOR PAGE MODEL CLASS je vlozeny do FILE, ktory obsahuje C# CLASS DERIVED z CLASS [Page].
+   H. Vygenerovane C# CLASSES su ulozene v PATH [obj\Debug\netcoreapp3.1\Razor\Pages].
+12. ASP.NET pre RAZOR PAGES vykonava nasledujuci ROUTING.
+   A. ASP.NET predpoklada, ze RAZOR PAGES su ulozene ako FILES v MAIN RAZOR PAGE DIRECTORY, alebo jeho SUBDIRECTORIES. BY-DEFAULT MAIN RAZOR PAGE DIRECTORY je nastaveny na DIRECTORY [Pages].
+   B. Ak ASP.NET vyhladava RAZOR PAGES, zoberie RELATIVE PATH zadanej URL, pricom jednotlive SEGMENTS povazuje za SUBDIRECTORIES voci MAIN RAZOR PAGE DIRECTORY. V takto vytvorenej FILE PATH hlada pozadovany RAZOR PAGE.
+   !!! C. Pomocou RAZOR ENGINE KEYWORD [@page XXX], kde VALUE 'XXX' je ROUTE PATTERN je mozne definovat CUSTOM ROUTING pre konkretnu RAZOR PAGE. ROUTING PATTERN pre RAZOR PAGES je IDENTICKY ako ROUTING PATTERN pre MVC PAGES.
+   !!!!! D. Standardne PARAMETERS METHODS [RETURN_TYPE OnXXX(PARAMETERS)] (alebo METHOD [Task<RETURN_TYPE> OnXXXAsync(PARAMETERS)]), kde VALUE 'XXX' je nazov HTTP VERB su mapovane NIE zo SEGMENTS zadanej URL, ale VYLUCNE z QUERY STRING zadanej URL. Pomocou CUSTOM ROUTING aplikovanej pomocou RAZOR ENGINE KEYWORD [@page] je mozne zmenit ROUTING tak, aby SEGMENTS zadanej URL boli mapovane ako PARAMETERS RAZOR PAGE METHODS [RETURN_TYPE OnXXX(PARAMETERS)].
+   !!!!! E. CUSTOM ROUTES je mozne pridavat aj v STARTUP CLASS volanim METHOD [PageConventionCollection PageConventionCollection.AddPageRoute(string PageName, string Route)]. PARAMETER 'PageName' MUSI obsahovat PATH k RAZOR PAGE (bez EXTENSION [.cshtml]), ktory je RELATIVNY voci MAIN RAZOR PAGE DIRECTORY. PARAMETER 'Route' obsahuje ROUTE PATTERN.
+   !!! F. CUSTOM ROUTES pridane v STARTUP CLASS doplnaju a nie nahradzuju CUSTOM ROUTES, ktore boli pridane pomocou RAZOR ENGINE KEYWORD [@page XXX]. ASP.NET prechadza vsetky ROUTES (zadane pomocou RAZOR ENGINE KEYWORD [@page XXX] i v STARTUP CLASS) a hlada tu, ktoru moze na zadanu URL aplikovat.
+13. CLASS [PageModel] je BASE CLASS pre RAZOR PAGE MODEL. CLASS [PageModel] ma nasledujuce MEMBERS.
+   A. PROPERTY [HttpContext] TYPE [HttpContext] obsahuje HTTP CONTEXT, ktory okrem ineho obsahuje aj HTTP REQUEST MESSAGE a HTTP RESPONSE MESSAGE.
+   B. PROPERTY [ModelState] TYPE [ModelStateDictionary] obsahuje STATE MODEL OBJECT.
+   C. PROPERTY [PageContext] TYPE [PageContext] obsahuje informacie o CONTEXT RAZOR PAGE.
+   D. PROPERTY [RouteData] TYPE [RouteData] umoznuje pristup k ROUTE DATA, ktore vratil ROUTING SYSTEM.
+   E. PROPERTY [TempData] TYPE [ITempDataDictionary] obsahuje TEMP DATA prenesene do RAZOR PAGE.
+   F. PROPERTY [User] TYPE [ClaimsPrincipal] obsahuje informacie o prihlasenom USER.
+   !!!!! G. METHOD [PageResult Page()] umoznuje RAZOR PAGE zobrazit RAZOR PAGE VIEW, ktory je asociovany s danym RAZOR PAGE. METHOD je BEZPARAMETRICKA, pretoze RAZOR PAGE MODEL je VZDY ASOCIOVANY iba s JEDNYM RAZOR PAGE VIEW.
+   H. METHOD [NotFoundObjectResult NotFound(object Value)] umoznuje RAZOR PAGE vratit HTTP STATUS CODE 404.
+   I. METHOD [BadRequestObjectResult BadRequest(object Error)] umoznuje RAZOR PAGE vratit HTTP STATUS CODE 400.
+   J. METHOD [FileContentResult File(byte[] FileContents, string ContentType)] umoznuje RAZOR PAGE vratit FILE CONTENT.
+   K. METHOD [RedirectResult Redirect(string Url)] umoznuje RAZOR PAGE spravit REDIRECT na zadanu URL.
+   L. METHOD [RedirectResult RedirectPermanent(string Url)] umoznuje RAZOR PAGE spravit PERMANENT REDIRECT na zadanu URL.
+   M. METHOD [RedirectToActionResult RedirectToAction(string ActionName, string ControllerName, string Fragment)] umoznuje RAZOR PAGE spravit REDIRECT na zadany MVC CONTROLLER a ACTION METHOD.
+   N. METHOD [RedirectToActionResult RedirectToActionPermanent(string ActionName, string ControllerName, string Fragment)] umoznuje RAZOR PAGE spravit PERMANENT REDIRECT na zadany MVC CONTROLLER a ACTION METHOD.
+   O. METHOD [RedirectToPageResult RedirectToPage(string PageName, string PageHandler, string Fragment)] umoznuje RAZOR PAGE spravit REDIRECT na zadanu RAZOR PAGE.
+   P. METHOD [RedirectToPageResult RedirectToPagePermanent(string PageName, object RouteValues, string Fragment)] umoznuje RAZOR PAGE spravit PERMANENT REDIRECT na zadanu RAZOR PAGE.
+   Q. METHOD [ObjectResult StatusCode(int StatusCode, object Value)] umoznuje RAZOR PAGE vratit CUSTOM HTTP STATUS CODE.
+14. RAZOR PAGES mozu mat v MAIN RAZOR PAGE DIRECTORY definovany FILE [_ViewImports.cshtml] reprezentujuci RAZOR PAGE VIEW IMPORT FILE. RAZOR PAGE VIEW IMPORT FILE umoznuje definovat casti VIEWS, ktore su spolocne pre vsetky RAZOR PAGE VIEWS. Spravidla tento FILE sluzi na definovanie USING NAMESPACES.
+!!! 15. ASP.NET umoznuje v RAZOR PAGES pouzivat LAYOUTS. Pre pouzitie LAYOUTS v RAZOR PAGES platia nasledujuce pravidla.
+   A. LAYOUTS mozu byt ulozene bud v DIRECTORY [Pages/Shared], alebo v DIRECTORY, kde su ulozene RAZOR PAGES.
+   B. Ak DIRECTORY [Pages/Shared] aj DIRECTORY, kde je ulozeny dany RAZOR PAGE maju LAYOUT s TYM ISTYM MENOM, tak sa pouzije vzdy LAYOUT, ktory je ulozeny v tom istom DIRECTORY ako RAZOR PAGE.
+   C. LAYOUTS by podla konvencie mali byt mat PREFIX '_'.
+   !!! D. LAYOUTS NEOBSAHUJE RAZOR VIEW ENGINE KEYWORD [@page]. Ten obsahuje iba samotna RAZOR PAGE, ktora dany LAYOUT pouziva.
+   !!! E. LAYOUTS urcuju miesto kde RAZOR PAGE VIEWS budu renderovat svoj obsah volanim CODE [@RenderBody()]. METHOD [RazorPage.RenderBody()] zobrazuje obsah RAZOR PAGE VIEW, ktory dany LAYOUT pouziva.
+   !!! F. LAYOUT sa vo RAZOR PAGE VIEW nastavuje nastavenim PROPERTY [RazorPageBase.Layout], ktora je typu [string].
+16. RAZOR PAGE START PAGES su RAZOR PAGE VIEWS, ktorych obsah ASP.NET CORE MVC zluci z obsahom KAZDEHO RAZOR PAGE VIEW a nasledne je vytvorena HTML PAGE. Pre RAZOR PAGE START PAGES platia nasledujuce fakty.
+   A. RAZOR PAGE START PAGES su ulozene v [.cshtml] FILES, ktore obsahuju HTML CODE, ktory sa zluci s HTML CODE KAZDEHO RAZOR PAGE VIEW.
+   !!! B. START PAGES sa podla konvencie ukladaju do DIRECTORY [Pages] a jeho SUBDIRECTORIES s nazvom '_ViewStart.cshtml'.
+   !!!!! C. WEB APPLICATION moze obsahovat VIACERO RAZOR PAGE START PAGES, ktore su ulozene v rozlicnych SUBDIRECTORIES DIRECTORY [Pages]. ASP.NET CORE MVC zluci OBSAH VSETKYCH RAZOR PAGE START PAGES, ktore sa nachadzaju v PATH smerom k RAZOR PAGE VIEW, pricom ako posledny je aplikovany RAZOR PAGE START PAGE, ktory sa nachadza najblizsie pri RAZOR PAGE VIEW FILE.
+   !!! D. Ak viacero RAZOR PAGE START PAGES nastavuje tu istu PROPERTY, potom PROPERTY ja nastavena na VALUE v POSLEDNEJ aplikovanej RAZOR PAGE START PAGE. Ak vsak samotny RAZOR PAGE VIEW nastavi PROPERTY EXPLICITNE na inu VALUE, potom PROPERTY ma VALUE nastavenu v RAZOR PAGE VIEW.
+17. RAZOR PAGES podporuju pouzitie PARTIAL VIEWS. Pre pouzitie PARTIAL VIEWS v RAZOR PAGES platia nasledujuce pravidla.
+   A. PARTIAL VIEWS NEOBSAHUJU RAZOR VIEW ENGINE KEYWORD [@page]. Tento KEYWORD sa pouziva IBA v RAZOR PAGES, ktore dany PARTIAL VIEW pouzivaju.
+   !!!!! B. PARTIAL VIEWS NEMAJU ako MODEL OBJECT nastaveny RAZOR PAGE MODEL, pretoze PARTIAL VIEWS su NEZAVISLE na RAZOR PAGES a mozu byt pouzivane aj v MVC VIEWS. Preto ako MODEL OBJECT TYPE MUSIA pouzivat TYPE, ktory NIE JE RAZOR PAGE MODEL TYPE.
+   !!! C. Do RAZOR PAGE VIEWS su PARTIAL VIEWS vkladane pomocou TAG HELPER [<partial name="PARTIAL_VIEW_NAME" model="MODEL_NAME"/>], kde VALUE 'PARTIAL_VIEW_NAME' je nazov PARTIAL VIEW a VALUE 'MODEL_NAME' je OPTIONAL MODEL OBJECT zasielany do PARTIAL VIEWS.
+   !!! D. PARTIAL VIEWS pouzivane v RAZOR PAGES sa mozu nachadzat v DIRECTORY v ktorom sa nachadza dany PARTIAL VIEW, alebo v ktoromkolvek DIRECTORY nad nim. PARTIAL VIEWS sa takisto mozu nachadzat v DIRECTORY [Pages/Shared], alebo aj DIRECTORY [Views/Shared].
+18. PARTIAL VIEW pre danu RAZOR PAGE vyhladava RAZOR VIEW ENGINE v nasledujucich DIRECTORIES.
+   A. Ako prvy sa vyhladava DIRECTORY v ktorom je ulozeny samotny RAZOR PAGE.
+   B. Ak sa PARTIAL VIEW nenasiel, potom su postupne prehladavane VSETKY DIRECTORIES, ktore sa nachadzaju VYSSIE ako DIRECTORY, kde sa nachadza RAZOR PAGE. To znamena, ze ak sa RAZOR PAGE nachadza v DIRECTORY [Pages/XXX/YYY], tak sa najprv prehladava DIRECTORY [YYY], potom DIRECTORY [XXX] a napokon DIRECTORY [Pages].
+   C. Ak sa PARTIAL VIEW nenasiel ani v DIRECTORY [Pages], tak RAZOR VIEW ENGINE prehladava DIRECTORY [Pages/Shared].
+   !!! D. Ak sa PARTIAL VIEW nenasiel ani v DIRECTORY [Pages/Shared], tak RAZOR VIEW ENGINE prehladava DIRECTORY [Views/Shared]. Prave toto hladanie umoznuje SHARING PARTIAL VIEWS medzi RAZOR PAGES a MVC VIEWS.
+19. RAZOR PAGES mozu byt definovane aj BEZ RAZOR PAGE MODEL OBJECT. Pre taketo RAZOR PAGES platia nasledujuce fakty.
+   A. RAZOR PAGES MUSIA mat pouzity RAZOR VIEW ENGINE KEYWORD [@inject TYPE VARIABLE], kde VALUE 'TYPE' je TYPE, ktory ma byt vlozeny do CONTRUCTOR na pozadi vygenerovanej CLASS pomocou DEPENDENCY INJECTION FRAMEWORK a VALUE 'VARIABLE' je nazov VARIABLE, ktora sa pouzije vo RAZOR PAGE VIEW na pristup k MODEL OBJECT.
+   B. RAZOR PAGES pristupuju k MODEL OBJECT pomocou VARIABLE, ktora bola definovana v RAZOR VIEW ENGINE KEYWORD [@inject TYPE VARIABLE].
+   C. RAZOR PAGES BEZ RAZOR PAGE MODEL OBJECT by sa mali pouzivat iba na implementovanie RAZOR PAGES, ktore maju velmi jednoduchu logiku a nepotrebuju RAZOR PAGE MODEL OBJECT na vykonavanie kompexnejsich operacii.
+//-----------------------------------------------------------------------------

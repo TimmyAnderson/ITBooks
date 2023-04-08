@@ -1,0 +1,56 @@
+//----------------------------------------------------------------------------------------------------------------------
+1. Solution demonstruje pracu s DB a CACHING v ASP.NET CORE APPLICATION.
+2. ASP.NET CORE podporuje DATA CACHING pomocou INTERFACE [IDistributedCache]. INTERFACE [IDistributedCache] je implementovany viacerymi typmi SERVICES, ktore mozu byt zaregistrovane v STARTUP CLASS pomocou nasledujucich METHODS.
+   A. METHOD [IServiceCollection IServiceCollection.AddDistributedMemoryCache(Action<MemoryDistributedCacheOptions> SetupAction)] zaregistruje IN-MEMORY CACHE PROVIDER. CACHE PROVIDER uklada data v MEMORY a teda CACHE ENTRIES NIE SU PERSISTENT ani SHARED medzi WEB SERVERS.
+   B. METHOD [IServiceCollection IServiceCollection.AddDistributedSqlServerCache(Action<SqlServerCacheOptions> SetupAction)] zaregistruje SQL SERVER CACHE PROVIDER. CACHE PROVIDER uklada data v SQL SERVER DB a teda CACHE ENTRIES SU PERSISTENT a SHARED medzi WEB SERVERS.
+   C. METHOD [IServiceCollection IServiceCollection.AddDistributedRedisCache(Action<RedisCacheOptions> SetupAction)] zaregistruje REDIS CACHE PROVIDER. CACHE PROVIDER uklada data v REDIS DB a teda CACHE ENTRIES SU PERSISTENT a SHARED medzi WEB SERVERS.
+3. INTERFACE [IDistributedCache] reprezentuje CACHE PROVIDER. INTERFACE [IDistributedCache] definuje nasledujuce METHODS.
+   A. METHOD [byte[] Get(string Key)] zistuje ci CACHE ENTRY s NAME 'Key' sa nachadza v CACHE. Ak ano, tak vrati VALUE CACHE ENTRY. Ak nie, vracia VALUE [null].
+   B. METHOD [Task<byte[]> GetAsync(string Key, CancellationToken Token)] ASYNCHRONNE zistuje ci CACHE ENTRY s NAME 'Key' sa nachadza v CACHE. Ak ano, tak vrati VALUE CACHE ENTRY. Ak nie, vracia VALUE [null].
+   C. METHOD [void Set(string Key, byte[] Value, DistributedCacheEntryOptions Options)] nastavuje VALUE CACHE ENTRY. Pomocou PARAMETER 'Options' je mozne urcit LIFETIME CACHE ENTRY.
+   D. METHOD [Task SetAsync(string Key, byte[] Value, DistributedCacheEntryOptions Options, CancellationToken Token)] ASYNCHRONNE nastavuje VALUE CACHE ENTRY. Pomocou PARAMETER 'Options' je mozne urcit LIFETIME CACHE ENTRY.
+   E. METHOD [void Remove(string Key)] odstranuje CACHE ENTRY.
+   F. METHOD [Task RemoveAsync(string Key, CancellationToken Token)] ASYNCHRONNE odstranuje CACHE ENTRY.
+   G. METHOD [void Refresh(string Key)] vykonava REFRESH SLIDING LIFETIME danej CACHE ENTRY.
+   H. METHOD [Task RefreshAsync(string Key, CancellationToken Token)] ASYNCHRONNE vykonava REFRESH SLIDING LIFETIME danej CACHE ENTRY.
+   I. EXTENSION METHOD [string GetString(string Key)] zistuje ci CACHE ENTRY s NAME 'Key' sa nachadza v CACHE. Ak ano, tak vrati VALUE CACHE ENTRY. Ak nie, vracia VALUE [null].
+   J. EXTENSION METHOD [Task<string> GetStringAsync(string Key, CancellationToken Token)] ASYNCHRONNE zistuje ci CACHE ENTRY s NAME 'Key' sa nachadza v CACHE. Ak ano, tak vrati VALUE CACHE ENTRY. Ak nie, vracia VALUE [null].
+   K. EXTENSION METHOD [void SetString(string Key, string Value, DistributedCacheEntryOptions Options)] nastavuje VALUE CACHE ENTRY. Pomocou PARAMETER 'Options' je mozne urcit LIFETIME CACHE ENTRY.
+   L. EXTENSION METHOD [Task SetStringAsync(string Key, string Value, DistributedCacheEntryOptions Options, CancellationToken Token)] ASYNCHRONNE nastavuje VALUE CACHE ENTRY. Pomocou PARAMETER 'Options' je mozne urcit LIFETIME CACHE ENTRY.
+4. CLASS [DistributedCacheEntryOptions] umoznuje nastavit LIFETIME CACHE ENTRY. Ma nasledujuce MEMBERS.
+   A. PROPERTY [AbsoluteExpiration] TYPE [DateTimeOffset?] umoznuje nastavit ABSOLUTE EXPIRATION LIFETIME. ABSOLUTE EXPIRATION LIFETIME expiruje po dosiahnuti daneho ABSOLUTE TIME.
+   B. PROPERTY [AbsoluteExpirationRelativeToNow] TYPE [TimeSpan?] umoznuje nastavit RELATIVE EXPIRATION LIFETIME. ABSOLUTE EXPIRATION LIFETIME expiruje po dosiahnuti RELATIVE TIME (CURRENT_TIME+RELATIVE_TIME).
+   C. PROPERTY [SlidingExpiration] TYPE [TimeSpan?] umoznuje nastavit SLIDING EXPIRATION LIFETIME. SLIDING EXPIRATION LIFETIME exspiruje ak pocas doby SLIDING EXPIRATION LIFETIME nedojde k ziadnemu dotazu na CACHE ENTRY. SLIDING EXPIRATION LIFETIME CACHE ENTRY je vsak mozne predlzit volanim METHOD [void IDistributedCache.Refresh(string Key)], alebo METHOD [Task IDistributedCache.RefreshAsync(string Key, CancellationToken Token)].
+5. ASP.NET CORE podporuje RESPONSE CACHING, kde je do CACHE ulozeny kompletne cely CONTENT HTTP RESPONSE MESSAGE. Pre RESPONSE CACHING platia nasledujuce fakty.
+   A. Pri RESPONSE CACHING je do CACHE ulozeny kompletne cely CONTENT HTTP RESPONSE MESSAGE, a nie jednotlive CACHE ENTRIES, ako je tomu pri pouziti INTERFACE [IDistributedCache].
+   B. RESPONSE CACHING je implementovany ako SERVICE a MIDDLEWARE COMPONENT.
+   !!! C. Ak sa ma pouzit RESPONSE CACHING tak ENDOPINT pri generovani HTTP RESPONSE MESSAGE MUSI nastavit HTTP HEADER [Cache-Control], pretoze prave na zaklade obsahu tohto HEADER vykonava MIDDLEWARE COMPONENT CACHING.
+   !!!!! D. Pri testovani RESPONSE CACHING NIE JE MOZNE spravit REFRESH WEB PAGE, pretoze pri jej vykonani je IGNOROVANY HTTP HEADER [Cache-Control]. Testovanie je mozne iba tak, ze sa do HTML CONTENT prida REFERSH BUTTON a pri jeho stlaceni sa znova vygeneruje HTTP CONTENT, alebo sa vyberie z RESPONSE CACHE, ak HTTP CONTENT este nie je EXPIRED.
+6. Na povolenie RESPONSE CACHING je nutne vykonat nasledujuce zmeny v STARTUP FILE.
+   A. Volanim METHOD [IServiceCollection IServiceCollection.AddResponseCaching(Action<ResponseCachingOptions> ConfigureOptions)] sa prida SERVICE vykonavajuci CACHING HTTP RESPONSE MESSAGE CONTENTS.
+   B. Volanim METHOD [IApplicationBuilder IApplicationBuilder.UseResponseCaching()] sa prida MIDDLEWARE, ktory vykonava CACHING HTTP RESPONSE MESSAGE CONTENTS.
+!!! 7. ASP.NET CORE podporuje aj RESPONSE COMPRESSION. RESPONSE COMPRESSION sa aktivuje volanim nasledujucich METHODS v STARTUP CLASS.
+   A. Volanim METHOD [IServiceCollection IServiceCollection.AddResponseCompression()] sa prida SERVICE vykonavajuci COMPRESSION HTTP RESPONSE MESSAGE CONTENTS.
+   B. Volanim METHOD [IApplicationBuilder IApplicationBuilder.UseResponseCompression()] sa prida MIDDLEWARE, ktory vykonava COMPRESSION HTTP RESPONSE MESSAGE CONTENTS.
+8. ENTITY FRAMEWORK CORE je OBJECT RELATIONAL MAPPER LIBRARY, ktora umoznuje jednoduchu transformaciu LINQ QUERIES na SQL QUERIES. ENTITY FRAMEWORK CORE umoznuje aj INSERT, UPDATE a DELETE DATA RECORDS.
+9. ENTITY FRAMEWORK CORE poskytuje COMMAND LINE TOOL, ktorym je mozne vytvarat SCRIPTS, ktore su spustatelne z COMMAND LINE. ENTITY FRAMEWORK CORE COMMAND LINE TOOL definuje nasledujuce COMMANDS.
+   A. COMMAND [dotnet tool install --global dotnet-ef --version VERSION] umoznuje nainstalovat ENTITY FRAMEWORK CORE COMMAND LINE TOOL vo VERSION 'VERSION'.
+   B. COMMAND [dotnet tool update --global dotnet-ef --version VERSION] umoznuje vykonat UPDATE ENTITY FRAMEWORK CORE COMMAND LINE TOOL na VERSION 'VERSION'.
+   C. COMMAND [dotnet tool uninstall --global dotnet-ef] umoznuje odinstalovat ENTITY FRAMEWORK CORE COMMAND LINE TOOL.
+10. Na pracu s ENTITY FRAMEWORK CORE v ASP.NET CORE APPLICATIONS je nutne do PROJECT nainstalovat nasledujuce NUGET PACKAGES.
+   !!! A. PACKAGE [Microsoft.EntityFrameworkCore.Sqlite] je PACKAGE instalujuci ENTITY FRAMEWORK CORE pre DB SERVER [Sqlite]. Pre ine typy DB SERVERS ju nutne instalovat iny NUGET PACKAGE.
+   B. PACKAGE [Microsoft.EntityFrameworkCore.Tools] je PACKAGE instalujuci ENTITY FRAMEWORK CORE COMMAND LINE TOOL, ktory umoznuje vytvarat DB MIGRATIONS z COMMAND LINE.
+11. ENTITY FRAMEWORK CORE definuje 2 typy CLASSES.
+   A. DATA MODEL CLASSES. DATA MODEL CLASSES reprezentuju jednotlive TABLES v DB. Jedna sa o POCO OBJECTS, ktore mozu (ale NEMUSIA) byt oznacene pomocou ATTRIBUTES. Ich PROPERTIES reprezentuju COLUMNS v DB TABLE. DATA MODEL CLASSES mozu mat aj RELATIONSHIP PROPERTIES, ktore obsahuju vazbu na ine DATA MODEL CLASSES.
+   B. DATA CONTEXT CLASS. DATA CONTEXT CLASS reprezentuje CLASS, ktora je DERIVED z CLASS [DbContext] a ktora zabezpecuje pristup k DB. Jej PROPERTIES reprezentuju jednotlive DB TABLES. Pristupom k PROPERTIES DATA CONTEXT CLASS sa vykonavaju DB OPERATIONS nad DB.
+12. DATA CONTEXT CLASS je mozne ako SERVICE pridat do DEPENDENCY INJECTION FRAMEWORK nasledujucimi sposobmi.
+   A. Volanim METHOD INTERFACE [IServiceCollection], kde METHOD urcuje LIFETIME DATA CONTEXT CLASS.
+   B. Volanim METHOD [IServiceCollection IServiceCollection.AddDbContext<TContextType>(Action<DbContextOptionsBuilder> OptionsAction, ServiceLifetime ContextLifetime, ServiceLifetime OptionsLifetime)], kde TYPE [TContextType] je TYPE DATA CONTEXT CLASS.
+13. ENTITY FRAMEWORK CORE vykonava DB STRUCTURE UPDATES (zmeni sa struktura DB TABLES) pomocou DB MIGRATIONS. DB MIGRATIONS su implementovane ako C# CLASSES, ktore pri aplikacii vykonaju svoje CODE. DB MIGRATIONS su VERSIONABLE. DB MIGRATIONS je mozne vytvarat pomocou ENTITY FRAMEWORK CORE COMMAND LINE TOOL.
+   A. COMMAND [dotnet ef migrations add MIGRATION_NAME] vytvori novu DB MIGRATION s NAME 'MIGRATION_NAME'.
+   B. COMMAND [dotnet ef migrations remove] odstranuje poslednu pridanu DB MIGRATION.
+   C. COMMAND [dotnet ef database update MIGRATION_NAME] aplikuje DB MIGRATION s NAME 'MIGRATION_NAME' na DB.
+   D. COMMAND [dotnet ef database drop] odstrani DB.
+14. ASP.NET CORE APPLICATION je mozne ukoncit volanim METHOD [void IHostApplicationLifetime.StopApplication()].
+15. Volanim METHOD [DbContextOptionsBuilder DbContextOptionsBuilder.EnableSensitiveDataLogging(bool SensitiveDataLoggingEnabled)] je mozne povolit, alebo zakazat LOGGING SENSITIVE DATA ako su QUERY PARAMETERS.
+//----------------------------------------------------------------------------------------------------------------------
