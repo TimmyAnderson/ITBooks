@@ -1,0 +1,29 @@
+﻿//------------------------------------------------------------------------------
+1. Program demonstruje pouzitie APM v .NET.
+2. .NET poskytuje 2 standardne sposoby ako asynchronne realizovat kod.
+   A. APM je pattern, ktory pomocou implementacie dvojice BeginXXX() a EndXXX() metod realizuje asynchronne volanie funkcie.
+   B. Events je pattern vyuzivany najme v GUI, kde sa pouziva XXXAsync() nazvoslovie pre metodu realizaujucu asynchronnym sposobom svoj kod. Je to komplexnejsia a zlozitejsia metoda, pouzivana najme v GUI.
+3. Metoda BeginXXX() vracia objekt typu IAsynResult, ktory sa pouziva na ZISTENIE KEDY SKONCILO VYKONAVANIE ASYNCHRONNEJ METODY a ZAROVEN sluzi AKO PARAMETER do metody EndXXX().
+!!! 4. Metoda EndXXX() by sa mala volat pre dany IAsynResult IBA RAZ, inak hrozi, ze zlyha.
+!!! 5. Metoda EndXXX() bud vracia navratovu hodnotu asycnhronnej funkcie, alebo v pripade chyby vracia EXCEPTION.
+6. IAsynResult poskytuje 4 sposoby ako zistit, ze VOLANIE ASYNCHRONNEJ METODY SKONCILO.
+   A. Zavolat metodu EndXXX(), ktora ak asynchronna funkcia skoncila hned skonci, inaksie zablokuje volajuci thread a caka na jej skoncenie.
+   B. Pouzit IAsynResult.AsyncWaitHandle ako synchronizacny KO, ktory je signalizovany, ked je asynchronna metoda skoncena.
+   C. Periodicky pollovat hodnotu IAsynResult.IsCompleted, ktora vracia TRUE, ked metoda skonci.
+   D. Pouzit CALLBACK, registrovany v BeginXXX(), ktory sa vyvola, ked skonci vykonavanie asynchronnej metody.
+7. Na implementaciu APM je nutne vykonat nasledujuce kroky.
+   A. Implementovat CUSTOM IAsyncResult.
+   B. Implementovat BeginXXX().
+   C. Implementovat EndXXX().
+!!!!! 8. Delegates pouzivaju APM, avsak KEDZE SU POSTAVENE na Remoting, ich pouzivanie JE POMERNE NAROCNE NA VYKON.
+!!! 9. APM sa pouziva i na realizaciu ASYNCHRONOUS ASP.NET PAGES, ktore umoznuju aby rendering Page, ktora vyzaduje dlho trvajucu napriklad IO operaciu bola vykonavana ASYNCHRONNE a NEBLOKOVALA ASP.NET WORKER THREAD.
+10. Pouzitie ASYNCHRONOUS ASP.NET PAGES je nasledovne.
+   A. Na Page nastavim v PAGE direktive Async na TRUE.
+   B. Zavolam AddOnPreRenderCompleteAsync(), ktorej dam referenciu na BEGIN a END TASK.
+   C. BEGIN TASK je klasicka BeginXXX() metoda, ktora ZACNE ASYNCHRONNU OPERACIU.
+   D. END TASK je klascika EndXXX() metoda, ktora UKONCI ASYNCHRONNU OPERACIU.
+   E. BEGIN TASK je volany pocas ralizacie PreRender() a NASLEDNE sa VYKONACVANIE PAGE UKONCI, pretoze je zaregistrovana ASYNCHRONNA OPERACIA.
+   !!! F. ASP.NET ako CALLBACK objekt PODHODI svoj CUSTOM CALLBACK, ktory je vyvolany, ked skonci ASYNCHRONNA OPERACIA.
+   !!! G. Pocas realizacie ASYNCHRONNEJ OPERACIE je ASP.NET THREAD UVOLNENY a moze byt pouzity na spracovanie INEJ PAGE.
+   H. Po skonceni ASYNCHRONNEJ OPERACIE je zavolany END TASK, ktory DOKONCI RENDERING ASP.NET.
+//------------------------------------------------------------------------------

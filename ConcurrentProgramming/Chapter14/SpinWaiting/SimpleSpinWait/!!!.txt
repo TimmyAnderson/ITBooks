@@ -1,0 +1,10 @@
+﻿//------------------------------------------------------------------------------
+1. Spin Waiting je technika pri ktorej sa klasicky lock nahradi algoritmom, ktory najprv niekolko malo cyklov caka na splnenie podmienky, ktoru lock vyzaduje a az ked sa dany pocet cyklov naplni a podmienka nie je splnena dochadza k skutocnemu WAITING.
+2. Spin Waiting AK JE CRITICKA SEKCIA VELMI KRATKA (50 cyklov - pristup k polozke pameti, NIE VSAK alokacia pamete ci volanie virtualnej metody), MOZE ZABRANIT REALIZACI SKUTOCNEHO WAITING, cim NEDOCHADZA k ZBYTOCNEMU CONTEXT SWITCH.
+3. Na realizaciu Spin Waiting je VHODNE vykonat nasledujuce kroky.
+   A. Na realizaciu Pouzivat API YieldProcessor(), alebo Thread.Yield(), ktore emituje cyklus s operaciami NOP, alebo YIELD, ci PAUSE, v zavislosti od typu CPU. TIETO INSTRUKCIE ZABEZPECUJU, ze EXECUTION UNIT daneho CPU je VOLNA a MOZE BYT VYUZITA INYMI LOGICKYMI CPU (ak je EXECUION UNIT zdielana viacerymi logickymi CPU - pri HT Hyper Threading procesoroch).
+   B. Spin Waiting NEMUSI v KAZDEJ ITERACII TESTOVAT PODMIENKU, pretoze to vedie K TRAFFIC MEDZI CPU a Main Memory. Je mozne implementovat algoritmy, ktore budu postupne predlozvat cas citania stavu podmienky exponencialne, resp. citat podmienku naohde kazdych X iteracii.
+   C. Je VHODNE po skonceni Waiting fazy - kedy ani po maximalnom pridelenom pocte iteracii nedoslo k spleniu podmienky pouzit SwitchToThread(), ktory EXPLICITNE si VYZIADA CONTEXT SWITCH, kedze AKTUALNY THREAD uz je vo WAIT a je ZBYTOCNE MU PRIDELOVAT DALSIE cykly CPU.
+   D. Alternativou k SwitchToThread(), ktora NEBERIE DO UVAHY VSETKY THREADS je pouzit Sleep(0), ktora sposobi Context Switch IBA, ked thread s VYSSOU PRIORITOU ZIADA o CPU, alebo Sleep(1), ktory sposobi, ze I THREAD S NIZSOU PRIORITOU dostane moznost vykonat svoj kod.
+   !!! E. Pomer medzi SwitchToThread(), Sleep(0) a Sleep(1) je EMPIRICKA ZALEZITOST rozdielna vzdy pre dany algoritmus.
+//------------------------------------------------------------------------------

@@ -1,0 +1,13 @@
+//-----------------------------------------------------------------------------
+1. Program demonstuje pouzitie Critical Sections - CS.
+2. CS su spravidla EFEKTIVNEJSIE ako pouzitie MUTEXES, kedze maju implementovane dodatocne algoritmy, ktorych cielom je znizit pocet pouzivani KO, pocet Context Switches a Waits.
+3. CS zapuzdruju funkcionalitu Mutexes tym, ze nad ne postavia optimalizacnu vrstvu, ktora minimalizuje pouzivanie KO iba na pripady, ked je ich pouzivanie absolutne nutne.
+4. CS, ktore sluzia na MUTUAL EXCLUSION velkych casti kodu su spravidla realizovane ako STATIC FIELDS a naopak tam, kde potrebujem vecsiu granularitu locks, definujem CS na urovni MEMBER FIELDS.
+!!! 5. Struktuca CRITICAL_SECTION, ktoru alokuje CS po vytvoreni SA NESMIE PRESUVAT v PAMETI, pretoze ju CS mechanizmus priamo pouziva. Ak by sa to stalo program sa STAVA NESTABILNYM.
+!!! 6. Inicializacia CS sa moze robit cez InitializeCriticalSection(), InitializeCriticalSectionEx(), alebo InitializeCriticalSectionAndSpinCount() a odstranovanie sa robi pomocou DeleteCriticalSection(). InitializeCriticalSection() ak nema dost pamete na alokaciu KO VRATI OUT_OF_MEMORY_EXCEPTION, zatial co InitializeCriticalSectionEx() vracia FALSE.
+7. Vstup do CS sa robi pomocou EnterCriticalSection() a vystupenie z CS pomocou LeaveCriticalSection(). Aj ked tieto metody nevracaju navratovu hodnotu v pripade Windows 2000 mohla EnterCriticalSection(), kedze KO, ktory interne pouzivala vytvarala az pri jeho realnom pouziti a nie volani EnterCriticalSection(), co v pripade maleho mnozstva pamete sa nemuselo podarit.
+!!! 8. Pomocou metody InitializeCriticalSectionAndSpinCount() je mozne realizovat SPINING. Spining je optimalizacna metoda, ktora funguje tak, ze pri volani EnterCriticalSection() sa NESPRAVI HNED WAIT (co by viedlo k Context Switch a pri ukonceni Wait k druhemu Context Switch), ale PRESNE DEFINOVANY CPU CYKLOV (definovane v InitializeCriticalSectionAndSpinCount()) sa caka ci sa CS neuvolni. Ak sa uvolni, tak sa NEMUSI ROBIT CS. AK SA VSAK NEUVOLNI, tak JE TO SPOMALENIE. Preto presnu hodnotu je mozne definovat iba experimentalne. Casto byva > 1500. MS doporucuje 4000.
+!!!!! 9. SPINING funguje IBA NA PC s VIACERO CPU, kedze pri 1 CPU samozrejme NEMA ZMYSEL - nie je druhy CPU, ktory by realizoval iny Thread, ktory drzi locknutu CS a uvolni ju. Pri 1 CPU VZDY MUSI DOJST ku Context Switch.
+10. Pomocou funkcie TryEnterCriticalSection() mozem zistit ci je CS locknuta a AK NIE JE TAK SA HNED AJ LOCKNE. To ci doslo k LOCK, alebo nie je signalizovane navratovou hodnotou.
+!!!!! 11. CS pouziva na pozadi AutoResetEvent.
+//-----------------------------------------------------------------------------

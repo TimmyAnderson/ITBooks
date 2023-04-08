@@ -1,0 +1,51 @@
+﻿//------------------------------------------------------------------------------
+1. Program demonstruje pouzitie TP v Managed prostredi.
+2. .NET pouziva 2 TP. Jedna je na realizaciu IO Completition Ports a druha zas na realizaciu Work Items, Timers a Registered Waits.
+3. TP su Process Wide, teda obsluhuju VSETKY App Domains v procese.
+4. Pri spusteni procesu je pocet Threads rovny 0. .NET si v pripade potreby sam manageuje, kedy vytvori a kedy zlikviduje Thread v TP.
+!!! 5. Minimalny a maximalny pocet Threads PRE WorkItem TP a IO Completition Ports TP je mozne nastavit pomocou ThreadPool.SetMinThreads() a ThreadPool.SetMaxThreads().
+6. Default pocet Threads pre WorkItems TP je 250 'per processor' a pre IO Completition Ports TP je to 1000.
+!!!!! 7. Vytvaranie novych Threads v TP sa deje iba v intervale KAZDYCH 500 ms. Je to umyselne obmedzenie .NET.
+
+
+Work Items.
+
+1. Work Items je mozne definovat bud pomocou QueueUserWorkItem(), alebo UnsaveQueueUserWorkItem(). Truha metoda NEPRENASA ExecutionContext do Threadu TP, ked sa vykonava Callback co moze potencialne viest k security problems, na druhej strane je asi o 30 percent rychlehsia. Je vhodna v uzavretom prostredi s Full Trust mode.
+2. ExecutionContext pri QueueUserWorkItem() je zavedeny do Threadu z TP pred startom Callback a po skonceni Callback vrateny na povodny ExecutionContext.
+!!! 3. CurrentCulture, CurrentUICulture ci CurrentPrincipal NIE SU automatikcy prenasane do Thredu TP a MUSIA byt prenesene MANUALNE ak ich chcem vyuzivat.
+!!! 4. Ak kod v Callback hodi Exception, tak cely program skonci.
+5. Ak program sa ukoncuje, tak kedze vsetky Threads TP bezia ako Backgroud Threads, tak sa OKAMZITE ZLIKVIDUJU.
+
+
+IO Completition Ports.
+
+1. VSETKY ASYNCHRONNE IO operacie v .NET su realizovane pomocou IO Completition Port, ktory sa vyuziva na POZADI na ich realizaciu.
+!!! 2. Ak chcem VSAK pouzit IO Completition Ports PRIAMO, potom musim pouzit UNSAFE triedu Overlapped.
+3. Postup pri programovani IO Completition Ports v .NET vyzera nasledovne.
+   A. Pomocou P/Invoke zavolam funkciu CreateFile(), kde nastavim priznak FILE_FLAG_OVERLAPPED.
+   B. Pouzijem ThreadPoll.BindHandle() na BINDING IO Completition Port k TP.
+   !!! C. Pripravim si NativeOverlapped z triedy Overlapped pomocou metody Overlapped.Pack(), ktora VYTVORI PINNED POINTER, ktory nemoze byt mechanizmom GC presunuty na ine miesto v pameti. Zaroven pri volani Pack() definujem .NET CALLBACK METODU, ktora sa vyvola, pri SKONCENI IO OPERACIE.
+   D. Vytvoreny NativeOverlapped objekt poslem cez P/Invoke do prislusnej WIN32 API IO funkcie (napriklad ReadFile()), ktora nasledne bezi V OVERLAPPED rezime.
+   E. Po skonceni WIN32 API funkcie (ReadFile()) sa vyvola .NET CALLBACK zaregistrovany cez Overlapped.Pack() a tu MOZEM SPRACOVAT NACITANE DATA.
+   F. Na konci CALLBACK MUSIM UVOLNIT PINNED POINTER pomocou Overlapped.Unpack() a nasledne volat Overlapped.Free() na vymazanie pamete.
+
+   
+Timers.
+
+1. Na realizaciu Timers je v System.Threading trieda Timer, ktora v konstruktore umoznujde definovat CALLBACK, ako aj 'DueTime' - cas kedy sa prvy krat spusti a 'Period', ktora urcuje cas rekurentneho opakovania CALLBACK.
+2. Trieda Timer ma metodu Change(), ktorou mozem zmenit 'DueTime' a 'Period' a po zmene sa ZNOVA spusti Timer podla 'DueTime' a nasledne re rekurentne spusta callbkac podla 'Period'.
+!!! 3. Zastavit Timer je mozne nasledovne.
+   A. Pomocou metody Change() stanovit za 'DueTime' hodnotu -1.
+   B. Pomocou metody Dispose() zlikvidovat instanciu Timer.
+!!! 4. Timer.Dispose() ma 2 pretazene verzie.
+   A. Dispose() - zrusi Timer, ale aktualny Callback bezi dalej.
+   B. Dispose(WaitHandle) - zrusi Timer a KED SKONCI CALLBACK, tak signalizuje WaitHandle.
+   
+   
+Registered Waits.
+
+1. Registered Waits su implementovane podobne na zaklade implementacie Legacy TP. Teda 63 KO je vzdy zgrupenych do JEDNEHO THREADU, ktory vykonava nad nimi WAIT a ked niektory z nich je signalizovany, tak sa spusti CALLBACK.
+2. Registracia Registered Wait sa robi pomocou ThreadPool.RegisterWaitForSingleObject(), alebo ThreadPool.UnsafeRegisterWaitForSingleObject(). Druha metoda NEPRENASA ExecutionContext do TP Threadu. Obe metody vracaju objekt RegisteredWaitHandle.
+3. Objekt RegisteredWaitHandle je mozne pouzit na ODREGISTROVANIE Registered Wait pomocou metody Unregister(). Tato metoda ma za parameter WaitHandle, ktory ked nastavim, tak je signalizovany ked AKTUALNE BEZIACI CALLBACK daneho Registered Wait skonci.
+!!! 4. KEDZE Registered Wait pri nastavenom priznaku 'ExecuteOnlyOnce' OKAMZTIE po signalizacii KO, ho ZNOVA ZAREGISTUJU, tak v pripade ManualResetEvent by to znamenalo OKAMZITE VOLANIE CALLBACK - ktory by sa tak cyklicky neustale volal. Preto je treba v pripade ManualResetEvent nastavit 'ExecuteOnlyOnce' na TRUE.
+//------------------------------------------------------------------------------

@@ -1,0 +1,69 @@
+//-----------------------------------------------------------------------------
+1. Porgram demonstruje pouzitie synchronizacnych Kernel Objects (KO).
+2. Existuje 5 KO pouzitelnych na synchronizaciu a to: Mutext, AutoResetEvent, ManualResetEvent, Semaphore a WaitebleTimers. Okrem WaitebleTimers maju ostatne priamu podporu aj .NET. WaitebleTimers ju ma nepriamo cez thread pool.
+!!! 3. KO je potrebne uzatvorit cez CloseHandle().
+4. KO mozu byt v nesignalizovnom a signalizovanom stave. Ak su v nesignalizovanom stave a a Threade zavolam WaitXXX() funkciu, tak sa Thread ZABLOKOVANY a je VYRADENY z TABULKY THREAD SCHEDULERA. Ak je KO v signalizovanom stave a Trhead nanho caka, tak je zaradeny spet do TRHEAD SCHEULER TABLE a moze byt spusteny.
+!!! 5. Ak caka VIACERO THREADS na TEN ISTY KO, tak tieto Threads su zardene do SPECIALNEJ QUEUE, ktory TRHEAD SCHEDULER konzultuje pri spustani Threads, tak aby sa kazdemu WAITING THREADU co najspravodlivejsie dostalo moznost vykonat svoj kod. Toto FIFO nie je 100% vzdy pouzite, priorita sa mozu zmenit, ale v zasade je pouzivany na co najvyvazenejsie pridelovanie Threads.
+6. Scheduler obvykle Threadu, ktory sa prebudi z WAITING state prideli docasne vyssiu prioritu, aby sa skor vykonal.
+7. WaitXXX() funkcii je velke mnozstvo. Existuju specializovane funkcie pre COM na citanie MESSAGE QUEUE.
+!!! 8. NET WaitXXX() funkcie sa AUTOMATICKY STARAJU O VYBER MESSAGES z MESSAGE QUEUE a ja sa o tom v .NET kode STARAT NEMUSIM.
+!!!!! 9. Okrem KO je mozne na scynchronizaciu pouzit aj USER-MODE synchronizacne objekty ako napriklad CRITICAL SECTION, ktore su postavene na KO, ale SPECIALNE OPTIMALIZOVANE, takze ich pouzitie je spravidla efektivnejsie aj ked nemaju tak obsiahlu funkcionalitu ako synchronizacne KO.
+!!! 10. WaitXXX() funkcie pri volani VZDY OTESTUJU ci KO, na ktore cakaju uz nie su v SIGNALED STATE a ak ANO, tak OKAMZITE SA UKONCIA, BEZ TOHO ABY DOSLO KU CONTEXT SWITCH.
+!!! 11. WaitXXX() funkcie maju aj verziu s pretazenym paramterom 'bAlterable', ktory ak nastavim na TRUE (vo verziach, kde nie je ma implicitnu hodnotu FALSE) potom WaitXXX() MOZE BYT UKONCENA aj POMOCOU VYVOLANIA APC (Asynchronous Procedure Call). V tomto pripade WaitXXX() vracia WAIT_IO_COMPLETITION - BEZ TOHO, aby NIEKTORY z KO MUSEL BYT SIGNALIZOVANY.
+!!!!! 12. Ak 'bAlertable' je FALSE, tak sa APC POCAS WaitXXX() NEVYKONAJU. Ak je TRUE, tak sa APC VYKONAJU AUTOMATICKY (NEMUSIM TO NIJAKO PROGRAMOVAT) a NADOVAZOK sa WaitXXX() OKAMZITE UKONCI s navratovou hodnotou WAIT_IO_COMPLETITION.
+!!! 13. NAJLEPSOU reakciou na vratenie WAIT_IO_COMPLETITION z WaitXXX() je ZNOVA VOLAT WaitXXX(). Samozrejme je treba davat pozor na KOREKTNUUPRAVU TIMEOUT.
+14. Threads, ktore vlastnia MESSAGE QUEUE MUSIA spracovavat Messages. Window je mozne vytvorit bud pomocou CreateWindow(), alebo pri pouzivani COM volanim CoInitialize().
+15. V pripade, ze v Threade s MESSAGE QUEUE chcem realizovat WAIT, tak je potrebne pouzit niektoru z dvojice MsgWaitXXX() funkcii, ktore NA ROZDIEL od beznych WaitXXX() funkcii sa ukoncia AJ KED SA v MESSAGE QUEUE asociovanej s Threadom VYSKYTNE NOVA MESSAGE. To je indikovane navratovou hodnotou, ktora sa rovna OBJECT_WAIT_0+dwCount, kde 'dwCount' je pocet HANDLES na ktore caka MsgWaitXXX().
+16. Zasielanie Messages do MESSAGE QUEUE je standardnym riesenim synchronizacie v COM. COM vyuziva Message Queue ak chce synchronizovat volanie metod COM objektu v DVOCH APARTMENTS. Vtedy Proxy COM objektu zasle do ineho apartmentu MESSAGE a Thread v tomto apartmente ju MUSI VYBRAT a SPRACOVAT zaslanim do SKRYTEHO RPC WINDOW. V nom sa realizuje VOLANIE METODY COM OBJEKTU. Vysledok sa potom zasiela TYM ISTYM SPOSOBOM, ALE OPACNE. Tento model synchronizacie vyzaduje PERMANENTNE CITANIE Message Queue - teda aj pocas toho, ked je Thread vo WAIT STATE.
+!!! 17. Nevyhodou MsgWaitXXX() je, ze v rezime WAIT ALL sa ukonci iba ak VSETKY Handles su signalizovane a ZAROVEN v MESSAGE QUEUE je NOVA MESSAGE. To zvycajne nie je najcastejsi pripad pouzitia.
+!!! 18. COM poskytuje CoWaitForMultipleHandle(), ktora je podobna MsgWaitXXX(), ale ZAROVEN VYCITAVA a SPRACUVAVA Messages zaslane do MESSAGE QUEUE. Nespracuvava vsetky Messages, iba tie, ktore sa tykaju COM.
+!!!!! 19. Kazdy Thread ma asociovanu APC QUEUE do, ktorej mozu LUBOVLNY THREAD uklada APC Entries, co je dvojica SMERNIKA NA FUNKCIU a DWORD PARAMETRA. V PRIPADE, ze Thread je v ALERTABLE WAIT STATE (volal WaitXXX() s bAlertable==TRUE) a APC QUEUE OBSAHUJE NEJAKE ENTRIES, tak SU TIETO ENTRIES VYKONANE (volana funkcia Entry so zadanym parametrom) a ZAROVEN JE WaitXXX() PRERUSENA s navratovou hodnotou WAIT_IO_COMPLETITION. Volania APC Entries su vo FIFO poradi.
+20. APC existuje v DVOCH MODOCH: Kernel Mode a User Mode. Takmer vzdy sa vyuziva v Kernel Mode OS. V User Mode je najcastejsim pouzitim v ASYNCHRONOUS I/O operacich.
+21. V User Mode mozem ulozit do APC QUEUE novu Entry pomocou QueueUserAPC().
+!!! 22. APC sa v User Mode NEDOPORUCUJE POUZIVAT, kedze volania APC funkcii prichadzaju pocas WAIT stavu a kod, ktory je v nich ak je zle naprogramovany moze polahky sposobit STATE CORRUPTION, ci DEADLOCK.
+23. Funkcia SingalObjectAndWait() umoznuje ATOMICKY signalizovat jeden KO a zaroven cakat na iny WO. Cakanie sa spusti PRE signalizaciou a atomicky.
+24. Stav daneho KO, teda ci je alebo nie je signalizovany sa da zistit vo WonDbg pomocou prikazu '!handle 0x[CisloHandle] f'.
+
+KO v .NET.
+
+1. .NET poskytuje okrem Waiteble Timers PRIAMU podporu pre vsetky ostatne KO.
+2. Vsetky KO su zdedene z WaitHandle, ktora implementuje metodu WaitOne() ako aj staticke metody WaitAny() a WaitAll().
+!!! 3. WaitXXX() metody v .NET AUTOMATICKY realizuju MsgWaitXXX() funkcionalitu a teda NIE JE POTREBNE EXPLICITNE VYBERAT Messages z Message Queue. .NET WaitXXX() funkcie to robia same.
+4. .NET podporuje volanim funkcie Thread.Interupt() prerusenie Threadu, ktory je vo WaitXXX() funkcii. Tato funkcia v pripade volania Interupt() vrati EXCEPTION ThreadInteruptedException. Tato technika ma vsak viacere problemy a NEMALA BY SA POUZIVAT.
+
+Mutexy.
+
+1. Mutex umoznuje exkluzivny pristup ku kritickej skecii medzi viacerymi Threads v jednom ci viacerych procesoch (ak je Mutex pomenovany).
+2. Mutex je vytvoreny cez CreateMutex(), alebo OpenMutex() v pripade, ze chcem otvorit existujuci POMENOVANY Mutex, ktory vytvoril bud ten isty, alebo iny proces.
+3. Ziskanie Mutexu sa robi pomocou WaitXXX() funkcii a uvolnenie pomocou ReleaseMutex().
+!!! 4. Ak Thread je ukonceny BEZ TOHO ABY UVOLNIL MUTEX, takyto Mutex sa stane ABANDONED. Tento stav je inym Threadom pri pokuse o volanie WaitXXX() indikovany navratovou hodnotou WAIT_ABANDONED.
+!!!!! 5. ABANDONED MUTEX PREJDE NORMALNE cez WaitXXX() - teda JE SIGNALIZOVANY, a mozem s nim DALEJ PRACOVAT. Problem je vsak, ze THREAD, ktory Mutex NEUVOLNIL mohol narusit stav v kritickej sekcii a preto si je treba na tuto situciu dat pozor a pokracovat vo vykone IBA ak mam ISTOTU, ze Thread, ktory sposobil ABANDONED MUTEX NENARUSIL STAV SYSTEMU - co je v praxi dost tazko identifikovat.
+
+Semafory.
+
+1. Semafor je synchronizacny objekt, ktory ma COUTNER. Ak tento COUNTER je >0, tak je semafor signalizovany, ak je ==0, tak je NESIGNALIZOVANY.
+!!! 2. Semafor NA ROZDIEL OD MUTEX, NIE JE VLASTNENY THREADOM, takze nemoze nastat ABANDONED STATE.
+3. Semafor moze byt pomenovany a plati o jeho pomenovani to iste vo v pripade Mutexes.
+4. Dekrementacia COUTER sa robi pomocou WaitXXX() funkcii a hodnota moze byt dekrementovana IBA o 1. Inkrementacia sa robi pomocou ReleaseSemaphore() a MOZE BYT VYKONANA aj o VIAC AKO 1.
+5. Semafor ma aj maximalnu hodnotu, ktora ked sa dosiahne, tak semafor sa uz viac NEINKREMENTUJE.
+!!! 6. Semafor NEROBI MUTUAL EXCLUSION - IBA AK MA HODNOTU 0-1. Ak ma VYSSIU, tak NEZABEZPECUJE MUTUAL EXCLUSION.
+
+Events.
+
+1. Windows a .NET podporuju AutoResetEvent a ManualResetEvent, ktore sluzia na komunikaciu medzi viacerymi Threads, resp. procesmi ak su Events pomenovane.
+2. Ak je AutoResetEvent v SIGNALIZOVANOM stave, tak sa prebudi PRAVE JEDEN THREAD z tych, ktore nan cakaju a Event sa HNED PREPNE DO NESIGNALIZOVANEHO STAVU.
+3. Ak je ManualResetEvent v SIGNALIZOVANOM stave, tak sa prebudia VSETKY THREADS, ktore nan cakaju a to az do doby pokym pomocou funkcie ResetEvent() neprepnem Event do NESIGANLIZOVANEHO STAVU.
+!!! 4. V Managed kode su obe triedy AutoResetEvent a ManualResetEvent zdedene z EventWaitHandle. AJ EventWaitHandle JE MOZNE VYTVORIT (NIE je to ABSTRAKTNA TRIEDA) a jeho konstuktory AKO JEDINE PODPORUJU vytvorenie POMENOVANEHO EVENTU.
+!!! 5. Native funkcia PulseEvent() by sa nemala vobec pouzivat kedze lahko moze sposobit DEAD LOCK, resp. ine problemy a to napriklad vtedy, ak k Threadu, ktory caka na Event je asociovany APC a PulseEvent() sa skor stihne prepnut do nesignalizovaneho stavu ako sa vykona APC a WaitXXX() sa tak NEUKONCI.
+6. Threads cakajuce na Events potom co su signalizovane MAJU ZVYSENU PRIORITU o 1. Ak napisem nevhodny kod, tak to moze viest k zbytocnym Context Switches a tym padom spomaleniu systemu.
+
+Waitable Timers.
+
+1. Waitable Timers mozu byt nakonfigurovane, aby sa dostali do SIGNALED STATE v PRESNE STANOVENOM CASE a to ci uz relativnom, alebo absolutnom.
+2. Waitable Timers NIE SU PODPOROVANE v Managed prostredi, iba v Native prostredi.
+!!! 3. Waitable Timers sa vyuzivaj na implementaciu Thread Pools, ktore su implementovane ako v Managed, tak aj Native prostredi.
+4. Waitable Timer sa vytvara pomocou CreateWaitableTimer() a moze byt MANUALNY alebo AUTOMATICKY a mat priradene meno, cim je pouzitelny aj v ramci viacerych procesov.
+!!! 5. Nastavenie CASU a SPUSTENIE TIMERU sa robi pomocou SetWritableTimer(). Tato funkcia umoznuje aj RESETOVAT TIMER ak pouzivam manualne resetovany Timer.
+!!! 6. Ak parameter pre stanovanie EXPIRACNEHO CASU sa pouziva typ LARGE_INTEGER, ktory ak ma KLADNU HODNOTU, tak urcuje ABSOLUTNY CAS, kedy bude expirovat Timer a ak ma ZAPORNU HODNOTU, tak urcuje RELATIVNY CAS, kedy bude Timer expirovat. RELATIVNY CAS sa pocita od volania SetWaitableTimer().
+7. Timer umoznuje aj nastavit periodicitu s akou sa bude SINGALIZOVAT potom ako PO PRVY KRAT nastal STANOVENY CAS. Periodicita sa udava v parametri 'lPeriod' funkcie SetWaitableTimer().
+//-----------------------------------------------------------------------------

@@ -1,0 +1,16 @@
+//------------------------------------------------------------------------------
+1. Program demonstruje pouzitie Legacy TP.
+2. Pomocou funkcie QueueUserWorkItem() mozem zaradit do TP novy WI, ktory bude v niektorom z threadov TP vykonany.
+3. Timers v Legacy TP su implementovane nasledovne.
+   A. Timers je mozne zlucovat do roznych TIMERS QUEUE, ktore sposobia, ze jednotlive Timers zaradene do odlisnych Timers Queue budu na sebe NEZAVISLE. TP asociuje JEDEN THREAD s JEDNYM TIMER QUEUE.
+   B. Timers Queue sa vytvara pomocou CreateTimerQueue().
+   C. Timer sa vytvara pomocou CreateTimerQueueTimer(), kde mozem specifikovat aj vytvorenu Timer Queue. Podobne ako vo Vista TP aj tu je mozne definovat rekurenciu, aj ked cas je mozne definovat iba relativne.
+   D. Odstranit Timer je mozne pomocou DeleteTimerQueueTimer(), ktoremu okrem ineho je mozne zaslat i HANDLE, ktory sa SIGNALIZUJE, ked dany Timer CALLBACK SKONCI svoju cinnost. Moze to byt bud INVALID_HANDLE_VALUE a vtedy DeleteTimerQueueTimer() neskonci pokym neskonci Timer CALLBACK, alebo HANDLE napriklad na Event, ktory sa signalizuje az skonci Timer CALLBACK.
+   E. Odstranit Timer Queue je mozne pomocou DeleteTimerQueueEx(), ktoremu okrem ineho je mozne zaslat i HANDLE, ktory sa SIGNALIZUJE, ked dany vsetky Timers CALLBACKS SKONCIA svoju cinnost. Moze to byt bud INVALID_HANDLE_VALUE a vtedy DeleteTimerQueueTimerEx() neskonci pokym neskoncia Timer CALLBACKS, alebo HANDLE napriklad na Event, ktory sa signalizuje az skoncia vsetky Timers CALLBACKS.
+4. IO Completition Ports je mozne realizovat pomocou BindIoCompletitionCallback(). NEVYHODOU je, ze NEMOZEM PRIAMO (je na to finta v knihe) v CALLBACK volat OPAKOVANE tuto funkciu. Je to sposobene tym, ze CALLBACK je registrovany IBA POKIAL THREAD NESKONCI, potom je CANCELLED. No a Threads v TP mozu byt ukoncene polahky - ak pretecie 'Activity Timeout' - standardne 10 sekund.
+5. Registred Waits v Legacy TP su implementovane nasledovne.
+   A. Registred Waits sa vytvaraju pomocou RegisterWaitForSingleObject(). Tato funkcia ma parameter 'phNewWaitObject', ktory NIE JE BEZNY HANDLE a NESMIE SA NAN APLIKOVAT CloseHandle(). Sluzi iba ako identifikacia do UnregisterWait() a UnregisterWaitEx().
+   B. Odregistrovanie Registred Waits sa robi pomocou UnregisterWait() a UnregisterWaitEx(). Funkcie ZLIKVIDUJU VSETKY Registred Waits v Queue, ale NIE AKTUALNE BEZIACI Registred Wait. UregisterWaitEx() umoznuje definovat dalsi HANDLE, ktory sa SIGNALIZUJE, ked aj prave vykovanany Registred Wait SKONCI.
+   C. Standardne Registred Wait OKAMZITE po skonceni callback ZNOVA ZAREGISTRUJE Registred Wait. To je mozne zrusit priznakom WT_EXECUTEONLYONCE.
+6. Pomocou makra WT_SET_MAX_THREADPOOL_THREADS je mozne nastavit maximalny pocet Threads. Toto vsaj nefunguje na OS Vista, kde sa maximalny pocet Threads v TP NEDA NASTAVIT.   
+//------------------------------------------------------------------------------

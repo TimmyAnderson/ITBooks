@@ -1,0 +1,20 @@
+//-----------------------------------------------------------------------------
+1. Program demonstuje pouzitie Conditiona Variables - CV, ktore su implementovane vo Viste.
+2. CV funguju ASOCIOVANE BUD s CRITICAL SECTION, alebo SLIM READER WRITER LOCKS. CS, resp. SRWL MUSIM EXPLICITNE DODAT danej CV. CV su realizovane ako KEYED EVENTS.
+!!!!! 3. CV sa NEPOUZIVAJU na LOCKING DAT, ale na RIADENIE BEHU PROGRAMU.
+4. CV sa pouzivaju v situacii, ked potrebujem vstupit do CS aby som zistil, ci dana nejaka konkretna podmienka bola splnena a ak ano mozem vykonavat DALEJ KOD v tejto CS. Ak NIE je podmienka splnena, tak CS sa UKONCI a CAKA sa na SPLNENIE PODMIENKY inym threadom. Na EFEKTIVNU realizaciu tohto problemu sluzi prave CV.
+5. CV poskytuje nasledujuce funkcie na pracu.
+   A. SleepConditionVariableCS() / SleepConditionVariableSRW() - funkcie realizuju ATOMICKY UVOLNENIE CS/SRWL a zaroven NASTAVIA WAIT na CV.
+   B. WakeConditionVariable() - UVOLNI CV pre 1. CAKAJUCI THREAD.
+   C. WakeAllConditionVariable() - UVOLNI CV pre VSETKY CAKAJUCE THREADS.
+6. Princip pouzitia je nasledovny.
+   A. Vstupim do CS/SRWL.
+   B. Otestuje nejaku podmienku (pozor to NIE je CV) ci je splnena a algioritmus moze pokracovat dalej vo vykonavani kodu v CS/SRWL.
+   C. Ak podmienka NIE JE SPLNENA - potom sa pouzije SleepConditionVariableCS()/SleepConditionVariableSRW() na UKONCENIE CS/SRWL a ATOMICKY WAIT na CONDITION_VARIABLE (CV) PREMENNU. Tato operacia sa robi ATOMICKY a teda NEMOZE DOJST k nejakemu pulzu medzi procesom UVOLNENIA CS/SRWL a WAIT na CV.
+   D. Teraz je CS/SRWL UVOLNENA ale THREAD CAKA vo funkcii SleepConditionVariableCS()/SleepConditionVariableSRW().
+   E. INY THREAD ak dokaze splnit CV (teda nastavne situacia, kedy logika programu umoznuje prvemu threadu pokracovat vo vykonavani) tak UVOLNIM CV volanim WakeConditionVariable()/WakeAllConditionVariable().
+   F. Thread, ktory je vo WAIT na CV UKONCI WAIT a ATOMICKY LOCKNE CS/SRWL - AK je CS/SRWL UVOLNENA. Ak NIE JE potom spravi WAIT - TENTORAZ ale na CS/SRWL, az kym sa CS/SRWL NEUVOLNI.
+   G. Algoritmus v tomto Threade moze pokracovat dalej az kym neukonci CS/SRWL.
+!!!!! 7. Aj ked SleepConditionVariableCS() / SleepConditionVariableSRW() poskytuju TIMEOUT, tento timeout sa tyka iba CAKANIA na CV. Po uvolneni CV vsak tieto funkcie este MUSIA CAKAT na UVOLNENIA CS/SRWL a TENTO TIMEOUT sa NEDA PROGRAMOVO NASTAVIT.
+!!! 8. Rekurzia je sice povolena, ale treba si na nu dat pozor, pretoze SleepConditionVariableCS() / SleepConditionVariableSRW() urobia IBA RAZ RELEASE na CS/SRWL a ak nahodou som v rekurzii a teda nad CS/SRWL je viacnasobny LOCK velmi lahko mozem skoncit v DEADLOCK.
+//-----------------------------------------------------------------------------

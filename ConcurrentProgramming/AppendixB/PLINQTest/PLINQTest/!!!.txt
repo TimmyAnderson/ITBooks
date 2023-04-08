@@ -1,0 +1,18 @@
+﻿//------------------------------------------------------------------------------
+1. Program demonstruje pouzitie PLINQ ako rozsirenia LINQ na paralelnu realizaciu algoritmov LINQ.
+!!! 2. PLINQ je postaveny nad TPL. Algoritmy LINQ su realizovana vdaka nemu paralalne a to tak, ze PLINQ ANALYZUJE POZADOVANU QUERY a ROZHODNE SA, KTORE CASTI VYKONA PARALELNE.
+3. PLINQ implementuje System.Linq.ParallelEnumerable, namiesto Enumerable a takisto i vsetky PLINQ operatory vracaju ParallelEnumerable.
+!!! 4. Operator AsParallel() sluzi na vytvorenie ParallelEnumerable a PARALELNE VYKONAVANIE algoritmov LINQ queries.
+!!!!! 5. Pri pouzivani PLINQ je KLUCOVE, aby sa NEPRISTUPOVALO k SHARED DATAM inak ako cez LOCK. Teda NESMIE VZNIKNUT RACING CONDITIONS. Nato si je treba davat VELKY POZOR.
+!!!!! 6. PLINQ NEZACHOVAVA PORADIE pri GENEROVANI ITERACII ENUMERATU. Teda ak ma dany LINQ query napriklad 10 iteracii, tak spusti 10 threads (moze byt aj iny pocet, podla vnutornej implementacie LINQ) a tie BEZIA PARALELNE. Vysledky behu SA SPRACUVAVAJU V PORADI AKO jednotlive THREADS SKONCILI SVOJU CINNOST a NIE V PORADI v AKO BOLI SPUSTENE.
+!!! 7. Operator AsMerge() sluzi na SPETNU KONVERZIU z ParallelEnumerable na Enumerable. Ma pretazenu verziu s parametrom ParallelMergOptions, ktory moze nadobudat nasledujuceho hodnoty.
+   A. AutoBuffered - enumerat je naplnany vypocitanymi hodnotami jednotlivych iteracii. Teda PRVA iteracia, ktora je vypocitana PLINQ je zaradena ako PRVY ITEM ITERATORA. ZAROVEN je pouzity BUFFERING, kedy sa nepridava do enumeratu po 1, ale NARAZ PO VIACERYCH ITEMS. Je to kvoli optimalizacii LOCKS.
+   B. NotBuffered - je TO ISTE ako 'AutoBuffered', ale BEZ POUZITIA BUFFERINGU. Teda pridava sa po 1 item do vystupu enumeratora.
+   C. FullyBuffered - enumerovanie sa spusti AZ KED SU VSETKY ITEMS VYPOCITANE. Tento sposob je NAJRYCHLEJSI z hladiska celkoveho casu vypoctu, ale NAJDLHSI co sa tyka VRATENIA PRVEHO ITEM.
+!!! 8. PLINQ standarne pouziva AutoBuffered, avsak PRE SPRCIFICKE OPERATORY, kde je potrebne mat AJ TAK SKONCENY CELY ALGORITMUS PRED ENUMEROVANIM (napriklad OrderBy) LINQ AUTOMATICKY PREPNE na FullyBuffered.
+9. V pripade vzniku Exception pri realizovani Queury je tato vratena ako AggregateException.
+!!! 10. AK VYZADUJEM aby PLINQ generoval vysledky enumeracie PRI ZACHOVANI PORADIA, mozem pouzit operator AsOrdered(). Ak naopak v retazi PLINQ operatorov UZ VIAC NEPOTREBUJEM AsOrdered() mozem ho zrusit operatorom AsUnordered().
+
+
+!!!!! BOHZUIAL VYZERA, ze v novej verzii PLINQ sa toho VELA ZMENILO a MNOHO z VYSSIE UVEDENEHO NEPLATI.
+//------------------------------------------------------------------------------

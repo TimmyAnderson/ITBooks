@@ -1,0 +1,30 @@
+﻿//------------------------------------------------------------------------------
+Paralelna architektura
+
+1. Windows moze byt nasadeny na viacerych CPU architekturach, ktore umoznuju paralelny beh.
+   A. Symmetric multiprocesoring - viacero chipov, kde v kazdom chipe je jedno CPU jadro. Je to najstarsi sposob paralelizmu podporovany uz od Windows NT.
+   B. Chip multiprocessing - v JEDNOM chipe viacero jadier multicore.
+   C. Hyperthreading - jedno core, ktore vykonava instrukcie nad VIACERYMI LOGICKYMI CPU majucimi vlastne registre, interrupt controllers, napojenie na RAM. Tento sposob paralelizmu je vhodny tam, kde je VELA PRISTUPOV K PAMETI, pretoze zatial co LOGICKY PROCESOR v jednom threade CAKA NA DATA Z PAMETE, moze INY LOGICKY PROCESOR (je to TEN ISTY CORE) vykonavat kod INEHO THREADU. HT je vyhodny v progrmoch, kde VELA THREADS PRISTUPUJE K PAMETI. Ak mam vela threads, ktore NEPRISTUPUJU K PAMETI, tak je VYKON NIZSI - namiesto urcyhlenia programu dochadza k jeho SPOMALENIU.
+   D. Kombinacia vyssie uvedenych moznosti - vratane kombinacie vsetkych troch.
+2. Supercomputing je sposob ako ZMENOU PORADIA VYKONAVANIA INSTRUKCII PROGRAMU zvysit jeho rychlost. Vyhodou je, ze NETREBA MENIT PROGRAM (ak sa nepouziva lock-free).
+   A. Viacero na sebe nezavislych matematikych jednotiek pre celociselne, desatinne, alebo vektorove operacie. Tieto mozu bezat PARALELNE I KED V PROGRAME SU ZAPISANE SEKVENCNE.
+   B. Paralelny beh instrukcii pristupu k pameti.
+   C. Dopredne vykonavanie vetvenia. OBE VETVY programu sa ZACNU VYKONAVAT a NEPOUZITA VETVA PO VETVENI SA ZAHODI.
+3. Nevyhodou Supercomputing je vysoka narocnost na energiu takychto CPU a ich zlozita architektura a tym padom i vysoka cena.
+
+Memory Hierarchy
+
+1. Jednym z KLUCOVYCH FAKTOROV vykonnosti paralelizmu je PRISTUP K PAMETI.
+2. Podla poctu MEMORY CONTROLLERS je mozne rozdelit nasledovne.
+   A. UMA - pamet ma 1 MEMORY CONTROLLER, ktory je zdielany medzi viacerymi CPU.
+   B. NUMA - pamet ma VIACERO MEMORY CONTROLLERS. CPU su delene do NODES, kde kazdemu Node je prideleny 1 MEMORY CONTROLLER, ktory zdielaju. Vsetky CPU a ich MEMORY CONTROLLERS mozu pristupovat k lubovolnej casti CELEJ pameti, ale cast pamete je VYHRADENA VZDY PRE DANY NODE. Pristup do nej je vzdy rychlejsi. Naopak pristup k pameti MIMO NODE - vzdialenej pameti je ZNACNE POMALY. Takisto INTERLOCKED operacie SU ZNACNE POMALSIE ako u UMA.
+3. Velmi dolezitym faktorom je pozuivanie Cache. Tie sa oznacuju ako L1, L2 a L3. Cim nizsie cislo, tym blizsie k CPU, co znamena, ze pamet je rychlejsia, ale i mensia.
+4. Dolezitym faktorom je i Cache Line Size, urcujuci najmensiu datovu jednotku, ktoru je mozne preniest medzi cache a hlavnu pametou.
+5. Cache Coherence urcuje sposob akym sa zabezpecuje konzistencia dat medzi Cache a Main Memory. Zvycajne sa pouziva tzv. MESI protokol.
+!!! 6. Vo Windows 2003 a neskorsich verziach je mozne volanim GetLogicalProcessorInformation() ziskat PRESNE INFORMACIE o CPU a PAMETI.
+7. Na zvysenie vykonnosti pristupu k pameti je mozne vyuzit vlastnosti Cache Locality a designovat program so zretelom na tuto vlastnost.
+   A. Spatial locality - ak pristupujem k pametovym bunkam, ktore su fyzicky blizko seba je vysoka pravdepodobnost, ze vsetky tieto bunky budu v Cache, kedze Cache implementuje algoritmy na vycitanie celej Cache Line - viacerych bytes - (64-128).
+   B. Temporal locality - ak pristupujem k tej istej casti pameti viac krat v kratkom case je vyssia pravdepodobnost, ze obsah tychto pametovych buniek bude ulozeny vo vyssich urovniach Cache.
+!!! 8. Nevyhodou zdielania Cache Lines medzi viacerymi CPU je, ze ak potrebujem LOCK, tak VSETKY CPU pouzivajuce tento Cache Line MUSIA CAKAT.
+!!! 9. NEDOPORUCUJE SA aby pamet, ktora je casto zapisovana bola ukladana medzi pamet, ktora je casto programom citana. Ak to pru VIAC CPU PC spravim, tak dosahujem VYSOKU MIERU LOCKS a KEDZE SU i polozky pamete Z KTOREJ IBA CITAM na TEJ ISTEJ CACHE LINE - TAK K NIM NIE JE MOZNE PRISTUPOVAT, kedze vdaka zapisu inej polozky na TEJ ISTEJ CACHE LINE je CELA CACHE LINE LOCKED.	
+//------------------------------------------------------------------------------

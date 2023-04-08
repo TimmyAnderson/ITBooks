@@ -1,0 +1,38 @@
+//------------------------------------------------------------------------------
+1. Program demonstruje pouzitie Fibers.
+2. Fibers reprezentuje ALTERNATIVNY SCHEDULING MECHANIZMUS, ktory bezi v USER MODE a umoznuje programatorovi naprogramovat nad Fibers CUSTOM USER-MODE SCHEDULER.
+3. Fiber moze bezat v danom case IBA V JEDNOM THREADE a JEDEN THRED v danom case MOZE VYKONAVAT IBA JEDEN FIBER. Jednotlive Fibers mozu medzi Threads MIGROVAT.
+!!! 4. Kernel mod NEVIE NIC O FIBERS, tie su PLNE implementovane v USER MODE.
+5. Podobne ako Threads i Fibers obsahuju vlastny CONTEXT, kde su ulozene hodnoty registrov, stack, FIBER LOCAL STORAGE (FLS), EXCEPTION CHAIN a mnoho inych udajov, ktore pri FIBER CONTEXT SWITCH su nacitane a ukladane z threadu, kde bezi Fiber.
+????? 6. Fibers umoznuju SAMI DEFINOVAT, kedy DOJDE ku CONTEXT SWITCH do INEHO FIBER.
+!!! 7. Medzi vyhody patri vecsia rychlost a mensia narocnost Context Switch ako v pripade Threads ci lepsi pristup k nizkourovnovym funkciam OS.
+!!! 8. Nevyhodou je DALEKO ZLOZITEJSIA IMPLEMENTACIA, kedze musi VYTVORI CUSTOM USER-MODE SCHEDULER.
+
+FUNGOVANIE FIBERS
+
+1. Fibers sa vytvaraju volanim funkcii CreateFiber() a CreateFiberEx(). Tieto funkcie NEVRACAJU HANDLE, pretoze FIBERS NIE SU KO, ale bezia v USER-MODE. Vratena hodnota vsak sluzi ako identifikator do ostatnych FIBER funkcii.
+!!! 2. Fibers sa NEVYKONAVAJU, ale su MAPOVANE na THREDS. Tento proces oznacovanu ako 'FIBERIZE' znaci, ze dany THREAD ASOCIUJEM s DANYM FIBER.
+!!! 3. Mapovanie Fibers na thread sa robi pomocou funkcii ConvertThreadToFiber() a ConvertThreadToFiberEx(). Tieto funkcie namapuju AKTUALNY THREAD na FIBER. Teda THREAD v ktorom su tieto funkcie VOLANE je namapovany na FIBER.
+!!!!! 4. Volanie ConvertThreadToFiber() a ConvertThreadToFiberEx() vsak NEZNACI SPUSTENIE FIBER FUNKCIE. Je to iba VYTVORENIE NOVEHO FIBER z AKTUALNEHO THREADU, alebo presnejsie vytorenie NOVEHO FIBER, ktory bezi v AKTUALNOM THREAD.
+!!! 5. Kod po volani ConvertThreadToFiber() a ConvertThreadToFiberEx() POKRACUJE NORMALNE DALEJ.
+!!!!! 6. KLUCOVA VLASTNOST FIBERS je schopnost PREPINANIA SA MEDZI SEBOU - FIBER SWITCHING. Ten funguje nasledovne.
+   A. Thread, ktory bol FIBERIZOVANY volanim ConvertThreadToFiber() (realizuje FIBER F1) zavola funkciu SwitchToFiber(), ktore preda odkaz na INY FIBER F2, ktory ma realizovat (vytvoreny volanim CreateFiber()). FIBER F2 este NESMIE BYT AKTIVNE BEZIACI, pretoze PRAVE VOLANIM SwitchToFiber() ho spustim (ak este nebezal), alebo pokracujem v jeho behu (ak ostal visiet na SwitchToFiber()).
+   B. Po zavolani SwitchToFiber() sa ULOZI CONTEXT AKTUALNEHO FIBERA F1 (trheadu) do pamete a do CONTEXTU THREADU sa vlozi CONTEXT FIBERA F2.
+   !!! C. To znaci, ze THREAD PRESTANE VYKONAVAT C++ FUNKCIU, ktora volala SwitchToFiber(), kedze ta bezala vo FIBER F1 a ZACNE VYKONAVAT FIBER F2 a JEHO C++ funkciu. Ta moze byt bud MAIN FUNKCIA THREADU, ak F2 este NEBOL SPUSTENY, alebo C++ FUNKCIA, ktora UZ REALIZOVALA F2, ale pouzila SwitchToFiber().
+   !!! D. FIBER F1 je teda zastany - C++ KOD je ZASTAVENY na VOLANI SwitchToFiber() a NA TOM ISTOM THREADE je SPUSTENA UPLNE INA C++ FUNKCIA (lebo sa zmenil pri CONTEXT SWITCH STACK), ktora realizuje FIBER F2.
+   !!!!! E. Ak niekde v kode sa SWITCHNEM ZNOVA SPET do F1, tak C++ KOD POKRACUJE ZA VOLANIM funkcie SwitchToFiber().
+!!!!! 7. Teda FUNDAMENTALNOU VECOU je, ze FIBERS volanim SwitchToFiber() sa prepinaju medzi sebou - MENIA CONTEXT, coho vysledkom je, ze HNED PO VOLANI SwitchToFiber() an FIBER F1 sa AKTUALNA C++ FUNKCIA ZASTAVI a THREAD pokracuje vo vykonavani INEJ C++ FUNCKIE na ktoru UKAZUJE CONTEXT FIBERU F2.
+!!!!! 8. FIBERS SWITCHING NIKDY NESMIEM ROBIT do AKTIVNE BEZIACEHO FIBER - ktory nie je pozastavny volanim SwitchToFiber() (resp. nebol este vobec nastartovany), pretoze inak budu 2 FIBERS (2 THREADS) PRACOVAT NA TOM ISTOM STACKU a samozrejme dojde k NARUSENIU PAMETE.
+!!!!! 9. Ak FIBER UKONCI vykonavania TOP LEVEL C++ FUNKCIE, tak zavola AUTOMATICKY ExitThread() a teda JEMU PRIRADENY TRHEAD JE UKOCENY.
+10. Fibers, ktore NIE SU AKTIVNE BEZIACE je mozne aj explicitne vymazat volanim DeleteFiber().
+11. Podobne ako Thread moze ukladat data to TLS, moze i Fiber ukladat data do FLS - Fiber Local Storage. Pocet FLS je 128 a DAJU SA POUZIT IBA vo Windows 2003 a vyssom.
+12. Pomocou funkcie TlsAlloc() zaregistrujem novy SLOT pre FLS, ktoreho index funkcia vracia v navratovej hodnote. Po vytvoreni noveho FLS slotu je ten VYNULOVANY.
+!!! 13. Parameterom TlsAlloc() je SMERNIK na FUNKCIU, ktora je volana aby som PRI UKOCENI FIBER mohol DEALOKOVAT RESOURCES asociovane s danym Fiber. Callback je volany za tychto okolnosti.
+   A. Po zavolani DeleteFiber().
+   B. Ak beziaci Diber skonci.
+   C. Ak FLS slot je uvolneny.
+   D. Hodnota dat v FLS SLOTE NESMIE BYT NULL. Ak je tak sa Callback NEZAVOLA.
+14. FLS SLOT je uvolneny volanim FlsFree().
+15. Hodnota FLS slotu sa nastavuje pomocou FlsSetValue() a uvolnuje pomocou FlsGetValue().
+!!! 16. Pri pouziti Fibers je porebne davat pozor na Thread Affinity, inak mozem lahko vytvorit kod pouzivajuci Fibers, ktory narusi Thread Safe a bude padat.
+//------------------------------------------------------------------------------

@@ -1,0 +1,34 @@
+﻿//------------------------------------------------------------------------------
+1. Program demonstruje impelementaciu Fine-Grained Containers.
+2. Containers, ktore sa pouzivaju v paralelnom programovani rozdelujeme na tri typy podla toho aky locking pouzivaju.
+   A. Coarse-Grained locking znamena, ze sa pouziva JEDEN LOCK na CELY CONTAINER. Ak POCET READ PREVYSUJE POCET WRITES, potom je VELMI EFEKTVNE MOZNE POUZIT READER-WRITER LOCKS.
+   B. Fine-Grained locking znamena, ze pouzivam VIACERO LOCKS a ak rozlicne threads pristupuju k rozlicnym castiam CONTAINER, ktore su strazene inymi locks potom NEDOCHADZA k VZAJOMNEMU BLOKOVANIU THREADS. Implementacia tohto Contaier je zlozitejsia a NESPRAVNE POUZITIE CONTAINER v programe MOZE VIEST k DEADLOCKS. Ak viacero threads pristupuje k tym istym locks moze byt vzajomny locking tak vysoky, ze CONTAINER JE POMALSI ako COARSE-GRAINED CONTAINER.
+   C. Nonblocking znamena, ze NEPOUZIVAM LOCKS avsak je obmedzeny iba na niektore typy CONTAINERS ako napriklad LINKED-LISTS. Implementaciu spociva vo vyuziti HW podpory pre LOCK-FREE algoritmy ako su INTERLOCKED OPERACIE.
+!!! 3. Fine-Grained locking je zvycajne mozne pouzit iba pri Linked Lists, Queues, ci Dictionaries. Pri Stack to nema zmysel, kedze Stacks nie je mozne traverzovat a zapisuje a cita sa stale iba na vrchol Stacku. Podobne i Lists implementovane ako Array nemaju velky zmysel ak je vela zapisov, pretoze to vyzaduje resize Array co si vyzaduje locking celeho CONTAINER.
+
+
+Fine Grained Linked Queue
+
+1. Queues su prirodzenym kandidatom na Fine Grained locking, kedze zapis prebieha vzdy na vrchol Queue a citanie z tail Queue. Vecsinou su preto tieto operacie UPLNE NEZAVISLE.
+!!! 2. Jediny problem nastava ak je queue mala a obsahuje iba jeden, alebo ziaden element. Vtedy je potrebne oddelit operaciu read a write. Da sa to robit pomocou pomocneho 'sentinel' objektu, ktory indikuje, ze queue je prazdna. Ak sa Head aj Tail odkazuju na 'sentinel' objekt tak je queue prazdna.
+
+Fine Grained Linked Queue
+
+1. Fine Grained queue je modifikaciou Fine Grained Linked Queue v tom, ze nepozuva Linke List, alebo Array.
+2. Princip je podobny, akurat ako uloziste je Array, ktore je potrebne ak presiahne maximalnu velkost zvecsit.
+!!! 3. Zvecsenie vyzaduje ziskanie WRITE LOCK, kedze dochadza k zmene celeho Container a nielen citanie, ale i zapis musi byt v danom momente zablokovany.
+
+Linked List
+
+1. Linked Lists su idealne na implementaciu Fine Grained locking, kedze pridavanie ci uberenie items nevedie k resize celeho Container.
+2. Pri pridavani a uberani items (ak predpokladam jednosmerny Linked List) musim locknut vzdy PREDCHADZAJUCI a AKTUALNY item, pretoze pridavanie a uberenie item znamena zmenu iba tejto casti Container.
+!!! Problematickou operaciou je prechod Linked List - pri ktorej mozem implementovat pridavanie, uberenie, alebo hladanie items. Su mozne dve riesenie.
+   A. Pesimisticky algoritmus je zalozeny na uplatneni locks na PREDCHADZAJUCI a NASLEDUJUCI ITEM. Lock sa pri prechode Linked List postupne posuva celym Containerom. Nevyhodou je nutnost spravit az O(N) LOCK ACQUIRE a RELEASE.
+   B. Optimisticky algoritmus je zalozeny na LOCK FREE prechode Linked List, pricom sa kontroluje ci POCAS PRECHODU NEDOSLO K ZMENE Linked List. Ak ano CELE VYHLADAVANIE SA MUSI SPUSTIT OD ZNOVA. Vyhodou je, ze ak sa Linked List cast nemodifikuje NETREBA ZIADEN LOCKING. Ak vsak sa Linked List meni intenzivne potom je treba opakovany prechod Linked List co v konecnom dosledku moze viest k pomalsiemu rieseniu ako pesimisticka varianta. Optimalizaciou moze byt pouzitie pesimistickeho algoritmu ak prvy prechod optimistickym algoritmom zlyha.
+   
+Dictionary
+
+1. Dictionary je mozne implemetnovat pre paralelny pristup rozdelenim vsetkych Items do Buckets (kosov), kde kazdy Bucket bude chrananey osobitnym lock. Pocet locks je NIZSI ako pocet Buckets, pricom na mapovanie medzi Bucket a Lock sa pouzije modulo funkcia.
+!!! 2. Implementacia Dictionary poskytuje moznost implementovat jej citanie LOCK FREE algoritmom, pretoze pridanie a odstranenie Item je realizovane ako ATOMICKA OPERACIA - zapis WORD - je podporovany priamo HW ako atomicka operacia. Je treba vsak postavit pri prechode Memory Barrier, aby nedoslo k memory reordering a zaroven 'Next' oznacit ako volatile.
+!!! 3. Dictionary obsahuje teda N-buckets a M-Locks, pricom M<=N. Keys su mapovane do daneho Bucket modulom jeho Has kodu, pricom v danom Bucket je VIACERO ITEMS s ROZLICNYMI KEYES. Tento Bucket je realizovany ako Linked List.
+//------------------------------------------------------------------------------

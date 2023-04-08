@@ -1,0 +1,24 @@
+﻿//------------------------------------------------------------------------------
+1. Programy demonstruju moznosti prace s viacerymi Threads v GUI.
+2. Prakticky vsetky GUI systemy pouzivaju SINGLE thread model, kde iba jeden thread moze menit GUI. Ostatne Threads musi zasielanim Messages do GUI threadu oznamit nejaky event, ktory nasledne moze v GUI thread sposobit zmenu zobrazenia GUI. Musi to vsak VZDY robit GUI thread.
+3. WinForms aj WPF poskytuju model pristupu k GUI threadu pomocu SynchronizationContext, co je abstraktna trieda, ktoru WinForms i WPF implementuju a umoznuju tak unifikovany pristup ku GUI z viacerych threads.
+4. WinForms poskytuje i alternativny sposob pomocou rozhrania ISynchronizeInvoke, ktore umoznuje z INYCH THREADS pristupovat ku GUI THREADS pomocou MARSHALINGU delegatu, ktory sa ma na GUI vykonat do GUI threadu cez Windows Message. Tato Windows Message sa potom spracuje v GUI threade ako volanie delegatu a v nom JE MOZNE MENIT GUI.
+!!! 5. Bazicka trieda Control implementuje tento interface a teda KAZDY CONTROL vo WinForms MOZE VYKONAT delegat na GUI threade.
+!!! 6. Podobne ako WinForms i WPF poskytuje specializovany mechanizmus pre marshaling do GUI threadu. Vo WPF je implementovany pomocou triedy DispatcherObject, ktory dedi KAZDY WPF CONTROL.
+7. Trieda DispatcherObject obsahuje metody CheckAccess() a VerifyAccess() na zistenie ci dany thread je GUI thread. Samotny marshaling sa robi pomocou triedy Dispatcher, ktoru vracia property Dispatcher triedy DispatcherObject.
+!!! 8. Klucove metody DispatcherObject su Invoke() a BeginInvoke(), ktore umoznuju MARSHALING do GUI thread. Invoke() je synchronna a konci az ked sa operacia na GUI threade vykona. BeginInvoke() je asynchronna verzia, ktora vracia DispatcherObject, ktorym mozem vykonat Abort(), alebo Wait() ak chcem vyckat na skoncenie operacie na GUI threade.
+!!! 9. Obe Invoke() a BeginInvoke() kontroluju ci delegat, ktory sa ma vykonat na GUI threade ma prototyp DispatcherOperationCallack(), alebo ci VRACIA HODNOTU. Ak vracia hodnotu, tak tato hodnota je vratena Invoke(). Pri BeginInvoke() je vysledok ulozeny do DispatcherObject.Result.
+10. Synchronization Contexts (SC) poskytuju univerzalu implementaciu MARSHALINGU operacii do GUI threads. Su univerzalne takze sa daju pouzit i mimo GUI, ale .NET zatial poskytuje implementaciu iba pr GUI prostredia.
+11. Zakladom SC je treba SynchronizationContext, ktorej default implementacia je DUMMY a pre metodu Post() pouziva TP na marshaling volania a pre Send() priamo vyvola marshalovaci delegat. KLUCOVE JE, ZE GUI prostredia ako WinForms a WPF PRETAZUJU SynchronizationContext na vlastnu implementaciu, ktora REALIZUJE GUI MARSHALING.
+12. SynchronizationContext ma metody ako CreateCopy() sluziacu na vytvorenie kopie SynchronizationContext ak chcem poslat SynchronizationContext do ineho threadu. Ma i metody Wait(), ktora AK JE PRETAZENA a ZAROVEN nad SynchronizationContext BOLA ZAVOLANA metoda SetWaitNotificationRequired(), tak .NET VOLA PRI KAZDOM WAIT nad threadom s ktorym je SC asoicovany tuto metodu. To moze sluzit na tracking WAITS.
+!!!!! 13. Pretazovat metodu SynchronizationContext.Wait() JE VSAK VELMI RISKANTNE a NEDOPORUCUJE SA.
+!!! 14. Klucove metody SC su Send(), ktora vykonava SYNCHRONNY MARSHALING a Post(), ktora vykonava ASYNCHRONNY MARSHALING.
+15. Post() aj Send() pouzivaju SendOrPostCallback DELEGATE, ktoreho volanie MARSHALUJU.
+!!! 16. SC NEMOZU BYT CHAINED (ak si to nejako CUSTOM nenaprogramujem) a po nastaveni NOVEHO SC sa ten POVODNY ODSTRANI. Samotne nastavenie SC pre dany THREAD NIE JE v LOCK a teda MOZE BYT OBETOU RACING CONTITIONS. Preto sa doporucuje nastavovat SC IBA PRE THREADS, ktore VLASTNIM a NAJLEPSIE PRI SPUSTENI thread.
+17. .NET poskytuje nasledujuce implementacia SynchronizationContext.
+   A. WindowsFormsSynchronizationContext - WinForms implementacia SC vyuzivajuca ISynchronizeInvoke.
+   B. WindowsFormsSynchronizationContext - WPF implementacia SC vyuzivajuca DispatcherObject.
+   C. ASP.NET a WCF maju NEVEREJNE IMPLEMENTACIE SC.
+18. Pre jednoduchsiu pracu so SC ponuka .NET triedy AsyncOperationManager a AsyncOperation. V praxi vsak usetria iba par riadkov kodu.
+19. BackgroudWorker zapuzdruje pracu z threads v GUI tym, ze umoznuje vykonat JEDNU paralalenu akciu v GUI sucasne. BackgroudWorker podporuje Cancellation a Progress report.
+//------------------------------------------------------------------------------

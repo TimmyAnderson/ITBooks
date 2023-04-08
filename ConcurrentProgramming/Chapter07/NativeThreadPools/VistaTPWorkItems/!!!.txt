@@ -1,0 +1,112 @@
+//-----------------------------------------------------------------------------
+1. Program demonstuje pouzitie Thread Pools v Native prostredi.
+2. Thread Pool je system, implementovany ako v Native, tak aj v Managed prostredi, ktory umoznuje jednoduchym sposobom manageovat POOL viacerych Threads a optimalizovat tak proces ich vytvarania, odstranovania a prace. Pouzitie Thread Pool vedie k optimalnemu vyuzitiu Threads a celkovo k vyssiemu vykonu aplikacie.
+3. Thread Pool funguje tak, ze obsluhuje isty pocet Threads, ktorym podla zasiela na vykonanie zaslane poziadavky. Po ich vykonani je Thread vrateny do Pool, kde moze byt zlikvidovany - podla potreby. Thread Pool sa sklada z nasledujucich casti.
+   A. Work queue do ktorej sa ukladaju 'WORK ITEMS' - WI.
+   A. Pool threadov, ktore vyberaju z Work queue jednotlive WI a spracuvaju ich.
+   C. Thread pool manager, ktory rozhoduje kedy sa thread vytvori, kedy sa zrusi a kolko ich teda bude v Thread Pool.
+4. Vo Windows existuju 3 implementacie Thread Pools, ktore su NAVZAJOM NEZAVISLE a pri ich sucastnom pouziti vzajomne zapasia o threads.
+   A. Legacy Win 32 Thread Pool.
+   B. Vista Win 32 Thread Pool.
+   C. .NET Thread Pool.
+5. Vsetky 3 implementacie Thread Pool podporuju nasledujuce sposoby prace.
+   A. Work Callback.
+   B. I/O Callback.
+   C. Timers.
+   D. Registred Waits.
+6. Vo Work Callback ma WORK ITEM podobu funkcie, alebo metody (resp. delegat v .NET), ktory je ulozeny do Queue, odkial je vybrany niektorym z threads v Thread Pool a vykonane. Je to najjednoduchsi a aj najpouzivanejsi sposob vyuzitie Thread Pool.
+7. I/O Callback je mechanizmus umoznuju realizovat IO operacie ASYNCHRONNE. Na realizaciu je mozne pouzit niektoru z nasledujucich technik.
+   A. Pravidelny polling stavu IO zariadenia.
+   B. WAITING na HANDLE, ktore ked je signalizovany, tak to znaci, ze asynchronnu operacia bola ukoncena.
+   C. IO Competition Ports. PRAVE TIETO VYUZIVAJU TRHEAD POOL.
+!!! 8. IO Competition Port predstavuje FUNKCIU, ktora sa vyvola PRI SKONCENI IO operacie, ked je IO Competition packet pripraveny s datami. Vo FUNKCII, ktore je VOLANA V NIEKTOROM z THREADS v THREAD POOL potom tieto data spracujem. Pocet threads, ktore su vyuzivane je definovany implementaciu Completition Port, no THREADS, ktore sa VYUZIVAJU na spracovanie SU PRIDELOVANE z THREAD POOL.
+9. Timers umoznuju presne nacasovat vykonanie WORK ITEM na dany cas ako aj realizovat opakovanie. Interne vyuzivaju WAITABLE TIMERS.
+!!! 10. Registred Waits umoznuju realizovat WORK ITEM po SIGNALIZACII niektoreho KERNEL OBJECT (napriklad AutoResetEvent). Velkou vyhodou oproti manualnej implementacii je URCYHLENIE, ktore je dosiahnute tym, ze thread z THREAD POOL, ktory je dedikovany na tent ucel necaka iba na jeden KO, ale az na (MAX_WAIT_OBJECTS-1) KO - co je 63 KO. Tym padom je celkovy pocet threads v systeme vyrazne mensi a tym padom aj zatazenie systemu je mensie.
+11. Threads v TP su standardne likvidovane ako 10 sekund nemaju co robit. Naopk novy thread je vytvoreny ak existujuci je vo WAIT dlhsie ako 10 MILISEKUND a v Queueu je nejaky WI. Plati, ze pocet Threads v TP je vzdy ombedzeny <MinNumberOfThreads,MaxNumberOfThreads>.
+12. Threads na TP sa vytvaraju so STANDARDNOU dlzkou STACK a toto nastavenie NIE JE MOZNE ZMENIT.
+!!!!! 13. TP vo vseobecnosti NIE SU VHODNE NA DLHO TRAVUJCI KOD. Te je LEPSIE PISAT V CUSTOM THREADE MIMO TP.
+!!! 14. V tele WI kodu mozem AUTOMATICKY uvolnit PRAVE jednu CS, Mutex, Semaphor, Event ci DLL volanim funkcii LeaveCriticalSectionWhenCallbackReturns(), FreeLibraryWhenCallbackReturns(), ReleaseMutexWhenCallbackReturns(), ReleaseSemaphoreWhenCallbackReturns() a SetEventWhenCallbackReturns(),\. Ak ich zavolam tak na konci WI kodu - pred skoncenim WI sa tieto KO AUTOMATICKY UVOLNIA. Bohuzial asociovat mozem IBA JEDEN OBJEKT KAZDEHO TYPU pre dany WI.
+
+
+Vista Thread Pools - VTP.
+
+1. VTP obsahuje skupinu threads z ktorych subset obsluhuje WI. Jeden z threads je dedikovany pre monitoring Timers a pre kazdu skupinu (MAX_WAIT_OBJECTS-1) Registered Waits je vzdy dedikovany separatny thread.
+2. VTP ma IBA JEDNU Queue do ktorej sa ukladaju ako WI definovane programom, tak aj interne WI (definovane cez IO Completition Routines, Timers a Registered Waits).
+
+VTP pri pouziti s Work Items.
+
+1. Funkcia TrySumbitThreadpoolCallback() umoznuje definovat Callback a paramater, ktory sa prenesie do Callback, pocas jeho ASYNCHRONNEHO VYKONAVANIA. Tato funkcia MOZE ZLYHAT, ak nie je dost pamete na alokovanie insternych struktur, preto ma aj v nazve 'Try'.
+2. Alternativnym sposobom je pouzit CreateThreadpoolWork(), ktory NA ROZIDEL od TrySumbitThreadpoolCallback() NEZARADI WI do Queue, ale iba vytvori internu strukturu typu PTP_WORK, ktoru mozem neskor pouzit.
+3. Pomocou funkcie SumbitThreadpoolWork() zasielam PTP_WORK vrateny CreateThreadpoolWork(). Tato funkcia ZARADI WI do Queue a ten moze byt vykonany.
+!!! 4. Funkciu SumbitThreadpoolWork() mozem VOLAT VIACKRAT nad TYM ISTYM PTP_WORK co vedie k zaradeniu N*WI do Queue, kde kazda z nich bude vykonana separatne asynchronnym sposobom. Nevyhodou je, ze vstupny parameter do Callback NEMOZEM MENIT, lebo ten nastavuje uz v CreateThreadpoolWork().
+!!! 5. PAMET, ktora je alokovane CreateThreadpoolWork() v strukture PTP_WORK MUSIM UVOLNIT, inak mam MEMORY LEAK. Uvolnanie sa robi pomocou CloseThreadpoolWork().
+!!!!! 6. AK zavola CreateThreadpoolWork() POCAS BEHU v thread TP, alebo ked je v QUEUE, tak SA NEVYMAZE HNED, ale AZ KED WI SKONCI SVOJU CINNOST. To ma velku vyhodu, ze mozem OKAMZTIE po volani SumbitThreadpoolWork() zavolat CloseThreadpoolWork() a PTP_WORK sa uvolni AZ PO VYKONANI WI.
+7. Pomocou funkcie WaitForThreadpoolCallbacks() mozem pockat na UKONCENIE WI. AK pre PTP_WORK som spustil VIACERO WI (viac krat som nad tym istym PTP_WORK zavolal SumbitThreadpoolWork()), potom funkcia CAKA NA SKONCENIE VSETKYCH WI, ktore zodpovedaju danemu PTP_WORK.
+8. WaitForThreadpoolCallbacks() ma parameter 'fCancelPendingCallbacks', ktora urobi CANCEL nad WI, ktore SU v QUEUE, ale ESTE NEBOLI SPUSTENE V THREADE z TP. Ak uz boli spustene, tak CACNEL SA NEROBI a WaitForThreadpoolCallbacks() caka na to, kym sa WI NESKONCI.
+!!! 9. Vyhodou WaitForThreadpoolCallbacks() je, ze nemozem je definovat TIMEOUT a tak caka az kym sa vsetky WI neskoncia.
+!!! 10. Ak sa ukoncuje proces a vsetky ostatne threads sa skoncili, a v TP su este nejake WI, tak sa vsetky jednoducho zlikviduju.
+!!!!! 11. Ak pri vykonavani WI v TP dojde k UNHANDLED EXCEPTION, tak sa proces TERMINUJE.
+
+
+VTP pri pouziti s Timers.
+
+1. Timer vytvorim pomocou funkcie CreateThreadpoolTimer(), ktora vracia objekt typu PTP_TIMER.
+2. Time po vytvoreni MUSI BYT NASTAVENY NA CAS pomocou funkcie SetThreadpoolTimer(). Funkcia ma nasledovne parametre.
+   A. 'pti' - typu PTP_TIME, ktory ziskam z funkcie CreateThreadpoolTimer().
+   B. 'ptfDueTime' - typu PFILETIME umoznuje definovat bud ABSOLUTNY, alebo RELATIVNY cas, ked Timer expiruje. Viac info o nastaveni totho casu je v Chapter05 - WaitableTimers.
+   C. 'msPeriod' - typu DWORD urcuje RECURRENCY po PORVEJ EXPIRACII Timer. Teda urcuje periodicitu s akou Timer znova expiruje. Hodnota 0 znamena, ze Timer epxiruje IBA RAZ.
+   D. 'msWindowsLenght' definuje CASOVE OKNO ??? <EXPIRATION_TIME-msWindowsLength, EXPIRATION_TIME>. Ak HOCIJAKY TIMER epxiruje v stanovenom case, tak TP SKONTORLUJE VSETKY OSTATNE TIMERS ci su v tomto intervale. Ked su TAK SPUSTI AJ TIE. Okno sluzi ako OPTIMALIZACIA, aby ked NARAZ v KRATOM CASOVOM ROZPETI (ale nie uplne naraz - ale povedzme posun 1ms) expiruje VELA TIMERS, tak aby nedoslo k tomu, ze monitorovaci Thread, ktory monitoruje expiraciu TIMERS bol neustale WAITED-REASUMED a TYM DOSLO k MNOZSTCU CONTEXT SWITCHES a SPOMALENIU SYSTEMU tymto prepinanim. Prave toto casove okno umoznuje taketo Timers ODPALIT NARAZ a URYCHLIT CELY SYSTEM.
+3. Timer ked skonci MUSIM ODSTRANIT volanim CloseThreadpoolTimer().
+!!! 4. Rekurentne Timers AK CHCEM ZASTAVIT, tak musim bud pouzit CloseThreadpoolTimer(), alebo RESETNUT 'msPeriod' OPETOVNYM VOLANIM SetThreadpoolTimer() s 'msPeriod'==0.
+!!!!! 5. Cas NOVEJ EXPIRACIE pri rekurentnych Timers sa urcuje od POSLEDNEHO CASU EXPIRACIE a NIE OD CASU SKONCENCIA VYKONAVANIA CALLBACK.
+!!! 6. Na vykonanie Timer CALLBACK mozem cakat volanim funkcie WaitForThreadpoolTimerCallback().
+!!!!! 7. INTERNE je Timer v TP realizovany JEDINYM THREADOM, ktory pouziva JEDINY Waitable Timer, ktory re vytvoreny PRI ZAREGISTROVANI PRVE TIMER. Thread vykonava nasledujucu cinnost.
+   A. Vypocita cas NAJBLIZSEJ EXPIRACIE zo VSETKYCH ZAREGISTROVANYCH Timers a nastavi Waitable Timer.
+   B. Ak expiruje Waitable Timer, tak dojde k VYTVORENIU NOVEHO WORK ITEM a jeho zaradeniu do TP.
+   C. Skontroluju sa OKNA VSETKYCH OSTATNYCH TIMER a ak nahodou som v niektorom z nich, tak sa vykonaju aj tieto
+   D. Pre rekurentne Timers sa vypocita novy cas expiracie.
+   E. Algoritmus pokracuje v cykle.
+!!!!! 8. Nato aby WaitForThreadpoolTimerCallbacks() bezala MUSI TIMER CALLBACK BYT UZ SPUSTENY. Ak je IBA V QUEUE, tak WaitForThreadpoolTimerCallbacks() OKAMZITE SKONCI.
+
+
+VTP pri pouziti s IO Completition Ports.
+
+1. Overlapped IO operacie su podporovant Vista TP pomocou IO Compleltion Ports. Overlapped Callback, ktore zaregistrujem su VYVOLAVANA ASYCNHRONNE na THREADE z TP.
+2. IO Completition Ports vytvorim pomocou CreateThreadpoolTo(). Funkcia vracia PTP_IO.
+3. Callback rutina typu IoCompletitionCallback() obsahuje ako parametre okrem ineho smernik na strukturu OVERLAPPED, vysledok IO operacie a pocet prenesenych bytes.
+!!! 4. Nato, aby sa Callback SKUTOCNE PUSTIL pri nacitani dat MUSIM zavolat StartThreadpoolIo(). AZ POTOM MOZEM ZACAT IO operaciu.
+!!!!! 5. JE KLUCOVE, aby som IO OPERACIU ZACINAL AZ PO ZAVOLANI StartThreadpoolIo(), inak sa mozu data v IO operacii POSKODIT.
+6. Pri skonceni IO operacii MUSIM zavolat  CloseThreadpoolIo().
+7. Operaciu WaitForThreadpoolIoCallbacks() mozem pockat na SKONCENIE IO OPERACIE, ktora prave bezi v asynchronnom Callback. CAKA NA SKONCENIE CELEJ ZACATEJ IO OPERACIE a NIE CALLBACK.
+
+
+VTP pri pouziti s Registered Waits.
+
+1. Registered Wait vytvorim pomocou funkcie CreateThreadpoolWait(). Funkcia vracia PTP_WAIT.
+2. LUBOVLNY KO (OKREM Mutex, ktore maju THREAD AFFINITY a NEMOZE ich UVOLNIT INY THREAD ako ten co spravil LOCK) je mozne zaregistrovat ako Registered Wait funkciou SetThreadpoolWait(). Tato funkcia umoznuje definovat Timeout a to v tvare FILETIME, co znamena, ze kladna hodnota je ABSOLUTNY a zaporne hodnota RELATIVNY CAS.
+3. Po vykonani PRVEHO CALLBACKU (potom co je KO signalizovany) sa Registered Wait ODSTRANENY z WAIT LIST. Ak chcem OPAKOVAT WAIT, musim OPETOVNE volat SetThreadpoolWait().
+4. Uvolnenie PTP_WAIT sa robi pomocou funkcie CloseThreadpoolWait().
+!!! 5. Cakat na skoncenie CALLBACK (!!!!! POZOR NIE NA SKONCENIE SAMOTNEHO WAIT) sa robi pomocou fukcie WaitForThreadpoolWaitCallbacks(). Ak je WAIT PRAVE VYKONAVANY, tak funkcia zablokuje volajuci thread pokym neskonci CALLBACK. AK VSAK WAIT este iba CAKA NA SIGNALIZACIU KO, tak funkcia OKAMZTIE SKONCI.
+!!! 6. CALLBACK funkcia ma parameter 'WaitResult', ktorej hodnota je PRESNE TAKA ISTA ako funkcii WaitForSingleObject(). Teda moze nadobudat i hodnotu WAIT_TIMEOUT, ci dokonca pri Mutextoch (ktore by sa ale nemali pouzivat) WAIT_ABANDONED_0. Aj bol KO signalizovany, tak WAIT_OBJECT_0.
+
+
+Thread Pool Environments - TPE.
+
+1. TPE sluzi v TP implementovanom pod Vistou na nasledujuce cinnosti.
+   A. Umoznuje definovat viacero TP GROUPS, ktore bezia NEZAVISLE na sebe a kazda manageuje CUSTOM THREADS.
+   B. Umoznuje VYVOLAT CALLBACK, ked VSETKY Threads v danej TP GROUP skoncia a v tejto Callback mozem odstranit napriklad alkovane struktury. Vyhodou je, ze umoznuje manageovat VSETKY THREADS NARAZ a nemusim si pre kazdy WI v TP ukladat jeho datovu strukturu, ktoru nasledne odstranim.
+   C. Umoznuje pomocou CLEANING GROUPS vykonat WAIT na VSETKY vykonavane WI v TP a po ich dokonceni sa realizuje CALLBACK z bodu B - ak je definovany.
+2. TPE vyzaduje alokaciu struktury PTP_CALLBACK_ENVIRON pomocou InitializeThreadpoolEnvironment() a jej odstranenie pomocou DestroyThreadpoolEnvironment().
+!!! 3. Ak NESPECIFIKUJEM PTP_CALLBACK_ENVIRON a namiesto nej dam NULL, tak sa WI zaradzuju do DEFAULT TP.
+4. Novu TP vytvaram pomocou CreateThreadpool() a odstranujem pomocou CloseThreadpool().
+!!! 5. Objekt PTP_CALLBACK_ENVIRON, ktory sluzi ako IDENTIFIKATOR TP musim s danou TP asociovat pomocou SetThreadpollCallbackPool().
+!!! 6. Volanie CloseThreadpool() znaci, ze VSETKY PRAVE VYKONAVANE WI dokoncia svoje vykonavanie, zatial co WI, ktore su este iba v Queue - su CANCELLED.
+7. TP umoznuje definovat maximalny a minimalny pocet Thread v TP pomocou SetThreadpoolThreadMinimum() a SetThreadpoolThreadMaximum().
+!!! 8. Po zavolani SetThreadpoolThreadMinimum() sa OKAMZITE vytvori tento pocet Threads, ak este nie je vytvoreny. Default hodnota je 0.
+9. TPE umoznuje definovat CLENUP GROUPS, ktore umoznuju AUTOMATICKY odstranit vsetky TP OBJEKTY (alokovane volaniami funkcii TP) ako aj definovania CALLBACK, ktory sa zavola ked VSETKY WI danej TP su VYKONANE.
+10. CLENUP GROUP je definovany pomocou CreateThreadpoolCleanupGroup().
+!!! 11. CLENUP GROUP je asoiovany s konkretnym TP pomocou SetThreadpoolCallbackCleanupGroup().
+!!! 12. Funkcia CloseThreadpoolCleanupGroupMembers() po jej zavolani CAKA na skoncenie BEZIACICH WI a zaroven tie WI, ktore su v Queue ZRUSI (ak nastavim 2. parameter na TRUE). Nasledne sa vola CALLBACK definovany v SetThreadpoolCallbackCleanupGroup().
+13. Funkcia CloseThreadpoolCleanupGroup() zlikviduje samotnu TP CLENUP GROUP.
+!!!!! 14. Vyzera to, ze CALLBACKS pre CLEANUP GROUP vola pre KAZDY WI a SERIALIZOVANE - JEDEN PO DRUHOM a NIE PARALELNE.
+//-----------------------------------------------------------------------------

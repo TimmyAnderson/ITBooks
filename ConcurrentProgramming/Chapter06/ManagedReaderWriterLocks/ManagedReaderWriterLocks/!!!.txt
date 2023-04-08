@@ -1,0 +1,24 @@
+﻿//------------------------------------------------------------------------------
+1. Program demonstruje pouzitie Reader-Writer Locks.
+2. .NET podporuje 2 typy Reader-Writer Locks.
+   A. ReaderWriterLock - ktory je dnes uz zastaraly, pretoze mal viacero problemov vo svojej implementacii - najme nizku vykonost.
+   B. ReaderWriterLockSlim - podporovany az od .NET 3.5, ktory je optimalizovany na rychlost a pouziva Keyed Events.
+3. Trieda ReaderWriterLockSlim (SRWL) ma 3 rezimy locks.
+   A. Shared lock - jedna sa o READER LOCK, pre ktory plati, ze VIACERO THREADS moze NARAZ drzat tento typ locku.
+   B. Exlusive lock - jedna sa o WRITER LOCK, pre ktory plati, ze IBA JEDEN TRHEAD moze drzat tento lock a zaroven ZIADEN THREAD NESMIE drzat Shared lock.
+   C. Upgradable lock - jedna sa o lock, ktory moze byt UPGRADED na Exclusive lock, alebo DOWNGRADED na Shared lock.
+4. Pre Upgradable lock platia nasledujuce skutocnosti.
+   A. Je pouzivany, ked NEVIEM ci budem potrebovat READER, alebo WRITER lock. Jeho pouzitie vyzera tak, ze VSTUPIM do UPGRADABLE LOCK, nasledne CO NAJRYCHLEJSIE spravim test ci mam spravit UPGRADE, alebo DOWNGRADE a ten nasledne aj vykonam cim ziskam SHARED, alebo EXCLUSIVE lock.
+   B. IBA JEDEN THREAD moze byt v UPGRADABLE LOCK. Ak sa ho pokusa ziskat iny thread, tak sa dostane do WAIT.
+   C. Thread ZISKA UPGRADABLE LOCK, ak iny thread drzi SHARED LOCK, a naopak DOSTANE SA DO WAIT, ked iny thread vlastni EXCLUSIVE lock.
+   D. Ak thread drzi UPGRADABLE LOCK, tak threads, ktore UZ MAJU SHARED LOCK NORMALNE POKRACUJU, ale TIE THREDS, ktore sa este iba POKUSAJU ZISKAT SHARED LOCK - SKONCIA VO WAIT.
+   E. Ked thread drzi UPGRADABLE LOCK, tak ostatne SHARED LOCKS bezia dalej AZ POKYM NEDOJDE k UPGRADE, ALEBO DOWNGRADE. V pripade DOWNGRADE je to jednoduche, pretoze z UPGRADABLE LOCK sa stava SHARED LOCK a tym padom bezi normalne dalej so SHARED LOCK. Ale v pripade UPGRADE MUSI UPGRADABLE LOCK POCKAT, kym VSETKY SHARED LOCKS NESKONCIA - teda JE VO WAIT az KYM SA VSETKY UZ PRIDELENE SHARED LOCKS NEUKONCIA. (Nove SHARED LOCK, ked je drzany UPGRADABLE LOCK nemozu byt pridelene a tieto poziadavky ostanu vo WAIT - pozri bod D.)
+5. SRWL su standardne NEREKURZIVNE, ale je mozne toto chovanie zmenit v konstruktore ReaderWriterLockSlim. Avsak rekurzia NIKDY NEPLATI ak mam SHARED LOCK a REKURZIVNE POZIADAM o EXCLUSIVE LOCK.
+!!! 6. SRWL ma viacere problemy. Napriklad sa NESMIE POUZIVAT ak kod bezi v SQL SERVER. Takisto nie je odolny voci ASYCNHRONOUS EXCEPTIONS. Avsak PRE BEZNE APLIKACIE JE HO MOZNE BEZ PROBLEMOV POUZIT.
+!!! 7. SRWL je VYRAZNE RYCHLEJSI ako klasicky ReaderWriterLock.
+8. ReaderWriterLock je OBSOLETE. Plati pren nasledovne.
+   A. Podporuje iba Shared a Exclusive mode, nie vsak Upgradable mod.
+   B. Ak vyexpiruje stanoveny timeout hadze EXCEPTION na rozdiel od inych synchronizacnych objektov, ktore vracaju navratovu hodnotu.
+   C. Podporuj e sicevsetky typy rekurzie, vratane SHARED to EXLUSIVE - to vsak moze lahko viest k DEADLOCK.
+   D. Podporuje sice Upgrade, ale VELMI CHAOTICKY, kde pred Upgrade si musim ulozit hodnotu pocitadla WriterSeqNum a po Upgrade ho porovnat s aktualnou hodnotou. Ak sa nahodou LISIA, potom to znaci, ze POCAS UPGRADE iny Thread nan uvalil LOCK a neskor ho uvolnil, co vsak MOZE SPOSOBIT narusenie dat. Preto pri ROZDIELNYCH HODNOTACH WriterSeqNumber MUSIM proces UPGRADE OPAKOVAT.
+//------------------------------------------------------------------------------

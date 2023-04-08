@@ -1,0 +1,74 @@
+//-----------------------------------------------------------------------------
+1. Program demonstruje viacere advanced aspekty pouzitia Threads.
+2. Stav Threadu pozostrava najme zo Stacku, ale aj dalsich dat, ako napriklad tabulky TEB (Thread Environment Block).
+!!! 3. Pri DEBUGGINGU moze byt VELMI UZITOCNE mat DEBUG SYMBOLS pre SYSTEM DLL. To je mozne dosiahnut tak, ze v Tools->Options->Debugging->Symbols nastavim cestu na MS stranku: 'http://msdl.microsoft.com/download/symbols'.
+
+STACK.
+
+1. Stack je alokovany smerom NADOL, teda TOP stacku ma numericky VYSSIU hodnotu, ako BOTTOM Stacku.
+2. Do Stacku sa ukladaju premenne, ktore uz nie je mozne ukladat do registrov procesora.
+!!! 3. O tom, ktora premenna bude v Stacku a ktora v Heap rozhoduje programator. Lokalne premenne, resp. 'struct' v .NET su alokovane v Stacku, zatial co objekty alokovane cez 'new' su ulozene v Heap.
+!!! 4. Ako Native, tak aj Managed prostredie poskytuje specialne nastroje ako alokovat RAW pamet na Stacku.
+   A. V Native prostredi je to funkcia _malloca(), ktora umoznuje alokovat miesto na Stacku.
+   B. V Managed prostredi klucove slovo 'stackalloc' umoznuje alokovat pamet na Stacku. TATO PAMET, kedze ja alokovana na Stacku NEPODLIEHA GARBAGE COLLECTION a teda nemusi sa s nou pracovat cez FIXED pointers.
+!!!!! 5. Funkcia _malloca() umoznuje DYNAMICKY ALOKOVAT pamet na STACKU. Avsak pre _malloca() MUSIM VOLAT _freea(). Pre OBSOLETE _alloca() to NEBOLO NUTNE - naco aj, ked je to pamet na Stacku. Avsak pre 'SECURE' je to ??? POTREBNE, kedze ????? v DEBUG MODE alokuje pamet na ??? HEAP a NIE NA STACKU.
+6. Stack okrem parametrov a lokalnych premennych ukada aj hodnoty registrov, ktore musia byt obnovene pri opusteni funkcie a NAVRATOVU ADRESU, na ktoru sa ma skocit pri ukonceni funkcie.
+7. Pamet pouzivana Stack je rozdelena na dve casti.
+   A. Rezervovana pamet - je to vyhradena VIRTUALNA PAMET, ktora moze byt pridelena Stack. Rezervovana pamet vsak NIE JE ALOKOVANA na FYZICKEJ PAMETI iba je vyhradena na POTENCIALNE POUZITIE vo VIRTUALNEJ PAMETI.
+   B. Commited pamet - je FYZICKA PAMET (bud priamo na pametovom slote, alebo v PageFile), ktora je OBSADENA DATAMI. Teda toto je ALOKOVANA PAMET, ktora BERIE SYSTEM RESOURCES na ROZDIEL od rezervovanej pamete, ktora nie je alokovana iba REZERVOVANA vo VIRUTALNEJ PAMETI na BUDUCE POUZITIE.
+8. Na Threade mozem definovat velkost rezervovanej a commited pamete pri vytvarani Threadu a pre PRIMARNY THREAD mozem URPAVIT VELKOST jeho STACK pamete pomocou EDITBIN.EXE.
+!!! 9. V Managed procese si Thread OKAMZITE po VYTVORENIE COMMITNE VSETKU REZERVOVANU PAMET.
+!!!!! 10. Prechadzajuci bod znamena, ze: KAZDY MANAGED THREAD ZABERA CELU DEFAULT STACK MEMORY pri SPUSTENI. Ak je default hodnota 1 MB, potom to znaci, ze ak mam 10 threads tak !!!!! ZABERU 10 MB PAMETE.
+11. Sposob alokacie Stack pamete je nasledovny.
+    A. Pri vytvoreni threadu sa alokuje pociatocna Commited memory - ktora v Native aplikaciach je zvycajne velkost 1 PAGE (4/8kB) a v Managed aplikaciach je rovna REZEVOVANEJ PAMETi (zvycajne 1MB).
+    B. Na konci Commited memory sa hodi GUARDED PAGE.
+    C. Pri pokuse zapisat dat do GUARDED PAGE sa VYHODI SEH Exception, ktora je spracovana a to tak, ze GUARDED PAGE je pridelena Stacku - teda je COMMITED a za nou sa vytvori NOVA GUARDED PAGE.
+    D. Standardne sa alokuje VZDY IBA 1 PAGE, ale novsie OS ako, XP-64, Vista a Win 2003 mozu zmenit pocet alokovanych pages pomocou API SetThreadStackGuarantee().
+    E. Ak GUARDED PAGE dosiahne maxima REZEROVANEJ PAMETE, tak sa hodi SEH EXCEPTION - Stack Overflow.
+!!!!! 12. Aj ked pri Stack Overflow je mozne v Native kode zachytit SEH Exception, je mimoriadne tazke urcit ako na nu spravne zareagovat. Problem je v tom, ze ak nemusim mat dost pamete na osetrenie vynimky. Niektore architektury ako X64 ponukaju ciastkove riesenie alokaciou 2 PAGES ako GUARDED PAGES a tym padom je viac pamete pri Stack Overflow. Ak ani to nestaci je mozne na zaciatku programu nastavit vecsie mnozstvo GUARDED PAGES pomocou SetThreadStackGuarantee().
+
+TEB - Thread Environment Block.
+
+1. TEB je tabulka Environment hodnot, ktora je asociovana s danym Threadom.
+2. TEB obsahuje viacero uzitocnych hodnot, ako napriklad zaciatok a koniec Stacku, adresu na TLS, ci pocet aktivnych locks.
+3. Adresu TEB pre aktivny Thread je mozne ziskat volanim NEDOKUMETNOVANEJ metody NtCurrentTeb().
+!!!!! 4. Pomocou metod GetThreadContext() a SetThreadContext() mozno CITAT a NASTAVOVAT CONTEXT Threadu co je struktura obsahujuca VSETKY REGISTRE.
+!!!!! 5. Funkcie GetThreadContext() a SetThreadContext() je mozne volat IBA ked su v SUSPEND STAVE. Nastavenie CONTEXT je vsak VELMI RIZIKOVE a casto vedie k PADU PROGRAMU.
+
+Vytvorenie THREADU.
+
+1. Alkouju sa Thread struktury ako TEB, KTRHEAD, ETHREAD, struktury pre Asynchronou Procedure Call ci Local Procedure Call, memory management, IO, mutex ownership a podobne.
+2. Aj alokovana struktura CONTEXT pre ukladanie STAVU THREADU, najme registrov, ktora sa pouziva pri CONTEXT SWITCH.
+3. User-Mode STACK je alkovany a vytvoreny vo VIRTUALNEJ PAMETI PROCESU.
+4. Vytvorenie threadu je oznamene sytemovemu procesu CSRSS.exe, ktory ??? ho moze inicializovat a spustit.
+5. Ak je thread MAIN THREADOM, tak sa notifikuju asociovane debugger, nacitaju sa DLL, ktore proces vyuziva, inicializuje TLS a mnoho inych veci. Napokon sa vyvola na vsetkych DLL DllMain() s parametrom DLL_PROCESS_ATTACH.
+6. Ak sa jedna o WORKER THREAD pre vsetky DLL sa vyvola DllMain() s parametrom DLL_THREAD_ATTACH.
+7. Ak nie je nastaveny THREAD_SUSPENDED, tak sa thread spusti.
+8. Funkcia CreateThread() skonci a vrati sa HANDLE a ThreadID.
+
+Ukoncenie THREADU.
+
+1. Pre vsetky DLL sa vyvola DllMain() s parametrom DLL_THREAD_DETTACH. Pri TerminateThread() sa toto nevykona.
+2. Thread HANDLE je nastaveny do signalizovaneho state.
+3. Uvolni sa STACK. Pri TerminateThread() sa toto nevykona a STACK sa zmaze AZ PRI UKOCENI PROCESU.
+4. Uvolnia sa TLS Entries, TEB a ine struktury asociovane s threadom.
+
+Thread Scheduling.
+
+1. Threads maju PROCESS PRIORTY CLASS a RELATIVE PRIORITY. Zatial co PROCESS PRIORTY CLASS definuje na procese ZAKLADNU PRIORITU, tak RELATIVE PRIORITY pridava, alebo ubera z hodnoty PROCESS PRIORITY CLASS pre dany THREAD a vypocitava sa tak jeho VYSLEDNA PRIORITA - tzv. PRIORITY LEVEL.
+!!! 2. Thread Scheduler NIE je definovany na urovni procesu, ale JE DEFINOVANY NA UROVNI THREADU. To znamena, ze ked mam 2 procesy s ROVNAKOU PRIORITU a jeden ma 9 a druhy 1 thread tak prvy proces dostane 9 KRAT VIAC CASU ako druhy proces, kedze ma viac threads.
+3. Thread pocas svojho zivota meni svoj stav. Okrem NATIVE stavov v MANAGED prostredi pribudaju este Managed states.
+!!! 4. Managed State NEMUSI PRESNE KORESPONDOVAT s realnym stavom THREADU, kedze CLR nema prehlad nad tym v akom presne stave je NATIVE thread.
+5. Pomocou API SetriorityClass(), GetPriorityClass(), SetThreadPriority() a GetThreadPriority() mozem zistovat a nastavovat prioritu Threads.
+!!! 6. Zmenu priority threads sa NEDOPORUCUJE. Zvysenie priority moze negativne ovplyvnit vykon celeho OS.
+7. Quantum je cas, ktory thread moze vykonavat svoju cinnost kym je SWITCHED Schedulerom na iny thread. Quntum je dany ako NASBOM CLOCK TICKS. V pripade desktom systemov su to 2 CLOCK TICKS a v pripade servervskych systemov az 12 CLOCK TICKS. Toto nastavenie je mozne zmenit v Registrv v: HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\PriorityControl\Win32PrioritySeparation.
+8. Windows realizuje PRIORITY BOOST, ako techniku, ktoru umoznuje zvysovat prioritu daneho trheadu na zaklade viacerych podmienok. Napriklad pre GUI threads, pre threads, ktore vyskocili z WaitXXX() funkcii, ci dokoncili IO operaciu.
+
+Thread Affinity.
+
+1. Thread Affinity umoznuje zviazat konkretny CPU s threadom, cize dany thread sa bude vykonavat IBA na TOMTO PROCESORE.
+!!! 2. Nevyhodou Thread Affinity je, ze ak sa zrealizuje zle, tam moze vyrazne spomalit beh systemu, kde niektore CPU mozu byt zahaltene pracou, zatial co ine iba stoja. Preto by sa Thread Affinity mala pouzivat VELMI OPATRNE.
+!!!!! 3. Okrem Thread Affinity existuje tzv. IDEAL PROCESSOR, ktory sa prideluje danemu Threadu pri jeho vytvoreni. Idealny procesor sa vybera pomocou jednducheho Round Robin algoritmu, kde sa pre kazdy novy thread prideli nasledujuci CPU. IDEAL PROCESSOR sa potom zohladnuje Thread Scheulerom pri pridelovani CPU Threadu.
+!!!!! 4. VYHODOU IDEAL PROCESOR je, ze pri pouzivani TOHO ISTEHO PROCESU TYM ISTYM THREADOM je DALEKO VYSSIA PRAVDEPODOBNOST, ze memory bude ulozena v CPU CACHE a NEBUDE JU TREBA TAHAT z RAM. Tym sa zvysuje vykonnost systemu.
+5. Thread Affinity je mozne pridelit pomocou BITOVEJ MASKY, kde kazdemu CPU zodpovedna jeden bit. Masku mozem nastavit na threade pomocou SetThreadAffinityMask(), alebo na celom procese pomocou SetProcessAffinityMask(). Masku na procese je mozne nastavit aj pomocou prikazu Start.exe co je vyhodne pre debugging.
+//-----------------------------------------------------------------------------

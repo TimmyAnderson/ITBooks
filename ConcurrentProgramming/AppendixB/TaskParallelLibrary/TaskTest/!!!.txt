@@ -1,0 +1,38 @@
+﻿//------------------------------------------------------------------------------
+1. Program demonstruje pouzitie Task Parallel Library.
+!!!!! 2. Program bol skusany na CTP verzii a MNOHO VECI SA ZMENILO OPROTI KNIHE.
+2. Parallel Extensions je nova kniznica rozsirujuca namespace System.Threading o siroku podporu paralelnych kontajnerov, synchronizacnych objektov, Task Parallel Library a PLINQ.
+3. V TPL je ZAKLADNOU JEDNOTKOU PARALELIZMU objekt Task. Task ma vysokooptimalizovane algoritmy a stuktury na pouzitie v paralelnych architekturach (multicore, NUMA a podobne). Task ma nasledujuce klucove vlastnosti.
+   A. Pomocou statickych metod Create() je mozne vytvorit objekt Task a zaroven ho zaradit na spustenie. Metody Create() vytvaraju vo svojom tele Task a spoustia ho.
+   B. Pomocou metod Wait(), WaitAny() a WaitAll() je mozne POCKAT NA VYKONANIE DANEHO TASKU.
+   !!! C. Metody Wait(), WaitAny() a WaitAll() NEMUSIA VZDY skoncit Az PO UKONCENI TASKU. Niekedy moze byt KOD TASKU vykonany INLINE - v Threade, ktory VOLAL metodu Wait(). Preto SA NESMIE SPOLIEHAT NA TLS a ine THREAD-AFFINITY OBJEKTY.
+   D. Pomocou metod CancelXXX() je mozne Task ZRUSIT.
+   E. V KODE Action<>, ktory Task vykonava je mozne k objektu Task pristupit pomocou TLS entry Task.Current. Ak nie je nastaveny tak vracia null.
+   F. Interne je kazdy Task realizovany ako STATE MACHINE, kde aktualny stav Task je mozne ziskat pomocou property Status.
+4. Tasks podporuju spracovanie Unhandled Exception nasledujucim sposobom.
+   A. Kazda Unhandled Exception pocas behu Task je zachytena a ulozena do Task.Exception.
+   B. Pri volani Wait() funkcie je tato Exception znova hodena, avsak vo forme AggregateException.
+   C. AggregateException obsahuje kolekciu vsetkych Exceptions, ktore vznikli pocas behu Task su agregovane v AggregateException.
+   D. AggregateException poskytuje metodu Handle(), ktorej je potrebne poskytnut predikat, ktory je volany pre KAZDU EXCEPTION v AggregateException. Ak predikat vrati TRUE, tak je EXCEPTION HANDLED, ak vrati FALSE, tak je UNHANDLED a NA KONCI Handle() je hodena AggregateException ZO VSETKYMI UNHANDLED EXCEPTIONS.
+   !!! E. Ak k Exception ulozenej v Task.Exception NEPRISTUPIM A NEVYCITAM JU ANI NA KONCI PROGRAMU, tak FINALIZER ZLYHA A HODI EXCEPTION. Je to indikacia, ze som k Task.Exception NEPRISTUPIL a de-facto ju IGNOROVAL. Sluzi to na debugging. TOTO VYZERA, ZE V AKTUALNEJ VERZII TPL uz NEFUNGUJE.
+5. Tasks podporuju model Parent-Child, kde Task vytvoreny v kode Threadu beziaceho ako Task je povazovany za Child Task. Medzi Parent a Child platia nasledujuce pravidla.
+   A. Standardne Parent skonci AZ KED SKONCIA VSETKY CHILD Tasks. Toto chovavnie je mozne zmenit pouzitim priznaku TaskCreationOption.Detached pri vytvarani Task.
+   B. Exceptions Child Tasks su agregovane s Exception Parent Task a vratene ako JEDNA VNORENA AggregateException.
+   C. Propery Task.Parent odkazuje na Parent Task.
+6. Tasks podporuju pomocou metody Cancel(), resp. CancelAndWait() zrusenie beziaceho Task. Ak Task ani len nebol spusteny, tak je vyhodeny zo Scheduler a nikdy spusteny nebude. Ak uz spusteny je, tak je mu nastaveny flag na Cancel a nasledne je Task CISLO CANCELLED. Ak vznikne pocas Cancel Exception, tak je pri volani Wait() znova hodena v podobe TaskCanceledException.
+7. Pri Cancellation standardne Cancel na Parent NEZNAMENA i Cancel na vsetky jeho Child. To je mozne zmenit pomocou RespectParentCancellation, kedy Cancel Parent znamena Cancel VSETKYCH CHILD Tasks.
+8. Tasks podporuju Continuations pomocou metod ContinueWith(), kde definujem Action, ktory sa vykona PRI SKONCENI TASK. Platia pritom nasledovne pravidla.
+   A. Action zaregistrovany ako Continuation sa vykona ako SEPARATNY TASK, ktory je NAPLANOVANY cez Scheduler HNED AKO SKONCI vykonavanie Task, s danym Continuation asociovany.
+   B. Continuation je mozne retazit za sebou, pricom ak v niektorom z nich vznikne Exception, tak tato sa rozsiri na celu retaz a Task skonci hodenim Exception.
+   C. Pomocou verzie ContinuationWith() s parameterom ExecuteSynchronously je mozne poziadat aby bol Continuation vykonany SYNCHRONNE s Task, ktory ho inicioval.
+   D. Pomocou priznaku TaskContinuationKind je mozne nastavit na KTORE KONECNE STAVY bude dany Continuation vyvolany. Je mozne ho zavesit na stav Canceled, Completion ci Faulted.
+9. Future<T> je rozsirenim Task o moznost GENEROVANIA VYSLEDKU. Je to teda Task generujuci vysledku hodnotu. Ked sa skonci vykonavanie Future<T>, tak vypocitana hodnota je v property Value. Ak skocni hodenim Exception, tak je tato pristupna cez property Exception a zaroven i WaitXXX() metody vratia Exception pri svojom volani.
+!!! 10. Future<T> podporuju bezparamtericky konstruktor a SETTERS pre Value a Exception. Tento typ Future<T> NIE JE VYKONANY v Scheduler, ale KOD MUSI NASTAVIT HODNOTU bud Value, alebo Exception. KED SA TAK STANE a INY THREAD ROBI WaitXXX(), tak tento WaitXXX() je OKAMZITE UKONCENY ako bezny Future<T>.
+11. Pomocou triedy TaskManager mozuem ovplyvnovat kolko CPU bude priradenych tym Tasks, ktore tento TaskManager spravuje (bol im prideleny v konstruktore Task) a mnoho inych nastaveni.
+12. Staticka trieda Parallel implementuje mnozstvo stadnardnych paralelnych algoritmov pre cykly. Pre jedotlive algoritmy platia nasledujuce zasady.
+   A. Volanie metody konci az ked sa CELY CYKLUS REALIZUJE. Ak dojde pocas behu cyklu k Exception, tak metoda vracia Exception.
+   B. Kod iteracie sa vykonava v Action<T>, kde T udava cislo iteracie.
+   C. Pretazene verzie Action s parametrom ParallelState umoznuju vykonat Stop() na ukoncenie cyklu. Pri ukocneni cyklu SU UZ ROZBEHNUTE THREADS ZASTAVENE KOREKTNE, pomocou kooperativnej techniky BEZ POUZITIA Terminate().
+   D. Metody ako For(), alebo ForEach() vracaju objekt ParallelLoopResult z ktoreho je mozne zistit ci cyklus bol predcasne ukocneny a ak ano, tak ktorou iteraciou.
+   E. Viacere metody maju pretazene verize, kde mozem zadat ako parameter inicializacnu a ukoncovaciu funkciu, ktora sluzi na incializaciu, resp. zmazanie citlivych dat (IDispose), pristup k TLS a podobne.
+//------------------------------------------------------------------------------

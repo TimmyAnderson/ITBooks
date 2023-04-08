@@ -1,0 +1,89 @@
+//-----------------------------------------------------------------------------
+1. Program demonstruje jednoduchu pracu s Threads v C++.
+2. Threads mozu byt pouzite v programe 2 sposobomi.
+   A. Agent Style - vtedy sa vykonanie CELEHO ALGORITMU vykona v jednom trheade, ale threadov je v aplikacii viacero. Typicky sa to pouziva napriklad v ASP.NET, kde PSRACOVANIU KAZDEJ PAGE je priradeny JEDEN NEZAVISLY TRHEAD.
+   B. Paralizmus - vtedy sa SAMOTNY ALGORITMUS DEKOMPONUJE NA VIACERO CASTI, ktore sa vykonavaju paralelne.
+!!! 3. Na rozdiel od Windows, kde Threads su ZAKLADNOU ENTITOU PARALELEIZMU sa v UNIXE casto vyuziva PROCESS ako ZAKLADNA JEDNOTKA PARALELIZMU, kedze VYVORENIE PROCESU v UNIXE JE OMNOHO MENEJ CASOVO NAROCNEJSIE AKO VO WINDOWS.
+4. Thread ma priradeny VLASTNY STACK a IP - instruction pointer. To, ktory Thread sa vykona manageuje Thread Scheduler realizovany OS. Ak sa dany Thread ma zacat realizovat tak sa jeho stav musi vybrat pamete - tzv. CONTEXTU, kde je prave IP, Stack a podobne (TOTO SA NAZYVA CONTEXT). Tento proces sa nazyva CONTEXT SWITCH a je PLNE MANAGEOVANY OS. Ked Threadu je odobraty procesor, tak sa jeho IP, Stack a podobne (TOTO SA NAZYVA CONTEXT) ULOZIA DO PAMETE v procese CONTEXT SWITCH.
+5. Thread po svojom vytvoreni je zaradeny do Thread Queue odkial Thread Scheduler mu podla priority priradi tzv. QUANTUM, kedy je mu pridaleny CPU a Thread moze realizovat svoj kod.
+!!! 6. Ak je Thread pozastaveny (moze byt parametrom aj pri vytvoreni Threadu) tak prejde do pasivneho rezimu, ked NEZABERA PROSTRIEDKY CPU a Scheduler mu NEPRIDALUJE QUANTUM - teda sa NEVYKONAVA.
+7. Vo Windows sa casto NAJME PRI GUI Threads pouziva mechanizmus Priority Boost, ked Thread, ktory presiel do aktivneho stavu (MOZE MU BYT PRIDELENE QUANTUM) ma ZVYSENU PRORITU, aby ho Thread Scheduler mohol co NAJRYCHLEJSIE SPUSTIT a najme pri GUI Trheads sa tym dosahuje vyssia rychlost RESPONSIVITY.
+!!! 8. Standardne sa IP posuva podla algoritmu, asvak exisuje niekolko situacii, kedy IP skoci UPLNE INDE AKO UKAZUJE PROGRAM.
+   A. Context Switch - vtedy sa zmeni vykonavany Thread a tym padom sa zmeni aj IP.
+   B. Exception Handling - vtedy je nutne najst EXCEPTION HANDLER a teda IP sa presunie na PRVY NAJDENY EXCEPTION HANDLER, alebo ak taky neexistuje tak THREAD SKONCI UNEXPECTED EXCEPTION.
+   C. HW Interrupt - jedna sa o INTERUPTS s NAJVYSSOU PRIORITOU, ktore sa vykonaju v RAMCI TRHEADU, KTORY PRAVE BEZI NA CPU. HW INTERPUPTS vyuzivaju aj THREAD STACK. Zvycajne vsak JE ICH VYKONANIE EXTREMNE RYCHLE a zasanym sposobom NEBLOKUJU THREAD.
+   !!!!! D. SW Interrupt DPC - jedna sa o SW Interrupt, ktory sposobuje ulozenie DEFFERED PROCEDURE CALL (CALLBACK). Ak je vyvolany, tak sa do DPC Queue ulozi Handler na PROCEDURU, ktora sa NESKOR VYKONA. !!! DPC sa realizuju s NIZSOU PRIORITOU ako HW Interrupts co umoznuje aby sa HW Interrupt vykonal v STREDE VYKONAVANIA DPC. !!! ZVYCAJNE VSAK HW INTERRUPT ak sa v nom ma vykonat dlhsia akcia, tak IBA ZAREGISTRUJE DPC a HNED SKONCI. Samotna REALNA OBSLUHA HW Interrupt sa robi az pri realizacii DPC. !!! DPC sa realizuju PRED NAVRATOM DO THREADU. Teda ako trebars HW sposobi Interrupt a ten sposobi ulozenie noveho Handlera do DPC, tak sa TEN HANDLER VYKONA SKOR ako sa riadenie vrati Threadu. TAKTO JE REALIZOVANY AJ SAMOTNY CONTEXT SWITCH.
+   E. SW Interrupt APC - je tiez VYKONANIE HANDLERA, ale v USER a NIE KERNEL MODE. Vykonava sa vtedy ak je Thread vo WAIT FUNKCII a teda NEMA NIC INE NA PRACI, pretoze je vo WAIT STAVE. Typicke pouzitie je pri Wait() funkciach.
+9. CLR Threads su vysokourovnove Threads, ktore manageuje .NET. .NET Host je potom zodpovedny za mapovanie CLR Threads na OS Threads. !!!!! Vzhladom na ciel .NET spravit toto mapovanie NEZAVISLE, umoznuje .NET HOST PROCESU pretazenim prislusnych Interfaces toto mapovanie ZMENIT podla svojich potrieb. Takto to napriklad robi aj SQL Server, ktory FUNGUJE AKO CLR HOST, avsak pre vlastne potreby ma CUSTOM IMPLEMENTACIU MAPOVANIE CLR na OS Threads.
+!!! 10. Threads je mozne pouzivat vo Windows 2 sposobmi.
+   A. Explicitnym vytvorenim Threads napriklad pomocou funkcie CreateThread().
+   B. Pouzitim Thread Pool ako abstraktneho nastroja na efektivne vytvaranie a management Threads.
+11. Thread moze skoncit viacerymi sposobmi.
+   A. Thread funkcia sa normalne ukonci.
+   B. Thread funkcia vrati Exception, ktora nema Exception Handler - UNHANDLED EXCEPTION.
+   C. Thread je zastaveny pomocou niektorej z API funkcii.
+!!! 12. Funkcia GetCurrentHandle() vracia PSEUDO-HANDLE, ktory ma VZDY HONDOTU -2. !!!!! Tento HANDLE NETREBA UZATVARAT. Ak chcem ziskat SKUTOCNY HANDLE MUSIM POUZIT FUNKCIU DuplicateHandle().
+!!! 13. To ISTE ako pre GetCurrentHandle() plati aj pre GetCurrentProcess(), ktory vracia PSEUDO-HANDLE s hodnotou -1. 
+14. Funkcia CreateRemoteThread() ma ako parameter PROCESS HANDLE a umoznuje VYTVORIT THREAD NA CUDZOM PROCESE. To sa pouziva napriklad v Debuggeroch.
+!!!!! 15. Namiesto CreateThread sa v C++ MUSI POUZIVAT _beginthread(), alebo _beginthreadex(). Dovod je v tom, ze POVODNA CRT kniznica LIBC.LIB pouzivala GLOBALNE PREMENNE na uchovanie napriklad 'errno', alebo smerniku pri strok(). V MUTLITHREADOVEJ CRT - LIBCMT.LIB boli GLOBALNE PREMENNE nahradene ENTRIES v TLS. !!!!! A tie MUSIA BYT INICALIZOVANE. A PRESNE TOTO ROBIA _beginthread() a _beginthreadex(). Ak ich nezavolam, tak ENTRIES v TLS sa NEVYTVORIA a pri praci s strok(), errno, alebo inymi funkciami PROGRAM TOTALNE ZLYHA.
+!!!!! 16. Funkcia _beginthread() ma ZAVAZNU CHYBU a NESMIE SA POUZIVAT. Sice tak ako _beginthreadex() navratovou hodnotu je HANDLE (alebo 0 pri chybe), avsak _beginthread() UZATVARA tento HANDLE AUTOMATICKY, ked skonci Thread funkcia. Napriklad ak Thread spusteny cez _beginthread() skonci SKOR ako _beginthread() tak _beginthread() VRATI INVALIDNY HANDLE. Preto VZDY TREBA POUZIVAT _beginthreadex().
+
+CLR Threads.
+
+1. V .NET sa pouziva Thread trieda, ktora ak pouzivam STANDARDNY HOST (nie napriklad SQL Server, ktory ma implementovane CUSTOM mapovanie CLR a OS Threads), tak Thread je iba tenky wrapper nad OS Thread.
+2. V konsturktore Thread sa samotny Thread NEVYTVARA. Vytvori sa az po volani metody Start().
+3. CLR Thread NEVRACIA ZIADNU NAVRATOVU HODNOTU ale ma podobne ako OS Thread moznost preniest parameter.
+!!! 4. Thread HANDLE nie je uvolneny pri skonceni Threadu, ale az ked SA ZAVOLA FINALIZER Thread objektu.
+5. ManagedThreadId NEMA ZIADNU SUVISLOST s OS ThreadID.
+!!! 6. Thread funkcia pre OS Thread, alebo CLR Thread JE OBALENA SKRYTOU SYSTEMOVOU funkciou, ktora INTERNE zavola THREAD FUNKCIU a po jej ukoceni sa zavola ExitThread().
+7. Return Code je podporovany iba v OS Threads a je ulozeny v SYSTEMOVEJ STRUKTURE Threadu (sem ju ulozi interna wrapper funkcia, ktora spustila Thread funkciu) a neskor si ju je mozne vytiahnut volanim GetExitCodeThread().
+
+Thread Termination.
+
+1. Existuje 5 sposobov ako ukoncit Thread.
+   A. Thread funkcia sa korektne ukocni.
+   B. Thread funkcia vola UNHANDLED EXCEPTION.
+   C. V OS Threads - zavolam ExitThread(), alebo TerminateThread() a to BUD V DANOM THREADE, alebo z INEHO THREADU. !!! .NET NEMA tuto funkcionalitu a VOLANIE tychto cez P/Invoke SPOSOBI VAZNE PROBLEMY.
+   D. V CLR Threads - zavolam metodu Thread.Abort() bud z daneho Threadu, alebo nejakeho ineho. Thread takisto moze byt ABORTED CLR prostredim, napriklad pri UZATVARANI APP DOMAIN.
+   E. Proces sa ukonci.
+!!! 2. NASILNE TERMINOVANIE Threads je VZDY ZLA PRAKTIKA a nemala by sa pouzivat ako standardna technika na ukoncenie Threads.
+3. Ak OS Thread hodi Unhandled Exception tak je zavolany DEFAULT SEH, ktory vyhodi okienko s moznostou Debuggingu, alebo ukocenia procesu.
+4. CLR instaluje specialny SEH pre Unhandled Exceptions, ktory umoznuje CLR ukoncit proces, resp. ingergaciu s Dr. Watson a zaroven PODROBNU INFORMACIU o CHYBE, ktora sa zobrazi.
+5. Dialogove okno pri ukoceni Unhandled Exception je mozne potlacit funkciou SetErrorMode().
+!!! 6. CLR vo verzii 1.0. Exceptions na Finalizer Thread, User Threads ci Thread-Pool Threads IGNOROVAL. V CLR 2.0. sa to zmenilo na UKONCENIE PROCESU, pricom sa poskytne podrobna informacia o chybe.
+7. Na NASILNE ukoncenie Threads sa pouzivaju ExitThread() - sluzi na ukoncenie AKTUALNEHO THREADU a TerminateThread() - sluzi na ukoncenie Threadu identifikovaneho cez Thread Handle, ktory moze byt aktualnym Threadom, alebo inym Threadom.
+!!!!! 8. Obe TERMINATE funkcie su vsak EXTREMNE NEBEZPECNE, pretoze vedu k Memory Leaks, ba dokonca pokial je Thread TERMINATED napriklad pri ALOKOVANI PAMETE, tak aj VTEDY ROBI CRT LOCKING a moze dojst k DEADLOCKU, kedze po Thread TERMINATION tieto locky NIE SU UVOLNENE. Teda tieto funkcie pouzivat iba vo vynimocnych pripadoch, napriklad ked neviem inak Thread prinutit aby skoncil - je v nejakom DEAD LOCK napriklad.
+9. V .NET je mozne zavolat metodu Thread.Abort() na abortovanie Threadu. Tato metoda na danom Threade (moze byt aj ten isty, ktory volal Abort()) sa vyhodi ThreadAbortException.
+!!! 10. ThreadAbortException sa NEDA POTLACIT v CATCH BLOCK, pretoze hned po jeho opusteni ju .NET VOLANA ZNOVA, az kym Thread neskonci.
+!!! 11. Jedinou moznostou ako POTLACIT ThreadAbortException je volat metodu Thread.ResetAbort(), ktora pozastavi VYHADZOVANIE ThreadAbortException a TYM PADOM ZRUSI Abort(). Metoda Abort() VSAK SKONCI AJ TAK a ten kto volal Thread.Abort() teda NEMA 100% ISTOTU, ze sa THREAD OZAJ UKONCI. Je potrebne pouzit Thread.Join() na overenie.
+!!!!! 12. Vykonavanie Abort() je POZASTAVENE, ked sa Thread nachadza v DELAY-ABORT regione. Sem patria napriklad Constrained Execution Regions, beh nativneho kodu na managed Thread, spustenie Class alebo Module Contructors.
+!!!!! 13. MEDZI DELAY-ABORT regions PARTI aj HOCIJAKY CATCH a FINALLY BLOCK.
+????? 14. Vyzera to, ze DELAY-ABORT region je MOZNE DEFINOVAT vykonavanim kodu medzi volaniami Thread.BeginCriticalRegion() a Thread.EndCriticalRegion().
+15. Ukoncenie procesu cez ExitThread(), alebo TerminateThread() sposobi ukoncenie VSETKYCH THREADS. Rozdiel medzi ExitThread() a TerminateThread() je v tom, ze ExitThread() vola napriklad DLL Thread notifikacne funkcie a robi isty cleanup (aj ked nevola destruktory ani finally bloks), zatial co TerminateThread() NASILNE UKONCI VSETKY THREADS bez napriklad volania DLL Thread notifikacnych funkcii.
+????? 16. VYZERA TO, ZE Abort() skonci OKAMZTIE KED SMARI do THREADU 1. EXCEPTION - KASLUC NATO CI SA OZAJ UKONCIL.
+
+Native TLS.
+
+1. TLS umoznuje asociovat s threadom privatne data, ktore NIE SU ZDIELANE s inym Threadom a teda pre ne plati Thread Affinity.
+!!! 2. TLS je realizovane tak, ze PROCES ma TABULKU TLS Entries, ktorej dlzka je danna OS. (V najnovsich Win je to okolo 1000.) Kazdy Thread PRI VYTVORENI si ALOKUJE !!! VLASTNU !!! tabulku PODLA TOHO KOLKO TLS Entries bolo ALOKOVANYCH. NASLEDNE takyto THREAD MOZE POUZIVAT TABULKU a UKLADAT DO KAZDEJ ENTRY informaciu o dlzke sizeof(POINTER).
+3. Typicke pouzitie TLS vyzera nasledovne.
+   A. NA ZACIATKU PROCESU (alebo v DllMain() - DLL_PROCESS_ATTACH) je zavolna funkcia TlsAlloc(), ktora vrati INDEX do TLS TABULKY, ktory budem pre KAZDY THREAD POUZIVAT. !!! Tento index je ULOZENY DO GLOBALNEJ PREMENNEJ, ABY HO MOHOL KAZDY THREAD POUZIT.
+   B. Ked sa spusta Thread, tak si ALOKUJE LOKALNU TABULKU, ktorej dlzka zodpoveda POCTU TLS ENTRIES, ktore boli v procese funkciou TlsAlloc() alokovane.
+   C. Thread pouziva INDEX z GLOBALNEJ PREMENNEJ na CITANIE a ZAPIS do TLS ENTRY funkciami TlsGetValue() a TlsSetValue().
+   D. Pri UKONCOVANI PROCESU (alebo v DllMain() - DLL_PROCESS_DETACH) je zavolana funkcia TlsFree() s hodnotou INDEXU TLS ENTRY uklozeneho v GLOBALNEJ PREMENNEJ. Takto sa TLS Entry uvolni a uz NIE JE VIAC POUZITELNY.
+!!!!! 4. C++ kompilator pre STATICKY LINKOVANE DLL poskytuje moznost JEDNODUCHO definovat TLS ENTRIES pomocou syntaxe __declspec(thread) int *gTLSIndex.
+
+Managed TLS.
+
+1. Managed TLS moze byt realizovane 2 sposobmi - DYNAMICKY, alebo STATICKY.
+2. DYNAMICKE TLS sa pouziva nasledovne.
+   A. NA ZACIATKU PROCESU sa alokuje TLS ENTRY pomocou Thread.AllocateDataSlot(), alebo Thread.AllocateNamedDataSlot().
+   B. Ked sa spusta Thread, tak si ALOKUJE LOKALNU TABULKU, ktorej dlzka zodpoveda POCTU TLS ENTRIES, ktore boli v procese alokovane.
+   C. Thread na zapise a citani TLS ENTRY pouziva TRIEDU LocalDataStoreSlot vratenu Thread.AllocateDataSlot(), alebo Thread.AllocateNamedDataSlot(). V PRIPADE Thread.AllocateNamedDataSlot() moze vyuzit aj MENO zadane v tejto funkcii, ktore MUSI BYT UNIKATNE na ZISKANIE LocalDataStoreSlot z tohto mena volanim funkcie GetNamedDataSlot(). Zapisa a citanie sa robi funkciami Thread.GetData() a Thread.SetData().
+   D. Pri UKONCOVANI prace s NAMED TLS ENTRIES MUSIM VOLAT Thread.FreeNamedDataSlot().
+3. STATICKE TLS sa pouziva nasledovne.
+   A. Na STATICKY MEMBER triedy aplikujem atribut [ThreadStatic].
+   B. STATICKY MEMBER v NOVOM THREAD INCIALIZUJEM a POUZIVAM, pricom MAM ISTOTU, ze pre KAZDY THREAD BUDE OBSAHOVAT VLASTNU HODNOTU.
+   C. STATICKY MEMBER NIE JE TREBA UVOLNOVAT. .NET to spravi AUTOMATICKY.
+!!!!! 4. STATIC CONTRUCOTR, ci STATICKY INCIALIZATOR sa vola IBA PRE 1. THREAD. Pre OSTATNE NIE.
+//-----------------------------------------------------------------------------

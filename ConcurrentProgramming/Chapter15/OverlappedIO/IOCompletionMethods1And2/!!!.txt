@@ -1,0 +1,64 @@
+﻿//------------------------------------------------------------------------------
+1. Program demonstruje pouzitie Overlapped IO vo Windows.
+!!! 2. Vyhody pouzitia Overlapped IO.
+   A. Klucovou vyhodou Overlapped IO je, ze POCAS VYKONAVANIA IO operacie NEBERU CYKLY CPU. Windows si SAM manageuje beziace IO operacie ich distribuovani na dany HW a AZ PO ICH SKONCENI zapoji CPU do SPRACOVANIA VYSLEDKOV.
+   B. Ak sa vykonava viacero IO nad rozlicnymi HW devices, tak su vykonavane paralelne.
+   C. Ak sa vykonava viacero IO na tym istym IO device, tak HW si moze OPTIMALIZOVAT ich vykonavanie. napriklad HDD moze optimalizovat pohyb ramena HDD, aby operacie vycital co najoptimalnejsie.
+3. Operacia iniciovana Operapped IO pri skonceni zabezpeci notifikaciu, aby bolo mozne spracovat jej vysledky. To je mozne vykonat nasledujucimi sposobomi.
+   A. IO trvajuce velmi kratko mozu skoncit synchronnym spsoobom.
+   B. Polling.
+   C. Priama signalizacia KO objektu.
+   D. Signalizacia Eventu, ktory bol poskytnuty pri zaciatku IO operacie.
+   E. Zaslanie packetu do IO Completition port.
+   F. Zaslanie APC do threadu, ktory zacal IO.
+4. Kazda overlapped operacia je reprezentovana v Native prostredi obejktom OVERLAPPED. Jeho .NET ekvivalent je Overlapped, ktory pouziva .NET struct NativeOverlapped. Konverziu medzi Overlapped a NativeOverlapped je mozne vykonat metodam Pack() a Unpack(). Overlapped objekt je mozne odstranit z pameti volanim Free().
+!!! 5. .NET triedy Overlapped a NativeOverlapped sa BEZNE NEPOUZIVAJU. .NET poskytuje efektivnejsie API pre jednotlive typy HW (socket, COM port, files).
+!!! 6. Overlapped IO je UKONCENE volanim GetOverlappedResult(), ktora vracia informaciu ci IO bol skonceny a ked ano, tak vracia i pocet bytes, ktore boli prenesene v parametre NumberOfBytesTransferred. V parametri Wait je mozne specifikovat ci GetOverlappedResult() ma zablokovat thread az do konca IO, alebo iba zistit jej stav.
+7. Velmi casto byvaju OVERLAPPED struktury cached a reused, aby ich nebolo treba neustale realokovat pri kazdej IO operacii. Vista podporuje API SetFileOverlappedRange(), ktory umoznuje efektivnejsi management pamete pri Overlapped IO.
+!!! 8. Overlapped IO musi byt uz pri vytvarani HANDLE inicializovana. V pripade funkcie CreateFile() je to artibut FlagsAndAttributes, ktory musi obsahovat flag FILE_FLAG_OVERLAPPED a v pripade CreateNamedPipe() je to atribut OpenMode.
+9. Po otvoreni HANDLE pre Overlapped IO je mozne pomocou funkcii ReadFile(), ReadFileEx(), WriteFile() a WriteFileEx() realizovat Overlapped IO naplnenim parametru Overlapped strukturou OVERLAPPED.
+10. Pomocou funkcie DeviceIoControl() je mozne zaslat priamo do HW Control Code. Pouziva sa iba pri nizkourovnovom programovani.
+!!!!! 11. Pre pouzivanie Overlapped IO platia nasledujuce zasady.
+   A. HANDLE NEDRZI invofmaciou o File Offset. Tu treba v KAZDEJ Overlapped IO DEFINOVAT EXPLICITNE v OffsetLow a OffsetHigh parametroch OVERLAPPED struktury. Toto sa vsak tyka IBA FILES a pre OSTATNE TYPY DEVICES MUSIA BYT OffsetLow a OffsetHigh ROVNE 0, inak operacia ZLYHA.
+   B. Pri Overlapped operaciach MUSIM nastavovat Event struktury OVERLAPPED.
+   C. Ak dorazim na koniec suboru API (ReadFile(), WriteFile()) vratia FALSE ako GetLastError() ERROR_HANDLE_EOF a vrati ako pocet prenesenych bytes 0.
+   D. Thread, ktory inicioval Overlapped IO NESMIE SKONCIT pred jej ukoncenom, inak by som jednak stratil data a mohlo by dojst k MEMORY LEAKS. O tom ci existuju OverlappedIO, ktore spustil dany Thread a neboli ukoncene je mozne zistit volanim GetThreadIOPendingFlag(). Thread Pools a to AKO MANAGED, tak I NATIVE toto zabezpecuju AUTOMATICKY.
+!!!!! 12. Alokovany BUFFER a struktura OVERLAPPED, MUSIA BYT ZIVE POCAS CELEHO BEHU Overlapped IO. Ak by boli PREDCASNE UVOLNENE, cely porgram BY MOHOL SPADNUT.
+13. Ak Overlapped IO trva velmi kratko, napriklad preto, lebo dany File je v Cache, tak sa moze skoncit OKAMZTIE uz pri skonceni ReadFile(), WriteFile(). Ak k tomu dojde, tak tieto funkcie vracaju TRUE a data su pripravene k spracovaniu. Ak naopak je inicializovana asycnhronna operacia, tak funkcie vratia FALSE a ako GetLastError() ERROR_IO_PENDING.
+!!! 14. I ked Overlapped IO bol skonceny SYNCHRONNE tak COMPLETION PORT SA VYKONA a takisto sa File HANDLE NASTAVI. Toto pri synchronnom ukoceni operacie je vlastne zbytocne a Vista pomocou SetFileCompletionNotificationModes() umoznuje zrusit toto dodatocne spracovanie. AVSAK ak som v OVERLAPPED nastavil Event, tak tento sa NASTAVI BEZ OHLADU na volanie SetFileCompletionNotificationModes().
+15. Overlapped IO je mozne periodicky pollingovat funkciu GetOverlappedResult() na zistenie ci neskoncila. Ak skoncila, tak mozem spracovat vysledky. Polling ma vyhodu v tom, ze nepotrebuje KO, ale nevyhodu v dlhsej latencii, ked medzi dvoma polls robi nejaku inu cinnost.
+16. Makro HasOverlappedIoCompleted() umoznuje jednoduchsim sposobom namiesto volania GetOverlappedResult() ziskat informaciu ci Overlapped IO uz skoncila.
+!!! 17. Kazda asynchronna ked zacina tak je HANDLE pre subor RESETNUTY DO NON-SIGNAL STATE a ked Overlapped IO skonci tak je HANDLE NASTAVENY DO SIGNALED STATE. HANDLE sa da teda pouzit vo WaitXXX() funkciach.
+!!! 18. Po skonceni Overlapped IO je hodnota OVERLAPPED.InternalHigh nastavena na pocet prenesenych bytes a OVERLAPPED.Internal ak ma NENULOVU hodnotu je nastaveny na cislo IO chyby.
+19. Event OVERLAPPED.hEvent AK JE NASTAVENY, tak sa po skonceni Overlapped IO nastavi do SIGNALED STATE. Pouzitie OVERLAPPED.hEvent ma oproti HANDLE na file ma vyhodu, ze mozem pomocou neho neho kontrolovat VIACERO Overlapped IO, kedze KAZDA Overlapped IO ma VLASTNU OVERLAPPED strukturu a kazda moze mat VLASTNY Event.
+20. Funkcie ReadFileEx() a WriteFileEx() umoznuju ako parameter zaslat SMERNIK na CALLBACK, ktory sa vykona pri skonceni Overlapped IO.
+!!!!! 21. CALLBACK zaslany do ReadFileEx() a WriteFileEx() JE VYKONANY AKO APC a JE REALIZOVANY IBA AK THREAD je ALERTABLE WAIT v THREAD, KTORY INICIOVAL Overlapped IO.
+!!!!! 22. Pouzitie APC Callback NESIE RIZIKO, pretoze Thread MUSI BYT v ALERTABLE WAIT a IBA VTEDY JE APC VYKONANE. Riziko spociva ak napriklad niektora funkcia, alebo dokonca API, ktore z thredu, ktory inicioval Overlapped IO vykona ALERTABLE WAIT, tak v RAMCI VOLANIA TEJTO FUNKCIE, resp. API je VYKONANY APC - co moze byt ak si nedam pozor napriklad v CRITICAL SECTION a nechtiac si mozem takto polahky narusit stabilitu kodu.
+!!!!! 23. APC sa teda vykonavaju v THREADE, ktory INICIALIZOVAL Overlapped IO, ale AZ PO ALERTABLE WAIT. Teda ked skonci IO, a Thread NIE JE v ALERTABLE WAIT, tak sa ulozi vykonanie CALLBACK do queue a vykona sa PRI NAJBLIZSOM ALERTABLE WAIT.
+!!! 24. Pouzitie IO Completition Ports je NAJEFEKTIVNEJSIM SPOSOBOM REALIZOVANIA IO OPERACII. Je realizovany v nasledujucich krokoch.
+   A. Vytvorim HANDLE na file (funkcia CreateFile()) nad ktorym chcem robit asynchronny IO.
+   B. Pre HANDLE VYTVORIM - VISTA - THREAD POOL (funkcia CreateThreadpoolIo()). (Mohol by som aj legacy TP. Priklad je v kapitole 7.) Tu ZADAVAM CALLBACK.
+   C. Spustim TP (funkcia StartThreadpoolIo()).
+   D. Realizujem Overlapped IO pomocou ReadFile(), alebo WriteFile() - NIE VSAK pomocou ReadFileEx(), alebo WriteFileEx(), ktore sa pouzivaju pri APC.
+   E. Cakam na ukoncenie Overlapped IO. Je to mozne realizovat funkciou WaitForThreadpoolIoCallbacks(), alebo inym CUSTOM synchronizacnym mechanizmom.
+   F. Ukoncim TP funkciou CloseThreadpoolIo().
+   G. Uzavriem HANDLE volanim CloseHandle().
+25. Pomocou funkcii CancelIo(), CancelSynchronouIo() a CancelIoEx() je mozne Overlaped IO OZNACIT ako CANCELLED. Pri completion takto oznacena IO skonci chybou indikujucou, ze Overlapped IO bol skonceny.
+  
+Completion Ports  
+
+1. Completion Ports je mechanizmus pouzivany na realizaciu spracovania ASYNCHRONNYCH Overlapped IO. Je to NAJVYKONNEJSI SPOSOB SPRACOVANIA.
+!!! 2. I ked standardne je pouzivny spolu s THREAD POOL, ktory manageuje Threads pouzivane na vyvolavanie Callback pri skonceni Overlapped IO, je mozne IMPLEMENTOVAT I CUSTOM REALIZACIU Completion Ports.
+!!! 3. Completion Port je KO, na ktory je MOZNE REALIZOVAT WAIT podobne ako na INE KO.
+!!!!! 4. CP sa pouzivaju nasledovne.
+   A. Vytvorim objekt CP.
+   B. Vytvorim si CUSTOM thread, ktory bude monitorovat skoncenie Overlapped IO.
+   C. Spustim asynchronnu operaciu.
+   D. Ak asynchronna operacia skonci, tak dany DEVICE, KTORY JU REALIZOVAL INTENRE ulozi do QUEUE CP VYSLEDOK IO OPERACIE.
+   !!! E. Windows zisti, ze CP ma v QUEUE nejake data na spracovanie a AK NIEKTORY THREAD je vo WAIT STAVE nad DANYM COMPETION PORT, tak OKAMZTIE ukonci WAIT STAV a UMOZNI THREADU, aby spracoval vysledky IO operacie.
+5. CP je mozne vytvorit pomocou CreateIoCompetionPort(), do ktorej davam HANDLE na File, ktory ma by asociovany s CP, ako aj CompletionKey co je CUSTOM USER-VALUE, ktora je asociovana s CP.
+!!!!! 6. TP pouziva prave CompletionKey na ulozenie INTERNEJ STRUKTURY, ktore obsahuje CALLBACK vyvolavany pri skonceni Overlapped IO.
+!!!!! 7. Wait nad CP mozem realizovat pomocou funkcie GetQueuedCompletionStatus(), alebo GetQueuedCompletionStatus() - ta umoznuje realizaciu ALERTABLE WAITS, ak pouzivam APC. Funkcie umoznuju definovat TIMEOUT ako dlho maju caka na ukoncenie Overlapped IO, pocet prenesenych dat a OVERLAPPED strukturu. Takisto obsahuju i VUSTOM VALUE CompletitionKey.
+!!!!! 8. Data po skonceni Overlapped IO OBYCAJNE POSKYTUJE dany DEVICE, ale MAM MOZNOST ich POSKYTNUT is SAM volanim PostQueuedCompletionStatus().
+!!!!! 9. Funkcia PostQueuedCompletionStatus() NENASTAVUJE Overlapped.hEvent. MUSIM TO SPRAVIT RUCNE.
+//------------------------------------------------------------------------------
