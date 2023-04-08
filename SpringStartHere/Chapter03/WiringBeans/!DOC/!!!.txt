@@ -1,0 +1,43 @@
+//----------------------------------------------------------------------------------------------------------------------
+1. Solution popisuje WIRING SPRING BEANS.
+2. WIRING SPRING BEANS znamena prepajanie SPRING BEANS, kde jeden SPRING BEAN moze referovat na ine SPRING BEANS.
+3. SPRING BEANS mozu byt WIRED nasledujucimi sposobmi.
+   A. WIRING. Je to sposob kedy SPRING BEAN ziska referenciu na iny SPRING BEAN volanim METHODS, ktore su zodpovedne za vytaranie referovanych SPRING BEANS.
+   B. AUTO WIRING. Je to sposob kedy SPRING BEAN ziska referenciu na iny SPRING BEAN pomocou METHOD PARAMETER.
+   C. DEPENDENCY INJECTION. Je to sposob kedy SPRING BEAN ziska referenciu na iny SPRING BEAN pomocou DEPENDENCY INJECTION.
+4. WIRING SPRING BEANS sa vykonava v nasledujucich krokoch.
+   A. V CONFIGURATION FILE sa vytvori METHOD, ktora vytvara instanciu CHILD BEAN.
+   !!! B. V CONFIGURATION FILE sa vytvori METHOD, ktora vytvara instanciu PARENT BEAN, pricom tato METHOD pri inicializacii PARENT BEAN vola METHOD, ktora vytvara instanciu CHILD BEAN na vytvorenie instancie CHILD BEAN, ktory vlozi do vytvorenej instancie PARENT BEAN.
+   !!!!! C. Ak METHOD, ktora vytvara instanciu PARENT BEAN vola METHOD, ktora vytvara instanciu CHILD BEAN, tak to ci sa volanie vobec uskutocni zavisi od toho ci v SPRING CONTEXT uz bola zaregistrovana instancia CHILD BEAN. Ak NEBOLA, tak sa vola METHOD, ktora vytvara instanciu CHILD BEAN, aby ta vytvorila CHILD BEAN. Ak vsak CHILD BEAN uz BOL VYTVORENY, tak SPRING FRAMEWORK spravi INTERCEPTING volania METHOD, ktora vytvara instanciu CHILD BEAN a VOBEC ju NEZAVOLA. Namiesto toho vrati EXISTUJUCU instanciu CHILD BEAN, ktora uz predtym bola zaregistrovana v SPRING CONTEXT.
+5. AUTOWIRING SPRING BEANS sa vykonava v nasledujucich krokoch.
+   A. V CONFIGURATION FILE sa vytvori METHOD, ktora vytvara instanciu CHILD BEAN.
+   !!! B. V CONFIGURATION FILE sa vytvori METHOD, ktora vytvara instanciu PARENT BEAN. Tato METHOD ma ako PARAMETER TYPE CHILD BEAN.
+   !!!!! C. METHOD, ktora vytvara instanciu PARENT BEAN dostane ako PARAMETER uz vytvorenu instanciu CHILD BEAN, ktoru nasledne moze pouzit pre inicializaciu PARENT BEAN.
+6. DEPENDENCY INJECTION SPRING BEANS sa vykonava aplikovanim ANNOTATION [@Autowired]. ANNOTATION [@Autowired] je mozne aplikovat nasledujucimi sposobmi.
+   A. ANNOTATION [@Autowired] sa aplikuje na FIELD TYPE [CHILD BEAN].
+   B. ANNOTATION [@Autowired] sa aplikuje na CONSTRUCTOR, ktory ma PARAMETER TYPE [CHILD BEAN].
+   C. ANNOTATION [@Autowired] sa aplikuje na SETTER METHOD, ktora nastavuje FIELD TYPE [CHILD BEAN].
+7. Pre aplikovanie ANNOTATION [@Autowired] na FIELD platia nasledujuce fakty.
+   A. ANNOTATION [@Autowired] sa aplikuje v PARENT BEAN na FIELD, ktory reprezentuje CHILD BEAN.
+   B. SPRING FRAMEWORK pri vytvarani instancie PARENT BEAN automaticky nastavi FIELD na instanciu CHILD BEAN.
+   !!! C. NEVYHODOU tohto pristupu je, ze FIELD NEMOZE byt FINAL, lebo by doslo ku COMPILATION ERROR.
+   D. Pouzitie FIELD ANNOTATION [@Autowired] takisto komplikuje UNIT TESTING.
+8. Pre aplikovanie ANNOTATION [@Autowired] na CONSTRUCTOR platia nasledujuce fakty.
+   A. ANNOTATION [@Autowired] sa aplikuje v PARENT BEAN na CONSTRUCTOR, ktory musi mat PARAMETER TYPE [CHILD BEAN].
+   B. SPRING FRAMEWORK pri vytvarani instancie PARENT BEAN automaticky nastavi CONSTRUCTOR PARAMETER na instanciu CHILD BEAN. Tou je potom mozne inicializovat FIELD TYPE [CHILD BEAN].
+   !!! C. VYHODOU tohto pristupu je, ze FIELD MOZE byt FINAL, lebo je inicializovany v CONSTRUCTOR.
+9. Pre aplikovanie ANNOTATION [@Autowired] na SETTER platia nasledujuce fakty.
+   A. ANNOTATION [@Autowired] sa aplikuje v PARENT BEAN na SETTER, ktory sa nastavuje CHILD BEAN.
+   B. SPRING FRAMEWORK po vytvoreni instancie PARENT BEAN automaticky zavola SETTER s vytvorenou instanciou CHILD BEAN.
+   !!! C. NEVYHODOU tohto pristupu je, ze FIELD do ktoreho SETTER uklada CHILD BEAN NEMOZE byt FINAL, lebo by doslo ku COMPILATION ERROR.
+   D. Pouzitie SETTER ANNOTATION [@Autowired] takisto komplikuje UNIT TESTING.
+!!! 10. Ak BEAN 1 potrebuje na svoje vytvorenie instanciu BEAN 2, pricom vsak BEAN 2 potrebuje na svoje vytvorenie instanciu BEAN 1, dochadza k vzniku CIRCULAR DEPENDENCY. SPRING FRAMEWORK pri vzniku CIRCULAR DEPENDENCIES hodi EXCEPTION.
+11. Ak PARENT BEAN potrebuje na svoje vytvorenie instanciu CHILD BEAN, pricom CONFIGURATION CLASS vytvara viacere instancie TYPE [CHILD BEAN], tak SPRING FRAMEWORK vykonava nasledujuci algoritmus pri najdeni toho CHILD BEAN, ktore ma pomocou DEPENDENCY INJECTION vlozit do PARENT BEAN.
+   A. Ak je v PARENT BEAN ANNOTATION [@Autowired] aplikovana na FIELD, tak sa zoberie nazov FIELD a hlada sa ci exituje CHILD BEAN s nazvom FIELD. Ak existuje, pouzije sa tento BEAN na inicializaciu PARENT BEAN.
+   B. Ak je v PARENT BEAN ANNOTATION [@Autowired] aplikovana na CONSTRUCTOR, tak sa zoberie nazov CONSTRUCTOR PARAMETER a hlada sa ci exituje CHILD BEAN s nazvom CONSTRUCTOR PARAMETER. Ak existuje, pouzije sa tento BEAN na inicializaciu PARENT BEAN.
+   C. Ak je v PARENT BEAN ANNOTATION [@Autowired] aplikovana na SETTER, tak sa zoberie nazov SETTER PARAMETER (NIE NAZOV SETTER) a hlada sa ci exituje CHILD BEAN s nazvom SETTER PARAMETER. Ak existuje, pouzije sa tento BEAN na inicializaciu PARENT BEAN.
+   D. Ak v predchajucich krokoch nebol CHILD BEAN najdeny, SPRING FRAMEWORK hlada sa CHILD BEAN, ktory je oznaceny ANNOTATION [@Primary]. Ak existuje, pouzije sa tento BEAN na inicializaciu PARENT BEAN.
+   E. Ak v predchajucich krokoch nebol CHILD BEAN najdeny, SPRING FRAMEWORK zisti ci na FIELD, CONSTRUCTOR, alebo SETTER na ktory bol aplikovany ANNOTATION [@Autowired] nie je aplikovany ANNOTATION [@Qualifier]. Ak ano, zoberie sa nazov CHILD BEAN s NAME rovnakym ako NAME v ANNOTATION [Qualifier] a tento CHILD BEAN sa pouzije na inicializaciu PARENT BEAN.
+   !!! F. Ak v predchajucich krokoch nebol CHILD BEAN najdeny, SPRING FRAMEWORK hodi EXCEPTION.
+!!! 12. Ak ma BEAN iba 1 CONSTRUCTOR, tak nanho NIE JE NUTNE aplikovat ANNOTATION [@Autowired], pretoze je aplikovany automaticky.
+//----------------------------------------------------------------------------------------------------------------------

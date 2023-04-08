@@ -1,0 +1,71 @@
+//----------------------------------------------------------------------------------------------------------------------
+1. Solution demonstruje sposoby ako je v SPRING mozne volat REST SERVICES.
+2. SPRING umoznuje volanie REST SERVICES pomocou nasledujucich LIBRARIES.
+   A. OPEN FEIGN je sucastou SPRING CLOUD PROJECT. Je to zaroven odporucana LIBRARY na volanie REST SERVICES.
+   B. REST TEMPLATE je dnes uz DEPRECATED LIBRARY, ktora sa casto pouzivala v minulosti.
+   C. WEB CLIENT je alternativou voci REST TEMPLATE, ktorej sa pouziva REACTIVE APPLICATION MODEL.
+3. OPEN FEIGN je WEB CLIENT, ktory funguje nasledujucim sposobom.
+   A. Ak chce JAVA CODE volat WEB SERVICE, tak definuje JAVA INTERFACE, ktory oznaci pomocou ANNOTATIONS.
+   B. V JAVA INTERFACE definuje METHOD PROTOTYPES pre kazdy WEB SERVICE, ktory chce volat.
+   !!! C. METHOD PROTOTYPES obsahuju PARAMETERS, ktore reprezentuju jednotlive casti HTTP REQUEST. Vyznam tychto PARAMETERS urcuje ANNOTATIONS, ktore su na nich aplikovane. Tak napriklad ak je na PARAMETER aplikovana ANNOTATION [@RequestHeader], tak PARAMETER bude obsahovat HTTP REQUEST HEADER. Ak ak je na PARAMETER aplikovana ANNOTATION [@RequestBody], tak PARAMETER bude obsahovat HTTP REQUEST BODY.
+   !!! D. INTERFACE METHODS mozu mat ako RETURN TYPE TYPE reprezentujuci HTTP RESPONSE BODY, alebo je mozne pouzit TYPE [feign.Response], ktory obsahuje HTTP RESPONSE.
+   !!!!! E. SPRING pre definovany INTERFACE vygeneruje INTERNAL CLASS, kde kazda METHOD daneho INTERFACE implementuje WEB CLIENT volajuci WEB SERVICE.
+   !!! F. Vyhodou OPEN FEIGN je, ze staci definovat INTERFACE a netreba implementovat jednotlive METHODS, ktore by realizovali vytvorenie WEB CLIENT ako aj SERIALIZATION HTTP REQUEST BODY.
+!!! 4. OPEN FEIGN je definovany v GROUP ID [org.springframework.cloud] a ARTIFACT ID [spring-cloud-starter-openfeign].
+5. OPEN FEIGN WEB CLIENT sa definuje nasledujucim sposobom.
+   A. Definuje sa INTERFACE na ktory sa aplikuje ANNOTATION [@FeignClient]. ANNOTATION [@FeignClient] MUSI definovat PROPERTY 'name' a PROPERTY 'url'.
+   B. Pre kazdu WEB SERVICE METHOD sa v INTERFACE definuje METHOD.
+   C. Na INTERFACE METHOD je potrebne aplikovat ANNOTATION, ktora urci URL a HTTP VERB WEB SERVICE METHOD. Je mozne aplikovat genericku ANNOTATION [@RequestMapping], alebo speficku ANNOTATION ako napriklad ANNOTATION [@GetMapping].
+   !!! D. INTERFACE METHOD moze ako RETURN VALUE TYPE, ktory reprezentuje HTTP RESPONSE BODY, alebo je mozne pouzit TYPE [feign.Response], ktory reprezentuje HTTP RESPONSE.
+   !!! E. INTERFACE METHOD moze mat PARAMETERS oznacene ANNOTATIONS [@RequestHeader]. Taketo PARAMETERS obsahuju HTTP REQUEST HEADERS, ktore sa zaslu v HTTP REQUEST.
+   !!! F. INTERFACE METHOD moze mat PARAMETER oznaceny ANNOTATION [@RequestBody]. Tento PARAMETER obsahuju HTTP REQUEST BODY, ktory sa zasle v HTTP REQUEST.
+!!! 6. Na to, aby SPRING rozpoznal OPEN FEIGN WEB CLIENT je nutne na SPRING CONFIGURATION CLASS, ktora je oznacena ANNOTATION [@Configuration] aplikovat ANNOTATION [@EnableFeignClients], ktora definuje PACKAGES, alebo TYPES, ktore obsahuju OPEN FEIGN INTERFACES.
+7. REST TEMPLATE umoznuje volat WEB SERVICES nasledujucim sposobom.
+   A. Vytvori sa instancia CLASS [HttpHeaders] do ktorej sa ulozia HTTP REQUEST HEADERS.
+   B. Vytvori sa instancia CLASS [HttpEntity<BODY_TYPE>], kde TYPE 'BODY_TYPE' je TYPE reprezentujuci HTTP REQUEST BODY. Do instancie CLASS [HttpEntity<BODY_TYPE>] sa ulozi instancia CLASS [HttpHeaders] a zaroven HTTP REQUEST BODY.
+   C. Vytvori sa instancia CLASS [RestTemplate] a zavola sa jej METHOD [<T> ResponseEntity<T> exchange(String Url, HttpMethod Method, HttpEntity<?> RequestEntity, Class<T> ResponseType) throws RestClientException], ktora vykona komunikaciu s WEB SERVICE.
+!!!!! 8. CLASS [RestTemplate] nie je BY-DEFAULT BEAN OBJECT a ani ho tak nie je nutne pouzivat. Ak je potrebne ho pouzit ako BEAN OBJECT, potom je ho nutne ako BEAN deklarovat v CONFIGURATION CLASS.
+!!! 9. WEB CLIENT by sa mal pouzivat iba ak je PROGRAM vyvijany pomocou REACTIVE APPLICATION MODEL.
+!!!!! 10. SPRING MVC pouziva BY-DEFAULT velmi PRIMITIVNY THREADING MODEL.
+   A. SPRING MVC pre kazdy HTTP REQUEST vytvori NOVY THREAD.
+   !!! B. Kedze SPRING MVC vytvara pre kazdy HTTP REQUEST novy THREAD, moze s THREAD asociovat v LOCAL THREAD STORAGE data ako je HTTP REQUEST.
+   !!!!! C. Ak CONTROLLER SPRING MVC vykona IO OPERATION ako je pristup k REMOTE SERVICE ci REMOTE DB, THREAD spracujuci HTTP REQUEST je vo WAITING STATE.
+   !!!!! D. THREADING MODEL SPRING MVC vedie k tomu, ze pri velkom pocte HTTP REQUEST sa vytvori velke mnozstvo THREADS, ktore mozu byt WAITING STATE a zbytocne zaberaju MEMORY. Tento THREADING MODEL je EXTREMNE NEEFEKTIVNY.
+!!!!! 11. REACTIVE APPLICATION MODEL umoznuje alternativny THREADING MODEL.
+   A. REACTIVE APPLICATION MODEL je IMPLEMENTACIOU .NET TASKS.
+   !!! B. Pri implementacii IO OPERATIONS REACTIVE APPLICATION MODEL vytvora TASKS, ktore su spustatne THREADS z THREAD POOL.
+   !!! C. Pri vykonavani IO OPERATIONS v TASKS nie su THREADS vo WAITING STATE, ale vratia sa spat do THREAD POOL, aby mohli vykonat dalsi TASK.
+!!!!! 12. REACTIVE APPLICATION MODEL v JAVE definuje nasledujuce pojmy.
+   A. TASK, ktory vykonava IO OPERATION vracia PRODUCER OBJECT.
+   B. PRODUCER OBJECT reprezentuje OBJECT, ktory sa aktivuje po skonceni IO OPERATION, aby v nom boli ulozene RESULTS IO OPERATION.
+   C. Na PRODUCER OBJECT sa mozu viazat SUBSCRIBER OBJECTS inych TASKS a tym padom su TASK previazane.
+   !!! D. Ked IO OPERATION skonci a PRODUCER OBJECT sa aktivuje, vsetky TASKS, ktore su pomocou SUBSCRIBER OBJECTS naviazane na dany PRODUCER OBJECT su spustene a mozu spracovat vysledky IO OPERATION ulozene v PRODUCER OBJECT.
+   !!! E. PRODUCER OBJECTS a SUBSCRIBER OBJECTS umoznuju prepajat jednotlive TASKS.
+!!! 13. WEB CLIENT je definovany v GROUP ID [org.springframework.boot] a ARTIFACT ID [spring-boot-starter-webflux].
+!!!!! 14. SPRING umoznuje definovat v REST CONTROLLERS REACTIVE ACTION METHODS. Pre REACTIVE ACTION METHODS platia nasledujuce fakty.
+   A. REACTIVE ACTION METHODS je ACTION METHOD REST CONTROLLER, ktora namiesto RETURN VALUE TYPE 'CUSTOM_TYPE' vracia CLASS [Mono<CUSTOM_TYPE>].
+   !!! B. REACTIVE ACTION METHODS su SKONCENE OKAMZITE. To znamena, ze NEVYKONAVAJU THREAD BLOCKING.
+   !!! C. RETURN VALUE z ACTION METHOD sa vygeneruje az potom ako instancia CLASS [Mono<CUSTOM_TYPE>], ktora je vratena ako RETURN VALUE ACTION METHOD ASYNCHRONNE skonci.
+   !!! D. Ked instancia CLASS [Mono<CUSTOM_TYPE>] ASYNCHRONNE SKONCI, tak SPRING z nej vygeneruje HTTP RESPONSE, ktory posle na WEB CLIENT.
+!!!!! 15. REACTIVE ACTION METHODS funguju nasledujucim sposobom.
+   A. DISPATCHER OBJECT spusti ACTION METHOD podobne ako pri SYNCHRONNYCH ACTION METHOD.
+   !!! B. ACTION METHOD NEVYKONAVA ZIADEN BLOCKING a vracia okamzite instanciu CLASS [Mono<CUSTOM_TYPE>]. Instancia CLASS [Mono<CUSTOM_TYPE>] je analogiou TASKS v .NET.
+   !!!!! C. Potom ako ACTION METHOD vrati do DISPATCHER OBJECT instanciu CLASS [Mono<CUSTOM_TYPE>], tak na tuto instanciu si DISPATCHER OBJECT zaregistruje vlastny TASK, ktory je spusteny ASYNCHRONNE, potom ako instancia CLASS [Mono<CUSTOM_TYPE>] bude ukoncena.
+   !!!!! D. Ked je instancia CLASS [Mono<CUSTOM_TYPE>] UKONCENA, tak sa spusti TASK, ktory si zaregistroval DISPATCHER OBJECT. Tento TASK zoberie instanciu TYPE 'CUSTOM_TYPE' z instancia CLASS [Mono<CUSTOM_TYPE>] a vytvori z nej HTTP RESPONSE, ktoru vrati do WEB CLIENT.
+!!! 16. SPRING definuje nasledujuce CLASSES, ktore umoznuju TASK PROGRAMMING.
+   A. CLASS [Mono<T>] reprezentuje TASK, ktory caka na ASYNCHRONNE vratenie 1 RESPONSE.
+   B. CLASS [Flux<T>] reprezentuje TASK, ktory caka na ASYNCHRONNE vratenie N RESPONSES.
+!!! 17. CLASS [Mono<T>] obsahuje nasledujuce dolezite MEMBERS.
+   A. STATIC METHOD [<T> Mono<T> Mono<T>.just(T Data)] vytvara instanciu CLASS [Mono<T>], ktora SYNCHRONNE vracia OBJECT v PARAMETER 'Data'. Ziadny ASYNCHRONNY TASK sa NESPUSTA.
+   !!! B. STATIC METHOD [<T> Mono<T> Mono<T>.fromFuture(CompletableFuture<? extends T> Future)] vytvara instanciu CLASS [Mono<T>], ktora ASYNCHRONNE spusti TASK, ktory vytvori instanciu TYPE 'T'. TYPE [CompletableFuture<? extends T>] moze byt implementovany ako LAMBA FUNCTION, ktorej CODE sa spusta v ASYNCHRONNOM TASK.
+   !!!!! C. METHOD [<R> Mono<R> Mono<T>.flatMap(Function<? super T,? extends Mono<? extends R>> Transformer)] umoznuje vytvorit ASYNCHRONNOUS TASK, ktory transformuje instanciu TYPE 'T' na instanciu TYPE 'R'. TYPE [Function<? super T,? extends Mono<? extends R>>] moze byt implementovany ako LAMBA FUNCTION, ktorej CODE sa spusta v ASYNCHRONNOM TASK.
+18. WEB CLIENT WEB CLIENT sa pouziva nasledujucim sposobom.
+   A. Volanim STATIC METHOD [WebClient WebClient.create()] sa vytvori instancia CLASS [WebClient].
+   !!! B. Ak sa vola WEB SERVICE pomocou HTTP VERB POST, tak volanim METHOD [WebClient.RequestBodyUriSpec WebClient.post()] sa vytvori instancia CLASS [WebClient.RequestBodyUriSpec]. Instancia [WebClient.RequestBodyUriSpec] umoznuje nakonfigurovat HTTP REQUEST.
+   C. Volanim METHOD [S WebClient.UriSpec<S extends WebClient.RequestHeadersSpec<?>>.uri(URI Uri)] je mozne nastavit URL kde sa ma HTTP REQUEST zaslat.
+   D. Volanim METHOD [S WebClient.RequestHeadersSpec<S extends WebClient.RequestHeadersSpec<S>>.header(String HeaderName, String... HeaderValues)] je mozne do HTTP REQUEST pridat HTTP REQUEST HEADERS.
+   !!! E. Volanim METHOD [<T,P extends Publisher<T>> WebClient.RequestHeadersSpec<?> WebClient.RequestBodySpec.body(P Publisher,  Class<T> ElementClass)] je mozne nastavit HTTP REQUEST BODY. Ak je PUBLISHER TYPE [Mono<T>], tak je spusteny v ASYNCHRONNOM TASK. PARAMETER 'ElementClass' definuje TYPE HTTP REQUEST BODY.
+   !!!!! F. Volanim METHOD [WebClient.ResponseSpec WebClient.RequestHeadersSpec<S extends WebClient.RequestHeadersSpec<S>>.retrieve()] sa vytvori ASYNCHRONNY TASK, v ktorom sa zasle HTTP REQUEST na zadanu URL.
+   !!!!! G. Pomocou METHOD [<T> Mono<ResponseEntity<T>> Client.ResponseSpec.toEntity(Class<T> BodyClass)] je mozne ziskat instanciu CLASS [Mono<ResponseEntity<T>>], ktora obsahuje HTTP RESPONSE.
+   !!! H. Instanciu CLASS [Mono<ResponseEntity<T>>] je mozne napriklad konvertovat na iny TYPE pomocou METHOD [<R> Mono<R> Mono<T>.flatMap(Function<? super T,? extends Mono<? extends R>> Transformer)], alebo ho nejako inak spracovat.
+//----------------------------------------------------------------------------------------------------------------------

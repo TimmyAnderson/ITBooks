@@ -1,0 +1,65 @@
+//----------------------------------------------------------------------------------------------------------------------
+1. Na to aby PROJECT [UsingDataSourcesMySQL1] fungoval je NUTNE v MySQL vytvorit DATABASE 'chapter12mysql1', a zaroven vo FILE [application.properties] nastavit PASSWORD.
+1. Na to aby PROJECT [UsingDataSourcesMySQL2] fungoval je NUTNE v MySQL vytvorit DATABASE 'chapter12mysql2', a zaroven vo FILE [application.properties] nastavit PASSWORD.
+//----------------------------------------------------------------------------------------------------------------------
+1. Solution demonstruje pouzitie DATA SOURCES v SPRING.
+2. V JAVE je pristup DATABASES implementovany nasledujucim sposobom.
+   A. JAVA DEVELOPMENT KIT (JDK) definuje UNIVERZALNY INTERFACE na pristup k DATABASE, ktory sa vola JAVA DATABASE CONECTIVITY (JDBC).
+   !!! B. JDBC je univerzalny UNIVERZALNY INTERFACE, ktory nedefinuje pristup k ziadnej specifickej DB, ale definuje iba INTERFACE, ktory musia splnat jednotlive JDBC DRIVERS.
+   !!! C. JDBC DRIVER je implementacia JDBC INTERFACE pre konkretnu DATABASE.
+   !!! D. Na to, aby sa bolo mozne pripojit ku konkretnej DATABASE je nutne mat v PROJECT DEPENDENCY na JDBC INTERFACE i DEPENDENCY na JDBC DRIVER konkretnej DATABASE.
+3. Na pripojenie k DATABASE pomocou JDBC je potrebny DATABASE CONNECTION. Pre DATABASE CONNECTION platia nasledujuce fakty.
+   A. DATABASE CONNECTION je implementovana pomocou INTERFACE [Connection].
+   B. Instancia INTERFACE [Connection] sa vytvara pomocou CLASS [DriverManager] volanim STATIC METHOD [Connection DriverManager.getConnection(String Url, String User, String Password) throws SQLException].
+   !!! C. Po vytvoreni instancie INTERFACE [Connection] sa vykonava pripojenie na DATABASE pomocou PROTOCOL (spravidla TCP/IP), pricom prebiehaju operacie ako AUTHENTICATION DATABASE USER. Tieto OPERATIONS su casovo narocne.
+   !!! D. CONNECTION na DATABASE existuje az do doby kym nie je instancia INTERFACE [Connection] uvolnena.
+!!!!! 4. Zasadnou NEVYHODOU priameho pouzivania INTERFACE [Connection] je, ze pri kazdej DATABASE OPERATION vytvarat novu CONNECTION co je casovo narocne. Alternativou je CUSTOM implementacia CONNECTION POOL, ktora je zlozita. Alternativou je pouzitie standardneho DATABASE CONNECTION POOL.
+5. DATABASE CONNECTION POOL sa v JAVE nazyva DATA SOURCE. Pre DATA SOURCES platia nasledujuce fakty.
+   A. DATA SOURCE si spravuje interny POOL instancii INTERFACE [Connection] ku konkretnemu typu JDBC DRIVER.
+   B. DATA SOURCE je zodpovedny za otvaranie a uzatvaranie instancii INTERFACE [Connection], ktore su ulozene v POOL.
+   !!! C. Cielom DATA SOURCE je optimalne OTVARANIE instancii INTERFACE [Connection], tak aby pri kazdej DATABASE OPERATION nebolo treba vykonavat casovo narocne otvorenie DATABASE CONNECTION.
+   !!! D. Cielom DATA SOURCE je optimalne UZATVARANIE instancii INTERFACE [Connection], tak aby DATABASE CONNECTIONS neboli zbytocne dlho otvorene, ak sa v PROGRAME nepouzivaju.
+6. SPRING obsahuje DEFAULT implementaciu DATA SOURCE [HikariCP].
+7. Pristup k DATABASE pomocou JDBC je pomerne komplikovany a vyzaduje mnozstvo CODE. SPRING ponuka viacero alternativ, ako je mozne zjednodusenym sposobom pristupovat k DATABASES.
+8. CLASS [JdbcTemplate] je jednou z implementacii pristupu k DATABASESE v SPRING, ktory zjednodusuje vytvaranie PROGRAMOV.
+9. DATABASE H2 je IN MEMORY DATABASE, ktoru je mozne vyuzit pri TESTING.
+10. JDBC je definovany v GROUP ID [org.springframework.boot] a ARTIFACT ID [spring-boot-starter-jdbc].
+!!! 11. DATABASE DRIVER H2 je definovany v GROUP ID [com.h2database] a ARTIFACT ID [h2]. Kedze DATABASE DRIVER je pouzivany iba v RUNTIME je mozne nastavit tuto DEPENDENCY na SCOPE [runtime].
+12. SPRING umoznuje spusit SQL SCRIPT pri spusteni PROGRAMU, ktory napriklad moze vytvorit DATABASE STRUCTURE. Pre spustanie SQL SCRIPTS pri spusteni PROGRAMU platia nasledujuce fakty.
+   A. Do DIRECTORY [src/main/resources] sa prida FILE [schema.sql].
+   B. Do FILE [schema.sql] sa vlozia vsetky SQL COMMANDS, ktore sa maju vykonat pri spusteni PROGRAMU.
+   C. SPRING po spusteni PROGRAMU vykona vsetky SQL COMMANDS vo FILE [schema.sql].
+   !!! D. Vyuzitie FILE [schema.sql] ma zmysel pri jednoduchych testovacich DATABASES, kedze samotny mechanizmus neposkytuje VERSIONING tychto SCRIPTS ani DATABASES.
+13. REPOSITORY OBJECT je OBJECT ktory vykonava DATABASE OPERATIONS. Ak v SPRING REPOSITORY OBJECT ma byt aj SPRING BEAN OBJECT, potom je ho vhodne oznacit pomocou ANNOTATION [@Repository], ktora danu CLASS oznaci za SPRING BEAN OBJECT.
+!!! 14. Ak je v SPRING PROJECT pridana DEPENDENCY na DATABASE DRIVER, SPRING dokaze AUTOMATICKY nakonfigurovat CLASS [JdbcTemplate], aby pouzival tento DATABASE DRIVER, bez nutnosti manualnej konfiguracie CONNECTION ci DATA SOURCE.
+15. SELECT pomocou CLASS [JdbcTemplate] sa vykonava v nasledujucich krokoch.
+   A. Definuje sa SQL COMMAND, ktory nacitava DATA z DATABASE.
+   !!! B. Definuje sa ROW MAPPER, ktory nacitava DATA z ROWS a vytvara z nich instancie CUSTOM CLASS, kde su data ulozene. MAPPER je instancia CLASS [RowMapper<T>], kde TYPE 'T' je TYPE do ktoreho sa ukladaju ROWS.
+   !!! C. Instanciu CLASS je mozne vytvorit aj pomocou LAMBDA EXPRESSION ci CUSTOM METHOD. CUSTOM METHOD musi mat PROTOTYPE [T MyObjectMapper(ResultSet Result, int Index)], kde TYPE 'T' je TYPE do ktoreho sa ukladaju ROWS.
+   !!! D. Jednotlive ROWS sa nacitavaju z instancie CLASS [ResultSet], ktora ma METHODS, ktore umoznuju vycitavanie COLUMNS pomocou COLUMN INDEX i COLUMN NAME. Prikladom takej METHOD je METHOD [String getString(String ResultSet.ColumnLabel) throws SQLException].
+   !!!!! E. Vykona sa METHOD [<T> List<T> JdbcTemplate.query(String Sql, RowMapper<T> RowMapper) throws DataAccessException], ktora spusti SQL COMMAND a vrati RECORDS ako TYPE [List<T>], kde TYPE 'T' je TYPE do ktoreho sa ukladaju ROWS.
+16. SELECT pomocou CLASS [JdbcTemplate] sa vykonava v nasledujucich krokoch.
+   A. Definuje sa SQL COMMAND, ktory modifikuje RECORDS v DATABASE.
+   !!! B. SQL COMMAND moze mat PARAMETERS, ktore su oznacene v SQL COMMAND pomocou CHARACTER [?].
+   !!! C. Vykona sa METHOD [int JdbcTemplate.update(String Sql, @Nullable Object... Args) throws DataAccessException], ktora vykona zmenu DATABASE. METHOD musi mat definovane v PARAMETER 'Args' PARAMETERS, ktore musia byt v TOM ISTOM PORADI v akom su definovat v SQL COMMAND. METHOD vracia pocet modifikovanych RECORDS.
+!!! 17. DATABASE DRIVER MySQL je definovany v GROUP ID [com.mysql] a ARTIFACT ID [mysql-connector-j]. Kedze DATABASE DRIVER je pouzivany iba v RUNTIME je mozne nastavit tuto DEPENDENCY na SCOPE [runtime].
+18. Na pripojenie sa MySQL DATABASE je NUTNE nastavit PROJECT PROPERTIES vo FILE [application.properties].
+   A. PROPERTY [spring.datasource.url=jdbc:mysql://localhost:3306/DATABASE_NAME], kde VALUE 'DATABASE_NAME' je nazov DATABASE.
+   B. PROPERTY [spring.datasource.username=USER_NAME], kde VALUE 'USER_NAME' je nazov USER.
+   C. PROPERTY [spring.datasource.password=PASSWORD], kde VALUE 'PASSWORD' je nazov PASSWORD.
+   !!! D. PROPERTY [spring.sql.init.mode=always] je nutne nastavit, aby SPRING spustil SCRIPT vo FILE [schema.sql].
+!!! 19. SPRING BY-DEFAULT automaticky vytvara instanciu DATA SOURCE a registruje ju ako SPRING BEAN OBJECT, aby ju mohla CLASS [JdbcTemplate] pouzivat.
+!!! 20. V pripade, ze DEFAULT instancia DATA SOURCE nevyhovuje, je potrebne vykonat nasledujuce kroky.
+   A. V CONFIGURATION CLASS definovat METHOD, ktora vracia instanciu INTERFACE [DataSource].
+   B. Definovanu METHOD oznacit pomocou ANNOTATION [@Bean], aby INTERFACE [DataSource] bol zaregistrovany ako SPRING BEAN OBJECT.
+   C. V METHOD vytvorit instanciu INTERFACE [DataSource]. Najcastejsie sa pouziva CLASS [HikariDataSource].
+   D. Nakonfigurovat INTERFACE [DataSource].
+!!! 21. V pripade, ze v CONFIGURATION FILE je vytvorena SPRING BEAN METHOD, ktora vracia instanciu INTERFACE [DataSource], tak SPRING DEFAULT BEAN pre DATA SOURCE NEGENERUJE.
+!!! 22. V pripade, ze je potrebne vytvorit viacero DATA SOURCES pre rozlicne DATABASES je nutne postupovat nasledovne.
+   A. V CONFIGURATION FILE sa vytvori pre kazdy DATA SOURCE osobitny BEAN OBJECT definovanim METHOD, ktora dany DATA SOURCE vytvara. METHODS vracaju ako RETURN VALUE INTERFACE [DataSource].
+   B. Na kazdu METHOD vytvarajucu SPRING BEAN OBJECT TYPE [DataSource] sa aplikuje ANNOTATION [@Qualifier], ktorym sa prideli NAME danemu SPRING BEAN OBJECT.
+   C. Pri vykonavani DEPENDENCY INJECTION napriklad v CONSTRUCTOR, ktory potrebuje konkretnu instanciu INTERFACE [DataSource] sa na CONSTRUCTOR PARAMETER aplikuje ANNOTATION [@Qualifier] s NAME, ktory zodpoveda NAME DATA SOURCE priradenom pomocou ANNOTATION [@Qualifier] v CONFIGURATION FILE.
+23. PROPERTIES nastavene vo FILE [application.properties] je mozne citat nasledujucim sposobom.
+   A. Pomocou SYNTAX ["${PROPERTY_NAME}"], kde VALUE 'PROPERTY_NAME' je nazov PROPERTY vo FILE [application.properties] je mozne KDEKOLVEK v CODE ziskat VALUE PROPERTY z FILE [application.properties].
+   !!! B. V pripade, ze PROPERTY z FILE [application.properties] je potrebne ulozit do FIELD, je treba FIELD oznacit pomcou ANNOTATION [@Value("${PROPERTY_NAME}")], kde VALUE 'PROPERTY_NAME' je nazov PROPERTY vo FILE [application.properties].
+//----------------------------------------------------------------------------------------------------------------------

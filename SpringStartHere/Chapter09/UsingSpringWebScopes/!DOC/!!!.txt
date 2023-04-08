@@ -1,0 +1,46 @@
+//----------------------------------------------------------------------------------------------------------------------
+1. Solution demonstruje pouzitie SPRING WEB SCOPES v SPRING.
+2. SCOPE urcuje aka dlha je zivotnost SPRING BEAN OBJECTS.
+3. SPRING standardne definuje nasledujuce SCOPES.
+   A. SINGLETON SCOPE. Je vytvorena iba 1 instancia SPRING BEAN OBJECT, ktora existuje pocas celeho behu PROGRAMU.
+   B. PROTOTYPE SCOPE. Pri kazdej poziadavke o referenciu na SPRING BEAN OBJECT sa vytvara nova instancia.
+4. SPRING WEB APPLICATION definuje dodatocne SCOPES.
+   A. REQUEST SCOPE. Instancia SPRING BEAN OBJECT je vytvorena vzdy pre kazdy novy HTTP REQUEST a trva az do spracovania HTTP REQUEST.
+   B. SESSION SCOPE. Instancia SPRING BEAN OBJECT je vytvorena pre kazdu novu WEB SESSION a trva az do jej skoncenia.
+   C. APPLICATION SCOPE. Instancia SPRING BEAN OBJECT je vytvorena pre celu WEB APPLICATION a trva az do jej skoncenia.
+5. Pre REQUEST SCOPE platia nasledujuce fakty.
+   A. Pre kazdy HTTP REQUEST je vytvorena nova instancia SPRING BEAN OBJECT.
+   B. Instancia SPRING BEAN OBJECT existuje kym trva HTTP REQUEST. Po jeho spracovani je instancia poslana do GARBAGE COLLECTOR.
+   !!!!! C. Instancia SPRING BEAN OBJECT je THREAD SAFE. Nie je preto nutne pouzivat SYNCHRONIZATION.
+6. Pre PROXY OBJECT, ktory obaluje SPRING BEAN OBJECT s REQUEST SCOPE platia nasledujuce fakty.
+   A. PROXY OBJECT si interne drzi instanciu SPRING BEAN OBJECT.
+   !!!!! B. PROXY OBJECT na rozdiel od instancie SPRING BEAN OBJECT moze mat aj SINGLETON SCOPE, pretoze si sam interne spravuje zivotnost instancie SPRING BEAN OBJECT pomcou INJECTION METHODS, ktore su volane pred volanim kazdej METHOD instancie SPRING BEAN OBJECT.
+   !!! C. PROXY OBJECT pri vytvarani NEMUSI obsahovat instanciu SPRING BEAN OBJECT. To sa stane vtedy, ak pri vytvarani PROXY OBJECT CURRENT THREAD NEOBSAHUJE asociovany HTTP REQUEST. V takom pripade nie je mozne instanciu SPRING BEAN OBJECT vytvorit, pretoze by ju nebolo mozne asociovat s instanciou HTTP REQUEST.
+   !!!!! D. PROXY OBJECT kazdu METHOD instancie SPRING BEAN OBJECT obali pomocou INJECTION METHODS. Pred volanim kazdej METHOD instancie SPRING BEAN OBJECT INJECTION METHOD skontroluje ci PROXY OBJECT obsahuje instanciu SPRING BEAN OBJECT INJECTION METHOD. Ak tato instancia NEEXISTUJE, tak je vytvorena a asociuje s nou HTTP REQUEST v CURRENT THREAD.
+   !!! E. Ak je volana METHOD PROXY OBJECT v THREAD, ktory NEMA asociovany HTTP REQUEST, dojde k EXCEPTION, pretoze nie je mozne vytvorit instanciu SPRING BEAN OBJECT bez prislusneho HTTP REQUEST.
+   !!! F. SPRING hned po skonceni HTTP REQUEST uvolni pre dany PROXY OBJECT jeho instanciu SPRING BEAN OBJECT. Tym padom po skonceni HTTP REQUEST konci zivotnost instancie SPRING BEAN OBJECT, avsak NIE zivotnost PROXY OBJECT, ktora dalej pokracuje, kedze je v SINGLETON SCOPE a po dalsom zavolani METHOD instancie SPRING BEAN OBJECT si PROXY OBJECT vytvori novu internu instanciu SPRING BEAN OBJECT, ktoru si ulozi a na ktoru pre dany HTTP REQUEST vola jej METHODS.
+7. Pre SESSION SCOPE platia nasledujuce fakty.
+   A. Pre kazdu HTTP SESSION je vytvorena nova instancia SPRING BEAN OBJECT.
+   B. Instancia SPRING BEAN OBJECT existuje kym trva HTTP SESSION. Po jeho spracovani je instancia poslana do GARBAGE COLLECTOR.
+   !!!!! C. Instancia SPRING BEAN OBJECT NIE je THREAD SAFE ak CLIENT posle v jednej HTTP SESSION viacero paralelnych HTTP REQUESTS. Preto je NEVYHNUTNE pouzivat SYNCHRONIZATION.
+8. ACTION METHOD moze vykona REDIRECT, ak vrati STRING s nasledujucou SYNTAX ["redirect:/URL_TO_REDIRECT"], kde VALUE 'URL_TO_REDIRECT' predstavuje PATH na ktoru ma byt vykonany REDIRECT. URL musi obsahovat PATH, ktory niektory z CONTROLLERS dokaze zachytit a spracovat.
+9. HTTP SESSION sa uzatvara nasledujucim sposobom.
+   A. Do ACTION METHOD sa prihodi PARAMETER TYPE [HttpServletRequest].
+   B. Zavola sa METHOD [HttpSession HttpServletRequest.getSession(boolean Create)], ktora vrati existujucu instanciu HTTP SESSTION TYPE [HttpSession].
+   C. Zavola sa METHOD [void HttpSession.invalidate()], ktora uvolni existujucu HTTP SESSION.
+10. Pre PROXY OBJECT, ktory obaluje SPRING BEAN OBJECT so SESSION SCOPE platia nasledujuce fakty.
+   A. PROXY OBJECT si interne drzi instanciu SPRING BEAN OBJECT.
+   !!!!! B. PROXY OBJECT na rozdiel od instancie SPRING BEAN OBJECT moze mat aj SINGLETON SCOPE, pretoze si sam interne spravuje zivotnost instancie SPRING BEAN OBJECT pomcou INJECTION METHODS, ktore su volane pred volanim kazdej METHOD instancie SPRING BEAN OBJECT.
+   !!! C. PROXY OBJECT pri vytvarani NEMUSI obsahovat instanciu SPRING BEAN OBJECT. To sa stane vtedy, ak pri vytvarani PROXY OBJECT CURRENT THREAD NEOBSAHUJE asociovanu HTTP SESSION. V takom pripade nie je mozne instanciu SPRING BEAN OBJECT vytvorit, pretoze by ju nebolo mozne asociovat s instanciou HTTP SESSION.
+   !!!!! D. PROXY OBJECT kazdu METHOD instancie SPRING BEAN OBJECT obali pomocou INJECTION METHODS. Pred volanim kazdej METHOD instancie SPRING BEAN OBJECT INJECTION METHOD skontroluje ci PROXY OBJECT obsahuje instanciu SPRING BEAN OBJECT INJECTION METHOD. Ak tato instancia NEEXISTUJE, tak je vytvorena a asociuje s nou HTTP SESSION v CURRENT THREAD.
+   !!! E. Ak je volana METHOD PROXY OBJECT v THREAD, ktory NEMA asociovanu HTTP SESSION, dojde k EXCEPTION, pretoze nie je mozne vytvorit instanciu SPRING BEAN OBJECT bez prislusnej HTTP SESSION.
+   !!! F. SPRING hned po skonceni HTTP SESSION uvolni pre dany PROXY OBJECT jeho instanciu SPRING BEAN OBJECT. Tym padom po skonceni HTTP SESSION konci zivotnost instancie SPRING BEAN OBJECT, avsak NIE zivotnost PROXY OBJECT, ktora dalej pokracuje, kedze je v SINGLETON SCOPE a po dalsom zavolani METHOD instancie SPRING BEAN OBJECT si PROXY OBJECT vytvori novu internu instanciu SPRING BEAN OBJECT, ktoru si ulozi a na ktoru pre danu HTTP SESSION vola jej METHODS.
+11. Pre APPLICATION SCOPE platia nasledujuce fakty.
+   A. Pre HTTP APPLICAION je vytvorena iba 1 instancia SPRING BEAN OBJECT.
+   B. Instancia SPRING BEAN OBJECT existuje kym trva HTTP APPLICATION. Po jej skonceni je instancia poslana do GARBAGE COLLECTOR.
+   !!!!! C. Instancia SPRING BEAN OBJECT NIE je THREAD SAFE. Preto je NEVYHNUTNE pouzivat SYNCHRONIZATION.
+12. Pre PROXY OBJECT, ktory obaluje SPRING BEAN OBJECT so APPLICATION SCOPE platia nasledujuce fakty.
+   A. PROXY OBJECT si interne drzi instanciu SPRING BEAN OBJECT.
+   B. PROXY OBJECT vytvori SPRING BEAN OBJECT pri vytvoreni SPRING APPLICATION.
+   C. PROXY OBJECT uvolni SPRING BEAN OBJECT pri ukonceni SPRING APPLICATION.
+//----------------------------------------------------------------------------------------------------------------------

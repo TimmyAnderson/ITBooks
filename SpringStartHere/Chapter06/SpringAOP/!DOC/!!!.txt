@@ -1,0 +1,92 @@
+//----------------------------------------------------------------------------------------------------------------------
+1. Solution popisuje pouzitie ASPECT ORIENTED PROGRAMMING v SPRING FRAMEWORK.
+2. ASPECTS je sposob aky dokaze SPRING FRAMEWORK vykonat INTERCEPTING METHOD CALLS a modifikovat ich volanie.
+3. Typickym prikladom pouzitia ASPECTS je LOGGING pred a po spusteni METHOD ci spustenie a ukoncenie TRANSACTION v ktorej METHOD ma bezat.
+4. Vyhodou ASPECT ORIENTED PROGRAMMING je, ze umoznuje oddelit BUSSINESS LOGIC od ostatneho CODE. Napriklad spustenie a ukoncenie TRANSACTION je mozne presunut do ASPECTS, ktora sa aplikuje pri volani METHOD a METHOD ma tym padom garantovane, ze jej CODE bezi v TRANSACTION, takze METHOC CODE ju nemusi explicitne vytvarat a uzatvarat.
+5. ASPECT ORIENTED PROGRAMMING definuje nasledujuce pojmy.
+   A. ASPECT je cast CODE (implementovana ako CLASS), ktora sa ma vykonat PRED vykonanim METHOD, PO vykonani METHOD, alebo NAMIESTO vykonania METHOD. Typickym prikladom je LOGGING, alebo spustenie a ukoncenie TRANSACTION.
+   B. ADVICE je moment, kedy sa ma ASPECT vykonat. ASPECT sa moze vykonat PRED vykonanim METHOD, PO vykonani METHOD, alebo NAMIESTO vykonania METHOD.
+   C. POINTCUT je METHOD, ktorej volanie ma byt INTERCEPTED pomocou ASPECTS.
+   !!! D. JOIN POINT je EVENT, ktory spusta ASPECT. Prikladom moze byt spustenie METHOD, vznik EXCEPTION, alebo zmena FIELD VALUE. V SPRING FRAMEWORK je POINTCUT vzdy ZAVOLANIE METHOD.
+   E. TARGET OBJECT je OBJECT, ktore METHOD ma byt INTERCEPTED pomocou ASPECTS. V SPRING FRAMEWORK TARGET OBJECT je vzdy SPRING BEAN OBJECT.
+   F. PROXY je OBJECT, ktory robi WRAPPING TARGET OBJECT a jeho METHODS a umoznuje spustat ASPECTS pri volani METHODS SPRING BEAN OBJECT.
+   G. WEAVING je mechanizmus, ktory pri poziadavi o vratenie TARGET OBJECT vracia PROXY OBJECT pomocou, ktoreho je mozne aplikovat ASPECTS na METHODS TARGET OBJECTS.
+!!!!! 6. ASPECT ORIENTED PROGRAMMING je v JAVA SPRING implementovany nasledovane.
+   A. TARGET OBJECT je VZDY SPRING BEAN OBJECT, ktory je zaradeny do SPRING CONTEXT.
+   B. Ked PROGRAM poziada o vratenie TARGET OBJECT, na ktory mozu byt aplikovane ASPECT, SPRING CONTEXT NEVRACIA PRIAMO TARGET OBJECT, ale vracia PROXY OBJECT.
+   C. PROXY OBJECT je WRAPPER okolo TARGET OBJECT a jeho METHODS.
+   D. Ak sa ma aplikovat na niektoru z METHODS TARGET OBJECT ASPECT, tak sa zavola PROXY OBJECT, kedze iba na ten ma PROGRAM REFERENCE.
+   E. PROXY OBJECT detekuje ci sa pred volanim TARGET OBJECT METHOD nemaju volat ASPECTS. Ak ano, tak sa tieto ASPECTS spustia.
+   F. Po spusteni ASPECTS PROXY OBJECT spusti samotnu TARGET OBJECT METHOD.
+   G. Po skonceni volania TARGET OBJECT METHOD spusta PROXY OBJECT vsetky ASPECTS, ktore sa maju spusit po skonceni volania TARGET OBJECT METHOD.
+!!!!! 7. Nie kazdy SPRING BEAN OBJECT je zaroven TARGET OBJECT. Inak povedane, ked SPRING CONTEXT vracia instanciu SPRING BEAN, NEVRACIA VZDY PROXY OBJECT, namiesto TARGET OBJECT. PROXY OBJECT je vrateny iba pre tie SPRING BEANS, ktore repzentuju TARGET OBJECT a teda mozu byt na nich aplikovane ASPECTS.
+!!!!! 8. SPEING FRAMEWORK vracia namiesto SPRING BEAN OBJECT PROXY OBJECT iba vtedy, ak je na SPRING BEAN OBJECT realne aplikovany nejaky ASPECT. Inak vracia povodny SPRING BEAN OBJECT.
+9. ASPECT ORIENTED PROGRAMMING je v SPRING FRAMEWORK implementovany v ARTIFACT [spring-aspects], ktory musi byt vlozeny do PROJECT.
+10. Ak sa ma na SPRING BEAN aplikovat ASPECT je nutne vykonat nasledujuce kroky.
+   A. Aplikovat ANNOTATION [@EnableAspectJAutoProxy] na CONFIGURATION CLASS.
+   B. Vytvorit ASPECT CLASS, ktora bude implementovat ASPECTS a oznacit ju pomocou ANNOTATION [@Aspect].
+   C. V ASPECT CLASS vytvorit METHODS, ktore implementuju jednotlive ASPECTS. Tieto METHODS musia byt oznacene pomocou ANNOTATION [@Around].
+11. Pre ASPECT CLASS platia nasledujuce fakty.
+   A. ASPECT CLASS MUSI byt SPRING BEAN. To znamena, ze musi byt oznaceny pomocou ANNOTATION [@Component], alebo v CONFIGURATION CLASS musi byt vytvorena METHOD s ANNOTATION [@Bean].
+   B. ASPECT CLASS musi byt ozaceny pomocou ANNOTATION [@Aspect].
+   C. Pre kazdy ASPECT musi ASPECT CLASS definovat METHOD, ktora obsahuje CODE daneho ASPECT. Tato METHOD MUSI byt oznacena pomocou ANNOTATION [@Around].
+12. Pre ASPECT METHODS platia nasledujuce fakty.
+   A. ASPECT METHOD musi byt oznaceny pomocou ANNOTATION [@Around]. Ako PARAMETER ANNOTATION [@Around] sa definuje pomocou LANGUAGE ASPECTJ zoznam METHODS na ktore sa dana ASPECT METHOD aplikuje.
+   !!! B. ASPECT METHOD ma PARAMETER TYPE [ProceedingJoinPoint]. Pomocou tohto PARAMETER moze ASPECT METHOD volat TARGET OBJECT METHOD. TARGET OBJECT METHOD sa vola pomocou METHOD [Object ProceedingJoinPoint.proceed() throws Throwable].
+   !!! C. METHOD [Object ProceedingJoinPoint.proceed() throws Throwable] sa VOBEC NEMUSI VOLAT. V takom pripade sa TARGET OBJECT METHOD nezavola.
+   !!! D. Ak povodna TARGET OBJECT METHOD hodi EXCEPTION, tak METHOD [Object ProceedingJoinPoint.proceed() throws Throwable] tuto EXCEPTION hodi dalej a ASPECT moze EXCEPTION spracovat.
+13. ASPECTJ interpretuje SYNTAX ["execution(* MyLogAspect.CMyLogAspectBean.*(..))"] nasledujucim sposobom.
+   A. SYNTAX [execution()] urcuje, ze ASPECT sa ma volat pri volani METHOD definovanej ako PARAMETER.
+   B. TEXT [*] znamena, ze ASPECT sa vola pre vsetky METHODS, bez ohladu na ich RETURN VALUE TYPE.
+   C. TEXT [MyLogAspect] znamena, ze ASPECT sa vola pre CLASSES v PACKAGE 'MyLogAspect'.
+   D. TEXT [CMyLogAspectBean] znamena, ze ASPECT sa vola pre METHOD 'CMyLogAspectBean'.
+   E. TEXT [*] znamena, ze ASPECT sa vola pre lubovolnu METHOD v danom CLASS.
+   F. TEXT [(..)] znamena, ze ASPECT sa vola pre danu METHOD s lubovolnym POCTOM a TYPES PARAMETERS.
+14. TYPE [ProceedingJoinPoint] obsahuje METHODS pomocou ktorych je mozne pristupovat k PARAMETERS a RETURN VALUE METHOD TAREGET OBJECT, ktory dana ASPECT METHOD vola.
+   A. METHOD [Signature JoinPoint.getSignature()] umonzuje ziskat SIGNATURE volanej TARGET OBJECT METHOD.
+   B. METHOD [Object[] JoinPoint.getArgs()] vracia zoznam PARAMETERS s ktorymi ma byt volana TARGET OBJECT METHOD.
+   C. METHOD [Object ProceedingJoinPoint.proceed() throws Throwable] a METHOD [Object ProceedingJoinPoint.proceed(Object[] Args) throws Throwable] v RETURN VALUE vracaju RETURN VALUE TARGET OBJECT METHOD
+15. ASPECTS mozu modifikovat PARAMETERS a RETURN VALUE TARGET OBJECT METHOD. Modifikacia sa robi pomocou PARAMETER TYPE [ProceedingJoinPoint], ktory je PARAMETER ASPECT METHOD. Modifikacia PARAMETERS a RETURN VALUE sa robi nasledujucim sposobom.
+   A. Ak sa vola METHOD [Object ProceedingJoinPoint.proceed() throws Throwable], tak do TARGET OBJECT METHOD sa posielaju POVODNE PARAMETERS s ktorymi bola volana ASPECT METHOD.
+   !!! B. Ak je potrebne poslat CUSTOM PARAMETERS, namiesto POVODNYCH PARAMETERS TARGET OBJECT METHOD je potrebne vytvorit novu instanciu CLASS [Object[] Args] a tieto PARAMETERS poslat do TARGET OBJECT METHOD volanim METHOD [Object ProceedingJoinPoint.proceed(Object[] Args) throws Throwable].
+   !!! C. Povodna RETURN VALUE TARGET OBJECT METHOD je vratena ako RETURN VALUE METHOD [Object ProceedingJoinPoint.proceed() throws Throwable] a METHOD [Object ProceedingJoinPoint.proceed(Object[] Args) throws Throwable]. Ak chce ASPECT METHOD vratit INU RETURN VALUE, staci, aby vratil inu RETURN VALUE z ASPECT METHOD. Tato RETURN VALUE nahradi povodnu RETURN VALUE TARGET OBJECT METHOD.
+16. TARGET OBJECT METHODS mozu byt v ASPECT METHODS vyhladavanie nielen na zaklade METHOD PROTOTYPE, ale aj na zaklade ANNOTATIONS, ktore su na METHODS aplikovane. Vyhladavanie TARGET OBJECT METHODS pomocou CUSTOM ANNOTATIONS sa vykonava v nasledujucich krokoch.
+   A. Definuje sa CUSTOM ANNOTATION.
+   !!! B. Na CUSTOM ANNOTATION sa MUSI aplikovat ANNOTATION [@Retention(RetentionPolicy.RUNTIME)], aby dana ANNOTATION mohla byt najdena aj v RUNTIME.
+   !!! C. V ASPECT METHOD v ANNOTATION [@Around] sa pouzie ASPECTJ SYNTAX [@annotation(ANNOTATION_NAME)], kde VALUE 'ANNOTATION_NAME' reprezentuje nazov ANNOTATION.
+   D. Dany ASPECT sa nasledne aplikuje na VSETKY METHODS, na ktore je aplikovana ANNOTATION 'ANNOTATION_NAME'.
+17. METHOD implementujuca ASPECT moze byt oznacena nasledujucimi ANNOTATIONS.
+   A. ANNOTATION [@Around].
+   B. ANNOTATION [@Before].
+   C. ANNOTATION [@After].
+   D. ANNOTATION [@AfterReturning].
+   E. ANNOTATION [@AfterThrowing].
+18. Pre ASPECTS, ktore su oznacene pomocou ANNOTATION [@Around] platia nasledujuce fakty.
+   A. ASPECT METHOD je volana NAMIESTO TARGET METHOD. ASPECT METHOD vsak vo svojom CODE moze zavolat povodnu TARGET METHOD.
+   B. ASPECT METHOD ma PROTOTYPE [Object ASPECT_METHOD_NAME(ProceedingJoinPoint JoinPoint) throws Throwable].
+   C. ASPECT METHOD moze pomocou METHOD [Object ProceedingJoinPoint.proceed(Object[] Args) throws Throwable] zavolat povodnu TARGET METHOD.
+   D. ASPECT METHOD ma pomocou PARAMETER TYPE [ProceedingJoinPoint] pristup k ORIGINAL PARAMETERS s ktorymi mala byt volana TARGET METHOD.
+   E. ASPECT METHOD moze zavolat TARGET METHOD s CUSTOM PARAMETERS, ktore nahradia ORIGINAL PARAMETERS s ktorymi mala byt volana TARGET METHOD.
+   F. ASPECT METHOD moze ziskat RETURN VALUE TARGET METHOD v RETURN VALUE volania METHOD [Object ProceedingJoinPoint.proceed(Object[] Args) throws Throwable].
+   !!! G. ASPECT METHOD moze vratit CUSTOM RETURN VALUE tym, ze ju vrati ako RETURN VALUE ASPECT METHOD.
+   !!!!! H. ASPECT METHOD poskytuje KOMPLETNU KONTROLU nad volanim TARGET METHOD.
+19. Pre ASPECTS, ktore su oznacene pomocou ANNOTATION [@Before] platia nasledujuce fakty.
+   A. ASPECT METHOD je volana PRED volanim TARGET METHOD.
+   B. ASPECT METHOD ma PROTOTYPE [void ASPECT_METHOD_NAME(JoinPoint JoinPoint) throws Throwable].
+20. Pre ASPECTS, ktore su oznacene pomocou ANNOTATION [@After] platia nasledujuce fakty.
+   A. ASPECT METHOD je volana PO volanim TARGET METHOD.
+   B. ASPECT METHOD ma PROTOTYPE [void ASPECT_METHOD_NAME(JoinPoint JoinPoint) throws Throwable].
+21. Pre ASPECTS, ktore su oznacene pomocou ANNOTATION [@AfterReturning] platia nasledujuce fakty.
+   A. ASPECT METHOD je volana PO volani TARGET METHOD, ak ta NEHODILA EXCEPTION, ale vratila RETURN VALUE.
+   B. ASPECT METHOD ma PROTOTYPE [void ASPECT_METHOD_NAME(Object RETURN_VALUE_PARAMETER_NAME) throws Throwable].
+   C. PARAMETER TYPE [Object] obsahuje RETURN VALUE TARGET METHOD. NAME tohto PARAMETER MUSI byt definovany v ANNOTATION [@AfterReturning] pomocou PARAMETER [returning="RETURN_VALUE_PARAMETER_NAME"].
+22. Pre ASPECTS, ktore su oznacene pomocou ANNOTATION [@AfterThrowing] platia nasledujuce fakty.
+   A. ASPECT METHOD je volana PO volani TARGET METHOD, ak ta HODILA EXCEPTION.
+   B. ASPECT METHOD ma PROTOTYPE [void ASPECT_METHOD_NAME(EXCEPTION_TYPE EXCEPTION_PARAMETER_NAME) throws Throwable].
+   C. PARAMETER TYPE [EXCEPTION_TYPE] obsahuje EXCEPTION, ktoru hodila TARGET METHOD. NAME tohto PARAMETER MUSI byt definovany v ANNOTATION [@AfterThrowing] pomocou PARAMETER [throwing="EXCEPTION_PARAMETER_NAME"].
+23. Ak na TARGET METHOD je aplikovanych viacero ASPECTS, poradie ich volania je BY-DEFAULT NEDEFINOVANE. Poradie je mozne definovat pomocou ANNOTATION [@Order].
+   A. ANNOTATION [@Order] sa aplikuje na ASPECT CLASS.
+   B. ANNOTATION [@Order] ma ciselny PARAMETER, ktory urcuje poradie v ktorom sa budu volat ASPECTS.
+   C. NIZSIA hodnota ciselneho PARAMETER v ANNOTATION [@Order] znamena, ze ASPECT bude volany SKOR, ako ASPECT, ktory ma VYSSIU hodnotu ciselneho PARAMETER v ANNOTATION [@Order].
+   D. Ak vicero ASPECTS ma rovnaku ciselnu hodnotu ciselneho PARAMETER v ANNOTATION [@Order], tak poradie volania tychto ASPECTS je UNDEFINED.
+//----------------------------------------------------------------------------------------------------------------------
