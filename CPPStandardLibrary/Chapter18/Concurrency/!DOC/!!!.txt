@@ -1,0 +1,412 @@
+﻿//-------------------------------------------------------------------------------------------------------
+1. Solution demonstruje pouzitie THREADING a SYNCHRONIZATION LIBRARIES, ktore su sucastou C++ STANDARD LIBRARY.
+2. C++ 11 definuje KEYWORD [thread_local] pomocou, ktoreho je mozne definovat VARIABLES asociovane s konkretnym THREAD. Tieto VARIABLES NIE SU SHARED medzi viacerymi THREADS a tym padom nie su NEMUSIA byt SYNCHRONIZED. Pre KEYWORD [thread_local] platia nasledujuce fakty.
+   !!! A. KEYWORD [thread_local] je mozne aplikovat IBA na GLOBAL VARIABLES, LOCAL STATIC VARIABLES a CLASS STATIC VARIABLES.
+   B. Pre VARIABLES s aplikovanym KEYWORD [thread_local] su pre KAZDY THREAD vytvorene NEZAVISLE INSTANCIE, ktore su asociovane s THREAD.
+   C. Pocet VARIABLES s aplikovanym KEYWORD [thread_local] je SYSTEM DEPENDENT a na niektorych SYSTEMS mozu byt ich pocet vyrazne limitovany.
+   !!! D. Poradie inicializacii VARIABLES s aplikovanym KEYWORD [thread_local] je NEDEFINOVANE, a preto inicializacia viacerych takychto VARIABLES NESMIE byt navzajom zavisla.
+3. C++ STANDARD LIBRARY definuje 2 typy API pre pracu s THREADS.
+   A. HIGH LEVEL API. Vychadza z LIBRARY <future> a poskytuje CLASSES pre nepriamu pracu s THREADS pomocou TASKS.
+   B. LOW LEVEL API. Vychadza z LIBRARY <thread> a poskytuje CLASSES pre priamu pracu s THREADS.
+!!! 4.  THREAD LIBRARY na prenos stavu medzi 2 THREADS pouziva koncept SHARED STATES. Pre SHARED STATE platia nasledujuce fakty.
+   A. SHARED STATE moze obsahovat bud 1 RESULT, alebo 1 EXCEPTION. RESULT reprezentuje vysledok operacie, ktoru THREAD vykonal. V pripade, ze tato operacia hodila EXCEPTION, tak v SHARED STATE sa namiesto RESULT ulozi hodena EXCEPTION.
+   B. SHARED STATE interne obsahuju CLASSES [future<T>], [promise<T>] a [packaged_task<T>].
+   C. Pristup k SHARED STATE je THREAD SAFE.
+   !!! D. Ak THREAD nastavi RESULT, alebo EXCEPTION, SHARED STATE je SIGNALIZED. To znaci, ze iny THREAD, ktory vykonaval BLOCKING cakajuc na ulozenie RESULT, alebo EXCEPTION je UNBLOCKED a moze ziskat RESULT, alebo EXCEPTION, ktorou skoncil THREAD na ktory cakal.
+5. SHARED STATE je OBJECT, ktory je prenasany medzi TASKS. Obsahuje nasledujuce data.
+   A. TASK RESULT reprezentujuci bud RETURN VALUE ak TASK skoncil uspesne, alebo EXCEPTION ak TASK zlyhal.
+   B. READY BIT, ktory urcuje ci TASK RESULT moze byt nacitana pomocou instancie CLASS [future<T>].
+   C. MUTABLE EXCLUSION DATA ako napriklad CONDITIONAL VARIABLE, ktory umoznuje synchronizovany pristup k TASK RESULT a zaroven umoznuje vykonat THREAD BLOCKING v pripade, ze TASK RESULT este nebol vykonavanym TASK nastaveny.
+   D. REFERENCE COUNTER, ktory urcuje kedy je mozne SHARED STATE uvolnit z MEMORY.
+   !!!!! E. CALLBACK FUNCTION, ktora sa SPUSTI v pripade, ze sa CALLER pokusi ziskat TASK RESULT daneho SHARED STATE. TASK moze bezat v SEPARATNOM THREAD, alebo v CURRENT THREAD v zavislosti od toho ako bol TASK vytvoreny.
+6. Nad SHARED STATE je mozne vykonat nasledujuce OPERATIONS.
+   A. CONSTRUCTION vytvori instanciu SHARED STATE.
+   B. RELEASE znizi stav REFERENCE COUNTER, pricom ak ten dosiahne 0, tak je instancia SHARED STATE uvolnena z MEMORY.
+   !!! C. MAKE READY nastavi READY BIT na TRUE cim sa indikuje, ze TASK RESULT daneho SHARED STATE je pristupna. Zaroven sa UKONCI THREAD BLOCKING tych THREADS, ktore cakali na TASK RESULT.
+   !!! D. ABANDON je pouzita ak do SHARED STATE NIE JE MOZNE ulozit TASK RESULT. V tomto pripade sa do TASK RESULT ulozi EXCEPTION [future_error] s ERROR CODE [broken_promise].
+7. HIGH LEVEL API poskytuje API pomocou, ktoreho je mozne realizovat funkcionalitu TASKS. HIGH LEVEL API je tvorene 2 klucovymi castami.
+   A. FUNCTION async() vytvara ASYNCHRONNY TASK. RETURN VALUE FUNCTION async() je instancia CLASS [future<T>].
+   B. CLASS [future<T>] umoznuje ziskat TASK RESULT daneho TASK. Pomocou tejto CLASS je mozne zistit s akym TASK RESULT skoncil, resp. prinutit TASK, ak este nebol spusteny, aby sa spustil a ukoncil. CLASS [future<T>] umoznuje aj detekciu EXCEPTIONS v pripade, ze CODE daneho TASK hodil EXCEPTION.
+!!!!! 8. CLASS [future<T>] a CLASS [promise<T>] predstavuju IBA HANDLES na SHARED STATE. Tieto CLASSES NEVYTVARAJU THREADS, iba sluzia na ukladanie a ziskanie SHARED STATE. THREADS sa vytvaraju IBA pomocou FUNCTION async().
+   !!! A. FUNCTION async() vytvara zo zadanych FUNCTIONS TASKS, ktore su spustane ASYNCHRONNE v SEPARATNYCH THREADS. FUNCTION async() je JEDINY SPOSOB akym HIGH LEVEL API vytvara nove TASKS.
+   !!!!! B. CLASS [promise<T>] reprezentuje HANDLE na SHARED STATE, ktory sa pouziva na ULOZENIE vysledku TASK medzi viacerymi THREADS. TASK RESULT moze byt RETURN VALUE, alebo EXCEPTION, ktoru dany TASK vygeneruje. CLASS NEVYTVARA nove TASKS iba sluzi na ULOZENIE TASK RESULT.
+   !!!!! C. CLASS [future<T>] reprezentuje HANDLE na SHARED STATE, ktory sa pouziva na ZISKANIE vysledku TASK medzi viacerymi THREADS. TASK RESULT moze byt RETURN VALUE, alebo EXCEPTION, ktoru dany TASK vygeneruje. CLASS NEVYTVARA nove TASKS iba sluzi na ZISKANIE TASK RESULT.
+   D. CLASS [shared_future<T>] reprezentuje verziu CLASS [future<T>], ktora na rozdiel od CLASS [future<T>] umoznuje OPAKOVANIE ZISKANIE TASK RESULT medzi viacerymi THREADS.
+   E. CLASS [packaged_task<T>] obsahuje PAIR CLASS [promise<T>] a CLASS [future<T>], ktore ZDIELAJU TEN ISTY SHARED STATE.
+9. Pre FUNCTION async() platia nasledujuce pravidla.
+   A. CODE, ktory ma TASK vykonat sa definuje ako CALLABLE OBJECT. Ku CALLABLE OBJECTS patria FUNCTIONS, METHODS, CLASSES s OPERATOR() a LAMBDA FUNCTIONS.
+   B. RETURN VALUE FUNCTION async() je instancia CLASS [future<TReturnValue>], kde TYPE [TReturnValue] reprezentuje RETURN VALUE, ktoru TASK vracia. Ak TASK nevracia ZIADNU RETURN VALUE, potom FUNCTION async() vracia instanciu CLASS [future<void>].
+   !!! C. Volanie FUNCTION async() NEZNAMENA AUTOMATICKE SPUSTENIE TASK CODE. Ak SYSTEM nema dostatocne RESOURCES, C++ moze posunut spustenie TASK na neskor.
+   D. FUNCTION async() okrem CALLABLE OBJECT prijima aj PARAMETERS, ktore su prenesene do TASK CALLBACK FUNCTION.
+   !!!!! F. Ak CODE, ktory zavolal FUNCTION async() potrebuje ziskat vysledok TASK, MUSI zavolat METHOD future<TReturnValue>.get(), ktora bud vrati RETURN VALUE TASK, alebo EXCEPTION, ak TASK hodil EXCEPTION.
+   !!! G. Ak sa pouziva METHOD ako CALLBACK FUNCTION, je NUTNE ako 2. PARAMETER preniest THIS OBJECT.
+   !!! H. Vytvorena instancia CLASS [future<T>] pouziva REFERENCE COUNTING na SHARED STATE. Ak REFERENCE COUNTER klesne na 0, SHARED STATE je uvolneny z MEMORY.
+   !!!!! I. FUNCTION async() implementuje THREAD POOL. Pri jej volanie sa NEMUSI NUTNE vytvorit NOVY THREAD, ale FUNCTION async() sa moze rozhodnut pouzit EXISTUJUCI THREAD z INTERNEHO THREAD POLL.
+10. Pomocou ENUM [launch], ktory je zaslany ako PARAMETER do FUNCTION async() je mozne zmenit chovanie TASK. ENUM [launch] ma nasledujuce hodnoty.
+   A. VALUE [launch::async] prinuti TASK k OKAMZITEMU START TASK. Ak SYSTEM nema RESOURCES na spustenie TASK, tak FUNCTION async() hodi EXCEPTION [system_error].
+   B. VALUE [launch::deferred] prinuti TASK, aby sa NESPUSTIL, az kym sa nezavola METHOD future<T>::get(). Tato VALUE sa vyuziva vtedy, ak je napriklad nutne spustit iba 1 z viacerych TASKS a to, ktory sa spusti zavisi od CONDITION v CODE.
+11. CLASS [future<T>] ma nasledujuce MEMBERS.
+   A. CONSTRUCTOR vytvara instanciu CLASS [future<T>].
+   B. DESTRUCTOR uvolnuje instanciu CLASS [future<T>]. V pripade, ze TASK este bezi, DESTRUCTOR pocka na jeho skoncenie vykonanim CURRENT THREAD BLOCKING.
+   C. OPERATOR= umoznuje priradit instanciu CLASS [future<T>] do inej.
+   D. METHOD future<T>::share() konvertuje instanciu CLASS [future<T>] na instanciu CLASS [shared_future<T>].
+   !!!!! E. METHOD future<T>::get() vracia VYSLEDOK TASK. Ak TASK este NEBOL SPUSTENY, tak ho SPUSTI a pocka na jeho skoncenie. Ak TASK hodil EXCEPTION, potom METHOD hodi tuto EXCEPTION.
+   F. METHOD future<T>::valid() vracia TRUE, ak TASK UKONCIL svoju CINNOST. Inak vrati hodnotu FALSE.
+   G. METHOD future<T>::wait() vykona THREAD BLOCKING pokym TASK neskonci svoju cinnost.
+   H. METHOD future<T>::wait_for() zablokuje CURRENT THREAD pokym TASK neskonci svoju cinnost, alebo pokym neexpiruje DURATION. Kedze FUNCTION pouziva STEADY CLOCK, je cas NEZAVISLY na zmene SYSTEM TIME ci DAYLIGHT SAVING TIME.
+   I. METHOD future<T>::wait_until() zablokuje CURRENT THREAD pokym TASK neskonci svoju cinnost, alebo pokym nenastane stanoveny TIMEPOINT. Kedze FUNCTION NEPOUZIVA STEADY CLOCK, je cas ZAVISLY na zmene SYSTEM TIME ci DAYLIGHT SAVING TIME.
+!!! 12. Ak pre spusteny TASK sa NEZAVOLA METHOD future<T>::get(), potom DESTRUCTOR CLASS [future<T>] sposobi THREAD BLOCKING CURRENT THREAD, az kym TASK neskonci.
+!!! 13. Ak sa pre TASK vytvoreny s VALUE [launch::deferred] NEZAVOLA METHOD future<T>::get(), potom sa TASK NIKDY NESPUSTI a DESTRUCTOR CLASS [future<T>] NEVYKONA THREAD BLOCKING, ale jednoducho iba okamzite uvolni instanciu CLASS [future<T>] a skonci.
+!!! 14. METHOD future<T>::get() je mozne pre danu instanciu CLASS [future<T>] volat IBA RAZ. Pri opakovanom pokuse zavolat METHOD future<T>::get() je vysledok volania NEDEFINOVANE. To ci METHOD future<T>::get() je pre instanciu CLASS [future<T>] volat je mozne zistit volanim METHOD CLASS future<T>::valid().
+15. METHOD future<T>::wait() vykonava nasledujucu cinnost.
+   A. Ak TASK nebol este spusteny, tak ho spusti.
+   B. METHOD ZABLOKUJE CALLING THREAD, az pokym TASK neskonci.
+   !!! C. Na rozdiel od METHOD future<T>::get() METHOD future<T>::wait() NEVRACIA RETURN VALUE volaneho TASK.
+   !!!!! D. Na rozdiel od METHOD future<T>::get() METHOD future<T>::wait() NEHODI EXCEPTION, ak nahodou TASK hodil UNHANDLED EXCEPTION. Tato EXCEPTION bude jednoducho IGNOROVANA.
+   !!! F. Po zavolani METHOD future<T>::wait() je TASK STALE VALIDNY a STALE je mozne pren zavolat METHOD future<T>::get().
+   !!! G. METHOD NIE JE mozne zavolat ked TASK NIE JE VALIDNY, teda po zavolani METHOD future<T>::get().
+   !!! H. METHOD je mozne zavolat IBA ak je TASK VALIDNY, teda PRED zavolanim METHOD future<T>::get().
+16. METHOD future<T>::wait_for() vykonava nasledujucu cinnost.
+   A. METHOD zablokuje CALLING THREAD na zadany cas, alebo pokym TASK neskonci.
+   !!! B. Cas je zadany ako TIMEOUT, ktory pouziva STEADY CLOCK a teda NIE JE ZAVISLY na zmene SYSTEM TIME ci DAYLIGHT SAVING TIME.
+   C. METHOD NESPUSTA TASK, ak TASK nebol spusteny. Toto je ROZDIEL oproti METHOD future<T>::wait().
+   D. Ak TASK bol skonceny pocas stanoveneho casu METHOD vracia VALUE [future_status::ready].
+   E. Ak TASK NESKONCIL pocas stanoveneho casu, pretoze NEBOL SPUSTENY METHOD vracia VALUE [future_status::deferred].
+   F. Ak TASK NESKONCIL pocas stanoveneho casu, pretoze STALE BEZI METHOD vracia VALUE [future_status::timeout].
+   !!!!! G. Na rozdiel od METHOD future<T>::get() METHOD NEHODI EXCEPTION, ak nahodou TASK hodil UNHANDLED EXCEPTION. Tato EXCEPTION bude jednoducho IGNOROVANA.
+   !!! H. Po zavolani METHOD future<T>::wait() je TASK STALE VALIDNY a STALE je mozne pren zavolat METHOD future<T>::get().
+   !!! I. METHOD je mozne zavolat IBA ak je TASK VALIDNY, teda PRED zavolanim METHOD future<T>::get().
+17. METHOD future<T>::wait_until() vykonava nasledujucu cinnost.
+   A. METHOD zablokuje CALLING THREAD na zadany cas, alebo pokym TASK neskonci.
+   !!! B. Cas je zadany ako TIMEPOINT, ktory sa musi naplnit, aby expiroval. METHOD pouziva NON-STEADY CLOCK, ktory JE ZAVISLY na zmene SYSTEM TIME ci DAYLIGHT SAVING TIME.
+   C. METHOD NESPUSTA TASK, ak TASK nebol spusteny. Toto je ROZDIEL oproti METHOD future<T>::wait().
+   D. Ak TASK bol skonceny pocas stanoveneho casu METHOD vracia VALUE [future_status::ready].
+   E. Ak TASK NESKONCIL pocas stanoveneho casu, pretoze NEBOL SPUSTENY METHOD vracia VALUE [future_status::deferred].
+   F. Ak TASK NESKONCIL pocas stanoveneho casu, pretoze STALE BEZI METHOD vracia VALUE [future_status::timeout].
+   !!!!! G. Na rozdiel od METHOD future<T>::get() METHOD NEHODI EXCEPTION, ak nahodou TASK hodil UNHANDLED EXCEPTION. Tato EXCEPTION bude jednoducho IGNOROVANA.
+   !!! H. Po zavolani METHOD future<T>::wait() je TASK STALE VALIDNY a STALE je mozne pren zavolat METHOD future<T>::get().
+   !!! I. METHOD je mozne zavolat IBA ak je TASK VALIDNY, teda PRED zavolanim METHOD future<T>::get().
+18. SHARED FUTURES (instancie CLASS [shared_future<T>]) su TASKS, ktorych METHODS shared_future<T>::get() je mozne NA ROZDIEL od METHOD future<T>::get() volat VIACKRAT. SHARED FUTURES sa pouzivaju vtedy, ak viacero FUTURES potrebuje ziskat vysledok SHARED FUTURE. Tieto FUTURES volaju METHOD future<T>::get(), ktora vrati TEN ISTY VYSLEDOK v kazdej FUTURE.
+!!! 19. Instancie CLASS [shared_future<T>], ktore su vytvorene z TOHO ISTEHO OBJECT [future<T>] ZDIELAJU TEN ISTY SHARED STATE a umoznuju vycitat TASK RESULT VIACKRAT.
+20. CLASS [shared_future<T>] ma nasledujuce MEMBERS.
+   A. CONSTRUCTOR vytvara instanciu CLASS [shared_future<T>].
+   B. DESTRUCTOR uvolnuje instanciu CLASS [shared_future<T>].
+   C. OPERATOR= umoznuje priradit instanciu CLASS [shared_future<T>] do inej.
+   !!!!! D. METHOD get() vracia VYSLEDOK TASK. Ak TASK este NEBOL SPUSTENY, tak ho SPUSTI a pocka na jeho skoncenie. Ak TASK hodil EXCEPTION, potom METHOD hodi tuto EXCEPTION. METHOD je mozne volat aj OPAKOVANE. V pripade, ze METHOD vracia OBJECT, tak ho vracia ako CONST REFERENCE, aby NEBOLA NUTNA SYNCHRONIZACIA pristupu k nemu. Ak tento OBJECT je nutne modifikovat, je nutne prenho vytvori CUSTOM SYNCHRONIZATION.
+   E. METHOD valid() vracia TRUE, ak TASK UKONCIL svoju CINNOST. Inak vrati hodnotu FALSE.
+   F. METHOD wait() vykona THREAD BLOCKING pokym TASK neskonci svoju cinnost.
+   G. METHOD wait_for() zablokuje CURRENT THREAD pokym TASK neskonci svoju cinnost, alebo pokym neexpiruje DURATION. Kedze FUNCTION pouziva STEADY CLOCK, je cas NEZAVISLY na zmene SYSTEM TIME ci DAYLIGHT SAVING TIME.
+   H. METHOD wait_until() zablokuje CURRENT THREAD pokym TASK neskonci svoju cinnost, alebo pokym nenastane stanoveny TIMEPOINT. Kedze FUNCTION NEPOUZIVA STEADY CLOCK, je cas ZAVISLY na zmene SYSTEM TIME ci DAYLIGHT SAVING TIME.
+21. LOW LEVEL API definuje CLASS [thread], ktory reprezentuje THREAD v C++. CLASS THREAD ma nasledujuce MEMBERS.
+   A. CONSTRUCTOR vytvara instanciu CLASS [thread].
+   B. DESTRUCTOR uvolnuje instanciu CLASS [thread].
+   C. TYPE [thread::native_handle_type] definuje TYPE, ktory sa pouziva na reprezentaciu NATIVE THREADS.
+   D. TYPE [thread::id] definuje TYPE, ktory reprezentuje THREAD ID.
+   E. OPERATOR= umoznuje priradit instanciu CLASS [thread] do inej.
+   F. STATIC METHOD thread::hardware_concurrency() vracia pocet THREADS, ktore je na danom SYSTEME mozne paralelne vykonat. Hodnota 0 znamena, ze nie je mozne urcit kolko THREADS moze paralelne bezat.
+   G. METHOD thread::joinable() vracia TRUE, ak THREAD je JOINABLE. Inak vracia METHOD hodnotu FALSE.
+   H. METHOD thread::get_id() vracia ID daneho THREAD.
+   I. METHOD thread::native_handle() vracia NATIVE HANDLE daneho THREAD.
+   !!! J. METHOD thread::join() zablokuje CURRENT THREAD az kym THREAD neskonci svoj beh.
+   !!! K. METHOD thread::detach() odpoji THREAD od CLASS [thread]. Ak THREAD bezi, stane sa BACKGROUND THREAD, ktory v pripade, ze skonci MAIN THREAD je OKAMZITE UKONCENY.
+   L. METHOD thread::swap() vymeni medzi 2 instanciami CLASS [thread] ich NATIVE HANDLES cim si instancie CLASS [thread] vymenia svoje THREADS.
+22. CLASS [thread::id] reprezentuje THREAD ID a ma nasledujuce MEMBERS.
+   A. CONSTRUCTOR vytvara instanciu CLASS [thread::id].
+   B. OPERATOR== porovnava ci su 2 THREAD IDs rovne.
+   C. OPERATOR!= porovnava ci su 2 THREAD IDs rozne.
+   D. OPERATOR< porovnava ci su 1. THREAD ID je mensi ako 2. THREAD ID.
+   E. OPERATOR<= porovnava ci su 1. THREAD ID je mensi, alebo rovny ako 2. THREAD ID.
+   F. OPERATOR> porovnava ci su 1. THREAD ID je vacsi ako 2. THREAD ID.
+   G. OPERATOR>= porovnava ci su 1. THREAD ID je vacsi, alebo rovny ako 2. THREAD ID.
+   H. OPERATOR<< zapise do STREAM THREAD ID.
+23. Pre CLASS [thread] platia nasledujuce fakty.
+   A. THREAD sa SPUSTI OKAMZITE po vytvoreni instancie CLASS [thread]. Ak SYSTEM nema dost RESOURCES na spustenie THREAD, CONSTRUCTOR hodi EXCEPTION [system_error].
+   B. CODE daneho THREADU moze byt LUBOVOLNY CALLABLE OBJECT. Ku CALLABLE OBJECTS patria FUNCTIONS, METHODS, CLASSES s OPERATOR() a LAMBDA FUNCTIONS.
+   !!! C. Ak THREAD hodi UNHANDLED EXCEPTION je PROCESS OKAMZITE UKONCENY volanim FUNCTION terminate(). Ak je nutne EXCEPTIONS preniest medzi THREADS je to nutne vykonat MANUALNE pomocou CLASS [exception_ptr].
+   !!!!! D. Platnost instancie CLASS [thread] MUSI drzat pokym THREAD nie je UKONCENY, alebo pokial sa nezavola METHOD thread::detach(), ktora odpoji THREAD od instancie CLASS [thread] a THREAD sa tym stane BACKGROUND THREAD.
+   !!!!! E. Ak sa pre THREAD zavola METHOD thread::detach(), THREAD sa stane BACKGROUND THREAD. Pre BACKGROUND THREADS plati, ze ak MAIN THREAD SKONCI, tak su BACKGROUND THREADS OKAMZITE UKONCENE.
+   F. Pomocou METHOD thread::join() je mozne pockat kym THREAD NESKONCI. To ci je mozne METHOD thread::join() volat je mozne zistit volanim METHOD thread::joinable().
+   !!!!! G. Ak sa zavola DESTRUCTOR pre THREAD pre ktory sa NEVOLALA METHOD thread::join(), ani METHOD thread::detach(), DESTRUCTOR vykona OKAMZITY PROGRAM TERMINATION volanim FUNCTION terminate().
+!!! 24. Ak su BACKGROUND THREADS pri skonceni MAIN THREAD TERMINATED, dochadza k MEMORY LEAKS, kedze instancie CLASS [thread] NIE SU KOREKTNE UVOLNENE. To vsak nie je zasadny problem pretoze PROCESS bol skoncenim MAIN THREAD a vykonanim TERMINATION vsetkych BACKGROUND THREADS ukonceny.
+!!!!! 25. ZASADNOU NEVYHODOU BACKGROUND THREADS je fakt, ze pre GLOBAL a STATIC OBJECTS mozu byt DESTRUCTORS volane SKOR ako su BACKGROUND THREADS TERMINATED. V pripade, ze BACKGROUND THREADS k takymto GLOBAL a STATIC OBJECTS pristupuju, moze to viest k PADU PROGRAMU. Tento problem moze byt rieseny 2 sposobmi.
+   A. Zabezpecit v CODE, aby pred skoncenim MAIN THREAD boli VSETKY BACKGROUND THREADS ukoncene. Toto je mozne docielit napriklad pomocou MUTEXES ci CONDITIONAL VARIABLES.
+   !!! B. Ukoncit MAIN THREAD volanim FUNCTION quick_exit(). FUNCTION quick_exit() na ROZDIEL od ukoncenia MAIN THREAD skoncenim FUNCTION main() ci volanim FUNCTION exit() UKONCI PROCESS BEZ TOHO, aby sa pre GLOBAL a STATIC OBJECTS volali ich DESTRUCTORS.
+!!!!! 26. Aj vdaka spomenutym obmedzeniam su BACKGROUND THREADS povazovane za RIZIKOVE a pri ich pouzivani je potrebne si dat pozor, alebo ich vobec nepouzivat a namiesto nich pouzivat TASKS vytvorene pomocou CLASS [future<T>].
+27. THREAD ID reprezentovany CLASS [thread::id] je mozne ziskat nasledujucimi sposobmi.
+   A. FUNCTION this_thread::get_id() vracia THREAD ID CURRENT THREAD.
+   B. METHOD thread::get_id() vracia ID THREAD reprezentovaneho instanciu CLASS [thread].
+28. Nad THREAD ID je mozne vykonat IBA POROVNANIE, alebo ho zapisat do OUTPUT STREAM pomocou OPERATOR<<.
+!!! 29. Po skonceni THREAD uz NIE JE MOZNE ZISKAT THREAD ID.
+31. Pre SHARED STATE platia nasledujuce pravidla.
+   !!!!! A. SHARED STATE je INTERNY OBJECT, ktory je SHARED medzi PAIR tvoreny CLASS [promise<T>] a CLASS [future<T>]. Tieto CLASSES su iba HANDLERS, ktore umoznuju pristupovat k ZDIELANEMU SHARED STATE.
+   !!! B. Dve rozlicne PAIRS tvorene CLASS [promise<T>] a CLASS [future<T>] pristupuju k ROZDIELNYM SHARED STATES. Iba RELATED PAIR CLASS [promise<T>] a CLASS [future<T>] pristupuje k TOMU ISTEMU SHARED STATE.
+   !!!!! C. CLASS [future<T>] NACITAVA TASK RESULT (RETURN VALUE, alebo EXCEPTION) zo SHARED STATE. Ak TASK RESULT NIE JE DOSTUPNY, pretoze TASK este NESKONCIL, CLASS [future<T>] vykona THREAD BLOCKING, az kym TASK nezapise TASK RESULT do SHARED STATE. V zavislosti od pouzitej METHOD CLASS [promise<T>] to moze byt pocas behu TASK, alebo az na jeho konci.
+   !!!!! D. CLASS [promise<T>] UKLADA TASK RESULT (RETURN VALUE, alebo EXCEPTION) do SHARED STATE. Zaroven, ak na TASK RESULT caka instancia CLASS [future<T>], tak CLASS [promise<T>] takyto BLOCKED THREAD PREBUDI, aby TASK RESULT mohol spracovat.
+   E. Ak chcu 2 THREADS pristupovat k tomu istemu SHARED STATE, musia zdielat tu istu instanciu CLASS [promise<T>].
+   !!! F. Do SHARED STATE je mozne ulozit bud 1 RETURN VALUE, alebo 1 EXCEPTION. Ak uz je RETURN VALUE, alebo EXCEPTION nastavena, NIE JE MOZNE ju pre tu istu instanciu CLASS [promise<T>] nastavit znova. Pri pokuse o zavolanie METHODS CLASS [promise<T>] pre nastavenie RETURN VALUE, alebo EXCEPTION po predchadzajucom nastaveni TASK RESULT tieto METHODS hodia EXCEPTION [promise_already_satisfied].
+   !!! G. Pomocou METHOD promise<T>::get_future() je mozne ziskat instanciu CLASS [future<T>], ktora umoznuje pockat (zablokovat CALLER THREAD), az kym TASK RESULT do SHARED STATE v instancii CLASS [promise<T>] nebude nastaveny. METHOD promise<T>::get_future() vsak NEVYTVARA THREAD, iba poskytuje THREAD BLOCKING MECHANISM, ktory vykona THREAD BLOCKING az pokym TASK RESULT nebude nastaveny.
+   !!! H. Nastavenie TASK RESULT pomocou METHODS CLASS [promise<T>] je mozne vykonat tak, ze BUD je OKAMZITE SIGNALIZED do THREADS, ktore na TASK RESULT daneho SHARED STATE cakaju vykonavanim THREAD BLOCKING, alebo tak, ze SIGNALIZATION prebehne az ked TASK, ktory SHARED STATE nastavil SKONCI.
+!!! 32. SHARED STATE moze byt SIGNALIZED 2 sposobmi.
+   A. Pomocou METHOD promise<T>::set_value() a METHOD promise<T>::set_exception() je nastavenie RETURN VALUE, alebo EXCEPTION vykonane tak, ze toto nastavenie je OKAMZITE SIGNALIZED do CALLER THREAD (instancie CLASS [promise<T>]), ktory caka na nastavenie SHARED STATE. CALLER THREAD, ktory je v WAIT STATE cakajuc na SHARED STATE je OKAMZITE SPUSTENY a mozne pokracovat v cinnosti. THREAD, ktory SHARED STATE nastavil DALEJ POKRACUJE vo SVOJEJ CINNOSTI.
+   B. Pomocou METHOD promise<T>::set_value_at_thread_exit() a METHOD promise<T>::set_exception_at_thread_exit() je nastavenie RETURN VALUE, alebo EXCEPTION vykonane tak, ze toto nastavenie je NIE JE OKAMZITE SIGNTALIZED do CALLER THREAD (instancie CLASS [promise<T>]), ale SIGNALIZATION prebehne AZ po UKONCENI TASK, ktory SHARED STATE nastavil.
+!!! 33. V CATCH BLOCK je mozne CURRENT EXCEPTION ziskat volanim FUNCTION current_exception().
+34. CLASS [promise<T>] ma nasledujuce MEMBERS.
+   A. CONSTRUCTOR vytvara instanciu CLASS [promise<T>].
+   B. DESTRUCTOR uvolnuje instanciu CLASS [promise<T>].
+   C. OPERATOR= umoznuje priradit instanciu CLASS [promise<T>] do inej. Implementuje sa IBA MOVE OPERATOR=. COPY OPERATOR= NIE JE PODPOROVANY.
+   D. METHOD promise<T>::swap() vymiena SHARED STATE medzi 2 instanciami CLASS [promise<T>].
+   !!! E. METHOD promise<T>::set_value() uklada RESULT do SHARED STATE a zaroven nastavi CLASS [promise<T>] do SIGNALIZED STATE co znaci, ze ak iny THREAD vytvoril instanciu CLASS [future<T>] a caka na nastavenie SHARED STATE, tak tento THREAD je UNBLOCKED a moze spracovat RESULT. Pri pokuse o volanie tejto METHOD, ked uz SHARED STATE raz BOL NASTAVENY, METHOD hodi EXCEPTION [promise_already_satisfied].
+   !!! F. METHOD promise<T>::set_exception() uklada EXCEPTION do SHARED STATE a zaroven nastavi CLASS [promise<T>] do SIGNALIZED STATE co znaci, ze ak iny THREAD vytvoril instanciu CLASS [future<T>] a caka na nastavenie SHARED STATE, tak tento THREAD je UNBLOCKED a moze spracovat EXCEPTION v CATCH BLOCK. Pri pokuse o volanie tejto METHOD, ked uz SHARED STATE raz BOL NASTAVENY, METHOD hodi EXCEPTION [promise_already_satisfied]. Pri pokuse o volanie tejto METHOD, ked uz SHARED STATE raz BOL NASTAVENY, METHOD hodi EXCEPTION [promise_already_satisfied].
+   !!! G. METHOD promise<T>::set_value_at_thread_exit() uklada RESULT do SHARED STATE pricom vsak NENASTAVI CLASS [promise<T>] do SIGNALIZED STATE. CLASS [promise<T>] je SIGNALIZED az ked sa CURRENT THREAD UKONCI.
+   !!! H. METHOD promise<T>::set_exception_at_thread_exit() uklada EXCEPTION do SHARED STATE pricom vsak NENASTAVI CLASS [promise<T>] do SIGNALIZED STATE. CLASS [promise<T>] je SIGNALIZED az ked sa CURRENT THREAD UKONCI.
+   !!!!! I. METHOD promise<T>::get_future() vracia instanciu CLASS [future<T>] pomocou ktorej je mozne pockat kym PROMISE nebude nastaveny RESULT, alebo EXCEPTION. METHOD NEPUSTA NOVY THREAD. Instancia CLASS [future<T>] sluzi iba na to, aby mohol byt CURRENT THREAD BLOCKED, az kym v SHARED STATE nebude nastavena VALUE, alebo EXCEPTION.
+35. CLASS [promise<T>] sa typicky pouziva nasledujucim sposobom.
+   A. Vytvori sa instancia CLASS [promise<T>], ktora sa BY-REFERENCE zasle ako PARAMETER do WORKER THREAD.
+   B. WORKER THREAD ASYNCHRONNE vykonava svoj CODE.
+   !!! C. CALLER THREAD zavola METHOD promise<T>::get_future() na ziskanie instancie CLASS [future<T>].
+   !!! D. CALLER THREAD dalej vykonava svoju cinnost, az do chvile kym od WORKER THREAD nepotrebuje RESULT jeho CODE. Vtedy zavola METHOD future<T>::get() pre instanciu CLASS [future<T>] ziskanu z instancie CLASS [promise<T>].
+   !!! E. Ak WORKER THREAD dokonci svoj vypocet, zavola METHOD promise<T>::set_value(), alebo METHOD promise<T>::set_exception_at_thread_exit() na ulozenie RESULT do SHARED STATE. Ak THREAD hodil EXCEPTION, tato EXCEPTION sa do SHARED STATE ulozi volanim METHOD promise<T>::set_exception(), alebo METHOD promise<T>::set_exception_at_thread_exit().
+   F. CALLER THREAD, ktory zavolal METHOD future<T>::get() je UNBLOCKED a moze spracovat RESULT, alebo EXCEPTION, ktoru WORKER THREAD vratil.
+!!!!! 36. CLASS [packaged_task<T>] reprezentuje PAIR CLASS [promise<T>] a CLASS [future<T>], ktore ZDIELAJU SPOLOCNY SHARED STATE. CLASS [packaged_task<T>] (rovnako ako CLASS [future<T>] a CLASS [promise<T>]) na ROZDIEL od FUNCTION async() NEVYKONAVA ASYNCHRONNE SPUSTANIE TASK CODE, ale iba poskytuje prostriedky na ulozenie a citanie SHARED STATE a SYNCHRONNE spustenie TASK CODE. CLASS [packaged_task<T>] teda NIKDY NEVYTVARA vlastne THREADS a ani NIKDY NESPUSAT ASYNCHRONNE svoj CODE. CLASS je mozne pouzit [packaged_task<T>] pre implementaciu CUSTOM THREAD POOLS. CLASS [packaged_task<T>] sa pouziva nasledujucim sposobom.
+   A. V CONSTRUCTOR sa do instancie CLASS [packaged_task<T>] zadava CALLBACK FUNCTION, ktora reprezentuje TASK CODE.
+   !!!!! B. Kedze CLASS [packaged_task<T>] NEVYTVARA vlastne THREADS, tak sa spravidla instancia CLASS [packaged_task<T>] ako REFERENCE prenasa do MANUALNE VYTORENEHO THREAD.
+   !!!!! C. CUSTOM THREAD MUSI zavola packaged_task<T>::OPERATOR(), aby SPUSTIL TASK CODE.
+   !!! D. Ak FUNCTION reprezentujuca TASK CODE vrati RETURN VALUE, alebo ak FUNCTION hodila EXCEPTION tak tento TASK RESULT CLASS [packaged_task<T>] AUTOMATICKY ulozi ako TASK RESULT do interneho SHARED STATE, ktory spravuje CLASS [packaged_task<T>].
+   !!! E. THREAD, ktory vytvoril instanciu CLASS [packaged_task<T>] zavola METHOD packaged_task<T>::get_future(), ktora vracia instanciu CLASS [future<T>], ktora umoznuje pristupit k TASK RESULT ulozenom v SHARED STATE instancie CLASS [packaged_task<T>].
+   !!!!! F. METHOD future<T>::get() instancie CLASS [future<T>] ziskanej volanim METHOD packaged_task<T>::get_future() SKONTROLUJE ci bol TASK RESULT nastaveny. Ak ano, tak OKAMZITE SKONCI a ako RETURN VALUE vrati RETURN VALUE TASK RESULT, alebo v pripade, ze TASK skoncil hodenim EXCEPTION, tak hodi EXCEPTION ulozenu v TASK RESULT. V pripade, ze TASK este neskoncil, tak METHOD future<T>::get() sposobi THREAD BLOCKING CURRENT THREAD, az kym TASK RESULT v SEKUNDARNOM THREAD nebude nastaveny.
+37. CLASS [packaged_task<T>] ma nasledujuce MEMBERS.
+   A. CONSTRUCTOR vytvara instanciu CLASS [packaged_task<T>], pricom ako ARGUMENT sa zadava CALLBACK FUNCTION, ktora reprezentuje TASK CODE. Ziaden THREAD sa NEVYTVARA.
+   B. DESTRUCTOR uvolnuje instanciu CLASS [packaged_task<T>].
+   C. OPERATOR= umoznuje priradit instanciu CLASS [packaged_task<T>] do inej.
+   !!! D. OPERATOR() SYNCHRONNE spusta vykonavanie CODE daneho TASK. Kedze CODE daneho TASK je spustany SYNCHRONNE, tato METHOD sa spravidla vola v CUSTOM THREAD, ktory vsak CODE musi MANUALNE vytvorit.
+   !!! E. packaged_task<T>::make_ready_at_thread_exit() SYNCHRONNE spusta vykonavanie CODE daneho TASK pricom jeho RESULT, alebo EXCEPTION bude pristupna az ked CURRENT THREAD SKONCI. Kedze CODE daneho TASK je spustany SYNCHRONNE, tato METHOD sa spravidla vola v CUSTOM THREAD, ktory vsak CODE musi MANUALNE vytvorit.
+   F. METHOD packaged_task<T>::swap() vymiena INTERNAL STATE medzi 2 instanciami CLASS [packaged_task<T>].
+   G. METHOD packaged_task<T>::valid() vracia TRUE, ak TASK ma k dispozicii SHARED STATE. Inak vrati hodnotu FALSE.
+   !!! H. METHOD packaged_task<T>::get_future() vracia instanciu CLASS [future<T>] pomocou ktorej je mozne SPUSTIT TASK CODE a pockat kym TASK CODE nevrati TASK RESULT.
+   I. METHOD packaged_task<T>::reset() umoznuje vykonat RESET SHARED STATE, ktory bol v TASK ulozeny.
+38. NAMESPACE [std::this_thread] obsahuje nasledujuce FUNCTION.
+   A. FUNCTION sleep_for() vykona CURRENT THREAD BLOCKING pocas zadaneho DURATION.
+   B. FUNCTION sleep_until() vykona CURRENT THREAD BLOCKING az kym sa nedosiahne zadany TIMEPOINT.
+   C. FUNCTION get_id() vracia ID CURRENT THREAD.
+   D. FUNCTION yield() prinuti CURRENT THREAD vzdat sa aktualneho casoveho kvanta priradeneho CURRENT THREAD a umozni THREAD CONTEXT SWITCH. FUNCTION je iba HINT a SYSTEM jej volanie moze IGNOROVAT.
+39. STANDARD pre C++ 11 na rozdiel od predchadzajucich verzii GARANTUJE, ze VSETKY VARIABLES vratane OBJECT FIELDS maju vlastnu MEMORY LOCATION. Jedinou vynimkou su BITFIELDS. Tato garancia v predchadzajucich verziach C++ STANDARDU nebola explicitne stanovena, aj ked v praxi to prakticky vsetky implementacie C++ respektovali.
+!!! 40. C++ NEGARANTUJE ATOMICKY pristup ako k PRIMITIVE TYPES ako [int] ci [bool]. Aj pristup k VARIABLES tychto TYPES MUSI byt SYNCHRONIZED.
+!!!!! 41. V C++ VOLATILE VARIABLES na ROZDIEL od C# NEGARANTUJU CODE ORDERING. To znaci, ze pouzitie VOLATILE VARIABLES NEBRANI COMPILER vo vykonani OPTIMALIZATIONS, ktore prehodia poradie jednotlivych casti CODE. Inak povedane, VOLATILE VARIABLES NEIMPLEMENTUJU MEMORY BARRIERS.
+42. LOCKING v C++ vychadza z nasledujuceho konceptu.
+   A. C++ definuje CLASSES implementujuce funkcionalitu LOCKING. Sem patri CLASS [mutex], CLASS [timed_mutex], CLASS [recursive_mutex] a CLASS [recursive_timed_mutex].
+   B. C++ definuje HELPER CLASS [lock_guard] a HELPER CLASS [unique_lock], ktore vo svojich CONSTRUCTORS volaju LOCK METHOD a v DESTRUCTORS volaju UNLOCK METHOD daneho LOCK. Tieto CLASSES, ktore v CONSTRUCTOR prijimaju instanciu LOCK CLASS su vytvarane ako LOCAL VARIABLES. Ich volanie LOCK a UNLOCK METHODS v CONSTRUCTORS a DESTRUCTORS zabezpecuje, ze aj pri vzniku EXCEPTION dojde VZDY k ULOVNENIU LOCK.
+43. CLASSES vykonavajuce LOCKING su ulozene v LIBRARY [<mutex>].
+44. CLASS [mutex] reprezentuje NON-RECURSIVE MUTEX. Ma nasledujuce MEMBERS.
+   A. CONSTRUCTOR vytvara instanciu CLASS [mutex].
+   B. DESTRUCTOR uvolnuje instanciu CLASS [mutex]. DESTRUCTOR sa NESMIE volat, ak THREAD vlastni LOCK, inak je chovanie NEDEFINOVANE (moze dojst k PADU PROGRAMU).
+   C. TYPE [mutex::native_handle_type] definuje TYPE NATIVE HANDLE, ktory reprezentuje dany MUTEX.
+   D. METHOD mutex::lock() ziska LOCK pre CURRENT THREAD. Ak sa LOCK NEPODARILO ziskat, METHOD hodi EXCEPTION [system_error] pricom LOCK CURRENT THREAD NEBOL prideleny. Ak CURRENT THREAD zavola METHOD OPAKOVANE, chovanie je NEDEFINOVANE (moze dojst k DEADLOCK).
+   E. METHOD mutex::unlock() uvolnuje LOCK ziskany CURRENT THREAD.
+   !!! F. METHOD mutex::try_lock() sa pokusi ziskat LOCK pre CURRENT THREAD. Ak sa LOCK podari ziskat METHOD vracia TRUE, inak vracia FALSE. Ak sa METHOD zavola pre THREAD, ktory vlastni LOCK, je chovanie NEDEFINOVANE (moze dojst k DEADLOCK).
+   G. METHOD mutex::native_handle() reprezentujuci MUTEX.
+45. CLASS [timed_mutex] reprezentuje NON-RECURSIVE MUTEX s podporou TIMED WAITS. Ma nasledujuce MEMBERS.
+   A. CONSTRUCTOR vytvara instanciu CLASS [timed_mutex].
+   B. DESTRUCTOR uvolnuje instanciu CLASS [timed_mutex]. DESTRUCTOR sa NESMIE volat, ak THREAD vlastni LOCK, inak je chovanie NEDEFINOVANE (moze dojst k PADU PROGRAMU).
+   C. TYPE [timed_mutex::native_handle_type] definuje TYPE NATIVE HANDLE, ktory reprezentuje dany MUTEX.
+   D. METHOD timed_mutex::lock() ziska LOCK pre CURRENT THREAD. Ak sa LOCK NEPODARILO ziskat, METHOD hodi EXCEPTION [system_error] pricom LOCK CURRENT THREAD NEBOL prideleny. Ak CURRENT THREAD zavola METHOD OPAKOVANE, chovanie je NEDEFINOVANE (moze dojst k DEADLOCK).
+   E. METHOD timed_mutex::unlock() uvolnuje LOCK ziskany CURRENT THREAD.
+   !!! F. METHOD timed_mutex::try_lock() sa pokusi ziskat LOCK pre CURRENT THREAD. Ak sa LOCK podari ziskat METHOD vracia TRUE, inak vracia FALSE. Ak sa METHOD zavola pre THREAD, ktory vlastni LOCK, je chovanie NEDEFINOVANE (moze dojst k DEADLOCK).
+   !!! G. METHOD timed_mutex::try_lock_for() sa pokusi ziskat LOCK pre CURRENT THREAD pocas definovanej DURATION. Ak sa LOCK podari ziskat METHOD vracia TRUE, inak vracia FALSE. Ak sa METHOD zavola pre THREAD, ktory vlastni LOCK, je chovanie NEDEFINOVANE (moze dojst k DEADLOCK). METHOD pouziva na urcenie DURATION STEADY CLOCK, a preto je immuna voci zmenam SYSTEM TIME ci zmene DAYLIGHT SAVING TIME.
+   !!! H. METHOD timed_mutex::try_lock_until() sa pokusi ziskat LOCK pre CURRENT THREAD az po dobu kym nanastane stanoveny TIMEPOINT. Ak sa LOCK podari ziskat METHOD vracia TRUE, inak vracia FALSE. Ak sa METHOD zavola pre THREAD, ktory vlastni LOCK, je chovanie NEDEFINOVANE (moze dojst k DEADLOCK). METHOD pouziva na urcenie TIMEPOINT NON-STEADY CLOCK, a preto NIE je immuna voci zmenam SYSTEM TIME ci zmene DAYLIGHT SAVING TIME.
+   I. METHOD timed_mutex::native_handle() reprezentujuci MUTEX.
+46. CLASS [recursive_mutex] reprezentuje RECURSIVE MUTEX. Ma nasledujuce MEMBERS.
+   A. CONSTRUCTOR vytvara instanciu CLASS [recursive_mutex].
+   B. DESTRUCTOR uvolnuje instanciu CLASS [recursive_mutex]. DESTRUCTOR sa NESMIE volat, ak THREAD vlastni LOCK, inak je chovanie NEDEFINOVANE (moze dojst k PADU PROGRAMU).
+   C. TYPE [recursive_mutex::native_handle_type] definuje TYPE NATIVE HANDLE, ktory reprezentuje dany MUTEX.
+   D. METHOD recursive_mutex::lock() ziska LOCK pre CURRENT THREAD. Ak sa LOCK NEPODARILO ziskat, METHOD hodi EXCEPTION [system_error] pricom LOCK CURRENT THREAD NEBOL prideleny. Ak CURRENT THREAD zavola METHOD OPAKOVANE, zvysi sa INTERNAL RECURSIVE COUNTER o 1.
+   E. METHOD recursive_mutex::unlock() znizuje INTERNAL RECURSIVE COUNTER o 1. Ak INTERNAL RECURSIVE COUNTER klesne na 0 je LOCK uvolneny.
+   !!! F. METHOD recursive_mutex::try_lock() sa pokusi ziskat LOCK pre CURRENT THREAD. Ak sa LOCK podari ziskat METHOD vracia TRUE, inak vracia FALSE. Ak CURRENT THREAD zavola METHOD OPAKOVANE, zvysi sa INTERNAL RECURSIVE COUNTER o 1.
+   G. METHOD recursive_mutex::native_handle() reprezentujuci MUTEX.
+47. CLASS [recursive_timed_mutex] reprezentuje RECURSIVE MUTEX s podporou TIMED WAITS. Ma nasledujuce MEMBERS.
+   A. CONSTRUCTOR vytvara instanciu CLASS [recursive_timed_mutex].
+   B. DESTRUCTOR uvolnuje instanciu CLASS [recursive_timed_mutex]. DESTRUCTOR sa NESMIE volat, ak THREAD vlastni LOCK, inak je chovanie NEDEFINOVANE (moze dojst k PADU PROGRAMU).
+   C. TYPE [recursive_timed_mutex::native_handle_type] definuje TYPE NATIVE HANDLE, ktory reprezentuje dany MUTEX.
+   D. METHOD recursive_timed_mutex::lock() ziska LOCK pre CURRENT THREAD. Ak sa LOCK NEPODARILO ziskat, METHOD hodi EXCEPTION [system_error] pricom LOCK CURRENT THREAD NEBOL prideleny. Ak CURRENT THREAD zavola METHOD OPAKOVANE, zvysi sa INTERNAL RECURSIVE COUNTER o 1.
+   E. METHOD recursive_timed_mutex::unlock() znizuje INTERNAL RECURSIVE COUNTER o 1. Ak INTERNAL RECURSIVE COUNTER klesne na 0 je LOCK uvolneny.
+   !!! F. METHOD recursive_timed_mutex::try_lock() sa pokusi ziskat LOCK pre CURRENT THREAD. Ak sa LOCK podari ziskat METHOD vracia TRUE, inak vracia FALSE. Ak CURRENT THREAD zavola METHOD OPAKOVANE, zvysi sa INTERNAL RECURSIVE COUNTER o 1.
+   !!! G. METHOD recursive_timed_mutex::try_lock_for() sa pokusi ziskat LOCK pre CURRENT THREAD pocas definovanej DURATION. Ak sa LOCK podari ziskat METHOD vracia TRUE, inak vracia FALSE. Ak CURRENT THREAD zavola METHOD OPAKOVANE, zvysi sa INTERNAL RECURSIVE COUNTER o 1. METHOD pouziva na urcenie DURATION STEADY CLOCK, a preto je immuna voci zmenam SYSTEM TIME ci zmene DAYLIGHT SAVING TIME.
+   !!! H. METHOD recursive_timed_mutex::try_lock_until() sa pokusi ziskat LOCK pre CURRENT THREAD az po dobu kym nanastane stanoveny TIMEPOINT. Ak sa LOCK podari ziskat METHOD vracia TRUE, inak vracia FALSE. Ak CURRENT THREAD zavola METHOD OPAKOVANE, zvysi sa INTERNAL RECURSIVE COUNTER o 1. METHOD pouziva na urcenie TIMEPOINT NON-STEADY CLOCK, a preto NIE je immuna voci zmenam SYSTEM TIME ci zmene DAYLIGHT SAVING TIME.
+   I. METHOD recursive_timed_mutex::native_handle() reprezentujuci MUTEX.
+48. CLASS [lock_guard<TMutex>] reprezentuje MUTEX WRAPPER umoznujuci realizovat CRITICAL SECTION. Ma nasledujuce MEMBERS.
+   !!! A. CONSTRUCTOR vytvara instanciu CLASS [lock_guard<TMutex>] a zaroven vola METHOD TMutex::lock(). METHOD moze hodit EXCEPTIONS, ktoru hadze METHOD TMutex::lock(). OVERLOADED verzia CONSTRUCTOR prijma DUMMY PARAMETER TYPU [adopt_lock_t]. Tato verzia CONSTRUCTOR ocakava, ze CURRENT THREAD uz DRZI LOCK a sama LOCK NEZISKAVA. Pouziva sa v spojitosti s TRY_LOCK METHODS, ktore ak ziskaju LOCK, potom je potrebne pouzit tuto verziu CONSTRUCTOR.
+   B. DESTRUCTOR uvolnuje instanciu CLASS [lock_guard<TMutex>] a zaroven vola METHOD TMutex::unlock().
+   C. TYPE [lock_guard<TMutex>::mutex_type] definuje TYPE MUTEX, ktory je asociovany s danou instanciu CLASS [lock_guard<TMutex>].
+49. CLASS [unique_lock<TMutex>] reprezentuje vseobecny MUTEX WRAPPER umoznujuci realizovat CRITICAL SECTION. Poskytuje METHODS na umoznujuce cakat na ziskanie LOCK a je MOVABLE. Ma nasledujuce MEMBERS.
+   A. CONSTRUCTOR vytvara instanciu CLASS [unique_lock<TMutex>] a zaroven vola METHOD TMutex::lock(). METHOD moze hodit EXCEPTIONS, ktoru hadze METHOD TMutex::lock().
+   B. DESTRUCTOR uvolnuje instanciu CLASS [unique_lock<TMutex>] a zaroven vola METHOD TMutex::unlock().
+   C. TYPE [lock_guard<TMutex>::mutex_type] definuje TYPE MUTEX, ktory je asociovany s danou instanciu CLASS [unique_lock<TMutex>].
+   D. OPERATOR= realizujuci MOVE SEMANTICS umoznuje priradit instanciu CLASS [unique_lock<TMutex>] do inej.
+   E. OPERATOR BOOL() vracia TRUE, ak MUTEX je asociovany s instanciu CLASS [lock_guard<TMutex>], inak vracia FALSE.
+   F. METHOD lock_guard<TMutex>::lock() zavola LOCK METHOD pre asociovany MUTEX. METHOD hadze EXCEPTIONS, ktore hodi LOCK METHOD daneho MUTEX.
+   G. METHOD lock_guard<TMutex>::unlock() zavola UNLOCK METHOD pre asociovany MUTEX. METHOD hadze EXCEPTIONS, ktore hodi LOCK METHOD daneho MUTEX.
+   !!! H. METHOD lock_guard<TMutex>::try_lock() sa pokusi ziskat LOCK pre CURRENT THREAD. Ak sa LOCK podari ziskat METHOD vracia TRUE, inak vracia FALSE.
+   !!! I. METHOD lock_guard<TMutex>::try_lock_for() sa pokusi ziskat LOCK pre CURRENT THREAD pocas definovanej DURATION. Ak sa LOCK podari ziskat METHOD vracia TRUE, inak vracia FALSE.
+   !!! J. METHOD lock_guard<TMutex>::try_lock_until() sa pokusi ziskat LOCK pre CURRENT THREAD az po dobu kym nanastane stanoveny TIMEPOINT. Ak sa LOCK podari ziskat METHOD vracia TRUE, inak vracia FALSE.
+   K. METHOD lock_guard<TMutex>::swap() vymeni medzi 2 instanciami CLASS [lock_guard<TMutex>] ich INTERNAL STATES.
+   L. METHOD lock_guard<TMutex>::release() zrusi asociaciu medzi instanciu CLASS [lock_guard<TMutex>] a s nim asociovanym MUTEX.
+   M. METHOD lock_guard<TMutex>::mutex() vracia POINTER na MUTEX asociovany s instanciu CLASS [lock_guard<TMutex>].
+   N. METHOD lock_guard<TMutex>::owns_lock() vracia TRUE, ak MUTEX je asociovany s instanciu CLASS [lock_guard<TMutex>], inak vracia FALSE.
+50. CLASS [unique_lock<TMutex>] ma 3 typy CONSTRUCTORS, ktore ovplyvnuju jej spravanie.
+   A. CONSTRUCTOR s PARAMETER TYPE [duration<T>] caka zadany cas na ziskanie LOCK.
+   B. CONSTRUCTOR s PARAMETER TYPE [try_to_lock_t] skontroluje ci je LOCK volny, a ak ano, tak ho ziska. Ak nie, neziska ho a co je mozne overit volanim METHOD lock_guard<TMutex>::owns_lock().
+   C. CONSTRUCTOR s PARAMETER TYPE [defer_lock_t] NEZISKA LOCK. Tento CONSTRUCTOR sa pouziva vtedy ak je pomocou FUNCTION lock(), alebo FUNCTION try_lock() potrebne ziskat VIACERO LOCKS.
+!!!!! 51. MUTEXES v pripade, ze detekuju nekorektne pouzitie, napriklad DEADLOCK MOZU (je to PLATFORM DEPENDENT) hodit EXCEPTION [system_error]. METHOD system_error.code() vracia nasledujuce hodnoty z ENUM [errc].
+   A. ERROR CODE [errc::resource_deadlock_would_occur] sa generuje v pripade, ze MUTEX detekuje vznik DEADLOCK.
+   B. ERROR CODE [errc::resource_unavailable_try_again] sa generuje v pripade, ze MUTEX nema pristupny niektory z NATIVE HANDLERS.
+   C. ERROR CODE [errc::operation_not_permitted] sa generuje v pripade, ze THREAD nemoze vykonat pozadovanu operaciu.
+   D. ERROR CODE [errc::device_or_resource_busy] sa generuje v pripade, ze MUTEX uz je LOCKED. Tento ERROR CODE sa generuje napriklad ak na NON-RECURSIVE LOCK sa zavola operacia ACQUIRE.
+   E. ERROR CODE [errc::invalid_argument] sa generuje v pripade, ze MUTEX detekuje ze zadany NATIVE HANDLER je chybny.
+!!!!! 52. Detekcia DEADLOCK v MUTEX CLASSES je PLATFORM DEPENDENT.
+!!!!! 53. C++ definuje FUNCTIONS, ktore umoznuju vykonat LOCK nad roznymi MUTEXTS, pricom realizuju algoritmus detekcie DEADLOCK.
+   A. FUNCTION lock() vykonava LOCK vsetkych zadanych LOCKABLE OBJECTS (MUTEXES). Ak niektory z LOCKABLE OBJECT pri ACQUIRE, alebo RELEASE hodi EXCEPTION, FUNCTION lock() vykona RELEASE na vsetky uz LOCKED LOCKABLE OBJECTS.
+   B. FUNCTION try_lock() vykonava LOCK vsetkych zadanych LOCKABLE OBJECTS (MUTEXES). Ak niektory z LOCKABLE OBJECT pri ACQUIRE, alebo RELEASE hodi EXCEPTION, FUNCTION try_lock() vykona RELEASE na vsetky uz LOCKED LOCKABLE OBJECTS. Ako RETURN VALUE vracia bud -1 ak vsetky LOCKS boli uspesne ACQUIRED, alebo INDEX LOCK, ktory nemohol byt ACQUIRED.
+54. CONST EXPRESSION [adopt_lock] TYPE [adopt_lock_t] sluzi ako PARAMETER do CONSTRUCTOR CLASS [lock_guard<TMutex>], ktory sa indikuje, ze instancia CLASS [lock_guard<TMutex>] NEMA vykonat LOCKING, ale ma prebrat LOCK, ktory uz bol CURRENT THREAD pre asociovany LOCK ziskany.
+55. CONST EXPRESSION [try_to_lock] TYPE [try_to_lock_t] sluzi ako PARAMETER do CONSTRUCTOR CLASS [unique_lock<TMutex>], ktory indikuje, ze instancia CLASS [unique_lock<TMutex>] ma skontrolovat ci je LOCK volny a iba ak je, tak ho ziskat. Inak LOCK nie je ziskany.
+56. CONST EXPRESSION [defer_lock] TYPE [defer_lock_t] sluzi ako PARAMETER do CONSTRUCTOR CLASS [unique_lock<TMutex>], ktory indikuje, ze instancia CLASS [unique_lock<TMutex>] NEMA ziskat LOCK, iba vytvorit instanciu CLASS [unique_lock<TMutex>]. LOCK je mozne ziskat pomocou FUNCTION lock(), alebo FUNCTION try_lock().
+!!! 57. FUNCTION TEMPLATE lock() umoznuje ziskat LOCKS VIACERYCH MUTEXES. FUNCTION ma nasledujuce vlastnosti.
+   A. FUNCTION lock() prijima 'N' PARAMETERS typu MUTEX.
+   B. FUNCTION lock() vykonava CURRENT THREAD BLOCKING az kym sa jej nepodari ziskat LOCKS pre VSETKY MUTEXES.
+   !!! C. Ak niektory z MUTEXES hodi v procese ziskavania LOCK EXCEPTION, FUNCTION lock() UVOLNI VSETKY ZISKANE LOCKS a nasledne hodi EXCEPTION.
+   !!!!! D. Poradie v ktorom sa FUNCTION lock() pokusa ziskavat jednotlive LOCKS je NEDEFINOVANE, avsak FUNCTION lock() obsauje interny algoritmus, ktory ZABRANUJE VZNIKU DEAD-LOCKS.
+!!! 58. FUNCTION TEMPLATE try_lock() umoznuje ziskat LOCKS VIACERYCH MUTEXES. Ak sa FUNCTION NEPODARI ziskat VSETKY LOCKS, NEVYKONAVA BLOCKING CURRENT THREAD. FUNCTION ma nasledujuce vlastnosti.
+   A. FUNCTION try_lock() prijima 'N' PARAMETERS typu MUTEX.
+   !!! B. FUNCTION try_lock() NEVYKONAVA CURRENT THREAD BLOCKING. Ak sa jej nepodari ziskat vsetky LOCKS, uvolni tie, ktore neziskala a vrati RETURN VALUE INDEX toho MUTEX, ktory sa nepodarilo ako prvy ziskat.
+   !!! C. Ak RETURN VALUE FUNCTION try_lock() je -1, znamena to, ze pre VSETKY MUTEXES sa LOCKS podarilo ziskat.
+   !!! D. Ak niektory z MUTEXES hodi v procese ziskavania LOCK EXCEPTION, FUNCTION try_lock() UVOLNI VSETKY ZISKANE LOCKS a nasledne hodi EXCEPTION.
+   !!!!! E. FUNCTION try_lock() na ROZDIEL od FUNCTION lock() NEMA specializovany algoritmus zabranujuci DEAD-LOCKS, no LOCK VZDY ziskava v tom poradi v akom su MUTEXES zaslane do FUNCTION try_lock().
+   !!!!! F. Kedze FUNCTION try_lock() NEVYKONAVA CURRENT THREAD BLOCKING, NEMOZE sposobit DEAD-LOCK, pretoze v situacii ked sa niektory z LOCKS jej nepodari ziskat su tie LOCKS, ktore ziskala uvolnene.
+59. TEMPLATE FUNCTION call_once() umoznuje zavolat iba 1 FUNCTION zo GROUP CALLABLE OBJECTS (FUNCTIONS, METHODS, FUNCTORS, LABMDA FUNCTIONS) a to aj ked volania prichadzaju z VIACERYCH THREADS. Typickym vyuzitim tejto FUNCTION je implementacia LAZY INITIALIZATION. FUNCTION call_once() ma nasledujuce vlastnosti.
+   !!! A. Ako INDIKATOR, ktore volane CALLABLE OBJECTS patria do jednej GROUP sluzi instancia CLASS [once_flag], ktora sa do FUNCTION call_once() prenasa ako 1. PARAMETER. Ak sa teda FUNCTION call_once() zavola 'N' krat s TOU ISTOU INSTANCIU CLASS [once_flag], zavola sa IBA 1 CALLABLE OBJECT zo vsetkych volani FUNCTION call_once().
+   B. Po PARAMETER TYPE CLASS [once_flag] nasleduju dalsie PARAMETERS s ktorymi sa dany CALLABLE OBJECT moze volat.
+   !!! C. Jednotlive CALLABLE OBJECTS NEMUSIA mat TEN ISTY PROTOTYPE. Kazde volanie FUNCTION CLASS call_once() zasiela vlastne PARAMETERS, ktore su preposlane do CALLABLE OBJECT.
+   D. FUNCTION call_once() je mozne pouzit aj v SINGLE THREAD SYSTEME, pricom vsak zavola sa iba CALLABLE OBJECT, ktory bol vyvolany 1. volanim FUNCTION call_once().
+   !!!!! E. Ak CALLABLE OBJECT vrati EXCEPTION, FUNCTION call_once() vrati TENTO EXCEPTION, pricom CALLABLE OBJECT sa povazuje za NEZAVOLANY. Preto DALSIE VOLANIE FUNCTION call_once() s TOU ISTOU instanciou CLASS [once_flag] CALLABLE OBJECT ZAVOLA.
+   F. Ak sa CALLABLE OBJECT nepodarilo zo systemovych dovodov (napriklad neexistencia volneho THREAD) nepodarilo zavolat, je generovana EXCEPTION [system_error].
+60. CLASS [condition_variable] v LIBRARY [<condition_variable>] reprezentuje CONDITIONAL VARIABLE. CONDITIONAL VARIABLES maju nasledujuce vlastnosti.
+   A. CONDITIONAL VARIABLES umoznuju vykonat BLOCKING CURRENT THREAD pokym iny THREAD nenastavi CONDITIONAL VARIABLE do SIGNALIZED STATE.
+   B. CONDITIONAL VARIABLES umoznuju vykonat casovo obmedzeny BLOCKING.
+   C. CONDITIONAL VARIABLES umoznuju notifikovat 1, alebo VSETKY WAITING THREADS o tom, ze CONDITIONAL VARIABLES bola SIGNALIZED.
+   !!! D. CONDITIONAL VARIABLES sa MUSIA pouzivat spolu s CLASS [unique_lock<TMutex>], pretoze INTERNE CONDITIONAL VARIABLES vykonavaju LOCKING a UNLOCKING vo svojich METHODS. CLASS [lock_guard<TMutex>] v spojitosti s CONDITIONAL VARIABLES NIE JE MOZNE pouzit, pretoze CLASS [lock_guard<TMutex>] NEUMOZNUJE vykonat LOCKING a UNLOCKING volanim jej METHODS, ale iba v CONSTRUCTOR a DESTRUCTOR.
+   !!!!! E. CONDITIONAL VARIABLES pri WAITING mozu byt SPURIOUSLY AWAKEN. V taktomto pripade BLOCKED CURRENT THREAD je prebudeny, AJ KED CONDITIONAL VARIABLE NEBOLA NASTAVENA. Riesenim je hned po prebudeni vykonat test ci CONDITIONAL VARIABLE bola nastavana. Kedze CLASS [condition_variable] NEOBSAHUJE ziadnu takuto VARIABLE, je nutne definovat CUSTOM VARIABLE, ktora sa bude testovat.
+   !!!!! F. SPURIOUS AWAKE je mozne odstranit aj pomocou OVERLOADED verzii METHOD condition_variable::wait(), METHOD condition_variable::wait_for() a METHOD condition_variable::wait_until(). Tieto verzie prijimaju ako PARAMETER CALLABLE OBJECT. CALLABLE OBJECT ma za ulohu OTESTOVAT CUSTOM VARIABLE sluziaciu na detekciu ci CONDITIONAL VARIABLE bola SKUTOCNE nastavena. Ak ano, CALLABLE OBJECT MUSI vratit TRUE, inak MUSI vratit FALSE.
+   !!! G. CONDITIONAL VARIABLES umoznuju implementaciu MANUAL RESET EVENTS aj AUTORESET EVENTS.
+!!!!! 61. METHODS condition_variable.waitXXX() funguju nasledujucim sposobom.
+   !!!!! A. Pre zavolanim METHOD condition_variable.waitXXX() MUSI volajuci CODE vykonat ACQUIRE LOCK zaslaneho ako 1. PARAMETER do METHOD condition_variable.waitXXX(). Zvycajne sa na to pouziva instancia CLASS [unique_lock].
+   !!! B. Po zavolani METHOD condition_variable.waitXXX() sa NAJPRV skontroluje ci nedoslo k SIGNALIZATION EVENT, ktory si interne drzi CONDITIONAL VARIABLE.
+   !!!!! C. Ak EVENT bol SIGNALIZED a zaroven sa volala verzia METHOD condition_variable.waitXXX() s CALLBACK METHOD v 2. PARAMETER, tak sa s ACQUIRED LOCK zavola CALLBACK METHOD, ktora v pripade, ze CONDITION, ktora ma sposobit RELEASE CONDITIONAL VARIABLE nastala MUSI vratit TRUE. Kedze CALLBACK METHOD je volana pri ACQUIRED LOCK, jej CODE je CHRNANENY LOCK, ktory sa zadal ako 1. PARAMETER METHOD condition_variable.waitXXX().
+   !!!! D. V pripade, ze CONDITIONAL VARIABLE NEBOLA SIGNALIZED, tak METHOD vykoka RELEASE LOCK a zaroven sposobi THREAD BLOCKING. Tym, ze LOCK je RELEASED, tak moze byt ACQUIRED inymi THREADS.
+   !!! E. V pripade, ze CONDITIONAL VARIABLE je SIGNALIZED, tak METHOD condition_variable.waitXXX() NAJPRV vykona AQUIRE daneho LOCK, ktory bol RELEASED volanim METHOD condition_variable.waitXXX() kym este CONDITIONAL VARIABLE NEBOLA SIGNALIZED a nasledne METHOD condition_variable.waitXXX() skonci.
+   !!!!! F. Po skonceni METHOD condition_variable.waitXXX() je teda LOCK ZNOVA ACQUIRED a CODE, ktory METHOD condition_variable.waitXXX() volal ho MUSI explicitne uvolnit. Pokial sa pouziva instancia CLASS [unique_lock], tak sa RELEASE LOCK vykona v DESTRUCTOR.
+62. CLASS [condition_variable] ma nasledujuce MEMBERS.
+   A. CONSTRUCTOR vytvara instanciu CLASS [condition_variable].
+   B. DESTRUCTOR uvolnuje instanciu CLASS [condition_variable].
+   C. TYPE [condition_variable::native_handle_type] definuje TYPE, ktory sa pouziva na reprezentaciu NATIVE CONDITIONAL VARIABLES.
+   !!! D. METHOD condition_variable::wait() vykona BLOCKING CURRENT THREAD, az kym CONDITIONAL VARIABLE nie je SIGNALIZED. OVERLOADED verzia prijima ako PARAMETER CALLABLE OBJECT, ktory indikuje kedy je CONDITIONAL VARIABLE SKUTOCNE SIGNALIZED, aby sa odfiltrovali SPURIOUS AWAKES.
+   !!!!! E. METHOD condition_variable::wait_for(LOCK,DURATION) vykona BLOCKING CURRENT THREAD, az kym CONDITIONAL VARIABLE nie je SIGNALIZED, alebo zadana DURATION neexpiruje. Ak DURATION EXPIROVALA, RETURN VALUE obsahuje VALUE [cv_status::no_timeout]. Inak RETURN VALUE obsahuje VALUE [cv_status::timeout]. RETURN VALUE vdaka moznosti vzniku SPURIOUS WAKEUPS ZNACNE NESPOLAHLIVA a aj po EXPIRACII DURATION moze vratit FALSE.
+   !!!!! F. METHOD condition_variable::wait_for(LOCK,DURATION,CALLABLE_OBJECT) vykona BLOCKING CURRENT THREAD, az kym CONDITIONAL VARIABLE nie je SIGNALIZED, alebo zadana DURATION neexpiruje. CALLABLE OBJECT zadany ako 3. PARAMETER sluzi na filtrovanie SPURIOUS AWAKES. Ak CONDITIONAL VARIABLE bola SIGNALIZED skor ako expirovana DURATION, METHOD vracia ako RETURN VALUE TRUE. Ak DURATION EXPIROVALA a CONDITIONAL VARIABLE nebola SIGNALIZED, METHOD zavola CALLABLE_OBJECT a jeho RETURN VALUE vrati ako RETURN VALUE METHOD.
+   !!!!! G. METHOD condition_variable::wait_until(LOCK,DURATION) vykona BLOCKING CURRENT THREAD, az kym CONDITIONAL VARIABLE nie je SIGNALIZED, alebo nanastane zadany TIMEPOINT. Ak TIMEPOINT NASTAL, RETURN VALUE obsahuje VALUE [cv_status::no_timeout]. Inak RETURN VALUE obsahuje VALUE [cv_status::timeout]. RETURN VALUE vdaka moznosti vzniku SPURIOUS WAKEUPS ZNACNE NESPOLAHLIVA a aj potom ako bol TIMEPOINT nastaveny moze vratit FALSE.
+   !!!!! H. METHOD condition_variable::wait_until(LOCK,DURATION,CALLABLE_OBJECT) vykona BLOCKING CURRENT THREAD, az kym CONDITIONAL VARIABLE nie je SIGNALIZED, alebo nanastane zadany TIMEPOINT. CALLABLE OBJECT zadany ako 3. PARAMETER sluzi na filtrovanie SPURIOUS AWAKES. Ak CONDITIONAL VARIABLE bola SIGNALIZED kym nastal TIMEPOINT, METHOD vracia ako RETURN VALUE TRUE. Ak TIMEPOINT nastal a CONDITIONAL VARIABLE nebola SIGNALIZED, METHOD zavola CALLABLE_OBJECT a jeho RETURN VALUE vrati ako RETURN VALUE METHOD.
+   I. METHOD condition_variable::notify_one() vykona SIGNALIZATION CONDITIONAL VARIABLE, pricom informaciu o SIGNALIZATION zasle 1 BLOCKED THREADU.
+   J. METHOD condition_variable::notify_all() vykona SIGNALIZATION CONDITIONAL VARIABLE, pricom informaciu o SIGNALIZATION zasle VSETKYM BLOCKED THREADS.
+   K. METHOD condition_variable::native_handle() vracia NATIVE HANDLE CONDITIONAL VARIABLE.
+   !!! L. FUNCTION notify_all_at_thread_exit() vykona pri SKONCENI CURRENT THREAD SIGNALIZATION CONDITIONAL VARIABLE, pricom informaciu o SIGNALIZATION zasle VSETKYM BLOCKED THREADS. Odporuca sa tuto FUNCTION volat na KONCI THREAD, aby sa obmedzilo riziko vzniku DEADLOCKS pri pouzivani viacerych CONDITIONAL VARIABLES. 2. PARAMETER je NUTNE prenasat cez MOVE SEMANTICS pomocou FUNCTION move(), pretoze FUNCTION notify_all_at_thread_exit() na konci THREAD zavola CODE, ktory pouzivat LOCK a tento NESMIE byt UVOLNENY.
+!!! 63. CLASS [condition_variable_any] je ZOVSEOBECNENIM CLASS [condition_variable] v tom, ze NAMIESTO CLASS [unique_lock<TMutex>] umoznuje pouzit aj INE TYPY LOCKS. CLASS [condition_variable_any] ma nasledujuce MEMBERS.
+   A. CONSTRUCTOR vytvara instanciu CLASS [condition_variable_any].
+   B. DESTRUCTOR uvolnuje instanciu CLASS [condition_variable_any].
+   !!! C. METHOD condition_variable_any::wait() vykona BLOCKING CURRENT THREAD, az kym CONDITIONAL VARIABLE nie je SIGNALIZED. OVERLOADED verzia prijima ako PARAMETER CALLABLE OBJECT, ktory indikuje kedy je CONDITIONAL VARIABLE SKUTOCNE SIGNALIZED, aby sa odfiltrovali SPURIOUS AWAKES.
+   !!!!! D. METHOD condition_variable::wait_for(LOCK,DURATION) vykona BLOCKING CURRENT THREAD, az kym CONDITIONAL VARIABLE nie je SIGNALIZED, alebo zadana DURATION neexpiruje. Ak DURATION EXPIROVALA, RETURN VALUE obsahuje VALUE [cv_status::no_timeout]. Inak RETURN VALUE obsahuje VALUE [cv_status::timeout]. RETURN VALUE vdaka moznosti vzniku SPURIOUS WAKEUPS ZNACNE NESPOLAHLIVA a aj po EXPIRACII DURATION moze vratit FALSE.
+   !!!!! E. METHOD condition_variable::wait_for(LOCK,DURATION,CALLABLE_OBJECT) vykona BLOCKING CURRENT THREAD, az kym CONDITIONAL VARIABLE nie je SIGNALIZED, alebo zadana DURATION neexpiruje. CALLABLE OBJECT zadany ako 3. PARAMETER sluzi na filtrovanie SPURIOUS AWAKES. Ak CONDITIONAL VARIABLE bola SIGNALIZED skor ako expirovana DURATION, METHOD vracia ako RETURN VALUE TRUE. Ak DURATION EXPIROVALA a CONDITIONAL VARIABLE nebola SIGNALIZED, METHOD zavola CALLABLE_OBJECT a jeho RETURN VALUE vrati ako RETURN VALUE METHOD.
+   !!!!! F. METHOD condition_variable::wait_until(LOCK,DURATION) vykona BLOCKING CURRENT THREAD, az kym CONDITIONAL VARIABLE nie je SIGNALIZED, alebo nanastane zadany TIMEPOINT. Ak TIMEPOINT NASTAL, RETURN VALUE obsahuje VALUE [cv_status::no_timeout]. Inak RETURN VALUE obsahuje VALUE [cv_status::timeout]. RETURN VALUE vdaka moznosti vzniku SPURIOUS WAKEUPS ZNACNE NESPOLAHLIVA a aj potom ako bol TIMEPOINT nastaveny moze vratit FALSE.
+   !!!!! G. METHOD condition_variable::wait_until(LOCK,DURATION,CALLABLE_OBJECT) vykona BLOCKING CURRENT THREAD, az kym CONDITIONAL VARIABLE nie je SIGNALIZED, alebo nanastane zadany TIMEPOINT. CALLABLE OBJECT zadany ako 3. PARAMETER sluzi na filtrovanie SPURIOUS AWAKES. Ak CONDITIONAL VARIABLE bola SIGNALIZED kym nastal TIMEPOINT, METHOD vracia ako RETURN VALUE TRUE. Ak TIMEPOINT nastal a CONDITIONAL VARIABLE nebola SIGNALIZED, METHOD zavola CALLABLE_OBJECT a jeho RETURN VALUE vrati ako RETURN VALUE METHOD.
+   H. METHOD condition_variable_any::notify_one() vykona SIGNALIZATION CONDITIONAL VARIABLE, pricom informaciu o SIGNALIZATION zasle 1 BLOCKED THREADU.
+   I. METHOD condition_variable_any::notify_all() vykona SIGNALIZATION CONDITIONAL VARIABLE, pricom informaciu o SIGNALIZATION zasle VSETKYM BLOCKED THREADS.
+!!!!! 64. Pouzitie METHODS condition_variable::wait(), condition_variable::wait_for(), condition_variable::wait_until(), condition_variable_any::wait(), condition_variable_any::wait_for(), condition_variable_any::wait_until(), ktore NEMAJU CALLABLE OBJECT ako PARAMETER NUTNE vyzaduju MANUALNY test ci CONDITIONAL VARIABLE bola NASTAVENA, pretoze vdaka SPURIOUS WAKEUPS mozu byt ukocene aj ked CONDITIONAL VARIABLE NEBOLA NASTAVENA.
+!!!!! 65. Volanie CALLABLE OBJECTS v METHODS condition_variable::wait(), condition_variable::wait_for(), condition_variable::wait_until(), condition_variable_any::wait(), condition_variable_any::wait_for(), condition_variable_any::wait_until() je VZDY CHRANENE MUTEX, ktory CONDITIONAL VARIABLE pouziva. Preto aj CODE tychto CALLABLE OBJECTS moze bezpecne pristupovat k VARIABLES chranenym tymto MUTEX.
+66. CLASS [atomic<T>] z LIBRARY [<atomic>] umonzuje implementaciu LOCK-FREE ALGORITHMS. Pre CLASS [atomic<T>] platia nasledujuce vlastnosti.
+   !!! A. EMPTY CONSTRUCTOR NEINICIALIZUJE insanciu CLASS [atomic<T>] a to VRATANE INTERNAL LOCK. To znaci, ze instanciu CLASS [atomic<T>] NIE JE mozne pouzit a je NUTNE zavolat FUNCTION atomic_init(), aby instanciu CLASS [atomic<T>] inicializovala.
+   !!!!! B. METHODS CLASS [atomic<T>] sluzia ako MEMORY BARRIERS. To znaci, ze CODE pred a po volani METHODS CLASS [atomic<T>] je ZACHOVANE.
+   C. CLASS [atomic<T>] obsahuje OVERLOADED verzie METHODS pre VOLATILE a NON-VOLATILE instancie CLASS [atomic<T>].
+   D. CLASS [atomic<T>] ma SPECIALIZATIONS pre POINTERS, INTEGER TYPES a TYPE BOOL.
+67. CLASS [atomic<T>] ma nasledujuce MEMBERS.
+   A. CONSTRUCTOR vytvara instanciu CLASS [atomic<T>].
+   B. OPERATOR= THREAD SAFE sposobom priradzuje VALUE TYPE 'T' do instancie CLASS [atomic<T>].
+   C. OPERATOR() THREAD SAFE sposobom vracia kopiu VALUE TYPE 'T'.
+   D. OPERATOR++ THREAD SAFE sposobom vykonava OPERATOR++ nad VALUE TYPE 'T'.
+   E. OPERATOR-- THREAD SAFE sposobom vykonava OPERATOR-- nad VALUE TYPE 'T'.
+   F. OPERATOR&= THREAD SAFE sposobom vykonava OPERATOR&= nad VALUE TYPE 'T'.
+   G. OPERATOR|= THREAD SAFE sposobom vykonava OPERATOR|= nad VALUE TYPE 'T'.
+   H. OPERATOR^= THREAD SAFE sposobom vykonava OPERATOR^= nad VALUE TYPE 'T'.
+   I. METHOD atomic<T>::fetch_add() THREAD SAFE sposobom vykonava OPERATOR++ nad VALUE TYPE 'T'.
+   J. METHOD atomic<T>::fetch_sub() THREAD SAFE sposobom vykonava OPERATOR-- nad VALUE TYPE 'T'.
+   K. METHOD atomic<T>::fetch_and() THREAD SAFE sposobom vykonava OPERATOR&= nad VALUE TYPE 'T'.
+   L. METHOD atomic<T>::fetch_or() THREAD SAFE sposobom vykonava OPERATOR|= nad VALUE TYPE 'T'.
+   M. METHOD atomic<T>::fetch_xor() THREAD SAFE sposobom vykonava OPERATOR^= nad VALUE TYPE 'T'.
+   !!! N. METHOD atomic<T>::load() THREAD SAFE sposobom nacitava a vracia kopiu VALUE TYPE 'T'.
+   !!! O. METHOD atomic<T>::store() THREAD SAFE sposobom uklada VALUE TYPE 'T' do instancie CLASS [atomic<T>].
+   !!! P. METHOD atomic<T>::exchange() THREAD SAFE sposobom uklada VALUE TYPE 'T' do instancie CLASS [atomic<T>] a vracia POVODNOU hondotu, ktora bola v instancii CLASS [atomic<T>] ulozena.
+   !!! Q. METHOD atomic<T>::compare_exchange_weak() THREAD SAFE sposobom vykonava operaciu COMPARE AND SWAP, pri ktorej sa porovnava CURRENT VALUE instancie CLASS [atomic<T>] so zadanou a AK SU ZHODNE, tak CURRENT VALUE instancie CLASS [atomic<T>] sa nahradi NOVOU VALUE, ktora bola prenesena ako PARAMETER METHOD. METHOD vracia ako RETURN VALUE TRUE, ak sa nastavenie VARIABLE podarilo, inak FALSE. V pripade FALSE sa PARAMETER obsahujuci VALUE, ktora sa pouzila na porovnanie. RETURN VALUE pri tejto verzii NEMUSI byt PRESNA a moze vracat FALSE, aj ked instancia CLASS [atomic<T>] obsahovala pozadovanu hondotu. Je to preto, aby METHOD bola RYCHLEJSIA ako METHOD atomic<T>::compare_exchange_strong().
+   !!!!! R. METHOD atomic<T>::compare_exchange_strong() THREAD SAFE sposobom vykonava operaciu COMPARE AND SWAP, pri ktorej sa porovnava CURRENT VALUE instancie CLASS [atomic<T>] so zadanou a AK SU ZHODNE, tak CURRENT VALUE instancie CLASS [atomic<T>] sa nahradi NOVOU VALUE, ktora bola prenesena ako PARAMETER METHOD. METHOD vracia ako RETURN VALUE TRUE, ak sa nastavenie VARIABLE podarilo, inak FALSE. V pripade FALSE sa PARAMETER obsahujuci VALUE, ktora sa pouzila na porovnanie. RETURN VALUE je VZDY PRESNA.
+   S. METHOD atomic<T>::is_lock_free() vracia informaciu ci METHODS TYPE 'T' su LOCK-FREE.
+68. LIBRARY [<atomic>] definuje nasledujuce FUNCTIONS, ktore umoznuju pracu s CLASS [atomic<T>]. Sluzia pre jednoduchsie portovanie C PROGRAMS do C++.
+   A. FUNCTION atomic_is_lock_free() vracia informaciu ci METHODS CLASS [atomic<T>] su LOCK-FREE.
+   !!! B. FUNCTION atomic_load() THREAD SAFE sposobom nacitava a vracia hodnotu instancie CLASS [atomic<T>].
+   !!! C. FUNCTION atomic_load_explicit() THREAD SAFE sposobom nacitava a vracia hodnotu instancie CLASS [atomic<T>]. FUNCTION umoznuje nastavit sposob aplikacie MEMORY BARRIERS.
+   !!! D. FUNCTION atomic_load() THREAD SAFE sposobom uklada hodnotu do instancie CLASS [atomic<T>].
+   !!! E. FUNCTION atomic_load_explicit() THREAD SAFE uklada hodnotu do instancie CLASS [atomic<T>]. FUNCTION umoznuje nastavit sposob aplikacie MEMORY BARRIERS.
+   !!! F. FUNCTION atomic_exchange() THREAD SAFE sposobom uklada hodnotu do instancie CLASS [atomic<T>] a vracia POVODNOU hondotu, ktora bola v instancii CLASS [atomic<T>] ulozena.
+   !!! G. FUNCTION atomic_exchange_explicit() THREAD SAFE sposobom uklada hodnotu do instancie CLASS [atomic<T>] a vracia POVODNOU hondotu, ktora bola v instancii CLASS [atomic<T>] ulozena. FUNCTION umoznuje nastavit sposob aplikacie MEMORY BARRIERS.
+   !!! H. FUNCTION atomic_compare_exchange_weak() THREAD SAFE sposobom vykonava operaciu COMPARE AND SWAP, pri ktorej sa porovnava CURRENT VALUE instancie CLASS [atomic<T>] so zadanou a AK SU ZHODNE, tak CURRENT VALUE instancie CLASS [atomic<T>] sa nahradi NOVOU VALUE, ktora bola prenesena ako PARAMETER FUNCTION. FUNCTION vracia ako RETURN VALUE TRUE, ak sa nastavenie VARIABLE podarilo, inak FALSE. V pripade FALSE sa PARAMETER obsahujuci VALUE, ktora sa pouzila na porovnanie. RETURN VALUE pri tejto verzii NEMUSI byt PRESNA a moze vracat FALSE, aj ked instancia CLASS [atomic<T>] obsahovala pozadovanu hondotu. Je to preto, aby FUNCTION bola RYCHLEJSIA ako FUNCTION atomic<T>::atomic_compare_exchange_strong().
+   !!! I. FUNCTION atomic_compare_exchange_weak_explicit() THREAD SAFE sposobom vykonava operaciu COMPARE AND SWAP, pri ktorej sa porovnava CURRENT VALUE instancie CLASS [atomic<T>] so zadanou a AK SU ZHODNE, tak CURRENT VALUE instancie CLASS [atomic<T>] sa nahradi NOVOU VALUE, ktora bola prenesena ako PARAMETER FUNCTION. FUNCTION vracia ako RETURN VALUE TRUE, ak sa nastavenie VARIABLE podarilo, inak FALSE. V pripade FALSE sa PARAMETER obsahujuci VALUE, ktora sa pouzila na porovnanie. RETURN VALUE pri tejto verzii NEMUSI byt PRESNA a moze vracat FALSE, aj ked instancia CLASS [atomic<T>] obsahovala pozadovanu hondotu. Je to preto, aby FUNCTION bola RYCHLEJSIA ako FUNCTION atomic<T>::atomic_compare_exchange_strong(). FUNCTION umoznuje nastavit sposob aplikacie MEMORY BARRIERS.
+   !!!!! J. FUNCTION atomic_compare_exchange_strong() THREAD SAFE sposobom vykonava operaciu COMPARE AND SWAP, pri ktorej sa porovnava CURRENT VALUE instancie CLASS [atomic<T>] so zadanou a AK SU ZHODNE, tak CURRENT VALUE instancie CLASS [atomic<T>] sa nahradi NOVOU VALUE, ktora bola prenesena ako PARAMETER FUNCTION. FUNCTION vracia ako RETURN VALUE TRUE, ak sa nastavenie VARIABLE podarilo, inak FALSE. V pripade FALSE sa PARAMETER obsahujuci VALUE, ktora sa pouzila na porovnanie. RETURN VALUE je VZDY PRESNA.
+   !!!!! K. FUNCTION atomic_compare_exchange_strong_explicit() THREAD SAFE sposobom vykonava operaciu COMPARE AND SWAP, pri ktorej sa porovnava CURRENT VALUE instancie CLASS [atomic<T>] so zadanou a AK SU ZHODNE, tak CURRENT VALUE instancie CLASS [atomic<T>] sa nahradi NOVOU VALUE, ktora bola prenesena ako PARAMETER FUNCTION. FUNCTION vracia ako RETURN VALUE TRUE, ak sa nastavenie VARIABLE podarilo, inak FALSE. V pripade FALSE sa PARAMETER obsahujuci VALUE, ktora sa pouzila na porovnanie. RETURN VALUE je VZDY PRESNA. FUNCTION umoznuje nastavit sposob aplikacie MEMORY BARRIERS.
+   L. FUNCTION atomic_fetch_add() THREAD SAFE sposobom vykonava OPERATOR++ nad instanciou CLASS [atomic<T>].
+   M. FUNCTION atomic_fetch_add_explicit() THREAD SAFE sposobom vykonava OPERATOR++ nad instanciou CLASS [atomic<T>]. FUNCTION umoznuje nastavit sposob aplikacie MEMORY BARRIERS.
+   N. FUNCTION atomic_fetch_sub() THREAD SAFE sposobom vykonava OPERATOR-- nad instanciou CLASS [atomic<T>].
+   O. FUNCTION atomic_fetch_sub_explicit() THREAD SAFE sposobom vykonava OPERATOR-- nad instanciou CLASS [atomic<T>]. FUNCTION umoznuje nastavit sposob aplikacie MEMORY BARRIERS.
+   P. FUNCTION atomic_fetch_and() THREAD SAFE sposobom vykonava OPERATOR&= nad instanciou CLASS [atomic<T>].
+   Q. FUNCTION atomic_fetch_and_explicit() THREAD SAFE sposobom vykonava OPERATOR&= nad instanciou CLASS [atomic<T>]. FUNCTION umoznuje nastavit sposob aplikacie MEMORY BARRIERS.
+   R. FUNCTION atomic_fetch_or() THREAD SAFE sposobom vykonava OPERATOR|= nad instanciou CLASS [atomic<T>].
+   S. FUNCTION atomic_fetch_or_explicit() THREAD SAFE sposobom vykonava OPERATOR|= nad instanciou CLASS [atomic<T>]. FUNCTION umoznuje nastavit sposob aplikacie MEMORY BARRIERS.
+   T. FUNCTION atomic_fetch_xor() THREAD SAFE sposobom vykonava OPERATOR^= nad instanciou CLASS [atomic<T>].
+   U. FUNCTION atomic_fetch_xor_explicit() THREAD SAFE sposobom vykonava OPERATOR^= nad instanciou CLASS [atomic<T>]. FUNCTION umoznuje nastavit sposob aplikacie MEMORY BARRIERS.
+   V. FUNCTION atomic_init() inicializuje instanciu CLASS [atomic<T>].
+   W. FUNCTION atomic_thread_fence() vlozi MEMORY BARRIER do CODE. MEMORY BARRIER je implementovana na urovni CPU INSTRUCTIONS.
+   X. FUNCTION atomic_signal_fence() vlozi MEMORY BARRIER do CODE. MEMORY BARRIER je implementovana IBA na urovni vypnutia COMPILER OPTIMALIZATIONS, pricom sa vsak do CODE NEVLOZIA specializovane CPU INSTRUCTIONS vykonavaju MEMORY BARRIER.
+!!! 69. CLASS [atomic<T>] moze byt pouzita IBA pre TYPES, ktore tu TRIVIALLY COPYABLE. To znaci, ze TYPE NESMIE mat CUSTOM COPY OPERATIONS a MUSI mat DEFAULT CONSTRUCTOR.
+!!!!! 70. Pre NON-PRIMITIVE TYPES velkej dlzky (vacsej ako POINTER SIZE) je CLASS [atomic<T>] implementovana s vyuzitim LOCK. To znaci, ze pre tieto TYPES pristup k datam zabalenym v instancii CLASS [atomic<T>] NIE JE LOCK FREE.
+!!! 71. C++ standard NEVYZADUJE, aby implementacia CLASS [atomic<T>] bola LOCK FREE. Pre STRUCTURES VACSIE ako je POINTER SIZE implementacia takmer vzdy pouziva LOCKS, no ani pre PRIMITIVE TYPES standard NEVYZADUJE LOCK FREE implementaciu. Vacsina implementacii CLASS [atomic<T>] vsak je LOCK FREE pre TYPES, ktore su kratsie ako POINTER SIZE.
+72. ENUM [memory_order] sluzi na definovanie sposobu ako COMPILER a CPU budu vykonavat REORDERING pristupu k MEMORY (umiestnovat MEMORY BARRIERS) pri volani METHOD CLASS [atomic<T>] a FUNCTIONS atomic_*_explicit(). ENUM ma nasledujuce VALUES.
+   !!! A. VALUE [memory_order_relaxed] NEVKLADA do CODE ziadnu MEMORY BARRIER a takisto NEBRANI COMPILER, aby vykonaval MEMORY ACCESS REORDERING OPTIMALIZATIONS. To znamena, ze ZIADNA OCHRANA pred REORDERING sa NEVYKONAVA, aj ked ATOMICITA OPERACII pri pouzivani CLASS [atomic<T>] je GARANTOVANA. VALUE ma vyznam vtedy, ak instancia CLASS [atomic<T>] sa POUZIVA iba na zabezpecenie ATOMICITY, no NEPOUZIVA sa na riadenie CODE.
+   B. VALUE [memory_order_consume] ZABRANUJE COMPILER vo vykonavani MEMORY ACCESS REORDERING OPTIMALIZATIONS, avsak do CODE NEVKLADA MEMORY BARRIERS. VALUE zabezpecuje, ze ZIADNE LOAD OPERATIONS NEMOZU byt premiestnene COMPILER pred tuto LOAD OPERATION.
+   C. VALUE [memory_order_acquire] ZABRANUJE COMPILER vo vykonavani MEMORY ACCESS REORDERING OPTIMALIZATIONS, avsak do CODE NEVKLADA MEMORY BARRIERS. VALUE zabezpecuje, ze ZIADNE MEMORY ACCESS OPERATIONS NEMOZU byt premiestnene COMPILER pred tuto LOAD OPERATION.
+   D. VALUE [memory_order_release] ZABRANUJE COMPILER vo vykonavani MEMORY ACCESS REORDERING OPTIMALIZATIONS, avsak do CODE NEVKLADA MEMORY BARRIERS. VALUE zabezpecuje, ze ZIADNE MEMORY ACCESS OPERATIONS NEMOZU byt premiestnene COMPILER za tuto STORE OPERATION.
+   E. VALUE [memory_order_acq_rel] ZABRANUJE COMPILER vo vykonavani MEMORY ACCESS REORDERING OPTIMALIZATIONS, avsak do CODE NEVKLADA MEMORY BARRIERS. VALUE zabezpecuje, ze ZIADNE MEMORY ACCESS OPERATIONS NEMOZU byt premiestnene COMPILER pred tuto LOAD OPERATION a ZIADNE MEMORY ACCESS OPERATIONS NEMOZU byt premiestnene COMPILER za touto STORE OPERATION.
+   !!! F. VALUE [memory_order_seq_cst] ZABRANUJE COMPILER vo vykonavani MEMORY ACCESS REORDERING OPTIMALIZATIONS pricom do do CODE VKLADA MEMORY BARRIERS. VALUE zabezpecuje, ze ZIADNE MEMORY ACCESS OPERATIONS NEMOZU byt premiestnene COMPILER pred tuto LOAD OPERATION a ZIADNE MEMORY ACCESS OPERATIONS NEMOZU byt premiestnene COMPILER za tuto STORE OPERATION. Je to DEFAULT VALUE pre verzie METHODS a FUNCTIONS, ktore nemaju definovany PARAMETER TYPE [memory_order].
+73. CLASS [atomic_flag] repreznetuje LOCK FREE implementaciu BIT FLAG. CLASS [atomic_flag] ma nasledujuce MEMBERS.
+   A. CONSTRUCTOR vytvara instanciu CLASS [atomic_flag].
+   B. OPERATOR= THREAD SAFE sposobom priradzuje BOOL VALUE TYPE do instancie CLASS [atomic_flag].
+   C. METHOD atomic_flag::clear() nastavuje LOCK FREE sposobom FLAG na FALSE.
+   D. METHOD atomic_flag::test_and_set() nastavuje LOCK FREE sposobom FLAG na TRUE a vracia povodnu hodnotu.
+!!! 74. Na rozdiel od CLASS [atomic<T>] C++ standard GARANTUJE, ze CLASS [atomic_flag] MUSI byt implementany ako LOCK FREE CLASS.
+75. CLASS [atomic_flag] repreznetuje LOCK FREE implementaciu BIT FLAG. CLASS [atomic_flag] ma nasledujuce MEMBERS.
+   A. CONSTRUCTOR vytvara instanciu CLASS [atomic_flag].
+   B. OPERATOR= THREAD SAFE sposobom priradzuje BOOL VALUE TYPE do instancie CLASS [atomic_flag].
+   C. METHOD atomic_flag::clear() nastavuje LOCK FREE sposobom FLAG na FALSE.
+   D. METHOD atomic_flag::test_and_set() nastavuje LOCK FREE sposobom FLAG na TRUE a vracia povodnu hodnotu.
+   E. MACRO ATOMIC_FLAG_INIT obsahuje FALSE hodnotu pre CLASS [atomic_flag].
+76. C++ definuje zoznam FUNCTIONS, ktorymi je v C mozne pracovat s CLASS [atomic_flag].
+   A. FUNCTION atomic_flag_clear() nastavuje LOCK FREE sposobom FLAG na FALSE.
+   B. FUNCTION atomic_flag_clear_explicit() nastavuje LOCK FREE sposobom FLAG na FALSE. FUNCTION umoznuje nastavit MEMORY BARRIER pomocou ENUM [memory_order].
+   C. FUNCTION atomic_flag_test_and_set() nastavuje LOCK FREE sposobom FLAG na TRUE a vracia povodnu hodnotu.
+   D. FUNCTION atomic_flag_test_and_set_explicit() nastavuje LOCK FREE sposobom FLAG na TRUE a vracia povodnu hodnotu. FUNCTION umoznuje nastavit MEMORY BARRIER pomocou ENUM [memory_order].
+!!! 77. Na rozdiel od CLASS [atomic<T>] C++ standard GARANTUJE, ze CLASS [atomic_flag] MUSI byt implementany ako LOCK FREE CLASS.
+78. C++ standard definuje FUNCTIONS pre definovanie MEMORY BARRIERS, ktore MUSIA mat podla standardu LOCK FREE implementaciu.
+   A. FUNCTION atomic_thread_fence() vlozi MEMORY BARRIER do CODE. MEMORY BARRIER je implementovana na urovni CPU INSTRUCTIONS.
+   B. FUNCTION atomic_signal_fence() vlozi MEMORY BARRIER do CODE. MEMORY BARRIER je implementovana IBA na urovni vypnutia COMPILER OPTIMALIZATIONS, pricom sa vsak do CODE NEVLOZIA specializovane CPU INSTRUCTIONS vykonavaju MEMORY BARRIER.
+!!! 79. KEYWORD 'volatile' sluzi na oznacenie VARIABLE, ktoru COMPILER NEMA OPTIMALIZOVAT. V pripade aplikovania na VARIABLE, C++ tuto VARIABLE NEBUDE za ZIADNYCH OKOLNOSTI OPTIMALIZOVAT. Aplikacia tohto KEYWORD je nutna v pripade, ze VARIABLE moze byt modifikovana z ineho THREAD a v CURRENT THREAD je VARIABLE pouzita tak, ze C++ ju moze pri optimalizacii vyhodit. Pouzitie KEYWORD 'volatile' tomu zabrani.
+//-------------------------------------------------------------------------------------------------------

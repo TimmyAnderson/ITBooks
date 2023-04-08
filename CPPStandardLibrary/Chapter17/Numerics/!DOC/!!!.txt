@@ -1,0 +1,315 @@
+//-------------------------------------------------------------------------------------------------------
+1. Solution demonstruje pouzitie NUMERIC LIBRARY.
+2. C++ STANDARD LIBRARY v LIBRARY <random> definuje CLASSES, ktore umoznuju generovanie RANDOM VALUES.
+!!! 3. Generovanie RANDOM VALUES je vykonavane 3 elementami.
+   A. RANDOM ENGINES su zodpovedne za generovanie UNSIGNED VALUES, ktore su UNIFORMNE DISTRIBUOVANE v zadanom RANGE. RANDOM ENGINES su implementovane ako STATEFUL FUNCTION OBJECTS.
+   B. RANDOM ENGINE ADAPTORS modifikuju VALUES generovane RANDOM ENGINES, aby tieto ziskali niektore specificke vlastnosti nahodnosti.
+   C. DISTRIBUTIONS transfromuju VALUES generovane RANDOM ENGINES do RANDOM VALUES na zaklade matematickej DISTRIBUTION, ktora moze byt lineralna, alebo aj nelinearna. DISTRIBUTIONS su implementovane ako FUNCTION OBJECTS.
+!!!!! 4. Technicky vzate, uz RANDOM ENGINES generuju RANDOM VALUES. No aplikaciou DISTRIBUTIONS je mozne vygenerovanu RANDOM VALUE dalej modifikovat podla kriterii stanovenych pouzitou DISTRIBUTION. Napriklad je mozne stanovit, aby RANDOM VALUES boli iba z urciteho rozsahu, alebo boli NEROVNOMERNE distribuovane.
+5. RANDOM ENGINES maju nasledovne MEMBERS.
+   A. TYPE [result_type] urcuje TYPE reprezentujuci TYPE VALUE, ktoru vracia dany RANDOM ENGINE. TYPE je VZDY UNSIGNED INTEGER TYPE.
+   B. DEFAULT CONSTRUCTOR vytvara instanciu RANDOM ENGINE s DEFAULT hodnotou SEED.
+   C. CONSTRUCTOR vytvara instanciu RANDOM ENGINE s nastavenou hodnotou SEED.
+   D. COPY CONSTRUCTOR vytvara kopiu RANDOM ENGINE s rovnakou hodnotou FIELDS ako povodna instancia RANDOM ENGINE.
+   E. OPERATOR== zistuje ci dve instancie RANDOM ENGINE su rovne. Ak su instancie ROVNE, potom nasledujuce RANDOM VALUES budu ROVNE.
+   F. OPERATOR!= zistuje ci dve instancie RANDOM ENGINE su rozne. Ak su instancie ROZNE, potom nasledujuce RANDOM VALUES budu ROZNE.
+   G. OPERATOR<< zapise do STREAM interne FIELDS RANDOM ENGINE, ktore je mozne vyuzit pri SERIALIZATION danej RANDOM ENGINE.
+   H. OPERATOR>> nacita zo STREAM interne FIELDS RANDOM ENGINE, ktore je mozne vyuzit pri DESERIALIZATION danej RANDOM ENGINE.
+   !!! I. OPERATOR() vygeneruje novu RANDOM VALUE, ktora je z UZATVORENEHO INTERVALU <MINIMUM_VALUE,MAXIMUM_VALUE>.
+   J. METHOD min() vracia MINIMALNU VALUE (MINIMUM_VALUE), ktoru RANDOM ENGINE moze generovat.
+   K. METHOD max() vracia MAXIMALNU VALUE (MAXIMUM_VALUE), ktoru RANDOM ENGINE moze generovat.
+   L. METHOD discard() zmeni STATE RANDOM ENGINGE, tak aby preskocil nasledujucich 'N' RANDOM VALUES. METHOD discard() moze byt optimalnejsia ako opakovane volanie OPERATOR().
+   M. METHOD seed() nastavit hodnotu SEED na stanovenu VALUE. OVERLOADED VERSION METHOD umoznuje nastavit hodnotu SEED na DEFAULT VALUE.
+6. DISTRIBUTIONS maju nasledovne MEMBERS.
+   A. DEFAULT CONSTRUCTOR vytvara instanciu DISTRIBUTION.
+   B. CONSTRUCTOR vytvara DISTRIBUTION s nastavenym vstupnym PARAMETER TYPE [param_type]. OVERLOADED CONSTRUCTOR umoznuje parametrizovat DISTRIBUTION pomocou sady PARAMETERS.
+   C. TYPE [param_type] urcuje TYPE reprezentujuci vstupny PARAMETER do DISTRIBUTION.
+   D. TYPE [result_type] urcuje TYPE reprezentujuci TYPE VALUE, ktoru vracia dana DISTRIBUTION. TYPE [return_type] je zadavany ako TEMPLATE PARAMETER danej DISTRIBUTION.
+   E. OPERATOR== zistuje ci dve instancie DISTRIBUTION su rovne. Ak su instancie ROVNE, potom nasledujuce RANDOM VALUES budu ROVNE.
+   F. OPERATOR!= zistuje ci dve instancie DISTRIBUTION su rozne. Ak su instancie ROZNE, potom nasledujuce RANDOM VALUES budu ROZNE.
+   G. OPERATOR<< zapise do STREAM interne FIELDS DISTRIBUTION, ktore je mozne vyuzit pri SERIALIZATION danej DISTRIBUTION.
+   H. OPERATOR>> nacita zo STREAM interne FIELDS DISTRIBUTION, ktore je mozne vyuzit pri DESERIALIZATION danej DISTRIBUTION.
+   !!! I. OPERATOR() vygeneruje pre RANDOM ENGINE zadany ako PARAMETER novu RANDOM VALUE. OVERLOADED VERSION umoznuje zadat VSTUPNY PARAMETER.
+   J. METHOD reset() vykona RESET internych FIELDS do DEFAULT VALUES.
+   K. METHOD param() vracia hodnotu VSTUPNEHO PARAMETER danej DISTRIBUTION. OVERLOADED VERSION umoznuje NASTAVIT hodnotu VSTUPNEHO PARAMETER danej DISTRIBUTION.
+   L. METHOD min() vracia MINIMALNU VALUE, ktoru DISTRIBUTION moze generovat.
+   M. METHOD max() vracia MAXIMALNU VALUE, ktoru DISTRIBUTION moze generovat.
+   N. METHODS PARAMS() je skupina METHODS, ktore vracaju hodnoty PARAMETERS danej DISTRIBUTION.
+7. RANDOM VALUES sa generuju nasledujucim sposobom.
+   A. Vytvori sa instancia zvoleneho RANDOM ENGINE.
+   B. Vytvori sa instancia zvolenej DISTRIBUTION.
+   C. Na vygenerovanie RANDOM NUMBER sa zavola OPERATOR() instancie DISTRIBUTION, ktory ma ako PARAMETER instanciu RANDOM ENGINE.
+!!! 8. RANDOM VALUES ak su generovane pomocou RANDOM ENGINES a DISTRIBUTIONS vytvorenych pomocou DEFAULT CONSTRUCTORS VZDY generuju identicku postupnost VALUES. Ak je potrebne vygenerovat rozlicne postupnosti je nutne pri vytvarani RANDOM ENGINE zadat v CONSTRUCTOR hodnotu SEED z ktorej sa generovana postupnost RANDOM VALUES bude odvijat.
+!!! 9. RANDOM ENGINES by sa NEMALI vytvarat ako TEMPORARY VARIABLES, pretoze ak nie je zadany CUSTOM SEED, bude sa generovat VZDY IDENTICKA POSTUPNOST RANDOM VALUES.
+!!!!! 10. RANDOM ENGINES by NIKDY NEMALI byt pouzivane BEZ DISTRIBUTIONS. Pouzitie RANDOM ENGINES s MODULO je NESPRAVNY, pretoze generovane RANDOM VALUES NEMUSIA byt tak presne ako pri pouziti RANDOM ENGINES s DISTRIBUTIONS. Pouzitie RANDOM ENGINES s MODULO namiesto pouzitia RANDOM ENGINES s DISTRIBUTIONS vedie k nasledujucim problemom.
+   A. Pri nizkej hodnote MODULO mozu RANDOM ENGINES (vratane C-FUNCTION rand()) namiesto RANDOM VALUES generovat IDENTICKU postupnost VALUES. Typickym prikladom je MODULO 2, kedy niektore implementacie C-FUNCTION rand() namiesto RANDOM VALUES generuju striedavo hondoty 1 a 0.
+   B. Pri vysokej hodnote MODULO dochadza k problemu ak MAXIMALNA VALUE, ktoru mozu RANDOM ENGINES generovat NIE JE DELITELNA hodnotou MODULO. V takom pripade hodnoty, ktore sa uz nevosli do posledneho nasobku maju MENSIU PRAVDEPODOBNOST vyskytu a tym je NERUSENA nahodnot RANDOM VALUES. Cim je hodnota MODULO VYSSIA, tym je problem VACSI.
+!!! 11. Pri pouziti RANDOM ENGINES s DISTRIBUTIONS NEDOCHADZA k problemom, ktore vznikaju pri pouziti IBA RANDOM ENGINES, alebo pouziti RANDOM ENGINES s operaciou MODULO.
+12. C++ STANDARD LIBRARY definuje nasledujuce typy RANDOM ENGINES.
+   A. CLASS [linear_congruential_engine] implementuje LINEAR CONGRUENTIAL ALGORITHM.
+   B. CLASS [mersenne_twister_engine] implementuje MERSENNE TWISTER ALGORITHM.
+   C. CLASS [subtract_with_carry_engine] implementuje SUBTRACT WITH CARRY ALGORITHM.
+   D. CLASS [minstd_rand0] implementuje MINIMUM STANDARD ALGORITHM. Je to specializovana verzia LINEAR CONGRUENTIAL ALGORITHM.
+   E. CLASS [minstd_rand] implementuje novsiu verziu MINIMUM STANDARD ALGORITHM. Je to specializovana verzia LINEAR CONGRUENTIAL ALGORITHM.
+   F. CLASS [mt19937] implementuje 32 bitovu verziu MERSENNE TWISTER ALGORITHM.
+   G. CLASS [mt19937_64] implementuje 64 bitovu verziu MERSENNE TWISTER ALGORITHM.
+   H. CLASS [ranlux24_base] implementuje zakladny 24 bitovy RANLUX ALGORITHM. Je to specializovana verzia SUBTRACT WITH CARRY ALGORITHM.
+   I. CLASS [ranlux48_base] implementuje zakladny 48 bitovy RANLUX ALGORITHM. Je to specializovana verzia SUBTRACT WITH CARRY ALGORITHM.
+   J. CLASS [ranlux24] implementuje specializovany 24 bitovy RANLUX ALGORITHM. Je to specializovana verzia SUBTRACT WITH CARRY ALGORITHM s aplikaciou DISCARD BLOCK RANDOM ENGINE ADAPTER.
+   K. CLASS [ranlux48] implementuje specializovany 48 bitovy RANLUX ALGORITHM. Je to specializovana verzia SUBTRACT WITH CARRY ALGORITHM s aplikaciou DISCARD BLOCK RANDOM ENGINE ADAPTER.
+   L. CLASS [knuth_b] implementuje KNUTH ALGORITHM. Je to specializovana verzia LINEAR CONGRUENTIAL ALGORITHM s aplikaciou SHUFFLE ORDER RANDOM ENGINE ADAPTER.
+   M. CLASS [random_device] implementuje NON-DETERMINISTIC RANDOM NUMBER GENERATOR, ktory vyuziva HW prostriedky na generovanie RANDOM VALUES.
+   N. CLASS [default_random_engine] je PLATFORM DEFINED RANDOM ENGINE.
+13. C++ STANDARD LIBRARY definuje RANDOM ENGINE ADAPTERS, ktore mozu na inicializaciu pouzit ine RANDOM ENGINES. C++ STANDARD LIBRARY definuje nasledujuce RANDOM ENGINE ADAPTERS.
+   A. CLASS [discard_block_engine] preskakuje zadany pocet VALUES pri generovani RANDOM VALUE.
+   B. CLASS [independent_bits_engine] generuje RANDOM VALUES do zadaneho poctu BITS.
+   C. CLASS [shuffle_order_engine] generuje RANDOM VALUES na zaklade permutacie VALUES generovanych RANDOM ENGINE.
+14. C++ STANDARD LIBRARY definuje nasledujuce typy DISTRIBUTIONS.
+   A. CLASS [uniform_int_distribution<TType>] implementuje UNIFORMNU DISTRIBUTION pre INTEGER TYPES, ktore distribuuje VALUES UNIFORMNE v UZATVORENOM INTERVALE <MIN,MAX>.
+   B. CLASS [uniform_real_distribution<TType>] implementuje UNIFORMNU DISTRIBUTION pre FLOAT TYPES, ktore distribuuje VALUES UNIFORMNE v POLOUZATVORENOM INTERVALE <MIN,MAX).
+   C. CLASS [bernoulli_distribution] implementuje BERNULIHO DISTRIBUTION.
+   D. CLASS [binomial_distribution<TType>] implementuje BINOMIALNU DISTRIBUTION.
+   E. CLASS [negative_binomial_distribution<TType>] implementuje NEGATIVNU BINOMIALNU DISTRIBUTION.
+   F. CLASS [geometric_distribution<TType>] implementuje GEOMETRICKU DISTRIBUTION.
+   G. CLASS [poisson_distribution<TType>] implementuje POISSONOVU DISTRIBUTION.
+   H. CLASS [exponential_distribution<TType>] implementuje EXPONENCIALNU DISTRIBUTION.
+   I. CLASS [gamma_distribution<TType>] implementuje GAMMA DISTRIBUTION.
+   J. CLASS [weibull_distribution<TType>] implementuje WEIBULLOVU DISTRIBUTION.
+   K. CLASS [extreme_value_distribution<TType>] implementuje EXTREME VALUE DISTRIBUTION.
+   L. CLASS [normal_distribution<TType>] implementuje STANDARDNU GAUSSOVU DISTRIBUTION.
+   M. CLASS [lognormal_distribution<TType>] implementuje LOGNORMAL DISTRIBUTION.
+   N. CLASS [chi_squared_distribution<TType>] implementuje CHI SQUARED DISTRIBUTION.
+   O. CLASS [cauchy_distribution<TType>] implementuje CAUCHYHO DISTRIBUTION.
+   P. CLASS [fisher_f_distribution<TType>] implementuje FISHER F DISTRIBUTION.
+   Q. CLASS [student_t_distribution<TType>] implementuje STUDENTOVU T DISTRIBUTION.
+   R. CLASS [discrete_distribution<TType>] implementuje DISKRETNU DISTRIBUTION.
+   S. CLASS [piecewise_constant_distribution<TType>] implementuje DISTRIBUTION, ktore distribuuje VALUES v ramci konstatnych SUBINTERVALS.
+   T. CLASS [piecewise_linear_distribution<TType>] implementuje DISTRIBUTION, ktore distribuuje VALUES v ramci definovanych SUBINTERVALS.
+15. CLASS [complex<TType] reprezentuje COMPLEX NUMBER. Pre CLASS [complex<TType] platia nasledujuce fakty.
+   A. CLASS [complex<TType] je definovany v LIBRARY <complex>.
+   B. CLASS [complex<TType] ma definovane SPECIALIZATIONS pre TYPE [float], TYPE [double] a TYPE [long double].
+   C. CLASS [complex<TType] definuje IMPLICIT CONVERSIONS ak NEDOCHADZA k strate presnosti. Ak DOCHADZA k strate presnosti, je nutne pouzit EXPLICIT CONVERSIONS.
+   D. CLASS [complex<TType] NEMA DEFINOVANE OPERATOR<, OPERATOR<=, OPERATOR> a OPERATOR>=, pretoze nie je jednoznacne definovane kedy je COMPLEX NUMBER mensi ci vacsi ako iny COMPLEX NUMBER.
+   E. CLASS [complex<TType] definuje OPERATOR<< a OPERATOR>>, ktore reprezenuju COMPLEX NUMBERS v tvare [(REAL_PART,IMAGINARY_PART)], kde obycajne zatvorky su sucastou SYNTAXE.
+16. CLASS [complex<TType] ma nasledujuce MEMBERS.
+   1. TYPE [value_type] urcuje TYPE v ktorom su reprezentovane COMPLEX NUMBERS. Je zhodny s TEMPLATE PARAMETER 'TType'.
+   2. CONSTRUCTOR vytvara instanciu COMPLEX NUMBER.
+   3. OPERATOR= priradzuje jednu instanciu COMPLEX NUMBER do druhej.
+   4. OPERATOR+= aplikuje BINARY OPERATOR+= nad dvojicou COMPLEX NUMBERS, alebo nad COMPLEX NUMBER a skalarnou VALUE.
+   5. OPERATOR-= aplikuje BINARY OPERATOR-= nad dvojicou COMPLEX NUMBERS, alebo nad COMPLEX NUMBER a skalarnou VALUE.
+   6. OPERATOR*= aplikuje BINARY OPERATOR*= nad dvojicou COMPLEX NUMBERS, alebo nad COMPLEX NUMBER a skalarnou VALUE.
+   7. OPERATOR/= aplikuje BINARY OPERATOR/= nad dvojicou COMPLEX NUMBERS, alebo nad COMPLEX NUMBER a skalarnou VALUE.
+   8. OPERATOR+ aplikuje UNARY OPERATOR+ nad COMPLEX NUMBER.
+   9. OPERATOR- aplikuje UNARY OPERATOR- nad COMPLEX NUMBER.
+   10. OPERATOR+ aplikuje BINARY OPERATOR+ nad dvojicou COMPLEX NUMBERS, alebo nad COMPLEX NUMBER a skalarnou VALUE.
+   11. OPERATOR- aplikuje BINARY OPERATOR- nad dvojicou COMPLEX NUMBERS, alebo nad COMPLEX NUMBER a skalarnou VALUE.
+   12. OPERATOR* aplikuje BINARY OPERATOR* nad dvojicou COMPLEX NUMBERS, alebo nad COMPLEX NUMBER a skalarnou VALUE.
+   13. OPERATOR/ aplikuje BINARY OPERATOR/ nad dvojicou COMPLEX NUMBERS, alebo nad COMPLEX NUMBER a skalarnou VALUE.
+   14. OPERATOR== zistuje ci je dvojica COMPLEX NUMBERS ROVNA, alebo ci COMPLEX NUMBER je ROVNE skalarnej VALUE.
+   15. OPERATOR!= zistuje ci je dvojica COMPLEX NUMBERS ROZNA, alebo ci COMPLEX NUMBER je ROZNE skalarnej VALUE.
+   16. OPERATOR<< vykonava SERIALIZATION COMPLEX NUMBER do STREAM.
+   17. OPERATOR>> vykonava DESERIALIZATION COMPLEX NUMBER zo STREAM.
+   18. OPERATOR""if reprezentuje LITERAL IMAGINARNEJ ZLOZKY pre CLASS [complex<float>].
+   19. OPERATOR""i reprezentuje LITERAL IMAGINARNEJ ZLOZKY pre CLASS [complex<double>].
+   20. OPERATOR""il reprezentuje LITERAL IMAGINARNEJ ZLOZKY pre CLASS [complex<long double>].
+   21. METHOD real() umoznuje citat a zapisovat REALNU ZLOZKU COMPLEX NUMBER.
+   22. METHOD imag() umoznuje citat a zapisovat IMAGINARNU ZLOZKU COMPLEX NUMBER.
+   23. FUNCTION real() vracia REALNU ZLOZKU COMPLEX NUMBER.
+   24. FUNCTION imag() vracia IMAGINARNU ZLOZKU COMPLEX NUMBER.
+   25. FUNCTION abs() vracia MAGNITUDE COMPLEX NUMBER.
+   26. FUNCTION arg() vracia PHASE ANGLE COMPLEX NUMBER v RADIANOCH.
+   27. FUNCTION norm() vracia SQUARED MAGNITUDE COMPLEX NUMBER.
+   28. FUNCTION conj() vracia COMPLEX COJUGATE COMPLEX NUMBER. Pri COMPLEX COJUGATE sa obracia znamienko IMAGINARNEJ ZLOZKY COMPLEX NUMBER.
+   29. FUNCTION proj() vracia PROJECTION COMPLEX NUMBER na RIEMANN SQUARE.
+   30. FUNCTION polar() vytvara COMPLEX NUMBER z MAGNITUDE a PHASE ANGLE.
+   31. FUNCTION exp() aplikuje C-FUNCTION exp() nad COMPLEX NUMBER.
+   32. FUNCTION log() aplikuje C-FUNCTION log() nad COMPLEX NUMBER.
+   33. FUNCTION log10() aplikuje C-FUNCTION log() nad COMPLEX NUMBER.
+   34. FUNCTION pow() aplikuje C-FUNCTION pow() nad COMPLEX NUMBER.
+   35. FUNCTION sqrt() aplikuje C-FUNCTION sqrt() nad COMPLEX NUMBER.
+   36. FUNCTION sin() aplikuje C-FUNCTION sin() nad COMPLEX NUMBER.
+   37. FUNCTION cos() aplikuje C-FUNCTION cos() nad COMPLEX NUMBER.
+   38. FUNCTION tan() aplikuje C-FUNCTION tan() nad COMPLEX NUMBER.
+   39. FUNCTION asin() aplikuje C-FUNCTION asin() nad COMPLEX NUMBER.
+   40. FUNCTION acos() aplikuje C-FUNCTION acos() nad COMPLEX NUMBER.
+   41. FUNCTION atan() aplikuje C-FUNCTION atan() nad COMPLEX NUMBER.
+   42. FUNCTION sinh() aplikuje C-FUNCTION sinh() nad COMPLEX NUMBER.
+   43. FUNCTION cosh() aplikuje C-FUNCTION cosh() nad COMPLEX NUMBER.
+   44. FUNCTION tanh() aplikuje C-FUNCTION tanh() nad COMPLEX NUMBER.
+   45. FUNCTION asinh() aplikuje C-FUNCTION asinh() nad COMPLEX NUMBER.
+   46. FUNCTION acosh() aplikuje C-FUNCTION acosh() nad COMPLEX NUMBER.
+   47. FUNCTION atanh() aplikuje C-FUNCTION atanh() nad COMPLEX NUMBER.
+17. C++ STANDARD LIBRARY definuje v LIBRARY <cmath> C-FUNCTIONS, ktore realizuju matematicke operacie implementovane v C, akurat su zapuzdrene v NAMESPACE [std].
+18. Pre VALARRAYS platia nasledujuce fakty.
+   A. VALARRAYS su definovane v LIBRARY <valarray>.
+   A. VALARRAYS reprezentuju 1 DIMENZIONALNE ARRAYS NUMBERIC VALUES s pociatocnym INDEXOM 0.
+   B. VALARRAYS umoznuju aplikovat standardne matamaticke OPERATORS nad instanciami VALARRAYS a tym padom vykonavat komplexne matematicke vyrazy poliami NUMBERIC VALUES.
+   C. VALARRAYS umoznuju pri rozlicnych CPU ARCHITECTURES rozlicne typy OPTIMALIZATIONS. Napriklad VEKTOROVE CPU umoznuju vykonat OPERATIONS nad viacerymi ITEMS VALARRAYS v 1 CPU INSTRUCTION, ak bola implementacia VALARRAY na tuto CPU ARCHITECTURE optimalizovana.
+   !!! D. Velkou vyhodnou VALARRAYS je NEPOUZIVANIE TEMPORARY VARIABLES pri realizacii komplexnych matematickych operacii ako je napriklad EXPRESSION [Z=A*X*X+B*X+C]. Taketo EXPRESSIONS je mozne realizovat pomocou VALARRAYS BEZ TOHO, aby pri realizovani jednotlivych SUBEXPRESSIONS dochadzalo k vytvaraniu TEMPORARY VALARRAYS. Celu EXPRESSION je mozne realizovat nad 1 instanciu VALARRAY.
+   E. VALARRAYS umoznuju implementovat aj MATRICES ako VALARRAYS obsahujuce dalsie VALARRAYS.
+19. CLASS [valarray<TType>] umoznuje vykonavat matematicke operacie nad COLLECTION NUMERIC VALUES. Ma nasledujuce MEMBERS.
+   1. TYPE [value_type] urcuje TYPE jednotlivych ITEMS. Je zhodny s TEMPLATE PARAMETER 'TType'.
+   2. CONSTRUCTOR vytvara instanciu VALARRAY. V CONSTRUCTOR sa zadava pocet ITEMS VALARRAY. OVERLOADED verzie CONSTRUCTOR umoznuju vytvorit instancie VALARRAY aj zo SLICES ci ARRAYS.
+   3. DESTRUCTOR uvolnuje vsetky RESOURCES asociovane s instanciu VALARRAY.
+   4. OPERATOR= priradzuje jednu instanciu CLASS VALARRAY do druhej. OVERLOADED verzie OPERATOR= umoznuju priradit do instancie VALARRAY aj instancie SLICES ci ARRAYS.
+   !!! 5. OPERATOR[] umoznuje pristupit k ITEMS vo VALARRAY. OVERLOADED verzie OPERATOR[] umoznuju vytvorit z VALARRAY SLICES.
+   6. OPERATOR+ aplikuje UNARY OPERATOR+ nad vsetkymi ITEMS vo VALARRAY.
+   7. OPERATOR- aplikuje UNARY OPERATOR- nad vsetkymi ITEMS vo VALARRAY.
+   8. OPERATOR~ aplikuje UNARY OPERATOR~ (BITOVA NEGACIA) nad vsetkymi ITEMS vo VALARRAY.
+   !!! 9. OPERATOR! aplikuje UNARY OPERATOR! (LOGICKA NEGACIA) nad vsetkymi ITEMS vo VALARRAY. RETURN VALUE je instancia CLASS [valarray<bool>] obsahujuca vysledky pre jednotlive ITEMS.
+   10. OPERATOR+= aplikuje BINARY OPERATOR+= nad vsetkymi ITEMS vo VALARRAY. Ako PARAMETER moze byt instancia VALARRAY, alebo VALUE. Obe instancie VALARRAY MUSIA mat ROVANKU VELKOST, inak je chovanie UNDEFINED.
+   11. OPERATOR-= aplikuje BINARY OPERATOR-= nad vsetkymi ITEMS vo VALARRAY. Ako PARAMETER moze byt instancia VALARRAY, alebo VALUE. Obe instancie VALARRAY MUSIA mat ROVANKU VELKOST, inak je chovanie UNDEFINED.
+   12. OPERATOR*= aplikuje BINARY OPERATOR*= nad vsetkymi ITEMS vo VALARRAY. Ako PARAMETER moze byt instancia VALARRAY, alebo VALUE. Obe instancie VALARRAY MUSIA mat ROVANKU VELKOST, inak je chovanie UNDEFINED.
+   13. OPERATOR/= aplikuje BINARY OPERATOR/= nad vsetkymi ITEMS vo VALARRAY. Ako PARAMETER moze byt instancia VALARRAY, alebo VALUE. Obe instancie VALARRAY MUSIA mat ROVANKU VELKOST, inak je chovanie UNDEFINED.
+   14. OPERATOR%= aplikuje BINARY OPERATOR%= nad vsetkymi ITEMS vo VALARRAY. Ako PARAMETER moze byt instancia VALARRAY, alebo VALUE. Obe instancie VALARRAY MUSIA mat ROVANKU VELKOST, inak je chovanie UNDEFINED.
+   15. OPERATOR&= aplikuje BINARY OPERATOR&= nad vsetkymi ITEMS vo VALARRAY. Ako PARAMETER moze byt instancia VALARRAY, alebo VALUE. Obe instancie VALARRAY MUSIA mat ROVANKU VELKOST, inak je chovanie UNDEFINED.
+   16. OPERATOR|= aplikuje BINARY OPERATOR|= nad vsetkymi ITEMS vo VALARRAY. Ako PARAMETER moze byt instancia VALARRAY, alebo VALUE. Obe instancie VALARRAY MUSIA mat ROVANKU VELKOST, inak je chovanie UNDEFINED.
+   17. OPERATOR^= aplikuje BINARY OPERATOR^= nad vsetkymi ITEMS vo VALARRAY. Ako PARAMETER moze byt instancia VALARRAY, alebo VALUE. Obe instancie VALARRAY MUSIA mat ROVANKU VELKOST, inak je chovanie UNDEFINED.
+   18. OPERATOR<<= aplikuje BINARY OPERATOR<<= nad vsetkymi ITEMS vo VALARRAY. Ako PARAMETER moze byt instancia VALARRAY, alebo VALUE. Obe instancie VALARRAY MUSIA mat ROVANKU VELKOST, inak je chovanie UNDEFINED.
+   19. OPERATOR>>= aplikuje BINARY OPERATOR>>= nad vsetkymi ITEMS vo VALARRAY. Ako PARAMETER moze byt instancia VALARRAY, alebo VALUE. Obe instancie VALARRAY MUSIA mat ROVANKU VELKOST, inak je chovanie UNDEFINED.
+   20. OPERATOR+ aplikuje BINARY OPERATOR+ nad vsetkymi ITEMS vo VALARRAY. Ako PARAMETER moze byt instancia VALARRAY, alebo VALUE. Obe instancie VALARRAY MUSIA mat ROVANKU VELKOST, inak je chovanie UNDEFINED.
+   21. OPERATOR- aplikuje BINARY OPERATOR- nad vsetkymi ITEMS vo VALARRAY. Ako PARAMETER moze byt instancia VALARRAY, alebo VALUE. Obe instancie VALARRAY MUSIA mat ROVANKU VELKOST, inak je chovanie UNDEFINED.
+   22. OPERATOR* aplikuje BINARY OPERATOR* nad vsetkymi ITEMS vo VALARRAY. Ako PARAMETER moze byt instancia VALARRAY, alebo VALUE. Obe instancie VALARRAY MUSIA mat ROVANKU VELKOST, inak je chovanie UNDEFINED.
+   23. OPERATOR/ aplikuje BINARY OPERATOR/ nad vsetkymi ITEMS vo VALARRAY. Ako PARAMETER moze byt instancia VALARRAY, alebo VALUE. Obe instancie VALARRAY MUSIA mat ROVANKU VELKOST, inak je chovanie UNDEFINED.
+   24. OPERATOR% aplikuje BINARY OPERATOR% nad vsetkymi ITEMS vo VALARRAY. Ako PARAMETER moze byt instancia VALARRAY, alebo VALUE. Obe instancie VALARRAY MUSIA mat ROVANKU VELKOST, inak je chovanie UNDEFINED.
+   25. OPERATOR& aplikuje BINARY OPERATOR& nad vsetkymi ITEMS vo VALARRAY. Ako PARAMETER moze byt instancia VALARRAY, alebo VALUE. Obe instancie VALARRAY MUSIA mat ROVANKU VELKOST, inak je chovanie UNDEFINED.
+   26. OPERATOR| aplikuje BINARY OPERATOR| nad vsetkymi ITEMS vo VALARRAY. Ako PARAMETER moze byt instancia VALARRAY, alebo VALUE. Obe instancie VALARRAY MUSIA mat ROVANKU VELKOST, inak je chovanie UNDEFINED.
+   27. OPERATOR^ aplikuje BINARY OPERATOR^ nad vsetkymi ITEMS vo VALARRAY. Ako PARAMETER moze byt instancia VALARRAY, alebo VALUE. Obe instancie VALARRAY MUSIA mat ROVANKU VELKOST, inak je chovanie UNDEFINED.
+   28. OPERATOR<< aplikuje BINARY OPERATOR<< nad vsetkymi ITEMS vo VALARRAY. Ako PARAMETER moze byt instancia VALARRAY, alebo VALUE. Obe instancie VALARRAY MUSIA mat ROVANKU VELKOST, inak je chovanie UNDEFINED.
+   29. OPERATOR>> aplikuje BINARY OPERATOR>> nad vsetkymi ITEMS vo VALARRAY. Ako PARAMETER moze byt instancia VALARRAY, alebo VALUE. Obe instancie VALARRAY MUSIA mat ROVANKU VELKOST, inak je chovanie UNDEFINED.
+   !!! 30. OPERATOR&& aplikuje BINARY OPERATOR&& nad vsetkymi ITEMS vo VALARRAY. Ako PARAMETER moze byt instancia VALARRAY, alebo VALUE. Obe instancie VALARRAY MUSIA mat ROVANKU VELKOST, inak je chovanie UNDEFINED. RETURN VALUE je instancia CLASS [valarray<bool>] obsahujuca vysledky pre jednotlive ITEMS.
+   !!! 31. OPERATOR|| aplikuje BINARY OPERATOR|| nad vsetkymi ITEMS vo VALARRAY. Ako PARAMETER moze byt instancia VALARRAY, alebo VALUE. Obe instancie VALARRAY MUSIA mat ROVANKU VELKOST, inak je chovanie UNDEFINED. RETURN VALUE je instancia CLASS [valarray<bool>] obsahujuca vysledky pre jednotlive ITEMS.
+   !!! 32. OPERATOR== zistuje, ktore ITEMS dvojice VALARRAYS su rovne. RETURN VALUE je instancia CLASS [valarray<bool>] obsahujuca vysledky pre jednotlive ITEMS.
+   !!! 33. OPERATOR!= zistuje, ktore ITEMS dvojice VALARRAYS su rozne. RETURN VALUE je instancia CLASS [valarray<bool>] obsahujuca vysledky pre jednotlive ITEMS.
+   !!! 34. OPERATOR< zistuje, ktore ITEMS 1. instacie VALARRAY su mensie ako ITEMS 2. instancie VALARRAY. RETURN VALUE je instancia CLASS [valarray<bool>] obsahujuca vysledky pre jednotlive ITEMS.
+   !!! 35. OPERATOR<= zistuje, ktore ITEMS 1. instacie VALARRAY su mensie, alebo rovne ako ITEMS 2. instancie VALARRAY. RETURN VALUE je instancia CLASS [valarray<bool>] obsahujuca vysledky pre jednotlive ITEMS.
+   !!! 36. OPERATOR> zistuje, ktore ITEMS 1. instacie VALARRAY su vacsie ako ITEMS 2. instancie VALARRAY. RETURN VALUE je instancia CLASS [valarray<bool>] obsahujuca vysledky pre jednotlive ITEMS.
+   !!! 37. OPERATOR>= zistuje, ktore ITEMS 1. instacie VALARRAY su vacsie, alebo rovne ako ITEMS 2. instancie VALARRAY. RETURN VALUE je instancia CLASS [valarray<bool>] obsahujuca vysledky pre jednotlive ITEMS.
+   38. METHOD swap() vymiena obsah 2 instancii VALARRAY.
+   39. METHOD size() vracia pocet ITEMS vo VALARRAY.
+   40. METHOD resize() meni pocet ITEMS vo VALARRAY. V pripade, ze pocet ITEMS je MENSI ako zadany pocet ITEMS, nove ITEMS su vytvorene ako kopia ITEM zadaneho ako PARAMETER METHOD.
+   41. METHOD sum() vracia sucet hodnot vsetkych ITEMS vo VALARRAY.
+   42. METHOD min() vracia ITEM s MINIMALNOU VALUE.
+   43. METHOD max() vracia ITEM s MAXIMALNOU VALUE.
+   44. METHOD shift() vykonava POSUNUTIE INDEXOV ITEMS. Posun je mozne vykonat OBOJSMERNE.
+   45. METHOD cshift() vykonava CYKLICKE POSUNUTIE INDEXOV ITEMS. Posun je mozne vykonat OBOJSMERNE.
+   46. METHOD apply() umoznuje pre KAZDY ITEM zavolat CALLBACK FUNCTION, ktora vrati NOVU HODNOTU ITEM.
+   47. FUNCTION swap() vymiena obsah 2 instancii VALARRAY.
+   48. FUNCTION begin() vracia ITERATOR na prvy ITEM VALARRAY.
+   49. FUNCTION end() vracia ITERATOR jednu poziciu za posledny ITEM VALARRAY.
+   50. FUNCTION abs() aplikuje C-FUNCTION abs() nad vsetkymi ITEMS vo VALARRAY.
+   51. FUNCTION exp() aplikuje C-FUNCTION exp() nad vsetkymi ITEMS vo VALARRAY.
+   52. FUNCTION log() aplikuje C-FUNCTION log() nad vsetkymi ITEMS vo VALARRAY.
+   53. FUNCTION log10() aplikuje C-FUNCTION log() nad vsetkymi ITEMS vo VALARRAY.
+   54. FUNCTION pow() aplikuje C-FUNCTION pow() nad vsetkymi ITEMS vo VALARRAY.
+   55. FUNCTION sqrt() aplikuje C-FUNCTION sqrt() nad vsetkymi ITEMS vo VALARRAY.
+   56. FUNCTION sin() aplikuje C-FUNCTION sin() nad vsetkymi ITEMS vo VALARRAY.
+   57. FUNCTION cos() aplikuje C-FUNCTION cos() nad vsetkymi ITEMS vo VALARRAY.
+   58. FUNCTION tan() aplikuje C-FUNCTION tan() nad vsetkymi ITEMS vo VALARRAY.
+   59. FUNCTION asin() aplikuje C-FUNCTION asin() nad vsetkymi ITEMS vo VALARRAY.
+   60. FUNCTION acos() aplikuje C-FUNCTION acos() nad vsetkymi ITEMS vo VALARRAY.
+   61. FUNCTION atan() aplikuje C-FUNCTION atan() nad vsetkymi ITEMS vo VALARRAY.
+   62. FUNCTION atan2() aplikuje C-FUNCTION atan2() nad vsetkymi ITEMS vo VALARRAY.
+   63. FUNCTION sinh() aplikuje C-FUNCTION sinh() nad vsetkymi ITEMS vo VALARRAY.
+   64. FUNCTION cosh() aplikuje C-FUNCTION cosh() nad vsetkymi ITEMS vo VALARRAY.
+   65. FUNCTION tanh() aplikuje C-FUNCTION tanh() nad vsetkymi ITEMS vo VALARRAY.
+!!! 20. Zmyslom existencie VALARRAYS bolo optimalizovat operacie nad COLLECTION NUMERIC VALUES, najma u VEKTOROVYCH CPU. VEKTOROVE CPU ktore maju CPU INSTRUCTIONS, ktore umoznuju vykonat rovnaku matematicku operaciu nad polom NUMERIC VALUES. Vdaka VALARRAYS je tak mozne generovat namiesto sady CPU INSTRUCTIONS generovat iba 1 CPU INSTRUSTION. V praxi vsak existuje iba velmi malo implementacii, ktore by tuto optimalizaciu realne vo VALARRAYS implementovali, a preto VALARRAYS su do znacnej miery zbytocne.
+!!! 21. VALARRAYS maju OVERLOADED OPERATOR[] pre CLASS [slice], CLASS [gslice], CLASS [valarray<bool>] a CLASS [valarray<size_t>]. Pouzitie OPERATOR[] nad instancimi tychto CLASS umoznuje vytvarat SLICES (REZY). Pre SLICES platia nasledujuce fakty.
+   A. SLICES su instancie CLASS [valarray<TType>], CLASS [slice_array<TType>], CLASS [gslice_array<TType>], CLASS [mask_array<TType>], alebo CLASS [indirect_array<TType>].
+   !!! B. CONST verzie OPERATOR[] maju ako RETURN VALUE VZDY instancie CLASS [valarray<TType>] obsahujuce vysledny SLICE.
+   !!! C. NON-CONST verzie OPERATOR[] maju ako RETURN VALUE podla typu SLICE niektoru z instancii CLASS [slice_array<TType>], CLASS [gslice_array<TType>], CLASS [mask_array<TType>], alebo CLASS [indirect_array<TType>].
+   !!!!! D. NON-CONST verzie OPERATOR[] pouzivaju REFERENCE SEMANTICS, co znamena, ze ITEMS SLICES obsahuju REFERENCIE na ITEMS POVODNEHO VALARRAY co znaci, ze modifikacia hodnoty ITEMS v SLICE sposobi ZMENU hondoty hodnoty vo VALARRAY.
+   !!!!! E. NON-CONST verzie OPERATOR[] pouzivaju LAZY EVAULATION, kedy k realizacii SLICE dochadza az pri priradeni hodnot ITEMS do vysledneho VALARRAY. Vyhodou tohto mechanizmu je, ze sa nevytvaraju TEMPORARY VALARRAYS. To znaci, ze napriklad pri vykonavani EXPRESSION [VALARRAY_1=VALARRAY_2*3+VALARRAY_3*2] sa NEVYTVORIA ZIADNE TEMPORARY VALUES a do ITEMS VARIABLE 'VALARRAY_1' sa priradie az VYSLEDNEHO HODNOTY CELEJ EXPRESSION.
+   !!! F. Pri pouzivani NON-CONST verzii OPERATOR[] NESMIE EXPRESSION na RIGHT SIDE obsahovat VALARRAY z LEFT SIDE. To znaci, ze napriklad EXPRESSION [VALARRAY=VALARRAY[SPLICE]] sposobi ERROR, pretoze VARIABLE 'VALARRAY' je na LEFT aj RIGHT SIDE EXPRESSION.
+   G. Pomocou SLICES je mozne pouzit VALARRAYS na definovanie VIACDIMENZIONALYCH VALARRAYS.
+22. VALARRAYS podporuju nasledujuce typu SLICES.
+   A. SLICES.
+   B. GENERAL SLICES.
+   C. MASKED SUBSETS.
+   D. INDIRECT SUBSETS.
+!!! 23. SLICES VALARRAYS boli v C++ STANDARD LIBRARY ZLE DEFINOVANE. SLICES NEMAJU definovane vsetky MATHEMATICS OPERATORS, ktore maju definovane VALARRAYS. Kedze SLICES VALARRAYS su instanciami CLASS [slice_array<TType>], CLASS [gslice_array<TType>], CLASS [mask_array<TType>], alebo CLASS [indirect_array<TType>], vysledkom je, ze v pripade, ze je potrebne aplikovat MATHEMATICS OPERATORS na SLICES, je NUTNY EXPLICITNT CASTING SLICE na VALARRAY. Okrem neelegantneho kodu sa ZNIZUJE VYKONNOST, pretoze pri CASTING dochadza k vytvoreniu TEMPORARY OBJECTS a tym padom vysledkom je PERFORMANCE PENALTY.
+24. Kazdy SLICE je definovany nasledujucimi hodnotami.
+   A. START INDEX urcuje ITEM od ktoreho SLICE zacina.
+   B. NUMBER OF ELEMENTS urcuje pocet ITEMS v SLICE.
+   C. STRIDE urcuje vzdialenost medzi dvojicou ITEMS v SLICE. Hodnota STRIDE moze byt aj ZAPORNA.
+25. CLASS [slice] umoznuje reprezentovat 1 DIMENZIONALNE SLICES (napriklad ROWS a COLUMNS) nad VALARRAYS. CLASS [slice] je mozne pouzit ako PARAMETER pre OPERATOR valarray<TType>.operator[](), ktory vracia instanciu CLASS [slice_array<TType>]. CLASS [slice] ma nasledujuce MEMBERS.
+   A. CONSTRUCTOR vytvara instanciu CLASS [slice].
+   B. METHOD start() vracia poziciu 1 ITEM v SLICE.
+   C. METHOD size() vracia pocet ITEMS v SLICE.
+   D. METHOD stride() vracia pocet ITEMS vo VALARAY, ktore sa nachzaju medzi 2 ITEMS v SLICE.
+26. Pre CLASS [slice_array<TType>] platia nasledujuce fakty.
+   A. Instancia CLASS [slice_array<TType>] je vratena pomocou OPERATOR valarray<TType>.operator[]() ak je jeho PARAMETER instancia CLASS [slice].
+   B. CLASS [slice_array<TType>] obsahuje pretazene ARITHMETIC OPERATORS pomocou, ktorych je mozne menit ITEMS v instancii CLASS [slice_array<TType>] a tym aj ITEMS vo VALARRAY, z ktorej bola instancia CLASS [slice_array<TType>] vytvorena. Tym je mozne lahko implementovat matematicke operacie nad ROW a COLUMNS matice reprezentovanej VALARRAY.
+27. CLASS [slice_array<TType>] ma nasledujuce MEMBERS.
+   A. CONSTRUCTOR vytvara instanciu CLASS [slice_array<TType>].
+   B. DESTRUCTOR uvolnuje RESOURCES asociovane s instanciou CLASS [slice_array<TType>].
+   C. OPERATOR priraduje do instancie CLASS [slice_array<TType>] bud inu instanciu CLASS [slice_array<TType>], kopiu zadanej VALUE, alebo VALUES z VALARRAY.
+   D. OPERATOR+= aplikuje BINARY OPERATOR+= nad instanciou CLASS [slice_array<TType>] a VALARRAY zadanym ako PARAMETER.
+   E. OPERATOR-= aplikuje BINARY OPERATOR-= nad instanciou CLASS [slice_array<TType>] a VALARRAY zadanym ako PARAMETER.
+   F. OPERATOR*= aplikuje BINARY OPERATOR*= nad instanciou CLASS [slice_array<TType>] a VALARRAY zadanym ako PARAMETER.
+   G. OPERATOR/= aplikuje BINARY OPERATOR/= nad instanciou CLASS [slice_array<TType>] a VALARRAY zadanym ako PARAMETER.
+   H. OPERATOR%= aplikuje BINARY OPERATOR%= nad instanciou CLASS [slice_array<TType>] a VALARRAY zadanym ako PARAMETER.
+   I. OPERATOR&= aplikuje BINARY OPERATOR&= nad instanciou CLASS [slice_array<TType>] a VALARRAY zadanym ako PARAMETER.
+   J. OPERATOR|= aplikuje BINARY OPERATOR|= nad instanciou CLASS [slice_array<TType>] a VALARRAY zadanym ako PARAMETER.
+   K. OPERATOR^= aplikuje BINARY OPERATOR^= nad instanciou CLASS [slice_array<TType>] a VALARRAY zadanym ako PARAMETER.
+   L. OPERATOR<<= aplikuje BINARY OPERATOR<<= nad instanciou CLASS [slice_array<TType>] a VALARRAY zadanym ako PARAMETER.
+   M. OPERATOR>>= aplikuje BINARY OPERATOR>>= nad instanciou CLASS [slice_array<TType>] a VALARRAY zadanym ako PARAMETER.
+28. CLASS [gslice] umoznuje reprezentovat VIAC DIMENZIONALNE SLICES (napriklad SUBMATRICES) vo VALARRY. CLASS [gslice] je mozne pouzit ako PARAMETER pre OPERATOR valarray<TType>.operator[](), ktory vracia instanciu CLASS [gslice_array<TType>]. CLASS CLASS [gslice] ma nasledujuce MEMBERS.
+   A. CONSTRUCTOR vytvara instanciu CLASS [gslice].
+   B. METHOD start() vracia poziciu 1 ITEM v SLICE.
+   C. METHOD size() vracia pocet ITEMS v kazdej dimenzii SLICE. RETURN TYPE je CLASS [valarray<size_t>].
+   D. METHOD stride() vracia pocet ITEMS vo VALARAY, ktore sa nachzaju medzi 2 ITEMS v kazdej dimenzii SLICE. RETURN TYPE je CLASS [valarray<size_t>].
+29. Pre CLASS [gslice_array<TType>] platia nasledujuce fakty.
+   A. Instancia CLASS [gslice_array<TType>] je vratena pomocou OPERATOR valarray<TType>.operator[]() ak je jeho PARAMETER instancia CLASS [gslice].
+   B. CLASS [gslice_array<TType>] obsahuje pretazene ARITHMETIC OPERATORS pomocou, ktorych je mozne menit ITEMS v instancii ClASS [gslice_array<TType>] a tym aj ITEMS vo VALARRAY, z ktoreho bola instancia CLASS [gslice_array<TType>] vytvoreny. Tym je mozne lahko implementovat matematicke operacie nad SUBMATICAMI z MATICE reprezentovanej VALARRAY.
+30. CLASS [gslice_array<TType>] ma nasledujuce MEMBERS.
+   A. CONSTRUCTOR vytvara instanciu CLASS [gslice_array<TType>].
+   B. DESTRUCTOR uvolnuje RESOURCES asociovane s instanciou CLASS [gslice_array<TType>].
+   C. OPERATOR priraduje do instancie CLASS [gslice_array<TType>] bud inu instanciu CLASS [gslice_array<TType>], kopiu zadanej VALUE, alebo VALUES z VALARRAY.
+   D. OPERATOR+= aplikuje BINARY OPERATOR+= nad instanciou CLASS [gslice_array<TType>] a VALARRAY zadanym ako PARAMETER.
+   E. OPERATOR-= aplikuje BINARY OPERATOR-= nad instanciou CLASS [gslice_array<TType>] a VALARRAY zadanym ako PARAMETER.
+   F. OPERATOR*= aplikuje BINARY OPERATOR*= nad instanciou CLASS [gslice_array<TType>] a VALARRAY zadanym ako PARAMETER.
+   G. OPERATOR/= aplikuje BINARY OPERATOR/= nad instanciou CLASS [gslice_array<TType>] a VALARRAY zadanym ako PARAMETER.
+   H. OPERATOR%= aplikuje BINARY OPERATOR%= nad instanciou CLASS [gslice_array<TType>] a VALARRAY zadanym ako PARAMETER.
+   I. OPERATOR&= aplikuje BINARY OPERATOR&= nad instanciou CLASS [gslice_array<TType>] a VALARRAY zadanym ako PARAMETER.
+   J. OPERATOR|= aplikuje BINARY OPERATOR|= nad instanciou CLASS [gslice_array<TType>] a VALARRAY zadanym ako PARAMETER.
+   K. OPERATOR^= aplikuje BINARY OPERATOR^= nad instanciou CLASS [gslice_array<TType>] a VALARRAY zadanym ako PARAMETER.
+   L. OPERATOR<<= aplikuje BINARY OPERATOR<<= nad instanciou CLASS [gslice_array<TType>] a VALARRAY zadanym ako PARAMETER.
+   M. OPERATOR>>= aplikuje BINARY OPERATOR>>= nad instanciou CLASS [gslice_array<TType>] a VALARRAY zadanym ako PARAMETER.
+31. Pre CLASS [mask_array<TType>] platia nasledujuce fakty.
+   A. Instancia CLASS [mask_array<TType>] je vratena pomocou OPERATOR valarray<TType>.operator[]() ak je jeho PARAMETER instancia CLASS [valaray<bool>].
+   B. CLASS [valaray<bool>] obsahuje FLAGS, ktore urcuju, ktore ITEMS z VALARRAY sa vyberu do SLICE.
+   C. CLASS [mask_array<TType>] obsahuje pretazene ARITHMETIC OPERATORS pomocou, ktorych je mozne menit ITEMS v intancii CLASS [mask_array<TType>] a tym aj ITEMS vo VALARRAY, z ktoreho bola INSTANCIA CLASS [mask_array<TType>] vytvorena.
+32. CLASS [mask_array<TType>] ma nasledujuce MEMBERS.
+   A. CONSTRUCTOR vytvara instanciu CLASS [mask_array<TType>].
+   B. DESTRUCTOR uvolnuje RESOURCES asociovane s instanciou CLASS [mask_array<TType>].
+   C. OPERATOR priraduje do instancie CLASS [mask_array<TType>] bud inu instanciu CLASS [mask_array<TType>], kopiu zadanej VALUE, alebo VALUES z VALARRAY.
+   D. OPERATOR+= aplikuje BINARY OPERATOR+= nad instanciou CLASS [mask_array<TType>] a VALARRAY zadanym ako PARAMETER.
+   E. OPERATOR-= aplikuje BINARY OPERATOR-= nad instanciou CLASS [mask_array<TType>] a VALARRAY zadanym ako PARAMETER.
+   F. OPERATOR*= aplikuje BINARY OPERATOR*= nad instanciou CLASS [mask_array<TType>] a VALARRAY zadanym ako PARAMETER.
+   G. OPERATOR/= aplikuje BINARY OPERATOR/= nad instanciou CLASS [mask_array<TType>] a VALARRAY zadanym ako PARAMETER.
+   H. OPERATOR%= aplikuje BINARY OPERATOR%= nad instanciou CLASS [mask_array<TType>] a VALARRAY zadanym ako PARAMETER.
+   I. OPERATOR&= aplikuje BINARY OPERATOR&= nad instanciou CLASS [mask_array<TType>] a VALARRAY zadanym ako PARAMETER.
+   J. OPERATOR|= aplikuje BINARY OPERATOR|= nad instanciou CLASS [mask_array<TType>] a VALARRAY zadanym ako PARAMETER.
+   K. OPERATOR^= aplikuje BINARY OPERATOR^= nad instanciou CLASS [mask_array<TType>] a VALARRAY zadanym ako PARAMETER.
+   L. OPERATOR<<= aplikuje BINARY OPERATOR<<= nad instanciou CLASS [mask_array<TType>] a VALARRAY zadanym ako PARAMETER.
+   M. OPERATOR>>= aplikuje BINARY OPERATOR>>= nad instanciou CLASS [mask_array<TType>] a VALARRAY zadanym ako PARAMETER.
+33. CLASS [indirect_array<TType>] ma nasledujuce MEMBERS.
+   A. Instancia CLASS [indirect_array<TType>] je vratena pomocou OPERATOR valarray<TType>.operator[]() ak je jeho PARAMETER instancia CLASS [valaray<size_t>].
+   B. CLASS [valaray<size_t>] obsahujuje INDEXY, ktore urcuju, PORADIE ITEMS z VALARAY v akom sa ulozia do SLICE. INDEXY sa NESMU OPAKOVAT.
+   C. CLASS [indirect_array<TType>] obsahuje pretazene ARITHMETIC OPERATORS pomocou, ktorych je mozne menit ITEMS v instancii CLASS [indirect_array<TType>] a tym aj ITEMS vo VALARRAY, z ktoreho bola instancia CLASS [indirect_array<TType>] vytvorena.
+34. CLASS [indirect_array<TType>] ma nasledujuce MEMBERS.
+   A. CONSTRUCTOR vytvara instanciu CLASS [indirect_array<TType>].
+   B. DESTRUCTOR uvolnuje RESOURCES asociovane s instanciou CLASS [indirect_array<TType>].
+   C. OPERATOR priraduje do instancie CLASS [indirect_array<TType>] bud inu instanciu CLASS [indirect_array<TType>], kopiu zadanej VALUE, alebo VALUES z VALARRAY.
+   D. OPERATOR+= aplikuje BINARY OPERATOR+= nad instanciou CLASS [indirect_array<TType>] a VALARRAY zadanym ako PARAMETER.
+   E. OPERATOR-= aplikuje BINARY OPERATOR-= nad instanciou CLASS [indirect_array<TType>] a VALARRAY zadanym ako PARAMETER.
+   F. OPERATOR*= aplikuje BINARY OPERATOR*= nad instanciou CLASS [indirect_array<TType>] a VALARRAY zadanym ako PARAMETER.
+   G. OPERATOR/= aplikuje BINARY OPERATOR/= nad instanciou CLASS [indirect_array<TType>] a VALARRAY zadanym ako PARAMETER.
+   H. OPERATOR%= aplikuje BINARY OPERATOR%= nad instanciou CLASS [indirect_array<TType>] a VALARRAY zadanym ako PARAMETER.
+   I. OPERATOR&= aplikuje BINARY OPERATOR&= nad instanciou CLASS [indirect_array<TType>] a VALARRAY zadanym ako PARAMETER.
+   J. OPERATOR|= aplikuje BINARY OPERATOR|= nad instanciou CLASS [indirect_array<TType>] a VALARRAY zadanym ako PARAMETER.
+   K. OPERATOR^= aplikuje BINARY OPERATOR^= nad instanciou CLASS [indirect_array<TType>] a VALARRAY zadanym ako PARAMETER.
+   L. OPERATOR<<= aplikuje BINARY OPERATOR<<= nad instanciou CLASS [indirect_array<TType>] a VALARRAY zadanym ako PARAMETER.
+   M. OPERATOR>>= aplikuje BINARY OPERATOR>>= nad instanciou CLASS [indirect_array<TType>] a VALARRAY zadanym ako PARAMETER.
+//-------------------------------------------------------------------------------------------------------

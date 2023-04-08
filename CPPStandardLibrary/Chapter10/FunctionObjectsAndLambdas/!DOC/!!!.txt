@@ -1,0 +1,72 @@
+//-------------------------------------------------------------------------------------------------------
+1. Solution demonstruje pouzitie FUNCTION OBJECTS a LAMBDA FUNCTIONS.
+2. FUNCTION OBJECT je instancia CLASS, ktora ma pretazeny OPERATOR().
+3. FUNCTION OBJECTS je mozne pouzivat vsade tam, kde je nutne ako PARAMETER FUNCTION preniest CALLBACK FUNCTION.
+!!! 4. FUNCTION OBJECTS maju oproti klasickym FUNCTIONS nasledujuce vyhody.
+   A. FUNCTION OBJECTS su instanciami CLASS, ktore mozu mat INTERNAL STATE prenositelny medzi dvoma volaniami FUNCTION OBJECT. FUNCTIONS interny stav NEMAJU.
+   B. FUNCTION OBJECTS reprezentuju CUSTOM TYPE. Vdaka tomu je mozne vykonat SPECIALIZATIONS z TEMPLATES, ktore prisposobia svoje chovanie podla TYPE FUNCTION OBJECT.
+   C. FUNCTION OBJECTS su spravidla rychlejsie ako FUNCTIONS volane cez POINTERS.
+5. FUNCTION OBJECTS su spravidla prenasane do FUNCTIONS BY-VALUE. Vyhodou prenosu BY-VALUE je, ze FUNCTION OBJECTS je mozne vytvorit ako TEMPORARY OBJECTS. Ak by sa FUNCTION OBJECTS prenasali BY-REFERENCE, TEMPORARY OBJECTS by NEBOLO mozne pouzit, pretoze C++ NEUMOZNUJE prenos TEMPORARY OBJECTS BY-REFERENCE.
+!!! 6. ALGORITHM for_each() vracia ako RETURN VALUE FUNCTION OBJECT, ktory je zadany ako POSLEDNY PARAMETER ALGORITHM. To je mozne vyuzit pre zistenie STATE, ktory bol pocas iterovania ITEMS do FUNCTION OBJECT ulozeny.
+!!!!! 7. PREDICATES su FUNCTION OBJECTS, ktore ako RETURN VALUE vracaju hodnotu BOOL. PREDICATES NIKDY NESMU mat INTERNY STATE. Je to preto, lebo ALGORITHMS, kde sa najcastejsie pouzivaju NEGARANTUJU, ze si nevytvaraju kopie FUNCTION OBJECTS. Ak si ich vytvoria, potom si kopie vytvaraju vlastne kopie ich STATES a ALGORITHM tak NEMUSI FUNGOVAT SPRAVNE.
+8. C++ STANDARD LIBRARY v LIBRARY <functional> definuje nasledujuce FUNCTION OBJECTS.
+   A. STRUCTURE [negate<TTYPE>] implementuje funkcionalitu UNARY OPERATOR-.
+   B. STRUCTURE [plus<TTYPE>] implementuje funkcionalitu BINARY OPERATOR+.
+   C. STRUCTURE [minus<TTYPE>] implementuje funkcionalitu BINARY OPERATOR-.
+   D. STRUCTURE [multiples<TTYPE>] implementuje funkcionalitu BINARY OPERATOR*.
+   E. STRUCTURE [divides<TTYPE>] implementuje funkcionalitu BINARY OPERATOR/.
+   F. STRUCTURE [modulus<TTYPE>] implementuje funkcionalitu BINARY OPERATOR%.
+   G. STRUCTURE [equal_to<TTYPE>] implementuje funkcionalitu BINARY OPERATOR==.
+   H. STRUCTURE [not_equal_to<TTYPE>] implementuje funkcionalitu BINARY OPERATOR!=.
+   I. STRUCTURE [less<TTYPE>] implementuje funkcionalitu BINARY OPERATOR<.
+   J. STRUCTURE [greater<TTYPE>] implementuje funkcionalitu BINARY OPERATOR>.
+   K. STRUCTURE [less_equal<TTYPE>] implementuje funkcionalitu BINARY OPERATOR<=.
+   L. STRUCTURE [greater_equal<TTYPE>] implementuje funkcionalitu BINARY OPERATOR>=.
+   M. STRUCTURE [logical_not<TTYPE>] implementuje funkcionalitu UNARY OPERATOR!.
+   N. STRUCTURE [logical_and<TTYPE>] implementuje funkcionalitu BINARY OPERATOR&&.
+   O. STRUCTURE [logical_or<TTYPE>] implementuje funkcionalitu BINARY OPERATOR||.
+   P. STRUCTURE [bit_not<TTYPE>] implementuje funkcionalitu UNARY OPERATOR~.
+   Q. STRUCTURE [bit_and<TTYPE>] implementuje funkcionalitu BINARY OPERATOR&.
+   R. STRUCTURE [bit_or<TTYPE>] implementuje funkcionalitu BINARY OPERATOR|.
+   S. STRUCTURE [bit_xor<TTYPE>] implementuje funkcionalitu BINARY OPERATOR~.
+9. FUNCTION ADAPTERS su specificke FUNCTION OBJECTS, ktore sluzia na vytvaranie novych FUNCTION OBJECTS. Vytvaranie FUNCTION OBJECTS je realizovane substituovanim PARAMTERS povodnych FUNCTION OBJECTS za PLACEHOLDERS.
+10. C++ STANDARD LIBRARY definuje FUNCTION bind<TReturnValue,TFunction,TArguments...>(), ktora umoznuje mapovat jednotlive PARAMETERS CALLABLE OBJECTS tak, ze RETURN VALUE predstavuje CALLABLE OBJECT, ktora uz ma namapovane prislusne PARAMETERS na definovane hodnoty. Pre FUNCTION bind<TReturnValue,TFunction,TArguments...>() platia nasledujuce zasady.
+   A. FUNCTION bind() mapuje PARAMETERS CALLABLE OBJECT pricom vracia CALLABLE OBJECT, ktory vola povodny CALLABLE OBJECT uz s namapovanymi PARAMETERS.
+   B. FUNCTION bind() existuje v 2 verziach, kde druha verzia umoznuje definovat RETURN VALUE TYPE, ktory ma novovytvoreny CALLABLE OBJECT vracat.
+   !!! C. V NAMESPACE [std::placeholders] je definovanych 'N' PLACEHOLDERS. PLACEHOLDERS identifikuju PARAMETERS CALLABLE OBJECT, ktory FUNCTION bind() vracia ako RETURN VALUE. PLACEHOLDERS sa pouzivaju na urcenie, kde sa maju pouzit PARAMETERS novovytvoreneho CALLABLE OBJECT pri volani povodneho CALLABLE OBJECT.
+   !!!!! D. PLACEHOLDERS sluzia ako PARAMETERS NOVODEFINOVANEHO CALLABLE OBJECT, ktory FUNCTION bind() vracia. To znaci, ze ak povodna FUNCTION ma napriklad 6 PARAMETERS a vo FUNCTION bind() sa definuju 2 PLACEHOLDERS, tak CALLABLE OBJECT, ktory FUNCTION bind() vrati ako RETURN VALUE bude mat 2 PARAMETERS. PLACEHOLDERS urcuju kde sa PARAMETERS NOVODEFINOVANEHO CALLABLE OBJECT pouziju pri volani povodneho CALLABLE OBJECT.
+   E. FUNCTION bind() sa casto pouziva v spojeni s preddefinovanymi FUNCTION OBJECTS, ktore su definovane v LIBRARY <functional>, umoznujuc tak vytvarat komplexne FUNCTIONS OBJECTS s namapovanymi PARAMETERS.
+   !!! F. FUNCTION bind() je mozne pouzit aj na volanie METHODS, kde PLACEHOLDER [_1] reprezentuje THIS POINTER.
+   !!! G. Podla poctu PLACEHOLDERS moze vrateny CALLABLE OBJECT mat aj VIAC PARAMETERS ako povodny CALLABLE OBJECT, ktory volanim FUNCTION bind() sa zapuzdruje. Napriklad z FUNCTION, ktora ma 2 PARAMETRE je mozne spravit CALLABLE OBJECT s 3. PARAMETERS, kde 2. a 3. PLACEHOLDER sa scitavaju.
+   !!!!! H. TEMPLATE PARAMETER 'TFunction' moze byt aj FIELD CLASS, alebo STRUCTURE. V takom pripade MUSI TEMPLATE PARAMETER 'TArguments...' obsahovat 1 ITEM reprezentujuci OBJECT, pre ktoru sma byt FIELD volany.
+   I. FUNCTION bind() moze byt volana aj pre POINTERS, REFERENCES a SHARED POINTERS.
+11. TEMPLATE FUNCTION mem_fn<TReturnValue,TClass,TArguments...>() je FUNCTION ADAPTER vytvarajuci FUNCTION OBJECT, ktory obaluje METHOD. Vysledkom je CALLABLE OBJECT volajuci METHOD daneho OBJECT.
+12. Pouzitie LAMBDA FUNCTIONS namiesto BINDERS ci FUNCTION OBJECTS vyrazne zvysuje citatelnost CODE, a preto by LAMBDA FUNCTIONS mali byt preferovanym riesenim v situacii ked je potrebne do FUNCTION zaslat CALLABLE OBJECT.
+13. Pouzitie FUNCTION OBJECTS moze byt vyhodnejsie oproti pouzitiu LAMBDA FUNCTIONS vtedy, ked CALLABLE OBJECT ma byt STATEFUL. LAMBDA FUNCTION vtedy musi STATE ulozit do externej VARIABLE, zatial co FUNCTION OBJECT ho moze ulozit do FIELD cim je CODE kompaktnejsi, pretoze nepotrebuje externe zavislosti.
+14. LAMBDA FUNCTIONS je mozne pouzit aj na definovanie SORTING a HASH FUNCTIONS pouzivanych v STL COLLECTIONS. Kedze vsak STL COLLECTION vyzaduju definovanie TYPE pre SORTING a HASH FUNCTIONS, je vyhodne pouzit KEYWORD [decltype] na urcenie tohto TYPE. SORTING a HASH FUNCTIONS pomocou FUNCTION OBJECTS je vsak prehladnejsie a intitivnejsie ako pouzitie LAMBDA FUNCTIONS.
+//-------------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------------
+Pouzitie PLACEHOLDERS.
+
+1. FUNCTION XXX() ma 4 PARAMETERS.
+
+   void XXX(int, int, int, int).
+
+2. Nasledujuci CODE vytvori NOVY CALLABLE OBJECT, ktory bude mat 2 PARAMETERS. PARAMETERS FUNCTION bind() maju nasledujuci vyznam.
+   A. PARAMETER 'XXX' reprezentuje CALLABLE OBJECT, ktory ma novovytvoreny CALLABLE OBJECT obalovat.
+   B. PARAMETER '100' reprezentuje 1. PARAMETER FUNCTION XXX(). Pri volani CALLABLE OBJECT 'CallableObject' bude 1. PARAMETER FUNCTION XXX() VZDY subsitutovany hodnotou 100.
+   C. PARAMETER '_1' reprezentuje 2. PARAMETER FUNCTION XXX(). Kedze sa pouzil PLACEHOLDER [_1], tak pri volani CALLABLE OBJECT 'CallableObject' bude tento PLACEHOLDER nahradeny 1. PARAMETER pouzitym pri volani CALLABLE OBJECT 'CallableObject'.
+   D. PARAMETER '_2' reprezentuje 3. PARAMETER FUNCTION XXX(). Kedze sa pouzil PLACEHOLDER [_2], tak pri volani CALLABLE OBJECT 'CallableObject' bude tento PLACEHOLDER nahradeny 2. PARAMETER pouzitym pri volani CALLABLE OBJECT 'CallableObject'.
+   E. PARAMETER '200' reprezentuje 4. PARAMETER FUNCTION XXX(). Pri volani CALLABLE OBJECT 'CallableObject' bude 4. PARAMETER FUNCTION XXX() VZDY subsitutovany hodnotou 200.
+
+   auto															CallableObject=bind(XXX,100,_1,_2,200).
+
+3. Nasledujuci CODE pouziva vytvoreny CALLABLE OBJECT. Kedze vo FUNCTION bind() sa pouzili PLACEHOLDERS [_1] a [_2], tak CALLABLE OBJECT 'CallableObject' ma 2 PARAMETERS.
+
+   CallableObject(777,888).
+
+4. Predchadzajuci CODE sa interpretuje ako nasledujuce volanie FUNCTION XXX().
+
+   XXX(100,777,888,200).
+//-------------------------------------------------------------------------------------------------------

@@ -1,0 +1,155 @@
+﻿//-------------------------------------------------------------------------------------------------------
+1. Solution demonstruje pouzitie a implementaciu ALLOCATORS.
+2. ALLOCATOR je C++ CONCEPT, ktory umoznuje implementovat CUSTOM MEMORY MODELS. MEMORY MODEL definuje sposob ako sa v C++ alokuje DYNAMIC MEMORY.
+3. C++ 11 definuje viacero zmien v definicii C++ STANDARD LIBRARY, ktore zjednodusuju pouzitie ALLOCATORS.
+   A. V C++ 11 uz nie je vyzadovane, aby ALLOCATORS rovnakeho TYPE boli povazovane za IDENTICKE. ALLOCATORS su identicke iba vtedy, ak MEMORY alokovana pomocou ALLOCATOR 1, moze byt uvolnena ALLOCATOR 2.
+   B. V C++ 11 maju ALLOCATORS definovane TYPE TRAITS umoznuju urcit vlastnosti ALLOCATOR ako je schopnost pouzit ALLOCATOR pri kopirovani COLLECTIONS pomocou COPY SEMANTICS, MOVE SEMANTICS alebo SWAP.
+   C. V C++ 11 su definovane ALLOCATOR ADAPTERS, ktore umoznuju propagovat ALLOCATOR z COLLECTIONS na COLLECTION ITEMS.
+   D. C++ 11 umoznuje vytvorit POLYMORPHIC ALLOCATOR, ktory umoznuje kopirovanie a presun ITEMS medzi COLLECTIONS s rozlicnymi ALLOCATOR TYPES, ak su ALLOCATOR TYPES identicke.
+4. ALLOCATOR je CUSTOM CLASS, ktora MUSI implementovat nasledujuce METHODS.
+   A. METHOD ALLOCATOR::allocate() alokuje MEMORY pre 'N' ELEMENTS. Alokovana MEMORY je vratena ako RETURN VALUE.
+   B. METHOD ALLOCATOR::construct() inicializuje ELEMENT identifikovany pomocou POINTER, ktory sa prenasa ako 1. PARAMETER na VALUE, ktora je prenesena ako 2. PARAMETER.
+   C. METHOD ALLOCATOR::destroy() odstranuje ELEMENT identifikovany pomocou POINTER, ktory sa prenasa ako 1. METHOD vola DESTRUCTOR daneho ELEMENT, ale NEUVOLNUJE MEMORY.
+   D. METHOD ALLOCATOR::deallocate() uvolnuje MEMORY pre 'N' ELEMENTS. MEMORY je identifikovana pomocou POINTER, ktory sa prenasa ako 1. PARAMETER.
+!!! 5. C++ CLASSES, ktore interne pouzivaju ALLOCATORS VZDY obsahuje METHOD XXX::get_allocator(), ktora vracia ALLOCATOR TYPE. Tento TYPE je mozne pomocou OPERATOR== porovnat s inym ALLOCATOR TYPE a zistit ci 2 CLASSES pouzivaju ten isty ALLOCATOR TYPE.
+!!!!! 6. Ak 2 CLASSES pouzivaju ten ISTY ALLOCATOR TYPE, potom je mozne STORAGE alokovany ALLOCATOR v 1. CLASS uvolnit pomocou ALLOCATOR, ktoru pouziva 2. CLASS.
+7. TEMPLATE CLASS [uses_allocator<TType,TAllocatorType>] umoznuje zistit ci TYPE [TType] interne pouziva ALLOCATOR TYPE [TAllocatorType].
+8. CUSTOM ALLOCATORS by mali mat nasledujuce MEMBERS.
+   1. TYPE [ALOCATOR::value_type] vracia TYPE pre ktory ALLOCATOR alokuje MEMORY. Spravidla sa jedna o identicky TYPE ako TYPE PARAMETER CUSTOM ALLOCATOR.
+   2. TYPE [ALOCATOR::size_type] vracia TYPE pouzivany na reprezentaciu velkosti alokovanych OBJECTS. Spravidla sa pouziva TYPE [size_t].
+   3. TYPE [ALOCATOR::difference_type] vracia TYPE pouzivany na reprezentaciu vzdialenosti medzi dvoma POINTERS. Spravidla sa pouziva TYPE [ptrdiff_t].
+   4. TYPE [ALOCATOR::pointer] vracia TYPE reprezentujuci POINTERS, ktore sa pouzivaju v CUSTOM ALLOCATOR. Spravidla sa pouziva TYPE [ALOCATOR::value_type*].
+   5. TYPE [ALOCATOR::const_pointer] vracia TYPE reprezentujuci CONST POINTERS, ktore sa pouzivaju v CUSTOM ALLOCATOR. Spravidla sa pouziva TYPE [const ALOCATOR::value_type*].
+   6. TYPE [ALOCATOR::void_pointer] vracia TYPE reprezentujuci VOID POINTERS, ktore sa pouzivaju v CUSTOM ALLOCATOR. Spravidla sa pouziva TYPE [ALOCATOR::void*].
+   7. TYPE [ALOCATOR::const_void_pointer] vracia TYPE reprezentujuci CONST VOID POINTERS, ktore sa pouzivaju v CUSTOM ALLOCATOR. Spravidla sa pouziva TYPE [const ALOCATOR::void*].
+   8. TYPE [ALOCATOR::reference] vracia TYPE reprezentujuci REFERENCES, ktore sa pouzivaju v CUSTOM ALLOCATOR. Spravidla sa pouziva TYPE [ALOCATOR::value_type*].
+   9. TYPE [ALOCATOR::const_reference] vracia TYPE reprezentujuci CONST REFERENCES, ktore sa pouzivaju v CUSTOM ALLOCATOR. Spravidla sa pouziva TYPE [const ALOCATOR::value_type*].
+   10. TYPE [ALOCATOR::propagate_on_container_copy_assignment] je TYPE TRAIT urcujuci ci CUSTOM ALLOCATOR ma byt skopirovany pomocou COPY SEMANTICS ak sa pomocou COPY SEMANTICS kopiruje COLLECTION OBJECT, ktory obsahuje instanciu CUSTOM ALLOCATOR. DEFAULT VALUE je reprezentovany TYPE [false_type].
+   11. TYPE [ALOCATOR::propagate_on_container_move_assignment] je TYPE TRAIT urcujuci ci CUSTOM ALLOCATOR ma byt skopirovany pomocou MOVE SEMANTICS ak sa pomocou MOVE SEMANTICS kopiruje COLLECTION OBJECT, ktory obsahuje instanciu CUSTOM ALLOCATOR. DEFAULT VALUE je reprezentovany TYPE [false_type].
+   12. TYPE [ALOCATOR::propagate_on_container_swap] je TYPE TRAIT urcujuci ci CUSTOM ALLOCATOR ma byt SWAPPED ak sa vykonava SWAP COLLECTION OBJECT, ktory obsahuje instanciu CUSTOM ALLOCATOR. DEFAULT VALUE je reprezentovany TYPE [false_type].
+   13. TYPE [ALOCATOR::is_always_equal] je TYPE TRAIT urcujuci ci 2 instancie CUSTOM ALLOCATOR TYPE su VZDY IDENTICKE. V C++ 11 mozu 2 instancie toho isteho ALLOCATOR byt NEIDENTICKE, ak MEMORY alokovana jednou instanciou ALLOCATOR TYPE NEMOZE byt uvolnena inou instanciou ALLOCATOR TYPE.
+   14. TEMPLATE STRUCTURE [ALOCATOR::rebind<TType>] umoznuje kazdemu CUSTOM ALLOCATOR nepriamo alokovat MEMORY pre lubovolny TYPE 'TType'.
+   15. DEFAULT CONSTRUCTOR. Vytvara DEFAULT INSTANCE ALLOCATOR.
+   16. COPY CONSTRUCTOR. Vytvara kopiu ALLOCATOR pomocou COPY SEMANTICS.
+   17. MOVE CONSTRUCTOR. Vytvara kopiu ALLOCATOR pomocou MOVE SEMANTICS.
+   18. DESTRUCTOR. Uvolnuje RESOURCES alokovane ALLOCATOR.
+   19. OPERATOR== vracia TRUE ak CUSTOM ALLOCATORS su schopne vzajomne dealokovat MEMORY, ktoru jeden z CUSTOM ALLOCATOR alokoval.
+   20. OPERATOR!= vracia TRUE ak CUSTOM ALLOCATORS nie su schopne vzajomne dealokovat MEMORY, ktoru jeden z CUSTOM ALLOCATOR alokoval.
+   21. METHOD ALOCATOR::address() pre REFERENCE vracia POINTER obsahujucu adresu na ktoru REFERENCE odkazuje. OVERLOADED VERSION vracia pre CONST REFERENCE CONST POINTER.
+   22. METHOD ALOCATOR::max_size() vracia maximalnu velkost OBJECT, ktory je pomocou CUSTOM ALLOCATOR mozne alokovat.
+   23. METHOD ALLOCATOR::alocate() alokuje MEMORY pre 'N' OBJECTS. Hodnota 'N' musi byt VACSIA ako 0. OVERLOADED VERSION definuje HINT, ktory obsahuje CUSTOM INFORMATION o pozicii odkial ma byt MEMORY alokovana.
+   24. METHOD ALLOCATOR::deallocate() uvolnuje MEMORY pre 'N' OBJECTS.
+   25. METHOD ALLOCATOR::construct() vola CONSTRUCTOR vytvoreneho OBJECT.
+   26. METHOD ALLOCATOR::destruct() vola DESTRUCTOR vytvoreneho OBJECT.
+   27. METHOD ALLOCATOR::select_on_container_copy_construction() vracia kopiu zadaneho ALLOCATOR. FUNCTION je volana v COPY CONSTRUCTORS standardnych CONTAINTERS pre vytvorenie kopie CUSTOM ALLOCATOR.
+9. Minimalisticka verzia CUSTOM ALLOCATORS MUSI mat MINIMALNE nasledujuce MEMBERS.
+   A. TYPE [ALLOCATOR::value_type], ktory vracia TYPE pre ktory ALLOCATOR alokuje MEMORY. Spravidla sa jedna o identicky TYPE ako TYPE PARAMETER CUSTOM ALLOCATOR.
+   B. TEMPLATE COPY CONSTRUCTOR, ktory kopiruje interny STATE ALLOCATOR.
+   C. COPY CONSTRUCTOR, ak ALLOCATOR ma interny STATE.
+   D. MOVE CONSTRUCTOR, ak ALLOCATOR ma interny STATE.
+   E. DESTRUCTOR, ak ALLOCATOR ma interny STATE.
+   F. OPERATOR==, ktory vracia TRUE ak CUSTOM ALLOCATORS su schopne vzajomne dealokovat MEMORY, ktoru jeden z CUSTOM ALLOCATOR alokoval.
+   G. OPERATOR!=, ktory vracia TRUE ak CUSTOM ALLOCATORS nie su schopne vzajomne dealokovat MEMORY, ktoru jeden z CUSTOM ALLOCATOR alokoval.
+   H. METHOD ALLOCATOR::alocate(), ktora alokuje MEMORY pre 'N' OBJECTS. Hodnota 'N' musi byt VACSIA ako 0. OVERLOADED VERSION definuje HINT, ktory obsahuje CUSTOM INFORMATION o pozicii odkial ma byt MEMORY alokovana.
+   I. METHOD ALLOCATOR::deallocate(), ktora uvolnuje MEMORY pre 'N' OBJECTS.
+!!! 10. Pretoze C++ poskytuje alternativne implementacie pre METHOD ALLOCATOR::construct() a METHOD ALLOCATOR::destruct(), CUSTOM ALLOCATOR ich NEMUSI EXPLICITNE implementovat.
+!!! 11. C++ 11 definuje VARIADIC TEMPLATE CLASS [scoped_allocator_adaptor<TOuterAlloc,...TInnerAlloc>] pre ktoru platia nasledujuce zasady.
+   A. TYPE PARAMETERS CLASS [scoped_allocator_adaptor<TOuterAlloc,...TInnerAlloc>] su ALLOCATOR TYPES.
+   B. TYPE PARAMETERS reprezentuju ALLOCATORS, ktore sa pouziju pri alokacii COLLECTION ITEMS.
+   !!!!! C. Ak COLLECTION obsahuje ako ITEM INU COLLECTION (vnorena COLLECTION), tak CLASS [scoped_allocator_adaptor<TOuterAlloc,...TInnerAlloc>] umoznuje pre kazde jedno vnorenie urcit ALLOCATOR. To znamena, ze napriklad pre TYPE [vector<list<set>>] 1. TYPE PARAMETER definuje ALLOCATOR, ktory pouzije CLASS [vector], 2. TYPE PARAMETER definuje ALLOCATOR, ktory pouzije CLASS [list] a 3. TYPE PARAMETER definuje ALLOCATOR, ktory pouzije CLASS [list].
+12. CLASS [scoped_allocator_adaptor<TOuterAlloc,...TInnerAlloc>] ma nasledujuce MEMBERS.
+   1. TYPE [outer_allocator_type] urcuje ALLOCATOR na 1. urovni vnorenej COLLECTION.
+   2. TYPE [outer_allocator_type] urcuje ALLOCATOR na 2. urovni vnorenej COLLECTION. Kedze TYPE [outer_allocator_type] je VARIADIC TYPE PARAMETER je ho mozne rekurzivne rozbalit pre kazdu uroven vnorenej COLLECTION.
+   3. TYPE [value_type] vracia TYPE pre ktory ALLOCATOR alokuje MEMORY. Spravidla sa jedna o identicky TYPE ako TYPE PARAMETER CUSTOM ALLOCATOR. Je identicky s TYPE [allocator_traits<TOuterAlloc>::value_type].
+   4. TYPE [size_type] vracia TYPE pouzivany na reprezentaciu velkosti alokovanych OBJECTS. Spravidla sa pouziva TYPE [size_t]. Je identicky s TYPE [allocator_traits<TOuterAlloc>::size_type].
+   5. TYPE [difference_type] vracia TYPE pouzivany na reprezentaciu vzdialenosti medzi dvoma POINTERS. Spravidla sa pouziva TYPE [ptrdiff_t]. Je identicky s TYPE [allocator_traits<TOuterAlloc>::difference_type].
+   6. TYPE [pointer] vracia TYPE reprezentujuci POINTERS, ktore sa pouzivaju v CUSTOM ALLOCATOR. Spravidla sa pouziva TYPE [ALOCATOR::value_type*]. Je identicky s TYPE [allocator_traits<TOuterAlloc>::pointer].
+   7. TYPE [const_pointer] vracia TYPE reprezentujuci CONST POINTERS, ktore sa pouzivaju v CUSTOM ALLOCATOR. Spravidla sa pouziva TYPE [const ALOCATOR::value_type*]. Je identicky s TYPE [allocator_traits<TOuterAlloc>::const_pointer].
+   8. TYPE [void_pointer] vracia TYPE reprezentujuci VOID POINTERS, ktore sa pouzivaju v CUSTOM ALLOCATOR. Spravidla sa pouziva TYPE [ALOCATOR::void*]. Je identicky s TYPE [allocator_traits<TOuterAlloc>::void_pointer].
+   9. TYPE [const_void_pointer] vracia TYPE reprezentujuci CONST VOID POINTERS, ktore sa pouzivaju v CUSTOM ALLOCATOR. Spravidla sa pouziva TYPE [const ALOCATOR::void*]. Je identicky s TYPE [allocator_traits<TOuterAlloc>::const_void_pointer].
+   10. TYPE [reference] vracia TYPE reprezentujuci REFERENCES, ktore sa pouzivaju v CUSTOM ALLOCATOR. Spravidla sa pouziva TYPE [ALOCATOR::value_type*]. Je identicky s TYPE [allocator_traits<TOuterAlloc>::reference].
+   11. TYPE [const_reference] vracia TYPE reprezentujuci CONST REFERENCES, ktore sa pouzivaju v CUSTOM ALLOCATOR. Spravidla sa pouziva TYPE [const ALOCATOR::value_type*]. Je identicky s TYPE [allocator_traits<TOuterAlloc>::const_reference].
+   12. TYPE [propagate_on_container_copy_assignment] je TYPE TRAIT urcujuci ci CUSTOM ALLOCATOR ma byt skopirovany pomocou COPY SEMANTICS ak sa pomocou COPY SEMANTICS kopiruje COLLECTION OBJECT, ktory obsahuje instanciu CUSTOM ALLOCATOR. DEFAULT VALUE je reprezentovany TYPE [false_type].
+   13. TYPE [propagate_on_container_move_assignment] je TYPE TRAIT urcujuci ci CUSTOM ALLOCATOR ma byt skopirovany pomocou MOVE SEMANTICS ak sa pomocou MOVE SEMANTICS kopiruje COLLECTION OBJECT, ktory obsahuje instanciu CUSTOM ALLOCATOR. DEFAULT VALUE je reprezentovany TYPE [false_type].
+   14. TYPE [propagate_on_container_swap] je TYPE TRAIT urcujuci ci CUSTOM ALLOCATOR ma byt SWAPPED ak sa vykonava SWAP COLLECTION OBJECT, ktory obsahuje instanciu CUSTOM ALLOCATOR. DEFAULT VALUE je reprezentovany TYPE [false_type].
+   15. TYPE [is_always_equal] je TYPE TRAIT, ktory je nastaveny na TYPE [true_type] ak kazdy TYPE PARAMETER ma nastaveny TYPE [is_always_equal] na TYPE [true_type]. Inak vracia TYPE [false_type]. V C++ 11 mozu 2 instancie toho isteho ALLOCATOR byt NEIDENTICKE, ak MEMORY alokovana jednou instanciou ALLOCATOR TYPE NEMOZE byt uvolnena inou instanciou ALLOCATOR TYPE.
+   16. TEMPLATE STRUCTURE [rebind<TType>] umoznuje kazdemu CUSTOM ALLOCATOR nepriamo alokovat MEMORY pre lubovolny TYPE.
+   17. CONSTRUCTOR vytvara instanciu ALLOCATOR. OVERLOADED VERSIONS definuju COPY CONSTRUCTOR a MOVE CONSTRUCTOR.
+   18. DESTRUCTOR uvolnuje RESOURCES alokovane ALLOCATOR.
+   19. OPERATOR= priradzuje jednu instanciu ALLOCTOR do druhej. OVERLOADED VERSIONS definuju COPY OPERATOR= a MOVE OPERATOR=.
+   20. OPERATOR== vracia TRUE ak ALLOCATOR ADAPTERS su schopne vzajomne dealokovat MEMORY, ktoru jeden z ALLOCATOR ADAPTER alokoval.
+   21. OPERATOR!= vracia TRUE ak ALLOCATOR ADAPTERS nie su schopne vzajomne dealokovat MEMORY, ktoru jeden z ALLOCATOR ADAPTER alokoval.
+   22. METHOD inner_allocator() vracia REFERENCE an ALLOCATOR na 1. urovni vnorenej COLLECTION.
+   23. METHOD outer_allocator() vracia REFERENCE na ALLOCATOR na 2. urovni vnorenej COLLECTION. Kedze TYPE [outer_allocator_type] je VARIADIC TYPE PARAMETER je ho mozne rekurzivne rozbalit pre kazdu uroven vnorenej COLLECTION.
+   24. METHOD max_size() vracia maximalnu velkost OBJECT, ktory je pomocou CUSTOM ALLOCATOR mozne alokovat.
+   25. METHOD alocate() alokuje MEMORY pre 'N' OBJECTS. Hodnota 'N' musi byt VACSIA ako 0. OVERLOADED VERSION definuje HINT, ktory obsahuje CUSTOM INFORMATION o pozicii odkial ma byt MEMORY alokovana.
+   26. METHOD deallocate() uvolnuje MEMORY pre 'N' OBJECTS.
+   27. METHOD construct() vola CONSTRUCTOR vytvoreneho OBJECT.
+   28. METHOD destruct() vola DESTRUCTOR vytvoreneho OBJECT.
+   29. METHOD select_on_container_copy_construction() vracia kopiu zadaneho ALLOCATOR.
+13. TEMPLATE STRUCTURE [ALLOCATOR::rebind<TType>] je OPTIONAL MEMBER STRUCTURE pre ktoru platia nasledujuce vlastnosti.
+   A. TEMPLATE STRUCTURE [ALLOCATOR::rebind<TType>] MUSI definovat TYPE [other], ktory vracia ALLOCATOR TYPE umoznujuci alokovat OBJECTS TYPE 'TType'.
+   B. TEMPLATE STRUCTURE [ALLOCATOR::rebind<TType>] zmenit TYPE OBJECTS, ktore bude ALLOCATOR alokovat. Ak napriklad ALLOCATOR alokuje OBJECTS TYPE 'XXX', potom TYPE [ALLOCATOR::rebind<YYY>::other] reprezentuje CUSTOM ALLOCATOR, ktory dokaze alokovat OBJECTS TYPE 'YYY'.
+   C. TEMPLATE STRUCTURE [ALLOCATOR::rebind<TType>] sa typicky pouziva v CONTAINERS, ktore okrem alokacie ITEMS, musia alokovat aj pomocne data, ktore su INEHO TYPE ako COLLECTION ITEMS. V takom pripade sa pouzije TEMPLATE STRUCTURE [ALLOCATOR::rebind<TType>] na definovanie ALLOCATOR, ktory je schopny alokovat tieto pomocne data.
+14. CLASS [allocator_traits<TAllocator>] definuje zoznam TRAITS, ktore sa v ALLOCATORS pouzivaju. Ma nasledujuce MEMBERS.
+   A. TYPE [allocator_type] vracia ALLOCATOR TYPE, pre ktory je CLASS [allocator_traits] vytvorena.
+   B. TYPE [value_type] vracia TYPE pre ktory ALLOCATOR alokuje MEMORY. Je identicky s TYPE [ALLOCATOR::value_type].
+   C. TYPE [size_type] vracia TYPE pouzivany na reprezentaciu velkosti alokovanych OBJECTS. Je identicky s TYPE [ALLOCATOR::size_type], ak tento TYPE ALLOCATOR definuje.
+   D. TYPE [difference_type] vracia TYPE pouzivany na reprezentaciu vzdialenosti medzi dvoma POINTERS. Je identicky s TYPE [ALLOCATOR::difference_type], ak tento TYPE ALLOCATOR definuje.
+   E. TYPE [pointer] vracia TYPE reprezentujuci POINTERS, ktore sa pouzivaju v CUSTOM ALLOCATOR. Je identicky s TYPE [ALLOCATOR::pointer], ak tento TYPE ALLOCATOR definuje.
+   F. TYPE [const_pointer] vracia TYPE reprezentujuci CONST POINTERS, ktore sa pouzivaju v CUSTOM ALLOCATOR. Je identicky s TYPE [ALLOCATOR::const_pointer], ak tento TYPE ALLOCATOR definuje.
+   G. TYPE [void_pointer] vracia TYPE reprezentujuci VOID POINTERS, ktore sa pouzivaju v CUSTOM ALLOCATOR. Je identicky s TYPE [ALLOCATOR::void_pointer], ak tento TYPE ALLOCATOR definuje.
+   H. TYPE [const_void_pointer] vracia TYPE reprezentujuci CONST VOID POINTERS, ktore sa pouzivaju v CUSTOM ALLOCATOR. Je identicky s TYPE [ALLOCATOR::const_void_pointer], ak tento TYPE ALLOCATOR definuje.
+   I. TYPE [reference] vracia TYPE reprezentujuci REFERENCES, ktore sa pouzivaju v CUSTOM ALLOCATOR. Je identicky s TYPE [ALLOCATOR::reference], ak tento TYPE ALLOCATOR definuje.
+   J. TYPE [const_reference] vracia TYPE reprezentujuci CONST REFERENCES, ktore sa pouzivaju v CUSTOM ALLOCATOR. Je identicky s TYPE [ALLOCATOR::const_reference], ak tento TYPE ALLOCATOR definuje.
+   K. TYPE [propagate_on_container_copy_assignment] je TYPE TRAIT urcujuci ci CUSTOM ALLOCATOR ma byt skopirovany pomocou COPY SEMANTICS ak sa pomocou COPY SEMANTICS kopiruje COLLECTION OBJECT, ktory obsahuje instanciu CUSTOM ALLOCATOR. DEFAULT VALUE je reprezentovany TYPE [false_type].
+   L. TYPE [propagate_on_container_move_assignment] je TYPE TRAIT urcujuci ci CUSTOM ALLOCATOR ma byt skopirovany pomocou MOVE SEMANTICS ak sa pomocou MOVE SEMANTICS kopiruje COLLECTION OBJECT, ktory obsahuje instanciu CUSTOM ALLOCATOR. DEFAULT VALUE je reprezentovany TYPE [false_type].
+   M. TYPE [propagate_on_container_swap] je TYPE TRAIT urcujuci ci CUSTOM ALLOCATOR ma byt SWAPPED ak sa vykonava SWAP COLLECTION OBJECT, ktory obsahuje instanciu CUSTOM ALLOCATOR. DEFAULT VALUE je reprezentovany TYPE [false_type].
+   N. TYPE [is_always_equal] je TYPE TRAIT, ktory je nastaveny na TYPE [true_type] ak kazdy TYPE PARAMETER ma nastaveny TYPE [is_always_equal] na TYPE [true_type]. Inak vracia TYPE [false_type]. V C++ 11 mozu 2 instancie toho isteho ALLOCATOR byt NEIDENTICKE, ak MEMORY alokovana jednou instanciou ALLOCATOR TYPE NEMOZE byt uvolnena inou instanciou ALLOCATOR TYPE.
+   O. TEMPLATE STRUCTURE [rebind_alloc<TType>] definuje ALLOCATOR, ktory umoznuje alokovat MEMORY pre TYPE 'TType'.
+   P. TEMPLATE STRUCTURE [rebind_traits<TType>] definuje ALLOCATOR TRAITS, ktory umoznuje alokovat MEMORY pre TYPE 'TType'.
+   Q. METHOD alocate() alokuje MEMORY pre 'N' OBJECTS. Hodnota 'N' musi byt VACSIA ako 0. OVERLOADED VERSION definuje HINT, ktory obsahuje CUSTOM INFORMATION o pozicii odkial ma byt MEMORY alokovana.
+   R. METHOD deallocate() uvolnuje MEMORY pre 'N' OBJECTS.
+   S. METHOD construct() vola CONSTRUCTOR vytvoreneho OBJECT.
+   T. METHOD destruct() vola DESTRUCTOR vytvoreneho OBJECT.
+   U. METHOD max_size() vracia maximalnu velkost OBJECT, ktory je pomocou CUSTOM ALLOCATOR mozne alokovat.
+   V. METHOD select_on_container_copy_construction() vracia kopiu zadaneho ALLOCATOR.
+15. CLASS [allocator<TType>] reprezentuje DEFUALT ALLOCATOR. Pre DEFUALT ALLOCATOR platia nasledujuce fakty.
+   A. DEFUALT ALLOCATOR pouziva na alokaciu MEMORY GLOBAL OPERATOR 'new', a preto moze hodit EXCEPTION TYPE [bad_alloc].
+   B. DEFUALT ALLOCATOR pouziva na dealokaciu MEMORY GLOBAL OPERATOR 'delete'.
+   C. DEFUALT ALLOCATOR definuje SPECIALIZATION pre TYPE 'void*'.
+16. CLASS [allocator<TType>] ma nasledujuce MEMBERS.
+   A. TYPE [value_type] vracia TYPE pre ktory ALLOCATOR alokuje MEMORY. Spravidla sa jedna o identicky TYPE ako TYPE PARAMETER CUSTOM ALLOCATOR.
+   B. TYPE [propagate_on_container_move_assignment] je TYPE TRAIT urcujuci ci CUSTOM ALLOCATOR ma byt skopirovany pomocou MOVE SEMANTICS ak sa pomocou MOVE SEMANTICS kopiruje COLLECTION OBJECT, ktory obsahuje instanciu CUSTOM ALLOCATOR. DEFAULT VALUE je reprezentovany TYPE [false_type].
+   C. TYPE [ALOCATOR::is_always_equal] je TYPE TRAIT urcujuci ci 2 instancie CUSTOM ALLOCATOR TYPE su VZDY IDENTICKE. V C++ 11 mozu 2 instancie toho isteho ALLOCATOR byt NEIDENTICKE, ak MEMORY alokovana jednou instanciou ALLOCATOR TYPE NEMOZE byt uvolnena inou instanciou ALLOCATOR TYPE.
+   D. DEFAULT CONSTRUCTOR. Vytvara DEFAULT INSTANCE ALLOCATOR.
+   E. COPY CONSTRUCTOR. Vytvara kopiu ALLOCATOR pomocou COPY SEMANTICS.
+   F. MOVE CONSTRUCTOR. Vytvara kopiu ALLOCATOR pomocou MOVE SEMANTICS.
+   G. TEMPLATE COPY CONSTRUCTOR vytvorit kopiu ALLOCATOR, ktory bude alokovat OBJECTS ineho TYPE.
+   H. DESTRUCTOR. Uvolnuje RESOURCES alokovane ALLOCATOR.
+   I. OPERATOR== vracia TRUE ak CUSTOM ALLOCATORS su schopne vzajomne dealokovat MEMORY, ktoru jeden z CUSTOM ALLOCATOR alokoval.
+   J. OPERATOR!= vracia TRUE ak CUSTOM ALLOCATORS nie su schopne vzajomne dealokovat MEMORY, ktoru jeden z CUSTOM ALLOCATOR alokoval.
+   K. METHOD alocate() alokuje MEMORY pre 'N' OBJECTS. Hodnota 'N' musi byt VACSIA ako 0. OVERLOADED VERSION definuje HINT, ktory obsahuje CUSTOM INFORMATION o pozicii odkial ma byt MEMORY alokovana.
+   L. METHOD deallocate() uvolnuje MEMORY pre 'N' OBJECTS.
+17. CLASS [pointer_traits<TPointer>] definuje zoznam TRAITS popisujucich dany POINTER TYPE. Ma nasledujuce MEMBERS.
+   A. TYPE [pointer] vracia TYPE reprezentujuci POINTERS. Je identicky s TEMPLATE PARAMETER 'TPointer'.
+   B. TYPE [element_type] vracia TYPE identicky s TYPE [TPointer::element_type], ak TYPE 'TPointer' definuje. Ak nedefinuje, potom TYPE je rovny PRVEMU TEMPLATE PARAMETER TYPE 'TPointer', ak TYPE 'TPointer' reprezentuje TEMPLATE TYPE.
+   C. TYPE [difference_type] vracia TYPE pouzivany na reprezentaciu vzdialenosti medzi dvoma POINTERS. Je identicky s TYPE [TPointer::difference_type], ak TYPE 'TPointer', tak TYPE definuje. Ak ho nedefinuje, TYPE [difference_type] je nastaveny na TYPE [ptrdiff_t].
+   D. TEMPLATE STRUCTURE [rebind<TType>] vracia TYPE identicky s TYPE [TPointer::rebind<TType>], ak TYPE 'TPointer' definuje. Ak nedefinuje, potom TYPE je rovny PRVEMU TEMPLATE PARAMETER TYPE 'TPointer', ak TYPE 'TPointer' reprezentuje TEMPLATE TYPE.
+   E. STATIC METHOD pointer_to() vracia DEREFERENCEABLE POINTER-LIKE OBJECT, ktory je mozne pre PARAMETER METHOD dereferencovat.
+18. CLASS [pointer_traits<TPointer*>] definuje zoznam TRAITS popisujucich dany POINTER TYPE. Ma nasledujuce MEMBERS.
+   A. TYPE [pointer] vracia TYPE reprezentujuci POINTERS. Je identicky s TEMPLATE PARAMETER 'TPointer*'.
+   B. TYPE [element_type] vracia TYPE 'TPointer'.
+   C. TYPE [difference_type] vracia TYPE pouzivany na reprezentaciu vzdialenosti medzi dvoma POINTERS. Je nastaveny na TYPE [ptrdiff_t].
+   D. TEMPLATE STRUCTURE [rebind<TType>] vracia TYPE identicky s TYPE [TType*].
+   E. STATIC METHOD pointer_to() vracia DEREFERENCEABLE POINTER-LIKE OBJECT, ktory je mozne pre PARAMETER METHOD dereferencovat.
+19. C++ poskytuje v LIBRARY [<memory>] sadu HELPER TEMPLATE FUNCTIONS, ktore moze CUSTOM ALLOCATOR pouzit na efektivnu inicializaciu a kopirovanie NEINICIALIZOVANEJ MEMORY.
+   A. TEMPLATE FUNCTION uninitialized_fill() nakopiruje danu hodnotu do ELEMETNS NEINICIALIZOVANEJ MEMORY.
+   B. TEMPLATE FUNCTION uninitialized_fill_n() nakopiruje danu hodnotu do 'N' ELEMETNS NEINICIALIZOVANEJ MEMORY.
+   C. TEMPLATE FUNCTION uninitialized_copy() nakopiruje ELEMENTS do NEINICIALIZOVANEJ MEMORY.
+   D. TEMPLATE FUNCTION uninitialized_copy_n() nakopiruje 'N' ELEMENTS do NEINICIALIZOVANEJ MEMORY.
+   E. TEMPLATE FUNCTION raw_storage_iterator() umoznuje iterovat ELEMENTS NEINICIALIZOVANEJ MEMORY a pomocou niektoreho z ALGORITHMS ju inicializovat na hodnoty, ktore su vysledkom daneho ALGORITHM.
+20. C++ poskytuje FUNCTIONS na pracu s TEMPORARY BUFFERS, ktore je mozne pouzit v ramci FUNCTIONS na alokaciu tychto BUFFERS.
+   A. FUNCTION get_temporary_buffer() sa pokusi alokovat 'N' OBJECTS. Ak sa nepodari alokovat dostatocnu MEMORY, FUNCTION vracia instanciu CLASS [pair<T1,T2>], kde 1. PARAMETER obsahuje POINTER na alkovanu MEMORY a 2. PARAMETER obsahuje pocet OBJECTS, ktore boli alokovane.
+   B. FUNCTION return_temporary_buffer() uvolnuje TEMPORARY BUFFER alokovany FUNCTION get_temporary_buffer().
+//--------------------------------------------------------------------------------------------------------

@@ -1,0 +1,991 @@
+//-------------------------------------------------------------------------------------------------------
+1. Solution demonstruje pouzitie STRINGS definovanych C++ STANDARD LIBRARY.
+2. CLASS [basic_string<TCharacter,TTraits,TAllocator>] reprezentuje implementaciu STRING v C++. Pre [basic_string<TCharacter,TTraits,TAllocator>] platia nasleldujuce fakty.
+   A. STRING je definovany v LIBRARY <string>.
+   B. 1. TEMPLATE PARAMETER definuje TYPE pre CHARACTERS, ktore STRING pouziva.
+   C. 2. TEMPLATE PARAMETER definuje TYPE pre TRAITS, ktory STRING pouziva.
+   D. 3. TEMPLATE PARAMETER definuje TYPE pre ALLOCATOR, ktory STRING pouziva.
+   E. C++ definuje instancie CLASS [hash<TCharacter>] pre CLASS [string], CLASS [wstring], CLASS [u16string] a CLASS [u32string]. Tieto CLASSES reprezentuju HASH CODES danych STRINGS.
+3. CLASS [basic_string<TCharacter,TTraits,TAllocator>] ma nasledujuce MEMBERS.
+   1. CONSTRUCTOR vytvara instanciu STRING. OVERLOADED VERSIONS reprezentuju COPY CONSTRUCTOR a MOVE CONSTRUCTOR. Dalsie OVERLOADED VERSIONS umoznuju vytvarat STRINGS z C-STRING ci ako SUBSTRINGS z inych STRINGS.
+   2. DESTRUCTOR uvolnuje instanciu STRING.
+   3. TYPE [traits_type] urcuje TYPE pre TYPE TRAITS STRING. Je rovny TEMPLATE PARAMETER 'TTraits'.
+   4. TYPE [value_type] urcuje TYPE pre CHARACTERS ulozene v STRING. Je rovny TEMPLATE PARAMETER 'TCharacter'.
+   5. TYPE [allocator_type] urcuje TYPE, ktory sa pouziva ako ALLOCATOR. Je rovny TEMPLATE PARAMETER 'TAllocator'.
+   6. TYPE [size_type] je UNSIGNED TYPE reprezentujuci hodnoty urcujuce velkost a pocet pri praci so STRING.
+   7. TYPE [difference_type] je SIGNED TYPE reprezentujuci hodnoty urcujuce rozdiel pri praci so STRING.
+   8. TYPE [reference] urcuje REFERENCE TYPE pre CHARACTERS ulozene v STRING.
+   9. TYPE [const_reference] urcuje CONST REFERENCE TYPE pre CHARACTERS ulozene v STRING.
+   10. TYPE [pointer] urcuje POINTER TYPE pre CHARACTERS ulozene v STRING.
+   11. TYPE [const_pointer] urcuje CONST POINTER TYPE pre CHARACTERS ulozene v STRING.
+   12. TYPE [iterator] urcuje TYPE pre ITERATOR daneho STRING.
+   13. TYPE [const_iterator] urcuje TYPE pre CONST ITERATOR daneho STRING.
+   14. TYPE [reverse_iterator] urcuje TYPE pre REVERSE ITERATOR daneho STRING.
+   15. TYPE [const_reverse_iterator] urcuje TYPE pre CONST REVERSE ITERATOR daneho STRING.
+   !!! 16. STATIC CONSTANT [npos] identifikuje MAXIMALNU VALUE reprezentovatelnu TYPE [size_type]. Pouziva sa vo viacerych FIND METHODS na urcenie, ze hladany SUBSTRING sa v STRING nenasiel.
+   17. OPERATOR= priradzuje do STRING CHARACTERS ineho STRING. STRING obsahuje COPY OPERATOR= aj MOVE OPERATOR= ako aj verziu pre INITIALIZER LIST.
+   18. OPERATOR== zistuje ci dve instancie STRING su lexikograficky rovne. OVERLOADED VERSION umoznuje porovnat STRING s C-STRING.
+   19. OPERATOR!= zistuje ci dve instancie STRING su lexikograficky rozne. OVERLOADED VERSION umoznuje porovnat STRING s C-STRING.
+   20. OPERATOR< zistuje ci 1. STRING je lexikograficky mensi ako 2. STRING. OVERLOADED VERSION umoznuje porovnat STRING s C-STRING.
+   21. OPERATOR<= zistuje ci 1. STRING je lexikograficky mensi, alebo rovny ako 2. STRING. OVERLOADED VERSION umoznuje porovnat STRING s C-STRING.
+   22. OPERATOR> zistuje ci 1. STRING je lexikograficky vacsi ako 2. STRING. OVERLOADED VERSION umoznuje porovnat STRING s C-STRING.
+   23. OPERATOR>= zistuje ci 1. STRING je lexikograficky vacsi, alebo rovny ako 2. STRING. OVERLOADED VERSION umoznuje porovnat STRING s C-STRING.
+   !!! 24. OPERATOR[] vracia REFERENCES k CHARACTERS daneho STRING. OPERATOR[] NEROBI kontrolu hranic daneho STRING. Pre INDEX rovny SIZE vracia NULL-CHARACTER.
+   25. OPERATOR+ vytvara NOVU INSTANCIU STRING z dvojice existujucich instancii STRING. OVERLOADED VERSION umoznuje zlucovat aj STRINGS a C-STRINGS.
+   26. OPERATOR+= do instancie STRING pridava CHARACTERS z inej instancie STRING. OVERLOADED VERSION umoznuje pridavat do STRINGS aj C-STRINGS.
+   27. OPERATOR""s konvertuje C-STRING na instanciu STRING.
+   28. OPERATOR basic_string_view() konvertuje STRING na instanciu CLASS [basic_string_view<TCharacter,TTraits>].
+   29. OPERATOR<< zapise hodnotu STRING do OUTPUT STREAM.
+   30. OPERATOR>> zapise hodnotu STRING z INPUT STREAM.
+   !!! 31. METHOD at() vracia REFERENCES k CHARACTERS daneho STRING. METHOD ROBI kontrolu hranic STRING, a v pripade zistenia chybneho pristupu generuje EXCEPTION [out_of_range]. EXCEPTION [out_of_range] je generovana aj ked INDEX je rovny SIZE.
+   32. METHOD assign() priradzuje do CHARACTERS ineho STRING do aktualnej instancie STRING. OVERLOADED VERSIONS umoznuje priradit CHARACTERS z C-STRING, alebo CHARACTERS z INITIALIZER LIST ci STRING VIEW.
+   33. METHOD get_allocator() vracia instanciu ALLOCATOR, ktora sa pouziva pri alokovani CHARACTERS daneho STRING.
+   34. METHOD front() vracia REFERENCE na PRVY CHARACTER v STRING.
+   35. METHOD back() vracia REFERENCE na POSLEDNY CHARACTER v STRING.
+   36. METHOD data() vracia POINTER na interny BUFFER, ktory instancia STRING pouziva na ulozenie CHARACTERS.
+   37. METHOD c_str() vracia CONST POINTER na interny BUFFER, ktory instancia STRING pouziva na ulozenie CHARACTERS.
+   38. METHOD begin() vracia ITERATOR ukazujuci na PRVY CHARACTER STRING.
+   39. METHOD cbegin() vracia CONST ITERATOR ukazujuci na PRVY CHARACTER STRING.
+   40. METHOD end() vracia ITERATOR ukazujuci hned za POSLEDNY CHARACTER STRING.
+   41. METHOD cend() vracia CONST ITERATOR ukazujuci hned za POSLEDNY CHARACTER STRING.
+   42. METHOD rbegin() vracia REVERSE ITERATOR ukazujuci na POSLEDNY CHARACTER STRING.
+   43. METHOD crbegin() vracia CONST REVERSE ITERATOR ukazujuci na POSLEDNY CHARACTER STRING.
+   44. METHOD rend() vracia REVERSE ITERATOR ukazujuci hned pred PRVY CHARACTER STRING.
+   45. METHOD crend() vracia CONST REVERSE ITERATOR ukazujuci hned pred PRVY CHARACTER STRING.
+   46. METHOD empty() vracia informaciu ci STRING je prazdny.
+   47. METHOD size() vracia pocet CHARACTERS vo STRING.
+   48. METHOD length() vracia pocet CHARACTERS vo STRING.
+   49. METHOD max_size() vracia maximalny pocet CHARACTERS, ktore je do STRING mozne ulozit.
+   50. METHOD reserve() alokuje INTERNY BUFFER STRING na zadanu CAPACITY. Ak zadana velkost je mensia, alebo rovna aktualnemu poctu CHARACTERS v STRING, METHOD moze, ale NEMUSI skratit velkost BUFFER.
+   51. METHOD capacity() vracia CAPACITY urcujucu pocet CHARACTERS na ktory je alokovany INTERNY BUFFER daneho STRING.
+   !!! 52. METHOD shrink_to_fit() sa pokusi uvolnit INTERNY BUFFER daneho STRING, tak aby mal identicku dlzku ako realny pocet CHARACTERS v STRING. Tato METHOD je len POZIADAVKA na vykonanie SHRINK, ktora je implementacne zavisla. To znaci, ze v zavislosti od implementacie SHRINK moze, ale aj NEMUSI VYKONAT.
+   53. METHOD clear() odstranuje vsetky CHARACTERS zo STRING. CAPACITY METHOD NEMENI.
+   54. METHOD insert() pridava 1-N CHARACTERS PRED stanovenu poziciu v STRING. Pozicie sa urcuju pomocou ITERATORS.
+   55. METHOD erase() odstranuje 1-N CHARACTERS na stanovenych poziciach v STRING. Pozicie sa urcuju pomocou ITERATORS.
+   56. METHOD push_back() pridava CHARACTER na koniec STRING.
+   57. METHOD pop_back() odstranuje 1 CHARACTER z konca STRING.
+   58. METHOD append() pridava 1-N CHARACTERS na koniec STRING.
+   59. METHOD compare() vykonava LEXIKOGRAFICKE POROVNANIE dvoch STRING. Vracia ZAPORNU VALUE ak [STRING_1<STRING_2], KLADNU VALUE ak [STRING_1>STRING_2] a 0 ak [STRING_1==STRING_2].
+   60. METHOD replace() nahradzuje SUBSTRING inym SUBSTRING.
+   61. METHOD substr() vracia SUBSTRING z daneho STRING.
+   62. METHOD copy() kopiruje CHARACTERS daneho STRING do C-STRING.
+   63. METHOD resize() meni pocet CHARACTERS v STRING na pocet stanoveny PARAMETER. V pripade, ze stanoveny pocet je MENSI ako pocet CHARACTERS v STRING, dochadza k ostraneniu ITEMS zo STRING. Ak je stanoveny pocet VACSI ako pocet CHARACTERS v STRING, dochadza k pridavaniu novych CHARACTERS do STRING, pricom OVERLOADED verzia METHOD umoznuje definovat CHARACTER, ktoreho kopia za priradi za nove CHARACTERS.
+   64. METHOD swap() vymiena obsah dvoch instancii STRING vymenou ich vnutornych FIELDS.
+   65. METHOD find() hlada PRVY vyskyt SUBSTRING v STRING, ktory je rovny zadanemu SUBSTRING. OVERLOADED VERSION umoznuje vyhladavat CHARACTER.
+   66. METHOD rfind() hlada POSLEDNY vyskyt SUBSTRING v STRING, ktory je rovny zadanemu SUBSTRING. OVERLOADED VERSION umoznuje vyhladavat CHARACTER.
+   67. METHOD find_first_of() v STRING hlada PRVY VYSKYT niektoreho zo zadanych CHARACTERS.
+   68. METHOD find_first_not_of() v STRING hlada PRVY VYSKYT CHARACTER, ktory NIE JE ROVNY niektoremu zo zadanych CHARACTERS.
+   69. METHOD find_last_of() v STRING hlada POSLEDNY VYSKYT niektoreho zo zadanych CHARACTERS.
+   70. METHOD find_last_not_of() v STRING hlada POSLEDNY VYSKYT CHARACTER, ktory NIE JE ROVNY niektoremu zo zadanych CHARACTERS.
+   71. FUNCTION swap() vymiena obsah dvoch instancii STRING vymenou ich vnutornych FIELDS.
+   72. FUNCTION getline() nacitava CHARACTERS ukoncene NEW LINE CHARACTER z INPUT STREAM a ukada ich do instancie STRING.
+   73. FUNCTION stoi() konvertuje STRING na TYPE [int].
+   74. FUNCTION stol() konvertuje STRING na TYPE [long].
+   75. FUNCTION stoll() konvertuje STRING na TYPE [long long].
+   76. FUNCTION stoul() konvertuje STRING na TYPE [unsigned long].
+   77. FUNCTION stoull() konvertuje STRING na TYPE [unsigned long long].
+   78. FUNCTION stof() konvertuje STRING na TYPE [float].
+   79. FUNCTION stod() konvertuje STRING na TYPE [double].
+   80. FUNCTION stold() konvertuje STRING na TYPE [long double].
+   81. FUNCTION to_string() konvertuje NUMBERIC VALUES na STRING.
+   82. FUNCTION to_wstring() konvertuje NUMBERIC VALUES na WSTRING.
+4. C++ definuje nasledujuce TEMPLATE SPECIALIZATIONS pre CLASS [basic_string<TCharacter,TTraits,TAllocator>].
+   A. CLASS [string] reprezentuje TEMPLATE SPECIALIZATION CLASS [basic_string<TCharacter,TTraits,TAllocator>] pre CHARACTER TYPE [char].
+   B. CLASS [wstring] reprezentuje TEMPLATE SPECIALIZATION CLASS [basic_string<TCharacter,TTraits,TAllocator>] pre CHARACTER TYPE [wchar_t].
+   C. CLASS [u16string] reprezentuje TEMPLATE SPECIALIZATION CLASS [basic_string<TCharacter,TTraits,TAllocator>] pre CHARACTER TYPE [char16_t].
+   D. CLASS [u32string] reprezentuje TEMPLATE SPECIALIZATION CLASS [basic_string<TCharacter,TTraits,TAllocator>] pre CHARACTER TYPE [char32_t].
+5. CLASS [char_traits<TCharacter>] definuje TRAITS pre CHARACTERS. Ma nasledujuce MEMBERS.
+   A. TYPE [char_type] urcuje TYPE pre CHARACTERS. Je rovny TEMPLATE PARAMETER 'TCharacter'.
+   B. TYPE [int_type] urcuje NUMERIC TYPE ktorym je mozne vyjadrit vsetky CHARACTERS, vratane EOF CHARACTER.
+   C. TYPE [off_type] urcuje TYPE, ktory sa pouziva na vyjadrenie STREAM OFFSET.
+   D. TYPE [pos_type] urcuje TYPE, ktory sa pouziva na vyjadrenie STREAM POSITION.
+   E. TYPE [state_type] urcuje TYPE, ktory sa reprezentuje TRANSFORMATION STATE TYPE pouzivany na vyjadrenie stavu CONVERSION pri MULTIBYTE CHARACTER CONVERSIONS.
+   F. STATIC METHOD assign() priradzuje jeden CHARACTER do druheho. OVERLOADED VERSION umoznuje priradenie 'N' CHARACTERS.
+   G. STATIC METHOD eq() porovnava ci CHARACTER 1 je ROVNY CHARACTER 2.
+   H. STATIC METHOD lt() porovnava ci CHARACTER 1 je MENSI ako CHARACTER 2.
+   I. STATIC METHOD move() kopiruje 'N' CHARACTERS z C-ARRAY do ineho C-ARRAY. Obidve C-ARRAYS sa MOZU PREKRYVAT.
+   J. STATIC METHOD copy() kopiruje 'N' CHARACTERS z C-ARRAY do ineho C-ARRAY. Obidve C-ARRAYS sa NEMOZU PREKRYVAT.
+   K. STATIC METHOD compare() vykonava LEXIKOGRAFICKE POROVNANIE dvoch C-ARRAYS obsahujucich CHARACTERS. Vracia ZAPORNU VALUE ak [C-ARRAY_1<C-ARRAY_2], KLADNU VALUE ak [C-ARRAY_1>C-ARRAY_2] a 0 ak [C-ARRAY_1==C-ARRAY_2].
+   L. STATIC METHOD length() vracia pocet CHARACTERS, ktore obsahuje zadant C-ARRAY. C-ARRAY MUSI obsahovat NULL CHARACTER.
+   M. STATIC METHOD find() vyhladava prvy vyskyt 'N' identickych CHARACTERS v C-ARRAY.
+   N. STATIC METHOD to_char_type() konvertuje CHARACTER vyjadreny TYPE [int_type] na TYPE [char_type]. Ak konverzia nie je mozne, vracia sa EOF CHARACTER.
+   O. STATIC METHOD to_int_type() konvertuje CHARACTER vyjadreny TYPE [char_type] na TYPE [int_type].
+   P. STATIC METHOD eq_int_type() porovnava ci CHARACTER 1 je ROVNY CHARACTER 2, pricom obe CHARACTERS su vyjadrene pomocou vyjadreny pomocou TYPE [int_type].
+   Q. STATIC METHOD eof() vrcia EOF CHARACTER vyjadreny ako TYPE [int_type].
+   R. STATIC METHOD not_eof() zistuje ci CHARACTER reprezentuje EOF CHARACTER vyjadreny ako TYPE [int_type].
+6. C++ definuje nasledujuce TEMPLATE SPECIALIZATIONS pre CLASS [char_traits<TCharacter>].
+   A. CLASS [char_traits<char>] reprezentuje TEMPLATE SPECIALIZATION CLASS [char_traits<TCharacter>] pre CHARACTER TYPE [char].
+   B. CLASS [char_traits<wchar_t>] reprezentuje TEMPLATE SPECIALIZATION CLASS [char_traits<TCharacter>] pre CHARACTER TYPE [wchar_t].
+   C. CLASS [char_traits<char16_t>] reprezentuje TEMPLATE SPECIALIZATION CLASS [char_traits<TCharacter>] pre CHARACTER TYPE [char16_t].
+   D. CLASS [char_traits<char32_t>] reprezentuje TEMPLATE SPECIALIZATION CLASS [char_traits<TCharacter>] pre CHARACTER TYPE [char32_t].
+!!!!! 7. Instancie CLASS [basic_string<TCharacter,TTraits,TAllocator>] MOZU obsahovat aj NULL TERMINATOR ('\0') CHARACTERS. NULL TERMINATOR CHARACTERS sa v CLASS [basic_string<TCharacter,TTraits,TAllocator>] NEPOUZIVA na urcenie konca STRING ako je to v pripade C-STRINGS. Pocet CHARACTERS je v STRING urceny v PRIVATE FIELD CLASS [basic_string<TCharacter,TTraits,TAllocator>].
+!!! 8. CLASS STRING podporuje RANDOM ACCESS ITERATORS.
+9. CLASS [char_traits<TCharacter>] umoznuje CUSTOMIZATION STRINGS. Vdaka CLASS [char_traits<TCharacter>] je napriklad mozne vytvorit CASE INSENSITIVE STRINGS.
+10. STRING podporuju CUSTOM ALLOCATORS. CUSTOM ALLOCATOR je sucastou STRING TYPE a zadava sa ako POSLEDNY TYPE PARAMETER STRING CLASS.
+11. Pre METHOD [const TCharacter* data(void) const] platia nasledujuce fakty.
+   A. METHOD vracia obsah INTERNEHO BUFFER v tvare CONST C-STRING.
+   B. RETURN VALUE obsahuje CONST C-STRING, ktory je ukonceny NULL TERMINATOR CHARACTER.
+   C. Platnost vrataneho C-STRING trva IBA do momentu, kym nie je povodna instancia STRING modifikovana.
+   D. Obsah C-STRING sa NESMIE MENNIT, inak to moze viest k RUNTIME ERROR.
+12. Pre METHOD [const TCharacter* c_str(void) const] platia nasledujuce fakty.
+   A. METHOD vracia obsah INTERNEHO BUFFER v tvare CONST C-STRING.
+   B. RETURN VALUE obsahuje CONST C-STRING, ktory je ukonceny NULL TERMINATOR CHARACTER.
+   C. Platnost vrataneho C-STRING trva IBA do momentu, kym nie je povodna instancia STRING modifikovana.
+   D. Obsah C-STRING sa NESMIE MENNIT, inak to moze viest k RUNTIME ERROR.
+13. Pre METHOD [size_type copy(TCharacter* Destination, size_type Count, size_type Position=0) const] platia nasledujuce fakty.
+   A. METHOD kopiruje CHARACTERS zo STRING do zadaneho BUFFER.
+   B. 1. PARAMETER obsahuje DESTINATION BUFFER do ktoreho maju byt kopirovane CHARACTERS ulozene.
+   C. 2. PARAMETER obsahuje POCET CHARACTERS, ktore maju byt zo STRING kopirovane.
+   D. 3. PARAMETER obsahuje INDEX od ktoreho maju byt CHARACTERS zo STRING kopirovane.
+   E. RETURN VALUE obsahuje pocet CHARACTERS, ktore boli skopirovane.
+   !!! F. Do DESTINATION BUFFER sa NEKOPIRUJE NULL TERMINATOR CHARACTER.
+   G. Ak 2. PARAMETER ma VACSIU hodnotu ako POCET CHARACTERS v STRING, METHOD hodi EXCEPTION [out_of_range].
+14. Pre METHOD [size_type size(void) const] platia nasledujuce fakty.
+   A. METHOD vracia dlzku STRING v CHARACTERS.
+   B. RETURN VALUE obsahuje pocet CHARACTERS, ktore STRING obsahuje.
+15. Pre METHOD [size_type length(void) const] platia nasledujuce fakty.
+   A. METHOD vracia dlzku STRING v CHARACTERS.
+   B. RETURN VALUE obsahuje pocet CHARACTERS, ktore STRING obsahuje.
+16. Pre METHOD [bool empty(void) const] platia nasledujuce fakty.
+   A. METHOD vracia informaciu ci STRING je prazdny.
+   B. RETURN VALUE obsahuje informaciu ci STRING je prazdny.
+17. Pre METHOD [size_type max_size(void) const] platia nasledujuce fakty.
+   A. METHOD vracia MAXIMALNU dlzku STRING v CHARACTERS.
+   B. RETURN VALUE obsahuje MAXIMALNU dlzku STRING v CHARACTERS.
+18. Pre METHOD [size_type capacity(void) const] platia nasledujuce fakty.
+   A. METHOD vracia CAPACITY daneho STRING.
+   B. RETURN VALUE obsahuje CAPACITY daneho STRING.
+19. Pre METHOD [void reserve(size_type NewCapacity)] platia nasledujuce fakty.
+   A. METHOD nastavuje CAPACITY daneho STRING.
+   B. PARAMETER obsahuje novu velkost CAPACITY.
+   !!! C. Ak nova CAPACITY je MENSIA ako aktualna CAPACITY, tak METHOD MOZE, ale NEMUSI vykonat uvolnenie prebytocnej MEMORY.
+20. Pre METHOD [void shrik_to_capacity(void)] platia nasledujuce fakty.
+   A. METHOD sa POKUSI nastavit CAPACITY na aktualnu dlzku STRING.
+   !!! B. METHOD je iba NEZAVAZNA POZIADAVKA, ktoru implementacia STRING moze respektovat, akebo ju moze ignorovat.
+21. Pre METHOD [reference operator[](size_type Position)] platia nasledujuce fakty.
+   A. METHOD vracia REFERENCE na CHARACTER s INDEXOM 'Position'.
+   B. PARAMETER obsahuje INDEX na ktory METHOD vrati REFERENCE.
+   C. RETURN VALUE obsahuje REFERENCE na CHARACTER s INDEXOM 'Position'.
+   !!!!! D. METHOD NEROBI kontrolu ci INDEX je validny. Ak nie je, dojde k RUNTIME ERROR.
+   !!! E. Ak PARAMETER 'Position' je rovny LENGTH daneho STRING, METHOD vraci REFERENCE na NULL TERMINATER CHARACTER.
+22. Pre METHOD [const_reference operator[](size_type Position) const] platia nasledujuce fakty.
+   A. METHOD vracia CONST REFERENCE na CHARACTER s INDEXOM 'Position'.
+   B. PARAMETER obsahuje INDEX na ktory METHOD vrati CONST REFERENCE.
+   C. RETURN VALUE obsahuje CONST REFERENCE na CHARACTER s INDEXOM 'Position'.
+   !!!!! D. METHOD NEROBI kontrolu ci INDEX je validny. Ak nie je, dojde k RUNTIME ERROR.
+   !!! E. Ak PARAMETER 'Position' je rovny LENGTH daneho STRING, METHOD vraci CONST REFERENCE na NULL TERMINATER CHARACTER.
+23. Pre METHOD [reference at(size_type Position)] platia nasledujuce fakty.
+   A. METHOD vracia REFERENCE na CHARACTER s INDEXOM 'Position'.
+   B. PARAMETER obsahuje INDEX na ktory METHOD vrati REFERENCE.
+   C. RETURN VALUE obsahuje REFERENCE na CHARACTER s INDEXOM 'Position'.
+   !!!!! D. METHOD ROBI kontrolu ci INDEX je validny. Ak nie je, hodi sa EXCEPTION [out_of_range].
+   !!!!! E. Ak PARAMETER 'Position' je rovny LENGTH daneho STRING, METHOD hodi EXCEPTION [out_of_range].
+24. Pre METHOD [const_reference at(size_type Position) const] platia nasledujuce fakty.
+   A. METHOD vracia CONST REFERENCE na CHARACTER s INDEXOM 'Position'.
+   B. PARAMETER obsahuje INDEX na ktory METHOD vrati CONST REFERENCE.
+   C. RETURN VALUE obsahuje CONST REFERENCE na CHARACTER s INDEXOM 'Position'.
+   !!!!! D. METHOD ROBI kontrolu ci INDEX je validny. Ak nie je, hodi sa EXCEPTION [out_of_range].
+   !!!!! E. Ak PARAMETER 'Position' je rovny LENGTH daneho STRING, METHOD hodi EXCEPTION [out_of_range].
+25. Pre METHOD [TCharacter& front(void)] platia nasledujuce fakty.
+   A. METHOD vracia REFERENCE na PRVY CHARACTER v STRING.
+   B. RETURN VALUE obsahuje REFERENCE na PRVY CHARACTER v STRING.
+   !!! C. Ak je STRING EMPTY, METHOD vedie k RUNTIME ERROR.
+26. Pre METHOD [const TCharacter& front(void) const] platia nasledujuce fakty.
+   A. METHOD vracia CONST REFERENCE na PRVY CHARACTER v STRING.
+   B. RETURN VALUE obsahuje CONST REFERENCE na PRVY CHARACTER v STRING.
+   !!! C. Ak je STRING EMPTY, METHOD vedie k RUNTIME ERROR.
+27. Pre METHOD [TCharacter& back(void)] platia nasledujuce fakty.
+   A. METHOD vracia REFERENCE na POSLEDNY CHARACTER v STRING.
+   B. RETURN VALUE obsahuje REFERENCE na POSLEDNY CHARACTER v STRING.
+   !!! C. Ak je STRING EMPTY, METHOD vedie k RUNTIME ERROR.
+28. Pre METHOD [const TCharacter& back(void) const] platia nasledujuce fakty.
+   A. METHOD vracia CONST REFERENCE na POSLEDNY CHARACTER v STRING.
+   B. RETURN VALUE obsahuje CONST REFERENCE na POSLEDNY CHARACTER v STRING.
+   !!! C. Ak je STRING EMPTY, METHOD vedie k RUNTIME ERROR.
+29. Pre METHOD [int compare(const basic_string& Other) const] platia nasledujuce fakty.
+   A. METHOD porovnava THIS STRING a porovnavany STRING 'Other'.
+   B. PARAMETER obsahuje STRING s ktorym sa ma THIS STRING porovnat.
+   !!! C. RETURN VALUE obsahuje ZAPORNU VALUE ak THIS STRING je MENSI ako porovnavany STRING. RETURN VALUE obsahuje KLADNU VALUE ak THIS STRING je VACSI ako porovnavany STRING. RETURN VALUE obsahuje 0 ak THIS STRING je ROVNY porovnavanemu STRING.
+30. Pre METHOD [int compare(size_type Position, size_type Count, const basic_string& Other) const] platia nasledujuce fakty.
+   A. METHOD porovnava THIS STRING s FRAGMENTOM STRING 'Other', ktory je definovany START INDEX 'Position' a POCTOM CHARACTERS 'Count'.
+   B. 1. PARAMETER obsahuje START INDEX porovnavaneho STRING.
+   C. 2. PARAMETER obsahuje POCET CHARACTERS porovnavaneho STRING.
+   D. 3. PARAMETER obsahuje STRING s ktorym sa ma THIS STRING porovnat.
+   !!! E. RETURN VALUE obsahuje ZAPORNU VALUE ak THIS STRING je MENSI ako porovnavany STRING. RETURN VALUE obsahuje KLADNU VALUE ak THIS STRING je VACSI ako porovnavany STRING. RETURN VALUE obsahuje 0 ak THIS STRING je ROVNY porovnavanemu STRING.
+31. Pre METHOD [int compare(size_type Position1, size_type Count1, const basic_string& Other, size_type Position2, size_type Count2) const] platia nasledujuce fakty.
+   A. METHOD porovnava FRAGMENT THIS STRING, ktory je definovany START INDEX 'Position1' a POCTOM CHARACTERS 'Count1' s FRAGMENTOM STRING 'Other', ktory je definovany START INDEX 'Position2' a POCTOM CHARACTERS 'Count2'.
+   B. 1. PARAMETER obsahuje START INDEX THIS STRING.
+   C. 2. PARAMETER obsahuje POCET CHARACTERS THIS STRING.
+   D. 3. PARAMETER obsahuje STRING s ktorym sa ma THIS STRING porovnat.
+   E. 4. PARAMETER obsahuje START INDEX porovnavaneho STRING.
+   F. 5. PARAMETER obsahuje POCET CHARACTERS porovnavaneho STRING.
+   !!! G. RETURN VALUE obsahuje ZAPORNU VALUE ak THIS STRING je MENSI ako porovnavany STRING. RETURN VALUE obsahuje KLADNU VALUE ak THIS STRING je VACSI ako porovnavany STRING. RETURN VALUE obsahuje 0 ak THIS STRING je ROVNY porovnavanemu STRING.
+32. Pre METHOD [int compare(const TCharacter* Other) const] platia nasledujuce fakty.
+   A. METHOD porovnava THIS STRING a porovnavany C-STRING 'Other'.
+   B. PARAMETER obsahuje C-STRING s ktorym sa ma THIS STRING porovnat.
+   !!! C. RETURN VALUE obsahuje ZAPORNU VALUE ak THIS STRING je MENSI ako porovnavany C-STRING. RETURN VALUE obsahuje KLADNU VALUE ak THIS STRING je VACSI ako porovnavany C-STRING. RETURN VALUE obsahuje 0 ak THIS STRING je ROVNY porovnavanemu C-STRING.
+33. Pre METHOD [int compare(size_type Position, size_type Count, const TCharacter* Other) const] platia nasledujuce fakty.
+   A. METHOD porovnava THIS STRING s FRAGMENTOM C-STRING 'Other', ktory je definovany START INDEX 'Position' a POCTOM CHARACTERS 'Count'.
+   B. 1. PARAMETER obsahuje START INDEX porovnavaneho C-STRING.
+   C. 2. PARAMETER obsahuje POCET CHARACTERS porovnavaneho C-STRING.
+   D. 3. PARAMETER obsahuje C-STRING s ktorym sa ma THIS STRING porovnat.
+   !!! E. RETURN VALUE obsahuje ZAPORNU VALUE ak THIS STRING je MENSI ako porovnavany C-STRING. RETURN VALUE obsahuje KLADNU VALUE ak THIS STRING je VACSI ako porovnavany C-STRING. RETURN VALUE obsahuje 0 ak THIS STRING je ROVNY porovnavanemu C-STRING.
+34. Pre METHOD [int compare(size_type Position1, size_type Count1, const TCharacter* Other, size_type Count2) const] platia nasledujuce fakty.
+   A. METHOD porovnava FRAGMENT THIS STRING, ktory je definovany START INDEX 'Position1' a POCTOM CHARACTERS 'Count1' s FRAGMENTOM C-STRING 'Other', ktory zacina na zaciatku C-STRING 'Other' a ma POCET CHARACTERS 'Count2'.
+   B. 1. PARAMETER obsahuje START INDEX THIS STRING.
+   C. 2. PARAMETER obsahuje POCET CHARACTERS THIS STRING.
+   D. 3. PARAMETER obsahuje STRING s ktorym sa ma THIS STRING porovnat.
+   E. 4. PARAMETER obsahuje POCET CHARACTERS porovnavaneho C-STRING.
+   !!! F. RETURN VALUE obsahuje ZAPORNU VALUE ak THIS STRING je MENSI ako porovnavany C-STRING. RETURN VALUE obsahuje KLADNU VALUE ak THIS STRING je VACSI ako porovnavany C-STRING. RETURN VALUE obsahuje 0 ak THIS STRING je ROVNY porovnavanemu C-STRING.
+35. Pre OPERATOR [bool operator==(const basic_string& Left, const basic_string& Right)] platia nasledujuce fakty.
+   A. OPERATOR porovnava ci su dve STRINGS ROVNE.
+   B. 1. PARAMETER obsahuje 1. STRING.
+   C. 2. PARAMETER obsahuje 2. STRING.
+   D. RETURN VALUE obsahuje informaciu ci su STRINGS ROVNE.
+36. Pre OPERATOR [bool operator!=(const basic_string& Left, const basic_string& Right)] platia nasledujuce fakty.
+   A. OPERATOR porovnava ci su dve STRINGS ROZNE.
+   B. 1. PARAMETER obsahuje 1. STRING.
+   C. 2. PARAMETER obsahuje 2. STRING.
+   D. RETURN VALUE obsahuje informaciu ci su STRINGS ROZNE.
+37. Pre OPERATOR [bool operator<(const basic_string& Left, const basic_string& Right)] platia nasledujuce fakty.
+   A. OPERATOR porovnava ci 1. STRING je MENSI ako 2. STRING.
+   B. 1. PARAMETER obsahuje 1. STRING.
+   C. 2. PARAMETER obsahuje 2. STRING.
+   D. RETURN VALUE obsahuje informaciu ci 1. STRING je MENSI ako 2. STRING.
+38. Pre OPERATOR [bool operator<=(const basic_string& Left, const basic_string& Right)] platia nasledujuce fakty.
+   A. OPERATOR porovnava ci 1. STRING je MENSI, alebo ROVNY ako 2. STRING.
+   B. 1. PARAMETER obsahuje 1. STRING.
+   C. 2. PARAMETER obsahuje 2. STRING.
+   D. RETURN VALUE obsahuje informaciu ci 1. STRING je MENSI, alebo ROVNY ako 2. STRING.
+39. Pre OPERATOR [bool operator>(const basic_string& Left, const basic_string& Right)] platia nasledujuce fakty.
+   A. OPERATOR porovnava ci 1. STRING je VACSI ako 2. STRING.
+   B. 1. PARAMETER obsahuje 1. STRING.
+   C. 2. PARAMETER obsahuje 2. STRING.
+   D. RETURN VALUE obsahuje informaciu ci 1. STRING je VACSI ako 2. STRING.
+40. Pre OPERATOR [bool operator>=(const basic_string& Left, const basic_string& Right)] platia nasledujuce fakty.
+   A. OPERATOR porovnava ci 1. STRING je VACSI, alebo ROVNY ako 2. STRING.
+   B. 1. PARAMETER obsahuje 1. STRING.
+   C. 2. PARAMETER obsahuje 2. STRING.
+   D. RETURN VALUE obsahuje informaciu ci 1. STRING je VACSI, alebo ROVNY ako 2. STRING.
+41. Pre OPERATOR [basic_string& operator=(const basic_string& Other)] platia nasledujuce fakty.
+   A. OPERATOR do STRING priradzuje iny STRING definovany ako instancia STRING CLASS.
+   B. PARAMETER obsahuje STRING, ktory ma byt priradeny.
+   C. RETURN VALUE obsahuje REFERENCE na THIS STRING.
+42. Pre OPERATOR [basic_string& operator=(basic_string&& Other)] platia nasledujuce fakty.
+   A. OPERATOR do STRING priradzuje pomocou MOVE SEMANTICS iny STRING definovany ako instancia STRING CLASS.
+   B. PARAMETER obsahuje STRING, ktory ma byt priradeny.
+   C. RETURN VALUE obsahuje REFERENCE na THIS STRING.
+43. Pre OPERATOR [basic_string& operator=(const TCharacter* Other)] platia nasledujuce fakty.
+   A. OPERATOR do STRING priradzuje iny STRING definovany ako C-STRING.
+   B. PARAMETER obsahuje STRING, ktory ma byt priradeny.
+   C. RETURN VALUE obsahuje REFERENCE na THIS STRING.
+44. Pre OPERATOR [basic_string& operator=(TCharacter Other)] platia nasledujuce fakty.
+   A. OPERATOR do STRING priradzuje CHARACTER.
+   B. PARAMETER obsahuje CHARACTER, ktory ma byt priradeny.
+   C. RETURN VALUE obsahuje REFERENCE na THIS STRING.
+45. Pre OPERATOR [basic_string& operator=(initializer_list<TCharacter> Other)] platia nasledujuce fakty.
+   A. OPERATOR do STRING priradzuje iny STRING definovany pomocou INITIALIZER LIST.
+   B. PARAMETER obsahuje STRING definovany ako INITIALIZER LIST, ktory ma byt priradeny.
+   C. RETURN VALUE obsahuje REFERENCE na THIS STRING.
+46. Pre METHOD [basic_string& assign(size_type Count, TCharacter Character)] platia nasledujuce fakty.
+   A. METHOD do STRING priradzuje 'Count' krat CHARACTER 'Character'.
+   B. 1. PARAMETER obsahuje informaciu kolko CHARACTERS sa ma priradit.
+   C. 2. PARAMETER obsahuje CHARACTER, ktory sa ma priradit.
+   D. RETURN VALUE obsahuje REFERENCE na THIS STRING.
+47. Pre METHOD [basic_string& assign(const basic_string& Other)] platia nasledujuce fakty.
+   A. METHOD do STRING priradzuje iny STRING definovany ako instancia STRING CLASS.
+   B. PARAMETER obsahuje STRING, ktory ma byt priradeny.
+   C. RETURN VALUE obsahuje REFERENCE na THIS STRING.
+48. Pre METHOD [basic_string& assign(const basic_string& Other, size_type Position, size_type Count)] platia nasledujuce fakty.
+   A. METHOD do STRING priradzuje FRAGMENT STRING 'Other', ktory je definovany START INDEX 'Position' a POCTOM CHARACTERS 'Count'.
+   B. 1. PARAMETER obsahuje STRING, ktoreho FRAGMENT ma byt priradeny.
+   C. 2. PARAMETER obsahuje START INDEX pridavaneho STRING.
+   D. 3. PARAMETER obsahuje POCET CHARACTERS pridavaneho STRING.
+   E. RETURN VALUE obsahuje REFERENCE na THIS STRING.
+49. Pre METHOD [basic_string& assign(basic_string&& Other)] platia nasledujuce fakty.
+   A. METHOD do STRING priradzuje pomocou MOVE SEMANTICS iny STRING definovany ako instancia STRING CLASS.
+   B. PARAMETER obsahuje STRING, ktory ma byt priradeny.
+   C. RETURN VALUE obsahuje REFERENCE na THIS STRING.
+50. Pre METHOD [basic_string& assign(const TCharacter* Other, size_type Count)] platia nasledujuce fakty.
+   A. METHOD do STRING priradzuje FRAGMENT C-STRING 'Other', ktory je definovany ZACIATKOM C-STRING a POCTOM CHARACTERS 'Count'.
+   B. 1. PARAMETER obsahuje C-STRING, ktoreho FRAGMENT ma byt priradeny.
+   C. 2. PARAMETER obsahuje POCET CHARACTERS pridavaneho C-STRING.
+   D. RETURN VALUE obsahuje REFERENCE na THIS STRING.
+51. Pre METHOD [basic_string& assign(const TCharacter* Other)] platia nasledujuce fakty.
+   A. METHOD do STRING priradzuje C-STRING 'Other'.
+   B. PARAMETER obsahuje C-STRING, ktory ma byt priradeny.
+   C. RETURN VALUE obsahuje REFERENCE na THIS STRING.
+52. Pre METHOD [basic_string& assign(TInputIterator First, TInputIterator Last)] platia nasledujuce fakty.
+   A. METHOD do STRING priradzuje iny STRING definovany ITERATOR PAIR <First,Last).
+   B. 1. PARAMETER obsahuje BEGIN ITERATOR priradzovaneho STRING.
+   C. 2. PARAMETER obsahuje END ITERATOR priradzovaneho STRING.
+   D. RETURN VALUE obsahuje REFERENCE na THIS STRING.
+53. Pre METHOD [basic_string& operator=(initializer_list<TCharacter> Other)] platia nasledujuce fakty.
+   A. METHOD do STRING priradzuje iny STRING definovany pomocou INITIALIZER LIST.
+   B. PARAMETER obsahuje STRING definovany ako INITIALIZER LIST, ktory ma byt priradeny.
+   C. RETURN VALUE obsahuje REFERENCE na THIS STRING.
+54. Pre METHOD [void swap(basic_string& Other)] platia nasledujuce fakty.
+   A. METHOD vymiena obsah THIS STRING a STRING 'Other'.
+   B. PARAMETER obsahuje STRING, ktoreho obsah ma byt vymeneny s obsahom THIS STRING.
+55. Pre FUNCTION [void swap(basic_string& Left, basic_string& Right)] platia nasledujuce fakty.
+   A. METHOD vymiena obsah STRING 'Left' a STRING 'Right'.
+   B. 1. PARAMETER obsahuje 1. STRING, ktoreho obsah ma byt vymeneny.
+   C. 2. PARAMETER obsahuje 2. STRING, ktoreho obsah ma byt vymeneny.
+56. Pre FUNCTION [void clear(void)] platia nasledujuce fakty.
+   A. METHOD nastavuje dlzku STRING na 0.
+   !!! B. METHOD MOZE zmenit aj CAPACITY daneho STRING. To je rozdiel oproti VECTOR.
+   C. ITERATORS su po volani tejto METHOD NEPLATNE.
+57. Pre METHOD [basic_string& insert(size_type Index, size_type Count, TCharacter Character)] platia nasledujuce fakty.
+   A. METHOD do STRING na POSITION 'Index' opakovane vklada CHARACTER 'Character', pricom pocet vlozenych CHARACTERS definuje PARAMETER 'Count'.
+   B. 1. PARAMETER obsahuje INDEX urcujuci miesto v STRING, kde sa maju CHARACTERS vlozit.
+   C. 2. PARAMETER obsahuje pocet CHARACTERS, ktore sa maju vlozit.
+   D. 3. PARAMETER obsahuje CHARACTER, ktory sa ma vlozit.
+   E. RETURN VALUE obsahuje REFERENCE na THIS STRING.
+58. Pre METHOD [basic_string& insert(size_type Index, const TCharacter* Other)] platia nasledujuce fakty.
+   A. METHOD do STRING na POSITION 'Index' vklada C-STRING 'Other'.
+   B. 1. PARAMETER obsahuje INDEX urcujuci miesto v STRING, kde sa ma C-STRING vlozit.
+   C. 2. PARAMETER obsahuje C-STRING, ktory sa ma vlozit.
+   D. RETURN VALUE obsahuje REFERENCE na THIS STRING.
+59. Pre METHOD [basic_string& insert(size_type Index, const TCharacter* Other, size_type Count)] platia nasledujuce fakty.
+   A. METHOD do STRING na POSITION 'Index' vklada FRAGMENT C-STRING, ktory je definovany zaciatkom C-STRING 'Other' a poctom CHARACTERS 'Count', ktore sa maju vlozit.
+   B. 1. PARAMETER obsahuje INDEX urcujuci miesto v STRING, kde sa ma C-STRING vlozit.
+   C. 2. PARAMETER obsahuje C-STRING, ktoreho FRAGMENT sa ma vlozit.
+   D. 3. PARAMETER obsahuje pocet CHARACTERS z C-STRING, ktore sa maju vlozit.
+   E. RETURN VALUE obsahuje REFERENCE na THIS STRING.
+60. Pre METHOD [basic_string& insert(size_type Index, const basic_string& Other)] platia nasledujuce fakty.
+   A. METHOD do STRING na POSITION 'Index' vklada STRING 'Other'.
+   B. 1. PARAMETER obsahuje INDEX urcujuci miesto v STRING, kde sa ma STRING vlozit.
+   C. 2. PARAMETER obsahuje STRING, ktory sa ma vlozit.
+   D. RETURN VALUE obsahuje REFERENCE na THIS STRING.
+61. Pre METHOD [basic_string& insert(size_type Index, const basic_string& Other, size_type OtherIndex, size_type Count)] platia nasledujuce fakty.
+   A. METHOD do STRING na POSITION 'Index' vklada FRAGMENT STRING 'Other', ktory je definovany INDEXOM 'OtherIndex' a poctom CHARACTERS 'Count', ktore sa maju vlozit.
+   B. 1. PARAMETER obsahuje INDEX urcujuci miesto v STRING, kde sa ma STRING vlozit.
+   C. 2. PARAMETER obsahuje STRING, ktoreho FRAGMENT sa ma vlozit.
+   D. 3. PARAMETER obsahuje INDEX vkladaneho STRING od ktoreho sa maju CHARACTERS vkladat.
+   E. 4. PARAMETER obsahuje pocet CHARACTERS zo STRING, ktore sa maju vlozit.
+   F. RETURN VALUE obsahuje REFERENCE na THIS STRING.
+62. Pre METHOD [iterator insert(const_iterator Position, TCharacter Character)] platia nasledujuce fakty.
+   A. METHOD do STRING na POSITION urcenu ITERATOR 'Position' vklada CHARACTER 'Character'.
+   B. 1. PARAMETER obsahuje ITERATOR urcujuci miesto v STRING, kde sa ma CHARACTER vlozit.
+   C. 2. PARAMETER obsahuje CHARACTER, ktory sa ma vlozit.
+   D. RETURN VALUE obsahuje POSITION na vlozeny CHARACTER.
+63. Pre METHOD [iterator insert(const_iterator Position, size_type Count, TCharacter Character)] platia nasledujuce fakty.
+   A. METHOD do STRING na POSITION urcenu ITERATOR 'Position' opakovane vklada CHARACTER 'Character', kde pocet opakovani je dany PARAMETER 'Count'.
+   B. 1. PARAMETER obsahuje ITERATOR urcujuci miesto v STRING, kde sa maju CHARACTERS vlozit.
+   C. 2. PARAMETER obsahuje pocet CHARACTERS, ktore sa maju vlozit.
+   D. 3. PARAMETER obsahuje CHARACTER, ktory sa ma vkladat.
+   E. RETURN VALUE obsahuje POSITION na PRVY vlozeny CHARACTER.
+64. Pre METHOD [iterator insert(const_iterator Position, TInputIterator First, TInputIterator Last)] platia nasledujuce fakty.
+   A. METHOD do STRING na POSITION urcenu ITERATOR 'Position' vklada STRING definovany pomocou ITERATOR PAIR <First,Last).
+   B. 1. PARAMETER obsahuje ITERATOR urcujuci miesto v STRING, kde sa ma vkladany STRING vlozit.
+   C. 2. PARAMETER obsahuje BEGIN ITERATOR vkladaneho STRING.
+   D. 3. PARAMETER obsahuje END ITERATOR vkladaneho STRING.
+   E. RETURN VALUE obsahuje POSITION na PRVY vlozeny CHARACTER.
+65. Pre METHOD [iterator insert(const_iterator Position, initializer_list<TCharacter> InitializerList)] platia nasledujuce fakty.
+   A. METHOD do STRING na POSITION urcenu ITERATOR 'Position' vklada STRING definovany pomocou INITIALIZER LIST 'InitializerList'.
+   B. 1. PARAMETER obsahuje ITERATOR urcujuci miesto v STRING, kde sa ma vkladany STRING vlozit.
+   C. 2. PARAMETER obsahuje INITIALIZER LIST, ktoreho CHARACTERS maju byt vlozene.
+   D. RETURN VALUE obsahuje POSITION na PRVY vlozeny CHARACTER.
+66. Pre METHOD [basic_string& replace(size_type Index, size_type Count, const basic_string& Other)] platia nasledujuce fakty.
+   A. METHOD nahradzuje FRAGMENT STRINGU definovanym pomocou START INDEX 'Index' a poctom CHARACTERS 'Count' za STRING 'Other'.
+   B. 1. PARAMETER obsahuje INDEX urcujuci, ktore CHARACTERS v STRING maju byt nahradene.
+   C. 2. PARAMETER obsahuje pocet CHARACTERS, ktore maju byt nahradene.
+   D. 3. PARAMETER obsahuje STRING, ktory ma nahradit FRAGMENT povodneho STRING.
+   E. RETURN VALUE obsahuje REFERENCE na THIS STRING.
+67. Pre METHOD [basic_string& replace(const_iterator First, const_iterator Last, const basic_string& Other)] platia nasledujuce fakty.
+   A. METHOD nahradzuje FRAGMENT STRINGU definovanym pomocou ITERATOR PAIR <First,Last) za STRING 'Other'.
+   B. 1. PARAMETER obsahuje BEGIN ITERATOR FRAGMENTU, ktory ma byt nahradeny.
+   C. 2. PARAMETER obsahuje END ITERATOR FRAGMENTU, ktory ma byt nahradeny.
+   D. 3. PARAMETER obsahuje STRING, ktory ma nahradit FRAGMENT povodneho STRING.
+   E. RETURN VALUE obsahuje REFERENCE na THIS STRING.
+68. Pre METHOD [basic_string& replace(size_type Index, size_type Count, const basic_string& Other, size_type OtherIndex, size_type OtherCount)] platia nasledujuce fakty.
+   A. METHOD nahradzuje FRAGMENT STRINGU definovanym pomocou START INDEX 'Index' a poctom CHARACTERS 'Count' za FRAGMENT STRING 'Other' definovanym pomocou START INDEX 'OtherIndex' a poctom CHARACTERS 'OtherCount'.
+   B. 1. PARAMETER obsahuje INDEX urcujuci miesto v STRING odkail sa maju zacat nahradzat CHARACTERS.
+   C. 2. PARAMETER obsahuje pocet CHARACTERS, ktore sa maju nahradit.
+   D. 3. PARAMETER obsahuje STRING, ktory ma nahradit FRAGMENT povodneho STRING.
+   E. 4. PARAMETER obsahuje INDEX urcujuci miesto v nahradzovanom STRING odkail sa maju zacat nahradzat CHARACTERS.
+   F. 5. PARAMETER obsahuje pocet CHARACTERS v nahradzovanom STRING, ktore sa maju nahradit.
+   G. RETURN VALUE obsahuje REFERENCE na THIS STRING.
+69. Pre METHOD [basic_string& replace(const_iterator First, const_iterator Last, const_iterator OtherFirst, const_iterator OtherLast)] platia nasledujuce fakty.
+   A. METHOD nahradzuje FRAGMENT STRINGU definovanym pomocou ITERATOR PAIR <First,Last) za FRAGMENT STRINGU definovanym pomocou ITERATOR PAIR <OtherFirst,OtherLast).
+   B. 1. PARAMETER obsahuje BEGIN ITERATOR FRAGMENTU, ktory ma byt nahradeny.
+   C. 2. PARAMETER obsahuje END ITERATOR FRAGMENTU, ktory ma byt nahradeny.
+   D. 3. PARAMETER obsahuje BEGIN ITERATOR FRAGMENTU, ktory ma byt nahradou.
+   E. 4. PARAMETER obsahuje END ITERATOR FRAGMENTU, ktory ma byt nahradou.
+   F. RETURN VALUE obsahuje REFERENCE na THIS STRING.
+70. Pre METHOD [basic_string& replace(size_type Index, size_type Count, const TCharacter* Other, size_type OtherCount)] platia nasledujuce fakty.
+   A. METHOD nahradzuje FRAGMENT STRINGU definovanym pomocou START INDEX 'Index' a poctom CHARACTERS 'Count' za C-STRING definovanym zaciatkom C-STRINGU 'Other' a poctom CHARACTERS 'OtherCount'.
+   B. 1. PARAMETER obsahuje INDEX urcujuci, ktore CHARACTERS v STRING maju byt nahradene.
+   C. 2. PARAMETER obsahuje pocet CHARACTERS, ktore maju byt nahradene.
+   D. 3. PARAMETER obsahuje C-STRING, ktory ma nahradit FRAGMENT povodneho STRING.
+   E. 4. PARAMETER obsahuje pocet CHARACTERS C-STRING, ktore sluzia ako nahrada.
+   F. RETURN VALUE obsahuje REFERENCE na THIS STRING.
+71. Pre METHOD [basic_string& replace(const_iterator First, const_iterator Last, const TCharacter* Other, size_type OtherCount)] platia nasledujuce fakty.
+   A. METHOD nahradzuje FRAGMENT STRINGU definovanym pomocou ITERATOR PAIR <First,Last) za C-STRING definovanym zaciatkom C-STRINGU 'Other' a poctom CHARACTERS 'OtherCount'.
+   B. 1. PARAMETER obsahuje BEGIN ITERATOR FRAGMENTU, ktory ma byt nahradeny.
+   C. 2. PARAMETER obsahuje END ITERATOR FRAGMENTU, ktory ma byt nahradeny.
+   D. 3. PARAMETER obsahuje C-STRING, ktory ma nahradit FRAGMENT povodneho STRING.
+   E. 4. PARAMETER obsahuje pocet CHARACTERS C-STRING, ktore sluzia ako nahrada.
+   F. RETURN VALUE obsahuje REFERENCE na THIS STRING.
+72. Pre METHOD [basic_string& replace(size_type Index, size_type Count, const TCharacter* Other)] platia nasledujuce fakty.
+   A. METHOD nahradzuje FRAGMENT STRINGU definovanym pomocou START INDEX 'Index' a poctom CHARACTERS 'Count' za C-STRING 'Other'.
+   B. 1. PARAMETER obsahuje INDEX urcujuci, ktore CHARACTERS v STRING maju byt nahradene.
+   C. 2. PARAMETER obsahuje pocet CHARACTERS, ktore maju byt nahradene.
+   D. 3. PARAMETER obsahuje C-STRING, ktory ma nahradit FRAGMENT povodneho STRING.
+   E. RETURN VALUE obsahuje REFERENCE na THIS STRING.
+73. Pre METHOD [basic_string& replace(const_iterator First, const_iterator Last, const TCharacter* Other)] platia nasledujuce fakty.
+   A. METHOD nahradzuje FRAGMENT STRINGU definovanym pomocou ITERATOR PAIR <First,Last) za C-STRING 'Other'.
+   B. 1. PARAMETER obsahuje BEGIN ITERATOR FRAGMENTU, ktory ma byt nahradeny.
+   C. 2. PARAMETER obsahuje END ITERATOR FRAGMENTU, ktory ma byt nahradeny.
+   D. 3. PARAMETER obsahuje C-STRING, ktory ma nahradit FRAGMENT povodneho STRING.
+   E. RETURN VALUE obsahuje REFERENCE na THIS STRING.
+74. Pre METHOD [basic_string& replace(size_type Index, size_type Count, size_type CharacterCount, TCharacter Character)] platia nasledujuce fakty.
+   A. METHOD nahradzuje FRAGMENT STRINGU definovanym pomocou START INDEX 'Index' a poctom CHARACTERS 'Count' za opakovanu sekvenciu CHARACTERS 'Character', ktorych pocet opakovani definuje PARAMETER 'CharacterCount'.
+   B. 1. PARAMETER obsahuje INDEX urcujuci, ktore CHARACTERS v STRING maju byt nahradene.
+   C. 2. PARAMETER obsahuje pocet CHARACTERS, ktore maju byt nahradene.
+   D. 3. PARAMETER obsahuje pocet CHARACTERS, ktore maju FRAGMENT nahradit.
+   E. 4. PARAMETER obsahuje CHARACTER, ktory ma nahradit povodny FRAGMENT.
+   F. RETURN VALUE obsahuje REFERENCE na THIS STRING.
+75. Pre METHOD [basic_string& replace(const_iterator First, const_iterator Last, size_type CharacterCount, TCharacter Character)] platia nasledujuce fakty.
+   A. METHOD nahradzuje FRAGMENT STRINGU definovanym pomocou ITERATOR PAIR <First,Last) za opakovanu sekvenciu CHARACTERS 'Character', ktorych pocet opakovani definuje PARAMETER 'CharacterCount'.
+   B. 1. PARAMETER obsahuje BEGIN ITERATOR FRAGMENTU, ktory ma byt nahradeny.
+   C. 2. PARAMETER obsahuje END ITERATOR FRAGMENTU, ktory ma byt nahradeny.
+   D. 3. PARAMETER obsahuje pocet CHARACTERS, ktore maju FRAGMENT nahradit.
+   E. 4. PARAMETER obsahuje CHARACTER, ktory ma nahradit povodny FRAGMENT.
+   F. RETURN VALUE obsahuje REFERENCE na THIS STRING.
+76. Pre METHOD [basic_string& replace(const_iterator First, const_iterator Last, size_type CharacterCount, initializer_list<TCharacter> InitializerList)] platia nasledujuce fakty.
+   A. METHOD nahradzuje FRAGMENT STRINGU definovanym pomocou ITERATOR PAIR <First,Last) za INITIALIZER LIST InitializerList.
+   B. 1. PARAMETER obsahuje BEGIN ITERATOR FRAGMENTU, ktory ma byt nahradeny.
+   C. 2. PARAMETER obsahuje END ITERATOR FRAGMENTU, ktory ma byt nahradeny.
+   D. 3. PARAMETER obsahuje INITIALIZER LIST, ktoreho CHARACTERS maju sluzit ako nahrada povodneho FRAGMENTU.
+   E. RETURN VALUE obsahuje REFERENCE na THIS STRING.
+77. Pre METHOD [basic_string& erase(size_type Index, size_type Count)] platia nasledujuce fakty.
+   A. METHOD zo STRING odstranuje FRAGMENT, ktory je definovany pomocou INDEX 'Index' a poctom CHARACTERS 'Count'.
+   B. 1. PARAMETER obsahuje INDEX prveho CHARACTER, ktory sa ma odstranit.
+   C. 2. PARAMETER obsahuje pocet CHARACTERS, ktore maju byt odstranene.
+   D. RETURN VALUE obsahuje REFERENCE na THIS STRING.
+78. Pre METHOD [iterator erase(const_iterator Position)] platia nasledujuce fakty.
+   A. METHOD zo STRING odstranuje CHARACTER na pozicii urcenej ITERATOR 'Position'.
+   B. PARAMETER obsahuje ITERATOR urcujuci miesto v STRING odkial sa ma CHARACTER odstranit.
+   C. RETURN VALUE obsahuje ITERATOR na CHARACTER nasledujuci za odstranenym CHARACTER. Ak sa odstranil posledny CHARACTER, RETURN VALUE obsahuje END ITERATOR.
+79. Pre METHOD [iterator erase(const_iterator First, const_iterator Last)] platia nasledujuce fakty.
+   A. METHOD zo STRING odstranuje FRAGMENT, ktory je definovany pomocou ITERATOR PAIR <First,Last).
+   B. 1. PARAMETER obsahuje BEGIN ITERATOR FRAGMENTU, ktory ma byt odstraneny.
+   C. 2. PARAMETER obsahuje END ITERATOR FRAGMENTU, ktory ma byt odstraneny.
+   D. RETURN VALUE obsahuje ITERATOR za POSLEDNY ODSTRANENY CHARACTER. Ak sa odstranil aj posledny CHARACTER v STRING, RETURN VALUE obsahuje END ITERATOR.
+80. Pre METHOD [void push_back(TCharacter Character)] platia nasledujuce fakty.
+   A. METHOD vklada na koniec STRING CHARACTER 'Character'.
+   B. PARAMETER obsahuje CHARACTER, ktory ma byt na koniec STRING vlozeny.
+81. Pre METHOD [void pop_back(void)] platia nasledujuce fakty.
+   A. METHOD odstranuje z konca STRING jeden CHARACTER.
+   B. Ak je STRING EMPTY, METHOD sposobi RUNTIME ERROR.
+82. Pre METHOD [basic_string& append(size_type Count, TCharacter Character)] platia nasledujuce fakty.
+   A. METHOD na koniec STRING opakovane vklada CHARACTER 'Character', pricom pocet vlozenych CHARACTERS definuje PARAMETER 'Count'.
+   B. 1. PARAMETER obsahuje pocet CHARACTERS, ktore sa maju vlozit.
+   C. 2. PARAMETER obsahuje CHARACTER, ktory sa ma vlozit.
+   D. RETURN VALUE obsahuje REFERENCE na THIS STRING.
+83. Pre METHOD [basic_string& append(const basic_string& Other)] platia nasledujuce fakty.
+   A. METHOD na koniec STRING vklada STRING 'Other'.
+   B. PARAMETER obsahuje STRING, ktory sa vlozit na koniec THIS STRING.
+   C. RETURN VALUE obsahuje REFERENCE na THIS STRING.
+84. Pre METHOD [basic_string& append(const basic_string& Other, size_type Index, size_type Count)] platia nasledujuce fakty.
+   A. METHOD vklada na koniec STRING FRAGMENT STRING 'Other', ktory je definovany INDEXOM 'Index' a poctom CHARACTERS 'Count', ktore sa maju vlozit.
+   B. 1. PARAMETER obsahuje STRING, ktoreho FRAGMENT sa ma vlozit na koniec THIS STRING.
+   C. 2. PARAMETER obsahuje INDEX vkladaneho STRING od ktoreho sa maju CHARACTERS vkladat.
+   D. 3. PARAMETER obsahuje pocet CHARACTERS zo STRING, ktore sa maju vlozit.
+   E. RETURN VALUE obsahuje REFERENCE na THIS STRING.
+85. Pre METHOD [basic_string& append(const TCharacter* Other, size_type Count)] platia nasledujuce fakty.
+   A. METHOD vklada na koniec STRING FRAGMENT C-STRING, ktory je definovany zaciatkom C-STRING 'Other' a poctom CHARACTERS 'Count', ktore sa maju vlozit.
+   B. 1. PARAMETER obsahuje C-STRING, ktoreho FRAGMENT sa ma vlozit.
+   C. 2. PARAMETER obsahuje pocet CHARACTERS z C-STRING, ktore sa maju vlozit.
+   D. RETURN VALUE obsahuje REFERENCE na THIS STRING.
+86. Pre METHOD [basic_string& append(size_type Index, const TCharacter* Other)] platia nasledujuce fakty.
+   A. METHOD vklada na koniec STRING C-STRING 'Other'.
+   B. PARAMETER obsahuje C-STRING, ktory sa ma vlozit na koniec THIS STRING.
+   C. RETURN VALUE obsahuje REFERENCE na THIS STRING.
+87. Pre METHOD [basic_string& append(TInputIterator First, TInputIterator Last)] platia nasledujuce fakty.
+   A. METHOD vklada na koniec STRING STRING definovany pomocou ITERATOR PAIR <First,Last).
+   B. 1. PARAMETER obsahuje BEGIN ITERATOR vkladaneho STRING.
+   C. 2. PARAMETER obsahuje END ITERATOR vkladaneho STRING.
+   D. RETURN VALUE obsahuje REFERENCE na THIS STRING.
+88. Pre METHOD [basic_string& append(initializer_list<TCharacter> InitializerList)] platia nasledujuce fakty.
+   A. METHOD vklada na koniec STRING STRING definovany pomocou INITIALIZER LIST 'InitializerList'.
+   B. PARAMETER obsahuje INITIALIZER LIST, ktoreho CHARACTERS maju byt vlozene na koniec THIS STRING.
+   C. RETURN VALUE obsahuje REFERENCE na THIS STRING.
+89. Pre OPERATOR [basic_string& operator+=(const basic_string& Other)] platia nasledujuce fakty.
+   A. OPERATOR na koniec STRING vklada STRING 'Other'.
+   B. PARAMETER obsahuje STRING, ktory sa vlozit na koniec THIS STRING.
+   C. RETURN VALUE obsahuje REFERENCE na THIS STRING.
+90. Pre OPERATOR [basic_string& operator+=(TCharacter Character)] platia nasledujuce fakty.
+   A. OPERATOR na koniec STRING vklada CHARACTER 'Character'.
+   B. PARAMETER obsahuje CHARACTER, ktory sa vlozit na koniec THIS STRING.
+   C. RETURN VALUE obsahuje REFERENCE na THIS STRING.
+91. Pre OPERATOR [basic_string& operator+=(const TCharacter* Other)] platia nasledujuce fakty.
+   A. OPERATOR na koniec STRING vklada C-STRING 'Other'.
+   B. PARAMETER obsahuje C-STRING, ktory sa vlozit na koniec THIS STRING.
+   C. RETURN VALUE obsahuje REFERENCE na THIS STRING.
+92. Pre OPERATOR [basic_string& operator+=(initializer_list<TCharacter> InitializerList)] platia nasledujuce fakty.
+   A. OPERATOR vklada na koniec STRING STRING definovany pomocou INITIALIZER LIST 'InitializerList'.
+   B. PARAMETER obsahuje INITIALIZER LIST, ktoreho CHARACTERS maju byt vlozene na koniec THIS STRING.
+   C. RETURN VALUE obsahuje REFERENCE na THIS STRING.
+93. Pre METHOD [void resize(size_type Count)] platia nasledujuce fakty.
+   A. METHOD meni velkost STRING na hodnotu stanovenu PARAMETER 'Count'.
+   B. PARAMETER obsahuje pocet CHARACTERS, ktore ma STRING obsahovat.
+   C. Ak je novy SIZE VACSI ako aktualny SIZE, ostavajuce CHARACTERS sa vytvoria volanim DEFUALT CONSTRUCTOR pre CHARACTER TYPE.
+   D. Ak je novy SIZE MENSI ako aktualny SIZE, prebytocne CHARACTERS sa odstrania.
+94. Pre METHOD [void resize(size_type Count, TCharacter Character)] platia nasledujuce fakty.
+   A. METHOD meni velkost STRING na hodnotu stanovenu PARAMETER 'Count'.
+   B. 1. PARAMETER obsahuje pocet CHARACTERS, ktore ma STRING obsahovat.
+   C. 2. PARAMETER obsahuje hodnotu na ktoru sa maju pridavana CHARACTERS nastavit.
+   D. Ak je novy SIZE VACSI ako aktualny SIZE, ostavajuce CHARACTERS sa vytvoria ako kopia CHARACTER zadaneho ako PARAMETER 'Character'.
+   E. Ak je novy SIZE MENSI ako aktualny SIZE, prebytocne CHARACTERS sa odstrania.
+95. Pre METHOD [basic_string substr(size_type Position, size_type Count)] platia nasledujuce fakty.
+   A. METHOD vracia SUBSTRING, ktory zacina od POSITION 'Position' a ma POCET CHARACTERS 'Count'.
+   B. 1. PARAMETER obsahuje POSITION, kde ma SUBSTRING zacinat.
+   C. 2. PARAMETER obsahuje pocet CHARACTERS, ktore ma SUBSTRING obsahovat.
+   D. RETURN VALUE obsahuje vysledny SUBSTRING.
+96. Pre OPERATOR [basic_string OPERATOR+(const basic_string& Left, const basic_string& Right)] platia nasledujuce fakty.
+   A. METHOD vykonava CONCATENATION dvoch STRINGS.
+   B. 1. PARAMETER obsahuje prvy STRING.
+   C. 2. PARAMETER obsahuje druhy STRING.
+   D. RETURN VALUE obsahuje vysledny CONCATENATED STRING.
+97. Pre OPERATOR [basic_string OPERATOR+(const TCharacter* Left, const basic_string& Right)] platia nasledujuce fakty.
+   A. OPERATOR vykonava CONCATENATION dvoch STRINGS.
+   B. 1. PARAMETER obsahuje prvy STRING.
+   C. 2. PARAMETER obsahuje druhy STRING.
+   D. RETURN VALUE obsahuje vysledny CONCATENATED STRING.
+98. Pre OPERATOR [basic_string OPERATOR+(TCharacter Left, const basic_string& Right)] platia nasledujuce fakty.
+   A. OPERATOR vykonava CONCATENATION CHARACTER a STRING.
+   B. 1. PARAMETER obsahuje CHARACTER.
+   C. 2. PARAMETER obsahuje STRING.
+   D. RETURN VALUE obsahuje vysledny CONCATENATED STRING.
+99. Pre OPERATOR [basic_string OPERATOR+(const basic_string& Left, const TCharacter* Right)] platia nasledujuce fakty.
+   A. OPERATOR vykonava CONCATENATION dvoch STRINGS.
+   B. 1. PARAMETER obsahuje prvy STRING.
+   C. 2. PARAMETER obsahuje druhy STRING.
+   D. RETURN VALUE obsahuje vysledny CONCATENATED STRING.
+100. Pre OPERATOR [basic_string OPERATOR+(const basic_string& Left, TCharacter Right)] platia nasledujuce fakty.
+   A. OPERATOR vykonava CONCATENATION STRING a CHARACTER.
+   B. 1. PARAMETER obsahuje STRING.
+   C. 2. PARAMETER obsahuje CHARACTER.
+   D. RETURN VALUE obsahuje vysledny CONCATENATED STRING.
+101. Pre OPERATOR [basic_string OPERATOR+(basic_string&& Left, const basic_string& Right)] platia nasledujuce fakty.
+   A. METHOD vykonava CONCATENATION dvoch STRINGS. Pri CONCATENATION sa pouziva MOVE SEMANTICS.
+   B. 1. PARAMETER obsahuje prvy STRING.
+   C. 2. PARAMETER obsahuje druhy STRING.
+   D. RETURN VALUE obsahuje vysledny CONCATENATED STRING.
+102. Pre OPERATOR [basic_string OPERATOR+(const basic_string& Left, basic_string&& Right)] platia nasledujuce fakty.
+   A. METHOD vykonava CONCATENATION dvoch STRINGS. Pri CONCATENATION sa pouziva MOVE SEMANTICS.
+   B. 1. PARAMETER obsahuje prvy STRING.
+   C. 2. PARAMETER obsahuje druhy STRING.
+   D. RETURN VALUE obsahuje vysledny CONCATENATED STRING.
+103. Pre OPERATOR [basic_string OPERATOR+(basic_string&& Left, basic_string&& Right)] platia nasledujuce fakty.
+   A. METHOD vykonava CONCATENATION dvoch STRINGS. Pri CONCATENATION sa pouziva MOVE SEMANTICS.
+   B. 1. PARAMETER obsahuje prvy STRING.
+   C. 2. PARAMETER obsahuje druhy STRING.
+   D. RETURN VALUE obsahuje vysledny CONCATENATED STRING.
+104. Pre OPERATOR [basic_string OPERATOR+(const TCharacter* Left, basic_string&& Right)] platia nasledujuce fakty.
+   A. METHOD vykonava CONCATENATION dvoch STRINGS. Pri CONCATENATION sa pouziva MOVE SEMANTICS.
+   B. 1. PARAMETER obsahuje prvy STRING.
+   C. 2. PARAMETER obsahuje druhy STRING.
+   D. RETURN VALUE obsahuje vysledny CONCATENATED STRING.
+105. Pre OPERATOR [basic_string OPERATOR+(TCharacter Left, basic_string&& Right)] platia nasledujuce fakty.
+   A. METHOD vykonava CONCATENATION CHARACTER a STRING. Pri CONCATENATION sa pouziva MOVE SEMANTICS.
+   B. 1. PARAMETER obsahuje CHARACTER.
+   C. 2. PARAMETER obsahuje STRING.
+   D. RETURN VALUE obsahuje vysledny CONCATENATED STRING.
+106. Pre OPERATOR [basic_string OPERATOR+(basic_string&& Left, const TCharacter* Right)] platia nasledujuce fakty.
+   A. METHOD vykonava CONCATENATION dvoch STRINGS. Pri CONCATENATION sa pouziva MOVE SEMANTICS.
+   B. 1. PARAMETER obsahuje prvy STRING.
+   C. 2. PARAMETER obsahuje druhy STRING.
+   D. RETURN VALUE obsahuje vysledny CONCATENATED STRING.
+107. Pre OPERATOR [basic_string OPERATOR+(basic_string&& Left, TCharacter Right)] platia nasledujuce fakty.
+   A. METHOD vykonava CONCATENATION CHARACTER a STRING. Pri CONCATENATION sa pouziva MOVE SEMANTICS.
+   B. 1. PARAMETER obsahuje STRING.
+   C. 2. PARAMETER obsahuje CHARACTER.
+   D. RETURN VALUE obsahuje vysledny CONCATENATED STRING.
+108. Pre OPERATOR [basic_ostream& OPERATOR<<(basic_ostream& Stream, const basic_string& String)] platia nasledujuce fakty.
+   A. OPERATOR zapise obsah STRING 'String' do OUTPUT STREAM 'Stream'.
+   B. 1. PARAMETER obsahuje OUTPUT STREAM.
+   C. 2. PARAMETER obsahuje STRING, ktory sa ma zapisat do OUTPUT STREAM.
+   D. RETURN VALUE obsahuje REFERENCE na zaslany OUTPUT STREAM.
+109. Pre OPERATOR [basic_istream& OPERATOR<<(basic_istream& Stream, basic_string& String)] platia nasledujuce fakty.
+   A. OPERATOR do STRING 'String' nacita obsah INTPUT STREAM 'Stream'.
+   B. 1. PARAMETER obsahuje INPUT STREAM az do PRVEHO VYSKYTU WHITE CHARACTER.
+   C. 2. PARAMETER obsahuje STRING, do ktoreho sa zapise obsah INPUT STREAM.
+   D. RETURN VALUE obsahuje REFERENCE na zaslany INPUT STREAM.
+   !!! E. Zo STREAM sa citaju data az do PRVEHO VYSKYTU WHITE CHARACTER.
+   !!! F. Ak ma STREAM nastaveny FLAG [skipws], LEADING WHITE SPACES su pri citani IGNOROVANE.
+110. Pre FUNCTION [basic_istream& getline(basic_istream&& Stream, basic_string& String)] platia nasledujuce fakty.
+   A. FUNCTION do STRING 'String' nacita obsah INTPUT STREAM 'Stream' az do PRVEHO VYSKYTU NEW LINE CHARACTER.
+   B. 1. PARAMETER obsahuje INPUT STREAM.
+   C. 2. PARAMETER obsahuje STRING, do ktoreho sa zapise obsah INPUT STREAM.
+   D. RETURN VALUE obsahuje REFERENCE na zaslany INPUT STREAM.
+   !!! E. Zo STREAM sa citaju data az do PRVEHO VYSKYTU NEW LINE CHARACTER. NEW LINE CHARACTER NIE JE vlozeny do nacitaneho STRINGU.
+111. Pre FUNCTION [basic_istream& getline(basic_istream&& Stream, basic_string& String, TCharacter Character)] platia nasledujuce fakty.
+   A. FUNCTION do STRING 'String' nacita obsah INTPUT STREAM 'Stream' az do PRVEHO VYSKYTU CHARACTER 'Character'.
+   B. 1. PARAMETER obsahuje INPUT STREAM.
+   C. 2. PARAMETER obsahuje STRING, do ktoreho sa zapise obsah INPUT STREAM.
+   D. 3. PARAMETER obsahuje CHARACTER urcujuci kedy ma citanie z INPUT STREAM skoncit.
+   E. RETURN VALUE obsahuje REFERENCE na zaslany INPUT STREAM.
+   !!! F. Zo STREAM sa citaju data az do PRVEHO VYSKYTU CHARACTER 'Character'. CHARACTER 'Character' NIE JE vlozeny do nacitaneho STRINGU.
+112. Pre METHOD [size_type find(const basic_string& String, size_type Position) const] platia nasledujuce fakty.
+   A. METHOD vyhladava PRVY vyskyt SUBSTRING 'String' od POSITION 'Position'.
+   B. 1. PARAMETER obsahuje SUBSTRING, ktory sa ma najst.
+   C. 2. PARAMETER obsahuje POSITION odkial sa ma SUBSTRING vyhladavat.
+   D. RETURN VALUE obsahuje POSITION na PRVY CHARACTER najdeneho SUBSTRING. V pripade, ze sa SUBSTRING NENASIEL, RETURN VALUE obsahuje VALUE [basic_string::npos].
+113. Pre METHOD [size_type find(const TCharacter* String, size_type Position, size_type Count) const] platia nasledujuce fakty.
+   A. METHOD vyhladava PRVY vyskyt SUBSTRING od POSITION 'Position'. SUBSTRING je definovany zaciatkom C-STRING 'String' a POCTOM CHARACTERS 'Count'. C-STRING MOZE obsahovat aj NULL TERMINATOR CHARACTERS.
+   B. 1. PARAMETER obsahuje SUBSTRING, ktory sa ma najst.
+   C. 2. PARAMETER obsahuje POSITION odkial sa ma SUBSTRING vyhladavat.
+   D. 3. PARAMETER obsahuje pocet CHARACTERS, ktore SUBSTRING obsahuje.
+   E. RETURN VALUE obsahuje POSITION na PRVY CHARACTER najdeneho SUBSTRING. V pripade, ze sa SUBSTRING NENASIEL, RETURN VALUE obsahuje VALUE [basic_string::npos].
+114. Pre METHOD [size_type find(const TCharacter* String, size_type Position) const] platia nasledujuce fakty.
+   A. METHOD vyhladava PRVY vyskyt SUBSTRING od POSITION 'Position'. SUBSTRING je definovany zaciatkom C-STRING 'String'. Pocet CHARACTERS v C-STRING je dany najdenim NULL TERMINATOR CHARACTER.
+   B. 1. PARAMETER obsahuje SUBSTRING, ktory sa ma najst.
+   C. 2. PARAMETER obsahuje POSITION odkial sa ma SUBSTRING vyhladavat.
+   D. RETURN VALUE obsahuje POSITION na PRVY CHARACTER najdeneho SUBSTRING. V pripade, ze sa SUBSTRING NENASIEL, RETURN VALUE obsahuje VALUE [basic_string::npos].
+115. Pre METHOD [size_type find(TCharacter Character, size_type Position) const] platia nasledujuce fakty.
+   A. METHOD vyhladava PRVY vyskyt CHARACTER 'Character' od POSITION 'Position'.
+   B. 1. PARAMETER obsahuje CHARACTER, ktory sa ma najst.
+   C. 2. PARAMETER obsahuje POSITION odkial sa ma CHARACTER vyhladavat.
+   D. RETURN VALUE obsahuje POSITION na najdeny CHARACTER. V pripade, ze sa CHARACTER NENASIEL, RETURN VALUE obsahuje VALUE [basic_string::npos].
+116. Pre METHOD [size_type rfind(const basic_string& String, size_type Position) const] platia nasledujuce fakty.
+   A. METHOD vyhladava POSLEDNY vyskyt SUBSTRING 'String' od POSITION 'Position'.
+   B. 1. PARAMETER obsahuje SUBSTRING, ktory sa ma najst.
+   C. 2. PARAMETER obsahuje POSITION odkial sa ma SUBSTRING vyhladavat.
+   D. RETURN VALUE obsahuje POSITION na PRVY CHARACTER najdeneho SUBSTRING. POSITION je ratana od ZACIATKU STRING a NIE z jeho KONCA. V pripade, ze sa SUBSTRING NENASIEL, RETURN VALUE obsahuje VALUE [basic_string::npos].
+117. Pre METHOD [size_type rfind(const TCharacter* String, size_type Position, size_type Count) const] platia nasledujuce fakty.
+   A. METHOD vyhladava POSLEDNY vyskyt SUBSTRING od POSITION 'Position'. SUBSTRING je definovany zaciatkom C-STRING 'String' a POCTOM CHARACTERS 'Count'. C-STRING MOZE obsahovat aj NULL TERMINATOR CHARACTERS.
+   B. 1. PARAMETER obsahuje SUBSTRING, ktory sa ma najst.
+   C. 2. PARAMETER obsahuje POSITION odkial sa ma SUBSTRING vyhladavat.
+   D. 3. PARAMETER obsahuje pocet CHARACTERS, ktore SUBSTRING obsahuje.
+   E. RETURN VALUE obsahuje POSITION na PRVY CHARACTER najdeneho SUBSTRING. POSITION je ratana od ZACIATKU STRING a NIE z jeho KONCA. V pripade, ze sa SUBSTRING NENASIEL, RETURN VALUE obsahuje VALUE [basic_string::npos].
+118. Pre METHOD [size_type rfind(const TCharacter* String, size_type Position) const] platia nasledujuce fakty.
+   A. METHOD vyhladava POSLEDNY vyskyt SUBSTRING od POSITION 'Position'. SUBSTRING je definovany zaciatkom C-STRING 'String'. Pocet CHARACTERS v C-STRING je dany najdenim NULL TERMINATOR CHARACTER.
+   B. 1. PARAMETER obsahuje SUBSTRING, ktory sa ma najst.
+   C. 2. PARAMETER obsahuje POSITION odkial sa ma SUBSTRING vyhladavat.
+   D. RETURN VALUE obsahuje POSITION na PRVY CHARACTER najdeneho SUBSTRING. POSITION je ratana od ZACIATKU STRING a NIE z jeho KONCA. V pripade, ze sa SUBSTRING NENASIEL, RETURN VALUE obsahuje VALUE [basic_string::npos].
+119. Pre METHOD [size_type rfind(TCharacter Character, size_type Position) const] platia nasledujuce fakty.
+   A. METHOD vyhladava POSLEDNY vyskyt CHARACTER 'Character' od POSITION 'Position'.
+   B. 1. PARAMETER obsahuje CHARACTER, ktory sa ma najst.
+   C. 2. PARAMETER obsahuje POSITION odkial sa ma CHARACTER vyhladavat.
+   D. RETURN VALUE obsahuje POSITION na najdeny CHARACTER. POSITION je ratana od ZACIATKU STRING a NIE z jeho KONCA. V pripade, ze sa CHARACTER NENASIEL, RETURN VALUE obsahuje VALUE [basic_string::npos].
+120. Pre METHOD [size_type find_first_of(const basic_string& String, size_type Position) const] platia nasledujuce fakty.
+   A. METHOD vyhladava PRVY vyskyt NIEKTOREHO z CHARACTERS STRING 'String' od POSITION 'Position'.
+   B. 1. PARAMETER obsahuje STRING, ktoreho CHARACTERS sa ma vyhladavat.
+   C. 2. PARAMETER obsahuje POSITION odkial sa maju CHARACTERS zadaneho STRING vyhladavat.
+   D. RETURN VALUE obsahuje POSITION na PRVY najdeny CHARACTER. V pripade, ze sa CHARACTER NENASIEL, RETURN VALUE obsahuje VALUE [basic_string::npos].
+121. Pre METHOD [size_type find_first_of(const TCharacter* String, size_type Position, size_type Count) const] platia nasledujuce fakty.
+   A. METHOD vyhladava PRVY vyskyt NIEKTOREHO z CHARACTERS STRING 'String' od POSITION 'Position'. STRING je definovany zaciatkom C-STRING 'String' a POCTOM CHARACTERS 'Count'. C-STRING MOZE obsahovat aj NULL TERMINATOR CHARACTERS.
+   B. 1. PARAMETER obsahuje STRING, ktoreho CHARACTERS sa ma vyhladavat.
+   C. 2. PARAMETER obsahuje POSITION odkial sa maju CHARACTERS zadaneho STRING vyhladavat.
+   D. 3. PARAMETER obsahuje pocet CHARACTERS, ktore STRING obsahuje.
+   E. RETURN VALUE obsahuje POSITION na PRVY najdeny CHARACTER. V pripade, ze sa CHARACTER NENASIEL, RETURN VALUE obsahuje VALUE [basic_string::npos].
+122. Pre METHOD [size_type find_first_of(const TCharacter* String, size_type Position) const] platia nasledujuce fakty.
+   A. METHOD vyhladava PRVY vyskyt NIEKTOREHO z CHARACTERS STRING 'String'. STRING je definovany zaciatkom C-STRING 'String'. Pocet CHARACTERS v C-STRING je dany najdenim NULL TERMINATOR CHARACTER.
+   B. 1. PARAMETER obsahuje STRING, ktoreho CHARACTERS sa ma vyhladavat.
+   C. 2. PARAMETER obsahuje POSITION odkial sa maju CHARACTERS zadaneho STRING vyhladavat.
+   D. RETURN VALUE obsahuje POSITION na PRVY najdeny CHARACTER. V pripade, ze sa CHARACTER NENASIEL, RETURN VALUE obsahuje VALUE [basic_string::npos].
+123. Pre METHOD [size_type find_first_of(TCharacter Character, size_type Position) const] platia nasledujuce fakty.
+   A. METHOD vyhladava PRVY vyskyt CHARACTER 'Character' od POSITION 'Position'.
+   B. 1. PARAMETER obsahuje CHARACTER, ktory sa ma najst.
+   C. 2. PARAMETER obsahuje POSITION odkial sa ma CHARACTER vyhladavat.
+   D. RETURN VALUE obsahuje POSITION na PRVY najdeny CHARACTER. V pripade, ze sa CHARACTER NENASIEL, RETURN VALUE obsahuje VALUE [basic_string::npos].
+124. Pre METHOD [size_type find_first_not_of(const basic_string& String, size_type Position) const] platia nasledujuce fakty.
+   A. METHOD vyhladava PRVY vyskyt CHARACTER, ktory sa NENACHADZA v STRING 'String' od POSITION 'Position'.
+   B. 1. PARAMETER obsahuje STRING, ktoreho CHARACTERS sa nesmu nachadzat v THIS STRING.
+   C. 2. PARAMETER obsahuje POSITION odkial sa ma vyhladavanie zacat.
+   D. RETURN VALUE obsahuje POSITION na PRVY najdeny CHARACTER. V pripade, ze sa CHARACTER NENASIEL, RETURN VALUE obsahuje VALUE [basic_string::npos].
+125. Pre METHOD [size_type find_first_not_of(const TCharacter* String, size_type Position, size_type Count) const] platia nasledujuce fakty.
+   A. METHOD vyhladava PRVY vyskyt CHARACTER, ktory sa NENACHADZA v STRING 'String' od POSITION 'Position'. STRING je definovany zaciatkom C-STRING 'String' a POCTOM CHARACTERS 'Count'. C-STRING MOZE obsahovat aj NULL TERMINATOR CHARACTERS.
+   B. 1. PARAMETER obsahuje STRING, ktoreho CHARACTERS sa nesmu nachadzat v THIS STRING.
+   C. 2. PARAMETER obsahuje POSITION odkial sa ma vyhladavanie zacat.
+   D. 3. PARAMETER obsahuje pocet CHARACTERS, ktore STRING obsahuje.
+   E. RETURN VALUE obsahuje POSITION na PRVY najdeny CHARACTER. V pripade, ze sa CHARACTER NENASIEL, RETURN VALUE obsahuje VALUE [basic_string::npos].
+126. Pre METHOD [size_type find_first_not_of(const TCharacter* String, size_type Position) const] platia nasledujuce fakty.
+   A. METHOD vyhladava PRVY vyskyt CHARACTER, ktory sa NENACHADZA v STRING 'String'. STRING je definovany zaciatkom C-STRING 'String'. Pocet CHARACTERS v C-STRING je dany najdenim NULL TERMINATOR CHARACTER.
+   B. 1. PARAMETER obsahuje STRING, ktoreho CHARACTERS sa nesmu nachadzat v THIS STRING.
+   C. 2. PARAMETER obsahuje POSITION odkial sa ma vyhladavanie zacat.
+   D. RETURN VALUE obsahuje POSITION na PRVY najdeny CHARACTER. V pripade, ze sa CHARACTER NENASIEL, RETURN VALUE obsahuje VALUE [basic_string::npos].
+127. Pre METHOD [size_type find_first_not_of(TCharacter Character, size_type Position) const] platia nasledujuce fakty.
+   A. METHOD vyhladava PRVY vyskyt CHARACTER, ktory NIE JE rovny CHARACTER 'Character' od POSITION 'Position'.
+   B. 1. PARAMETER obsahuje CHARACTER, ktory sa nesmie nachadzat v THIS STRING.
+   C. 2. PARAMETER obsahuje POSITION odkial sa ma vyhladavanie zacat.
+   D. RETURN VALUE obsahuje POSITION na PRVY najdeny CHARACTER. V pripade, ze sa CHARACTER NENASIEL, RETURN VALUE obsahuje VALUE [basic_string::npos].
+128. Pre METHOD [size_type find_last_of(const basic_string& String, size_type Position) const] platia nasledujuce fakty.
+   A. METHOD vyhladava POSLEDNY vyskyt NIEKTOREHO z CHARACTERS STRING 'String' od POSITION 'Position'.
+   B. 1. PARAMETER obsahuje STRING, ktoreho CHARACTERS sa ma vyhladavat.
+   C. 2. PARAMETER obsahuje POSITION odkial sa maju CHARACTERS zadaneho STRING vyhladavat.
+   D. RETURN VALUE obsahuje POSITION na PRVY najdeny CHARACTER. POSITION je ratana od ZACIATKU STRING a NIE z jeho KONCA. V pripade, ze sa CHARACTER NENASIEL, RETURN VALUE obsahuje VALUE [basic_string::npos].
+129. Pre METHOD [size_type find_last_of(const TCharacter* String, size_type Position, size_type Count) const] platia nasledujuce fakty.
+   A. METHOD vyhladava POSLEDNY vyskyt NIEKTOREHO z CHARACTERS STRING 'String' od POSITION 'Position'. STRING je definovany zaciatkom C-STRING 'String' a POCTOM CHARACTERS 'Count'. C-STRING MOZE obsahovat aj NULL TERMINATOR CHARACTERS.
+   B. 1. PARAMETER obsahuje STRING, ktoreho CHARACTERS sa ma vyhladavat.
+   C. 2. PARAMETER obsahuje POSITION odkial sa maju CHARACTERS zadaneho STRING vyhladavat.
+   D. 3. PARAMETER obsahuje pocet CHARACTERS, ktore STRING obsahuje.
+   E. RETURN VALUE obsahuje POSITION na PRVY najdeny CHARACTER. POSITION je ratana od ZACIATKU STRING a NIE z jeho KONCA. V pripade, ze sa CHARACTER NENASIEL, RETURN VALUE obsahuje VALUE [basic_string::npos].
+130. Pre METHOD [size_type find_last_of(const TCharacter* String, size_type Position) const] platia nasledujuce fakty.
+   A. METHOD vyhladava POSLEDNY vyskyt NIEKTOREHO z CHARACTERS STRING 'String'. STRING je definovany zaciatkom C-STRING 'String'. Pocet CHARACTERS v C-STRING je dany najdenim NULL TERMINATOR CHARACTER.
+   B. 1. PARAMETER obsahuje STRING, ktoreho CHARACTERS sa ma vyhladavat.
+   C. 2. PARAMETER obsahuje POSITION odkial sa maju CHARACTERS zadaneho STRING vyhladavat.
+   D. RETURN VALUE obsahuje POSITION na PRVY najdeny CHARACTER. POSITION je ratana od ZACIATKU STRING a NIE z jeho KONCA. V pripade, ze sa CHARACTER NENASIEL, RETURN VALUE obsahuje VALUE [basic_string::npos].
+131. Pre METHOD [size_type find_last_of(TCharacter Character, size_type Position) const] platia nasledujuce fakty.
+   A. METHOD vyhladava POSLEDNY vyskyt CHARACTER 'Character' od POSITION 'Position'.
+   B. 1. PARAMETER obsahuje CHARACTER, ktory sa ma najst.
+   C. 2. PARAMETER obsahuje POSITION odkial sa ma CHARACTER vyhladavat.
+   D. RETURN VALUE obsahuje POSITION na PRVY najdeny CHARACTER. POSITION je ratana od ZACIATKU STRING a NIE z jeho KONCA. V pripade, ze sa CHARACTER NENASIEL, RETURN VALUE obsahuje VALUE [basic_string::npos].
+132. Pre METHOD [size_type find_last_not_of(const basic_string& String, size_type Position) const] platia nasledujuce fakty.
+   A. METHOD vyhladava POSLEDNY vyskyt CHARACTER, ktory sa NENACHADZA v STRING 'String' od POSITION 'Position'.
+   B. 1. PARAMETER obsahuje STRING, ktoreho CHARACTERS sa nesmu nachadzat v THIS STRING.
+   C. 2. PARAMETER obsahuje POSITION odkial sa ma vyhladavanie zacat.
+   D. RETURN VALUE obsahuje POSITION na PRVY najdeny CHARACTER. POSITION je ratana od ZACIATKU STRING a NIE z jeho KONCA. V pripade, ze sa CHARACTER NENASIEL, RETURN VALUE obsahuje VALUE [basic_string::npos].
+133. Pre METHOD [size_type find_last_not_of(const TCharacter* String, size_type Position, size_type Count) const] platia nasledujuce fakty.
+   A. METHOD vyhladava POSLEDNY vyskyt CHARACTER, ktory sa NENACHADZA v STRING 'String' od POSITION 'Position'. STRING je definovany zaciatkom C-STRING 'String' a POCTOM CHARACTERS 'Count'. C-STRING MOZE obsahovat aj NULL TERMINATOR CHARACTERS.
+   B. 1. PARAMETER obsahuje STRING, ktoreho CHARACTERS sa nesmu nachadzat v THIS STRING.
+   C. 2. PARAMETER obsahuje POSITION odkial sa ma vyhladavanie zacat.
+   D. 3. PARAMETER obsahuje pocet CHARACTERS, ktore STRING obsahuje.
+   E. RETURN VALUE obsahuje POSITION na PRVY najdeny CHARACTER. POSITION je ratana od ZACIATKU STRING a NIE z jeho KONCA. V pripade, ze sa CHARACTER NENASIEL, RETURN VALUE obsahuje VALUE [basic_string::npos].
+134. Pre METHOD [size_type find_last_not_of(const TCharacter* String, size_type Position) const] platia nasledujuce fakty.
+   A. METHOD vyhladava POSLEDNY vyskyt CHARACTER, ktory sa NENACHADZA v STRING 'String'. STRING je definovany zaciatkom C-STRING 'String'. Pocet CHARACTERS v C-STRING je dany najdenim NULL TERMINATOR CHARACTER.
+   B. 1. PARAMETER obsahuje STRING, ktoreho CHARACTERS sa nesmu nachadzat v THIS STRING.
+   C. 2. PARAMETER obsahuje POSITION odkial sa ma vyhladavanie zacat.
+   D. RETURN VALUE obsahuje POSITION na PRVY najdeny CHARACTER. POSITION je ratana od ZACIATKU STRING a NIE z jeho KONCA. V pripade, ze sa CHARACTER NENASIEL, RETURN VALUE obsahuje VALUE [basic_string::npos].
+135. Pre METHOD [size_type find_last_not_of(TCharacter Character, size_type Position) const] platia nasledujuce fakty.
+   A. METHOD vyhladava POSLEDNY vyskyt CHARACTER, ktory NIE JE rovny CHARACTER 'Character' od POSITION 'Position'.
+   B. 1. PARAMETER obsahuje CHARACTER, ktory sa nesmie nachadzat v THIS STRING.
+   C. 2. PARAMETER obsahuje POSITION odkial sa ma vyhladavanie zacat.
+   D. RETURN VALUE obsahuje POSITION na PRVY najdeny CHARACTER. POSITION je ratana od ZACIATKU STRING a NIE z jeho KONCA. V pripade, ze sa CHARACTER NENASIEL, RETURN VALUE obsahuje VALUE [basic_string::npos].
+136. Pre FUNCTION [int stoi(const string& String, size_type* Position, int Base)] platia nasledujuce fakty.
+   A. FUNCTION konvertuje OBSAH STRING 'String' na TYPE [int], pricom do PARAMETER 'Position' sa ulozi pocet spracovanych CHARACTERS. NUMBER VALUE ma BASE 'Base'.
+   B. 1. PARAMETER obsahuje STRING, ktory sa ma konvertovat.
+   C. 2. PARAMETER obsahuje ADDRESS na INTEGER VALUE do ktorej sa ulozi pocet spracovanych CHARACTERS.
+   D. 3. PARAMETER NUMBERIC BASE do ktorej sa ma konverzia vykonat.
+   E. RETURN VALUE obsahuje konvertovanu VALUE.
+   !!! F. V pripade, ze CONVERSION NIE JE MOZNE VYKONAT, je hodena EXCEPTION [invalid_argument].
+   !!! G. V pripade, ze VALUE NIE JE mozne do TYPE [int] vlozit, je hodena EXCEPTION [out_of_range].
+137. Pre FUNCTION [int stoi(const wstring& String, size_type* Position, int Base)] platia nasledujuce fakty.
+   A. FUNCTION konvertuje OBSAH WIDE STRING 'String' na TYPE [int], pricom do PARAMETER 'Position' sa ulozi pocet spracovanych CHARACTERS. NUMBER VALUE ma BASE 'Base'.
+   B. 1. PARAMETER obsahuje WIDE STRING, ktory sa ma konvertovat.
+   C. 2. PARAMETER obsahuje ADDRESS na INTEGER VALUE do ktorej sa ulozi pocet spracovanych CHARACTERS.
+   D. 3. PARAMETER NUMBERIC BASE do ktorej sa ma konverzia vykonat.
+   E. RETURN VALUE obsahuje konvertovanu VALUE.
+   !!! F. V pripade, ze CONVERSION NIE JE MOZNE VYKONAT, je hodena EXCEPTION [invalid_argument].
+   !!! G. V pripade, ze VALUE NIE JE mozne do TYPE [int] vlozit, je hodena EXCEPTION [out_of_range].
+138. Pre FUNCTION [long stol(const string& String, size_type* Position, int Base)] platia nasledujuce fakty.
+   A. FUNCTION konvertuje OBSAH STRING 'String' na TYPE [long], pricom do PARAMETER 'Position' sa ulozi pocet spracovanych CHARACTERS. NUMBER VALUE ma BASE 'Base'.
+   B. 1. PARAMETER obsahuje STRING, ktory sa ma konvertovat.
+   C. 2. PARAMETER obsahuje ADDRESS na INTEGER VALUE do ktorej sa ulozi pocet spracovanych CHARACTERS.
+   D. 3. PARAMETER NUMBERIC BASE do ktorej sa ma konverzia vykonat.
+   E. RETURN VALUE obsahuje konvertovanu VALUE.
+   !!! F. V pripade, ze CONVERSION NIE JE MOZNE VYKONAT, je hodena EXCEPTION [invalid_argument].
+   !!! G. V pripade, ze VALUE NIE JE mozne do TYPE [long] vlozit, je hodena EXCEPTION [out_of_range].
+139. Pre FUNCTION [long stol(const wstring& String, size_type* Position, int Base)] platia nasledujuce fakty.
+   A. FUNCTION konvertuje OBSAH WIDE STRING 'String' na TYPE [long], pricom do PARAMETER 'Position' sa ulozi pocet spracovanych CHARACTERS. NUMBER VALUE ma BASE 'Base'.
+   B. 1. PARAMETER obsahuje WIDE STRING, ktory sa ma konvertovat.
+   C. 2. PARAMETER obsahuje ADDRESS na INTEGER VALUE do ktorej sa ulozi pocet spracovanych CHARACTERS.
+   D. 3. PARAMETER NUMBERIC BASE do ktorej sa ma konverzia vykonat.
+   E. RETURN VALUE obsahuje konvertovanu VALUE.
+   !!! F. V pripade, ze CONVERSION NIE JE MOZNE VYKONAT, je hodena EXCEPTION [invalid_argument].
+   !!! G. V pripade, ze VALUE NIE JE mozne do TYPE [long] vlozit, je hodena EXCEPTION [out_of_range].
+140. Pre FUNCTION [long long stoll(const string& String, size_type* Position, int Base)] platia nasledujuce fakty.
+   A. FUNCTION konvertuje OBSAH STRING 'String' na TYPE [long long], pricom do PARAMETER 'Position' sa ulozi pocet spracovanych CHARACTERS. NUMBER VALUE ma BASE 'Base'.
+   B. 1. PARAMETER obsahuje STRING, ktory sa ma konvertovat.
+   C. 2. PARAMETER obsahuje ADDRESS na INTEGER VALUE do ktorej sa ulozi pocet spracovanych CHARACTERS.
+   D. 3. PARAMETER NUMBERIC BASE do ktorej sa ma konverzia vykonat.
+   E. RETURN VALUE obsahuje konvertovanu VALUE.
+   !!! F. V pripade, ze CONVERSION NIE JE MOZNE VYKONAT, je hodena EXCEPTION [invalid_argument].
+   !!! G. V pripade, ze VALUE NIE JE mozne do TYPE [long long] vlozit, je hodena EXCEPTION [out_of_range].
+141. Pre FUNCTION [long long stoll(const wstring& String, size_type* Position, int Base)] platia nasledujuce fakty.
+   A. FUNCTION konvertuje OBSAH WIDE STRING 'String' na TYPE [long long], pricom do PARAMETER 'Position' sa ulozi pocet spracovanych CHARACTERS. NUMBER VALUE ma BASE 'Base'.
+   B. 1. PARAMETER obsahuje WIDE STRING, ktory sa ma konvertovat.
+   C. 2. PARAMETER obsahuje ADDRESS na INTEGER VALUE do ktorej sa ulozi pocet spracovanych CHARACTERS.
+   D. 3. PARAMETER NUMBERIC BASE do ktorej sa ma konverzia vykonat.
+   E. RETURN VALUE obsahuje konvertovanu VALUE.
+   !!! F. V pripade, ze CONVERSION NIE JE MOZNE VYKONAT, je hodena EXCEPTION [invalid_argument].
+   !!! G. V pripade, ze VALUE NIE JE mozne do TYPE [long long] vlozit, je hodena EXCEPTION [out_of_range].
+142. Pre FUNCTION [unsigned long stoul(const string& String, size_type* Position, int Base)] platia nasledujuce fakty.
+   A. FUNCTION konvertuje OBSAH STRING 'String' na TYPE [unsigned long], pricom do PARAMETER 'Position' sa ulozi pocet spracovanych CHARACTERS. NUMBER VALUE ma BASE 'Base'.
+   B. 1. PARAMETER obsahuje STRING, ktory sa ma konvertovat.
+   C. 2. PARAMETER obsahuje ADDRESS na INTEGER VALUE do ktorej sa ulozi pocet spracovanych CHARACTERS.
+   D. 3. PARAMETER NUMBERIC BASE do ktorej sa ma konverzia vykonat.
+   E. RETURN VALUE obsahuje konvertovanu VALUE.
+   !!! F. V pripade, ze CONVERSION NIE JE MOZNE VYKONAT, je hodena EXCEPTION [invalid_argument].
+   !!! G. V pripade, ze VALUE NIE JE mozne do TYPE [unsigned long] vlozit, je hodena EXCEPTION [out_of_range].
+143. Pre FUNCTION [unsigned long stoul(const wstring& String, size_type* Position, int Base)] platia nasledujuce fakty.
+   A. FUNCTION konvertuje OBSAH WIDE STRING 'String' na TYPE [unsigned long], pricom do PARAMETER 'Position' sa ulozi pocet spracovanych CHARACTERS. NUMBER VALUE ma BASE 'Base'.
+   B. 1. PARAMETER obsahuje WIDE STRING, ktory sa ma konvertovat.
+   C. 2. PARAMETER obsahuje ADDRESS na INTEGER VALUE do ktorej sa ulozi pocet spracovanych CHARACTERS.
+   D. 3. PARAMETER NUMBERIC BASE do ktorej sa ma konverzia vykonat.
+   E. RETURN VALUE obsahuje konvertovanu VALUE.
+   !!! F. V pripade, ze CONVERSION NIE JE MOZNE VYKONAT, je hodena EXCEPTION [invalid_argument].
+   !!! G. V pripade, ze VALUE NIE JE mozne do TYPE [unsigned long] vlozit, je hodena EXCEPTION [out_of_range].
+144. Pre FUNCTION [unsigned long long stoull(const string& String, size_type* Position, int Base)] platia nasledujuce fakty.
+   A. FUNCTION konvertuje OBSAH STRING 'String' na TYPE [unsigned long long], pricom do PARAMETER 'Position' sa ulozi pocet spracovanych CHARACTERS. NUMBER VALUE ma BASE 'Base'.
+   B. 1. PARAMETER obsahuje STRING, ktory sa ma konvertovat.
+   C. 2. PARAMETER obsahuje ADDRESS na INTEGER VALUE do ktorej sa ulozi pocet spracovanych CHARACTERS.
+   D. 3. PARAMETER NUMBERIC BASE do ktorej sa ma konverzia vykonat.
+   E. RETURN VALUE obsahuje konvertovanu VALUE.
+   !!! F. V pripade, ze CONVERSION NIE JE MOZNE VYKONAT, je hodena EXCEPTION [invalid_argument].
+   !!! G. V pripade, ze VALUE NIE JE mozne do TYPE [unsigned long long] vlozit, je hodena EXCEPTION [out_of_range].
+145. Pre FUNCTION [unsigned long long stoull(const wstring& String, size_type* Position, int Base)] platia nasledujuce fakty.
+   A. FUNCTION konvertuje OBSAH WIDE STRING 'String' na TYPE [unsigned long long], pricom do PARAMETER 'Position' sa ulozi pocet spracovanych CHARACTERS. NUMBER VALUE ma BASE 'Base'.
+   B. 1. PARAMETER obsahuje WIDE STRING, ktory sa ma konvertovat.
+   C. 2. PARAMETER obsahuje ADDRESS na INTEGER VALUE do ktorej sa ulozi pocet spracovanych CHARACTERS.
+   D. 3. PARAMETER NUMBERIC BASE do ktorej sa ma konverzia vykonat.
+   E. RETURN VALUE obsahuje konvertovanu VALUE.
+   !!! F. V pripade, ze CONVERSION NIE JE MOZNE VYKONAT, je hodena EXCEPTION [invalid_argument].
+   !!! G. V pripade, ze VALUE NIE JE mozne do TYPE [unsigned long long] vlozit, je hodena EXCEPTION [out_of_range].
+146. Pre FUNCTION [float stof(const string& String, size_type* Position)] platia nasledujuce fakty.
+   A. FUNCTION konvertuje OBSAH STRING 'String' na TYPE [float], pricom do PARAMETER 'Position' sa ulozi pocet spracovanych CHARACTERS.
+   B. 1. PARAMETER obsahuje STRING, ktory sa ma konvertovat.
+   C. 2. PARAMETER obsahuje ADDRESS na INTEGER VALUE do ktorej sa ulozi pocet spracovanych CHARACTERS.
+   D. RETURN VALUE obsahuje konvertovanu VALUE.
+   !!! E. V pripade, ze CONVERSION NIE JE MOZNE VYKONAT, je hodena EXCEPTION [invalid_argument].
+   !!! F. V pripade, ze VALUE NIE JE mozne do TYPE [float] vlozit, je hodena EXCEPTION [out_of_range].
+147. Pre FUNCTION [float stof(const wstring& String, size_type* Position)] platia nasledujuce fakty.
+   A. FUNCTION konvertuje OBSAH WIDE STRING 'String' na TYPE [float], pricom do PARAMETER 'Position' sa ulozi pocet spracovanych CHARACTERS.
+   B. 1. PARAMETER obsahuje WIDE STRING, ktory sa ma konvertovat.
+   C. 2. PARAMETER obsahuje ADDRESS na INTEGER VALUE do ktorej sa ulozi pocet spracovanych CHARACTERS.
+   D. RETURN VALUE obsahuje konvertovanu VALUE.
+   !!! E. V pripade, ze CONVERSION NIE JE MOZNE VYKONAT, je hodena EXCEPTION [invalid_argument].
+   !!! F. V pripade, ze VALUE NIE JE mozne do TYPE [float] vlozit, je hodena EXCEPTION [out_of_range].
+148. Pre FUNCTION [double stod(const string& String, size_type* Position)] platia nasledujuce fakty.
+   A. FUNCTION konvertuje OBSAH STRING 'String' na TYPE [double], pricom do PARAMETER 'Position' sa ulozi pocet spracovanych CHARACTERS.
+   B. 1. PARAMETER obsahuje STRING, ktory sa ma konvertovat.
+   C. 2. PARAMETER obsahuje ADDRESS na INTEGER VALUE do ktorej sa ulozi pocet spracovanych CHARACTERS.
+   D. RETURN VALUE obsahuje konvertovanu VALUE.
+   !!! E. V pripade, ze CONVERSION NIE JE MOZNE VYKONAT, je hodena EXCEPTION [invalid_argument].
+   !!! F. V pripade, ze VALUE NIE JE mozne do TYPE [double] vlozit, je hodena EXCEPTION [out_of_range].
+149. Pre FUNCTION [double stod(const wstring& String, size_type* Position)] platia nasledujuce fakty.
+   A. FUNCTION konvertuje OBSAH WIDE STRING 'String' na TYPE [double], pricom do PARAMETER 'Position' sa ulozi pocet spracovanych CHARACTERS.
+   B. 1. PARAMETER obsahuje WIDE STRING, ktory sa ma konvertovat.
+   C. 2. PARAMETER obsahuje ADDRESS na INTEGER VALUE do ktorej sa ulozi pocet spracovanych CHARACTERS.
+   D. RETURN VALUE obsahuje konvertovanu VALUE.
+   !!! E. V pripade, ze CONVERSION NIE JE MOZNE VYKONAT, je hodena EXCEPTION [invalid_argument].
+   !!! F. V pripade, ze VALUE NIE JE mozne do TYPE [double] vlozit, je hodena EXCEPTION [out_of_range].
+150. Pre FUNCTION [long double stold(const string& String, size_type* Position)] platia nasledujuce fakty.
+   A. FUNCTION konvertuje OBSAH STRING 'String' na TYPE [long double], pricom do PARAMETER 'Position' sa ulozi pocet spracovanych CHARACTERS.
+   B. 1. PARAMETER obsahuje STRING, ktory sa ma konvertovat.
+   C. 2. PARAMETER obsahuje ADDRESS na INTEGER VALUE do ktorej sa ulozi pocet spracovanych CHARACTERS.
+   D. RETURN VALUE obsahuje konvertovanu VALUE.
+   !!! E. V pripade, ze CONVERSION NIE JE MOZNE VYKONAT, je hodena EXCEPTION [invalid_argument].
+   !!! F. V pripade, ze VALUE NIE JE mozne do TYPE [long double] vlozit, je hodena EXCEPTION [out_of_range].
+151. Pre FUNCTION [long double stold(const wstring& String, size_type* Position)] platia nasledujuce fakty.
+   A. FUNCTION konvertuje OBSAH WIDE STRING 'String' na TYPE [long double], pricom do PARAMETER 'Position' sa ulozi pocet spracovanych CHARACTERS.
+   B. 1. PARAMETER obsahuje WIDE STRING, ktory sa ma konvertovat.
+   C. 2. PARAMETER obsahuje ADDRESS na INTEGER VALUE do ktorej sa ulozi pocet spracovanych CHARACTERS.
+   D. RETURN VALUE obsahuje konvertovanu VALUE.
+   !!! E. V pripade, ze CONVERSION NIE JE MOZNE VYKONAT, je hodena EXCEPTION [invalid_argument].
+   !!! F. V pripade, ze VALUE NIE JE mozne do TYPE [long double] vlozit, je hodena EXCEPTION [out_of_range].
+152. Pre FUNCTION [string to_string(int Value)] platia nasledujuce fakty.
+   A. FUNCTION konvertuje VALUE 'Value' do STRING.
+   B. PARAMETER obsahuje NUMBERIC VALUE ktora sa ma konvertovat.
+   C. RETURN VALUE obsahuje konvertovanu VALUE.
+153. Pre FUNCTION [string to_string(long Value)] platia nasledujuce fakty.
+   A. FUNCTION konvertuje VALUE 'Value' do STRING.
+   B. PARAMETER obsahuje NUMBERIC VALUE ktora sa ma konvertovat.
+   C. RETURN VALUE obsahuje konvertovanu VALUE.
+154. Pre FUNCTION [string to_string(long long Value)] platia nasledujuce fakty.
+   A. FUNCTION konvertuje VALUE 'Value' do STRING.
+   B. PARAMETER obsahuje NUMBERIC VALUE ktora sa ma konvertovat.
+   C. RETURN VALUE obsahuje konvertovanu VALUE.
+155. Pre FUNCTION [string to_string(unsigned Value)] platia nasledujuce fakty.
+   A. FUNCTION konvertuje VALUE 'Value' do STRING.
+   B. PARAMETER obsahuje NUMBERIC VALUE ktora sa ma konvertovat.
+   C. RETURN VALUE obsahuje konvertovanu VALUE.
+156. Pre FUNCTION [string to_string(unsigned long Value)] platia nasledujuce fakty.
+   A. FUNCTION konvertuje VALUE 'Value' do STRING.
+   B. PARAMETER obsahuje NUMBERIC VALUE ktora sa ma konvertovat.
+   C. RETURN VALUE obsahuje konvertovanu VALUE.
+157. Pre FUNCTION [string to_string(unsigned long long Value)] platia nasledujuce fakty.
+   A. FUNCTION konvertuje VALUE 'Value' do STRING.
+   B. PARAMETER obsahuje NUMBERIC VALUE ktora sa ma konvertovat.
+   C. RETURN VALUE obsahuje konvertovanu VALUE.
+158. Pre FUNCTION [string to_string(float Value)] platia nasledujuce fakty.
+   A. FUNCTION konvertuje VALUE 'Value' do STRING.
+   B. PARAMETER obsahuje NUMBERIC VALUE ktora sa ma konvertovat.
+   C. RETURN VALUE obsahuje konvertovanu VALUE.
+159. Pre FUNCTION [string to_string(double Value)] platia nasledujuce fakty.
+   A. FUNCTION konvertuje VALUE 'Value' do STRING.
+   B. PARAMETER obsahuje NUMBERIC VALUE ktora sa ma konvertovat.
+   C. RETURN VALUE obsahuje konvertovanu VALUE.
+160. Pre FUNCTION [string to_string(long double Value)] platia nasledujuce fakty.
+   A. FUNCTION konvertuje VALUE 'Value' do STRING.
+   B. PARAMETER obsahuje NUMBERIC VALUE ktora sa ma konvertovat.
+   C. RETURN VALUE obsahuje konvertovanu VALUE.
+161. Pre FUNCTION [wstring to_wstring(int Value)] platia nasledujuce fakty.
+   A. FUNCTION konvertuje VALUE 'Value' do WIDE STRING.
+   B. PARAMETER obsahuje NUMBERIC VALUE ktora sa ma konvertovat.
+   C. RETURN VALUE obsahuje konvertovanu VALUE.
+162. Pre FUNCTION [wstring to_wstring(long Value)] platia nasledujuce fakty.
+   A. FUNCTION konvertuje VALUE 'Value' do WIDE STRING.
+   B. PARAMETER obsahuje NUMBERIC VALUE ktora sa ma konvertovat.
+   C. RETURN VALUE obsahuje konvertovanu VALUE.
+163. Pre FUNCTION [wstring to_wstring(long long Value)] platia nasledujuce fakty.
+   A. FUNCTION konvertuje VALUE 'Value' do WIDE STRING.
+   B. PARAMETER obsahuje NUMBERIC VALUE ktora sa ma konvertovat.
+   C. RETURN VALUE obsahuje konvertovanu VALUE.
+164. Pre FUNCTION [wstring to_wstring(unsigned Value)] platia nasledujuce fakty.
+   A. FUNCTION konvertuje VALUE 'Value' do WIDE STRING.
+   B. PARAMETER obsahuje NUMBERIC VALUE ktora sa ma konvertovat.
+   C. RETURN VALUE obsahuje konvertovanu VALUE.
+165. Pre FUNCTION [wstring to_wstring(unsigned long Value)] platia nasledujuce fakty.
+   A. FUNCTION konvertuje VALUE 'Value' do WIDE STRING.
+   B. PARAMETER obsahuje NUMBERIC VALUE ktora sa ma konvertovat.
+   C. RETURN VALUE obsahuje konvertovanu VALUE.
+166. Pre FUNCTION [wstring to_wstring(unsigned long long Value)] platia nasledujuce fakty.
+   A. FUNCTION konvertuje VALUE 'Value' do WIDE STRING.
+   B. PARAMETER obsahuje NUMBERIC VALUE ktora sa ma konvertovat.
+   C. RETURN VALUE obsahuje konvertovanu VALUE.
+167. Pre FUNCTION [wstring to_wstring(float Value)] platia nasledujuce fakty.
+   A. FUNCTION konvertuje VALUE 'Value' do WIDE STRING.
+   B. PARAMETER obsahuje NUMBERIC VALUE ktora sa ma konvertovat.
+   C. RETURN VALUE obsahuje konvertovanu VALUE.
+168. Pre FUNCTION [wstring to_wstring(double Value)] platia nasledujuce fakty.
+   A. FUNCTION konvertuje VALUE 'Value' do WIDE STRING.
+   B. PARAMETER obsahuje NUMBERIC VALUE ktora sa ma konvertovat.
+   C. RETURN VALUE obsahuje konvertovanu VALUE.
+169. Pre FUNCTION [wstring to_wstring(long double Value)] platia nasledujuce fakty.
+   A. FUNCTION konvertuje VALUE 'Value' do WIDE STRING.
+   B. PARAMETER obsahuje NUMBERIC VALUE ktora sa ma konvertovat.
+   C. RETURN VALUE obsahuje konvertovanu VALUE.
+170. Pre METHOD [iterator begin(void)] platia nasledujuce fakty.
+   A. METHOD vracia BEGIN ITERATOR na PRVY CHARACTER v STRING.
+   B. RETURN VALUE obsahuje BEGIN ITERATOR na PRVY CHARACTER v STRING.
+171. Pre METHOD [const_iterator begin(void) const] platia nasledujuce fakty.
+   A. METHOD vracia CONST BEGIN ITERATOR na PRVY CHARACTER v STRING.
+   B. RETURN VALUE obsahuje CONST BEGIN ITERATOR na PRVY CHARACTER v STRING.
+172. Pre METHOD [const_iterator cbegin(void) const] platia nasledujuce fakty.
+   A. METHOD vracia CONST BEGIN ITERATOR na PRVY CHARACTER v STRING.
+   B. RETURN VALUE obsahuje CONST BEGIN ITERATOR na PRVY CHARACTER v STRING.
+173. Pre METHOD [iterator end(void)] platia nasledujuce fakty.
+   A. METHOD vracia END ITERATOR odkazujuci 1 POSITION za POSLEDNY CHARACTER v STRING.
+   B. RETURN VALUE obsahuje END ITERATOR odkazujuci 1 POSITION za POSLEDNY CHARACTER v STRING.
+174. Pre METHOD [const_iterator end(void) const] platia nasledujuce fakty.
+   A. METHOD vracia CONST END ITERATOR odkazujuci 1 POSITION za POSLEDNY CHARACTER v STRING.
+   B. RETURN VALUE obsahuje CONST END ITERATOR odkazujuci 1 POSITION za POSLEDNY CHARACTER v STRING.
+175. Pre METHOD [const_iterator cend(void) const] platia nasledujuce fakty.
+   A. METHOD vracia CONST END ITERATOR odkazujuci 1 POSITION za POSLEDNY CHARACTER v STRING.
+   B. RETURN VALUE obsahuje CONST END ITERATOR odkazujuci 1 POSITION za POSLEDNY CHARACTER v STRING.
+176. Pre METHOD [reverse_iterator rbegin(void)] platia nasledujuce fakty.
+   A. METHOD vracia BEGIN REVERSE ITERATOR odkazujuci na POSLEDNY CHARACTER v STRING.
+   B. RETURN VALUE obsahuje BEGIN REVERSE ITERATOR odkazujuci na POSLEDNY CHARACTER v STRING.
+177. Pre METHOD [const_reverse_iterator rbegin(void) const] platia nasledujuce fakty.
+   A. METHOD vracia CONST BEGIN REVERSE ITERATOR odkazujuci na POSLEDNY CHARACTER v STRING.
+   B. RETURN VALUE obsahuje CONST BEGIN REVERSE ITERATOR odkazujuci na POSLEDNY CHARACTER v STRING.
+178. Pre METHOD [const_reverse_iterator crbegin(void) const] platia nasledujuce fakty.
+   A. METHOD vracia CONST BEGIN REVERSE ITERATOR odkazujuci na POSLEDNY CHARACTER v STRING.
+   B. RETURN VALUE obsahuje CONST BEGIN REVERSE ITERATOR odkazujuci na POSLEDNY CHARACTER v STRING.
+179. Pre METHOD [reverse_iterator rend(void)] platia nasledujuce fakty.
+   A. METHOD vracia END REVERSE ITERATOR odkazujuci 1 POSITION PRED PRVY CHARACTER v STRING.
+   B. RETURN VALUE obsahuje END REVERSE ITERATOR odkazujuci 1 POSITION PRED PRVY CHARACTER v STRING.
+180. Pre METHOD [const_reverse_iterator rend(void) const] platia nasledujuce fakty.
+   A. METHOD vracia CONST END REVERSE ITERATOR odkazujuci 1 POSITION PRED PRVY CHARACTER v STRING.
+   B. RETURN VALUE obsahuje CONST END REVERSE ITERATOR odkazujuci 1 POSITION PRED PRVY CHARACTER v STRING.
+181. Pre METHOD [const_reverse_iterator crend(void) const] platia nasledujuce fakty.
+   A. METHOD vracia CONST END REVERSE ITERATOR odkazujuci 1 POSITION PRED PRVY CHARACTER v STRING.
+   B. RETURN VALUE obsahuje CONST END REVERSE ITERATOR odkazujuci 1 POSITION PRED PRVY CHARACTER v STRING.
+182. Pre METHOD [allocator_type get_allocator(void) const] platia nasledujuce fakty.
+   A. METHOD vracia instanciu ALLOCATOR TYPE, ktory aktualna instancia STRING pouziva.
+   B. RETURN VALUE obsahuje instanciu ALLOCATOR TYPE, ktory aktualna instancia STRING pouziva.
+//-------------------------------------------------------------------------------------------------------

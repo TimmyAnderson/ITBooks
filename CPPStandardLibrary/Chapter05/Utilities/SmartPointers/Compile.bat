@@ -1,0 +1,1 @@
+g++-8 -m64 -std=c++17 -pthread -fexceptions -pedantic -Wall -Wextra -o Program.exe MyDebug.cpp SmartPointers.cpp CCyclicReferencesShared1.cpp CCyclicReferencesShared2.cpp CCyclicReferencesWeak1.cpp CCyclicReferencesWeak2.cpp CErrorThisParentShared.cpp CErrorThisChildShared.cpp

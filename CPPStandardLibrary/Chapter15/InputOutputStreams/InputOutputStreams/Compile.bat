@@ -1,0 +1,1 @@
+g++-8 -m64 -std=c++17 -pthread -fexceptions -pedantic -Wall -Wextra -o Program.exe MyDebug.cpp InputOutputStreams.cpp CustomManipulators.cpp CCustomOutputStreamBufferNoBuffering1.cpp CCustomOutputStreamBufferNoBuffering2.cpp CCustomOutputStreamBufferWithBuffering.cpp CCustomInputStreamBuffer.cpp

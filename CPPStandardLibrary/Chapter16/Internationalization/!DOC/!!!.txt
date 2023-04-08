@@ -1,0 +1,566 @@
+//-------------------------------------------------------------------------------------------------------
+1. Solution demonstruje moznosti INTERNATIONALIZATION v C++.
+2. INTERNATIONALIZATION CLASSES a FUNCTIONS su definovane v LIBRARY <locale>.
+3. INTERNATIONALIZATION LIBRARY v C++ obsahuje nasledujuce FEATURES.
+   A. Podpora rozlicnych CHARACTER SETS pre LANGUAGES, ktorych CHARACTERS nie je mozne ulozit do TYPE [char].
+   B. Podpora NATIONAL CONVENTIONS pri praci s NUMBERIC VALUES, DATE a TIME VALUES, MONETARY VALUES a BOOLEAN VALUS.
+4. NATIONAL CONVENTIONS v C++ su zapuzdrene v LOCALE OBJECTS. Pre LOCALE OBJECTS platia nasledujuce fakty.
+   A. LOCALE OBJECTS su instanciami CLASS [locale].
+   B. LOCALE OBJECTS pre danu CULTURE zapuzdruju NATIONAL CONVENTIONS.
+5. INTERNATIONALIZATION LIBRARY v C++ definuje koncept CHARACTER TRAITS. Pre CHARACTER TRAITS platia nasledujuce fakty.
+   A. CHARACTER TRAITS definuju PROPERTIES a OPERATIONS, ktore su specificke pre jednotlive CHARACTER SETS.
+   B. CHARACTER TRAITS pre jednotlive CULTURES definuju VALUES specialnych CHARACTERS ako END OF FILE CHARACTER.
+   C. CHARACTER TRAITS pre jednotlive CULTURES definuju OPERATIONS ako STRING COMPARE, STRING ASSIGNMENT ci STRING COPY.
+6. Pre potreby INTERNATIONALIZATION C++ definuje 2 typy CHARACTERS.
+   A. MULTIBYTE CHARACTERS su CHARACTERS, ktore NEMAJU PEVNU DLZKU, ale dlzka jednotlivych CHARACTERS zavisi od vyskytu ESCAPE SEQUENCES v STRING.
+   B. WIDE CHARACTERS su CHARACTERS, ktore MAJU PEVNU DLZKU. Dlzka WIDE CHARACTERS moze byt pre rozlicne TYPY CHARACTERS rozdielna, no dany CHARACTER TYPE ma vzdy pevnu dlzku pre vsetky CHARACTERS.
+7. Pre MULTIBYTE CHARACTERS platia nasledujuce fakty.
+   A. MULTIBYTE CHARACTERS maju VARIABILNU DLZKU jednotlivych CHARACTERS.
+   B. Pri prechadzani BYTE ARRAY vyznam jednotlivych BYTES urcuje VALUE SHIFT STATE.
+   C. SHIFT STATE v STRING reprezentuje CONTEXT v akom sa nachadza citanie STRING. Urcuje ci sa ma dany BYTE reprezentovat ako cely CHARACTER, cast MULTIBYTE CHARACTER, alebo ESCAPE SEQUENCE.
+   !!! D. Zmeny v dlzke CHARACTERS v STRING urcuje vyskyt ESCAPE SEQUENCES. ESCAPE SEQUENCE meni SHIFT STATE a definuje vyznam nasledujucich BYTES az do vyskytu nasledujucej ESCAPE SEQUENCE.
+   E. VYHODOU MULTIBYTE CHARACTERS je, ze STRINGS maju KRATSIU DLZKU ako WIDE CHARACTERS, aj preto sa MULTIBYTE CHARACTERS pouzivaju na prenos dat.
+   F. NEVYHODOU MULTIBYTE CHARACTERS je nutnost ich PARSINGU pri praci s nimi a nemoznost skoku na CHARACTER bez parsovania STRING.
+8. Pre WIDE CHARACTERS platia nasledujuce fakty.
+   A. WIDE CHARACTERS maju PEVNU DLZKU jednotlivych CHARACTERS.
+   B. WIDE CHARACTER SETS mozu mat dlzku 1, 2, 4, alebo aj iny pocet BYTES pre 1 CHARACTER, no kazdy MULTIBYTE CHARACTER SET ma PEVNU DLZKU CHARACTERS.
+   C. VYHODOU WIDE CHARACTERS je, ze je mozne skocit na lubovolny CHARACTER iba posunom indexu. Aj preto sa WIDE CHARACTERS spravidla pouzivaju v PROGRAMOCH pri spracovani dat.
+   D. NEVYHODOU WIDE CHARACTERS je, ze STRINGS maju vacsiu dlzku ako MULTIBYTE CHARACTERS.
+9. Nasledujuce CHARACTER SETS patria k najdolezitejsim a najpouzivanejsim.
+   A. US-ASCII je 7 BIT LONG WIDE (FIXED SIZE) CHARACTER SET obsahujuca znaky anglickej abecedy, cislice, interpukcne a riadiace znaky.
+   B. ISO-LATIN-1 (ISO-8859-1) je 8 BIT LONG WIDE (FIXED SIZE) CHARACTER SET obsahujuca vsetky znaky pouzivane v zapadoeuropskych jazykoch.
+   C. ISO-LATIN-15 (ISO-8859-15) je 8 BIT LONG WIDE (FIXED SIZE) CHARACTER SET s modifikovanou sadou oproti ISO-LATIN-1 (ISO-8859-1), kde boli vyhodene niektore nepouzivane CHARACTERS a pridany EURO CHARACTER.
+   D. USC-2 je 16 BIT LONG WIDE (FIXED SIZE) CHARACTER SET obsahujuca 65536 najdolezitejsich CHARACTERS z UNICODE STANDARD.
+   E. UTF-8 je 8-32 BIT LONG MULTIBYTE (VARIABLE SIZE) CHARACTER SET obsahujuca vsetky CHARACTERS z UNICODE STANDARD. UTF-8 CHARACTERS mozu mat dlzku od 1 az po 4 BYTES. UTF-8 sa pouziva casto ako prenosovy format v INTERNETE.
+   F. UTF-16 je 16-32 BIT LONG MULTIBYTE (VARIABLE SIZE) CHARACTER SET obsahujuca vsetky CHARACTERS z UNICODE STANDARD. UTF-16 CHARACTERS su tvorene 1, alebo 2 CODE UNITS o pevnej dlzke 16 BITS.
+   G. UTF-32 (UCS-4) je 32 BIT LONG WIDE (FIXED SIZE) CHARACTER SET obsahujuca vsetky CHARACTERS z UNICODE STANDARD.
+10. C++ podporuje nasledujuce CHARACTER TYPES.
+   A. TYPE [char] umoznuje ulozit CHARACTERS z US-ASCII CHARACTER SET, ISO-LATIN-1 (ISO-8859-1) CHARACTER SET a ISO-LATIN-15 (ISO-8859-15) CHARACTER SET. TYPE TYPE [char] je mozne pouzit aj na ulozenie OCTETS UTF-8 CHARACTER SET.
+   !!! B. TYPE [signed char] je SIGNED verzia TYPE [char]. Je to samostatny TYPE, ktory moze sluzit na FUNCTION OVERLOADING.
+   !!! C. TYPE [unsigned char] je UNSIGNED verzia TYPE [char]. Je to samostatny TYPE, ktory moze sluzit na FUNCTION OVERLOADING.
+   D. TYPE [char16_t] umoznuje ulozit CHARACTERS z USC-2 CHARACTER SET ako aj na ulozenie jednotlivych CODE UNITS z UTF-16 CHARACTER SET.
+   E. TYPE [char32_t] umoznuje ulozit CHARACTERS z UTF-32 (UCS-4) CHARACTER SET.
+   F. TYPE [wchar_t] je TYPE, ktory musi mat dlzku schopnu ulozit CHARACTERS rozsirenych CHARACTER SETS pre VSETKY podporovane LOCALES. Spravidla ma rovnaku dlzku ako TYPE [char16_t], alebo TYPE [char32_t].
+11. CLASS [char_traits<TCharacter>] definuje CHARACTER PROPERTIES a CHARACTER OPERATION, ktore su specificke pre rozlicne CHARACTER TYPES. Pre CLASS [char_traits<TCharacter>] platia nasledujuce fakty.
+   A. CLASS [char_traits<TCharacter>] definuje CHARACTER PROPERTIES a CHARACTER OPERATION, ktore su specificke pre rozlicne CHARACTER TYPES.
+   B. CLASS [char_traits<TCharacter>] obsahuje definiciu END OF FILE CHARACTER.
+   C. CLASS [char_traits<TCharacter>] obsahuje COPY OPERATIONS, MOVE OPERATIONS, COMPARE OPERATIONS, FIND OPERATIONS, LENGTH OPERATIONS pre dany CHARACTER TYPE.
+   D. CLASS [char_traits<char>] reprezentuje TEMPLATE SPECIALIZATION CLASS [char_traits<TCharacter>] pre CHARACTER TYPE [char].
+   E. CLASS [char_traits<wchar_t>] reprezentuje TEMPLATE SPECIALIZATION CLASS [char_traits<TCharacter>] pre CHARACTER TYPE [wchar_t].
+   F. CLASS [char_traits<char16_t>] reprezentuje TEMPLATE SPECIALIZATION CLASS [char_traits<TCharacter>] pre CHARACTER TYPE [char16_t].
+   G. CLASS [char_traits<char32_t>] reprezentuje TEMPLATE SPECIALIZATION CLASS [char_traits<TCharacter>] pre CHARACTER TYPE [char32_t].
+12. CLASS [char_traits<TCharacter>] definuje TRAITS pre CHARACTERS. Ma nasledujuce MEMBERS.
+   A. TYPE [char_type] urcuje TYPE pre CHARACTERS. Je rovny TEMPLATE PARAMETER 'TCharacter'.
+   B. TYPE [int_type] urcuje NUMERIC TYPE ktorym je mozne vyjadrit vsetky CHARACTERS, vratane EOF CHARACTER.
+   C. TYPE [off_type] urcuje TYPE, ktory sa pouziva na vyjadrenie STREAM OFFSET.
+   D. TYPE [pos_type] urcuje TYPE, ktory sa pouziva na vyjadrenie STREAM POSITION.
+   E. TYPE [state_type] urcuje TYPE, ktory sa reprezentuje TRANSFORMATION STATE TYPE pouzivany na vyjadrenie stavu CONVERSION pri MULTIBYTE CHARACTER CONVERSIONS.
+   F. STATIC METHOD assign() priradzuje jeden CHARACTER do druheho. OVERLOADED VERSION umoznuje priradenie 'N' CHARACTERS.
+   G. STATIC METHOD eq() porovnava ci CHARACTER 1 je ROVNY CHARACTER 2.
+   H. STATIC METHOD lt() porovnava ci CHARACTER 1 je MENSI ako CHARACTER 2.
+   I. STATIC METHOD move() kopiruje 'N' CHARACTERS z C-ARRAY do ineho C-ARRAY. Obidve C-ARRAYS sa MOZU PREKRYVAT.
+   J. STATIC METHOD copy() kopiruje 'N' CHARACTERS z C-ARRAY do ineho C-ARRAY. Obidve C-ARRAYS sa NEMOZU PREKRYVAT.
+   K. STATIC METHOD compare() vykonava LEXIKOGRAFICKE POROVNANIE dvoch C-ARRAYS obsahujucich CHARACTERS. Vracia ZAPORNU VALUE ak [C-ARRAY_1<C-ARRAY_2], KLADNU VALUE ak [C-ARRAY_1>C-ARRAY_2] a 0 ak [C-ARRAY_1==C-ARRAY_2].
+   L. STATIC METHOD length() vracia pocet CHARACTERS, ktore obsahuje zadant C-ARRAY. C-ARRAY MUSI obsahovat NULL CHARACTER.
+   M. STATIC METHOD find() vyhladava prvy vyskyt 'N' identickych CHARACTERS v C-ARRAY.
+   N. STATIC METHOD to_char_type() konvertuje CHARACTER vyjadreny TYPE [int_type] na TYPE [char_type]. Ak konverzia nie je mozne, vracia sa EOF CHARACTER.
+   O. STATIC METHOD to_int_type() konvertuje CHARACTER vyjadreny TYPE [char_type] na TYPE [int_type].
+   P. STATIC METHOD eq_int_type() porovnava ci CHARACTER 1 je ROVNY CHARACTER 2, pricom obe CHARACTERS su vyjadrene pomocou vyjadreny pomocou TYPE [int_type].
+   Q. STATIC METHOD eof() vrcia EOF CHARACTER vyjadreny ako TYPE [int_type].
+   R. STATIC METHOD not_eof() zistuje ci CHARACTER reprezentuje EOF CHARACTER vyjadreny ako TYPE [int_type].
+13. INTERNATIONALIZATION SPECIAL CHARACTERS ako je NEW LINE, alebo END OF FILE sa vykonava volanim METHOD basic_ios::widen(). METHOD basic_ios<TCharacter,TTraits>::widen() vracia CHARACTER v CURRENT LOCALE.
+14. CLASS [locale] je zakladna CLASS INTERNATIONALIZATION v C++. Pre CLASS [locale] platia nasledujuce fakty.
+   A. CLASS [locale] reprezentuje IMMUTABLE LOCALE CLASS, ktora je tvorena IMMUTABLE INDEXED SET IMMUTABLE FACETS.
+   !!!!! B. CLASS [locale] reprezentuje COLLECTION FACETS, ktore implementuju rozlicne charakteristicky INTERNATIONALIZATION.
+   !!! C. CLASS [locale] je DICTIONARY COLLECTION, kde KEYS tvoria TYPES jednotlivych FACETS.
+   !!! D. Pomocou TEMPLATE FUNCTION has_facet<TFacet>() je mozne zistit ci instancia CLASS [locale] obsahuje dany FACET podla jeho TYPE.
+   !!! E. Pomocou TEMPLATE FUNCTION use_facet<TFacet>() je mozne ziskat REFERENCE na FACET.
+   F. Interne je CLASS [locale] implementovana ako REFERENCE-COUNTER POINTER do ARRAY vsetkych LOCALE OBJECTS. Pri vytvoreni kopie LOCALE OBJECT sa iba inkrementuje COUNTER na LOCALE OBJECT POINTER.
+   G. Inkrementacia a dekrementacia REFERENCE-COUNTER LOCALE OBJECT je THREAD SAFE.
+   !!!!! H. V POSIX SYSTEMS je mozne ziskat zoznam vsetkych podporovanych LOCALES pomocou prikazu [locale -a].
+15. CLASS [locale] ma nasledujuce MEMBERS.
+   A. CONSTRUCTOR vytvara instanciu CLASS [locale].
+   B. VIRTUAL DESTRUCTOR uvolnuje instanciu CLASS [locale].
+   C. STATIC FIELD [locale::none] indikuje PRAZDNU FACET CATEGORY.
+   D. STATIC FIELD [locale::collate] indikuje COLLATE FACET CATEGORY.
+   E. STATIC FIELD [locale::ctype] indikuje CTYPE FACET CATEGORY.
+   F. STATIC FIELD [locale::monetary] indikuje MONETARY FACET CATEGORY.
+   G. STATIC FIELD [locale::numeric] indikuje NUMERIC FACET CATEGORY.
+   H. STATIC FIELD [locale::time] indikuje TIME FACET CATEGORY.
+   I. STATIC FIELD [locale::messages] indikuje MESSAGES FACET CATEGORY.
+   J. STATIC FIELD [locale::all] indikuje vsetky FACET CATEGORIES.
+   K. TYPE [locale::id] reprezentuje LOCALE FACET INDEX TYPE. Kazda FACET CLASS musi deklarovat PUBLIC STATIC FIELD tohto TYPE.
+   L. TYPE [locale::facet] reprezentuje BASE CLASS pre vsetky LOCALE FACETS.
+   M. TYPE [locale::category] reprezentuje CATEGORY TYPE.
+   N. OPERATOR= prideluje instanciu CLASS [locale] do inej instancie.
+   O. OPERATOR== vracia informaciu ci su 2 instancie CLASS [locale] ROVNAKE.
+   P. OPERATOR!= vracia informaciu ci su 2 instancie CLASS [locale] ROZNE.
+   Q. OPERATOR() porovnava ci su 2 instancie STRINGS pre danu LOCALE ROVNAKE, alebo ROZNE.
+   R. STATIC METHOD global() nahrazda CURRENT DEFAULT C++ LOCALE OBJECT za novy LOCALE OBJECT. Vsetky nasledujuce volania PRAZDNEHO CONSTRUCTOR CLASS [locale] vytvoria kopiu zadaneho LOCALE OBJECT.
+   S. STATIC METHOD classic() vracia CONST REFERENCE na C LOCALE OBJECT.
+   T. TEMPLATE METHOD combine<TFacet>() vytvori kopiu THIS LOCALE OBJECT s vynimkou FACET TYPE 'TFacet', ktoreho hodnota je skopirovana z FACET OBJECT, ktory sa zadal ako PARAMETER pri volani METHOD combine<TFacet>().
+   U. METHOD name() vracia STRING obsahujuci NAME LOCALE OBJECT.
+16. CLASS [locale::id] reprezentuje jedinecny IMPLEMENTATION-SPECIFIC identifikator LOCALE FACET. CLASS [locale::id] ma nasledujuce MEMBERS.
+   A. CONSTRUCTOR vytvara instanciu CLASS [locale::id].
+   B. OPERATOR= prideluje instanciu CLASS [locale::id] do inej instancie.
+17. CLASS [locale::facet] reprezentuje BASE CLASS pre vsetky LOCALE FACETS. CLASS [locale::facet] ma nasledujuce MEMBERS.
+   A. CONSTRUCTOR vytvara instanciu CLASS [locale::facet].
+   B. VIRTUAL DESTRUCTOR uvolnuje instanciu CLASS [locale::facet].
+   C. OPERATOR= prideluje instanciu CLASS [locale::facet] do inej instancie.
+18. LOCALE STRINGS maju FORMAT [LANGUAGE_AREA.CODE@MODIFIER]. Jednotlive casti FORMAT maju nasledujuci vyznam.
+   A. VALUE 'LANGUAGE' urcuje meno LANGUAGE. Ma zvycajne tvar [XX], kde 'XX' je 2 pismenova skratka LANGUAGE ako napriklad 'en'.
+   B. VALUE 'AREA' urcuje meno AREA. Ma zvycajne tvar [XX], kde 'XX' je 2 pismenova skratka AREA ako napriklad 'US'.
+   C. VALUE 'ENCODING' urcuje meno ENCODING. Napriklad 'utf8' urcuje UTF-8 ENCODING.
+   D. VALUE 'MODIFIER' urcuje specialny MODIFIER, ktory modifikuje CHARACTER SET.
+19. Pre FACETS platia nasledujuce fakty.
+   A. FACET v C++ reprezentuje CLASS, ktora obaluje konkretnu funcionalitu INTERNATIONALIZATION. Napriklad FACET moze reprezentovat PARSING a CREATION NUMERIC, alebo MONETARY VALUES, ci informaciu aky SYMBOL sa pouziva na oddelenie desatinnej casti v FLOATING POINT NUMBERS.
+   !!! B. CLASS [locale] obsahuje COLLECTION FACETS pre dany LOCALE OBJECT.
+   C. FACET MUSI byt VZDY DERIVED z CLASS [locale::facet] a MUSI mat definovany STATIC FIELD [id] TYPE [locale::id].
+   !!! D. FACETS v CLASS [locale] su identifikovane pomocou FACET TYPE. LOCALE je teda DICTIONARY, kde KEYS su FACET TYPES.
+   E. TEMPLATE FUNCTION has_facet<TFacet>() vracia informaciu ci LOCALE obsahuje dany FACET TYPE.
+   !!! F. TEMPLATE FUNCTION use_facet<TFacet>() vracia CONST REFERENCE na FACET TYPE 'TFacet' implementovany zadanym LOCALE OBJECT.
+   !!!!! G. Platnost REFERENCE na FACET, ktory vracia TEMPLATE FUNCTION use_facet<TFacet>() trva IBA do konca platnosti LOCALE OBJECT. Po jeho uvolneni je REFERENCE na FACET NEPLATNA a pristup k FACET sposobi UNDEFINED BEHAVIOR.
+   !!! H. TEMPLATE FUNCTION use_facet<TFacet>() hodi EXCEPTION [bad_cast], ak LOCALE OBJECT NEOBSAHUJE dany FACET.
+   I. FACETS by mali mat VSETKY PUBLIC METHODS definovane ako CONST, pretoze TEMPLATE FUNCTION use_facet<TFacet>() vracia CONST REFERENCES na FACETS a teda NON-CONST METHODS pre taketo REFERENCES NEDAJU pouzit.
+   J. FACETS su VZDY IMMUTABLE.
+20. CUSTOM FACETS sa vytvaraju nasledujucim sposobom.
+   A. Definuje sa CUSTOM INTERFACE CLASS, ktora je DERIVED z CLASS [locale::facet].
+   !!! B. CUSTOM INTERFACE CLASS MUSI definovat STATIC FIELD [id] TYPE [locale::id]. STATIC FIELD [id] sa pouziva na identifikaciu FACET, pomocou TEMPLATE FUNCTION has_facet<TFacet>() a TEMPLATE FUNCTION use_facet<TFacet>().
+   !!! C. CUSTOM INTERFACE CLASS definuje PURE VIRTUAL METHODS, ktore predstavuju INTERFACE CUSTOM FACET.
+   !!! D. Pre kazdu CULTURE, ktora ma podporovat CUSTOM FACET sa definuje FACET CUSTOM CLASS, ktory je DERIVED z CUSTOM INTERFACE CLASS.
+   E. Pri vytvarani LOCALE pre danu CULTURE sa do LOCALE vlozi ten FACET CUSTOM CLASS, ktory danu CULTURE implementuje.
+   !!!!! F. Kedze VSETKY FACET CUSTOM CLASSES su DERIVED z CUSTOM INTERFACE CLASS, tak maju IDENTICKU VALUE STATIC FIELD [id]. STATIC FIELD [id] pouziivaju TEMPLATE FUNCTION has_facet<TFacet>() a TEMPLATE FUNCTION use_facet<TFacet>() na najdenie CUSTOM FACET.
+21. TEMPLATE FUNCTION use_facet<TFacet>() vracia CONST REFERENCE na FACET TYPE 'TFacet' implementovany zadanym LOCALE OBJECT.
+22. TEMPLATE FUNCTION has_facet<TFacet>() vracia informaciu ci zadany LOCALE OBJECT implementuje FACET TYPE 'TFacet'.
+23. TEMPLATE FUNCTION isspace<TCharacter>() vracia informaciu ci pre zadany LOCALE OBJECT dany CHARACTER predstavuje WHITESPACE CHARACTER.
+24. TEMPLATE FUNCTION isblank<TCharacter>() vracia informaciu ci pre zadany LOCALE OBJECT dany CHARACTER predstavuje BLANK CHARACTER.
+25. TEMPLATE FUNCTION iscntrl<TCharacter>() vracia informaciu ci pre zadany LOCALE OBJECT dany CHARACTER predstavuje CONTROL CHARACTER.
+26. TEMPLATE FUNCTION isupper<TCharacter>() vracia informaciu ci pre zadany LOCALE OBJECT dany CHARACTER predstavuje ALPHABETIC UPPER-CASE CHARACTER.
+27. TEMPLATE FUNCTION islower<TCharacter>() vracia informaciu ci pre zadany LOCALE OBJECT dany CHARACTER predstavuje ALPHABETIC LOWER-CASE CHARACTER.
+28. TEMPLATE FUNCTION isalpha<TCharacter>() vracia informaciu ci pre zadany LOCALE OBJECT dany CHARACTER predstavuje ALPHABETIC CHARACTER.
+29. TEMPLATE FUNCTION isdigit<TCharacter>() vracia informaciu ci pre zadany LOCALE OBJECT dany CHARACTER predstavuje DIGIT CHARACTER.
+30. TEMPLATE FUNCTION ispunct<TCharacter>() vracia informaciu ci pre zadany LOCALE OBJECT dany CHARACTER predstavuje PUNCTUATION CHARACTER.
+31. TEMPLATE FUNCTION isxdigit<TCharacter>() vracia informaciu ci pre zadany LOCALE OBJECT dany CHARACTER predstavuje HEXADECIMAL DIGIT CHARACTER.
+32. TEMPLATE FUNCTION isalnum<TCharacter>() vracia informaciu ci pre zadany LOCALE OBJECT dany CHARACTER predstavuje ALPHANUMERIC CHARACTER.
+33. TEMPLATE FUNCTION isprint<TCharacter>() vracia informaciu ci pre zadany LOCALE OBJECT dany CHARACTER predstavuje PRINTABLE CHARACTER.
+34. TEMPLATE FUNCTION isgraph<TCharacter>() vracia informaciu ci pre zadany LOCALE OBJECT dany CHARACTER predstavuje GRAPHIC CHARACTER. GRAPHIC CHARACTER je PRINTABLE CHARACTER okrem SPACE CHARACTER.
+35. TEMPLATE FUNCTION toupper<TCharacter>() pre zadany LOCALE OBJECT konvertuje CHARACTER na UPPERCASE CHARACTER.
+36. TEMPLATE FUNCTION tolower<TCharacter>() pre zadany LOCALE OBJECT konvertuje CHARACTER na LOWERCASE CHARACTER.
+37. CLASS [ctype_base] obsahuje zoznam kategorii CHARACTERS. CLASS [ctype_base] ma nasledujuce MEMBERS.
+   A. TYPE [ctype_base::mask] reprezentuje BITMASK TYPE pouzivany na vyjadrenie kategorii CHARACTERS.
+   B. STATIC CONSTANT FIELD [ctype_base::space] identifikuje kategoriu WHITESPACE CHARACTERS.
+   C. STATIC CONSTANT FIELD [ctype_base::print] identifikuje kategoriu PRINTABLE CHARACTERS.
+   D. STATIC CONSTANT FIELD [ctype_base::cntrl] identifikuje kategoriu CONTROL CHARACTERS.
+   E. STATIC CONSTANT FIELD [ctype_base::upper] identifikuje kategoriu UPPERCASE CHARACTERS.
+   F. STATIC CONSTANT FIELD [ctype_base::lower] identifikuje kategoriu LOWERCASE CHARACTERS.
+   G. STATIC CONSTANT FIELD [ctype_base::alpha] identifikuje kategoriu ALPHABETIC CHARACTERS.
+   H. STATIC CONSTANT FIELD [ctype_base::digit] identifikuje kategoriu DIGIT CHARACTERS.
+   I. STATIC CONSTANT FIELD [ctype_base::punct] identifikuje kategoriu PUNCTUATION CHARACTERS.
+   J. STATIC CONSTANT FIELD [ctype_base::xdigit] identifikuje kategoriu HEXADECIMAL DIGIT CHARACTERS.
+   K. STATIC CONSTANT FIELD [ctype_base::blank] identifikuje kategoriu BLANK CHARACTERS.
+   L. STATIC CONSTANT FIELD [ctype_base::alnum] identifikuje kategoriu ALPHABETIC a DIGITAL CHARACTERS.
+   M. STATIC CONSTANT FIELD [ctype_base::graph] identifikuje kategoriu ALPHABETIC, DIGITAL a PUNCTUATION CHARACTERS.
+38. CLASS [codecvt_base] je BASE CLASS pre CODE CONVERSION FACETS. CLASS definuje CONVERSION STATUS CONSTANTS. CLASS [codecvt_base] ma nasledujuce MEMBERS.
+   A. TYPE [codecvt_base::result] je ENUM TYPE definujuci CONVERSION STATUS CONSTANTS.
+   B. ENUM VALUE [codecvt_base::result::ok] znamena, ze CONVERSION prebehla uspesne.
+   C. ENUM VALUE [codecvt_base::result::partial] znamena, ze nie vsetky CHARACTERS boli uspesne konvertovane.
+   D. ENUM VALUE [codecvt_base::result::error] znamena, ze pri CONVERSION boli najdene INVALID CHARACTERS.
+   E. ENUM VALUE [codecvt_base::result::noconv] znamena, ze CONVERSION nebola vykonana, pretoze INPUT a OUTPUT CHARACTERS maju ROVNAKY TYPE a CONVERSION teda NEBOLA NUTNA.
+39. CLASS [messages_base] je BASE CLASS pre MESSAGES FACETS. CLASS [messages_base] obsahuje TYPE [catalog], ktory sluzi na unikatnu identifikaciu MESSAGE CATALOGS.
+40. CLASS [time_base] je BASE CLASS pre TIME GET FACETS. CLASS definuje DATE ORDER CONSTANTS. CLASS [time_base] ma nasledujuce MEMBERS.
+   A. TYPE [time_base::dateorder] je ENUM TYPE definujuci DATE ORDER CONSTANTS urcujuci ORDER DATE ELEMENTS.
+   B. ENUM VALUE [time_base::dateorder::no_order] znamena nedefinovany ORDER DATE ELEMENTS.
+   C. ENUM VALUE [time_base::dateorder::dmy] znamena, ze DATE ELEMENTS su v poradi DAY, MONTH, YEAR.
+   D. ENUM VALUE [time_base::dateorder::mdy] znamena, ze DATE ELEMENTS su v poradi MONTH, DAY, YEAR.
+   E. ENUM VALUE [time_base::dateorder::ymd] znamena, ze DATE ELEMENTS su v poradi YEAR, MONTH, DAY.
+   F. ENUM VALUE [time_base::dateorder::ydm] znamena, ze DATE ELEMENTS su v poradi YEAR, DAY, MONTH.
+41. CLASS [money_base] je BASE CLASS pre MONEY GET FACETS a MONEY PUT FACETS. CLASS definuje MONEY PART CONSTANTS. CLASS [money_base] ma nasledujuce MEMBERS.
+   A. TYPE [money_base::part] je ENUM TYPE definujuci MONEY PART CONSTANTS urcujuci casti z ktorych sa sklada MONEY PATTERN. VALUES tohto TYPE su ulozene do ARRAY [money_base::pattern].
+   B. TYPE [money_base::pattern] je CHARACTER ARRAY, ktory urcuje tvar MONEY. Jednotlive ELEMENTS obsahuju VALUES z TYPE [money_base::part].
+   C. ENUM VALUE [money_base::pattern::none] znamena, ze WHITESPACE je povoleny, ale nie vyzadovany s vynimkou poslednej pozicie kde WHITESPACE NIE JE povoleny.
+   D. ENUM VALUE [money_base::pattern::space] znamena, ze jeden, alebo viacero WHITESPACES je vyzadovanych.
+   E. ENUM VALUE [money_base::pattern::symbol] znamena, ze je vyzadovana sekvencia CHARACTERS vratenych METHOD moneypunct::curr_symbol().
+   F. ENUM VALUE [money_base::pattern::sign] znamena, ze je vyzadovany PRVY CHARACTER vrateny METHOD moneypunct::positive_sign(), alebo METHOD moneypunct::negative_sign().
+   G. ENUM VALUE [money_base::pattern::value] znamena, ze je vyzadovany ABSOLUTE NUMERIC MONETARY VALUE.
+42. CLASS [ctype<TCharacter>] zapuzdruje CHARACTER CLASSIFICATION a CHARACTER CONVERSION FEATURES. Pre CLASS [ctype<TCharacter>] platia nasledujuce fakty.
+   A. CLASS [ctype<TCharacter>] zapuzdruje CHARACTER CLASSIFICATION a CHARACTER CONVERSION FEATURES.
+   B. CLASS [ctype<TCharacter>] je DERIVED z CLASS [ctype_base] a CLASS [locale::facet].
+   C. TEMPLATE PARAMETER 'TCharacter' definuje CHARACTER pre ktory je CLASS definovana.
+   D. CLASS [ctype<TCharacter>] definuje SPECIALIZATION CLASS [ctype<char>] pre TYPE [char].
+   E. CLASS [ctype<TCharacter>] definuje SPECIALIZATION CLASS [ctype<wchar_t>] pre TYPE [wchar_t].
+43. CLASS [ctype<TCharacter>] ma nasledujuce MEMBERS.
+   A. TYPE [ctype<TCharacter>::char_type] obsahuje CHARACTER TYPE pre ktory je CLASS [ctype<TCharacter>] definovana. Jeho VALUE je identicka s TEMPLATE PARAMETER 'TCharacter'.
+   B. STATIC FIELD [ctype<TCharacter>::id] reprezentuje LOCALE IDENTIFIER.
+   C. CONSTRUCTOR vytvara instanciu CLASS [ctype<TCharacter>].
+   D. PROTECTED DESTRUCTOR uvolnuje instanciu CLASS [ctype<TCharacter>].
+   E. VIRTUAL PROTECTED METHOD do_is() vracia informaciu ci CHARACTER splna CHARACTER CLASSIFICATION zadanu pomocou CHARACTER CLASSIFICATION MASK. OVERLOADED VERSION vracia CHARACTER CLASSIFICATION pre kazdy CHARACTER z CHARACTER ARRAY, ktory uklada do vystupneho CHARACTER CLASSIFICATION ARRAY.
+   F. VIRTUAL PROTECTED METHOD do_scan_is() vracia POSITION na 1. CHARACTER, ktory splna CHARACTER CLASSIFICATION zadanu pomocou CHARACTER CLASSIFICATION MASK.
+   G. VIRTUAL PROTECTED METHOD do_scan_not() vracia POSITION na 1. CHARACTER, ktory NESPLNA CHARACTER CLASSIFICATION zadanu pomocou CHARACTER CLASSIFICATION MASK.
+   H. VIRTUAL PROTECTED METHOD do_upper() vykonava konverziu CHARACTER na UPPER CASE CHARACTER. OVERLOADED VERSION konverziu CHARACTER ARRAY na UPPER CASE CHARACTER ARRAY.
+   I. VIRTUAL PROTECTED METHOD do_lower() vykonava konverziu CHARACTER na LOWER CASE CHARACTER. OVERLOADED VERSION konverziu CHARACTER ARRAY na LOWER CASE CHARACTER ARRAY.
+   J. VIRTUAL PROTECTED METHOD do_widen() vykonava konverziu CHARACTER na WIDEN CHARACTER. OVERLOADED VERSION konverziu CHARACTER ARRAY na WIDEN CHARACTER ARRAY.
+   K. VIRTUAL PROTECTED METHOD do_narrow() vykonava konverziu WIDEN CHARACTER na CHARACTER, alebo zadany DEFAULT CHARACTER, ak CONVERSION ZLYHA. OVERLOADED VERSION konverziu WIDEN CHARACTER ARRAY na CHARACTER ARRAY.
+   L. METHOD is() interne vola METHOD do_is().
+   M. METHOD scan_is() interne vola METHOD do_scan_is().
+   N. METHOD scan_not() interne vola METHOD do_scan_not().
+   O. METHOD upper() interne vola METHOD do_upper().
+   P. METHOD lower() interne vola METHOD do_lower().
+   Q. METHOD widen() interne vola METHOD do_widen().
+   R. METHOD narrow() interne vola METHOD do_narrow().
+44. CLASS [ctype<char>] ma nasledujuce MEMBERS.
+   A. TYPE [ctype<char>::char_type] obsahuje CHARACTER TYPE [char].
+   B. STATIC FIELD [ctype<char>::id] reprezentuje LOCALE IDENTIFIER.
+   C. STATIC FIELD [ctype<char>::table_size] obsahuje dlzku CLASSIFICATION TABLE.
+   D. CONSTRUCTOR vytvara instanciu CLASS [ctype<char>].
+   E. PROTECTED DESTRUCTOR uvolnuje instanciu CLASS [ctype<char>].
+   F. METHOD classic_table() vracia CHARACTER CLASSIFICATION TABLE pre C-LOCALE.
+   G. VIRTUAL PROTECTED METHOD do_upper() vykonava konverziu CHARACTER na UPPER CASE CHARACTER. OVERLOADED VERSION konverziu CHARACTER ARRAY na UPPER CASE CHARACTER ARRAY.
+   H. VIRTUAL PROTECTED METHOD do_lower() vykonava konverziu CHARACTER na LOWER CASE CHARACTER. OVERLOADED VERSION konverziu CHARACTER ARRAY na LOWER CASE CHARACTER ARRAY.
+   I. VIRTUAL PROTECTED METHOD do_widen() vykonava konverziu CHARACTER na WIDEN CHARACTER. OVERLOADED VERSION konverziu CHARACTER ARRAY na WIDEN CHARACTER ARRAY.
+   J. VIRTUAL PROTECTED METHOD do_narrow() vykonava konverziu WIDEN CHARACTER na CHARACTER, alebo zadany DEFAULT CHARACTER, ak CONVERSION ZLYHA. OVERLOADED VERSION konverziu WIDEN CHARACTER ARRAY na CHARACTER ARRAY.
+   K. METHOD table() vracia CHARACTER CLASSIFICATION TABLE.
+   L. METHOD is() vracia informaciu ci CHARACTER splna CHARACTER CLASSIFICATION zadanu pomocou CHARACTER CLASSIFICATION MASK. OVERLOADED VERSION vracia CHARACTER CLASSIFICATION pre kazdy CHARACTER z CHARACTER ARRAY, ktory uklada do vystupneho CHARACTER CLASSIFICATION ARRAY.
+   M. METHOD scan_is() vracia POSITION na 1. CHARACTER, ktory splna CHARACTER CLASSIFICATION zadanu pomocou CHARACTER CLASSIFICATION MASK.
+   N. METHOD scan_not() vracia POSITION na 1. CHARACTER, ktory NESPLNA CHARACTER CLASSIFICATION zadanu pomocou CHARACTER CLASSIFICATION MASK.
+   O. METHOD upper() interne vola METHOD do_upper().
+   P. METHOD lower() interne vola METHOD do_lower().
+   Q. METHOD widen() interne vola METHOD do_widen().
+   R. METHOD narrow() interne vola METHOD do_narrow().
+45. CLASS [codecvt<TInternal,TExternal,TState>] zapuzdruje CHARACTER CONVERSIONS z jedneho CHARCTER TYPE na iny CHARACTER TYPE. Pre CLASS [codecvt<TInternal,TExternal,TState>] platia nasledujuce fakty.
+   A. CLASS [codecvt<TInternal,TExternal,TState>] zapuzdruje CHARACTER CONVERSIONS z jedneho CHARCTER TYPE na iny CHARACTER TYPE.
+   B. CLASS [codecvt<TInternal,TExternal,TState>] je DERIVED z CLASS [ctype_base] a CLASS [locale::facet].
+   !!!!! C. CLASS [codecvt<TInternal,TExternal,TState>] sluzi ako BASE CLASS pre konkretne CONVERSIONS, ktore umoznuju vykonat CONVERSIONS z CHARACTER SETS ako UNICODE ci UTF-8 na iny CHARACTER SET.
+   D. TEMPLATE PARAMETER 'TInternal' definuje INTERNAL CHARACTER TYPE.
+   E. TEMPLATE PARAMETER 'TExternal' definuje EXTERNAL CHARACTER TYPE.
+   !!! F. TEMPLATE PARAMETER 'TState' definuje TYPE reprezentujuci CHARACTER CONVERSION STATE. CLASS [codecvt<TInternal,TExternal,TState>] obsahuje FIELD TYPE 'TState' do ktoreho sa ukladat CONVERSION STATE.
+   G. CLASS [codecvt<char,char,mbstate_t>] definuje SPECIALIZATION CLASS [codecvt<TInternal,TExternal,TState>] pre CONVERSION z TYPE [char] na TYPE [char].
+   !!! H. CLASS [codecvt<wchar_t,char,mbstate_t>] definuje SPECIALIZATION CLASS [codecvt<TInternal,TExternal,TState>] pre CONVERSION z TYPE [wchar_t] na TYPE [char]. CONVERSION NIE JE IDENTICKA CONVERSION, ktoru vykonava METHOD ctype<TCharacter>::widen(), pretoze CLASS [codecvt<wchar_t,char,mbstate_t>] NEVYKONAVA REALNU CONVERSION, lebo BIT TRANSFORMATION z TYPE [char] na TYPE [wchar_t].
+   I. CLASS [codecvt<char16_t,char,mbstate_t>] definuje SPECIALIZATION CLASS [codecvt<TInternal,TExternal,TState>] pre CONVERSION z TYPE [char16_t] na TYPE [char].
+   J. CLASS [codecvt<char32_t,char,mbstate_t>] definuje SPECIALIZATION CLASS [codecvt<TInternal,TExternal,TState>] pre CONVERSION z TYPE [char32_t] na TYPE [char].
+46. CLASS [codecvt<TInternal,TExternal,TState>] ma nasledujuce MEMBERS.
+   A. TYPE [codecvt<TInternal,TExternal,TState>::intern_type] reprezentuje INTERNAL CHARACTER TYPE pre ktory je vykonavana CONVERSION. Je nastaveny na TEMPLATE PARAMETER 'TInternal'.
+   B. TYPE [codecvt<TInternal,TExternal,TState>::extern_type] reprezentuje EXTERNAL CHARACTER TYPE pre ktory je vykonavana CONVERSION. Je nastaveny na TEMPLATE PARAMETER 'TExternal'.
+   C. TYPE [codecvt<TInternal,TExternal,TState>::state_type] reprezentuje CONVERSION STATE TYPE reprezentujuci TYPE pouzivany na ulozenie CONVERSION STATE. Je nastaveny na TEMPLATE PARAMETER 'TState'.
+   D. STATIC FIELD [ctype<char>::id] reprezentuje LOCALE IDENTIFIER.
+   E. CONSTRUCTOR vytvara instanciu CLASS [codecvt<TInternal,TExternal,TState>].
+   F. PROTECTED DESTRUCTOR uvolnuje instanciu CLASS [codecvt<TInternal,TExternal,TState>].
+   G. VIRTUAL PROTECTED METHOD do_out() vykonava CONVERSION INTERNAL CHARACTER ARRAY na EXTERNAL CHARACTER ARRAY. METHOD umoznuje definovat koncovy CHARACTER, ktory sa prida na koniec konvertovaneho CHARACTER ARRAY.
+   H. VIRTUAL PROTECTED METHOD do_in() vykonava CONVERSION EXTERNAL CHARACTER ARRAY na INTERNAL CHARACTER ARRAY. METHOD umoznuje definovat koncovy CHARACTER, ktory sa prida na koniec konvertovaneho CHARACTER ARRAY.
+   I. VIRTUAL PROTECTED METHOD do_unshift() vykonava generuje TERMINATION CHARACTER SEQUENCE EXTERNAL CHARACTERS pre nekompletne CONVERSIONS.
+   J. VIRTUAL PROTECTED METHOD do_encoding() vracia pocet EXTERNAL CHARACTERS potrebnych na ulozenie vysledku konverzie z INTERNAL CHARACTER. METHOD vracia VALUE IBA ak konverzia KAZDEHO INTERNAL CHARACTER vracia ROVNAKY POCET EXTERNAL CHARACTERS. Ak tento pocet NIE JE ROVNAKY, tak vacia VALUE 0. Ak CONVERSION je STATE DEPENDENT, vracia VALUE -1.
+   K. VIRTUAL PROTECTED METHOD do_always_noconv() vracia TRUE ak CLASS [codecvt<TInternal,TExternal,TState>] pre VSETKY MOZNE INTERNAL a EXTERNAL CHARACTERS vykonava OBOJSMERNU IDENTITY CONVERSION, teda CONVERSION, ktoru je zbytocna, pretoze INTERNAL a EXTERNAL CHARACTERS su ROVNAKEHO CHARACTER TYPE. Inak vracia FALSE.
+   L. VIRTUAL PROTECTED METHOD do_length() sa pokusi vykonat konverziu zadanych EXTERNAL CHARACTERS na INTERNAL CHARACTERS a vracia pocet INTERNAL CHARACTERS, ktoru by takato CONVERSION vyzadovala.
+   M. VIRTUAL PROTECTED METHOD do_max_length() vracia maximalny pocet INTERNAL CHARACTERS, ktory je potrebny na ulozenie vysledku konverzie 1 EXTERNAL CHARACTER na INTERNAL CHARACTERS.
+   N. METHOD out() interne vola METHOD do_out().
+   O. METHOD in() interne vola METHOD do_in().
+   P. METHOD unshift() interne vola METHOD do_unshift().
+   Q. METHOD encoding() interne vola METHOD do_encoding().
+   R. METHOD always_noconv() interne vola METHOD do_always_noconv().
+   S. METHOD length() interne vola METHOD do_length().
+   T. METHOD max_length() interne vola METHOD do_max_length().
+47. CLASS [collate<TCharacter>] zapuzdruje CHARACTER COMPARISON a CHARACTER HASHING pre dany LOCALE. Pre CLASS [collate<TCharacter>] platia nasledujuce fakty.
+   A. CLASS [collate<TCharacter>] zapuzdruje CHARACTER COMPARISON a CHARACTER HASHING pre dany LOCALE.
+   B. CLASS [collate<TCharacter>] je DERIVED z CLASS [locale::facet].
+   C. TEMPLATE PARAMETER 'TCharacter' definuje CHARACTER TYPE pre ktory je CLASS [collate<TCharacter>] implementovana.
+   D. CLASS [collate<char>] definuje SPECIALIZATION CLASS [collate<char>] pre CHARACTER TYPE [char].
+   E. CLASS [collate<wchar_t>] definuje SPECIALIZATION CLASS [collate<char>] pre CHARACTER TYPE [wchar_t].
+48. CLASS [collate<TCharacter>] ma nasledujuce MEMBERS.
+   A. TYPE [collate<TCharacter>::char_type] obsahuje CHARACTER TYPE pre ktory je CLASS [collate<TCharacter>] definovana. Jeho VALUE je identicka s TEMPLATE PARAMETER 'TCharacter'.
+   B. TYPE [collate<TCharacter>::string_type] obsahuje STRING TYPE. Je nastaveny na TYPE [basic_string<TCharacter>].
+   C. STATIC FIELD [collate<TCharacter>::id] reprezentuje LOCALE IDENTIFIER.
+   D. CONSTRUCTOR vytvara instanciu CLASS [collate<TCharacter>].
+   E. PROTECTED DESTRUCTOR uvolnuje instanciu CLASS [collate<TCharacter>].
+   F. VIRTUAL PROTECTED METHOD do_compare() vykonava porovnanie dvojice CHARACTER ARRAYS. Ak je 1. STRING MENSI ako 2. STRING METHOD vracia VALUE -1. Ak je 1. STRING VACSI ako 2. STRING METHOD vracia VALUE 1. Ak je 1. STRING ROVNY ako 2. STRING METHOD vracia VALUE 0.
+   G. VIRTUAL PROTECTED METHOD do_transform() transformuje zadany CHARACTER ARRAY na STRING, ktory ak by bol lexikograficky porovnany so STRING vratenym volanim METHOD do_transform() pre INY STRING, METHOD do_compare() by vratila TEN ISTY RESULT.
+   H. VIRTUAL PROTECTED METHOD do_hash() vracia HASH VALUE zadaneho CHARACTER ARRAY pre dany LOCALE.
+   I. METHOD compare() interne vola METHOD do_compare().
+   J. METHOD transform() interne vola METHOD do_transform().
+   K. METHOD hash() interne vola METHOD do_hash().
+49. CLASS [messages_byname<TCharacter>] zapuzdruje vyber STRINGS z MESSAGE CATALOGS. Pre CLASS [messages_byname<TCharacter>] platia nasledujuce fakty.
+   A. CLASS [messages_byname<TCharacter>] zapuzdruje vyber STRINGS z MESSAGE CATALOGS.
+   B. CLASS [messages_byname<TCharacter>] je DERIVED z CLASS [messages_base] a CLASS [locale::facet].
+   C. TEMPLATE PARAMETER 'TCharacter' definuje CHARACTER TYPE pre ktory je CLASS [messages_byname<TCharacter>] implementovana.
+   D. CLASS [messages_byname<char>] definuje SPECIALIZATION CLASS [messages_byname<char>] pre CHARACTER TYPE [char].
+   E. CLASS [messages_byname<wchar_t>] definuje SPECIALIZATION CLASS [messages_byname<char>] pre CHARACTER TYPE [wchar_t].
+50. CLASS [messages_byname<TCharacter>] ma nasledujuce MEMBERS.
+   A. TYPE [messages_byname<TCharacter>::char_type] obsahuje CHARACTER TYPE pre ktory je CLASS [messages_byname<TCharacter>] definovana. Jeho VALUE je identicka s TEMPLATE PARAMETER 'TCharacter'.
+   B. TYPE [messages_byname<TCharacter>::string_type] obsahuje STRING TYPE. Je nastaveny na TYPE [basic_string<TCharacter>].
+   C. STATIC FIELD [collate<TCharacter>::id] reprezentuje LOCALE IDENTIFIER.
+   D. CONSTRUCTOR vytvara instanciu CLASS [messages_byname<TCharacter>].
+   E. PROTECTED DESTRUCTOR uvolnuje instanciu CLASS [messages_byname<TCharacter>].
+   F. VIRTUAL PROTECTED METHOD do_open() otvara MESSAGE CATALOG z ktoreho je mozne vyberat STRINGS. METHOD vracia instanciu, ktora je DERIVED z CLASS [messages_base::catalog].
+   G. VIRTUAL PROTECTED METHOD do_close() uzatvara MESSAGE CATALOG, ktory bol otvoreny volanim METHOD do_open(). METHOD ma ako PARAMETER instanciu, ktora je DERIVED z CLASS [messages_base::catalog] a ktoru vratila METHOD do_open().
+   H. VIRTUAL PROTECTED METHOD do_get() vracia STRING z MESSAGE CATALOG.
+   I. METHOD open() interne vola METHOD do_open().
+   J. METHOD close() interne vola METHOD do_close().
+   K. METHOD get() interne vola METHOD do_get().
+51. CLASS [time_get<TCharacter,TInputIterator>] zapuzdruje READING DATE a TIME VALUES zo STREAMU definovanom pomocou ITERATOR PAIR. Pre CLASS [time_get<TCharacter,TInputIterator>] platia nasledujuce fakty.
+   A. CLASS [time_get<TCharacter,TInputIterator>] zapuzdruje READING DATE a TIME VALUES zo STREAMU definovanom pomocou ITERATOR PAIR.
+   B. CLASS [time_get<TCharacter,TInputIterator>] je DERIVED z CLASS [time_base] a CLASS [locale::facet].
+   C. TEMPLATE PARAMETER 'TCharacter' definuje CHARACTER TYPE pre ktory je CLASS [time_get<TCharacter,TInputIterator>] implementovana.
+   D. TEMPLATE PARAMETER 'TInputIterator' definuje INPUT ITERATOR TYPE pre CLASS [time_get<TCharacter,TInputIterator>] z ktoreho sa vykonava READING dat.
+   E. CLASS [time_get<char>] definuje SPECIALIZATION CLASS [time_get<TCharacter,TInputIterator>] pre CHARACTER TYPE [char].
+   F. CLASS [time_get<wchar_t>] definuje SPECIALIZATION CLASS [time_get<TCharacter,TInputIterator>] pre CHARACTER TYPE [wchar_t].
+   G. CLASS [time_get<char,TInputIterator>] definuje SPECIALIZATION CLASS [time_get<TCharacter,TInputIterator>] pre CHARACTER TYPE [char] a CUSTOM ITERATOR TYPE [TInputIterator].
+   H. CLASS [time_get<wchar_t,TInputIterator>] definuje SPECIALIZATION CLASS [time_get<TCharacter,TInputIterator>] pre CHARACTER TYPE [wchar_t] a CUSTOM ITERATOR TYPE [TInputIterator].
+52. CLASS [time_get<TCharacter,TInputIterator>] ma nasledujuce MEMBERS.
+   A. TYPE [time_get<TCharacter,TInputIterator>::char_type] obsahuje CHARACTER TYPE pre ktory je CLASS [time_get<TCharacter,TInputIterator>] definovana. Jeho VALUE je identicka s TEMPLATE PARAMETER 'TCharacter'.
+   B. TYPE [time_get<TCharacter,TInputIterator>::iter_type] obsahuje INPUT ITERATOR TYPE pre ktory je CLASS [time_get<TCharacter,TInputIterator>] definovana. Jeho VALUE je identicka s TEMPLATE PARAMETER 'TInputIterator'.
+   C. STATIC FIELD [time_get<TCharacter,TInputIterator>::id] reprezentuje LOCALE IDENTIFIER.
+   D. CONSTRUCTOR vytvara instanciu CLASS [time_get<TCharacter,TInputIterator>].
+   E. PROTECTED DESTRUCTOR uvolnuje instanciu CLASS [time_get<TCharacter,TInputIterator>].
+   F. VIRTUAL PROTECTED METHOD do_date_order() vracia instanciu ENUM TYPE [std::time_base::dateorder] popisujucu DEFAULT DATE TIME FORMAT pre dany LOCALE.
+   G. VIRTUAL PROTECTED METHOD do_get_time() zo zadaneho ITERATOR PAIR parsuje TIME (HOURS, MINUTES, SECONDS). Vysledok je ulozeny do PARAMETER TYPE [tm].
+   H. VIRTUAL PROTECTED METHOD do_get_date() zo zadaneho ITERATOR PAIR parsuje DATE (DAY, MONTH, YEAR). Vysledok je ulozeny do PARAMETER TYPE [tm].
+   I. VIRTUAL PROTECTED METHOD do_get_weekday() zo zadaneho ITERATOR PAIR parsuje WEEKDAY NAME. Vysledok je ulozeny do PARAMETER TYPE [tm].
+   J. VIRTUAL PROTECTED METHOD do_get_monthday() zo zadaneho ITERATOR PAIR parsuje MONTH NAME. Vysledok je ulozeny do PARAMETER TYPE [tm].
+   K. VIRTUAL PROTECTED METHOD do_get_year() zo zadaneho ITERATOR PAIR parsuje YEAR. Vysledok je ulozeny do PARAMETER TYPE [tm].
+   L. VIRTUAL PROTECTED METHOD do_get() zo zadaneho ITERATOR PAIR parsuje DATE a TIME VALUES podla zadaneho FORMATU. Vysledok je ulozeny do PARAMETER TYPE [tm].
+   M. METHOD date_order() interne vola METHOD do_date_order().
+   N. METHOD get_time() interne vola METHOD do_get_time().
+   O. METHOD get_date() interne vola METHOD do_get_date().
+   P. METHOD get_weekday() interne vola METHOD do_get_weekday().
+   Q. METHOD get_monthday() interne vola METHOD do_get_monthday().
+   R. METHOD get_year() interne vola METHOD do_get_year().
+   S. METHOD get() interne vola METHOD do_get().
+53. CLASS [time_put<TCharacter,TOutputIterator>] zapuzdruje WRITING DATE a TIME VALUES do STREAMU definovanom pomocou ITERATOR PAIR. Pre CLASS [time_put<TCharacter,TOutputIterator>] platia nasledujuce fakty.
+   A. CLASS [time_put<TCharacter,TOutputIterator>] zapuzdruje WRITING DATE a TIME VALUES do STREAMU definovanom pomocou ITERATOR PAIR.
+   B. CLASS [time_put<TCharacter,TOutputIterator>] je DERIVED z CLASS [time_base] a CLASS [locale::facet].
+   C. TEMPLATE PARAMETER 'TCharacter' definuje CHARACTER TYPE pre ktory je CLASS [time_put<TCharacter,TOutputIterator>] implementovana.
+   D. TEMPLATE PARAMETER 'TOutputIterator' definuje OUTPUT ITERATOR TYPE pre CLASS [time_put<TCharacter,TOutputIterator>] do ktoreho sa vykonava WRITING dat.
+   E. CLASS [time_put<char>] definuje SPECIALIZATION CLASS [time_put<TCharacter,TOutputIterator>] pre CHARACTER TYPE [char].
+   F. CLASS [time_put<wchar_t>] definuje SPECIALIZATION CLASS [time_put<TCharacter,TOutputIterator>] pre CHARACTER TYPE [wchar_t].
+   G. CLASS [time_put<char,TOutputIterator>] definuje SPECIALIZATION CLASS [time_put<TCharacter,TOutputIterator>] pre CHARACTER TYPE [char] a CUSTOM ITERATOR TYPE [TOutputIterator].
+   H. CLASS [time_put<wchar_t,TOutputIterator>] definuje SPECIALIZATION CLASS [time_put<TCharacter,TOutputIterator>] pre CHARACTER TYPE [wchar_t] a CUSTOM ITERATOR TYPE [TOutputIterator].
+54. CLASS [time_put<TCharacter,TOutputIterator>] ma nasledujuce MEMBERS.
+   A. TYPE [time_put<TCharacter,TOutputIterator>::char_type] obsahuje CHARACTER TYPE pre ktory je CLASS [time_put<TCharacter,TOutputIterator>] definovana. Jeho VALUE je identicka s TEMPLATE PARAMETER 'TCharacter'.
+   B. TYPE [time_put<TCharacter,TOutputIterator>::iter_type] obsahuje OUTPUT ITERATOR TYPE pre ktory je CLASS [time_put<TCharacter,TOutputIterator>] definovana. Jeho VALUE je identicka s TEMPLATE PARAMETER 'TOutputIterator'.
+   C. STATIC FIELD [time_put<TCharacter,TOutputIterator>::id] reprezentuje LOCALE IDENTIFIER.
+   D. CONSTRUCTOR vytvara instanciu CLASS [time_put<TCharacter,TOutputIterator>].
+   E. PROTECTED DESTRUCTOR uvolnuje instanciu CLASS [time_put<TCharacter,TOutputIterator>].
+   F. VIRTUAL PROTECTED METHOD do_put() do zadaneho ITERATOR PAIR vykona WRITING DATE a TIME VALUES podla zadaneho FORMATU. DATE a TIME VALUES sa zapisuju z PARAMETER TYPE [tm].
+   G. METHOD put() interne vola METHOD do_put().
+55. CLASS [num_get<TCharacter,TInputIterator>] zapuzdruje READING NUMERIC VALUES zo STREAMU definovanom pomocou ITERATOR PAIR. Pre CLASS [num_get<TCharacter,TInputIterator>] platia nasledujuce fakty.
+   A. CLASS [num_get<TCharacter,TInputIterator>] zapuzdruje READING NUMERIC VALUES zo STREAMU definovanom pomocou ITERATOR PAIR.
+   B. CLASS [num_get<TCharacter,TInputIterator>] je DERIVED CLASS [locale::facet].
+   C. TEMPLATE PARAMETER 'TCharacter' definuje CHARACTER TYPE pre ktory je CLASS [num_get<TCharacter,TInputIterator>] implementovana.
+   D. TEMPLATE PARAMETER 'TInputIterator' definuje INPUT ITERATOR TYPE pre CLASS [num_get<TCharacter,TInputIterator>] z ktoreho sa vykonava READING dat.
+   E. CLASS [num_get<char>] definuje SPECIALIZATION CLASS [num_get<TCharacter,TInputIterator>] pre CHARACTER TYPE [char].
+   F. CLASS [num_get<wchar_t>] definuje SPECIALIZATION CLASS [num_get<TCharacter,TInputIterator>] pre CHARACTER TYPE [wchar_t].
+   G. CLASS [num_get<char,TInputIterator>] definuje SPECIALIZATION CLASS [num_get<TCharacter,TInputIterator>] pre CHARACTER TYPE [char] a CUSTOM ITERATOR TYPE [TInputIterator].
+   H. CLASS [num_get<wchar_t,TInputIterator>] definuje SPECIALIZATION CLASS [num_get<TCharacter,TInputIterator>] pre CHARACTER TYPE [wchar_t] a CUSTOM ITERATOR TYPE [TInputIterator].
+56. CLASS [num_get<TCharacter,TInputIterator>] ma nasledujuce MEMBERS.
+   A. TYPE [num_get<TCharacter,TInputIterator>::char_type] obsahuje CHARACTER TYPE pre ktory je CLASS [num_get<TCharacter,TInputIterator>] definovana. Jeho VALUE je identicka s TEMPLATE PARAMETER 'TCharacter'.
+   B. TYPE [num_get<TCharacter,TInputIterator>::iter_type] obsahuje INPUT ITERATOR TYPE pre ktory je CLASS [num_get<TCharacter,TInputIterator>] definovana. Jeho VALUE je identicka s TEMPLATE PARAMETER 'TInputIterator'.
+   C. STATIC FIELD [num_get<TCharacter,TInputIterator>::id] reprezentuje LOCALE IDENTIFIER.
+   D. CONSTRUCTOR vytvara instanciu CLASS [num_get<TCharacter,TInputIterator>].
+   E. PROTECTED DESTRUCTOR uvolnuje instanciu CLASS [num_get<TCharacter,TInputIterator>].
+   F. VIRTUAL PROTECTED METHOD do_get() zo zadaneho ITERATOR PAIR parsuje NUMERIC VALUE. Vysledok je ulozeny do NUMERIC PARAMETER TYPE.
+   G. METHOD get() interne vola METHOD do_get().
+57. CLASS [num_put<TCharacter,TOutputIterator>] zapuzdruje WRITING DATE a TIME VALUES do STREAMU definovanom pomocou ITERATOR PAIR. Pre CLASS [num_put<TCharacter,TOutputIterator>] platia nasledujuce fakty.
+   A. CLASS [num_put<TCharacter,TOutputIterator>] zapuzdruje WRITING DATE a TIME VALUES do STREAMU definovanom pomocou ITERATOR PAIR.
+   B. CLASS [num_put<TCharacter,TOutputIterator>] je DERIVED z CLASS [locale::facet].
+   C. TEMPLATE PARAMETER 'TCharacter' definuje CHARACTER TYPE pre ktory je CLASS [num_put<TCharacter,TOutputIterator>] implementovana.
+   D. TEMPLATE PARAMETER 'TOutputIterator' definuje OUTPUT ITERATOR TYPE pre CLASS [num_put<TCharacter,TOutputIterator>] do ktoreho sa vykonava WRITING dat.
+   E. CLASS [num_put<char>] definuje SPECIALIZATION CLASS [num_put<TCharacter,TOutputIterator>] pre CHARACTER TYPE [char].
+   F. CLASS [num_put<wchar_t>] definuje SPECIALIZATION CLASS [num_put<TCharacter,TOutputIterator>] pre CHARACTER TYPE [wchar_t].
+   G. CLASS [num_put<char,TOutputIterator>] definuje SPECIALIZATION CLASS [num_put<TCharacter,TOutputIterator>] pre CHARACTER TYPE [char] a CUSTOM ITERATOR TYPE [TOutputIterator].
+   H. CLASS [num_put<wchar_t,TOutputIterator>] definuje SPECIALIZATION CLASS [num_put<TCharacter,TOutputIterator>] pre CHARACTER TYPE [wchar_t] a CUSTOM ITERATOR TYPE [TOutputIterator].
+58. CLASS [num_put<TCharacter,TOutputIterator>] ma nasledujuce MEMBERS.
+   A. TYPE [num_put<TCharacter,TOutputIterator>::char_type] obsahuje CHARACTER TYPE pre ktory je CLASS [num_put<TCharacter,TOutputIterator>] definovana. Jeho VALUE je identicka s TEMPLATE PARAMETER 'TCharacter'.
+   B. TYPE [num_put<TCharacter,TOutputIterator>::iter_type] obsahuje OUTPUT ITERATOR TYPE pre ktory je CLASS [num_put<TCharacter,TOutputIterator>] definovana. Jeho VALUE je identicka s TEMPLATE PARAMETER 'TOutputIterator'.
+   C. STATIC FIELD [num_put<TCharacter,TOutputIterator>::id] reprezentuje LOCALE IDENTIFIER.
+   D. CONSTRUCTOR vytvara instanciu CLASS [num_put<TCharacter,TOutputIterator>].
+   E. PROTECTED DESTRUCTOR uvolnuje instanciu CLASS [num_put<TCharacter,TOutputIterator>].
+   F. VIRTUAL PROTECTED METHOD do_put() do zadaneho ITERATOR PAIR vykona WRITING NUMERIC VALUE podla zadaneho FORMATU. NUMERIC VALUE sa zapisuje z NUMERIC PARAMETER TYPE.
+   G. METHOD put() interne vola METHOD do_put().
+59. CLASS [numpunct<TCharacter>] zapuzdruje nastavenia NUMERIC VALUES COMPONENTS (DECIMAL POINT, THOUSANDS SEPARATOR, GROUPING) pre dany LOCALE. Pre CLASS [numpunct<TCharacter>] platia nasledujuce fakty.
+   A. CLASS [numpunct<TCharacter>] zapuzdruje nastavenia NUMERIC VALUES COMPONENTS (DECIMAL POINT, THOUSANDS SEPARATOR, GROUPING) pre dany LOCALE.
+   B. CLASS [numpunct<TCharacter>] je DERIVED z CLASS [locale::facet].
+   C. TEMPLATE PARAMETER 'TCharacter' definuje CHARACTER TYPE pre ktory je CLASS [numpunct<TCharacter>] implementovana.
+   D. CLASS [numpunct<char>] definuje SPECIALIZATION CLASS [numpunct<TCharacter>] pre CHARACTER TYPE [char].
+   E. CLASS [numpunct<wchar_t>] definuje SPECIALIZATION CLASS [numpunct<TCharacter>] pre CHARACTER TYPE [wchar_t].
+60. CLASS [numpunct<TCharacter>] ma nasledujuce MEMBERS.
+   A. TYPE [numpunct<TCharacter>::char_type] obsahuje CHARACTER TYPE pre ktory je CLASS [numpunct<TCharacter>] definovana. Jeho VALUE je identicka s TEMPLATE PARAMETER 'TCharacter'.
+   B. TYPE [numpunct<TCharacter>::string_type] obsahuje STRING TYPE. Je nastaveny na TYPE [basic_string<TCharacter>].
+   C. STATIC FIELD [numpunct<TCharacter>::id] reprezentuje LOCALE IDENTIFIER.
+   D. CONSTRUCTOR vytvara instanciu CLASS [numpunct<TCharacter>].
+   E. PROTECTED DESTRUCTOR uvolnuje instanciu CLASS [numpunct<TCharacter>].
+   F. VIRTUAL PROTECTED METHOD do_decimal_point() vracia CHARACTER, ktory reprezentuje DECIMAL POINT pre dany LOCALE.
+   G. VIRTUAL PROTECTED METHOD do_thousands_sep() vracia CHARACTER, ktory reprezentuje THOUSANDS SEPARATOR pre dany LOCALE.
+   !!! H. VIRTUAL PROTECTED METHOD do_grouping() vracia STRING, ktory v KAZDOM CHARACTER obsahuje pocet DIGITS v GROUP pre dany LOCALE. GROUPS su vzajomne oddelene pomocou THOUSANDS SEPARATORS. STRING v kazdom BYTE urcuje velkost GROUP. Ak ma teda STRING velkost 5 BYTES, potom definuje velkosti pre 5 GROUPS. Ak cislo ma VIAC GROUPS, tak sa PATTERN OPAKUJE, takze na 6. GROUP sa pouzije dlzka uvedena v 1. BYTE STRING.
+   I. VIRTUAL PROTECTED METHOD do_truename() vracia STRING obsahujuci TRUE VALUE pre dany LOCALE.
+   J. VIRTUAL PROTECTED METHOD do_falsename() vracia STRING obsahujuci FALSE VALUE pre dany LOCALE.
+   K. METHOD decimal_point() interne vola METHOD do_decimal_point().
+   L. METHOD thousands_sep() interne vola METHOD do_thousands_sep().
+   M. METHOD grouping() interne vola METHOD do_grouping().
+   N. METHOD truename() interne vola METHOD do_truename().
+   O. METHOD falsename() interne vola METHOD do_falsename().
+61. CLASS [money_get<TCharacter,TInputIterator>] zapuzdruje READING MONETARY VALUES zo STREAMU definovanom pomocou ITERATOR PAIR. Pre CLASS [money_get<TCharacter,TInputIterator>] platia nasledujuce fakty.
+   A. CLASS [money_get<TCharacter,TInputIterator>] zapuzdruje READING MONETARY VALUES zo STREAMU definovanom pomocou ITERATOR PAIR.
+   B. CLASS [money_get<TCharacter,TInputIterator>] je DERIVED CLASS [locale::facet].
+   C. TEMPLATE PARAMETER 'TCharacter' definuje CHARACTER TYPE pre ktory je CLASS [money_get<TCharacter,TInputIterator>] implementovana.
+   D. TEMPLATE PARAMETER 'TInputIterator' definuje INPUT ITERATOR TYPE pre CLASS [money_get<TCharacter,TInputIterator>] z ktoreho sa vykonava READING dat.
+   E. CLASS [money_get<char>] definuje SPECIALIZATION CLASS [money_get<TCharacter,TInputIterator>] pre CHARACTER TYPE [char].
+   F. CLASS [money_get<wchar_t>] definuje SPECIALIZATION CLASS [money_get<TCharacter,TInputIterator>] pre CHARACTER TYPE [wchar_t].
+   G. CLASS [money_get<char,TInputIterator>] definuje SPECIALIZATION CLASS [money_get<TCharacter,TInputIterator>] pre CHARACTER TYPE [char] a CUSTOM ITERATOR TYPE [TInputIterator].
+   H. CLASS [money_get<wchar_t,TInputIterator>] definuje SPECIALIZATION CLASS [money_get<TCharacter,TInputIterator>] pre CHARACTER TYPE [wchar_t] a CUSTOM ITERATOR TYPE [TInputIterator].
+62. CLASS [money_get<TCharacter,TInputIterator>] ma nasledujuce MEMBERS.
+   A. TYPE [money_get<TCharacter,TInputIterator>::char_type] obsahuje CHARACTER TYPE pre ktory je CLASS [money_get<TCharacter,TInputIterator>] definovana. Jeho VALUE je identicka s TEMPLATE PARAMETER 'TCharacter'.
+   B. TYPE [money_get<TCharacter,TInputIterator>::string_type] obsahuje STRING TYPE. Je nastaveny na TYPE [basic_string<TCharacter>].
+   C. TYPE [money_get<TCharacter,TInputIterator>::iter_type] obsahuje INPUT ITERATOR TYPE pre ktory je CLASS [money_get<TCharacter,TInputIterator>] definovana. Jeho VALUE je identicka s TEMPLATE PARAMETER 'TInputIterator'.
+   D. STATIC FIELD [money_get<TCharacter,TInputIterator>::id] reprezentuje LOCALE IDENTIFIER.
+   E. CONSTRUCTOR vytvara instanciu CLASS [money_get<TCharacter,TInputIterator>].
+   F. PROTECTED DESTRUCTOR uvolnuje instanciu CLASS [money_get<TCharacter,TInputIterator>].
+   G. VIRTUAL PROTECTED METHOD do_get() zo zadaneho ITERATOR PAIR parsuje MONETARY VALUE. Vysledok je ulozeny do NUMERIC, alebo STRING PARAMETER TYPE.
+   H. METHOD get() interne vola METHOD do_get().
+63. CLASS [money_put<TCharacter,TOutputIterator>] zapuzdruje WRITING MONETARY VALUES do STREAMU definovanom pomocou ITERATOR PAIR. Pre CLASS [money_put<TCharacter,TOutputIterator>] platia nasledujuce fakty.
+   A. CLASS [money_put<TCharacter,TOutputIterator>] zapuzdruje WRITING MONETARY VALUES do STREAMU definovanom pomocou ITERATOR PAIR.
+   B. CLASS [money_put<TCharacter,TOutputIterator>] je DERIVED z CLASS [locale::facet].
+   C. TEMPLATE PARAMETER 'TCharacter' definuje CHARACTER TYPE pre ktory je CLASS [money_put<TCharacter,TOutputIterator>] implementovana.
+   D. TEMPLATE PARAMETER 'TOutputIterator' definuje OUTPUT ITERATOR TYPE pre CLASS [money_put<TCharacter,TOutputIterator>] do ktoreho sa vykonava WRITING dat.
+   E. CLASS [money_put<char>] definuje SPECIALIZATION CLASS [money_put<TCharacter,TOutputIterator>] pre CHARACTER TYPE [char].
+   F. CLASS [money_put<wchar_t>] definuje SPECIALIZATION CLASS [money_put<TCharacter,TOutputIterator>] pre CHARACTER TYPE [wchar_t].
+   G. CLASS [money_put<char,TOutputIterator>] definuje SPECIALIZATION CLASS [money_put<TCharacter,TOutputIterator>] pre CHARACTER TYPE [char] a CUSTOM ITERATOR TYPE [TOutputIterator].
+   H. CLASS [money_put<wchar_t,TOutputIterator>] definuje SPECIALIZATION CLASS [money_put<TCharacter,TOutputIterator>] pre CHARACTER TYPE [wchar_t] a CUSTOM ITERATOR TYPE [TOutputIterator].
+64. CLASS [money_put<TCharacter,TOutputIterator>] ma nasledujuce MEMBERS.
+   A. TYPE [money_put<TCharacter,TOutputIterator>::char_type] obsahuje CHARACTER TYPE pre ktory je CLASS [money_put<TCharacter,TOutputIterator>] definovana. Jeho VALUE je identicka s TEMPLATE PARAMETER 'TCharacter'.
+   B. TYPE [money_get<TCharacter,TInputIterator>::string_type] obsahuje STRING TYPE. Je nastaveny na TYPE [basic_string<TCharacter>].
+   C. TYPE [money_put<TCharacter,TOutputIterator>::iter_type] obsahuje OUTPUT ITERATOR TYPE pre ktory je CLASS [money_put<TCharacter,TOutputIterator>] definovana. Jeho VALUE je identicka s TEMPLATE PARAMETER 'TOutputIterator'.
+   D. STATIC FIELD [money_put<TCharacter,TOutputIterator>::id] reprezentuje LOCALE IDENTIFIER.
+   E. CONSTRUCTOR vytvara instanciu CLASS [money_put<TCharacter,TOutputIterator>].
+   F. PROTECTED DESTRUCTOR uvolnuje instanciu CLASS [money_put<TCharacter,TOutputIterator>].
+   G. VIRTUAL PROTECTED METHOD do_put() do zadaneho ITERATOR PAIR vykona WRITING MONETARY VALUE podla zadaneho FORMATU. MONETARY VALUE sa zapisuje z NUMERIC, alebo STRING PARAMETER TYPE.
+   H. METHOD put() interne vola METHOD do_put().
+65. CLASS [moneypunct<TCharacter,INTERNATIONALIZATION>] zapuzdruje nastavenia MONETARY VALUES COMPONENTS (DECIMAL POINT, THOUSANDS SEPARATOR, GROUPING, POSITIVE SIGN, NEGATIVE SIGN) pre dany LOCALE. Pre CLASS [moneypunct<TCharacter,INTERNATIONALIZATION>] platia nasledujuce fakty.
+   A. CLASS [moneypunct<TCharacter,INTERNATIONALIZATION>] zapuzdruje nastavenia MONETARY VALUES COMPONENTS (DECIMAL POINT, THOUSANDS SEPARATOR, GROUPING, POSITIVE SIGN, NEGATIVE SIGN) pre dany LOCALE.
+   B. CLASS [moneypunct<TCharacter,INTERNATIONALIZATION>] je DERIVED z CLASS [money_base] a CLASS [locale::facet].
+   C. TEMPLATE PARAMETER 'TCharacter' definuje CHARACTER TYPE pre ktory je CLASS [moneypunct<TCharacter,INTERNATIONALIZATION>] implementovana.
+   D. TEMPLATE PARAMETER 'INTERNATIONALIZATION' TYPE [bool] urcuje ci sa maju pouzivat C-LOCALE PREFERENCES, alebo C-LOCALE PREFERENCES s INTERNATIONAL CURRENCY SYMBOLS.
+   E. CLASS [moneypunct<char>] definuje SPECIALIZATION CLASS [moneypunct<TCharacter,INTERNATIONALIZATION>] pre CHARACTER TYPE [char].
+   F. CLASS [moneypunct<wchar_t>] definuje SPECIALIZATION CLASS [moneypunct<TCharacter,INTERNATIONALIZATION>] pre CHARACTER TYPE [wchar_t].
+   G. CLASS [moneypunct<char,true>] definuje SPECIALIZATION CLASS [moneypunct<TCharacter,INTERNATIONALIZATION>] pre CHARACTER TYPE [char] s pouzitim INTERNATIONAL CURRENCY SYMBOLS.
+   H. CLASS [moneypunct<wchar_t,true>] definuje SPECIALIZATION CLASS [moneypunct<TCharacter,INTERNATIONALIZATION>] pre CHARACTER TYPE [wchar_t] s pouzitim INTERNATIONAL CURRENCY SYMBOLS.
+66. CLASS [moneypunct<TCharacter,INTERNATIONALIZATION>] ma nasledujuce MEMBERS.
+   A. TYPE [moneypunct<TCharacter,INTERNATIONALIZATION>::char_type] obsahuje CHARACTER TYPE pre ktory je CLASS [moneypunct<TCharacter,INTERNATIONALIZATION>] definovana. Jeho VALUE je identicka s TEMPLATE PARAMETER 'TCharacter'.
+   B. TYPE [moneypunct<TCharacter,INTERNATIONALIZATION>::string_type] obsahuje STRING TYPE. Je nastaveny na TYPE [basic_string<TCharacter>].
+   C. STATIC FIELD [moneypunct<TCharacter,INTERNATIONALIZATION>::id] reprezentuje LOCALE IDENTIFIER.
+   D. CONST FIELD [moneypunct<TCharacter,INTERNATIONALIZATION>::intl] urcuje ci sa maju pouzivat INTERNATIONAL CURRENCY SYMBOLS.
+   E. CONSTRUCTOR vytvara instanciu CLASS [moneypunct<TCharacter,INTERNATIONALIZATION>].
+   F. PROTECTED DESTRUCTOR uvolnuje instanciu CLASS [moneypunct<TCharacter,INTERNATIONALIZATION>].
+   G. VIRTUAL PROTECTED METHOD do_decimal_point() vracia CHARACTER, ktory reprezentuje DECIMAL POINT pre dany LOCALE.
+   H. VIRTUAL PROTECTED METHOD do_thousands_sep() vracia CHARACTER, ktory reprezentuje THOUSANDS SEPARATOR pre dany LOCALE.
+   !!! I. VIRTUAL PROTECTED METHOD do_grouping() vracia STRING, ktory v KAZDOM CHARACTER obsahuje pocet DIGITS v GROUP pre dany LOCALE. GROUPS su vzajomne oddelene pomocou THOUSANDS SEPARATORS. STRING v kazdom BYTE urcuje velkost GROUP. Ak ma teda STRING velkost 5 BYTES, potom definuje velkosti pre 5 GROUPS. Ak cislo ma VIAC GROUPS, tak sa PATTERN OPAKUJE, takze na 6. GROUP sa pouzije dlzka uvedena v 1. BYTE STRING.
+   J. VIRTUAL PROTECTED METHOD do_curr_symbol() vracia STRING obsahujuci CURRENCY SYMBOL pre dany LOCALE.
+   K. VIRTUAL PROTECTED METHOD do_positive_sign() vracia STRING, ktory sa pouziva na FORMATTING POSITIVE MONETARY VALUES.
+   L. VIRTUAL PROTECTED METHOD do_negative_sign() vracia STRING, ktory sa pouziva na FORMATTING NEGATIVE MONETARY VALUES.
+   M. VIRTUAL PROTECTED METHOD do_frac_digits() vracia pocet DIGITS, ktore musia byt zobrazene za desatinnou ciarkou pri zobrazovani MONETARY VALUES.
+   N. VIRTUAL PROTECTED METHOD do_pos_format() vracia STRING, ktory sa pouziva ako FORMATTING PATTERN pre POSITIVE MONETARY VALUES.
+   O. VIRTUAL PROTECTED METHOD do_neg_format() vracia STRING, ktory sa pouziva ako FORMATTING PATTERN pre NEGATIVE MONETARY VALUES.
+   P. METHOD decimal_point() interne vola METHOD do_decimal_point().
+   Q. METHOD thousands_sep() interne vola METHOD do_thousands_sep().
+   R. METHOD grouping() interne vola METHOD do_grouping().
+   Q. METHOD curr_symbol() interne vola METHOD do_curr_symbol().
+   S. METHOD positive_sign() interne vola METHOD do_positive_sign().
+   T. METHOD negative_sign() interne vola METHOD do_negative_sign().
+   U. METHOD frac_digits() interne vola METHOD do_frac_digits().
+   V. METHOD pos_format() interne vola METHOD do_pos_format().
+   W. METHOD neg_format() interne vola METHOD do_neg_format().
+67. CLASS [ctype_byname<TCharacter>] zapuzdruje CHARACTER CLASSIFICATION a CHARACTER CONVERSION FEATURES pre LOCALE definovany v CONSTRUCTION TIME. Pre CLASS [ctype_byname<TCharacter>] platia nasledujuce fakty.
+   A. CLASS [ctype_byname<TCharacter>] zapuzdruje CHARACTER CLASSIFICATION a CHARACTER CONVERSION FEATURES pre LOCALE definovany v CONSTRUCTION TIME.
+   B. CLASS [ctype_byname<TCharacter>] je DERIVED z CLASS [ctype<TCharacter>].
+   C. TEMPLATE PARAMETER 'TCharacter' definuje CHARACTER pre ktory je CLASS definovana.
+   D. CLASS [ctype_byname<TCharacter>] definuje SPECIALIZATION CLASS [ctype_byname<char>] pre TYPE [char].
+   E. CLASS [ctype_byname<TCharacter>] definuje SPECIALIZATION CLASS [ctype_byname<wchar_t>] pre TYPE [wchar_t].
+68. CLASS [ctype_byname<TCharacter>] ma nasledujuce MEMBERS.
+   A. TYPE [ctype_byname<TCharacter>::mask] reprezentuje BITMASK TYPE pouzivany na vyjadrenie kategorii CHARACTERS. Je identicky s TYPE [ctype<TCharacter>].
+   B. CONSTRUCTOR vytvara instanciu CLASS [ctype_byname<TCharacter>].
+   C. PROTECTED DESTRUCTOR uvolnuje instanciu CLASS [ctype_byname<TCharacter>].
+69. CLASS [codecvt_byname<TInternal,TExternal,TState>] zapuzdruje CHARACTER CONVERSIONS z jedneho CHARCTER TYPE na iny CHARACTER TYPE pre LOCALE definovany v CONSTRUCTION TIME. Pre CLASS [codecvt_byname<TInternal,TExternal,TState>] platia nasledujuce fakty.
+   A. CLASS [codecvt_byname<TInternal,TExternal,TState>] zapuzdruje CHARACTER CONVERSIONS z jedneho CHARCTER TYPE na iny CHARACTER TYPE pre LOCALE definovany v CONSTRUCTION TIME.
+   B. CLASS [codecvt_byname<TInternal,TExternal,TState>] je DERIVED z CLASS [codecvt<TInternal,TExternal,TState>].
+   C. TEMPLATE PARAMETER 'TInternal' definuje INTERNAL CHARACTER TYPE.
+   D. TEMPLATE PARAMETER 'TExternal' definuje EXTERNAL CHARACTER TYPE.
+   E. TEMPLATE PARAMETER 'TState' definuje TYPE reprezentujuci CHARACTER CONVERSION STATE.
+   F. CLASS [codecvt_byname<char,char,mbstate_t>] definuje SPECIALIZATION CLASS [codecvt_byname<TInternal,TExternal,TState>] pre CONVERSION z TYPE [char] na TYPE [char].
+   G. CLASS [codecvt_byname<wchar_t,char,mbstate_t>] definuje SPECIALIZATION CLASS [codecvt_byname<TInternal,TExternal,TState>] pre CONVERSION z TYPE [wchar_t] na TYPE [char].
+   H. CLASS [codecvt_byname<char16_t,char,mbstate_t>] definuje SPECIALIZATION CLASS [codecvt_byname<TInternal,TExternal,TState>] pre CONVERSION z TYPE [char16_t] na TYPE [char].
+   I. CLASS [codecvt_byname<char32_t,char,mbstate_t>] definuje SPECIALIZATION CLASS [codecvt_byname<TInternal,TExternal,TState>] pre CONVERSION z TYPE [char32_t] na TYPE [char].
+70. CLASS [codecvt_byname<TInternal,TExternal,TState>] ma nasledujuce MEMBERS.
+   A. TYPE [codecvt_byname<TInternal,TExternal,TState>::intern_type] reprezentuje INTERNAL CHARACTER TYPE pre ktory je vykonavana CONVERSION. Je nastaveny na TEMPLATE PARAMETER 'TInternal'.
+   B. TYPE [codecvt_byname<TInternal,TExternal,TState>::extern_type] reprezentuje EXTERNAL CHARACTER TYPE pre ktory je vykonavana CONVERSION. Je nastaveny na TEMPLATE PARAMETER 'TExternal'.
+   C. TYPE [codecvt_byname<TInternal,TExternal,TState>::state_type] reprezentuje CONVERSION STATE TYPE reprezentujuci TYPE pouzivany na ulozenie CONVERSION STATE. Je nastaveny na TEMPLATE PARAMETER 'TState'.
+   D. CONSTRUCTOR vytvara instanciu CLASS [codecvt_byname<TInternal,TExternal,TState>].
+   E. PROTECTED DESTRUCTOR uvolnuje instanciu CLASS [codecvt_byname<TInternal,TExternal,TState>].
+71. CLASS [messages_byname<TCharacter>] zapuzdruje vyber STRINGS z MESSAGE CATALOGS pre LOCALE definovany v CONSTRUCTION TIME. Pre CLASS [messages_byname<TCharacter>] platia nasledujuce fakty.
+   A. CLASS [messages_byname<TCharacter>] zapuzdruje vyber STRINGS z MESSAGE CATALOGS pre LOCALE definovany v CONSTRUCTION TIME.
+   B. CLASS [messages_byname<TCharacter>] je DERIVED z CLASS [messages<TCharacter>].
+   C. TEMPLATE PARAMETER 'TCharacter' definuje CHARACTER TYPE pre ktory je CLASS [messages_byname<TCharacter>] implementovana.
+   D. CLASS [messages_byname<char>] definuje SPECIALIZATION CLASS [messages_byname<char>] pre CHARACTER TYPE [char].
+   E. CLASS [messages_byname<wchar_t>] definuje SPECIALIZATION CLASS [messages_byname<char>] pre CHARACTER TYPE [wchar_t].
+72. CLASS [messages_byname<TCharacter>] ma nasledujuce MEMBERS.
+   A. TYPE [messages_byname<TCharacter>::catalog] obsahuje CATALOG TYPE pre ktory je CLASS [messages_byname<TCharacter>] definovana. Jeho VALUE je identicka s TEMPLATE PARAMETER 'TCharacter'.
+   B. TYPE [messages_byname<TCharacter>::string_type] obsahuje STRING TYPE. Je nastaveny na TYPE [basic_string<TCharacter>].
+   C. CONSTRUCTOR vytvara instanciu CLASS [messages_byname<TCharacter>].
+   D. PROTECTED DESTRUCTOR uvolnuje instanciu CLASS [messages_byname<TCharacter>].
+73. CLASS [collate_byname<TCharacter>] zapuzdruje CHARACTER COMPARISON a CHARACTER HASHING pre LOCALE definovany v CONSTRUCTION TIME. Pre CLASS [collate_byname<TCharacter>] platia nasledujuce fakty.
+   A. CLASS [collate_byname<TCharacter>] zapuzdruje CHARACTER COMPARISON a CHARACTER HASHING pre LOCALE definovany v CONSTRUCTION TIME.
+   B. CLASS [collate_byname<TCharacter>] je DERIVED z CLASS [collate<TCharacter>].
+   C. TEMPLATE PARAMETER 'TCharacter' definuje CHARACTER TYPE pre ktory je CLASS [collate_byname<TCharacter>] implementovana.
+   D. CLASS [collate_byname<char>] definuje SPECIALIZATION CLASS [collate_byname<char>] pre CHARACTER TYPE [char].
+   E. CLASS [collate_byname<wchar_t>] definuje SPECIALIZATION CLASS [collate_byname<char>] pre CHARACTER TYPE [wchar_t].
+74. CLASS [collate_byname<TCharacter>] ma nasledujuce MEMBERS.
+   A. CONSTRUCTOR vytvara instanciu CLASS [collate_byname<TCharacter>].
+   B. PROTECTED DESTRUCTOR uvolnuje instanciu CLASS [collate_byname<TCharacter>].
+75. CLASS [time_get_byname<TCharacter,TInputIterator>] zapuzdruje READING DATE a TIME VALUES zo STREAMU definovanom pomocou ITERATOR PAIR pre LOCALE definovany v CONSTRUCTION TIME. Pre CLASS [time_get_byname<TCharacter,TInputIterator>] platia nasledujuce fakty.
+   A. CLASS [time_get_byname<TCharacter,TInputIterator>] zapuzdruje READING DATE a TIME VALUES zo STREAMU definovanom pomocou ITERATOR PAIR pre LOCALE definovany v CONSTRUCTION TIME.
+   B. CLASS [time_get_byname<TCharacter,TInputIterator>] je DERIVED z CLASS [time_get<TCharacter,TInputIterator>].
+   C. TEMPLATE PARAMETER 'TCharacter' definuje CHARACTER TYPE pre ktory je CLASS [time_get_byname<TCharacter,TInputIterator>] implementovana.
+   D. TEMPLATE PARAMETER 'TInputIterator' definuje INPUT ITERATOR TYPE pre CLASS [time_get_byname<TCharacter,TInputIterator>] z ktoreho sa vykonava READING dat.
+   E. CLASS [time_get_byname<char,TInputIterator>] definuje SPECIALIZATION CLASS [time_get_byname<TCharacter,TInputIterator>] pre CHARACTER TYPE [char] a CUSTOM ITERATOR TYPE [TInputIterator].
+   F. CLASS [time_get_byname<wchar_t,TInputIterator>] definuje SPECIALIZATION CLASS [time_get_byname<TCharacter,TInputIterator>] pre CHARACTER TYPE [wchar_t] a CUSTOM ITERATOR TYPE [TInputIterator].
+76. CLASS [time_get_byname<TCharacter,TInputIterator>] ma nasledujuce MEMBERS.
+   A. CONSTRUCTOR vytvara instanciu CLASS [time_get_byname<TCharacter,TInputIterator>].
+   B. PROTECTED DESTRUCTOR uvolnuje instanciu CLASS [time_get_byname<TCharacter,TInputIterator>].
+77. CLASS [time_put_byname<TCharacter,TOutputIterator>] zapuzdruje WRITING DATE a TIME VALUES do STREAMU definovanom pomocou ITERATOR PAIR pre LOCALE definovany v CONSTRUCTION TIME. Pre CLASS [time_put_byname<TCharacter,TOutputIterator>] platia nasledujuce fakty.
+   A. CLASS [time_put_byname<TCharacter,TOutputIterator>] zapuzdruje WRITING DATE a TIME VALUES do STREAMU definovanom pomocou ITERATOR PAIR pre LOCALE definovany v CONSTRUCTION TIME.
+   B. CLASS [time_put_byname<TCharacter,TOutputIterator>] je DERIVED z CLASS [time_put<TCharacter,TOutputIterator>].
+   C. TEMPLATE PARAMETER 'TCharacter' definuje CHARACTER TYPE pre ktory je CLASS [time_put_byname<TCharacter,TOutputIterator>] implementovana.
+   D. TEMPLATE PARAMETER 'TOutputIterator' definuje OUTPUT ITERATOR TYPE pre CLASS [time_put_byname<TCharacter,TOutputIterator>] do ktoreho sa vykonava WRITING dat.
+   E. CLASS [time_put_byname<char,TOutputIterator>] definuje SPECIALIZATION CLASS [time_put_byname<TCharacter,TOutputIterator>] pre CHARACTER TYPE [char] a CUSTOM ITERATOR TYPE [TOutputIterator].
+   F. CLASS [time_put_byname<wchar_t,TOutputIterator>] definuje SPECIALIZATION CLASS [time_put_byname<TCharacter,TOutputIterator>] pre CHARACTER TYPE [wchar_t] a CUSTOM ITERATOR TYPE [TOutputIterator].
+78. CLASS [time_put_byname<TCharacter,TOutputIterator>] ma nasledujuce MEMBERS.
+   A. TYPE [time_put_byname<TCharacter,TOutputIterator>::char_type] obsahuje CHARACTER TYPE pre ktory je CLASS [time_put_byname<TCharacter,TOutputIterator>] definovana. Jeho VALUE je identicka s TEMPLATE PARAMETER 'TCharacter'.
+   B. TYPE [time_put_byname<TCharacter,TOutputIterator>::iter_type] obsahuje OUTPUT ITERATOR TYPE pre ktory je CLASS [time_put_byname<TCharacter,TOutputIterator>] definovana. Jeho VALUE je identicka s TEMPLATE PARAMETER 'TOutputIterator'.
+   C. CONSTRUCTOR vytvara instanciu CLASS [time_put_byname<TCharacter,TOutputIterator>].
+   D. PROTECTED DESTRUCTOR uvolnuje instanciu CLASS [time_put_byname<TCharacter,TOutputIterator>].
+79. CLASS [numpunct_byname<TCharacter>] zapuzdruje nastavenia NUMERIC VALUES COMPONENTS (DECIMAL POINT, THOUSANDS SEPARATOR, GROUPING) pre LOCALE definovany v CONSTRUCTION TIME. Pre CLASS [numpunct_byname<TCharacter>] platia nasledujuce fakty.
+   A. CLASS [numpunct_byname<TCharacter>] zapuzdruje nastavenia NUMERIC VALUES COMPONENTS (DECIMAL POINT, THOUSANDS SEPARATOR, GROUPING) pre LOCALE definovany v CONSTRUCTION TIME.
+   B. CLASS [numpunct_byname<TCharacter>] je DERIVED z CLASS [numpunct<TCharacter>].
+   C. TEMPLATE PARAMETER 'TCharacter' definuje CHARACTER TYPE pre ktory je CLASS [numpunct_byname<TCharacter>] implementovana.
+   D. CLASS [numpunct_byname<char>] definuje SPECIALIZATION CLASS [numpunct_byname<TCharacter>] pre CHARACTER TYPE [char].
+   E. CLASS [numpunct_byname<wchar_t>] definuje SPECIALIZATION CLASS [numpunct_byname<TCharacter>] pre CHARACTER TYPE [wchar_t].
+80. CLASS [numpunct_byname<TCharacter>] ma nasledujuce MEMBERS.
+   A. TYPE [numpunct_byname<TCharacter>::char_type] obsahuje CHARACTER TYPE pre ktory je CLASS [numpunct_byname<TCharacter>] definovana. Jeho VALUE je identicka s TEMPLATE PARAMETER 'TCharacter'.
+   B. TYPE [numpunct_byname<TCharacter>::string_type] obsahuje STRING TYPE. Je nastaveny na TYPE [basic_string<TCharacter>].
+   C. CONSTRUCTOR vytvara instanciu CLASS [numpunct_byname<TCharacter>].
+   D. PROTECTED DESTRUCTOR uvolnuje instanciu CLASS [numpunct_byname<TCharacter>].
+81. CLASS [moneypunct_byname<TCharacter,INTERNATIONALIZATION>] zapuzdruje nastavenia MONETARY VALUES COMPONENTS (DECIMAL POINT, THOUSANDS SEPARATOR, GROUPING, POSITIVE SIGN, NEGATIVE SIGN) pre LOCALE definovany v CONSTRUCTION TIME. Pre CLASS [moneypunct_byname<TCharacter,INTERNATIONALIZATION>] platia nasledujuce fakty.
+   A. CLASS [moneypunct_byname<TCharacter,INTERNATIONALIZATION>] zapuzdruje nastavenia MONETARY VALUES COMPONENTS (DECIMAL POINT, THOUSANDS SEPARATOR, GROUPING, POSITIVE SIGN, NEGATIVE SIGN) pre LOCALE definovany v CONSTRUCTION TIME.
+   B. CLASS [moneypunct_byname<TCharacter,INTERNATIONALIZATION>] je DERIVED z CLASS [moneypunct<TCharacter,INTERNATIONALIZATION>].
+   C. TEMPLATE PARAMETER 'TCharacter' definuje CHARACTER TYPE pre ktory je CLASS [moneypunct_byname<TCharacter,INTERNATIONALIZATION>] implementovana.
+   D. TEMPLATE PARAMETER 'INTERNATIONALIZATION' TYPE [bool] urcuje ci sa maju pouzivat C-LOCALE PREFERENCES, alebo C-LOCALE PREFERENCES s INTERNATIONAL CURRENCY SYMBOLS.
+   E. CLASS [moneypunct_byname<char>] definuje SPECIALIZATION CLASS [moneypunct_byname<TCharacter,INTERNATIONALIZATION>] pre CHARACTER TYPE [char].
+   F. CLASS [moneypunct_byname<wchar_t>] definuje SPECIALIZATION CLASS [moneypunct_byname<TCharacter,INTERNATIONALIZATION>] pre CHARACTER TYPE [wchar_t].
+   G. CLASS [moneypunct_byname<char,true>] definuje SPECIALIZATION CLASS [moneypunct_byname<TCharacter,INTERNATIONALIZATION>] pre CHARACTER TYPE [char] s pouzitim INTERNATIONAL CURRENCY SYMBOLS.
+   H. CLASS [moneypunct_byname<wchar_t,true>] definuje SPECIALIZATION CLASS [moneypunct_byname<TCharacter,INTERNATIONALIZATION>] pre CHARACTER TYPE [wchar_t] s pouzitim INTERNATIONAL CURRENCY SYMBOLS.
+82. CLASS [moneypunct_byname<TCharacter,INTERNATIONALIZATION>] ma nasledujuce MEMBERS.
+   A. TYPE [moneypunct_byname<TCharacter,INTERNATIONALIZATION>::pattern_type] obsahuje PATTERN TYPE pre ktory je CLASS [moneypunct_byname<TCharacter,INTERNATIONALIZATION>] definovana. Jeho VALUE je identicka nastavena na TYPE [money_base::pattern].
+   B. TYPE [moneypunct_byname<TCharacter,INTERNATIONALIZATION>::string_type] obsahuje STRING TYPE. Je nastaveny na TYPE [basic_string<TCharacter>].
+   C. CONSTRUCTOR vytvara instanciu CLASS [moneypunct_byname<TCharacter,INTERNATIONALIZATION>].
+   D. PROTECTED DESTRUCTOR uvolnuje instanciu CLASS [moneypunct_byname<TCharacter,INTERNATIONALIZATION>].
+83. C++ 11 definuje STREAM MANIPULATOR put_money(), ktory umoznuje zapis MONEY VALUES do C++ STREAMS. OVERLOADED VERSION umoznuje definovat ci sa ma pouzit CURRENCY SYMBOL v tvare NATIONAL, alebo INTERNATIONAL.
+84. C++ 11 definuje STREAM MANIPULATOR get_money(), ktory umoznuje citanie MONEY VALUES z C++ STREAMS. OVERLOADED VERSION umoznuje definovat ci sa ma pouzit CURRENCY SYMBOL v tvare NATIONAL, alebo INTERNATIONAL.
+85. C++ 11 definuje STREAM MANIPULATOR put_time(), ktory umoznuje zapis TIME VALUES do C++ STREAMS.
+86. C++ 11 definuje STREAM MANIPULATOR get_time(), ktory umoznuje citanie TIME VALUES z C++ STREAMS.
+//-------------------------------------------------------------------------------------------------------
