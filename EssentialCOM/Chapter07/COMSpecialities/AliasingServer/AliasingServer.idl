@@ -1,0 +1,47 @@
+//------------------------------------------------------------------------------------------------------
+import "oaidl.idl";
+import "ocidl.idl";
+//------------------------------------------------------------------------------------------------------
+cpp_quote("#ifndef XXXXX")
+cpp_quote("#define XXXXX")
+cpp_quote("void PrintText(void);")
+cpp_quote("#endif")
+//------------------------------------------------------------------------------------------------------
+[
+    object,
+	uuid(B4B9C8FC-1C0C-4550-8D09-0ECA5900FB85),
+    pointer_default(unique),
+]
+interface IAliasingTest : IUnknown
+{
+	HRESULT Dummy(void);
+	// !!! Tato METHOD sa NEDA POUZIT REMOTELY, lebo NEPOUZIVA patricne ATTRIBUTES ako napriklad [size_is()].
+	// !!! METHOD MUSI byt oznacena ATTRIBUTE [local].
+	[local]
+	HRESULT FillArray([in] int ArraySize, [out] int* ArrayLength, [out] int* Array);
+	// !!! Tato METHOD sa DA POUZIT REMOTELY, lebo POUZIVA ATTRIBUTES [size_is()] a [length_is()] potrebne na urcenie poctu ITEMS, ktore maju byt MARSHALED.
+	// !!! METHOD MUSI byt oznacena ATTRIBUTE [call_as(FillArray)] cim sa vytvori MEDZI LOCAL a REMOTELY METHODS VAZBA.
+	[call_as(FillArray)]
+	HRESULT RemoteFillArray([in] int ArraySize, [out] int* ArrayLength, [out,size_is(ArraySize),length_is(*ArrayLength)] int* Array);
+	HRESULT CallFunctionDefinedByCPPQuote(void);
+};
+//------------------------------------------------------------------------------------------------------
+//------------------------------------------------------------------------------------------------------
+//------------------------------------------------------------------------------------------------------
+[
+	uuid(20CA1205-ED7D-4F2B-9AAD-B5AF94D534EF),
+	version(1.0),
+]
+library AliasingServerLib
+{
+	importlib("stdole2.tlb");
+
+    [
+        uuid(5EF6C5A9-D07D-4B70-9544-15BB4B267F7B),
+    ]
+	coclass AliasingObject
+	{
+		[default] interface IAliasingTest;
+	};
+};
+//------------------------------------------------------------------------------------------------------

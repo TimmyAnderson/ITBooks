@@ -1,0 +1,91 @@
+//------------------------------------------------------------------------------------------------------
+import "oaidl.idl";
+import "ocidl.idl";
+//------------------------------------------------------------------------------------------------------
+[
+	uuid(AAEF4EB8-6BF1-4D20-AF9F-D9C7CA7A6BC9)
+]
+struct SArray
+{
+	int															ArraySize;
+	[size_is(ArraySize)]
+	int*														Array;
+};
+//------------------------------------------------------------------------------------------------------
+//------------------------------------------------------------------------------------------------------
+//------------------------------------------------------------------------------------------------------
+[
+    object,
+	uuid(E408DA33-1FB3-4064-BB6E-F5A056AFA9A1),
+    pointer_default(unique),
+]
+interface IArraysTest : IUnknown
+{
+	HRESULT Dummy(void);
+	// !!!!! Prenasa sa IBA 1 ITEM. Ostatne ITEMS sa NEPRENESU.
+	HRESULT JustPointer([in] int* Array);
+	// !!! FIXED ARRAYS sa prenasaju CELE.
+	HRESULT FixedArray([in] int Array[10]);
+	// !!! Nasledujuce 3 METHODS su IDENTICKE a prenasajuce POCET ITEMS rovny PARAMETRU 'ArraySize'.
+	HRESULT SizeIs1([in] int ArraySize, [in,size_is(ArraySize)] int* Array);
+	HRESULT SizeIs2([in] int ArraySize, [in,size_is(ArraySize)] int Array[]);
+	HRESULT SizeIs3([in] int ArraySize, [in,size_is(ArraySize)] int Array[*]);
+	// !!! V [size_is()] je mozne pouzit aj NEMODIFIKUJUCE EXPRESSIONS.
+	HRESULT SizeIsExpression([in] int ArraySize1, [in] int ArraySize2, [in,size_is((ArraySize1<ArraySize2) ? ArraySize1 : ArraySize2)] int Array[*]);
+	// !!! ATTRIBUTE [size_is()] je aplikovany v ramci STRUCT.
+	HRESULT SizeIsInStruct([in] struct SArray* Array);
+	// !!! ATTRIBUTE [size_is()] ma konstantnu hondotu.
+	HRESULT SizeIsConstant([in,size_is(10)] int* Array);
+	// !!! ATTRIBUTE [max_is()] urcuje MAXIMALNY INDEX ARRAY, ktory sa pri MARSHALLING PRENESIE cez APARTMENTS.
+	HRESULT MaxIsConstant([in,size_is(9)] int* Array);
+	// !!! ATTRIBUTE [size_is()] je mozne pouzit na prenesenie OUTPUT PARAMETERS.
+	HRESULT SizeIsForOutputParameter([in] int ArraySize, [out,size_is(ArraySize)] int* Array);
+	// !!!!! ATTRIBUTE [size_is()] je mozne pouzit na prenesenie STRING OUTPUT PARAMETERS.
+	HRESULT SizeIsForOutputStringParameter([in] int ArraySize, [out,size_is(ArraySize)] wchar_t* Array);
+	// !!! ATTRIBUTE [length_is()] urcuje kolko ITEMS sa prenesie. ARRAY MUSI byt FIXED.
+	HRESULT LengthIs([in] int ArrayLength, [in,length_is(ArrayLength)] int Array[20]);
+	// !!! ATTRIBUTE [first_is()] urcuje ktory ITEM sa prenesie ako PRVY. ARRAY MUSI byt FIXED.
+	HRESULT FirstIs([in] int StartIndex, [in] int ArrayLength, [in,first_is(StartIndex),length_is(ArrayLength)] int Array[20]);
+	// !!! ATTRIBUTE [last_is()] urcuje ktory ITEM sa prenesie ako POSLEDNY. ARRAY MUSI byt FIXED.
+	HRESULT LastIs([in] int StartIndex, [in] int EndIndex, [in,first_is(StartIndex),last_is(EndIndex)] int Array[20]);
+	// !!! ATTRIBUTE [length_is()] spolu s ATTRIBUTE size_is() umoznuje prenastat casti ARRAYS s VARIABILNOU VELKOSTOU (velkostou urcenou v RUNTIME).
+	HRESULT LengthIsAndSizeIs([in] int ArraySize, [in] int ArrayLength, [in,size_is(ArraySize),length_is(ArrayLength)] int* Array);
+	// !!! ATTRIBUTE [length_is()] spolu s ATTRIBUTE size_is() umoznuje prenastat casti ARRAYS s VARIABILNOU VELKOSTOU (velkostou urcenou v RUNTIME) v OUTPUT PARAMETERS.
+	HRESULT LengthIsAndSizeIsForOutputParamerter([in] int ArraySize, [out] int* ArrayLength, [out,size_is(ArraySize),length_is(*ArrayLength)] int* Array);
+	// !!! Prenesie sa iba 1 ITEM obsahujuci POINTER na POINTER na INT.
+	HRESULT PointerToPointer([in] int** Array);
+	// !!! Prenesie sa ARRAY s 3 ITEMS, kde KAZDY ARRAY ITEM obsahuje POINTER na INT.
+	HRESULT ArrayOfPointers([in,size_is(3)] int** Array);
+	// !!! Prenesie sa POINTER na ARRAY s 4 ITEMS, kde KAZDY ARRAY ITEM obsahuje INT.
+	HRESULT PointerToArray([in,size_is(,4)] int** Array);
+	// !!! Prenesie sa ARRAY s 3 ITEMS, kde KAZDY ITEM obsahuje ARRAY so 4 ITEMS. Tento ARRAY NIE JE C++ MATRIX, lebo MATRIX je ulozena KONTINUALNE v PAMATI, zatial co tento ARRAY NEMUSI BYT.
+	HRESULT ArrayToArray([in,size_is(3,4)] int** Array);
+	// !!! Prenesie sa MATRIX[3][4]. Toto je KLASICKA C++ MATRIX, ktora MUSI byt ulozena v KONTINUALNEJ PAMATI.
+	HRESULT Matrix([in] int Array[3][4]);
+	// !!! Prenesie sa C STRING.
+	HRESULT String([in,string] wchar_t* String);
+	// !!!!! STRING sa prenesie ako OUTPUT PARAMETER, pricom vsak PAMAT pre STRING je alokovana pomocou CoTaskMemAlloc().
+	HRESULT OutputString([out,string] wchar_t** String);
+	// !!! Prenasa sa SAFEARRAY typu INT.
+	HRESULT SafeArrayInt([in] SAFEARRAY(int)* Array);
+};
+//------------------------------------------------------------------------------------------------------
+//------------------------------------------------------------------------------------------------------
+//------------------------------------------------------------------------------------------------------
+[
+	uuid(4A37FC41-30B5-4033-90BA-4F98BEB69BCE),
+	version(1.0),
+]
+library ArraysServerLib
+{
+	importlib("stdole2.tlb");
+
+    [
+        uuid(E1D422BC-1A2A-4951-B13E-C38B9D055C64),
+    ]
+	coclass ArraysObject
+	{
+		[default] interface IArraysTest;
+	};
+};
+//------------------------------------------------------------------------------------------------------

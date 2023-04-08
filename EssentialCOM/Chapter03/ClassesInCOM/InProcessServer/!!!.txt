@@ -1,0 +1,158 @@
+//------------------------------------------------------------------------------------------------------
+1. Solution demonstruje pouzitie COM OBJECTS.
+2. COM OBJECTS su OBJECTS, ktore implementuju COM INTERFACES. Maju 3 rozlicne pomenovania.
+   A. C++ NAME je meno C++ CLASS, ktora implementuje COM INTERFACES.
+   B. CLSID je GUID, ktory jednoznacne implementuje COM OBJECT.
+   C. PROGID je STRING, ktorym sa oznacuje COM OBJECT. Pre jeho pomenovanie sa pouziva konvencia [LIBRARY_NAME.CLASS_NAME.VERSION].
+3. FUNCTION CLSIDFromProgID() umoznuje ziskat CLSID z PROGID.
+4. FUNCTION ProgIDFromCLSID() umoznuje ziskat PROGID z CLSID.
+!!! 5. V COM MUSI ku kazdemu COM OBJECT existovat CLASS OBJECT (CLASS FACTORY). CLASS OBJECT sluzi ako FACTORY OBJECT, ktory vytvara instancie COM OBJECTS.
+!!! 6. TYPICKY CLASS OBJECT (CLASS FACTORY) implementuje COM INTERFACE IClassFactory. V pripade, ze je potrebne aj licencovanie COM OBJECTS, tak CLASS OBJECT moze implementovat NAMIESTO IClassFactory COM INTERFACE IClassFactory2, ktory ma podporu licencovania.
+!!! 7. Ak chcem aby COM INTERFACE bolo mozne vystavit cez OUT-OF-PROCESS SERVER, potom COM INTERFACE MUSI byt schopne vykonat MARSHALING. To je mozne 2 sposobmi.
+   A. Pouzit STANDARD MARSHALLER. To sa dosahuje tak, ze sa COM INTERFACE oznaci pomocou ATTRIBUTE 'oleautomation'.
+   B. Implementovat CUSTOM MARSHALLER. V tomto pripade COM OBJECT musi implementovat INTERFACE IMarshal.
+!!!!! 8. Pri pouziti STANDARD MARSHALLER (ATTRIBUTE 'oleautomation') pre COM INTERFACE platia nasledujuce zasady.
+   A. METHODS mozu pouzivat IBA AUTOMATION PARAMETERS.
+   B. ATTRIBUTES size_is() a length_is() NIE SU PODPOROVANE.
+   !!! C. Kedze ATTRIBUTES size_is() a length_is() NIE SU PODPOROVANE, tak METHODS NESMU vracat ARRAYS ako [out] PARAMETERS. To by totizto znamenalo deklarovat PARAMETER ako TYPE** a to NIE JE MOZNE. Napriklad ak by som chcel ako [out] PARAMETER deklarovat STRING, tak [wchar_t**] NEBUDE FUNGOVAT, pretoze ten vyzaduje definovane dlzky ARRAY pomocou size_is() a length_is() a tie NIE SU PODPOROVANE.
+   D. Namiesto [wchar_t**] je potrebne pouzit [BSTR*].
+   E. Namiesto [ARRAY**] napriklad [int**] je potrebne pouzit [SAFEARRAY*].
+9. OUT-OF-PROCESS SERVER je mozne vytvorit nasledujicim sposobom.
+   A. COM INTERFACE MUSI byt schopny MARSHALINGU. Najjednoduchsie je ho oznacit ATTRIBUTE 'oleautomation'.
+   B. Kazde vytvorenie COM OBJECT je potrebne zaregistrovat do GLOBALNEHO COUNTER instancii volanim FUNCTION CoAddRefServerProcess(). Najlepsie je volat CoAddRefServerProcess() v CONSTRUCTOR COM OBJECT.
+   !!! C. Kazde odstranenie COM OBJECT je potrebne odregistrovat z GLOBALNEHO COUNTER instancii volanim FUNCTION CoReleaseServerProcess(). Ak FUNCTION CoReleaseServerProcess() vrati 0, znamena to, ze OUT-OF-PROCESS moze spustit proces UKONCENIA PROCESU OUT-OF-PROCESS SERVERA. Najlepsie je volat CoReleaseServerProcess() v DESTRUCTOR COM OBJECT.
+   D. CLASS FACTORY MUSI mat implementovanu METHOD LockServer(), ked pri poziadavke o LOCK zavola FUNCTION CoAddRefServerProcess() a pri poziadavke o UNLOCK zavola FUNCTION CoReleaseServerProcess(), pricom tak ta vraci 0, zacne proces UKONCENIA PROCESU OUT-OF-PROCESS SERVERA.
+   !!! E. Implementova MAIN FUNCTION, aby zaregistrovala CLASS FACTORY.
+!!! 10. MAIN FUNCTION OUT-OF-PROCESS SERVER musi vykonat nasledujuce cinnosti.
+   A. Vytvorit instanciu FACTORY CLASS.
+   B. ZAREGISTROVAT FACTORY CLASS volanim FUNCTION CoRegisterClassObject().
+   !!! C. ZABLOKOVAT MAIN THREAD az do doby pokym CoReleaseServerProcess() NEVRATI hodnotu 0, ktory znamena, ze OUT-OF-PROCESS SERVER moze byt UKONCENY.
+   D. ODREGISTROVAT CLASS FACTORY volanim FUNCTION CoRevokeClassObject().
+   E. Odstranit instanciu FACTORY CLASS.
+!!! 11. V OUT-OF-PROCESS SERVER je SERVER registrovany do REGISTRY pomocou COMMAND LINE. Zvycajne prikaz 'RegServer' znamena, ze PROCESS ma vykonat REGISTRACIU COM SERVER a prikaz 'UnRegServer' znamena PROCESS ODREGISTRACIU COM SERVER.
+!!! 12. COM NIJAKO SPECIALNE NEPODPORUJE SINGLETONS. Avsak je ich mozne velmi lahko emulovat.
+   A. SINGLETON COM OBJECT, kedze je SINGLETON NEMUSI POCITAT REFERENCES. METHODS AddRef() a Release() mozu byt PRAZDNE, vracajuce hodnotu 1.
+   B. CLASS FACTORY NEVYTVARA instancia COM OBJECTS, ale vzdy vracia instanciu toho isteho COM OBJECT. Tento je najjednoduchsie vytvorit na STACKU ako STATIC VARIABLE.
+13. COM pri vytvarani COM OBJECTS podporuje 3 aktivacne modely.
+   A. Pomocou CoGetClassObject() CLIENT moze poziadat o vytvorenie CLASS OBJECT (CLASS FACTORY). Toto je najbeznejsi sposob vytvorenia instancie COM OBJECT od ktoreho su ostatne dve odvodene.
+   B. Pomocou CoCreateInstance() alebo CoCreateInstanceEx() CLIENT moze poziadat o vytvorenie COM OBJECT zadanim jeho CLSID.
+   C. Pomocou CoGetInstanceFromFile() CLIENT moze poziadat o vytvorenie COM OBJECT ulozeneho v PERSISTENT STORE.
+!!! 14. COM ma aktivacny mechanizmus implementovany nasledujucim sposobom.
+   !!! A. Zakladnym aktivacnym mechanizmom je WIN SERVICE RPCSS.EXE.
+   B. WIN SERVICE RPCSS.EXE bezi na KAZDOM PC, ktore podporuje COM SYSTEM.
+   C. WIN SERVICES RPCSS.EXE navzajom komunikuju pomocou RPC.
+   !!! D. WIN SERVICE RPCSS.EXE sa pouziva IBA na AKTIVACIU COM OBJECT. Po vytvoreni instancie COM OBJECT uz do volania METHODS COM OBJECTS RPCSS.EXE NEVSTUPUJE.
+   E. Ak pride poziadavka na vytvorenie COM OBJECT na REMOTE HOST, tak LOCAL RPCSS.EXE kontaktuje pomocou RPC REMOTE RPCSS.EXE, ktory vytvori pozadovany COM OBJECT.
+15. COM OBJECT moze byt aktivovany ako IN-PROCESS SERVER, alebo OUT-OF-PROCESS SERVER.
+   A. Ak je COM OBJECT aktivovany ako IN-PROCESS SERVER, tak v zavislosti na tom ci su APARTMENTS ROVNAKE, alebo NIE su METHODS CALLS vykonane PRIAMO VOLANIM V-TABLE (ak APARTMENTS su ZHODNE), alebo su este transformovane do APARTMENT COM OBJECT. V oboch pripadoch je volanie velmi rychle.
+   B. Ak je COM OBJECT aktivovany ako OUT-OF-PROCESS SERVER, tak CLIENT ziskava PROXY OBJECT, ktory je zodpovedny za prenos METHODS CALLS cez PROCESS BOUNDARIES pomocou RPC CALL. Volania METHODS su vyrazne pomalsie ako pri IN-PROCESS SERVERS.
+16. COM OBJECT moze byt aktivovany ako IN-PROCESS SERVER, alebo OUT-OF-PROCESS SERVER.
+   A. Ak je COM OBJECT aktivovany ako IN-PROCESS SERVER, tak RPCSS.EXE je zodpovedny za zavedenie DLL FILE do ADDRESS SPACE CLIENT PROCESS a vytvorenie instancie CLASS OBJECT.
+   B. Ak je COM OBJECT aktivovany ako OUT-OF-PROCESS SERVER, tak RPCSS.EXE je zodpovedny za spustenie EXE FILE a vytvorenie instancie CLASS OBJECT.
+!!! 17. FUNCTION CoGetClassObject() umoznuje vytvorit CLASS OBJECT (OBJECT FACTORY) daneho COM OBJECT. Pre FUNCTION platia nasledujuce pravidla.
+   A. Ako 1. PARAMETER sa zadava CLSID COM OBJECT, ktory sa ma vytvorit.
+   B. Ako 2. PARAMETER sa zadavaju FLAGS, ktore urcuje miesto odkial sa ma CLASS OBJECT vytvorit. Moze to byt LOCAL HOST, alebo aj REMOTE HOST.
+   C. Ako 3. PARAMETER sa zadava STRUCT COSERVERINFO v ktorej je mozne specifikovat HOST NAME na ktorom sa ma COM OBJECT vytvorit.
+   D. Ako 4. PARAMETER sa zadava IID CLASS OBJECT INTERFACE. Zvycane je to IClassFactory, ale moze byt aj CUSTOM COM INTERFACE, ktory implementuje funkcionalitu CLASS OBJECT.
+   E. Ako 5. PARAMETER sa zadava POINTER do ktoreho sa vytvoreny CLASS OBJECT ulozi.
+18. Informacie o COM SERVER FILES (DLL/EXE) ako je BINARY FILE (DLL/EXE), THREADING MODEL, CLSID, PROGID ulozene v REISTRY a to v nasledujucich KEYS.
+   A. KEY [HKEY_CURRENT_USER\SOFTWARE\Classes] obsahuje informacie o COM OBJECTS zaregistrovane pre daneho USER. Je to PRVE MIESTO, ktore sa kontroluje pri hladani COM OBJECTS.
+   B. KEY [HKEY_LOCAL_MACHINE\SOFTWARE\Classes] resp. ALIAS [HKEY_CLASSES_ROOT] obsahuje informacie o COM OBJECTS zaregistrovane pre dany HOST PC. Je to najcastejsie miesto, kde sa ukladaju informacie o COM OBJECTS.
+   C. KEY [HKEY_CURRENT_USER\SOFTWARE\Classes\CLSID] obsahuje informacie o CLSID COM OBJECTS zaregistrovanych pre daneho USER.
+   D. KEY [HKEY_LOCAL_MACHINE\SOFTWARE\Classes\CLSID] resp. ALIAS [HKEY_CLASSES_ROOT\CLSID] obsahuje informacie o CLSID COM OBJECTS zaregistrovanych pre dany HOST PC.
+19. Ak IN-PROCESS SERVER podporuje REGISTRATION, MUSI jeho DLL EXPORTOVAT nasledujuce FUNCTION.
+   A. FUNCTION DllRegisterServer() je volana z COM SYSTEM pri REGISTRACII COM OBJECT. FUNCTION musi zapisat prisludne KEYS do REGISTRY.
+   B. FUNCTION DllUnregisterServer() je volana z COM SYSTEM pri ODREGISTRACII COM OBJECT. FUNCTION musi odstranit prisludne KEYS z REGISTRY.
+20.  IN-PROCESS SERVERS je mozne registrovat a odregistrovat pomocou programu REGSVR32.EXE.
+!!! 21. IN-PROCESS SERVER MUSI EXPORTOVAT FUNCTION DllGetClassObject(). Tato FUNCTION musi vratit instanciu CLASS OBJECT (CLASS FACTORY). FUNCTION DllGetClassObject() je volana z FUNCTION DllGetClassObject() pri poziadavke CLIENT o vytvorenie CLASS OBJECT. Zvycajne CLASS OBJECT implmenentuje INTERFACE IClassFactory, ale moze aj ine.
+!!!!! 22. COM SYSTEM nacitava IN-PROCESS SERVERS nasledujucim sposobom.
+   A. CLIENT zavola PRIAMO, alebo NEPRIAMO (cez FUNCTIONS CoCreateInstance() alebo CoCreateInstanceEx()) FUNCTION CoGetClassObject().
+   B. FUNCTION CoGetClassObject() pozrie do REGISTRY a pre zadany CLSID najde PATH k DLL, ktora obsahuje pozadovany COM OBJECT.
+   C. FUNCTION CoGetClassObject() nacita najdenu DLL do ADDRESS SPACE CLIENT PROCESS.
+   D. FUNCTION CoGetClassObject() v DLL najde EXPORTOVANU FUNCTION FUNCTION CoGetClassObject().
+   E. FUNCTION CoGetClassObject() zavola FUNCTION CoGetClassObject(), ktora vrati instanciu CLASS OBJECT (CLASS FACTORY).
+   F. Pomocou CLASS OBJECT (CLASS FACTORY) CLIENT ci uz PRIAMO, alebo NEPRIAMO (cez FUNCTIONS CoCreateInstance() alebo CoCreateInstanceEx()) vytvori instanciu hladaneho COM OBJECT.
+!!! 23. CLASS OBJECTS (CLASS FACTORIES) zvycajne implementuju INTERFACE IClassFactory. Ma nasledujuce METHODS.
+   A. METHOD CreateInstance() vytvara instancie COM OBJECTS.
+   B. METHOD LockServer() umoznuje uzamknut COM SERVER, aby nemohol byt odstraneny. METHOD sluzi na optimalizaciu vytvarania OUT-OF-PROCESS SERVERS.
+!!! 24. FUNCTION CoCreateInstanceEx() umoznuje vytvorit instanciu COM OBJECT (NARAZ je mozne vytvorit IBA 1 INSTANCIU, ale je mozne ziskat VIACERO INTRFACES na nu) priamo z CLSID bez nutnosti EXPLICITNE volat CoGetClassObject(). FUNCTION CoGetClassObject() je samozrejme INTERNE volana FUNCTION CoCreateInstanceEx(). VELKOU VYHODOU vsak je, ze pri REMOTE OUT-OF-PROCESS SERVERS vytvorenie CLASS OBJECT cez CoGetClassObject() ako aj vytvorenie samotnej instancie COM OBJECT je realizovany KOMPLETNE na strane SERVERA BEZ NUTNOSTI vykonat VIACERO ROUNDTRIPS (vytvorenie, CLASS OBJECT, vytvorenie COM OBJECT, uvolnenie CLASS OBJECT) na REMOTE OUT-OF-PROCESS-SERVER. FUNCTION CoCreateInstanceEx() vykonava nasledujucu cinnost.
+   A. Vytvori instanciu CLASS OBJECT volanim CoGetClassObject().
+   B. Z CLASS OBJECT vytvori instanciu COM OBJECT.
+   C. Uvolni vytvorenu instanciu CLASS OBJECT.
+25. FUNCTION CoCreateInstanceEx() ma nasledujuce PARAMETERS.
+   A. Ako 1. PARAMETER sa zadava CLSID COM OBJECT, ktory sa ma vytvorit.
+   B. Ako 2. PARAMETER sa zadava POINTER na AGGREGATED COM OBJECT. V pripade, ze sa AGGREGATION NEPOUZIVA, hodnota MUSI byt NULL.
+   C. Ako 3. PARAMETER sa zadavaju FLAGS, ktore urcuje miesto odkial sa ma CLASS OBJECT vytvorit. Moze to byt LOCAL HOST, alebo aj REMOTE HOST.
+   D. Ako 4. PARAMETER sa zadava STRUCT COSERVERINFO v ktorej je mozne specifikovat HOST NAME na ktorom sa ma COM OBJECT vytvorit.
+   E. Ako 5. PARAMETER sa zadava pocet STRUCTURES MULTI_QI, ktore su zaslane v poslednom PARAMETRI.
+   F. Ako 6. PARAMETER sa zadava ARRAY STRUCTURES MULTI_QI, ktore definuju ake COM INTERFACES maju byt pre vytvoreny COM OBJECT (vytvara sa VZDY iba 1 COM OBJECT) vratane.
+   !!! G. FUNCTION ma ako RETURN VALUE S_OK, ak VSETKY pozadovane COM INTERFACES boli uspesne vytvorene. Ak iba NIEKTORE COM INTERFACES boli vytvrene, je vratane hodnota CO_S_NOTALLINTERFACES. Ak ANI JEDEN COM INTERFACE NEBOL VYTVORENY je vrateny ERROR hodnota HRESULT.
+26. STRUCTURE MULTI_QI umoznuje definovat pre FUNCTION CoCreateInstanceEx(), ktore COM INTERFACES vytvoreneho COM OBJECT (vytvara sa VZDY IBA 1) ma FUNCTION vratit.
+   A. FIELD 'hr' vracia HRESULT o tom ci vytvorenie daneho COM INTERFACE bol uspesne, alebo nie.
+   B. FIELD 'pIID' je nutne nastavit na IID pozadovaneho COM INTERFACE.
+   !!! C. FIELD 'pItf' musi byt NULL ako INPUT PARAMETER. Po skonceni volania FUNCTION CoCreateInstanceEx() obsahuje POINTER na vytvoreny COM INTERFACE, alebo NULL, ako vytvorenie COM INTERFACE ZLYHALO.
+27. FUNCTION CoCreateInstance() sluzi na vytvaranie instancii COM OBJECT na LOCAL HOST. Pomocou tejto FUNCTION je mozne ziskat IBA 1 INTERFACE vytvoreneho COM OBJECT a IBA na LOCAL HOST a to ako IN-PROCESS SERVER tak aj LOKALNY OUT-OF-PROCESS SERVER.
+   A. Ako 1. PARAMETER sa zadava CLSID COM OBJECT, ktory sa ma vytvorit.
+   B. Ako 2. PARAMETER sa zadava POINTER na AGGREGATED COM OBJECT. V pripade, ze sa AGGREGATION NEPOUZIVA, hodnota MUSI byt NULL.
+   C. Ako 3. PARAMETER sa zadavaju FLAGS, ktore urcuje miesto odkial sa ma CLASS OBJECT vytvorit. Moze to byt IN-PROCESS SERVER, alebo OUT-OF-PROCESS SERVER.
+   D. Ako 4. PARAMETER sa zadava IID COM INTERFACE, ktory sa ma vratit.
+   E. Ako 5. PARAMETER sa zadava POINTER do ktoreho sa ulozi vytvoreny COM INTERFACE.
+!!! 28. MONIKERS predstavuju mechanizmus akym CLIENT moze vytvorit novu, alebo najst existujucu instanciu COM OBJECT na zaklade CUSTOM vyhladavacich kriterii. MONIKERS musia implementovat INTERFACE IMoniker. INTERFACE IMoniker ma AJ tieto METHODS.
+   A. METHOD BindToObject() umoznuje vytvorenie COM OBJECT na zaklade kriterii zadanych pomocou COM INTERFACE IBindCtx.
+   B. METHOD GetDisplayName() vracia DISPLAY NAME daneho MONIKER. Tento je mozne pouzit pri vytvarani MONIKERS vo FUNCTION MkParseDisplayName(). Je REVERZNOU METHOD k FUNCTION MkParseDisplayName().
+29. FUNCTION MkParseDisplayName() vracia MONIKER (POINTER na IMoniker) pre dany DISPLAY NAME. Je REVERZNOU FUNCTION k METHOD IMoniker::GetDisplayName(). FUNCTION vykonava nasledujucu cinnost.
+   A. Zoberie PREFIX s DISPLAY NAME a pokusi sa ho stotoznit s PROGID MONIKER OBJECT.
+   B. Ak PROGID MONIKER OBJECT je najdeny, tak mu zasle DISPLAY NAME, aby ho MONIKER mohol parsovat.
+!!! 30. Jednym zo STANDARDNYCH MONIKERS je CLASS MONIKER. Vytvara COM MONIKER, ktory je schopny vytvarat instancie CLASS OBJECTS (CLASS FACTORIES). Moze byt vytvoreny 2 sposobmi.
+   A. Volanim FUNCTION CreateClassMoniker().
+   B. Volanim FUNCTION MkParseDisplayName() s DISPLAY NAME v tvare [clsid:GUID:], kde 'GUID' je CLSID COM OBJECT, ktoreho CLASS FACTORY sa ma vytvorit.
+31. COM INTERFACE IBindCtx umoznuje definovat VYHLADAVACIE KRITERII pri vyhladavani pozadovanej instancie COM OBJECT (novej, alebo existujucej) pomocou MONIKERS. Pomocou FUNCTION CreateBindCtx() je mozne vytvorit standardnu implementaciu IBindCtx.
+32. FUNCTION CoGetObject() je HELPER FUNCTION, ktora umoznuje jednoduchsim sposobom ziskavat instancie MONIKERS. Interne zaroven vola aj IMoniker::BindToObject(), ktora vracia INSTANCIU vytvoreneho COM OBJECT, ktory je BOUND cez MONIKER.
+33. ITEM MONIKERS umoznuju vyhladavanie COM OBJECTS v ramci inych COM OBJECTS. Napriklad v COM OBJECT reprezentujucom EXCEL FILE je mozne pomocou ITEM MONIKERS nachadzat COM OBJECTS v jednotlivych CELLS. ITEM MONIKERS funguju nasledujucim sposobom.
+   A. Pomocou MkParseDisplayName() sa zada STRING ktory obsahuje COMPOSITE DISPLAY NAME, napriklad [clsid:OBJECT_GUID:!ItemName].
+   !!! B. Pomocou zadaneho OBJECT_GUID CLASS MONIKER najde CLASS OBJECT. Tento MUSI IMPLEMENTOVAT COM INTERFACE IParseDisplayName. Cize CLASS OBJECT (CLASS FACTORY) MUSI IMPLEMENTOVAT IParseDisplayName. Kedze IOleItemContainer DEDI z IParseDisplayName, tak IMPLEMENTACIOU IOleItemContainer sa implementuje aj IParseDisplayName.
+   C. Zavola sa METHOD IParseDisplayName::ParseDisplayName() s castou COMPOSITE DISPLAY NAME, ktora este nebola PARSED [!ItemName].
+   D. METHOD IParseDisplayName::ParseDisplayName() vytvori ITEM MONIKER volanim CreateItemMoniker(), pricom zada SEPARATOR STTRING [!] a DISPLAY NAME ITEM [ItemName].
+   !!! E. CLASS OBJECT okrem IParseDisplayName MUSI IMPLEMENTOVAT i IOleItemContainer. Znova sa jedna o CLASS OBJECT a NIE o COM OBJECT.
+   F. METHOD IOleItemContainer::GetObject() musi pre [ItemName] vratit hladanu instanciu COM OBJECT.
+   !!!!! G. CLASS OBJECT (CLASS FACTORY) NEMUSI IMPLEMENTOVAT IClassFactory, pretoze COM OBJECTS su vytvarane pomocou MONIKER a IOleItemContainer::GetObject(). Avsak samozrejme MOZE implementovat IClassFactory, ak sa COM OBJECTS maju vytvarat aj PRIAMO napriklad cez CoCreateInstance().
+34. FILE MONIKERS umoznuju nacitanie COM OBJECTS z FILES. Pracuju nasledujucim sposobom.
+   A. CLIENT vola FUNCTION CoGetInstanceFromFile() do ktorej zasiela FILE NAME z ktoreho sa ma COM OBJECT nacitat.
+   B. Ak do FUNCTION CoGetInstanceFromFile() NEBOL ZASLANY CLSID COM OBJECT ulozeneho vo FILE, tak je volana FUNCTION GetClassFile() ktora sa pokusi CLSID ziskat z obsahu FILE, alebo FILE NAME EXTENSION.
+   C. FUNCTION CoGetInstanceFromFile() nahliadne do ROT TABLE, ci pre dany FILE uz NEBOL COM OBJECT NACITANY a AKTIVOVANY. Ak je v ROT TABLE RECORD, znamena to, ze z DANEHO FILE uz BOL COM OBJECT AKTIVOVANY a CoGetInstanceFromFile() vrati INSTANCIU na tento OBJECT.
+   D. Ak ROT TABLE NEOBSAHUJE RECORD pre dany FILE, tak sa VYTVORI NOVA INSTANCIA COM OBJECT volanim METHOD IPersistFile::Load(), ktoru MUSI COM OBJECT IMPLEMENTOVAT.
+   !!! E. Po NACITANI COM OBJECT z FILE by METHOD Load() MALA zapisat vytvoreny OBJECT do ROT TABLE, aby pre dany FILE sa uz nevytvara NOVY COM OBJECT, ale pouzil ten, ktory uz bol vytvoreny.
+!!! 35. COMPONENT CATEGORIES su GUID, ktore oznacuju COM OBJECTS. CLIENT moze zistit, ktore CATEGORIES dany COM OBJECT podporuje i ktore COM OBJECTS patria do danej CATEGORY. Pre COMPONENT CATEGORIES platia nasledujuce pravidla.
+   A. CATEGORIES sa delia na IMPLEMENTED CATEGORIES a REQUIRED CATEGORIES.
+   B. IMPLEMENTED CATEGORIES sa ukladaju do REGISTRY KEY [HKEY_CLASSES_ROOT\CLSID\MyCLSID\Implemented Categories\MyCATID].
+   C. REQUIRED CATEGORIES sa ukladaju do REGISTRY KEY [HKEY_CLASSES_ROOT\CLSID\MyCLSID\Required Categories\MyCATID].
+   !!! D. VSETKY zaregistrovane CATID MUSIA byt ulozene v REGISTRY KEY [HKEY_CLASSES_ROOT\Component Categories\MyCATID].
+   E. Ak do REGISTRY KEY [HKEY_CLASSES_ROOT\CLSID\MyCATID\TreatAs] vlozim ako DEFAULT VALUE hodnotu CLSID, tak tento COM OBJECT sa stava DEFAULT COM OBJECT pre dany CATEGORY a je ho mozne vytvorit zadanim CATID namiesto CLSID v CoCreateInstance().
+   !!! F. COM obsahuje implementaciu COMPONENT CATEGORY MANAGER, ktory implementuje INTERFACE ICatRegister na registrovanie CATEGORIES do REGISTRY a INTERFACE ICatInformation na ENUMERACIU zaregistrovanymi CATEGORIES a COM OBJECTS, ktore maju dane CATEGORIES.
+36. COM INTERFACE ICatRegister ma nasledujuce METHODS.
+   A. METHOD ICatRegister::RegisterCategories() registruje CATEGORIES.
+   B. METHOD ICatRegister::UnregisterCategories() odregistruje CATEGORIES.
+   C. METHOD ICatRegister::RegisterClassImplCategories() registruje IMPLEMENTED CATEGORIES.
+   D. METHOD ICatRegister::UnregisterClassImplCategories() odregistruje IMPLEMENTED CATEGORIES.
+   E. METHOD ICatRegister::RegisterClassReqCategories() registruje REQUIRED CATEGORIES.
+   F. METHOD ICatRegister::UnregisterClassReqCategories() odregistruje REQUIRED CATEGORIES.
+37. COM INTERFACE ICatInformation ma nasledujuce METHODS.
+   A. METHOD EnumCategories() vracia ENUMERATOR, ktorym je mozne enumerovat vsetky zaregistrovane CATEGORIES.
+   B. METHOD EnumClassesOfCategories vracia ENUMERATOR, ktorym je mozne enumerovat COM OBJECTS (CLSID) patriace do danych CATEGORIES.
+   C. METHOD EnumImplCategoriesOfClass() vracia ENUMERATOR, ktorym je mozne enumerovat IMPLEMENTED CATEGORIES daneho COM OBJECT (CLSID).
+   D. METHOD EnumReqCategoriesOfClass() vracia ENUMERATOR, ktorym je mozne enumerovat REQUIRED CATEGORIES daneho COM OBJECT (CLSID).
+   E. METHOD GetCategoryDesc() vracia DESCRIPTION asociovany s danou CATEGORY.
+   F. METHOD IsClassOfCategories() vracia TRUE/FALSE podla toho ci dany COM OBJECT (CLSID) implmentuje, alebo neimplementuje dane CATEGORIES.
+38 FUNCTION CoFreeUnusedLibraries() umoznuje odstranit DLL, ktore uz nie su pouzivane.
+   A. FUNCTION CoFreeUnusedLibraries() vola FUNCTION DllCanUnloadNow(), ktora musi byt EXPORTOVANA z COM SERVER.
+   B. FUNCTION DllCanUnloadNow() musi vratit S_OK ak COM SERVER uz nedrzi ZIADNE INSTANCIE na COM OBJECTS a NEBOL LOCKED pomocou FUNCTION IClassFactory::LockServer().
+!!! 39. IDL KEYWORD 'coclass' sluzi na definiciu COM OBJECT. Musi mat definovany GUID pomocou ATTRIBUTE uuid(). ATTRIBUTE [default] urcuje DEFAULT INTERFACE daneho COM OBJECT. Pouziva sa napriklad vo VB.
+!!!!! 40. Pomocou IDL KEYWORD 'library' sa definuje TYPE LIBRARY. Platia pre nu nasledujuce vlastnosti.
+   A. V jednom .IDL FILE moze byt definovana IBA 1 LIBRARY.
+   B. VSETKY COM INTERFACES, COM OBJECTS, STRUCTS, ENUMS, UNIONS definovane v 'library' KEYWORD budu zaradene do TYPE LIBRARY.
+   !!! C. Ak sa v 'library' KEYWORD odkazujem na COM INTERFACES, COM OBJECTS, STRUCTS, ENUMS, UNIONS definovane MIMO 'library' KEYWORD, aj tieto budu VLOZENE do TYPE LIBRARY.
+!!! 41. IDL KEYWORD 'importlib' umoznuje importovat COM INTERFACES, COM OBJECTS, STRUCTS, ENUMS, UNIONS PRIAMO z TYPE LIBRARY (.TLB FILE).
+42. COM podporuje COM OBJECT EMULATING. Ak sa k EXISTUJUCEMU COM OBJECT vytvori NOVA VERZIA, ktora je SPATNE KOMPATIBILNA, je pomocou COM OBJECT EMULATING prinutit EXISTUJUCICH CLIENTS pracujucich so STAROU VERZIOU COM OBJECT TRANSPARENTNY PRECHOD na NOVU VERZIU COM OBJECT.
+   A. FUNCTION CoTreatAsClass() umoznuje zadat CLSID NOVEHO COM OBJECT, ktory nahradzuje STARY COM OBJECT. FUNCTION vykona zmeny v REGISTRY, ktore toto umoznia.
+   B. FUNCTION CoGetTreatAsClass() umoznuje zistit CLSID STAREHO COM OBJECTU, ktory je EMULATED.
+//------------------------------------------------------------------------------------------------------

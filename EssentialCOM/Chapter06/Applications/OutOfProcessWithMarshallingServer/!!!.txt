@@ -1,0 +1,109 @@
+//------------------------------------------------------------------------------------------------------
+1. Solution demonstruje rozlicne aspekty tvorby COM SERVERS ako su OUT-OF-PROCESS SERVERS, alebo SECURITY.
+!!! 2. OUT-OF-PROCESS SERVERS (DCOM), kedze k ich COM OBJECTS sa pristupuje z ineho PROCESSU (APARTMENTU) MUSIA implementovat MARSHALER. Najjednoduchsie je implementovat STANDARD MARSHALER vytvorenim PROXY STUB DLL.
+!!!!! 3. OUT-OF-PROCESS SERVERS (DCOM) bol oznaceny MICROSOFT ako DEPRECATED TECHONLOGIU. Podobne aj COM+ je uz DE-FACTO DEPRECATED technologia, ktora bola nahradena .NET a WCF.
+!!!!! 4. Pri OUT-OF-PROCESS SERVERS NIE JE MOZNE prenasat [out] PARAMETERS ako POINTER-TO-POINTER (napriklad wchar_t**). Namiesto toho je treba pouzit iba OBYCAJNY POINTER (wcahr_t*) na ktory je aplikovany ATTRIBUTE [size_is(SizeParameter)], kde 'SizeParameter' je PARAMETER v ktorom bude ulozena DLZKA BUFFERA zaslaneho do [out] PARAMETER.
+5. Vytvorenie OUT-OF-PROCESS SERVERS je realizovane v nasledujucich krokoch.
+   A. Vytvori sa EXE PROJECT. Je mozne pouzit CONSOLE, WINDOW i WIN SERVICE PROJECT.
+   B. Vyvrori sa .IDL, pricom v .IDL NESMU byt COM INTERFACES oznacene ATTRIBUTE [local], kdeze tieto COM ITERFACES maju byt pristupne z ineho PROCESS.
+   !!! C. METHODS COM INTERFACES musia byt postavene tak, ze bude mozne realizovat MARSHALLING. Napriklad pri preneseni ARRAYS je treba pouzivat ATTRIBUTE [size_is()], tak aby MARSHALER vedel kolko BYTES ma prenasat do ineho PROCESS.
+   D. COM OBJECT musi vo svojom CONSTRUCTOR volat FUNCTION CoAddRefServerProcess(), ktorym ZVYSI REFERENCE PER-PROCESS COUNTER vytvorenych COM OBJECTS. Tato FUNCTION by sa mala volat aj pri LOCKING v METHOD IClassFactory::LockServer().
+   !!! E. COM OBJECT musi vo svojom DESTRUCTOR volat FUNCTION CoReleaseServerProcess(), ktorym ZNIZI REFERENCE PER-PROCESS COUNTER vytvorenych COM OBJECTS. Tato FUNCTION by sa mala volat aj pri LOCKING v METHOD IClassFactory::LockServer(). Ak FUNCTION CoReleaseServerProcess() vrati hodnotu 0, znamena to, ze VSETKY COM OBJECTS vytvorene OUT-OF-PROCESS SERVER boli ODSTRANENE, na co vacsina OUT-OF-PROCESS SERVER reaguje ukoncenim PROCESSU OUT-OF-PROCESS SERVER.
+   !!!!! F. Zvycajne OUT-OF-PROCESS SERVER konci svoju zivotnost, ked sa odstrani POSLEDNA INSTANCIA COM OBJECT (FUNCTION CoReleaseServerProcess() vrati hodnotu 0). (Nie je to absolutne nutne, ale vacsina OUT-OF-PROCESS SERVERS je takto implementovana.) Tento stav sa zvycajne signalizuje nastaveni KERNEL EVENT na ktory je v MAIN THREAD (FUNCTION main()) realizovany WAIT. V pripade, ze OUT-OF-PROCESS SERVER je zavedeny do STA je WAIT realizovana v ramci MESSAGE PUMP.
+   !!!!! G. Ked SCM spusti OUT-OF-PROCESS SERVER, zasle mu v COMMAND LINE PARAMETER [/Embedding], alebo [-Embedding]. COM SERVER MUSI na to zareagovat ZAREGISTROVANIM CLASS OBJECT (CLASS FACTORY) v SCM.
+   !!! H. CLASS OBJECT (CLASS FACTORY) sa registruje v SCM volanim FUNCTION CoRegisterClassObject(). COM SYSTEM si udrzuje na danom HOST TABLE vsetkych zaregistrovanych CLASS OBJECTS (CLASS FACTORIES) a vyuziva ich na vytvaranie instancii OUT-OF-PROCESS COM OBJECTS.
+   !!!!! I. Ak CLASS OBJECT (CLASS FACTORY) uz nie je viac potrebny (zvycajne pri ukonceni zivotnosti vsetkych COM OBJECTS), tak sa odregistruje volanim FUNCTION CoRevokeClassObject(), kde sa ako PARAMETER zadava ID vratene FUNCTION CoRegisterClassObject().
+   J. Registrovanie a odregistrovanie sa robi tak, ze sa do PROCESS prenesu v COMMAND LINE PARAMETERS [/RegServer] a [/UnregServer], resp. [-RegServer] a [-UnregServer]. Na tieto musi EXE FILE reagovat tak, ze ZAREGISTRUJE, resp. ODREGISTRUJE COM OBJECT prislusnymi zmenami v REGISTRY.
+   K. Pri registracii je nutne do REGISTRY KEY [LocalServer32] vlozit PATH k EXE FILE, ktory realizujuce OUT-OF-PROCESS SERVER. Naprikad [HKEY_CLASSES_ROOT\CLSID\{GUID}\LocalServer32] musi obsahovat PATH k .EXE FILE.
+   !!! L. Pri REGISTRACII je NUTNE registrovat aj TYPE LIBRARY volanim FUNCTION LoadTypeLibEx().
+   !!! M. Pri ODREGISTRACII je NUTNE odregistrovat aj TYPE LIBRARY volanim FUNCTION UnRegisterTypeLib().
+!!!!! 6. OUT-OF-PROCESS SERVER SAM rozhoduje o tom, kedy sa VYPNE. Velmi casto sa OUT-OF-PROCESS SERVER ukoncuje vtedy, ked VSETKY COM OBJECTS, ktore vytvoril su odstranene.
+!!!!! 7. Ak CLIENT NEUZATVORI REFERENCES na COM OBJECTS, OUT-OF-PROCESS SERVER bude bezat DALEJ, az kym nevyprsi 3 KRAT COM PING. Ten standardne trva 2 minuty, takze OUT-OF-PROCESS SERVER sa uzavrie do 6 minut do padu CLIENTA.
+8. FUNCTION CoAddRefServerProcess() ZVYSUJE hodnotu PER-PROCESS COUNTER. Pouziva sa na pocitanie COM OBJECTS, ktore OUT-OF-PROCESS vytvoril.
+!!! 9. FUNCTION CoReleaseServerProcess() ZNIZUJE hodnotu PER-PROCESS COUNTER. Pouziva sa na pocitanie COM OBJECTS, ktore OUT-OF-PROCESS vytvoril. Ak FUNCTION CoReleaseServerProcess() vrati 0, znamena to, ze VSETKY COM OBJECTS boli ODSTRANENE, na co OUT-OF-PROCESS SERVER zvycajne zareaguje ukonceni PROCESSU OUT-OF-PROCESS SERVER. FUNCTION CoReleaseServerProcess() ako hodnota COUNTER klesne na 0, ZABRANI vytvaraniu dalich INSTANCII COM OBJECT pre dany CLSID, aby sa predislo RACE CONDITIONS.
+!!! 10. FUNCTION CoRegisterClassObject() registruje CLASS OBJECT (CLASS FACTORY) v SCM. Volanim tejto FUNCTION sa LOKALNY SCM informuje, ze pre dane CLSID moze COM SYSTEM pouzit vytvoreny CLASS OBJECT (CLASS FACTORY) na vytvaranie instancii COM OBJECTS s danym CLSID.
+!!! 11. FUNCTION CoRevokeClassObject() odregistruje CLASS OBJECT (CLASS FACTORY) z SCM. Volanim tejto FUNCTION sa LOKALNY SCM informuje, ze pre dane CLSID uz COM SYSTEM NEMOZE pouzit vytvoreny CLASS OBJECT (CLASS FACTORY) na vytvaranie instancii COM OBJECTS s danym CLSID.
+12. FUNCTION CoResumeClassObjects() povoluje vytvaranie INSTACNII COM OBJECT VSETKYCH ZAREGISTROVANYCH CLASS OBJECT (CLASS FACTORY), ktorych pouzivanie bolo ZABLOKOVANE vo FUNCTION CoRegisterClassObject().
+13. APPLICATION ID je GUID identifikator DCOM APPLICATION. APPLICATION je standarny OUT-OF-PROCESS SERVER, vystavujuci 1-N COM OBJECTS. Pouzitie APPLICATION ID zjednodusuje konfiguraciu OUT-OF-PROCESS SERVERS. APPLICATION ID sa uklada do KEY [HKEY_CLASSES_ROOT\CLSID\{CLSID}\AppId].
+!!! 14. Ak DCOM APPLICATION (OUT-OF-PROCESS SERVER) NEVYTVORI APPLICATION ID v REGISTRY, tak ju COM SYSTEM VYTVORI AUTOMATICKY a zapise do REGISTRY.
+!!!!! 15. DCOM APPLICATIONS sa aj vo WINDOW 7 daju konfigurovat pomocou DCOMCNFG.EXE. Pomocou DCOMCNFG.EXE je mozne konfigurovat AUTHENTICATION, SERVER LOCATION, SECURITY, ENDPOINTS a IDENTITY.
+!!! 16. DCOM APPLICATION (OUT-OF-PROCESS SERVER) moze bezat nasledujucimi sposobmi.
+   A. LOCAL EXE PROCESS. V REGISTRY musi byt ulozeny KEY [LocalServer32] obsahujuci PATH k EXE FILE.
+   B. REMOTE EXE PROCESS. V REGISTRY musi byt ulozeny KEY [RemoteServerName] obsahujuci REMOTE HOST NAME.
+   C. WINDOWS SERVICE. V REGISTRY musi byt ulozeny KEY [LocalService] obsahujuci nazov WINDOWS SERVICE.
+   D. STANDARD SURROGATE. IN-PROCESS SERVER sa spusti v HOST DLLHOST.EXE. V REGISTRY musi byt ulozeny KEY [LocalServer32] obsahujuci PRAZDNY STRING.
+   E. CUSTOM SURROGATE. IN-PROCESS SERVER sa spusti v CUSTOM EXE FILE. CUSTOM EXE FILE sa musi registrovat ako SURROGATE volanim FUNCTION CoRegisterSurrogate() a implementaciou COM INTERFACE ISurrogate. V REGISTRY musi byt ulozeny KEY [DllSurrogate] obsahujuci PATH ku CUSTOM EXE FILE implementujuci SURROGATE.
+!!! 17. SURROGATES uz v roku 2000 boli povazovane za OBSOLETE a pokial je mozne, mali by sa nahradit OUT-OF-PROCESS SERVERS.
+18. COM na zabezpecenie komunikacie medzi CLIENT a COM OBJECT vyuziva RPC SECURITY.
+19. COM SECURITY je realizovana na 3 urovniach.
+   A. AUTHENTICATION sluzi na overenie CREDENTIALS s ktorymi su volane METHODS COM SERVERS.
+   B. ACCESS RIGHTS sluzi na urcenie ktori USERS (s overenymi CREDENTIALS) budu mat opravnenia na spustenie COM SERVERS, alebo volania ich METHODS.
+   C. TOKEN MANAGEMENT sluzia na urcenie, ktori USERS (s overenymi CREDENTIALS) budu pouziti na spustenie COM SERVERS, alebo volania ich METHODS.
+20. COM SECURITY podporuje viacero SECURITY PROTOCOLS, ktore sa pouzivaju na komunikaciu medzi CLIENT a OUT-OF-PROCESS SERVER.
+   A. NONE - nepouziva sa SECURE PROTOCOL.
+   B. SCHANNEL - CLIENT MOZE vykonat AUTHENTICATION COM SERVER, ale COM SERVER NEMOZE vykonat AUTHENTICATION CLIENT.
+   C. NTLM - CLIENT NEMOZE vykonat AUTHENTICATION COM SERVER, ale COM SERVER MOZE vykonat AUTHENTICATION CLIENT.
+   D. KERBEROS - CLIENT aj COM SERVER mozu vzajomne vykonat AUTHENTICATION.
+21. AUTHENTICATION sa v COM SYSTEM vykonava na viacerych urovniach.
+   A. RPC_C_AUTHN_LEVEL_NONE - AUTHENTICATION sa NEPOUZIVA.
+   B. RPC_C_AUTHN_LEVEL_CONNECT - AUTHENTICATION sa vykonava IBA ked CLIENT nadvazuje spojenie s COM SERVER.
+   C. RPC_C_AUTHN_LEVEL_CALL - AUTHENTICATION sa vykonava na ZACIATKU KAZDEHO REMOTE METHOD CALL.
+   D. RPC_C_AUTHN_LEVEL_PKT - AUTHENTICATION sa vykonava pre KAZDY REMOTE METHODS CALL PO PRIJME vsetkych DAT potrebnych na vykonanie REMOTE METHOD CALL.
+   E. RPC_C_AUTHN_LEVEL_PKT_INTEGRITY - AUTHENTICATION sa vykonava pre KAZDY REMOTE METHODS CALL PO PRIJME vsetkych DAT potrebnych na vykonanie REMOTE METHOD CALL. Zaroven sa vykonava aj KONTROLA ci DATA NEBOLI ZMENENE.
+   F. RPC_C_AUTHN_LEVEL_PKT_PRIVACY - AUTHENTICATION sa vykonava pre KAZDY REMOTE METHODS CALL PO PRIJME vsetkych DAT potrebnych na vykonanie REMOTE METHOD CALL. Zaroven sa vykonava aj KONTROLA ci DATA NEBOLI ZMENENE. Vsetka komunikacia je KRYPTOVANA.
+!!! 22. FUNCTION CoInitializeSecurity() INITIALIZUJE COM SECURITY. Je VZDY volana PRAVE RAZ (najlepsie hned za CoInitialize(), alebo CoInitializeEx()) a to ako na CLIENT, tak aj na COM SERVER. Ak nie je zavolana EXPLICITNE v kode, tak ju COM SYSTEM vola IMPLICITNE s DEFAULT PARAMETERS vytiahnutymi z REGISTRY. Tieto DEFAULE PARAMETERS je mozne nastavovat cez DCOMCNFG.EXE.
+   A. 1. PARAMETER je platny iba ak sa CoInitializeSecurity() vola na COM SERVER. Urcuje ktore SECURITY PRINCIPALS budu mat pristup ku COM OBJECTS exportovanym z PROCESSU COM SERVER.
+   B. 2. PARAMETER je platny iba ak sa CoInitializeSecurity() vola na COM SERVER. Urcuje pocet ITEMS v ARRAY, ktory sa prenasa ako 3. PARAMETER.
+   C. 3. PARAMETER je platny iba ak sa CoInitializeSecurity() vola na COM SERVER. Definuje AUTHENTICATION PACKAGES, ktore sa pouziju na vykonanie AUTHENTICATION a AUTHORIZATION.
+   D. 4. PARAMETER je RESERVED.
+   E. 5. PARAMETER je platny ak sa CoInitializeSecurity() vola na CLIENT, alebo COM SERVER. Urcuje uroven AUTHENTICATION, ktoru COM SYSTEM pouzije.
+   F. 6. PARAMETER je platny ak sa CoInitializeSecurity() vola na CLIENT, alebo COM SERVER. Urcuje uroven IMEPRSONATION (RPC_C_IMP_LEVEL_ANONYMOUS, RPC_C_IMP_LEVEL_IDENTIFY, RPC_C_IMP_LEVEL_IMPERSONATE, alebo RPC_C_IMP_LEVEL_DELEGATE), ktoru COM SYSTEM pouzije.
+   G. 7. PARAMETER je platny iba ak sa CoInitializeSecurity() vola na CLIENT. Definuje AUTHENTICATION PACKAGES, ktore sa pouziju na vykonanie AUTHENTICATION a AUTHORIZATION.
+   H. 8. PARAMETER je platny iba ak sa CoInitializeSecurity() vola na COM SERVER. Obsahuje mnozstvo FLAGS, ktorymi je mozne dalej CUSTOMIZOVAT SECURITY.
+   I. 9. PARAMETER je RESERVED.
+!!! 23. FUNCTION CoInitializeSecurity() nastavuje SECURITY SETTINGS pre VSETKY COM OBJECTS v danom PROCESS. Ak je potrebne nastavit INE SECURITY SETTINGS pre KONKRETNY PROXY OBJECT, je potrebne, aby COM OBJECT implementoval (PRIAMO, alebo NEPRIAMO, kedy ho implementuje PROXY OBJECT, ale NIE samotny COM OBJECT) COM INTERFACE IClientSecurity. CLIENT potom moze zavolat METHOD IClientSecurity::SetBlanket() na nastavenie SECURITY SETTINGS pre PROXY na dany COM OBJECT.
+!!!!! 24. COM INTERFACE IClientSecurity NIE JE NUTNE IMPLEMENTOVAT na COM OBJECT, kedze PROXY OBJECT na OUT-OF-PROCESS COM OBJECT ho VZDY IMPLEMENTUJE. Tuto implementaciu je mozne ziskat cez QueryInterface() na PROXY OBJECT.
+!!! 25. FUNCTIONS CoQueryProxyBlanket() je WRAPPER FUNCTION, ktora z PROXY OBJECT ziskava cez QueryInterface() IClientSecurity a vola METHOD IClientSecurity::QueryBlanket().
+!!! 26. FUNCTIONS CoSetProxyBlanket() je WRAPPER FUNCTION, ktora z PROXY OBJECT ziskava cez QueryInterface() IClientSecurity a vola METHOD IClientSecurity::SetBlanket().
+!!! 27. V COM OBJECT METHODS je mozne zistit SECURITY SETTINGS pomocou FUNCTION CoGetCallContext(). Do FUNCTION CoGetCallContext() je ako IID zaslat IID na IServerSecurity. Vrateny IServerSeurity COM OBJECT obsahuje nasledujuce METHODS.
+   A. IServerSecurity::QueryBlanket() vracia SECURITY SETTINGS s ktorymi bola METHOD COM OBJECT volana.
+   B. IServerSecurity::ImpersonateClient() vykona IMPERSONATION.
+   C. IServerSecurity::RevertToSelf() zrusi platnost IMPERSONATION a nastavi USER na hodnotu PRED VYKONANIM IMPERSONATION.
+   D. IServerSecurity::IsImpersonating() vracia informaciu ci bola vykonana IMPERSONATION.
+!!! 28. FUNCTION CoQueryClientBlanket() je HELPER FUNCTION, ktora interne ziska IServerSecurity a zavola IServerSecurity::QueryBlanket().
+!!! 29. SECURITY SETTINGS pre ACTIVATION CALLS (vytvarajuce instancie COM OBJECTS) sa nastavuju vo FUNCTIONS CoGetClassObject(), alebo CoCreateInstanceEx() nastavenim PARAMETRA typu COSERVERINFO. Toto nastavenie sa tyka IBA ACTIVATION CALLS. Volanie METHODS je zabezpecene SECURITY SETTINGS nastavenym v CoInitializeSecurity().
+!!! 30. V DCOM je SECURITY PERMISSIONS mozne nastavit na 2 UROVNIACH.
+   A. LAUNCH PERMISSIONS urcuju SECURITY PERMISSIONS, ktore su potrebne na SPUSTENIE DCOM SERVER. Su ulozene v REGISTRY KEY [HKEY_CLASSES_ROOT\AppID\{GUID}\LaunchPermission] a obsahuju SERIALIZOVANU HODNOTU SECURITY DESCRIPTOR. Pri spustani DCOM SERVER COM SYSTEM kontroluje tento REGISTRY KEY a porovnava ho so SECURITY DESCRIPTOR CLIENT PROCESS. Ak NESEDIA, tak do CLIENT vratena chyba E_ACCESSDENIED.
+   B. ACCESS PERMISSIONS urcuju SECURITY PERMISSIONS, ktore su potrebne na volanie METHODS COM OBJECTS v danom DCOM SERVER. DEFAULT ACCESS PERMISSIONS su ulozene v REGISTRY KEY [HKEY_CLASSES_ROOT\AppID\{GUID}\LaunchPermission] a obsahuju SERIALIZOVANU HODNOTU SECURITY DESCRIPTOR. DCOM SERVER ich vsak moze ZMENIT volanim FUNCTION CoInitializeSecurity().
+!!! 31. FUNCTION CoInitializeSecurity() umoznuje v 1. PARAMETRI ZMENI DEFUALT ACCESS PERMISSIONS. Tento PARAMETER moze nadobudat nasledujuce hodnoty.
+   A. NULL. Ak zaroven NIE SU NASTAVENE FLAGS EOAC_APPID, alebo EOAC_ACCESS_CONTROL tak ACCESS PERMISSIONS su priradene na ANONYMOUS ACCESS.
+   B. AppID. ACCESS PERMISSIONS su urcene z REGISTRY KEY pre dane AppID. Zaroven musi byt nastaveny FLAG EOAC_APPID.
+   C. SECURITY_DESCRIPTOR. Obsahuje ACCESS PERMISSIONS su urcene z SECURITY_DESCRIPTOR.
+   !!! D. POINTER na COM INTERFACE IAccessControl. Zaroven MUSI byt nastaveny FLAG EOAC_ACCESS_CONTROL a AUTHENTICATION NESMIE byt na RPC_C_AUTHN_LEVEL_NONE.
+!!! 32. Ak DCOM SERVER potrebuje CUSTOMIZOVAT ACCESS PERMISSIONS, najjednoduchsie je to urobit tak, ze DCOM SERVER implementuje COM INTERFACE IAccessControl. Pre COM INTERFACE IAccessControl platia nasledujuce fakty.
+   A. COM SYSTEM vola IBA METHOD IAccessControl::IsAccessAllowed(). Tato METHOD urcuje ci pre daneho USER bude ACCEES akceptovany, alebo odmietnuty.
+   B. COM SYSTEM obsahuje standardnu implementaciu IAccessControl, ktora je pristupna cez CLSID [CLSID_DCOMAccessControl].
+   C. V METHOD IAccessControl::IsAccessAllowed() 1. PARAMTER typu TRUSTEE obsahuje okrem ineho aj USER NAME, alebo SID USER, ktory sa pokusa vola METHOD COM OBJECT.
+!!! 33. Ak IMPERSONATION NIE JE ZAPNUTA, tak METHOD na COM OBJECT je vykonavana s PERMISSIONS, ktore boli priradene PROCESSU DCOM SERVER. Ak toto nie je vyhovujuce je mozne pomocou COM INTERFACE IServerSecurity vykonat IMPERSONATION. IServerSecurity IServerSecurity umoznuje asociovat CUSTOM PERMISSIONS s THREADOM v ktorom je METHOD CALL realizovany. Nasledne cinnost kodu v METHOD bezi s PERMISSIONS asociovane s danym THREADOM.
+34. FUNCTION CoImpersonateClient() je HELPER FUNCTION, ktora vykonava IMPERSONATION volanim METHOD IServerSecurity::ImpersonateClient().
+35. FUNCTION CoRevertToSelf() je HELPER FUNCTION, ktora RUSI vykonanu IMPERSONATION volanim METHOD IServerSecurity::RevertToSelf().
+36. FUNCTION CoIsImpersonating() je HELPER FUNCTION, ktora vracia informaciu ci bola vykonana IMPERSONATION volanim METHOD IServerSecurity::IsImpersonating().
+!!! 37. To ci IMPERSONATION je mozne vykonat urcuje uroven IMPERSONATION (RPC_C_IMP_LEVEL_ANONYMOUS, RPC_C_IMP_LEVEL_IDENTIFY, RPC_C_IMP_LEVEL_IMPERSONATE, alebo RPC_C_IMP_LEVEL_DELEGATE) nastavena vo FUNCTION CoInitializeSecurity(), alebo volanim METHOD IClientSecurity::SetBlanket().
+38. USER ACCOUNT s ktorym bude DCOM SERVER spusteny je urceny v REGISTRY KEY [HKEY_CLASSES_ROOT\AppID\{GUID}\RunAs]
+//------------------------------------------------------------------------------------------------------
+//------------------------------------------------------------------------------------------------------
+//------------------------------------------------------------------------------------------------------
+Poznamky k vytvoreniu PROXY/STUB DLL.
+
+!!!!! 1. Pri COM INTERFACE, ktory je ma byt MARSHALED NESMIE byt nastaveny ATTRIBUTE [local] a zaroven (uplne NELOGICKY) NESMIE byt definovany v SCOPE 'library', ale MIMO NEHO.
+2. Na kompilaciu PROXY STUB DLL pre X64 je potrebne vykonat nasledujuce kroky.
+   A. Vytvorit cisty DLL PROJECT (tu napriklad FreeThreadingModelPSServer).
+   B. V projekte, kde sa generuju z XXX.IDL .H a .C FILES (tu napriklad FreeThreadingModelServer) je NUTNE nastavit [Project Properties -> MIDL -> General -> Target Environment] na [Microsoft Windows 64-bit on x64 (/env x64)].
+   C. Vykonat kompilaciu IDL FILE.
+   D. Do DLL PROJECT (tu napriklad FreeThreadingModelPSServer) pridat subory XXX_H.H, XXX_I.C, XXX_P.C a DLLDATA.C.
+   E. Do DLL PROJECT (tu napriklad FreeThreadingModelPSServer) vlozit .DEF FILE obsahujucu DllGetClassObject, DllCanUnloadNow, DllRegisterServer a DllUnregisterServer.
+   F. Do DLL PROJECT (tu napriklad FreeThreadingModelPSServer) vlozit DIREKTIVU REGISTER_PROXY_DLL. Bez pridania tejto direktivy sa NEVYTVORIA DllRegisterServer() a DllUnregisterServer() FUNCTIONS.
+   G. V DLL PROJECT (tu napriklad FreeThreadingModelPSServer) do LINKERA vlozit [RpcRT4.lib].
+   H. Spustit kompilaciu DLL PROJECT.
+   I. Zaregistrovat DLL PROJECT (tu napriklad FreeThreadingModelPSServer) cez REGSVR32.EXE.
+//------------------------------------------------------------------------------------------------------

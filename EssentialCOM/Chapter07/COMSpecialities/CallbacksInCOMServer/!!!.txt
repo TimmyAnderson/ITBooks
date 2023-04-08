@@ -1,0 +1,130 @@
+//------------------------------------------------------------------------------------------------------
+1. Solution demonstruje rozlicne vlastnosti COM ako napriklad CALLBACK, CONNECTION POINTS ci AUTOMATION.
+!!! 2. CALLBACKS z COM SERVER do CLIENT je mozne realizovat nasledujucim sposobom.
+   A. V IDL sa deklaruje COM INTERFACE, ktory bude sluzit ako CALLBACK INTERFACE.
+   B. Definuje sa COM INTERFACE, ktory prebera ako PARAMETER CALLBACK INTERFACE.
+   C. CLIENT definuje implementaciu CALLBACK INTERFACE. Je to KLASICKY COM OBJECT, ktory musi mat implementovany IUnknown a CALLBACK INTERFACE.
+   D. CLIENT vytvori instanciu CALLBACK COM OBJECT implementujuci CALLBACK INTERFACE a zasle ho do COM SERVER.
+   E. COM SERVER pouzije CALLBACK INTERFACE na odoslanie CALLBACK z COM SERVER na CLIENT.
+!!!!! 3. CONNECTION POINTS sa pouzivaju na implementaciu IBA TYCH CALLBACKS, ktore maju byt podporovane i cez AUTMATIONS. Ak toto nie je potrebne, tak staci implementacia CALLBACKS realizovana zaslanim CALLBACK COM INTERFACE z CLIENT do COM OBJECT, ktore nasledne COM OBJECT vola.
+!!! 4. V .IDL FILE je mozne pomocou ATTRIBUTE async_uuid(GUID) definovat ASYNCHRONOUS COM INTERFACE. MIDL pre takyto COM INTERFACE vytvori ASYNCHRONNU verziu tohto COM INTERFACE a METHOD Begin_XXX() a End_XXX(). Tento ASYNCHRONNY INTERFACE vystupuje ako NEZAVISLY COM INTERFACE, ktory musi COM OBJECT implementovat, ak chce podporovat ASYNCHRONNE volanie METHODS.
+!!!!! 5. ASYNCHRONNY COM INTERFACE sa realizuje v nasledujucich krokoch.
+   A. V .IDL sa pre COM INTERFACE, z ktoreho ma byt vytvoreny ASYNCHRONNY COM INTERFACE prida ATTRIBUTE async_uuid(GUID), kde GUID oznacuje GUID ASYNCHRONNEHO COM INTERFACE.
+   !!! B. Z .IDL su generovane 2 COM INTERFACES. Jedno, ktore zodpoveda definicii v .IDL a druhe pre ASYNCHRONNE volania METHODS. Tento COM INTERFACE ma pre KAZDU SYNCHRONNU METHOD PAR ASYNCHRONNYCH v tvare Begin_XXX() a End_XXX(). Z .IDL su generovane aj 2 GUID, kazdy pre jeden COM INTERFACE.
+   C. COM OBJECT musi DEDIT z OBOCH COM INTERFACES - SYNCHRONNEHO aj ASYNCHRONNEHO. METHOD QueryInterface() musi vracat POINTERS pre SYNCHRONNY i ASYNCHRONNY COM INTERFACE.
+   D. Implementacia SYNCHRONNYCH a ASYNCHRONNYCH verzii METHODS je CISTO ZALEZITOST COM OBJECT. COM SYSTEM na ne nekladie ziadne extra poziadavky.
+!!!!! 6. V CONNECTION POINTS plati, ze IConnectionPoint reprezentuje KONKRETNY TYP COM CALLBACK INTERFACE (TYP EVENTU), zatial co IConnectionPointContainer reprezentuje COLLECTION CALLBACK INTERFACES (COLLECTION vsetkych EVENTS, ktore dany COM OBJECT PODPORUJE).
+!!! 7. CONNECTION POINTS sa implementuju v nasledujucich krokoch.
+   A. V .IDL sa definuje CALLBACK COM INTERFACE. Tento INTERFACE MUSI byt oznaceny v 'coclass' ATTIBUTE [souce], ktory oznacuje dany INTERFACE ako CALLBACK COM INTERFACE, ktory dany COM OBJECT NEIMPLEMENTUJE, ale MUSI ho implementovat CLIENT.
+   B. COM OBJECT, ktory podporuje CONNECTION POINTS MUSI implementovat COM INTERFACE IConnectionPointContainer.
+   !!! C. METHOD IConnectionPointContainer::FindConnectionPoint musi pre POZADOVANY TYP CONNECTION POINT (je rozliseny IID) vratit implementaciu COM INTERFACE IConnectionPoint.
+   D. COM OBJECT, ktory implementuje IConnectionPoint (MUSI byt INY COM OBJECT ako ten co implementuje IConnectionPointContainer, aby sa zachovala korektna semantika CONNECTION POINTS) si uklada pri volaniach METHOD IConnectionPoint::Advise() POINTERS na CALLBACK COM INTERFACES a v MEHTOD IConnectionPoint::Unadvise() ich ODSTRANUJE.
+   !!!!! E. Kedze CALLBACK COM INTERFACES, ktore CLIENT posiela na COM OBJECT mozu byt v INYCH APARTMENTS, je VHODNE ukladat CALLBACK COM INTERFACES v APARTMENT-NEUTRAL PODOBE. Najjednoduchsie je ich ukladat v GIT.
+!!! 8. CONNECTION POINTS sa z CLIENT pouzivaju nasledujucim sposobom.
+   A. CLIENT vytvori instanciu COM OBJECT, ktora podporuje CONNECTION POINTS.
+   B. CLIENT volanim IUnknown::QueryInterface() ziska POINTER na IConnectionPointContainer, ktory MUSI COM OBJECT podporujuci CONNECTION POINTS implementovat.
+   C. CLIENT zavola METHOD IConnectionPointContainer::FindConnectionPoint() s IID CALLBACK COM INTERFACE. Ak tento CALLBACK COM INTERFACE COM OBJECT PODPORUJE, MUSI vratit POINTER na IConnectionPoint.
+   D. CLIENT zavola IConnectionPoint::Advise() na zaregistrovanie CALLBACK COM OBJECT, ktory MUSI IMPLEMENTOVAT CALLBACK COM INTERFACE.
+   !!! E. Od tejto chvile CLIENT bude dostavat EVENTS (volania METHODS CALLBACK COM INTERFACE) z COM OBJECT.
+   F. Pri UKONCENI CONNECTION MUSI CLIENT zavolat IConnectionPoint::Unadvise(), do ktorej zasle TO ISTE COOKIE, ktore ziskal z IConnectionPoint::Advise().
+   G. Nasledne CLIENT moze uvolnit vsetky POINTERS na COM OBJECT.
+!!! 9. Castokrat pri implementacii CONNECTION POINTS COM OBJECT implementuje i COM INTERFACE IProvideClassInfo a IProvideClassInfo2. COM INTERFACE IProvideClassInfo2 vracia IID DEFAULT CALLBACK INTERFACE. Toto sa casto vyuzivat pri pristupe zo SCRIPT LANGUAGES ako napriklad VB.
+!!!!! 10. V COM su METHOD PARAMETERS typu POINTERS STANDARDNE (bez aplikacie specializovanych ATTRIBUTES) prenasane ako POINTERS na 1 ITEM. To znaci, ze pri MARSHALINGU je preneseny VZDY len 1 ITEM. Samozrejme, ak sa prenasaju ARRAYS v ramci 1 APARTMMENT, tak staci preniest IBA POINTER, kedze ADDRESS SPACE je ROVNAKY. Avsak pri prenose cez HRANICE APARTMENT je NUTNE aplikovat ATTRIBUTES, ktore namiesto prenesenia 1 ITEM zabezpecnia prenos CELEHO ARRAY.
+!!! 11. Ak v METHOD PARAMETER obsahuje FIXED ARRAY napriklad [int MyArray[10]], tak su prenesene VSETKY ITEMS tohto ARRAY.
+!!!!! 12. IDL ATTRIBUTE [size_is(Parameter)] odkazuje na PARAMETER 'Parameter', ktory bude obsahovat POCET ITEMS v ARRAY. Vdaka ATTRIBUTE [size_is(Parameter)] je mozne prenasat CELE ARRAYS.
+!!! 13. IDL ATTRIBUTE [size_is()] moze byt pouzity aj vo verzii [size_is(EXPRESSION)], kde 'EXPRESSION' je NEMODIFIKUJUCA EXPRESSION (neda sa pouzit napriklad OPERATOR++), ktora vypocita velkost ARRAY, ktore sa prenesie.
+!!! 14. IDL ATTRIBUTE [size_is()] moze byt aplikovany aj na FIELDS v STRUCTS, ktore su typu ARRAYS.
+15. IDL ATTRIBUTE [size_is()] moze obsahovat aj CONSTANT hodnotu. Napriklad IDL ATTRIBUTE [size_is(10)].
+!!! 16. IDL ATTRIBUTE [max_is()] je PODOBNY IDL ATTRIBUTE [size_is()] a urcuje NAJVYSSI INDEX ARRAY, ktory bude preneseny.
+!!!! 17. ATTRIBUTE [size_is()] sa pouziva i pre OUTPUT PARAMETERS, kedy COM OBJECT vracia ARRAY do CLIENT.
+!!!!! 18. Prenos STRING z COM OBJECT do CLIENT sa realizuje nasledujucim sposobom [[out,size_is(ArraySize)]wchar_t* Parameter]. Cize prenasa sa IBA POINTER a NIE POINTER na POINTER.
+19. VARYING ARRAY je ARRAY, ktore obsahuje KONSTNATNY POCET ITEMS (napriklad int Array[100]), avsak pomocou IDL ATTRIBUTES sa urcuje iba SUBSET tohto ARRAY, ktore sa prenesie medzi CLIENT a COM OBJECT.
+   A. ATTRIBUTE [length_is()] urcuje kolko ITEMS sa prenesie. Ak sa nepouzije ATTIBUTE [first_is()], tak sa beru ITEMS od INDEXU 0.
+   B. ATTRIBUTE [first_is()] urcuje INDEX od ktoreho sa ITEMS vo ATTRIBUTE budu prenasat.
+   C. ATTRIBUTE [last_is()] je ALTERNATIVOU k [length_is()] a urcuje POSLEDNY INDEX, ktor sa bude prenasat.
+!!!!! 20. Aj ked pri VARYING ARRAY sa prenasaju medzi APARTMENTS iba URCENE ITEMS, tak pri UNMARSHALING je alokovana pamat pre CELY ARRAY a nepouzite ITEMS su inicializovane na hodnotu 0 (vo Windows 7 bola hodnota nedefinovana).
+!!! 21. ATTRIBUTE [length_is()] moze byt pouzity SPOLU s [size_is()]. V tomto pripade NIE JE NUTNE pouzit FIXED ARRAY. Napriklad [[in,length_is(Length),size_is(Size)] int* Array]. Tento zapis sa castou pouziva pri prenose OUTPUT PARAMETERS.
+!!!!! 22. IDL ATTRIBUTES ako napriklad [size_is()] umoznuje specifikovat aj velkosti MATRICES. V takomto pripade sa hodnoty oddeluju CIARKOU, napriklad [size_is(3,4)], alebo aj [size_is(,4)].
+!!! 23. IDL ATTRIBUTE [string] sa aplikuje na STRING PARAMETERS. Urcuje COM SYSTEM, ze PARAMETER je C STRING ukonceny znakom '\0'. COM SYSTEM pre taketo PARAMETERS zisti ich DLZKU (vyskyt '\0') a vykonava MARSHALLING iba daneho poctu CHARS. ATTRIBUTE [string] ma zmysel pouzivat IBA na INPUT a INPUT-OUTPUT PARAMETERS.
+!!!!! 24. Pouzitie IDL ATTRIBUTE [string] na OUTPUT PARAMETER ma zmysel IBA ak COM OBJECT ALOKUJE MEMORY cez CoTaskMemAlloc() a tento zapise do PARAMETER typu [[out,string] wchar_t** OutputText]. Samozrejme CLIENT MUSI alokovanu pamat UVOLNIT volanim FUNCTION CoTaskMemFree().
+!!! 25. SAFEARRAY je STRUCT, ktora umoznuje prenasat 1-N ROZMERNE ARRAYS medzi CLIENT a COM OBJECT, ktore su napisane v INYCH LANGUAGES ako C++. Pre SAFEARRAY platia nasledujuce fakty.
+   A. SAFEARRAY obsahuje FIELD 'cDims' obsahujucu pocet DIMENZII SAFEARRAY.
+   B. SAFEARRAY obsahuje FIELD 'rgsabound' typu SAFEARRAYBOUND[], ktora obsahuje pre KAZDU DIMENSION pocet ITEMS a INDEX PRVEHO ITEM.
+   C. SAFEARRAY obsahuje FIELD 'pvData', ktory obsahuje POINTER na samotne data SAFEARRAY.
+   !!! D. IDL podporuje SPECIFICKU SYNTAX [SAFERRAY(TYPE)], kde TYPE je TYPE ITEMS, ktore bude SAFEARRAY obsahovat.
+26. WIN32 API poskytuje viacero FUNCTIONS pre pracu so SAFEARRAYS.
+   A. FUNCTION SafeArrayAccessData() vracia POINTER na ITEMS SAFEARRAY.
+   B. FUNCTION SafeArrayUnaccessData() odstranuje POINTER na ITEMS SAFEARRAY vrateny FUNCTION SafeArrayAccessData().
+   C. FUNCTION SafeArrayGetDim() vracia POCET DIMENSIONS SAFEARRAY.
+   D. FUNCTION SafeArrayGetUBound() vracia POSLEDNY INDEX, ktory obsahuje ITEM pre danu DIMENSION.
+   E. FUNCTION SafeArrayGetUBound() vracia PRXY INDEX, ktory obsahuje ITEM pre danu DIMENSION.
+   F. FUNCTION SafeArrayCreateVector() je HELPER FUNCTION, ktora umoznuje vytvori 1 ROZMERNE SAFEARRAY.
+   G. FUNCTION SafeArrayDestroy() odstranuje SAFEARRAY a jeho ITEMS z pamate.
+   !!! H. WIN32 API obsahuje FUNCTIONS aj na vytvaranie VIACROZMERNYCH SAFEARRAYS.
+!!! 27. ATTRIBUTE [call_as()] sa pouziva na mapovanie METHODS COM INTERFACE, ktora NEMOZU BYT volane REMOTELY na METHODS, ktore je mozne volat REMOTELY. Pouziva sa nasledujucim sposobom.
+   A. V IDL sa definuju 2 ROZLICNE POMENOVANE METHOD. LOCAL METHOD, ktora NEMOZE byt volana REMOTELY je oznacena ATTRIBUTE [local]. REMOTE METHOD, ktora NAMIESTO NEJ BUDE VOLANA REMOTELY je oznacena ATTRIBUTE [call_as(MethodName)].
+   B. COM OBJECT MUSI implementovat LOCAL METHOD. REMOTE METHOD COM OBJECT NEIMPLEMENTUJE.
+   !!! C. V PROXY-STUB DLL (POZOR NIE COM SERVER) MUSI byt IMPLEMENTOVANA GLOBAL FUNCTION s PROTOTYPE [HRESULT IInterfaceName_MethodName_Proxy(IInterfaceName* This, ... MethodName_Params)], kde 'IInterfaceName' je meno COM INTERFACE, 'MethodName' je meno [local] METHOD a 'MethodName_Params' su PARAMETERS [local] METHOD. Tato METHOD MUSI volat [HRESULT IInterfaceName_RemoteMethodName_Stub(IInterfaceName* This, ... MethodName_Params)], ktoru vytvori IDL COMPILER.
+   !!! D. V PROXY-STUB DLL (POZOR NIE COM SERVER) MUSI byt IMPLEMENTOVANA GLOBAL FUNCTION s PROTOTYPE [HRESULT IInterfaceName_MethodName_Stub(IInterfaceName* This, ... MethodName_Params)], kde 'IInterfaceName' je meno COM INTERFACE, 'MethodName' je meno [local] METHOD a 'MethodName_Params' su PARAMETERS [local] METHOD. Tato METHOD MUSI volat METHOD COM INTERFACE.
+   !!!!! E. FUNCTIONS IInterfaceName_MethodName_Proxy() a IInterfaceName_MethodName_Stub() su prave TYM MIESTOM, ktore umoznuje KONVERZIU PARAMETERS medzi LOCAL a REMOTE METHODS.
+28. ATTRIBUTES [transmit_as()] a [wire_marshal] sa pouzivaju na konverziu DATA TYPES pri volani REMOTE METHODS.
+!!! 29. IDL KEYWORD cpp_quote("SomeCode") umoznuje vlozit C++ CODE 'SomeCode' do FILE [XXX_h.h], ktory je generovany z MIDL.
+!!! 30. COM INTERFACE IDispatch umoznuje COM OBJECTS, aby boli volane zo SCRIPT LANGUAGES. CLIENT s COM INTERFACE IDispatch pracuje nasledovne.
+   A. CLIENT zavola METHOD IDispatch::GetIDsOfName() do ktoreho COM OBJECT musi ulozit pre dane METHODS NAMES ich IDS (typu INT).
+   B. CLIENT zavola METHOD IDispatch::Invoke() na spustenie METHOD COM OBJECT identifikovanu pomocou ID vrateneho pre dane meno METHOD z IDispatch::GetIDsOfName().
+!!!!! 31. DISPATCH COM OBJECT mozu pouzivat IBA VARIANT-COMPATIBLE PARAMETERS. Ine PARAMETERS sa NESMU POUZIVAT.
+!!! 32. V IDL je DISPATCH COM INTERFACES mozne definovat 2 SPOSOBMI.
+   A. Ako DISPATCH-ONLY COM INTERFACE. V tomto pripade bude COM INTERFACE pristupny IBA cez IDispatch COM INTERFACE.
+   B. Ako DUAL COM INTERFACE. V tomto pripade bude COM INTERFACE pristupny cez IDispatch COM INTERFACE AJ cez KLASICKY COM INTAERFACE (bez nutnosti pouziti IDispatch).
+!!! 33. DISPATCH-ONLY COM INTERFACES sa v IDL definuju nasledovne.
+   A. Namiesto KEYWORD 'interface' sa pouzije KEYWORD 'dispinterface'.
+   B. METHODS (a PROPERTIES) sa oznacia ciselnymi ID pomocou ATTRIBUTE [id()].
+   C. METHODS MUSIA byt definovane ZA KEYWORD [methods:]. Tento KEYWORD je POVINNY, aj ked COM INTERFACE NEOBSAHUJE ZIADNE METHODS.
+   D. PROPERTES MUSIA byt definovane ZA KEYWORD [properties:]. Tento KEYWORD je POVINNY, aj ked COM INTERFACE NEOBSAHUJE ZIADNE PROPERTIES.
+   E. COM INTERFACE NESMIE DEDIT zo ZIADNEHO INEHO INTERFACE ani IUnknown, pretoze IMPLICITNE DEDI z IDispatch.
+   F. COM INTERFACE NESMIE pouzit ATTIBUTES [object] a [pointer_default(unique)].
+!!! 34. DUAL COM INTERFACES sa v IDL definuju nasledovne.
+   A. Pouzije sa ATTRIBUTE [dual].
+   B. METHODS (a PROPERTIES) sa oznacia ciselnymi ID pomocou ATTRIBUTE [id()].
+!!!!! 35. OBROVSKOU VYHODOU DUAL COM INTERFACES je, ze ich TYPE LIBRARY obsahuje KOMPLETNU IMPLEMENTACIU IDispatch::GetIDsOfNames() a IDispatch::Invoke(), takze staci NACITAT TYPE LIBRARY a pouzit jej METHODS na implementaciu IDispatch::GetIDsOfNames() a IDispatch::Invoke().
+!!! 36. Ak COM OBJECT ma parameter typu POINTER, tak sa medzi CLIENT a COM OBJECT prenasa VALUE na ktoru POINTER ODKAZUJE. MARSHALER vykona DEREFERENCE daneho POINTER, prenesie VALUE na COM OBJECT a do METHOD zasle POINTER na PAMAT, do ktorej ulozil prenesenu VALUE.
+!!! 37. IDL ATTRIBUTE [ref] aplikovany na POINTER METHOD PARAMETER oznacuje, ze POINTER NEMOZE BYT NULL. Ak sa do takehoto PARAMETER vlozi hodnota NULL tak PROXY (ak je vytvorene) detekuje, ze POINTER ma NULL hodnotu a vrati ERROR. Tento ATTRIBUTE je DEFAULT pre POINTER PARAMETERS.
+!!! 38. IDL ATTRIBUTE [unique] aplikovany na POINTER METHOD PARAMETER oznacuje, ze POINTER MOZE BYT NULL.
+!!! 39. IDL ATTRIBUTE [ptr] aplikovany na POINTER METHOD PARAMETERS oznacuje, ze VIACERE POINTER PARAMETERS mozu odkazovat na TEN ISTY POINTER a preto MARSHALER musi IDENTIFIKOVAT ROVNAKE POINTERS a preniest ich IBA RAZ. Takisto pri UNMARSHALLING musi COM SYSTEM zabezpecit, aby VSETKY POINTERS odkazovali na TU ISTU MEMORY.
+!!! 40. COM INTERFACE IMallocSpy umoznuje MONITOROVAT aj MENIT alokociu COM MEMORY v DANOM PROCESS.
+   A. FUNCTION CoRegisterMallocSpy() umoznuje registrovat IMallocSpy pre dany PROCESS. V danom PROCESS moze byt naraz aktivny IBA JEDEN IMallocSpy.
+   B. FUNCTION CoRevokeMallocSpy() umoznuje odregistrovat IMallocSpy pre dany PROCESS. Odregistrovanie je mozne IBA AK VSETKA PAMAT, ktora bola alokovana pocas aktualne zaregistrovaneho IMallocSpy bola UVOLNENA.
+!!! 41. V ILD definicii COM INTERFACES sa POINTERS delia na 2 kategorie.
+   A. TOP-LEVEL POINTERS su POINTERS, ktore su pouzite ako PARAMETERS METHODS.
+   B. EMBEDDED POINTERS su POINTERS, ktore vznikaju po DEREFERENCINGU TOP-LEVEL POINTERS. Typicky ak definujem STRUCT, ktora obsahuje POINTERS, tak tieto POINTERS su EMBEDDED POINTERS.
+!!! 42. Pomocou ATTRIBUTE [pointer_default()] je mozne definovat DEFAULT POINTER ATTRIBUTE ([ref], [unique]) EMBEDDED POINTERS v COM INTERFACE.
+!!!!! 43. Pri volani METHODS COM OBJECTS je CALLER zodpovedny VZDY za alokaciu MEMORY pre TOP-LEVEL POINTERS. V pripade EMBEDDED POINTERS ako su typu [out], tak za alokaciu tejto pamate je VZDY ZODPOVEDNA METHOD COM OBJECT. Cize je tu ROZDIEL kto je kedy za aku alokaciu pamate zodpovedny v zavislosti od TYPU PARAMETER a SMERU PRENOSU.
+!!!!! 44. Na alokaciu pamate, ktoru musia alokovat COM OBJECTS (pre EMBEDDED POINTERS [out] PARAMETERS) by MALI pouzivat IMalloc namiesto OPERATOR NEW. Je to preto, lebo IMalloc je STANDARDIZOVANY SPOSOB ALOKACIE PAMATE, ktoru podporuju VSETKY COM LANGUAGES. Ak by sa pouzil OPERATOR NEW, ktory je C++ SPECIFIC, tak by takuto pamat CLIENT napriklad beziaci v JAVA NEMUSEL VEDIET UVOLNIT. EXISTENCIA IMalloc umoznuje pouzitie STANDARDIZOVANEHO SPOSOBU ALOKACIE a DEALOKACIE PAMATE pre VSETKY COM LANGUAGES.
+!!!!! 45. COM INTERFACE IMalloc sluzi na ALOKACIU PAMATE, ktoru COM OBJECTS vracaju do CLIENT. Typicky COM OBJECT MUSI ALOKOVAT PAMAT pre EMBEDDED POINTERS [out] PARAMETERS. COM INTERFACES IMalloc poskytuje STANDARDIZOVANY SPOSOB ALOKACIE PAMATE, ktoru podporuju VSETKY COM LANGUAGES.
+   A. METHOD IMalloc::Alloc() alokuje PAMAT.
+   B. METHOD IMalloc::DidAlloc() vracia informaciu ci POINTER BOL, alebo NEBOL alokovany cez IMalloc.
+   C. METHOD IMalloc::Free() uvolnuje alokovanu PAMAT.
+   D. METHOD IMalloc::Realloc() realokuje alokovanu PAMAT.
+   E. METHOD IMalloc::GetSize() vracia VELKOST alokovanej PAMAT.
+   F. METHOD IMalloc::HeapMinimize() vykonava KOMPAKCIU PAMATE, aby sa nepouzite bloky pamate UVOLNILI.
+!!! 46. FUNCTION CoTaskMemAlloc() je HELPER FUNCTION alokujuca PAMAT cez IMalloc::Alloc().
+!!! 47. FUNCTION CoTaskMemFree() je HELPER FUNCTION uvolnujuca PAMAT cez IMalloc::Free().
+!!! 48. FUNCTION CoTaskMemRealloc() je HELPER FUNCTION realokujuca PAMAT cez IMalloc::Realloc().
+!!! 49. INSTANCIA COM INTERFACE IMalloc sa vytvara pomocou FUNCTION CoGetMalloc().
+//------------------------------------------------------------------------------------------------------
+//------------------------------------------------------------------------------------------------------
+//------------------------------------------------------------------------------------------------------
+Poznamky k vytvoreniu PROXY/STUB DLL.
+
+!!!!! 1. Pri COM INTERFACE, ktory je ma byt MARSHALED NESMIE byt nastaveny ATTRIBUTE [local] a zaroven (uplne NELOGICKY) NESMIE byt definovany v SCOPE 'library', ale MIMO NEHO.
+2. Na kompilaciu PROXY STUB DLL pre X64 je potrebne vykonat nasledujuce kroky.
+   A. Vytvorit cisty DLL PROJECT (tu napriklad FreeThreadingModelPSServer).
+   B. V projekte, kde sa generuju z XXX.IDL .H a .C FILES (tu napriklad FreeThreadingModelServer) je NUTNE nastavit [Project Properties -> MIDL -> General -> Target Environment] na [Microsoft Windows 64-bit on x64 (/env x64)].
+   C. Vykonat kompilaciu IDL FILE.
+   D. Do DLL PROJECT (tu napriklad FreeThreadingModelPSServer) pridat subory XXX_H.H, XXX_I.C, XXX_P.C a DLLDATA.C.
+   E. Do DLL PROJECT (tu napriklad FreeThreadingModelPSServer) vlozit .DEF FILE obsahujucu DllGetClassObject, DllCanUnloadNow, DllRegisterServer a DllUnregisterServer.
+   F. Do DLL PROJECT (tu napriklad FreeThreadingModelPSServer) vlozit DIREKTIVU REGISTER_PROXY_DLL. Bez pridania tejto direktivy sa NEVYTVORIA DllRegisterServer() a DllUnregisterServer() FUNCTIONS.
+   G. V DLL PROJECT (tu napriklad FreeThreadingModelPSServer) do LINKERA vlozit [RpcRT4.lib].
+   H. Spustit kompilaciu DLL PROJECT.
+   I. Zaregistrovat DLL PROJECT (tu napriklad FreeThreadingModelPSServer) cez REGSVR32.EXE.
+//------------------------------------------------------------------------------------------------------

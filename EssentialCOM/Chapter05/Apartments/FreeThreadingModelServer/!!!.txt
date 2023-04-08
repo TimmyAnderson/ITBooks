@@ -1,0 +1,224 @@
+//------------------------------------------------------------------------------------------------------
+1. Solution demonstruje APARTMENTS a MARSHALLING v COM.
+2. APARTMENT je THREADING EXECUTION CONTEXT (RUNTIME ENVIRONMENT) v ktorom bezia COM OBJECT.
+!!! 3. Medzi APARTMENTS a COM OBJECTS platia nasledujuce vztahy.
+   A. COM OBJECT patri IBA do JEDNEHO APARTMENT. COM OBJECT teda NEMOZE patrit do VIACERYCH APARTMENTS.
+   B. JEDEN APARTMENT moze obsahovat VIACERO COM OBJECTS.
+!!! 4. Medzi APARTMENTS a PROCESSES platia nasledujuce vztahy.
+   A. PROCESS moze mat 1-N APARTMENTS.
+   B. APARTMENT prisluha vzdy IBA JEDINEMU PROCESSU.
+!!! 5. Medzi APARTMENTS a THREADS platia nasledujuce vztahy.
+   A. THREAD moze v danom case byt asociovany s 0, alebo 1 APARTMENT.
+   B. THREAD moze byt najprv asociovany s JEDNYM APARTMENT a po ukonceni asociacie byt asociovany s INYM APARTMENT.
+   C. VIACERO THREADS MOZE ZDIELAT TEN ISTY APARTMENT. Toto vsak plati iba pre URCITE TYPY APARTMENTS (FREE).
+   D. Ku COM OBJECT NIE JE MOZNE pristupovat z THREADU ku ktoremu NEBOL ASOCIOVANY APARTMENT.
+   !!! E. V pripade, ze ku COM OBJECT sa pristupuje z THREADU, ktory NEMA asociovany APARTMENT, alebo ma asociovany NEKOMPATIBILNY APARTMMENT, COM SYSTEM VRACIA CHYBU RPC_E_WRONG_THREAD (0x8001010E).
+   !!!!! F. Pri asociovani THREADU s APARTMENT (FUNCTIONS CoInitialize() a CoInitializeEx()) je v TLS vytvoreny RECORD, ktory ostava v TLS az do ZRUSENIA ASOCIACIE THREADU s APARTMENT (FUNCTION CoUninitialize()).
+6. COM podporuje 3 rozne typy APARTMENTS.
+   A. SINGLE THREADED APARTMENTS (STA).
+   B. MULTI THREADED APARTMENTS (MTA).
+   C. NEUTRAL THREADED APARTMENTS (NTA).
+7. Pre STA platia nasledujuce skutocnosti.
+   A. PROCESS moze obsahovat VIACERO STA.
+   B. STA je VZDY asociovany s JEDINYM THREAD. Po ukonceni tejto asociacie STA APARTMENT ZANIKA.
+   !!!!! C. COM OBJECT vytvoreny v STA je pristupny IBA z THREADU, ktory je asociovany s danym STA. Ine THREADS NEMOZU pristupovat (volat METHODS) daneho COM OBJECT a vsetky METHODS CALLS z INYCH THREADS su prenasane cez MESSAGE QUEUE do THREADU, ktory bol asociovany s STA v ktorom sa COM OBJECT VYTVORIL.
+8. Pre MTA platia nasledujuce skutocnosti.
+   A. PROCESS obsahuje MAXIMALNE 1 MTA.
+   B. S MTA moze byt NARAZ asociovanych VIACERO THREADS.
+   C. COM OBJECT vytvoreny v MTA je pristupny z LUBOVOLNEHO THREADU, ktory je s MTA asociovany.
+9. Pre NTA platia nasledujuce skutocnosti.
+   A. PROCESS obsahuje MAXIMALNE 1 NTA.
+   B. S NTA sa NEASOCIUJU ZIADNE THREADS.
+   C. Pri METHODS CALLS z inych APARTMENTS su tieto OPTIAMLIZOVANE, bez nutnosti CONTEXT SWITCH pri realizacii MARSHALLING, ako je to u inych APARTMENTS.
+!!! 10. Vytvoreny THREAD NEMA asociovany ZIADEN APARTMENT. Ten sa asociuje pomocou FUNCTION CoInitializeEx().
+!!! 11. FUNCTION CoUninitialize() KONCI ASOCIACIU APARTMENT a THREAD.
+12. Pre FUNCTIONS CoInitializeEx() a CoUninitialize() platia nasledujuce pravidla.
+   A. FUNCTION CoInitializeEx() umoznuje specifikovat ci THREAD bude asociovany s STA (COINIT_APARTMENTTHREADED), alebo MTA (COINIT_MULTITHREADED).
+   B. OPAKOVANE volanie CoInitializeEx() pri specifikovani TOHO ISTEHO APARTMENT znamena vratenie hodnoty S_FALSE.
+   C. OPAKOVANE volanie CoInitializeEx() s INYM APARTMENT znamena vratenie hodnoty E_RPC_CHANGED_MODE.
+   !!! D. Pre KAZDE volanie CoInitializeEx() musi byt zavolana FUNCTION CoUninitialize() a to AJ KED CoInitializeEx() vratila S_FALSE.
+   !!! F. V jednom THREAD je mozne OPAKOVANE volat postupnost CoInitializeEx() a CoUninitialize() FUNCTIONS. Teda po zavolani CoUninitialize() je v TOM ISTOM THREAD mozne vytvorit NOVY APARTMENT volanim CoInitializeEx().
+   G. FUNCTION CoInitialize() je zjednodusena verzia CoInitializeEx(), ktora asociuje VZDY STA s danym THREAD.
+!!! 13. V pripade, ze poziadavky na APARTMENT su na strane COM OBJECT a CLIENT ROZDIELNE, tak CLIENT NEZISKAVA PRIAMY POINTER na COM OBJECT, ale POINTER ba PROXY pomocou, ktoreho pristupuje k danemu COM OBJECT.
+!!! 14. COM OBJECT musi specifikovat AKY TYP APARTMENT pre svoj beh potrebuje. Ten zavisi od toho ci je COM OBJECT THREAD-SAFE, alebo nie je. TYP APARTMENT sa urcuje podla TYPU COM SERVER.
+   A. Pri IN-PROCESS SERVERS sa poziadavky na APARTMENT daneho COM OBJECT urcuju v REGISTRY KEY [ThreadingModel], ktory moze nadobudat hodnoty 'Apartment' (COM OBJECT vyzaduje STA), 'Free' (COM OBJECT vyzaduje STA), 'Both' (COM OBJECT moze bezat v STA aj MTA) a 'Neutral' (COM OBJECT vyzaduje MTA). Ak sa REGISTRY KEY [ThreadingModel] NENASTAVI, tak COM OBJECT moze bezat iba v MAIN STA - PRVOM STA, ktory je v ramci PROCESSU vytvoreny.
+   B. Pri OUT-OF-PROCESS SERVERS je APARTMENT pre dany COM OBJECT EXPLICITNE VYTVORENY tvorcom COM OBJECT volanim FUNCTION CoInitializeEx() pri vytvarani instancie COM OBJECT. Preto REGISTRY KEY NIE JE POTREBNY.
+!!! 15. Ako ku IN-PROCESS SERVER COM OBJECT je pristupovane z KOMPATIBILNEHO APARTMENT, tak CALLER ziska PRIAMO POINTER na COM OBJECT a volanie METHODS COM OBJECT je MAXIMALNE EFEKTIVNE.
+!!!!! 16. Ako ku IN-PROCESS SERVER COM OBJECT je pristupovane z NEKOMPATIBILNEHO APARTMENT, tak CALLER ziska POINTER na PROXY OBJECT. Vytvarany COM OBJECT sa zavedie do KOMPATIBILNEHO APARTMENT a PROXY zabezpecuje komunikaciu MEDZI APARTMENTS.
+!!!!! 17. V pripade, ze APARTMENT pozadovany COM OBJECT a APARTMENT asociovany s THREAD su ZHODNE, tak sa vracia PRIAMY POINTER na COM OBJECT. Ak tento PRIAMY POINTER na COM OBJECT prenesiem do INEHO THREAD, ktory NEMA ASOCIOVANY TEN ISTY APARTMENT ako mal THREAD v ktorom bol COM OBJECT VYTVORENY, tak VOLANIE METHOD COM OBJECT PREBEHNE USPESNE (mam RAW POINTER na COM OBJECT a COM NEMA bez PROXY AKO ZISTIT, ze som prekrocil hranice APARTMENT), avsak STRATI sa napriklad THREAD-SAFE pri STA. Celkovo je toto chovanie a takto napisany kod treba povazovat za CHYBNY.
+!!!!! 18. V pripade, ze APARTMENT pozadovany COM OBJECT a APARTMENT asociovany s THREAD su ROZDIELNE, tak sa vracia PROXY na COM OBJECT. Ak tento PROXY na COM OBJECT prenesiem do INEHO THREAD, ktory NEMA ASOCIOVANY TEN ISTY APARTMENT ako mal THREAD v ktorom bol COM OBJECT VYTVORENY, tak PROXY ZISTI, ze som PREKROCIL HRANICE APARTMENT a VRATI CHYBU RPC_E_WRONG_THREAD (0x8001010E).
+!!!!! 19. Ak sa ku COM OBJECT ma pristupovat z INEHO APARTMENT ako toho v ktorom bol vytvoreny (resp. CLIENT pozaduje INY TYP APARTMENTU ako ten ktory vyzaduje COM OBJECT) je nutny proces EXPORTOVANIA a IMPORTOVANIA POINTER na COM INTERFACE. Tento proces sa nazvyva MARSHALLING.
+   A. EXPORT COM OBJECT umoznuje, aby bol COM OBJECT pristupny z inych APARTMENTS.
+   B. IMPORT COM OBJECT umoznuje, aby bol COM OBJECT pristupny z APARTMENT do ktoreho je IMPORTED.
+   !!! C. Ak sa COM OBJECT IMPORTUJE do APARTMENT, ktory je ZHODNY ako ten v ktorom bol VYTVORENY, tak sa vracia PRIAMY POINTER na COM OBJECT. Pristup k METHODS tako IMPORTOVANEHO COM OBJECT je VELMI RYCHLY.
+   !!! D. Ak sa COM OBJECT IMPORTUJE do APARTMENT, ktory je ROZDIELNY ao ten v ktorom bol VYTVORENY, tak sa vracia POINTER na PROXY OBJECT, ktory zabezpecuje komunikaciu MEDZI APARTMENTS pri volani METHODS COM OBJECT. Pristup cez PROXY je samozrejme POMALSI.
+   E. PROXY pri komunikacii s COM OBJECT vo INOM APARTMENT pouziva COM ORPC protokol. Tento protokol je pomocou CUSTOM DLL ROZSIROVATELNY. Pri komunikacii v ramci jedneho PC COM ORPC pouziva niektou z foriem IPC komunikacie. V pripade komunikacie z INYM PC pouziva COM ORPC bud UDP (najcastejsie), alebo TCP/IP.
+!!!!! 20. MARSHALLING COM INTERFACE je proces, ktory vytvori z COM OBJECT BYTE STREAM. Pre tento BYTE STREAM platia nasledujuce pravidla.
+   !!!!! A. BYTE STREAM NEOBSAHUJE SERIALIZOVANY STAV COM OBJECT (jednotlive FIELDS COM OBJECT CLASS). Obsahuje iba INFORMACIU pomocou, ktorej COM SYSTEM dokaze pristupit k danemu COM OBJECT z INEHO APARTMENT.
+   !!! B. BYTE STREAM obsahuje informacie o umiestneni CIELOVEHO APARTMENT (ista forma ADRESY ako je napriklad IP adresa v TCP/IP) v ktorom COM OBJECT bol vytvoreny, aby PROXY bol schopny vykonat komunikaciu k tomuto vzdialenemu COM OBJECT cez hranice APARTMENTS.
+   C. BYTE STREAM je mozne importovat do LUBOVOLNEHO INEHO APARTMENT. Ak APARTMENT je ZHODNY s tym v ktorom bol COM OBJECT VYTVORENY, je vrateny DIRECT POINTER na COM OBJECT. Ak je importovany APARTMENT ROZDIELNY ako ten v ktorom bol COM OBJECT vytvoreny, je vrateny POINTER na COM OBJECT.
+   !!!!! D. BYTE STREAM teda NEREPREZENTUJE SERIALIZOVANY STAV COM OBJECT, ale je to APARTMENT-NEUTRAL REFERENCE na COM OBJECT, ktoru je mozne IMPORTOVAT do LUBOVOLNEHO INEHO APARTMENT.
+!!! 21. COM SYSTEM robi AUTOMATICKY MARSHALLING v tychto pripadoch.
+   A. Ak COM OBJECT ma INE POZIADAVKY na APARTMENT ako CLIENT, tak COM OBJECT je AUTOMATICKY MARSHALED a CLIENT ziskava POINTER na PROXY.
+   B. Ak pri METHOD pri METHOD CALL cez PROXY obsahuje PARAMETERS typu POINTER na COM INTERFACE, tak tieto PARAMETERS su AUTOMATICKY MARSHALED.
+!!! 22. Postup vykonavania MARSHALLINGU COM INTERFACE je nasledovny.
+   A. Vytvori sa BYTE STREAM (INTERFACES IStream) do ktoreho sa bude ukladat MARSHALED INTERFACE.
+   B. Zavola sa FUNCTION CoMarshalInterface().
+   C. BYTE STREAM sa prenesie do CIELOVEHO APARTMENT (cielovy THREAD, alebo PROCESS).
+   D. Zavola sa CoUnmarshalInterface(), ktory vracia PROXY na COM INTERFACE.
+23. FUNCTION CoMarshalInterface() vytvara z COM INTERFACE BYTE STREAM reprezentujuci APARTMENT-NEUTRAL REFERENCE na COM INTERFACE.
+   A. 1. PARAMETER obsahuje POINTER na IStream do ktoreho sa ulozi BYTE STREAM.
+   B. 2. PARAMETER obsahuje IID na COM INTERFACE, ktory ma byt MARSHALED.
+   C. 3. PARAMETER obsahuje POINTER na COM INTERFACE, ktory ma byt MARSHALED.
+   D. 4. PARAMETER obsahuje hodnotu ENUM MSHCTX, ktora urcuje ci DESTINATION APARTMENT je v tom istom PROCESS, v inom PROCESS na tom istom PC, alebo inom PC.
+   E. 5. PARAMETER je RESERVED a musi byt nastaveny na NULL.
+   !!! F. 6. PARAMETER obsahuje hodnotu ENUM MSHLFLAGS, ktora urcuje ci COM INTERFACE bude UNMARSHALED iba raz, alebo viackrat. Ak VIACKRAT, tak po POSLEDNOM VOLANI je NUTNE zavolat FUNCTION CoReleaseMarshalData(), ktora ma za ulohu UVOLNIT IStream. Ak sa COM INTERFACE bude UNMARSHALED IBA RAZ, tak sa IMarshal::CoReleaseMarshalData() vola AUTOMATICKY.
+24. FUNCTION CoUnmarshalInterface() vytvara z BYTE STREAM POINTER na COM OBJECT (PRIAMY, alebo PROXY podla toho ci DESTINATION APARTMENT je zhodny so SOURCE APARTMENT).
+   A. 1. PARAMETER obsahuje POINTER na IStream v ktorom je ulozeny BYTE STREAM.
+   B. 2. PARAMETER obsahuje IID na COM INTERFACE, ktory ma byt UNMARSHALED.
+   C. 3. PARAMETER obsahuje POINTER na COM INTERFACE, do ktoreho bude COM INTERFACE UNMARSHALED.
+   !!!!! D. Ak BYTE STREAM bol vytvoreny tak, ze 6. PARAMETER CoMarshalInterface() urcil, ze sa UNMARSHALLING bude robit IBA RAZ, tak CoUnmarshalInterface() AUTOMATICK VOLA IMarshal::CoReleaseMarshalData(), ktora uvolni IStream. Ak NAOPAK BYTE STREAM bol vytvoreny tak, ze 6. PARAMETER CoMarshalInterface() urcil, ze UNMARSHALLING bude vykonavat VIAC KRAT, tak je treba IMarshal::CoReleaseMarshalData() volat EXPLICITNE.
+!!! 25. POINTER na IStream je mozne vytvorit volanim FUNCTION CreateStreamOnHGlobal(). STREAM sa vytvori z HGLOBAL. Ak sa definuje NULL, tak HGLOBAL je alokovany AUTOMATICKY.
+!!! 26. POINTER na IStream je mozne konvertovat na HGLOBAL volanim FUNCTION GetHGLobalFromStream().
+!!!!! 27. Ak COM OBJECT je vytvoreny v STA THREAD a z INEHO APARTMENT su volane jeho METHOODS, tak je NUTNE, aby STA THREAD v ktorom bol COM OBJECT VYTVORENY realizoval MESSAGE PUMP, ktora bude vycitavat a spracovavat MESSAGE CALLS ulozene ako WINDOWS MESSAGES v HIDDEN WINDOW MESSAGE QUEUE. Ta sa realizuje nasledujucim sposobom.
+   A. Zavola sa FUNCTION MsgWaitForMultipleObjects(), ktora ak vrati (WAIT_OBJECT_0+NUMBER_OF_HANDLES), tak to znamena, ze vo WINDOW MESSAGE QUEUE HIDDEN MESSAGE je 1, alebo 'N' MESSAGES.
+   B. Nasledne sa v CYKLE musi volat PeekMessage(), ktora zisti ci WINDOW MESSAGE QUEUE obsahuje MESSAGE. Ak ano, tak sa zavola GetMessage() a DispatchMessage().
+   !!!!! C. POZOR. Ak po zavolani MsgWaitForMultipleObjects() zavolam NIEKTORU z MESSAGE FUNCTIONS (PeekMessage(), GetMessage(), alebo DispatchMessage()), musia sa VSETKY MESSAGES v MESSAGE QUEUE VYBRAT a SPRACOVAT PRED DALSIM volanim MsgWaitForMultipleObjects(). Ak sa tak NESPRAVI, tak MsgWaitForMultipleObjects() ostane vo WAIT STATE.
+!!! 28. BYTE STREAM do ktoreho je COM OBJECT MARSHALED obsahuje informacie ako je ADRESA HOST MACHINE na ktorom bol COM OBJECT VYTVORENY, IID COM INTERFACE, ktory bol MARSHALED, SECURITY INFO a rozlicne identifikatory pomocou, ktory COM SYSTEM dokaze pripojit sa cez hranice APARTMENT (v tom istom PROCESS, v inom PROCESS, na inom PC) ku COM OBJECT. Pri volani UnMarshalInterface() je BYTE STREAM PARSOVANY a informacie v nom pouzite na vytvorenie PROXY a naslednu komunikaciu cez toto PROXY.
+!!! 29. Na to, aby PROXY mohol komunikovat cez hranice HOST MACHINES, Windows obsahuje OXID Resolver, ktory pocuva na TCP/IP PORTE 135. OXID Resolver je zodpovedny za PARSING BYTE STREAM a konverziu identifikatorov v BYTE STREAM na skutocne TCP/IP, UDP, alebo IPC adresy pomocou, ktorych PROXY dokaze komunikvat s COM OBJECT v inom APARTMENT.
+!!! 30. OXID Resolver robi konverziu BYTE STREAM identifikatorov na ADRESY (TCP/IP, UDP, IPC) IBA pre LOKALNY HOST MACHINE. Pri dotaze o RESOLVING COM OBJECT na REMOTE MACHINE OXID Resolver zasle poziadavku na REMOTE OXID Resolver, ktory po vykonani RESOLVINGU vrati RESOLVED ADDRESS do volajuceho OXID Resolver. OXID Resolver pouziva aj CACHE, aby na RESOLVING REMOTE COM OBJECT nemusel byt pri kazdej poziadavke na RESOLVING kontaktovany REMOTE OXID Resolver.
+31. FUNCTION CoMarshalInterThreadInterfaceInStream() je HELPER FUNCTION realizujuca INTER-THREAD MARSHALLING COM INTERFACE do IStream. Interne vola CreateStreamOnHGlobal() a CoMarshalInterface().
+32. FUNCTION CoGetInterfaceAndReleaseStream() je HELPER FUNCTION realizujuca INTER-THREAD UNMARSHALLING COM INTERFACE z IStream. Interne vola CoUnmarshalInterface() a IStream::Release().
+!!!!! 33. COM INTERFACE IStream ako BYTE STREAM vrateny z CoGetInterfaceAndReleaseStream() je PRENOSITELNY MEDZI APARTMENTS. Je to SPECIALITA tohto COM INTERFACE reprezentujuceho BYTE STREAM.
+!!!!! 34. GLOBAL INTERFACE TABLE (GIT) je COM OBJECT, ktory ZJEDNODUSUJE INTER-THREAD MARSHALLING. Pre GIT platia nasledujuce pravidla.
+   A. METHOD RegisterInterfaceInGlobal() vykonava MARSHALLING COM INTERFACE a BYTE STREAM uklada do GIT.
+   B. METHOD GetInterfaceFromGlobal() vykonava UNMARSHALLING COM INTERFACE do aktualneho APARTMENT.
+   C. METHOD RevokeInterfaceFromGlobal() odstranuje zaznam z GIT a uvolnuje BYTE STREAM.
+   !!!!! D. VELKOU VYHODOU GIT je, ze UNMARSHALLING je mozne realizovat aj VIACKRAT opakovanim volanim GetInterfaceFromGlobal() bez nutnosti robit MARSHALLING pre kazdy UNMARSHALLING CoMarshalInterface() a CoUnmarshalInterface(). Pomocou FUNCTIONS CoMarshalInterface() a CoUnmarshalInterface() sice JE MOZNE volat CoUnmarshalInterface() VIACNASOBNE, BEZ NUTNOSTI volat CoMarshalInterface(), avsak NEFUNGUJE pre PROXIES na COM OBJECTS, iba na PRIAME POINTERS na COM OBJECTS.
+   !!! E. COM SYSTEM vytvara GIT PER-PROCESS.
+35. COM podporuje nasledujuce typy MARSHALLINGU.
+   A. STANDARD MARSHALLING je MARSHALLING pouzivajuci PROTOCOL ORPC na komunikaciu medzi PROXY a STUB daneho COM OBJECT. STANDARD MARSHALLING sa pouziva vtedy ako COM OBJECT, ktoreho COM INTERFACE ma byt MARSHALED NEIMPLEMENTUJE COM INTERFACE IMarshal.
+   B. CUSTOM MARSHALLING je MARSHALLING PLNE IMPLEMENTOVANY programatorom. To znaci implementovat PROXY a STUB OBJECT ako aj KOMUNIKACNY PROTOCOL medzi PROXY a STUB daneho COM OBJECT. Ak sa ma realizovat CUSTOM MARSHALLING, tak COM OBJECT MUSI IMPLEMENTOVAT COM INTERFACE IMarshal.
+   C. OLEAUTOMATION MARSHALLING. Realizuje sa aplikovanim ATTRIBUTE [oleautomation] na COM INTERFACE, pricom COM INTERFACE MUSI pouzivat IBA VARIANT-COMPATIBLE typy PARAMETERS svojich METHODS.
+!!!!! 36. Ak ma dany COM OBJECT podporovat STANDARD MARSHALLING, tak MUSIM IMPLEMENTOVAT PROXY/STUB DLL. Popis vytvorenia PROXY/STUB DLL je napisany nizsie.
+!!! 37. STUB OBJECT reprezentuje SERVER cast komunikacie medzi COM CLIENT a COM SERVER. Je tvoreny STUB MANAGER a 1-N INTERFACE STUBS.
+38. V STANDARD MARSHALLING je STUB MANAGER zodpovedny za nasledujuce cinnosti.
+   A. Je to GENERICKY OBJECT (nezavisly na COM INTERFACE), ktory komunikuje so 1-N INTERFACE STUBS.
+   B. Obsahuje PRESNE 1 POINTER typu IUnknown na SKUTOCNY COM OBJECT, ktory STUB ZAPUZDRUJE.
+   !!! C. Realizuje pocitanie PROXY REFERENCES (PROXIES pripojenych cez RPC) a uvolnenie SKUTOCNEHO COM OBJECT ak pocet tychto REFERENCES klesne na 0.
+   D. Reprezentuje NETWORK IDENTITY COM OBJECT, ktory zapuzdruje.
+   E. Je vrateny z FUNCTION CoMarshalInterface().
+39. V STANDARD MARSHALLING su INTERFACE STUBS zodpovedne za nasledujuce cinnosti.
+   A. Su SPECIFICKE pre COM INTERFACES, ktore reprezentuju.
+   !!! B. Implementuju IRpcStubBuffer pomocou, ktorych zachytavaju MESSAGES z PROXIES.
+   !!!!! C. METHOD IRpcStubBuffer::Invoke() je KLUCOVA. Pomocou nej INTERFACE STUBS  prijimaju MESSAGES obsahujuce METHOD CALL z CHANNELS a takisto pomocou tejto METHOD su zasielane VYSLEDKY METHOD CALL vo forme MESSAGE, ktore je zapisana do [IN-OUT] PARAMETRA IRpcStubBuffer::Invoke().
+   D. Vykonavaju UNMARSHALLING INPUT PARAMETERS.
+   E. Realizuju METHODS CALL na skutocnom COM OBJECT.
+   F. Vykonavaju MARSHALLING OUTPUT PARAMETERS a RETURN VALUES.
+   !!! G. Cez IRpcStubBuffer zasielaju do PROXIES MESSAGES reprezentujuce vysledky METHODS CALLS.
+   H. Obsahuju TYPED POINTERS (typu COM INTERFACES, ktore reprezentuju) pomocou, ktoreho vykonavaju METHOD CALLS.
+   I. Jeden INTERFACE STUB moze reprezentovat aj VIACERO COM INTERFACES.
+!!! 40. PROXY OBJECT reprezentuje CLIENT cast komunikacie medzi COM CLIENT a COM SERVER. Je tvoreny PROXY MANAGER a 1-N INTERFACE PROXIES.
+41. V STANDARD MARSHALLING je PROXY MANAGER zodpovedny za nasledujuce cinnosti.
+   A. Je to GENERICKY OBJECT (nezavisly na COM INTERFACE), ktory ma v sebe AGREGOVANYCH 1-N INTERFACE PROXIES.
+   !!! B. Implementuje PROXY-SIDE IUnknown. Tato implementacia IUnknown drzi VLASTNY REFERENCE COUNTER a kazde REDUDANTNE volanie AddRef() a Release() realizuje na tomto LOKALNOM REFERENCE COUNTER. AZ ked REFERENCE COUNTER klesne na 0, tak pomocou RPC odosle MESSAGE, ze PROXY bolo UVOLNENE.
+   C. Reprezentuje NETWORK IDENTITY CLIENT-SIDE COM OBJECT, ktory zapuzdruje.
+   D. Je vrateny z FUNCTION CoUnMarshalInterface().
+42. V STANDARD MARSHALLING su INTERFACE PROXIES zodpovedne za nasledujuce cinnosti.
+   A. Su SPECIFICKE pre COM INTERFACES, ktore reprezentuju.
+   !!! B. Obsahuju POINTERS na IRpcChannelBuffer pomocou, ktorych zasielaju MESSAGES do STUBS.
+   C. Implementuju COM INTERFACE IRpcProxyBuffer.
+   D. Vykonavaju MARSHALLING INPUT PARAMETERS.
+   E. Zasielaju MESSAGES obsahujuce poziadavky na METHODS CALLC cez IRpcChannelBuffer do STUBS.
+   F. Vykonavaju UNMARSHALLING OUTPUT PARAMETERS a RETURN VALUES.
+   !!! G. Spolu s PROXY MANAGER su AGREGOVANE do JEDNEHO COM OBJECT, ktory je pristupny pre CLIENTA.
+!!! 43. V STANDARD MARSHALLING sa Komunikacia medzi PROXY a STUB vykonava pomocou CHANNEL COM OBJECT. Platia prenho nasledujuce zasady.
+   A. Implementuje INTERFACE IRpcChannelBuffer.
+   B. Pomocou IRpcChannelBuffer::SendReceive() odosielaju REQUEST a prijimaju RESPONSE pre kazdy METHOD CALL.
+!!!!! 44. V STANDARD MARSHALLING je komunikacia medzi PROXY a STUB realizovana nasledovne.
+   A. PROXY pomocou IRpcChannelBuffer::SendReceive() odosle cez [IN-OUT] PARAMETER MESSAGE (RPCOLEMESSAGE) obsahujucu INPUT PARAMETERS METHOD CALL do STUB a CAKA na ODPOVED.
+   B. STUB zachyti MESSAGE (RPCOLEMESSAGE) obsahujucu METHOD CALL INPUT PARAMETERS cez [IN-OUT] PARAMETER METHOD IRpcStubBuffer::Invoke() a vykona METHOD na SKUTOCNOM COM OBJECT.
+   !!! C. Po skonceni volania, STUB nastavi TEN ISTY [IN-OUT] PARAMETER METHOD IRpcStubBuffer::Invoke() na MESSAGE (RPCOLEMESSAGE) obsahujuci METHOD CALL OUTPUT PARAMETERS a RETURN VALUE.
+   D. V PROXY sa UKONCI IRpcChannelBuffer::SendReceive() pricom [IN-OUT] PARAMETER obsahuje MESSAGE (RPCOLEMESSAGE), ktora  obsahuje METHOD CALL OUTPUT PARAMETERS a RETURN VALUE.
+!!!!! 45. V STANDARD MARSHALLING je komunikacia medzi PROXY a STUB, ak COM OBJECT bezi v MTA, alebo NTA realizovana nasledovne.
+   A. V PROCESS COM SERVER bezi THREAD POOL, kde 1 THREAD (bolo to pisane v roku 1998, takze sa to mohlo zmenit) je dedikovany na prijem MESSAGES z NETWORK.
+   B. Po prijme MESSAGE z NETWORK, ktora obsahuje METHOD CALL, THREAD vytvori WORKER THREAD z THREAD POOL, ktory dalej spracovavat MESSAGE.
+   C. WORKER THREAD vyberie z MESSAGE IPID, ktory identifikuje STUB MANAGER a INTERFACE STUB, ktory je zaregistrovany pre spracovavanie daneho typu MESSAGES (podporuje dany COM INTERFACE).
+   D. WORKER THREAD zavola IRpcStubBuffer::Invoke() INTERFACE STUB, ktory vyvola METHOD prislusneho COM OBJECT.
+!!!!! 46. V STANDARD MARSHALLING je komunikacia medzi PROXY a STUB, ak COM OBJECT bezi v STA realizovana nasledovne.
+   A. STA APARTMENT pri vytvoreni vytvori HIDDEN WINDOW cez ktory prijima WINDOW MESSAGES obsahujuce RPC MESSAGES s poziadavkami na METHOD CALLS.
+   B. V PROCESS COM SERVER bezi THREAD POOL, kde 1 THREAD (bolo to pisane v roku 1998, takze sa to mohlo zmenit) je dedikovany na prijem MESSAGES z NETWORK.
+   C. Po prijme MESSAGE z NETWORK, ktora obsahuje METHOD CALL, THREAD vytvori WORKER THREAD z THREAD POOL, ktory dalej spracovavat MESSAGE.
+   D. WORKER THREAD vyberie z MESSAGE IPID, ktory identifikuje STUB MANAGER a INTERFACE STUB, ktory je zaregistrovany pre spracovavanie daneho typu MESSAGES (podporuje dany COM INTERFACE). Zaroven zisti HIDDEN WINDOW, ktory bol vytvoreny pre dany STA APARTMENT.
+   E. WORKER THREAD zavola PostMessage(), ktory zasle WINDOW MESSAGE do HIDDEN WINDOW daneho STA APARTMENT.
+   F. STA APATMENT THREAD v MESSAGE PUMP vybera WINDOW MESSAGES parsuje RPC MESSAGES v nich ulozene a vola IRpcStubBuffer::Invoke() prislusneho INTERFACE STUB.
+!!!!! 47. VSETKY typy APARTMENTS PODPORUJU REENTERANCY, vratane STA. To znamnena, ze ak CLIENT vola METHOD COM SERVER a teda pocas vykonavania METHOD realizuje cez CALLBACK COM OBJECT CALLBACK volanie, tak toto volanie bude na CLIENT SPRACOVANE a to aj NAPRIEK TOMU, ze CLIENT CAKA na skoncenie VOLANIA METHOD COM SERVER.
+!!! 48. PROXY a STUB COM OBJECTS ZDIELAJU CLSID a su implementovane ako JEDEN IN-PROCESS COM SERVER a THREADING MODEL 'Both'. Su vytvarane pomocou COM INTERFACE IPSFactoryBuffer(), ktory obsahuje nasledujuce METHODS.
+   A. METHOD CreateProxy() vytvara PROXY OBJECT.
+   B. METHOD CreateStub() vytvara STUB OBJECT.
+49. MARSHALER na mapovanie IID na CLSID, ktore je pre MARSHALLING NEVYHNUTNE vyuziva REGISTRY KEY [HKEY_CLASSES_ROOT\Interface].
+!!! 50. COM OBJECT vytvorene v STA APARTMENT ak su ich METHODS volane z INYCH APARTMENTS, je NUTNE v THREADE STA APARTMENT v ktorom bol COM OBJECT vytvoreny realizovat MESSAGE PUMP. Takyto STA APARTMENT moze mat zaregistrovany MESSAGE FILTER, ktoreho METHODS su volane a urcuju ci dana MESSAGE z WINDOWS MESSAGE QUEUE bude spracovana, jej spracovanie bude odolozene na neskor, alebo bude zamietnuta.
+51. MESSAGES FILTERS su SPECIFICKE IBA pre STA THREADS a su realizovane implementovanim ITERFACE IMessageFilter, ktore ma nasledujuce METHODS.
+   A. METHOD HandleIncomingCall() je volana pre KAZDU WINDOW MESSAGE z WINDOW MESSAG QUEUE, ktora obsahuje volanie COM METHOD. HandleIncomingCall() vratenim prisuslnej RETURN VALUE z ENUM 'SERVERCALL' urcuje ci dana MESSAGE reprezentujuca METHOD CALL bude vykonana IHNED, ODLOZENA, alebo ZAMIETNUTA.
+   B. METHOD RetryRejectedCall() je volana pre WINDOW MESSAGES obsahujuce METHOD CALLS, ktore boli volanim HandleIncomingCall() ZAMIETNUTE, alebo ODLOZENE. Ak METHOD RetryRejectedCall() vrati RETURN VALUE -1, tak METHOD CALL je REJECTED a CLIENT, ktory METHOD CALL na COM OBJECT REALIZOVAL ziska CHYBOVU HODNOTU RPC_E_CALL_REJECTED. Ak je RETURN VALUE >=0, tak tato hodnota je povazovana za CAS o ktory sa vykonanie danej WINDOW MESSAGE reprezentujucej METHOD CALL ODLOZI.
+   C. METHOD MessagePending() je volana pre WINDOW MESSAGES, ktore NEREPREZENTUJU METHOD CALLS. Typicky su to WINDOW MESSAGES reprezentujuce USER akcie nad GUI.
+52. MESSAGE FILTER sa registruje volanim FUNCTION CoRegisterMessageFilter(), ktory v 2. PARAMETRI vracia povodny MESSAGE FILTER, ktory je mozne pouzit na obnovenie povodneho MESSAGE FILTER.
+!!! 53. Medzi CLIENT a  beziacich v ROZLICNYCH APARTMENTS funguje DISTRIBUTED GARBAGE COLLECTOR, ktory zabezpecuje pocitanie REFERENCES na COM OBJECT, pravidelne PINGY medzi LOCAL a REMOTE HOST, ak CLIENT a SERVER bezia na rozlicnych HOSTS ako aj uvolnovanie COM OBJECTS, ak pocet REFERENCES nan dosiahne hodnotu 0. DISTRIBUTED GARBAGE COLLECTOR funguje nasledovne.
+   A. Ked je STUB MANAGER pre dany COM OBJECT vytvoreny, zaregistruje svoj OBJECT IDENTIFIER (OID) do DISTRIBUTED GARBAGE COLLECTOR.
+   B. DISTRIBUTED GARBAGE COLLECTOR si drzi informaciu o tom, ktore OID boli exportovane z ktorych APARTMENTS na LOCAL HOST.
+   !!! C. Ked REMOTE HOST vytvori PROXY volanim CoUnmarshalInterface() DISTRIBUTED GARBAGE COLLECTOR na REMOTE HOST zasle informaciu do DISTRIBUTED GARBAGE COLLECTOR na LOCAL HOST o tom, ze si importoval do svojho APARTMENT PROXY na COM OBJECT. To znaci, ze DISTRIBUTED GARBAGE COLLECTOR na LOCAL HOST ma informacie aj o tom ktore OID exportovane z ktorych APARTMENTS na REMOTE HOSTS.
+   !!! D. REMOTE HOST, ktory drzi PROXY na COM OBJECT na LOCAL HOST pravidelne vykonava RPC PINGS na LOCAL HOST. Tie zachytava DISTRIBUTED GARBAGE COLLECTOR a podla nich LOCAL HOST vie, ze REMOTE HOST PROXY je STALE AKTIVNE. Standardny TIMEOUT pre tieto RPC PINGS je 2 minuty.
+   !!! E. Ak DISTRIBUTED GARBAGE COLLECTOR na LOCAL HOST NEOBRDZI 3 za sebou nasledujuce RPC PINGS, od PROXY, tak je dane PROXY povazovane za NEFUNKCNE. DISTRIBUTED GARBAGE COLLECTOR zasle vsetkym STUB MANAGERS, na ktore sa PROXY referovalo spravu, ze PROXY je NEFUNKCNE. STUB MANAGERS znizia hodnotu svojich COUNTERS a ak tieto dosiahnu hodnotu 0, tak dane STUB MANAGERS i COM OBJECTS su ODSTRANENE z PAMATE.
+   !!! F. Ak DISTRIBUTED GARBAGE COLLECTOR na REMOTE HOST detekuje, ze PROCESS, ktory obsahoval PROXIES je DEAD, zasiela pri najblizsom RPC PING do DISTRIBUTED GARBAGE COLLECTOR na LOCAL HOST informaciu o tom, ze dane PROXY je DEAD a teda DISTRIBUTED GARBAGE COLLECTOR na LOCAL HOST moze informovat prislusne STUB MANAGERS, ktore znizia hodnotu COUNTER, pricom ak ten dosiahne hodnotu 0, tak tak dane STUB MANAGERS i COM OBJECTS su ODSTRANENE z PAMATE.
+!!! 54. FUNCTION CoReleaseMarshalData() umoznuje uvolnit DATA asociovane v COM SYSTEM (DISTRIBUTED GARBAGE COLLECTOR), ak sa dany MARSHALED COM INTERFACE uz viac nepouziva. Typicky sa pouziva ak CoMarshalInterface() je volany s FLAGS MSHLFLAGS_TABLEWEAK a MSHLFLAGS_TABLESTRONG. Ak sa tato METHOD ZABUDNE ZAVOLAT, tak PROXY na COM OBJECT bude uzatvorene az UZATVORENI APARTMENT cez CoUninitialize(), alebo ked DISTRIBUTED GARBAGE COLLECTOR detekuje PAD PROCESU ci stratu komunikacie s REMOTE HOST.
+55. FUNCTION CoLockObjectExternal() umoznuje inkrementovat, alebo dekrementovat COUNTER LOCAL OBJECT vytvoreny zvycajne cez MSHLFLAGS_TABLEWEAK, tak aby nebol z DISTRIBUTED GARBAGE COLLECTOR odstraneny.
+56. FUNCTION CoDisconnectObject() umoznuje prinutit DISTRIBUTED GARBAGE COLLECTOR, aby ODSTRANIL dany COM OBJECT a to aj ked nan existuje REFERENCIE z PROXIES z INYCH APARTMENTS. Je casto volana, ked PROCESS, ktory obsahuje COM OBJECT na ktory existuju PROXIES z REMOTE HOST je UKOCENY. Vdaka volaniu FUNCTION CoDisconnectObject() sa zabrani, aby COM OBJECT z REMOTE HOST bol volany aj ked uz COM OBJECT bol ZLIKVIDOVANY.
+!!! 57. COM INTERFACE IExternalConnection ak je implementovany COM OBJECT umoznuje, aby bol COM OBJECT notifikovany o VYTVARANI a UVOLNOVANI PROXY OBJECTS z INYCH APARTMENTS. Vdaka tomu moze COM OBJECT detekovat stav, ked nan NEEXISTUJE pripojeny ZIADEN PROXY OBJECT co moze byt v niektorych scenaroch, najma pri implementacii OUT-OF-PROCESS SERVERS dolezite. Plati, ze pocet volani AddConnection() a ReleaseConnection() NEKORESPONDUJE 1:1 s poctom EXTERNYCH PROXIES. Avsak je GARANTOVANE, ze ak existuje aspon 1 EXTERNAL PROXY, tak hodnota COUNTER>0 a ak neexistuje ani 1 EXTERNAL OBJECT tak hodnota COUNTER==0.
+!!! 58. FUNCTION CoGetStandardMarshal() vytvara instanciu STANDARD MARHSALER.
+!!!!! 59. CUSTOM MARSHALLING sa realizuje tak, ze COM OBJECT implementuje COM INTERFACE IMarshal. Pri CUSTOM MARSHALLING je nutne implementovat nasledujuce komponenty.
+   A. COM OBJECT, ktory implementuje CUSTOM MARSHALLING MUSI IMPLEMENTOVAT COM INTERFACE IMarshal.
+   B. PROXY OBJECT, ktory realizuje komunikaciu medzi APARTMENTS (PROCESSES, HOSTS). I PROXY OBJECT MUSI IMPLEMENTOVAT IMarshal (MINIMALNE METHODS IMarshal::GetUnmarshalClass() a IMarshal::UnmarshalInterface()).
+   !!!!! C. Velmi casto COM OBJECT je ZAROVEN aj PROXY OBJECT. V tomto pripade MUSI IMarshal::GetUnmarshalClass() COM OBJECT vratit CLSID SAMEHO SEBA (COM OBJECT).
+!!!!! 60. Pri CUSTOM MARSHALLING COM OBJECT je realizovany v nasledujucich krokoch. (COM OBJECT je oznacovany ako XXX).
+   A. Na COM SERVERI COM SYSTEM zisti volanim XXX::QueryInterface() ci XXX implementuje CUSTOM MARSHALLING.
+   !!!!! B. Na COM SERVERI COM SYSTEM zavola METHOD XXX::IMarshal::GetUnmarshalClass(). Tato METHOD musi vratit CLSID na COM OBJECT, ktory bude reprezentovat PROXY OBJECT k XXX. VELMI CASTO XXX ZAROVEN sluzi aj ako PROXY OBJECT a vtedy XXX::IMarshal::GetUnmarshalClass() musi vratit SVOJE VLASTNE CLSID.
+   !!! C. Na COM SERVERI COM SYSTEM ulozi CLSID PROXY OBJECT do IStream, ktory neskor prenesie do CLIENT.
+   D. Na COM SERVERI COM SYSTEM zavola XXX::IMarshal::GetMarshalSizeMax(), ktory musi vratit POCET BYTES, ktore sa budu ukladat do IStream, ktory neskor prenesie do CLIENT.
+   !!!!! E. Na COM SERVERI COM SYSTEM zavola XXX::IMarshal::MarshalInterface(), ktory musi ULOZIT CUSTOM DATA do IStream. IStream sa neskor prenesie do CLIENT. Do IStream sa spravidla prenasaju BUD data potrebne pre PROXY OBJECT, aby mohol komunikovat s XXX, ALEBO pri MARSHAL-BY-VALUE sa ukladaju FIELDS XXX (jeho interny stav), ktory je potom preneseny na CLIENT.
+   F. COM SYSTEM zabezpeci pomocou RPC prenos IStream z COM SERVER APARTMENT do CLIENT APARTMENT.
+   G. Na CLIENT COM SYSTEM precita IStream a nacita z neho hodnotu CLSID, ktore odkazuje na COM OBJECT reprezenujuci PROXY OBJECT.
+   !!!!! H. Na CLIENT COM SYSTEM vytvori z CLSID ulozeneho v IStream instanciu PROXY OBJECT. PROXY OBJECT MUSI IMPLEMENTOVAT IMarshal. Ak XXX sluzi TIEZ ako PROXY OBJECT, tak to nie je problem, kedze XXX implementuje IMarshal.
+   !!!!! I. Na CLIENT COM SYSTEM zavola METHOD PROXY::IMarshal::UnmarshalInterface(). Cielom tejto METHOD je PARSOVAT IStream a ziskat z neho DATA, ktore PROXY OBJECT potrebuje, aby mohol zavolat XXX na COM SERVER. Pri MARSHAL-BY-VALUE IStream obsahuje PRIAMO FIELDS XXX, ktore si PROXY OBJECT (kopia XXX) ulozi do svojich FIELDS.
+   !!!!! J. Ak CLIENT zavola niektoru z METHODS XXX, tak tato METHOD je volana na PROXY OBJECT. KLUCOVE JE, ze je CISTO ZALEZITOSTOU PROXY OBJECT ako sa spoji s XXX na COM SERVER. Ak su CLIENT a COM SERVER na INOM HOST, tak je NUTNA implementacia SIETOVEJ KOMUNIKACIE. Tato komunikacia je CISTO ZALEZITOST CUSTOM PROXY OBJECT a teda si ju programator implementujuci CUSTOM MARSHALLING MUSI IMPLEMENTOVAT SAM. V pripade MARSHAL-BY-VALUE je situacia jednoduchsia, pretoze PROXY OBJECT je vlastne LOKALNA KOPIA XXX a teda SIETOVA KOMUNIKACIA NIE JE POTREBNA.
+!!! 61. FREE THREADED MARSHALLING je technika, ktora umoznuje, aby COM OBJECTS s 'BOTH' a 'FREE' APARTMENT MODELS (su THREAD-SAFE) NEMUSELI pouzivat PROXY OBJECTS pre INTRA PROCESS CLIENTS a namiesto toho pouzivali RAW POINTERS na COM OBJECTS a tym bol pristup k takymto RYCHLEJSI. FTM je realizovany nasledujucim sposobom.
+   A. FUNCTION CoCreateFreeThreadedMarshaler() vytvara instanciu FTM. FTM je CUSTOM MARSHALER (IMarshal) implementujuci techniku FREE THREADED MARSHALLING.
+   B. COM OBJECT, ktory chce implementovat FTM musi vykonat AGGREGATION FTM. To znamena, ze musi v QueryInterface() vracat pre dotaz na COM INTERFACE IMarshal vratit POINTER na FTM. Instancia FTM je zvycajne vytvorena ako FIELD COM OBJECT v CONSTRUCTOR COM OBJECT a odstranena je v DESCTRUCTOR COM OBJECT.
+   C. FTM realizuje CUSTOM MARSHALLING s vyuzitim techniky FREE THREADED MARSHALLING.
+   !!!!! D. Ak pride poziadavka na MARSHALLING do APARTMENT v ramci TOHO ISTEHO PROCESSU, tak FTM ulozi do STREAM RAW POINTER na COM OBJECT, NAMIESTO vykonania SKUTOCNEHO MARSHALLINGU. Pri UNMARSHALINGU FTM vyberie zo STREAM RAW POINTER na COM OBJECT a ten vrati NAMIESTO PROXY. Vdaka FTM teda CLIENT moze pristupovat ku THREAD-SAFE COM OBJECT z LUBOVOLNEHO APARTMENT PRIAMO cez RAW POINTER, bez ZBYTOCNEHO pouzitia PROXY OBJECT.
+   !!! E. Ak pride poziadavka na MARSHALLING do APARTMENT v INOM PROCESSE, tak FTM realizuje klasicky STANDARD MARSHALLING, coho vysledkom je vytvorenie PROXY OBJECT pri UNMARSHALINGU. Pricina je samozrejme jednoducha. RAW POINTERS su platne IBA v ramci PROCESSU, ktory COM OBJECT VYTVORIL a nie v ramci INEHO PROCESSU.
+!!! 62. COM OBJECT ak ma podporovat FTM musi implementovat nasledujuce kroky.
+   !!! A. Pomocou FUNCTION CoCreateFreeThreadedMarshaler() vytvorit instanciu FTM, ktora vykonava AGGREGATION COM OBJECT (THIS). Najjednoduchsie je vytvorit FTM priamo v CONSTRUCTOR COM OBJECT.
+   B. Pri skonceni zivotnosti COM OBJECT podporujuceho FTM je treba uvolnit instanciu FTM volanim IUnknown::Release(). Zvycajne sa to robit v DESTRUCTOR COM OBJECT.
+   C. Upravit IUnknown::QueryInterface(), aby pri dotaze na IMarshal volal FTM->QueryInterface().
+!!!!! 63. ZASADNE OBMEDZENIE FTM spociva v tom, ze ak COM OBJECT vyuzivajuci FTM ma COM INTERFACE FIELDS, ktore bezia v STA, moze dojst k NARUSENIU COM APARTMENT RULES. Nasledujuce body ukazuju priklad takehoto problemu.
+   A. COM OBJECT CParent beziaci v MTA obsahuje FIELDS typu CChild, kde CChild je COM OBJECT vyzadujuci STA.
+   B. Ak CLIENT vytvori MTA, a vytvori v nom CParent, tak ziska PRIAMY POINTER na CParent.
+   !!! C. CParent vytvori instancie CChild a ulozi ich do FIELDS CParent. Kedze CLIENT bezi v MTA a CChild vyzaduje STA, vytvori sa NOVY STA APARTMENT v ktorom budu CChild BEZAT. CParent tak ziska POINTER na PROXY OBJECTS referujuce na CChild.
+   !!!!! D. Ak CLIENT vytvori NOVY STA APARTMENT THREAD a prenesie don POINTER na CParent, kedze sa pouzil FTM, tak sa NEVYTVORI PROXY OBJECT, ale v do STA THREADU sa posle PRIAMY POINTER na CParent.
+   !!!!! E. Ked teraz CLIENT z STA APARTMENT zavola METHOD CParent, ktora INTERNE VYUZIVA CChild COM OBJECTS dojde k tomu, ze k CChild COM OBJECTS beziacom vo svojich VLASTNYCH STA APARTMENTS sa pokusim pristupit z INEHO STA APARTMENT. PROXY OBJECT (CParent obsahuje PROXY OBJECTS na CChild) ZISTI, ze doslo k pokusu o PREKROCENIE HRANIC APARTMENTS a pri volani takejto METHOD VRATI CHYBU RPC_E_WRONG_THREAD.
+!!!!! 64. Riesenim problemu s FTM obsahujucom POINTERS na INTERNE COM OBJECTS je ulozit INTERNE COM OBJECTS do APARTMENT-NEUTRAL podoby, napriklad do GIT a pri KAZDOM DOTAZE na INTERNE COM OBJECTS sa vrati POINTER z GIT. Tento POINTER uz bude MARSHALLED do SPRAVNEHO APARTMENT a teda volanie METHOD vyuzivajucej INTERNE COM OBJECTS bude KOREKTNE.
+//------------------------------------------------------------------------------------------------------
+Poznamky k vytvoreniu PROXY/STUB DLL.
+
+!!!!! 1. Pri COM INTERFACE, ktory je ma byt MARSHALED NESMIE byt nastaveny ATTRIBUTE [local] a zaroven (uplne NELOGICKY) NESMIE byt definovany v SCOPE 'library', ale MIMO NEHO.
+2. Na kompilaciu PROXY STUB DLL pre X64 je potrebne vykonat nasledujuce kroky.
+   A. Vytvorit cisty DLL PROJECT (tu napriklad FreeThreadingModelPSServer).
+   B. V projekte, kde sa generuju z XXX.IDL .H a .C FILES (tu napriklad FreeThreadingModelServer) je NUTNE nastavit [Project Properties -> MIDL -> General -> Target Environment] na [Microsoft Windows 64-bit on x64 (/env x64)].
+   C. Vykonat kompilaciu IDL FILE.
+   D. Do DLL PROJECT (tu napriklad FreeThreadingModelPSServer) pridat subory XXX_H.H, XXX_I.C, XXX_P.C a DLLDATA.C.
+   E. Do DLL PROJECT (tu napriklad FreeThreadingModelPSServer) vlozit .DEF FILE obsahujucu DllGetClassObject, DllCanUnloadNow, DllRegisterServer a DllUnregisterServer.
+   F. Do DLL PROJECT (tu napriklad FreeThreadingModelPSServer) vlozit DIREKTIVU REGISTER_PROXY_DLL. Bez pridania tejto direktivy sa NEVYTVORIA DllRegisterServer() a DllUnregisterServer() FUNCTIONS.
+   G. V DLL PROJECT (tu napriklad FreeThreadingModelPSServer) do LINKERA vlozit [RpcRT4.lib].
+   H. Spustit kompilaciu DLL PROJECT.
+   I. Zaregistrovat DLL PROJECT (tu napriklad FreeThreadingModelPSServer) cez REGSVR32.EXE.
+//------------------------------------------------------------------------------------------------------

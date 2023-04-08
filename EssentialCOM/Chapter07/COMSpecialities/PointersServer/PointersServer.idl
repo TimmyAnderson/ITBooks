@@ -1,0 +1,53 @@
+//------------------------------------------------------------------------------------------------------
+import "oaidl.idl";
+import "ocidl.idl";
+//------------------------------------------------------------------------------------------------------
+[
+	uuid(E4768B86-34C3-4228-A517-A6D3D2F48D09)
+]
+struct SName
+{
+	// !!!!! POINTER na MName je EMBEDDED POINTER, ktory je ALOKOVANY COM OBJECT.
+	[string]
+	wchar_t*													MName;
+};
+//------------------------------------------------------------------------------------------------------
+//------------------------------------------------------------------------------------------------------
+//------------------------------------------------------------------------------------------------------
+[
+    object,
+	uuid(1C1DEA36-A300-49EA-9726-DE638A6F56C9),
+    pointer_default(unique),
+]
+interface IPointersTest : IUnknown
+{
+	HRESULT Dummy(void);
+	HRESULT NoAttributePointer([in] int* Pointer);
+	HRESULT RefAttributePointer([in,ref] int* Pointer);
+	HRESULT UniqueAttributePointer([in,unique] int* Pointer);
+	HRESULT NoPtrAttributePointer([in] int* Pointer1, [in] int* Pointer2);
+	HRESULT PtrAttributePointer([in,ptr] int* Pointer1, [in,ptr] int* Pointer2);
+	HRESULT MallocSpyTest([out] int** PointerToMallocData);
+	// !!! POINTER na SName je [out] TOP-LEVEL POINTER, ktory MUSI BYT ALOKOVANY CLIENTOM.
+	HRESULT MemoryAllocatedByServer([out] struct SName* Name);
+};
+//------------------------------------------------------------------------------------------------------
+//------------------------------------------------------------------------------------------------------
+//------------------------------------------------------------------------------------------------------
+[
+	uuid(818813F7-6E0A-4EDB-AC1E-A04604F1DBE6),
+	version(1.0),
+]
+library PointersServerLib
+{
+	importlib("stdole2.tlb");
+
+    [
+        uuid(FF456034-3E42-4591-B1A4-382A1470F96D),
+    ]
+	coclass PointersObject
+	{
+		[default] interface IPointersTest;
+	};
+};
+//------------------------------------------------------------------------------------------------------

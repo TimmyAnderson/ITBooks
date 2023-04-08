@@ -1,0 +1,54 @@
+//------------------------------------------------------------------------------------------------------
+1. Solution demonstruje sposoby kompozicie COM OBJECTS a funkcionalitu IUnknown.
+2. AGGREGATION je sada RULES, ktore musi COM OBJECT splnat, aby mohli spolu kooperovat na BINARNEJ UROVNI, bez nutnosti mat SOURCE CODES pri vyvoji INNER, alebo OUTER AGGREGATION COM OBJECTS.
+!!! 3. AGGREGATION riesi 2 zasadne problemy BINARY COMPOSITION.
+   A. INNER COM OBJECT MUSI vediet o existencii OUTER COM OBJECT, iba jeho implementacia QueryInterface() by nedokazala vratit POINTER na COM INTERFACES z OUTER COM OBJECT.
+   B. INNER a OUTER COM OBJECT implementacia QueryInterface() ak by o sebe nevedeli, by vracali ROZDIELNE POINTERS na IUnknown COM INTERFACE co je porusenim specifikacie COM OBJECTS.
+4. AGGREGATION vyzaduje aby INNER COM OBJECT splnal nasledujuce podmienky.
+   A. Prijimal instanciu OUTER COM OBJECT cez METHOD IClassFactory::CreateInstance().
+   !!! B. Ak INNER COM OBJECT je AGGREGATED, musi odosielat volania METHODS AddRef(), Release() a QueryInterface() na OUTER COM OBJECT.
+   C. Ak INNER COM OBJECT nie je AGGREGATED, standardne ako kazdy iny COM OBJECT musi implementovat AddRef(), Release() a QueryInterface() METHODS s pocitanim REFERENCES.
+   !!!!! D. INNER COM OBJECT musi obsahovat okrem STANDARDNEJ implementacie IUnknown, ktora vola IUnknown OUTER COM OBJECT aj SPECIALIZOVANU verziu IUnknown, ktora NEVOLA IUnknown OUTER COM OBJECT.
+5. AGGREGATION vyzaduje aby OUTER COM OBJECT splnal nasledujuce podmienky.
+   A. Pri vytvarani instancie INNER COM OBJECT musi do INNER COM OBJECT zaslat POINTER na svoj IUnknown COM INTERFACE. FUNCTIONS CoCreateInstance() a CoCreateInstanceEx() umoznuju zaslat v svojom PARAMETRI tento POINTER.
+   B. Implementacia QueryInterface() musi pre VSETKY COM INTERFACES INNER COM OBJECT volat QueryInterface() INNER COM OBJECT.
+!!! 6. Implementacia INNER COM OBJECT sa realizuje v nasledujucich krokoch.
+   !!! A. Definuje sa COM INTERFACE INonAggregationUnknown, ktore musi definovat SYNTAKTICKY aj SEMANTICKY IDENTICKE METHODS ako IUnknown, aj ked mena METHODS su odlisne. Takisto PORADIE musi byt ZHODNE s poradim IUnknown. Tato ZHODA je KLUCOVA, aby na BINARNEJ UROVNI bol IUnknown a INonAggregationUnknown IDENTICKY. Preto poradie METHODS MUSI BYT ZHODNE.
+   B. Definuje sa COM OBJECT, ktory implementuje okrem CUSTOM INTERFACES a IUnknown aj INonAggregationUnknown.
+   C. COM OBJECT musi obsahovat POINTER na OUTER COM OBJECT.
+   D. Implementacia IUnknown MUSI robit FORWARDING volani do OUTER COM OBJECT, ktory je ulozeny vo FIELD COM OBJECT.
+   E. Implementacia INonAggregationUnknown obsahuje STANDARDNU IMPLEMENTACIU IUnknown INTERFACE s REFERENCE COUNTING.
+   !!! F. CONTRUCTOR COM OBJECT musi prijimat ako PARAMETER POINTER na OUTER COM OBJECT. Ak je nastaveny na NULL, tak sa do POINTER na OUTER COM OBJECT musi byt nastaveny na INonAggregationUnknown. CONSTRUCTOR vsak NESMIE volat AddRef() OUTER COM OBJECT.
+   G. COM OBJECT IClassFactory musi prijimat POINTER na COM INTERFACE OUTER COM OBJECT a posuvat ho do CONSTRUCTOR COM OBJECT.
+!!! 8. Implementacia OUTER COM OBJECT sa realizuje v nasledujucich krokoch.
+   !!! A. METHOD QueryInterface() OUTER COM OBJECT musi pre INTERFACES INNER COM OBJECT volat QueryInterface() INNER COM OBJECT, pricom sa NESMIE volat AddRef() OUTER COM OBJECT, pretoze QueryInterface() INNER COM OBJECT vykona inkrementaciu REFERENCE COUNTER.
+   B. OUTER COM OBJECT musi vytvorit INSTANCIU INNER COM OBJECT bud v CONSTRUCTOR, alebo v inej METHOD, ktoru explicitne zavola CLASS OBJECT (CLASS FACTORY).
+   C. OUTER COM OBJECT musi v DESTRUCTOR volat Release() INNER COM OBJECT.
+!!!!! 8. V AGGREGATION si INNER aj OUTER COM OBJECTS pocitaju SAMI svoj REFERENCE COUNTER.
+9. CONTAINMENT je technika, kedy OUTER COM OBJECT vytvara instanciu INNER COM OBJECT a vystavuje jeho metody implementovanim INNER COM INTERFACES. METHODS INNER COM INTERFACES vykonavaju FORWARDING METHODS na INNER COM OBJECT.
+!!! 10. TEAR-OFF INTERFACES je technika pouzivana v COM (aj ked COM pre nu nema ZIADNU EXTRA PODPORU), ktora umoznuje znizit mnozstvo PAMATE, ktoru COM OBJECT ALOKUJE. Problem implementacie COM OBJECT s VELKYM POCTOM COM INTERFACES spociva v tom, ze KAZDY COM INTERFACE, ktory COM OBJECT implementuje znamena zvacsenie COM OBJECT o SIZEOF(POINTER) v ktorom je V-TABLE daneho INTERFACE. Takisto FIELDS kazdeho COM OBJECT su alokovane VZDY aj ked sa niektore COM INTERFACES pouzivaju ZRIEDKAVEJSIE ako ine. Riesenim je DYNAMICKA ALOKACIA SUB COM OBJECTS, ktore implementuju konkretne COM INTERFACES z MAIN COM OBJECT. Taketo INTERFACES sa nazyvaju TEAR-OFF INTERFACES a ich implementaciu je mozne realizovat nasledujucim sposobom.
+   A. COM OBJECT implementuje iba tie COM INTERFACES, ktore su CASTO POUZIVANE. Iba z TYCHTO COM INTERFACES COM OBJECT dedi.
+   B. MALO POUZIVANE COM INTERFACES (TEAR-OFF INTERFACES) su implementovane v OSOBITNYCH C++ CLASSES. Je mozne implementovat VSETKY TEAR-OFF INTERFACES v JEDNOM CLASS, alebo kludne moze mat aj KAZDY TEAR-OFF INTERFACE v OSOBITNOM C++ CLASS.
+   C. COM OBJECT obsahuje pre KAZDY TEAR-OFF CLASS POINTER. Tento POINTER ma pri vytvoreni COM OBJECT hodnotu NULL a je alokovany az pri PRVOM DOTAZE cez QueryInterface() na TEAR-OFF INTERFACES.
+   !!!!! D. METHOD QueryInterface() v COM OBJECT pri dotaze na TEAR-OFF INTERFACE skontroluje ci jeho FIELD POINTER je NULL a ak ANO, tak vytvori novu instanciu CLASS implementujucej TEAR-OFF INTERFACE a zaroven ju ulozi do FIELD. Zaroven MUSI 2 KRAT volat AddRef() na CLASS implementujucu TEAR-OFF INTERFACE. Raz kvoli tomu, ze je tento INTERFACE vrateny z QueryInterface() a druhy krat preto, lebo POINTER je ulozeny vo FIELD.
+   !!!!! E. METHOD QueryInterface() v COM OBJECT pri dotaze na TEAR-OFF INTERFACE skontroluje ci jeho FIELD POINTER je NULL a ak NIE, zavola QueryInterface() na UZ VYTVORENU CLASS implementujucu TEAR-OFF INTERFACE.
+   F. CONTRUCTOR CLASS implementujucej TEAR-OFF INTERFACE si ulozi POINTER na COM OBJECT a zaroven vola AddRef() COM OBJECT.
+   G. DESTRUCTOR CLASS implementujucej TEAR-OFF INTERFACE vola Release() COM OBJECT.
+   !!! H. Implementacia IUnknown v CLASS implementujucej TEAR-OFF INTERFACE je STANDARDNOU implementaciou IUknown s JEDINYM ROZDIELOM, ze pre VSETKY NON TEAR-OFF INTERFACES vola METHOD QueryInterface() METHOD QueryInterface() COM OBJECT.
+   !!! I. DESTRUCTOR COM OBJECT uvolni volanim Release() CLASS implementujucej TEAR-OFF INTERFACE ak ma NON-NULL hodnotu.
+!!! 11. Ak 2 COM INTERFACES definuju TU ISTU METHODS, pri implementacii COM OBJECT, ktora dedi z OBOCH COM INTERFACES dojde k tomu, ze implementacia tejto METHOD v COM OBJECT bude SPOLOCNA pre OBE COM INTERFACES. Ak toto NECHCEM, najjednoduchsie je pre KAZDY COM INTERFACES obsahujucu danu METHOD vytvorit ABSTRACT CLASS, ktora implementuje KONFLIKTU METODS a to tak, ze zavola ABSTRACT METHOD s INYM NAZVOM. Tieto ABSTRACT METHODS, ktore vzniknu zo vsetkych takto implementovanych COM INTERFACES staci implementovat v COM OBJECT a pre kazdy COM INTERFACE ziskam VLASTNU IMPLEMENTACIU KONFIKTNEJ METHOD.
+!!! 12. COMPOSITION je technika (COM ju NIJAKO specialne nepodporuje), ktora umoznuje, aby KAZDY COM INTERFACE bol implementovany vo VLASTNEJ C++ CLASS. To je vyhodne napriklad ako niektore COM INTERFACES obsahuju RESOURCES, ktore zaberaju VELA PAMATE a pritom dany COM INTERFACE nie je az tak casto vyuzivany. Vdaka tejto technike je mozne PRESNE ZISTIT, kedy je vytvarana PRVA INSTANCIA COM INTERFACE aj to kedy je UVOLNOVANA POSLEDNA INSTANCIA COM INTEFACE a pri tychto operaciach je mozne ALOKOVAT a DEALOKOVAT dany RESOURCE. COMPOSITION je implementovana nasledovne.
+   A. COM OBJECT NEDEDI zo ZIADNEHO COM INTERFACE, ani IUnknown.
+   B. COM OBJECT aj ked NEDEDI z IUnknown obsahuje implementaciu IUknown METHODS.
+   C. COM OBJECT obsahuje pre KAZDY COM INTERFACE FIELD (VALUE, NIE POINTER FIELD) odkazujuci na CLASS implementujuci dany COM INTERFACE.
+   D. METHOD QueryInterface() COM OBJECT vracia POINTERS na FIELDS, ktore reprezentuju implementacie danych COM INTERFACES.
+   !!! E. METHODS QueryInterface(), AddRef() a Relase() CLASSES implementujucich COM INTERFACES robia FORWARING na QueryInterface(), AddRef() a Relase() COM OBJECT. Prave AddRef() a Relase() CLASSES implementujucich COM INTERFACES umoznuje DETEKOVAT kedy sa vytvara PRVA INSTANCIA COM INTERFACE i to kedy sa ODSTRANUJE POSLEDNA INSTANCIA COM INTERFACE.
+13. Pre METHOD IUnknown::QueryInterface() platia nasledujuce pravidla.
+   A. METHOD QueryInterface() je SYMMETRIC. To znamena, ze ked z INTERFACE_1 ziskam INTERFACE_2, tak musim byt PRE TEN ISTY COM OBJECT schopny z INTERFACE_2 ziskat INTERFACE_1.
+   B. METHOD QueryInterface() je TRANSITIVE. To znamena, ze ked z INTERFACE_1 ziskam INTERFACE_2 a z INTERFACE_2 ziskam INTERFACE_3, tak musim byt schopny aj z INTERFACE_1 ziskat INTERFACE_3.
+   C. METHOD QueryInterface() je REFLEXIVE. To znamena, ze z INTERFACE_1 musim byt schopny ziskat INTERFACE_1.
+   !!! D. METHOD QueryInterface() musi vracat pocas CELEJ zivotnosti COM OBJECT vzdy TU ISTU SADU COM INTERFACES. Teda COM INTERFACES NEMOZU byt DYNAMICKY PRIDAVANE, alebo UBERANE. Avsak 2 INSTANCIE toho ISTEHO COM OBJECT MOZU vracat INE COM INTERFACES, avsak po VYTVORENI COM OBJECT sa uz sada podporovanych COM INTERFACES NESMIE MENIT.
+   !!! E. Aj ked METHOD QueryInterface() pocas CELEJ zivotnosti COM OBJECT vzdy TU ISTU SADU COM INTERFACES NEZNAMENA to, ze vratene POINTERS ukazuju vzdy na ten isty OBJECT. Pri DCOM toto NEPLATI a vo vseobecnosti plati, ze METHOD QueryInterface() moze na 2 dotazy pre TEN ISTY COM INTERFACE vratit ROZLICNE POINTERS. Toto vsak NEPLATI pre IUnknown, kde pri dotaze na IUnknown musi byt vrateny VZDY TEN ISTY POINTER.
+   !!! F. METHOD QueryInterface() pri dotaze na IUnknown (IBA IUnknown) musi VZDY VRACAT TEN ISTY POINTER.
+   !!!!! G. V METHOD QueryInterface() by sa volanie AddRef() malo vykonavat nasledujucim kodom [((IUnknown*)(*ReturnPointer))->AddRef()]. Tento kod zabezpecuje, ze sa AddRef() VZDY zavola na COM INTERFACE, ktory je vrateny do CALLER METHOD.
+//------------------------------------------------------------------------------------------------------

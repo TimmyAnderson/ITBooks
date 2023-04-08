@@ -1,0 +1,122 @@
+//------------------------------------------------------------------------------------------------------
+import "oaidl.idl";
+import "ocidl.idl";
+//------------------------------------------------------------------------------------------------------
+[
+	uuid(53B3B9B2-D565-4608-A8DD-CA9E767448D4)
+]
+struct SName
+{
+	[string]
+	wchar_t*													MFirstName;
+	[string]
+	wchar_t*													MLastName;
+	int															MAge;
+};
+//------------------------------------------------------------------------------------------------------
+//------------------------------------------------------------------------------------------------------
+//------------------------------------------------------------------------------------------------------
+union UAge
+{
+	[case(1)]
+	int															MIntAge;
+	[case(2)]
+	long														MLongAge;
+	[case(3)]
+	double														MDouble;
+};
+//------------------------------------------------------------------------------------------------------
+//------------------------------------------------------------------------------------------------------
+//------------------------------------------------------------------------------------------------------
+[
+    object,
+	uuid(66F4B6C1-2A1D-4CA7-8CEC-2A2369F583C4),
+    pointer_default(unique),
+    local
+]
+interface IName : IUnknown
+{
+	HRESULT SetFirstName([in,string] wchar_t* FirstName);
+	HRESULT SetLastName([in,string] wchar_t* LastName);
+	HRESULT SetAge([in] int Age);
+	// ALTERNATIVNE sa da pouzit aj [HRESULT GetFirstName([in] int BufferSize, [out,retval,size_is(BufferSize)] wchar_t* FirstName)].
+	HRESULT GetFirstName([in] int BufferSize, [out,string,retval] wchar_t** FirstName);
+	// ALTERNATIVNE sa da pouzit aj [HRESULT GetLastName([in] int BufferSize, [out,retval,size_is(BufferSize)] wchar_t* LastName)].
+	HRESULT GetLastName([in] int BufferSize, [out,string,retval] wchar_t** LastName);
+	HRESULT GetAge([out,retval] int* Age);
+};
+//------------------------------------------------------------------------------------------------------
+//------------------------------------------------------------------------------------------------------
+//------------------------------------------------------------------------------------------------------
+[
+    object,
+	uuid(9BF6F5F0-C48B-4919-A73D-FA28F05C60BE),
+    pointer_default(unique),
+    local
+]
+interface IToString : IUnknown
+{
+	HRESULT ToString(void);
+};
+//------------------------------------------------------------------------------------------------------
+//------------------------------------------------------------------------------------------------------
+//------------------------------------------------------------------------------------------------------
+[
+    object,
+	uuid(CB02484F-0B97-47F4-A2E7-709B2575D98D),
+    pointer_default(unique),
+    local
+]
+interface ITest : IUnknown
+{
+	HRESULT SetString([in] BSTR Text);
+	HRESULT GetString([out,retval] BSTR* Text);
+	HRESULT SetName([in] struct SName Name);
+	HRESULT GetName([out,retval] struct SName* Name);
+	HRESULT SetUnion([in] int DiscriminatorField, [in,switch_is(DiscriminatorField)] union UAge Age);
+	HRESULT GetUnion([in] int DiscriminatorField, [out,switch_is(DiscriminatorField),retval] union UAge* Age);
+	HRESULT SetVariant([in] VARIANT Value);
+	HRESULT GetVariant([out,retval] VARIANT* Value);
+	HRESULT Print1([in] IToString* Interface);
+	HRESULT Print2([in] REFIID InterfaceID, [in,iid_is(InterfaceID)] IUnknown* Interface);
+	[propput]
+	HRESULT MyProperty([in] int Value);
+	[propget]
+	HRESULT MyProperty([out,retval] int* Value);
+};
+//------------------------------------------------------------------------------------------------------
+//------------------------------------------------------------------------------------------------------
+//------------------------------------------------------------------------------------------------------
+[
+    object,
+	uuid(A73BCD2D-2095-4D12-8CC0-4E9045FBF461),
+    pointer_default(unique),
+    local
+]
+interface IExceptionTest : IUnknown
+{
+	HRESULT ThrowException([in] boolean Throw);
+};
+//------------------------------------------------------------------------------------------------------
+//------------------------------------------------------------------------------------------------------
+//------------------------------------------------------------------------------------------------------
+[
+	uuid(8D006922-4404-464A-A608-3F34F98E9D9B),
+	version(1.0),
+]
+library MultiInterfaceCOMServerLib
+{
+	importlib("stdole2.tlb");
+
+    [
+        uuid(888F3A01-C4DB-4C00-A459-153361D3CF81),
+    ]
+	coclass MultiInterfaceCOM
+	{
+		[default] interface IName;
+		interface IToString;
+		interface ITest;
+		interface IExceptionTest;
+	};
+};
+//------------------------------------------------------------------------------------------------------

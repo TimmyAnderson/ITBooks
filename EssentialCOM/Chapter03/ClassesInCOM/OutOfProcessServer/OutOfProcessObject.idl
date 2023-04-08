@@ -1,0 +1,44 @@
+//------------------------------------------------------------------------------------------------------
+import "oaidl.idl";
+import "ocidl.idl";
+//------------------------------------------------------------------------------------------------------
+//------------------------------------------------------------------------------------------------------
+//------------------------------------------------------------------------------------------------------
+[
+	uuid(ABD82CD5-601A-4D20-BB16-05FB996B3742),
+	version(1.0),
+]
+library OutOfProcessServerLib
+{
+	importlib("stdole2.tlb");
+	[
+		object,
+		uuid(9146DF93-9AAD-4E0B-B185-2A2B49CA81B0),
+		pointer_default(unique),
+		local,
+		// !!! Aby MARSHALING prebehol spravne MUSI byt INTERFACE deklarovany ako 'oleautomation'. Inak by bolo nutne vytvorit STANDARD MARSHAL DLL (PROXY/STUB DLL).
+		oleautomation
+	]
+	// !!!!! Pri pouzivani 'oleautomation' je size_is() a length_is() NEPODPOROVANY a namiesto nich je treba pouzit BSTR a SAFEARRAY.
+	interface IOutOfProcessName : IUnknown
+	{
+		HRESULT SetFirstName([in,string] BSTR FirstName);
+		HRESULT SetLastName([in,string] BSTR LastName);
+		HRESULT SetAge([in] int Age);
+		// !!!!! MARSHALING cez 'oleautomation' NEPODPORUJE size_is() a length_is() a namiesto toho je treba prenasat SAFEARRAY.
+		HRESULT GetFirstName([out,string,retval] BSTR* FirstName);
+		HRESULT GetLastName([out,string,retval] BSTR* LastName);
+		HRESULT GetAge([out,retval] int* Age);
+	};
+//------------------------------------------------------------------------------------------------------
+//------------------------------------------------------------------------------------------------------
+//------------------------------------------------------------------------------------------------------
+    [
+        uuid(85BB4CBC-1E27-425B-92E9-B23E4F8240C7),
+    ]
+	coclass OutOfProcessObject
+	{
+		[default] interface IOutOfProcessName;
+	};
+};
+//------------------------------------------------------------------------------------------------------

@@ -1,0 +1,200 @@
+//------------------------------------------------------------------------------------------------------
+1. Solution demonstruje zaklady COM technologie.
+2. MIDL.EXE je program, ktory umoznuje definovat COM INTERFACES vo formate .IDL FILES. MIDL.EXE generuje z XXX.IDL FILE nasledujuce FILES.
+   A. FILE XXX_H.H obsahuje definicie COM INTERFACES definovanych v XXX.IDL.
+   B. FILE XXX_I.C obsahuje definicie GUIDS COM INTERFACES, COM OBJECTS a TYPE LIBRARIES definovanych v XXX.IDL.
+   C. FILE XXX_P.C obsahuje definiciu INTERFACE MARSHALER vyuzivaneho pri MARSHALINGU COM INTERFACES.
+   D. FILE DLLDATA.C obsahuje INTERFACE MARSHALER INTERPROCESS SERVER CODE.
+   E. FILE XXX.TLB obsahuje definiciu TYPE LIBRARY (METADATA), ktora je vyuzivana ostatnymi programovacimi jazykmi (VB, Java) na importovanie COM INTERFACES, tak aby z tychto jazykov mohli byt COM OBJECTS pouzivane.
+!!! 4. FILES .TLB su KLUCOVE pre prenositelnost COM OBJECTS medzi viacerymi programovacimi jazykmi. KAZDY LANGUAGE, ktory ma podporovat COM, musi generovat nasledujuce FILES.
+   A. FILES .DLL/.EXE obsahuju kod COM OBJECTS. Tieto sa registruju v REGISTRY.
+   B. FILES .TLB obsahuju METADATA COM OBJECTS. Tieto .TLB FILES si OSTATNE LANGUAGES IMPORTUJU a pomocou nich sa dostavaju k DEKLARACIAM COM OBJECTS, ktore nasledne mozu vyuzivat.
+5. IDL FILES obsahuju 2 typy prikazov.
+   A. C-prikazy. Tieto popisuju COM INTERFACES s METHODS, STRUCTS a ENUMS.
+   B. ATTRIBUTES zapisane v [] v ktorom su oddelene znakom ','. Tieto sa aplikuju na COM INTERFACES, COM OBJECTS a TYPE LIBRARIES a popisuju ich chovanie i vlastnosti, ktore NIE JE MOZNE VYJADRIT pomocou C-SYNTAXE.
+6. V IDL je mozne definovat nasledujuce struktury.
+   A. INTERFACES. Obsahuju definicie COM INTERFACES.
+   B. CLASSES. Obsahuju definicie COM CLASSES.
+   C. STRUCTURES.
+   D. UNIONS.
+   E. ENUMERATIONS.
+   F. ARRAYS.
+   G. TYPEDEFS.
+7. METHOD PARAMETERS mozu byt oznacene nasledujucimi ATTRIBUTES.
+   A. ATTRIBUTE [in] oznacuje INPUT PARAMETER.
+   B. ATTRIBUTE [out] oznacuje OUTPUT PARAMETER. VALUE je prenasana JEDNOSMERNE z COM OBJECT do CLIENT. Pri prenose hodnoty z CLIENT do COM OBJECT NIE JE GARANTOVANE, ze sa hodnota prenesie.
+   C. ATTRIBUTES [in,out] oznacuju INPUT/OUTPUT PARAMETER. VALUE je prenasana OBOJSMERNE z CLIENT do COM OBJECT a z COM OBJECT do CLIENT.
+   D. ATTRIBUTE [retval] oznacuje PARAMETER, ktoreho VALUE sa pouzije ako RETURN VALUE. Niektore prostredia ako Java ci .NET dokazu identifikovat ATTRIBUTE [retval] a v CLIENT APPLICATIONS vo svojich PROXY OBJECTS na COM OBJECTS vracat tuto VALUE ako RETURN VALUE z METHOD COM OBJECT.
+!!! 8. METHODS COM INTERFACES MUSIA mat za RETURN VALUE hodnotu HRESULT. Pomocou HRESULT sa indikuju chybove hodnoty. COM CLIENTS RUNTIMES pomocou HRESULT mozu detekovat chyby a v pripade, ze dany LANGUAGE to umoznuje, napriklad generovat z tychto chyb EXCEPTIONS.
+9. HRESULT je 32 BITOVA VALUE, ktora je zlozena nasledujucim sposobom.
+   A. BIT 31 obsahuje TRUE, ak sa jedna ERROR a FALSE, ak operacie prebehla USPESNE.
+   B. BITS 29-30 su RESERVED BITS.
+   C. BITS 16-28 obsahuju FACILITY CODE, ktory indikuje TECHNOLOGY, ktora generovala HRESULT.
+   D. BITS 0-15 obsahuju INFORMATION CODE, ktory obsahuje kod stavu/chyby.
+10. Na indikaciu ci operacia skoncila uspesne je mozne pouzit nasledujuce MACROS.
+   A. SUCCEEDED(HRESULT) vracia TRUE ak operacia prebehla USPESNE, inak vracia FALSE.
+   B. FAILED(HRESULT) vracia TRUE ak operacia ZLYHALA, inak vracia TRUE.
+11. Pomocou MACRO MAKE_HRESULT(Severity,FacilityCode,InformationCode) je mozne vytvarat VALIDNE HRESULT CODES.
+12. Pre standardne systemove ERRORS je mozne ziskat textovy popis pomocou FUNCTION FormatMessage().
+13. Pri definovani INTERFACE v IDL pomocou IDL KEYWORD 'interface' je NUTNE aplikovat nan 2 POVINNE ATTRIBUTES.
+   A. ATTRIBUTE 'object' sluzi na indikaciu, ze INTERFACE je COM INTERFACE.
+   B. ATTRIBUTE uuid() sluzi na indikaciu GUID, ktory je asociovany s danym INTERFACE.
+   C. ATTRIBUTE 'local' sa pouziva pri definicii IUnknown a znamena LOCAL INTERFACE. V praxi to znaci, ze METHODS tohto INTERFACE NEMUSIA MAT ako RETURN VALUE hodnotu HRESULT - co je pripade IUnknown::AddRef() a IUnknown::Release().
+13. PROGRAMOVO je GUID mozne GENEROVAT pomocou FUNCTION CoCreateGuid().
+!!! 14. Pre STRUCT 'GUID' C++ definuje OPERATOR==, OPERATOR!= , INLINE FUNCTION IsEqualGUID() a MACROS IsEqualIID() a IsEqualCLSID(), ktore su iba SYNONYMA k FUNCTION IsEqualGUID().
+15. Zakladny INTERFACE COM technologie od ktoreho dedia VSETKY COM OBJECTS je IUnknown. Ma nasledujuce METHODS.
+   A. METHOD QueryInterface() umoznuje konverziu POINTER na COM OBJECT na iny COM INTERFACE, ktory dany COM OBJECT implementuje. Ak COM OBJECT dany COM INTERFACE IMPLEMENTUJE, tak QueryInterface() musi nastavit jeho hodnotu do [out] PARAMETER, zavolat AddRef() a vratit S_OK. Ak COM OBJECT dany COM INTERFACE NEIMPLEMENTUJE, tak [out] PARAMETER MUSI byt nastaveny na NULL a RETURN VALUE MUSI BYT E_NOINTERFACE.
+   B. METHOD AddRef() inkrementuje interny REFERENCE COUNTER. Vracia INKREMENTOVANU hodnotu REFERENCE COUNTER.
+   C. METHOD Release() dekrementuje interny REFERENCE COUNTER a v pripade, ze REFERENCE COUNTER dosiahne hodnotu 0, tak ODSTRANI COM OBJECT z pamate volanim [delete(this)]. Vracia DEKREMENTOVANU hodnotu REFERENCE COUNTER.
+!!! 16. IDL KEYWORD 'import' umoznuje importovat iny .IDL FILE. KEYWORD 'import' moze byt deklarovany v GLOBAL SCOPE, alebo PRIAMO v DEFINICII INTERFACE, kedy ma LOCAL SCOPE v ramci daneho INTERFACE.
+!!!!! 17. COM INTERFACE MUSI DEDIT iba z 1 INTERFACE. NEMOZE dedit naraz z VIACERYCH INTERFACES.
+18. Pre pouzivanie AddRef() a Release() platia nasledujuce pravidla.
+   A. Ak je NON NULL POINTER na COM INTERFACE priradzovany do ineho POINTER je potrebne zavolat METHOD AddRef().
+   B. Ak je do NON NULL POINTER na COM INTERFACE priradzovany INY COM INTERFACE, ESTE PRED PRIRADENIM je NUTNE volat METHOD Release() na POVODNY POINTER.
+19. METHOD AddRef() by sa mala volat v nasledujucich pripadoch.
+   A. Ak sa NON NULL POINTER na COM INTERFACE priradzuje do LOCAL VARIABLE.
+   B. Ak sa NON NULL POINTER na COM INTERFACE priradzuje do [out], alebo [in,out] PARAMETER FUNCTION, alebo METHOD.
+   C. Ak sa NON NULL POINTER na COM INTERFACE vracia ako RETURN VALUE z FUNCTION, alebo METHOD.
+   D. Ak sa NON NULL POINTER na COM INTERFACE priradzuje do FIELD.
+20. METHOD Release() by sa mala volat v nasledujucich pripadoch.
+   A. Pred priradenim novej hodnoty do LOCAL VARIABLE obsahujucej NON NULL POINTER na COM INTERFACE.
+   B. Pred priradenim novej hodnoty do FIELD obsahujuceho NON NULL POINTER na COM INTERFACE.
+   C. Pred priradenim novej hodnoty do [in,out] PARAMETER obsahujuceho NON NULL POINTER na COM INTERFACE. PARAMETER typu [out] MUSI mat hondotu NULL a teda volanie Release() sa nan NESMIE VYKONAT.
+   D. Pred opustenim SCOPE, ktory obsahuje NON NULL POINTERS na COM INTERFACES.
+   E. Pred opustenim DESTRUCTOR, CLASS ktory obsahuje NON NULL POINTERS na COM INTERFACES.
+!!!!! 21. KAZDA METHOD COM INTERFACE MUSI byt oznacena KEYWORD '__stdcall', aby bol STACK spravne obsluzeny.
+!!! 22. IDL ATTRIBUTE [string] aplikovany na PARAMETER urcuje, ze PARAMETER je typu STRING ukonceny CHAR '\0'.
+!!!!! 23. V COM su VSETKY CHARACTERS reprezentovane pomocou 'wchar_t'.
+24. TYPE BSTR je specialny TYPE, ktory reprezentuje STRING. Ma nasledujuce vlastnosti.
+   A. BSTR je NULL-TERMINATED UNICODE (wchar_t) STRING, ktory ma 4 BYTES dlhy PREFIX udavajuci POCET BYTES BEZ NULL-TERMINATOR, ktore STRING ZABERA.
+   B. BSTR odkazuje na ZACIATOK STRING. Pred tymto POINTER su 4 BYTES s dlzkou STRING v BYTES.
+   !!! C. BSTR je NUTNE pouzit ak ma byt COM OBJECT kompatibilny s INYMI LANGUAGES. Bezny NULL-TERMINATED STRING NIE JE PRENOSITELNY.
+25. WIN32 API definuje sadu FUNCTIONS pomocou ktorych je mozne pracovat s BSTR.
+   A. FUNCTIONS SysAllocString() a SysAllocStringLen() umoznuju alokovat BSTR z NULL-TERMINATED UNICODE STRING.
+   B. FUNCTIONS SysReAllocString() a SysReAllocStringLen() umoznuju realokovat BSTR z NULL-TERMINATED UNICODE STRING.
+   C. FUNCTION SysFreeString() uvolnuje BSTR.
+   D. FUNCTION SysStringLen() vracia dlzku BSTR v CHARS.
+   E. FUNCTION SysStringByteLen() vracia dlzku BSTR v BYTES.
+!!! 26. V LIBRARY 'comdef.h' je definovana HELPER CLASS '_bstr_t', ktora vyrazne zjednodusuje pracu s BSTR.
+27. Ak sa BSTR zasiela ako [in] PARAMETER do METHOD COM INTERFACE je nutne postupovat nasledovne.
+   A. Pred volanim METHOD COM INTERFACE vytvorit BSTR pomocou FUNCTION SysAllocString().
+   B. BSTR zaslat do METHOD COM INTERFACE.
+   C. Po skonceni volania METHOD COM INTERFACE ZLIKVIDOVAT BSTR pomocou FUNCTION SysFreeString().
+28. Ak sa BSTR zasiela ako [out] PARAMETER do METHOD COM INTERFACE je nutne postupovat nasledovne.
+   A. CLIENT pred volanim METHOD COM INTERFACE vytvorit instanciu BSTR (najlahsie na STACKU).
+   B. Do METHOD COM INTERFACE zaslat POINTER na BSTR.
+   C. METHOD COM INTERFACE musi ALOKOVAT BSTR volanim SysAllocString() a naplnit nou zaslany POINTER na BSTR.
+   D. Po SKONCENI METHOD COM INTERFACE musi CLIENT UVOLNIT BSTR volanim SysFreeString().
+!!! 29. IDL umoznuje definovat pomocou KEYWORD 'struct' C++ STRUCTS. Tie je potom mozne pouzivat ako PARAMETERS METHODS COM INTERFACES.
+30. IDL umoznuje definovat pomocou KEYWORD 'union' C++ UNIONS. Tie je potom mozne pouzivat ako PARAMETERS METHODS COM INTERFACES. UNIONS maju jednotlive FIELDS oznacene pomocou ATTRIBUTE [case(CASE_NUMBER)], kde CASE_NUMBER je CISELNY IDENTIFIKATOR FIELD.
+!!! 31. IDL UNIONS MUSIA mat pomocou ATTRIBUTE [switch_is(CASE_NUMBER)] definovany DISCRIMINATOR FIELD. DISCRIMINATOR FIELD je CISLO, ktore urcuje, ktory UNION FIELD je DISCRIMINATOR FIELD.
+32. V IDL je mozne definovat 2 typy UNIONS.
+   A. ENCAPSULATED UNIONS su UNIONS, ktore su obalene STRUCT, ktora ma FIELD sluziaci ako DISCRIMINATOR FIELD.
+   B. NONENCAPSULATED UNIONS su UNIONS, ktore NIE SU obalene STRUCT a stoja SAMOSTATNE.
+33. TYPE VARIANT je UNION, ktory umoznuje prenasat medzi CLIENT a COM OBJECT LUBOVOLNY PODPOROVANY IDL TYPE. Pre VARIANT TYPE platia nasledujuce vlastnosti.
+   A. VARIANT je deklarovany ako STRUCT, ktory obsahuje FIELD 'vt' typu VARTYPE a UNION so vsetkymi IDL TYPES. FIELD 'vt' obsahuje DISCRIMINATOR, ktory uruje aky TYPE je momentalne ulozeny vo VARIANT.
+   B. Do VARIANT je mozne ulozit aj REFERENCE VALUES a to tak, ze sa do TYPE (FIELD 'vt') ulozi okrem TYPE aj FLAG VT_BYREF.
+   C. Do VARIANT je mozne ulozit aj ARRAYS a to tak, ze sa do TYPE (FIELD 'vt') ulozi okrem TYPE aj FLAG VT_ARRAY.
+34. WIN32 API definuje sadu FUNCTIONS pomocou ktorych je mozne pracovat s VARIANTS.
+   A. FUNCTION VariantInit() inicializuje VARIANT.
+   B. FUNCTION VariantClear() uvolnuje VARIANT, pricom pre COM INTERFACES zavola Release() a pre BSTR zavola SysFreeString().
+   C. FUNCTION VariantCopy() vykona DEEP COPY VARIANT.
+   D. FUNCTION VariantCopyInd() vykona DEREFERENCIU a DEEP COPY VARIANT.
+   D. FUNCTIONS VariantChangeType() a VariantChangeTypeEx() menia TYPE VARIANT.
+!!! 35. V LIBRARY 'comdef.h' je definovana HELPER CLASS '_variant_t', ktora vyrazne zjednodusuje pracu s VARIANTS.
+!!! 36. COM OBJECTS mozu mat ako PARAMETER aj COM INTERFACE a to nasledujucmi sposobmi.
+   A. Priamym deklarovanim COM INTERFACE ako PARAMETRA METHOD.
+   B. Pouzitim ATTRIBUTE iid_is(DISCRIMINATOR) ktorym sa urcuje meno DISCRIMINATOR PARAMETRA, ktory bude obsahovat IID INTERFACE, ktory sa prenasa.
+   C. Pouzitim VARIANT.
+37. V COM INTERFACE je mozne METHODS oznacit ako PROPERTIES, takze tieto v LANGUAGES, ktore podporuju PROPERTIES budu pristupne pomocou PROPERTY SYNTAX.
+   A. ATTRIBUTE [propget] oznacuje METHOD za GET PROPERTY.
+   B. ATTRIBUTE [propput] oznacuje METHOD za SET PROPERTY.
+   C. ATTRIBUTE [propputref] oznacuje METHOD za SET PROPERTY, ktora ma ako PARAMETER REFERENCE (POINTER) namiesto VALUE.
+!!! 38. V COM NESMU byt z COM METHODS hadzane C++ EXCEPTIONS. EXCEPTIONS su podporovane NEPRIAMO pomocou INTERFACE IErrorInfo.
+39. INTERFACE IErrorInfo reprezentuje COM EXCEPTION OBJECT. Obsahuje METHODS pomocou ktorych je mozne ziskat informacie o EXCEPTION.
+   A. METHOD GetGUID() vracia GUID INTERFACE, ktory hodil EXCEPTION.
+   B. METHOD GetSource() vracia meno OBJECT, ktory hodil EXCEPTION.
+   C. METHOD GetDescription() vracia STRING popisujuci EXCEPTION.
+   D. METHOD GetHelpFile() vracia HELP FILE asociovany s EXCEPTION.
+   E. METHOD GetHelpContext() vracia HELP CONTEXT ID asociovany s EXCEPTION.
+40. INTERFACE ICreateErrorInfo sluzi ako FACTORY INTERFACE na vytvorenie INTERFACE IErrorInfo. Obsahuje nasledujuce METHODS.
+   A. METHOD SetGUID() nastavuje GUID INTERFACE, ktory hodil EXCEPTION.
+   B. METHOD SetSource() nastavuje meno OBJECT, ktory hodil EXCEPTION.
+   C. METHOD SetDescription() nastavuje STRING popisujuci EXCEPTION.
+   D. METHOD SetHelpFile() nastavuje HELP FILE asociovany s EXCEPTION.
+   E. METHOD SetHelpContext() nastavuje HELP CONTEXT ID asociovany s EXCEPTION.
+!!! 41. FUNCTION CreateErrorInfo() VYTVARA STANDARDNY COM EXCEPTION OBJECT a vracia POINTER na INTERFACE ICreateErrorInfo pomocou, ktoreho je mozne naplnit EXCEPTION OBJECT hodnotami EXCEPTION. Nasledne je pomocou QueryInterface() mozne ziskat INTERFACE IErrorInfo reprezentujuci samotnu COM EXCEPTION.
+!!! 42. FUNCTION SetErrorInfo() asociuje EXCEPTION OBJECT IErrorInfo s aktualnym LOGICAL THREAD. Je volana v COM METHODS na ulozenie EXCEPTION, ktora ma byt vratana do CLIENT.
+!!!!! 43. FUNCTION GetErrorInfo() cita EXCEPTION OBJECT IErrorInfo z aktualneho LOGICAL THREAD. Je volana na CLIENT na ziskanie EXCEPTION OBJECT IErrorInfo. Po zavolani GetErrorInfo() sa EXCEPTION OBJECT IErrorInfo ODSTRANI z LOGICAL THREAd a NASLEDNE volanie IErrorInfo vrati S_FALSE.
+!!! 44. Ak COM OBJECT PODPORUJE EXCEPTIONS, tak MUSI implementovat INTERFACE ISupportErrorInfo. Tento INTERFACE ma METHOD InterfaceSupportsErrorInfo(), ktora pre zadane IID musi vrait S_OK, alebo S_FALSE, podla toho ci dany INTERFACE PODPORUJE EXCEPTIONS.
+45. EXCEPTION SUPPORT v COM sa realizuje nasledujcim sposobom.
+   A. COM OBJECT podporujuci EXCEPTION MUSI implementovat ISupportErrorInfo. V METHOD InterfaceSupportsErrorInfo() musi pre zadane IID vratit S_OK, ak dany INTERFACE COM OBJECT podporuje EXCEPTIONS.
+   B. METHOD v ktorej vznikne chyba MUSI pomocou CreateErrorInfo() vytvorit STANDARDNY COM EXCEPTION OBJECT. Samozrejme je mozne implementovat i CUSTOM EXCEPTION OBJECT, ale najlahsie je pouzit STANDARDNU IMPLEMENTACIU.
+   C. EXCEPTION OBJECT pomocou INTERFACE ICreateErrorInfo naplni informacie o EXCEPTION ako DESCRIPTION, alebo IID.
+   D. Z EXCEPTION OBJECT pomocou QueryInterface() ziskam INTERFACE IErrorInfo.
+   E. Pomocou METHOD SetErrorInfo() ASOCIUJEM COM EXCEPTION IErrorInfo s LOGICAL THREAD.
+   F. CLIENT pomocou QueryInterface() ziska INTERFACE ISupportErrorInfo a volanim InterfaceSupportsErrorInfo() zisti ci dany INTERFACE podporuje COM EXCEPTIONS.
+   !!! G. CLIENT volanim GetErrorInfo() ziska EXCEPTION OBJECT IErrorInfo. Tato METHOD vracia IErrorInfo IBA RAZ, pretoze po jej volani je EXCEPTION OBJECT ODSTRANENY z LOGICAL THREAD. Nasledne volania GetErrorInfo() vratia S_FALSE.
+   H. Pomocou INTERFACE IErrorInfo CLIENT ziska podrobnosti o EXCEPTION ako DESCRIPTION ci IID.
+//------------------------------------------------------------------------------------------------------
+//------------------------------------------------------------------------------------------------------
+//------------------------------------------------------------------------------------------------------
+ATTRIBUTES v IDL.
+
+1. Na METHOD PARAMETRS (RETURN VALUES) je mozne aplikovat nasledujuce ATTRIBUTES.
+   A. ATTRIBUTE [in] oznacuje INPUT PARAMETER.
+   B. ATTRIBUTE [out] oznacuje OUTPUT PARAMETER. VALUE je prenasana JEDNOSMERNE z COM OBJECT do CLIENT. Pri prenose hodnoty z CLIENT do COM OBJECT NIE JE GARANTOVANE, ze sa hodnota prenesie.
+   C. ATTRIBUTE [retval] oznacuje PARAMETER, ktoreho VALUE sa pouzije ako RETURN VALUE. Niektore prostredia ako Java ci .NET dokazu identifikovat ATTRIBUTE [retval] a v CLIENT APPLICATIONS vo svojich PROXY OBJECTS na COM OBJECTS vracat tuto VALUE ako RETURN VALUE z METHOD COM OBJECT.
+   D. ATTRIBUTE [string] oznacuje, ze PARAMETER je typu NULL-TERMINATED STRING.
+   E. ATTRIBUTE iid_is() urcuje nazor PARAMETRA, ktory obsahuje IID s TYPOM INTERFACE.
+2. Na METHODS je mozne aplikovat nasledujuce ATTRIBUTES.
+   A. ATTRIBUTE [propget] oznacuje METHOD za GET PROPERTY.
+   B. ATTRIBUTE [propput] oznacuje METHOD za SET PROPERTY.
+   C. ATTRIBUTE [propputref] oznacuje METHOD za SET PROPERTY, ktora ma ako PARAMETER REFERENCE (POINTER) namiesto VALUE.
+   D. ATTRIBUTE helpstring() umoznuje asociovat textovy popis s METHOD.
+   E. ATTRIBUTE helpcontext() umoznuje asociovat HELP CONTEXT ID s METHOD.
+   F. ATTRIBUTE [local] definuje LOCAL METHOD, ktora NEMOZE BYT REMOTE.
+3. Na INTERFACES je mozne aplikovat nasledujuce ATTRIBUTES.
+   A. ATTRIBUTE uuid() sluzi na indikaciu GUID, ktory je asociovany s danym INTERFACE.
+   B. ATTRIBUTE [object] sluzi na indikaciu, ze INTERFACE je INTERFACE.
+   C. ATTRIBUTE [local] definuje LOCAL INTERFACE, ktory NEMOZE BYT REMOTE. Pouziva sa pri definicii IUnknown a znamena LOCAL INTERFACE. V praxi to znaci, ze METHODS tohto INTERFACE NEMUSIA MAT ako RETURN VALUE hodnotu HRESULT - co je pripade IUnknown::AddRef() a IUnknown::Release().
+   D. ATTRIBUTE helpstring() umoznuje asociovat textovy popis s INTERFACE.
+   E. ATTRIBUTE helpcontext() umoznuje asociovat HELP CONTEXT ID s INTERFACE.
+   F. ATTRIBUTE [hidden] urcuje, ze INTERFACE bude HIDDEN.
+4. Na DISPATCH INTERFACES je mozne aplikovat nasledujuce ATTRIBUTES.
+   A. ATTRIBUTE uuid() sluzi na indikaciu GUID, ktory je asociovany s danym DISPATCH INTERFACE.
+   B. ATTRIBUTE helpstring() umoznuje asociovat textovy popis s DISPATCH INTERFACE.
+   C. ATTRIBUTE helpcontext() umoznuje asociovat HELP CONTEXT ID s DISPATCH INTERFACE.
+   D. ATTRIBUTE [hidden] urcuje, ze DISPATCH INTERFACE bude HIDDEN.
+5. Na OBJECTS je mozne aplikovat nasledujuce ATTRIBUTES.
+   A. ATTRIBUTE uuid() sluzi na indikaciu GUID, ktory je asociovany s danym OBJECT.
+   B. ATTRIBUTE helpstring() umoznuje asociovat textovy popis s OBJECT.
+   C. ATTRIBUTE helpcontext() umoznuje asociovat HELP CONTEXT ID s CLASS.
+   D. ATTRIBUTE [hidden] urcuje, ze OBJECT bude HIDDEN.
+6. Na TYPE LIBRARIES je mozne aplikovat nasledujuce ATTRIBUTES.
+   A. ATTRIBUTE uuid() sluzi na indikaciu GUID, ktory je asociovany s danym TYPE LIBRARY.
+   B. ATTRIBUTE helpstring() umoznuje asociovat textovy popis s TYPE LIBRARY.
+   C. ATTRIBUTE helpcontext() umoznuje asociovat HELP CONTEXT ID s TYPE LIBRARY.
+   D. ATTRIBUTE version() umoznuje definovat verziu TYPE LIBRARY.
+   E. ATTRIBUTE [hidden] urcuje, ze TYPE LIBRARY bude HIDDEN.
+7. Na IMPORT LIBRARIES je mozne aplikovat nasledujuce ATTRIBUTES.
+   A. ATTRIBUTE helpstring() umoznuje asociovat textovy popis s IMPORT LIBRARY.
+   B. ATTRIBUTE helpcontext() umoznuje asociovat HELP CONTEXT ID s IMPORT LIBRARY.
+8. Na STRUCTS je mozne aplikovat nasledujuce ATTRIBUTES.
+   A. ATTRIBUTE uuid() sluzi na indikaciu GUID, ktory je asociovany s danym STRUCT.
+   B. ATTRIBUTE [hidden] urcuje, ze STRUCT bude HIDDEN.
+9. Na ENUMS je mozne aplikovat nasledujuce ATTRIBUTES.
+   A. ATTRIBUTE uuid() sluzi na indikaciu GUID, ktory je asociovany s danym ENUM.
+   B. ATTRIBUTE [v1_enum] urcuje, ze ENUM bude prenasany ako 32 BITOVA hodnota.
+10. Na UNIONS je mozne aplikovat nasledujuce ATTRIBUTES.
+   A. ATTRIBUTE switch_type() urcuje TYPE DISCRIMINANT FIELD, ktory urcuje, ktora hodnota UNION je platna.
+   B. ATTRIBUTE switch_is() urcuje EXPRESSION, alebo FIELD, ktory sluzi ako DISCRIMINANT a urcuje, ktora hodnota UNION je platna.
+11. Na MODULES je mozne aplikovat nasledujuce ATTRIBUTES.
+   A. ATTRIBUTE uuid() sluzi na indikaciu GUID, ktory je asociovany s danym MODULE.
+   B. ATTRIBUTE helpstring() umoznuje asociovat textovy popis s MODULE.
+12. Na TYPEDEFS je mozne aplikovat nasledujuce ATTRIBUTES.
+   A. ATTRIBUTE uuid() sluzi na indikaciu GUID, ktory je asociovany s danym TYPEDEF.
+   B. ATTRIBUTE [string] oznacuje, ze TYPEDEF je typu NULL-TERMINATED STRING.
+   C. ATTRIBUTE helpstring() umoznuje asociovat textovy popis s TYPEDEF.
+   D. ATTRIBUTE helpcontext() umoznuje asociovat HELP CONTEXT ID s TYPEDEF.
+//------------------------------------------------------------------------------------------------------
