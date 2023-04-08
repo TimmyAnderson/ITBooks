@@ -1,0 +1,79 @@
+//------------------------------------------------------------------------------
+1. Program demonstruje spracovanie UNHANDLED EXCEPTIONS.
+2. Pomocou funkcie SetUnhandledExceptionFilter() je mozne nastavit CUSTOM UNHANDLED EXCEPTION HANDLER, funkciu, ktora sa zavola ak dojde k UNHANDLED EXCEPTION. Funkcia vracia smerik na PRECHADZAJUCI CUSTOM UNHANDLED EXCEPTION HANDLER, ktory bol zavedeny a volanim SetUnhandledExceptionFilter() som ho nahradil svojou funkciou.
+!!! 3. Ak v kode NEZAVOLAM SetUnhandledExceptionFilter(), tak C++ run-time nastavi cez SetUnhandledExceptionFilter() svoj VLASTNY UNHANDLED EXCEPTION HANDLER - funkciu __CxxUnhandledExceptionFilter().
+!!! 4. WIN API definuje STANDARDNY EXCEPTION HANDLER UnhandledExceptionFilter() definovany v Kernel32.DLL, ktory vykonava mnozstvo cinnosti, vratane moznosti zaviest DEBUGGER, ci odoslat chybu do Microsoft.
+!!! 5. Funkcia __CxxUnhandledExceptionFilter() kontroluje ci UNHANDLED EXCEPTION nie je C++ EXCEPTION a ak ano, tak zavola abort(), ktora INTERNE VOLA STANDARDNY UnhandledExceptionFilter(). Ak naopak sa jedna o SEH EXCEPTION a NIE C++ EXCEPTION, tak funkcia vracia EXCEPTION_CONTINUE_SERACH, aby Windows sa postaral o tuto UNHANDLED EXCEPTION.
+6. Ak zavediem CUSTOM UNHANDLED EXCEPTION HANDLER, tak tento HANDLER musi vratit jednu z 3 hodnot.
+   A. EXCEPTION_EXECUTE_HANDLER - vykonany je GLOBAL UNWIND (volane '__finally' bloky) a program sa BEZ CHYBOVEJ HLASKY UKONCI.
+   B. EXCEPTION_CONTINUE_EXECUTION - program sa vrati SPAT na CPU instrukciu, ktora sposobila EXCEPTION. Ak vsak znova dojde k EXCEPTION, tak program sa dostane do INFINITE LOOP.
+   C. EXCEPTION_CONTINUE_SERACH - vykonany je GLOBAL UNWIND (volane '__finally' bloky) a nasledne sa ZOBRAZI standardna CHYBOVA HLASKA Windows o kolapse programu.
+!!! 7. Windows KAZDY THREAD obaluje do SEH frame ('__try' a '__except'), kde '__except' v EXCEPTION FILTER vola STANDARDNU UnhandledExceptionFilter(). Tato funkcia moze vracat jednu z nasledujucich hodnot.
+   A. EXCEPTION_EXECUTE_HANDLER - vykonany je GLOBAL UNWIND (volane '__finally' bloky). Nasledne je vykonany '__except' blok, ktory pre THREAD FUNKCIU vola ExitProcess(), cim sa proces BEZ CHYBOVEJ HLASKY UKONCI.
+   B. EXCEPTION_CONTINUE_EXECUTION - program sa vrati SPAT na CPU instrukciu, ktora sposobila EXCEPTION. Ak vsak znova dojde k EXCEPTION. Tuto hodnotu vracia UnhandledExceptionFilter() IBA KED doslo k WRITE MEMORY EXCEPTION do RESOURCE v EXE/DLL, kedy UnhandledExceptionFilter() este predtym zmeni cez VirtualProtect() pristupove prava k PAGE obsahujuce RESOURCE, aby to RESOURCE BOLO MOZNE ZAPISOVAT. Tato zvlastna funkcnost je kvoli KOMPATIBILITE so 16 bitovymi systemami.
+   C. EXCEPTION_CONTINUE_SERACH - vykonany je GLOBAL UNWIND (volane '__finally' bloky). Ak je pripojeny DEBUGGER, tak zacgyti tuto EXCEPTION, ak nie, tak je zobrazena STANDARDNA CHYBOVA HLASKA Windows o pade programu.
+8. Interne vykonava UnhandledExceptionFilter() nasledovne kroky.
+   A. Kvoli kompabilite so 16 bitovymi systemami, ktore umoznovali zapis do PAGES vyhradenych pre EXE/DLL RESOURCES, ktore su vsak v 32/64 bitovych systemoch READ_ONLY, ako prve UnhandledExceptionFilter() skotnroluje ci sa nejedna o zapis do takejto pamate. Ak ano, tak vola VirtualProtect() na danej PAGE a spravi z nej WRITABLE PAGE. Nasledne vracia EXCEPTION_CONTINUE_EXECUTION, aby program mohol POKRACOVAT a ZAPISAT do teraz uz WRITABLE PAMATE.
+   !!! B. Ak je k procesu pripojeny DEBUGGER, tak sa vola DEBUGGER. Prave PRETO je NUTNE program UnhandledExceptions testovat MIMO DEBUGGER, pretoze DEBUGGER Visual Studia sa vola ESTE SKOR, ako sa vola CUSTOM UNHANDLED EXCEPTION HANDLER.
+   !!! C. CUSTOM UNHANDLED EXCEPTION HANDLER je ZAVOLANY. Ak som nejaku funkciu definoval, tak sa zavola. Ak som ju nedefinoval, tak sa zavola STANDARDNY C++ UNHANDLED EXCEPTION HANDLER __CxxUnhandledExceptionFilter(). Ten vsak REKURZIVNE vola UnhandledExceptionFilter(). Nekonecnej rekurzii vsak zabranuje to, ze __CxxUnhandledExceptionFilter() este skor ako rekurzivne vola UnhandledExceptionFilter() zavola SetUnhandledExceptionFilter(NULL) cim ZRUSI __CxxUnhandledExceptionFilter() ako UNHANDLED EXCEPTION HANDLER a tak k rekurzii NEDOJDE.
+   D. Znova sa skontoluje, ci k procesu nie je zavedeny DEBUGGER (CUSTOM UNHANDLED EXCEPTION HANDLER ho mohol zaviest) a ak ano, tak sa notifikuje o EXCEPTION.
+   E. Ak BOLA zavolana funkcia SetErrorMode() s parametrom SEM_NOGPFAULTERRORBOX, tak sa vracia EXCEPTION_EXECUTE_HANDLER a proces BEZ zobrazenia STANDARDNEHO CHYBOVEHO OKNA SKONCI.
+   F. Ak NEBOLA zavolana funkcia SetErrorMode() s parametrom SEM_NOGPFAULTERRORBOX, tak sa vracia EXCEPTION_CONTINUE_SERACH. Ten zachyti KERNEL a zobrazi STANDARDNE CHYBOVE OKNO, umoznujuce spustit debugger, alebo odoslat chybu do Microsoft.
+!!! 9. Ak program ZLYHA tak, ze UnhandledExceptionFilter() vrati EXCEPTION_CONTINUE_SERACH, tak Windows V ZAVISLOSTI OD VERZIE vykona nasledujuce kroky.
+   A. Vo Windows XP sa zobrazi STANDARDNE CHYBOVE OKNO umoznujuce spustit debugger, odoslat chybu do Microsoft, alebo program ukoncit.
+   B. Vo Viste sa spusta aplikacia WerFault.EXE, ktora je zodpovedna za dalsie spracovanie zlyhania programu.
+10. Ak aplikacia ZLYHA a teda funkcia UnhandledExceptionFilter() vratila EXCEPTION_CONTINUE_SERACH), vykonaju sa nasledovne kroky.
+   A. Kernel detekuje, ze aplikacia vratila UNHANDLED EXCEPTION (funkcia UnhandledExceptionFilter() vratila EXCEPTION_CONTINUE_SERACH).
+   B. Kernel posle cez ALPC informaciu o chybe do WerSerivce.EXE, ktory pomocou CreateProcess() vytvori proces WerFault.EXE.
+   C. WerSerivce.EXE pre danu padajucu aplikaciu vola WaitXXX(HProcess), kde HProcess je HANDLE na proces WerFault.EXE. Takto je WerSerivce.EXE pre dany proces ZABLOKOVANY a kedze sa pouziva ALPC, tak tento mechanizmus ZABLOKUJE i PADAJUCU APLIKACIU.
+   D. WerFault.EXE zobrazi UNHANDLED EXCEPTION OKNO, ktore umozni bud zavriet program, alebo ho debuggovat.
+   E. Ak vyberiem moznost ZAVREIT PROGRAM, WerFault.EXE zavola TerminateProcess() na aplikaciu ktora generovala UNHANDLED EXCEPTION a zaroven sa sama ukonci.
+   !!! F. Ak vyberiem moznost DEBUGGOVAT PRORGAM, WerFault.EXE VYTVORI JIT DEBUGGER VSJitDebugger.EXE volanim CreateProcess(). V COMMAND LINE do VSJitDebugger.EXE prenasa HANDLE na MANUAL-RESET-EVENT a ID procesu, ktory ma byt DEBUGGOVANY (ten, ktory spadol). Kedze VSJitDebugger.EXE je vytvoreny ako CHILD voci WerFault.EXE tak HANDLE je vo VSJitDebugger.EXE PLATNY. Nasledne je WerFault.EXE POZASTAVENY volanim WaitXXX(HManualResetEvent), aby pockal kym NEBUDE DEBUGGER PLNE INICIALIZOVANY a NEPREBERIE KONTROLU nad procesom, ktory vratil UNHANDLED EXCEPTION.
+   G. VSJitDebugger.EXE este NIE JE SKUTOCNY DEBUGGER, iba program umoznujuci VYBER z NAINSTALOVANYCH DEBUGGERS.
+   H. Po vybrati DEBUGGER VSJitDebugger.EXE spusta SKUTOCNY DEBUGGER ako CHILD PROCESS, ktoremu cez COMMAND LINE posle HANDLE na MANUAL-RESET-EVENT vytvoreny vo WerFault.EXE a ID PROCESU, ktory ma byt DEBUGOVANY (ten, ktory spadol).
+   !!! I. KAZDY WINDOWS DEBUGGER MUSI poznat priznaky COMMAND LINE a PARSOVANIM z NICH ZISKAT HANDLE na MANUAL-RESET-EVENT ako aj ID PROCESU, ktory SPADOL a ktory ma byt debugovany.
+   J. Debugger sa PRIPOJI na PROCES na zaklade preneseneho ID. Po pripjeni mu Windows posle KOMPLETNY STAV o PROCESE, ako aj informaciu o chybe, ktora nastala.
+   !!! K. Pocas CELEJ TEJTO DOBY, az kym sa NEPRENESIE KOMPLETNY STAV o PROCESE, ktory PADA, je PADAJUCI PROCES POZASTAVENY. Je to prave preto, aby STAV PADAJUCEHO PROCESU mohol byt preneseny do DEBUGGER.
+   !!! L. Teraz, ked je DEBUGGER PLNE INICIALIZOVANY NASTAVI MANUAL-RESET-EVENT, vdaka comu POZASTAVENY PROCES WerFault.EXE moze dalej pokracovat.
+   M. WerFault.EXE je koreknte ukonceni a jeho PROCESS HANDLE JE SIGNALIZOVANY.
+   N. Service WerSerivce.EXE, ktory bol pre padajucu aplikaciu blokovany volanim WaitXXX(HProcess) (HProcess je HANDLE na WerFault.EXE) MOZE POKRACOVAT DALEJ. WerSerivce.EXE cez ALPC ODBLOKUJE PADAJUCU APLIKACIU.
+   O. Padajuca aplikacia, teraz pod kontrolou DEBUGGER sa rozbehne a UNHANDLED EXCEPTION je ZACHYTENA v DEBUGGER a je ju mozne odladit.
+!!! 11. Vista umoznuje ladit nielen padajuci proces, ale lubovolny proces cez Windows Task Manager.
+//------------------------------------------------------------------------------
+Vectored EXCEPTIONS
+
+1. SEH vo Windows su realizovane nasledovne.
+   A. Pri vstupe do '__try' bloku je SEH FRAME zaradeny do LINKED LIST.
+   B. Pri vzniku EXCEPTION je prechadzany LINKED LIST od POSLEDNEHO po PRVY ZAZNAM a je hladany '__except' blok, ktory by vratil EXCEPTION_EXECUTE_HANDLER.
+   C. Ak taky '__except" blok je najdeny, znova je prechadzany LINKED LIST od POSLEDNEHO po PRVY ZAZNAM a vykonaju sa '__finally' bloky.
+!!! 2. Windows poskytuje i moznost definovania CUSTOM VECTORED EXCEPTION HANDLER vo forme FUNKCIE (namiesto pouzivania '__try', '__except'). Tato funkcia typu VectoredHandler() registrovana pomocou AddVectoredExceptionHandler() je volana pri VZNIKU EXCEPTION ESTE SKOR ako su volane EXCEPTION FILTERS v '__except' blokoch.
+3. Funkcia typu VectoredHandler() ma parameter PEXCEPTION_POINTERS a moze vracat nasledujuce 2 hodnoty.
+   A. EXCEPTION_CONTINUE_EXECUTION - kod bude pokracovat CPU instrukciou, ktora SPOSOBILA EXCEPTION.
+   B. EXCEPTION_CONTINUE_SEARCH - vykona sa nasledujuca zaregistrovana funkcia typu VectoredHandler().
+!!! 4. Ak ANI JEDNA VectoredHandler() NEVRATI EXCEPTION_CONTINUE_EXECUTION, tak sa VYKONA '__except' BLOK.
+5. Zaregistrovany VectoredHandler() je mozne odregistrovat volanim RemoveVectoredExceptionHandler().
+!!! 6. Vista pomocou funkcie AddVectoredContinueHandler() umoznuje definovat VECTORED EXCEPTION HANDLER, ktory je volany PO UNHANDLED EXCEPTION. Tieto HANDLERS su volane AZ POTOM co GLOBALNY UNHANDLED EXCEPTION HANDLER (registrovany funkciou SetUnhandledExceptionFilter()) vrati EXCEPTION_CONTINUE_EXECUTION indikujuc NESCHOPNOST ODSTRANIT EXCEPTION. Az v tejto chvili su volane jednotlive HANDLERS registrovane cez AddVectoredContinueHandler(). Ak niektory z nich vrati EXCEPTION_CONTINUE_EXECUTION (pretoze opravil chybu), tak program pokracuje na tej CPU instrukcii, ktora sposobila chybu.
+7. Handler zaregistrovany cez AddVectoredContinueHandler() je mozne odstranit volanim RemoveVectoredContinueHandler().
+//------------------------------------------------------------------------------
+C++ EXCEPTIONS
+
+1. V C++ programoch by sa mali pouzivat C++ EXCEPTION namiesto SEH EXCEPTIONS, kedze tieto su SUCASTOU C++ a teda su PLATFORMOVO NEZAVISLE.
+2. Vo Visual Studiu interne su C++ EXCEPTIONS implementovane ako SEH EXCEPTIONS a to nasledujucim sposobom.
+   A. Klucove slovo C++ 'try' je transformovane '__try'.
+   B. Klucove slovo C++ 'catch' je transformovane '__except'.
+   C. EXCEPTION FILTER v '__except' kontroluje ci parameter EXCEPTION ma ROVANKY TYP ako bol uvedeny v C++ 'catch' a ak ano tak vracia EXCEPTION_EXECUTE_HANDLER, inak vrati EXCEPTION_CONTINUE_SERACH. Hodnotu EXCEPTION_CONTINUE_EXECUTION C++ EXCEPTION NIKDY NEVRACAJU, kedze v C++ takato funkcionalita neexistuje.
+   D. Klucove slovo C++ 'throw' je transformovane na volanie RaiseException(), ktora v POLI PARAMETROV prenasa TYP a HODNOTU pouzitu v prikaze throw(X).
+!!! 3. Kedze C++ EXCEPTIONS su vo Visual Studio implementovane cez SEH EXCEPTION je mozne SEH a C++ EXCEPTIONS v tom istom programe kombinovat.
+//------------------------------------------------------------------------------
+EXCEPTIONS vo Visual Studio
+
+1. Visual Studio umoznuje pomocou okna Debug -> Exception definovat kedy sa EXCEPTIONS budu zachytavat. VS poskytuje nasledujuce moznosti.
+   A. FIRST-CHANCE EXCEPTIONS - zachytit EXCEPTIONS PRED VYKONANIM EXCEPTION FILTERS.
+   B. LAST-CHANCE EXCEPTIONS - zachytit EXCEPTIONS PO VYKONANI EXCEPTION FILTERS, ked VSETKY EXCEPTION FILTERS vratili EXCEPTION_CONTINUE_SERACH a EXCEPTION je teda UNHANDLED.
+2. Zachytavanie FIRST-CHANCE EXCEPTIONS sa robi zaskrtnutim CheckBox 'Thrown'.
+3. Zachytavanie LAST-CHANCE EXCEPTIONS sa robi zaskrtnutim CheckBox 'User-Unhandled'.
+!!! 4. FIRST-CHANCE EXCEPTIONS NEMUSI znamenat chybu programu. Kedze vznika este PRED VOLANIM EXCEPTION FILTERS, kludne moze v programe existovat EXCEPTION FILTER, ktory danu EXCEPTION ZACHYTI a SPRACUJE.
+!!! 5. Naproti tomu FIRST-CHANCE EXCEPTIONS reprezentuje UNHANDLED EXCEPTION, ktora priviedla program k padu.
+!!! 6. Ak vo Visual Studiu NEMAM nastavene zachytavanie FIRST-CHANCE EXCEPTIONS (CheckBox 'Thrown' NIE JE ZASKRTNUTY), tak sa informacia o FIRST-CHANCE EXCEPTIONS zobrazi iba dolu v 'Output Window'. Naopak LAST-CHANCE EXCEPTIONS uz vedie k hodeniu UPOZORNUJUCEHO OKNA o UNHANDLED EXCEPTION.
+7. Visual Studio umoznuje definovat i CUSTOM EXCEPTIONS, ktore identifikovany ExceptionCode, alebo C++ typom je mozne zachytavat takisto ako standardne EXCEPTIONS.
+//------------------------------------------------------------------------------

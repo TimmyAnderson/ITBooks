@@ -1,0 +1,110 @@
+//------------------------------------------------------------------------------
+1. Program demonstruje rozlicne sposoby ako je mozne spravit INJECTION do ADDRESS SPACE ineho procesu.
+2. Injection do ADDRESS SPACE ineho procesu znamena, ze svoj kod (v DLL) zavedie do ADDRESS SPACE ineho procesu a takto mozem prinutit iny proces, aby vykonaval moj kod.
+3. Existuje niekolko sposobom code injection.
+   A. Injection cez Registry.
+   B. Injection cez Windows Hooks.
+   C. Injection cez Remote Threads.
+   D. Injection cez Trojan DLL.
+   E. Injection ako Debugger.
+   F. Injection cez CreateProcess().
+   G. API Hooking by Overwriting Code.
+   H. API Hooking by Manipultating a Module's Import Section.
+!!!!! 4. Injection je KLUCOVY napriklad pre DEBUGGING programov.
+//------------------------------------------------------------------------------
+Injection cez Registry
+
+1. Nato aby fungoval, musim zmenit v Keys v Registry v [HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Windows].
+   A. AppInit_DLLs - nastavim ho na CUSTOM DLL, ktora robi HOOKING. Moze byt aj viacero, ale iba 1 DLL v zozname moze obsahovat PATH a medzera je tiez oddelovac, takze Name/Path nesmie obsahovt medzeru. NAJLEPSIE je dat iba JEDNU DLL.
+   B. LoadAppInit_DLLs - nastavim na 1.
+!!! 2. Injection funguje IBA PRE GUI aplikacie, ktore zavadzaju User32.DLL. Princip je nasledovny.
+   A. Vzdy ked sa zavadza do procesu User32.DLL (DLL_PROCESS_ATTACH) zisti hodnotu OBOCH KEYS a ak je LoadAppInit_DLLs==1, tak zavedie DLL z AppInit_DLLs do SVOJEJ ADDRESS SPACE.
+   B. CUSTOM DLL z AppInit_DLLs dostavaju VSETKY EVENTS cez DllMain(), ktore mozem spracovat.
+!!! 3. Nevyhodou tohto INJECTION, ze funguje iba pre programy zavadzajuce User32.DLL. V CUSTOM DLL smiem pouzivat IBA funkcie KERNEL32.DLL, pretoze ostatne DLL nemusia byt zavedene.
+//------------------------------------------------------------------------------
+Injection cez Windows Hooks
+
+1. Na vytvorenie Windows HOOK je potrebne vykonat nasledujuce kroky.
+   A. Vytvorit DLL, ktora bude obsahovat HOOK FUNKCIU.
+   B. Vytvorit EXE program, ktory INSTALUJE a ODINSTALUJE HOOKS.
+!!!!! 2. HOOKS sa zavadzaju IBA DO GUI APLIKACII. Do konzolovych aplikacii ich NIE JE MOZNE INJECTOVAT.
+3. Hooks funguju nasledujucim sposobom.
+   A. V aplikacii, ktora ma v ADDRESS SPACE namapovanu DLL implementujucu HOOK funkciu zavolam SetWindowsHookEx().
+   B. Funkcia SetWindowsHookEx() pre trhead s ID v parametri 'ThreadId' zavedie HOOK DLL do ADDRESS SPACE procesu, v ktorom dany thread bezi.
+   !!! C. Ak za 'ThreadId' dam 0 tak sa HOOK DLL zavedie do VSETKYCH GUI THREADOV v KAZDOM PROCESE.
+   D. Po instalovani HOOK je volana HOOK FUNKCIA, ktorej presny vyznam parametrov zavisi od TYPU HOOK.
+   !!! E. HOOK FUNKCIA je vzdy volana v INJECTED PROCESE, teda procese do ktoreho sa dany HOOK zaviedol a NIE v procese, ktory HOOK INSTALOVAL (ak samozrejme dany proces nie je GUI s GUI threads a za 'ThreadId' dam 0).
+   !!! F. HOOK FUNKCIA MUSI pre hodnoty parametru 'Code'<0 NEVYKONAT NIC INE, iba volat CallNextHookEx(). Naopak pre hodnoty 'Code'>=0 moze dany HOOK EVENT spracovat a NASLEDNE VOLAT CallNextHookEx() - aby i ostatne HOOKS dostali prilezitost spracovat dany EVENT. Navratova hodnota CallNextHookEx() musi byt navratovou hodnotou HOOK FUNKCIE.
+   G. Ak HOOK nepotrebujem, zavolam UnhookWindowsHookEx(), ktora bud z daneho GUI trheadu (ak je 'ThreadId'!=0), alebo zo VSETYCH GUI THREADS (ak 'ThreadId'==0) odstrani HOOK a odstrani HOOK DLL z procesu.
+!!!!! 4. Windows pred zavolanim HOOK FUNKCIE INKREMENTUJE POCITADLO HOOK DLL a po skonceni volania HOOK FUNKCIE ho DEKREMENTUJE. Je to POISTKA pre pripad, keby POCAS VYKONAVANIA HOOK FUNKCIE proces, ktory instaloval HOOK DLL ho odinstaloval. Ak by pocitadlo HOOK DLL pocas volania HOOK FUNKCIE nebolo INKREMENTOVANE, potom by pri UnhookWindowsHookEx() doslo k poklesu pocitadla HOOK DLL na 0 a HOOK DLL by sa ODSTRANILA - POCAS VYKONAVANIA HOOK FUNKCIE, co by samozrejme viedlo k padu procesu. Vdaka inkrementovaniu pred volanim sa HOOK DLL (ak je pocas jeho vykonavania volana inym procesom UnhookWindowsHookEx()) NEODSTRANI HOOK DLL OKAMZITE, ale az PO SKONCENI VYKONAVANIA HOOK FUNKCIE.
+!!!!! 5. Moja implementacia KEYBOARD LOGGER funguje OK, akurat v CONSOLE APLIKACIACH trochu BLBNE. To, ze nezachytava ich KEYBOARD-HITS je OK, kedze HOOKS funguju iba pre GUI aplikacie. Avsak pri spusteni programu (HookInjectionEXE.EXE), ak sa prepnem do CONSOLE APPLICATION - napriklad FAR.EXE, tak klavesnica PAR SEKUND (niekedy i minutu) REAGUJE VELMI POMALY. Az nasledne sa rozbehne a potom uz bezi rychlo. V GUI aplikaciach bezi rychlo vzdy. Pricinu nepoznam, no vyzera to, akoby cosi do CUI aplikacie sa pokusala zaviest - mozno moju HOOK DLL a az potom sa rozbehne a od tej chvile uz bezi ako v GUI, tak i v CUI aplikaciach rychlo.
+//------------------------------------------------------------------------------
+Injection cez Remote Threads
+
+1. Tento sposob Injection vyuziva moznost WinAPI vytvarat threads v CUDZOM PROCESE.
+!!! 2. Vytvaranie threads (ako i alokovanie pamate) v cudzom procese je primarne urcene pre DEBUGGERS, ale je ho mozne vyuzit i vseobecne, napriklad na DLL INJECTION.
+3. Princip DLL Injection pomocou vytvarania REMOTE thread je nasledovny.
+   A. Pomocou funkcie CreateRemoteThread() mozem, ak mam patricne opravnenia, vytvorit v cudzom procese thread, ktory bude bezat v ADDRESS SPACE REMOTE procesu.
+   !!! B. Problemom CreateRemoteThread() je vsak to, ze THREAD FUNKCIA MUSI byt zavedena v REMOTE PROCESE. Takisto parameter, ktory ma byt preneseny do REMOTE THREAD ak je to SMERNIK, MUSI sa odkazovat na ADDRESS SPACE v REMOTE PROCESE.
+   !!!!! C. CELA FINTA INJECTION spociva v tom, ze pomocou CreateRemoteThread() zavolam funkciu LoadLibrary(), ktora VDAKA TOMU, ze ma ROVANKY PROTOTYP ako je prototyp THREAD FUNKCIE, je ju mozne pouzit ako THREAD FUNKCIU v CreateRemoteThread().
+   !!! D. Pouzitim LoadLibrary() splnim 1. podmienku a to EXISTENCIU THREAD FUNKCIE (LoadLibrary()) v REMOTE ADDRESS SPACE, pretoze LoadLibrary() je VZDY ZAVEDENA v KAZDOM PROCESE.
+   !!!!! E. Co je este dolezitejsie je, ze LoadLibrary() ako sucast KERNEL32 je ZAVEDENA v KAZDOM PROCESE VZDY NA TO ISTE MIESTO v ADDRESS SPACE. Inak povedane, adresa na LoadLibrary() je v KAZDOM PROCESE ROVNAKA. VDAKA TOMU mozem kludne do CreateRemoteThread() za THREAD FUNKCIU zadat ADRESU LoadLibrary() v ADDRESS SPACE LOKALNEHO procesu, pretoze tato adresa (toto cislo) bude VZDY ZHODNE s ADRESOU v REMOTE PROCESE.
+   F. Druhym problemom je prenos parametru. LoadLibrary() potrebuje SMERNIK na MENO DLL, ktora sa ma zaviest. Problem je v tom, ze tato adresa MUSI BYT v ADDRESS SPACE REMOTE PROCESU, inak by samozrejme REMOTE PROCES pri volani CreateRemoteThread() ZLYHAL.
+   !!! G. Riesenim problemu je ALOKACIA a ZAPIS MENA DLL v REMOTE PROCESE. Windows umoznuje pomocou funkcie VirtualAllocEx() a VirtualFreeEx() alokovat a dealokovat pamat v REMOTE PROCESE. Pomocou funkcii ReadProcessMemory() a WriteProcessMemory() moze CITAT a ZAPISOVAT data v REMOTE ADDRESS SPACE. Prave pomocou tychto funkcii polahky alokujem v ADDRESS SPACE BLOK PAMATE do ktoreho ulozim NAZOV INJECTION DLL. SMERNIK na tento blok pamate v REMOTE PROCESS potom dam ako PARAMETER do CreateRemoteThread().
+   !!! H. Nasledne sa v REMOTE THREADU vykona funkcia LoadLibrary(), ktora NAHRA POZADOVANU DLL do ADDRESS SPACE REMOTE PROCESU. DllMain() je zavolana a v nej mozem vykonat lubovolnu akciu, ktoru v REMOTE PROCESE potrebujem vykonat.
+   !!!!! I. Poodobne ako LoadLibrary() je mozne zavolat i FreeLibrary() kedze aj ta MA KOMPATIBILNY PROTOTYP s prototypom THREAD FUNKCIE. Jediny rozdiel je, ze ako parameter prenasam HMODULE v REMOTE PROCESE, ktory vsak mozem ziskat enumerovanim Modules v remote procese pomocou funkcii CreateToolhelp32Snapshot(), Module32FirstW() a Module32NextW().
+!!!!! 4. INJECTION cez REMOTE THREAD vychadzal z toho, ze adresa LoadLibrary() a FreeLibrary() su vzdy ROVNAKE v KAZDOM PROCESE - co je vraj chovanie Kernel32.DLL. Vseobecne pre ine funkcie to vsak vsak NEPLATI.
+!!! 5. Ak chcem cez CreateRemoteThread() vytvorit v REMOTE PROCESS thread MUSIM POZNAT adresu THREAD FUNKCIE v REMOTE ADDRESS SPACE. Ja pri simulacii vytvarania REMOTE THREAD som postupoval nasledovne.
+   A. Vytvoril som FIXED DLL, pri ktorej mam istotu, ze je v KAZDOM PROCESE MAPOVANA na TU ISTU ADRESU - rovnako ako KERNEL32.DLL.
+   B. Do procesu v ktorom som chcel spustit REMOTE THREAD som zaviedol tuto DLL.
+   C. Aj do procesu, ktory vytvaral REMOTE THREAD som zaviedol tuto DLL.
+   D. Kedze DLL je FIXED, adresa THREAD FUNKCIE (definovanej v DLL) JE ZHODNA.
+//------------------------------------------------------------------------------
+Injection cez Trojan DLL
+
+1. Spociva v nahradeni DLL, ktoru zavadza proces TROJAN DLL, ktora importuje vsetky elementy z povodnej DLL (napriklad cez DLL function forwarders). Samozrejme funkcie, ktore chce INJEKTOVAT moze upravit a to tak, ze presmeruje volanie funkcie na CUSTOM FUNKCIU s rovnakym prototypom v TROJAN DLL a ta po vykonani cinnosti nasledne vola POVODNU funkciu. Nevyhodou tohto postupu je, ze ak nahodou cez UPDATE, alebo po instalacii SP sa zmeni povodna DLL a pribudnu nove funkcie, TROJAN DLL ich nebude obsahovat, ak ju tiez nezmenim.
+2. Alternativou je zmenit samotny EXE subor a to zmenou jeho IMPORT SECTION, aby dany EXE tahal TROJAN DLL. Tento sposob ma vyhodu v tom, ze sa tyka zmeny iba jedneho EXE a neovplyvnuje ine programy.
+//------------------------------------------------------------------------------
+Injection ako Debugger
+
+1. Ak je proces typu debugger, tak je pred spustenym debugovaneho procesu notifikovany. Tu moze zaviest nejaky CUSTOM KOD potrebny pre debugging.
+!!! 2. Injection cez debugger je vhodny iba pre realizaciu debuggeru. Nevyhodou totizto je, ze standardne sa pri ukonceni debuggera ukonci i debugovany proces. Je to vsak mozne zmenit funkciou DebugSetProcessKillOnExit(). Funkciou DebugActiveProcessStop() je mozne zastavit debugger bez ukoncenia debugovaneho procesu.
+//------------------------------------------------------------------------------
+Injection cez CreateProcess()
+
+1. Tato technika predpoklada, ze PARENT PROCES zavadza CHILD proces cez CreateProcess().
+2. Sposob vykonania injection je nasledovny.
+   A. Parent proces vytvori CHILD proces so SUSPENDED MAIN THREAD.
+   B. Parent proces ziska STARTOVACIU adresu MAIN THREAD a ulozi si ASSEMBLER INSTRUCTION niekde do pamate.
+   C. Na STARTOVACIU adresu MAIN THREAD zapise CUSTOM ASSEMBLER INSTRUKCIE napriklad na volanie LoadLibrary() a spusti ich.
+   D. LoadLibrary() zavedie INJECTION DLL.
+   E. Po vykonani LoadLibrary(), znova zastavim MAIN THREAD a ZMENIM ASSEMBLY INSTRUCTIONS na STARTOVACEJ adrese MAIN TRHEAD na POVODNE ASSEMBLER ISTRUCTIONS, ktore som si ulozil v bode B.
+   F. Znova necham pokracovat MAIN THREAD, ktory bude vykonavat CHILD aplikacii ale uz so zavedenou INJECTION DLL.
+!!! 3. Nevyhodou tohto postupu je, ze vyzaduje zapis ASSEMBLER INSTRUCTIONS a tym je CPU DEPENDENT.
+//------------------------------------------------------------------------------
+API Hooking by Overwriting Code
+
+1. API HOOKING je technika, ktorou je mozne pri volani API funkcie zavolat CUSTOM funkciu, ktora vykona CUSTOM KOD a nasledne zavola PODOVDNU API funkciu.
+2. API HOOKING by Overwriting Code funguje nasledovne.
+   A. Najdem v procese adresu API funkcie, ktora ma by HOOKED.
+   B. Prvych N bytes z tejto adresy si ulozim do pamate - povodny KOD API FUNKCIE.
+   C. Na adresu API FUNKCIE zapisem CUSTOM ASSEMBLER INSTRUKCIE, ktore vykonaju JUMP na adresu HOOKED FUNKCIE.
+   !!! D. HOOKED funkcia MUSI MAT KOMPATIBLINY PROTOTYP s API FUNKCIU.
+   !!!!! E. Teraz HOOKED funkcia vykona CUSTOM KOD, ktory potrebuje.
+   !!! F. HOOKED funkcia na OBNNOVI POVODNE DATA na adrese API FUNKCIE z pamate do ktorej boli ulozene v bode B.
+   ??? G. V HOOK FUNKCII zavolam PODOVDNU API FUNKCIU - ASI znova instrukciou JUMP a nie CALL, aby sa do STACK neulozili prenasane parametre.
+   !!!!! H. Po vykonani POVODNEJ API FUNKCIE znova realizaciou bodu C zmeni na adrese API FUNKCIE kod na JUMP na HOOKED FUNKCIU, aby sa pri dalsom volani API FUNKCIE ZNOVA VOLALA HOOKED FUNKCIA.
+!!! 3. Nevyhodou tohto riesenia je, ze je CPU DEPENDANT a NIE JE THREAD-SAFE, pretoze pocas vymeny ASSEMBLE INSTRUCTIONS ak API funkciu zavola INY THREAD, tak program SKOLABUJE.
+!!!!! 4. Preto sa toto riesenie NEDOPORUCUJE.
+//------------------------------------------------------------------------------
+API Hooking by Manipultating a Module's Import Section   
+
+1. Tato technika je podobna predchadzajucej, no zasadny rozdiel je, ze NEMENI ASSEMBLER INSTRUKCIE na pociatocnej adrese funkcie, ale meni DLL IMPORT SECTION, prislusnej DLL a to tak, aby pri volani prislusnej API funkcie sa nevykonal skok na tuto API funkciu, ale na HOOKED API funkciu.
+2. Princip tejto techniky je nasledovny.
+   A. Pomocou funkcii z 'ImageHlp.h' prejdem IMPORT SECTION EXE PROGRAMU.
+   B. Import section obsahuje informacie o KAZDEJ DLL a jej IMPORTOVANYCH funkciach. O kazdej importovanej funkcii je okrem mena i OFFSET ADRESA, ktora urcuje na KTOREJ od DLL BASE ADDRESS RELATIVNEJ ADRESE sa nachadza kod danej DLL funkcie.
+   C. Najdem si v import section poziciu hladanej funkcie a ZMENIM v IMPORT SECTION adresu povodnej API funkcie na HOOKED FUNKCIU, ktora prirodzene musi mat rovnaky prototyp.
+   ??? D. Samozrejme ak chcem v HOOKED API funkcie pouzit povodnu funkciu, mozem si PODOVDNU ADRESU API FUNKCIE ulozit a zvnutra HOOKED DLL (alebo aj inde) ju volat, na vykonanie povodnej funkcionality.
+!!! 3. Tato technika aby fungovala i pre pripady ked sa DLL DYNAMICKY ZAVEDIE, cez LoadLibrary() je nutne, aby boli HOOKED i DALSIE API FUNKCIE, ktore ak zistia, ze sa do EXE nacitala DLL s funkciou, ktoru chcem HOOKNUT, tak I V TEJTO DLL PREPISU IMPORT SECTION. Jedna sa o funkcie ako LoadLibrary() ci GetProcessAddress().
+!!!!! 4. Zasadnou VYHODOU tejto techniky, oproti 'API Hooking by Overwriting Code' je, ze tym, ze prepisujem ADRESU v IMPORT SECTION - 4 BYTES - ??? ktore sa VZDY ZAPISUJU THREAD SAFE sposobom, tak tato technika je THREAD-SAFE. Takisto, kedze NEZAPISUJEM CPU INSTRUKCIE, je CPU INDEPENDENT.
+//------------------------------------------------------------------------------

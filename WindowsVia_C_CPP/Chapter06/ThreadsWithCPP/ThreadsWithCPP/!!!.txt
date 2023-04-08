@@ -1,0 +1,14 @@
+//------------------------------------------------------------------------------
+1. Program demonstruje pouzitie Threads v C++.
+2. Aktualna verzia C++ RunTime uz NEPODPORUJE SINGLE-TRHEAD DLL - iba MULTITHREAD VERZIE.
+!!! 3. Zasadnym problemom C++ RunTime je, ze bola navrhnuta v dobe neexistenciu multithread prostredi a pouziva casto GLOBALNE STATICKE PREMENNE pre mnohe C funkcie, ktore su sucastou standardnej kniznice C++.
+!!! 4. Riesenim tohto problemu je PRI VYTVARANI NOVEHO THREADU ulozit VSETKY STATICKE a GLOBALNE UDAJE C++ RunTime do TLS Entry, kde by pre KAZDY THREAD EXISTOVALA SEPARATNA KOPIA TYCHTO DAT.
+!!!!! 5. API funkcia CreateThread(), kedze NIE JE SI VEDOMA C++ RunTime (je to WinAPI funkcia a nie C++ funkcia) pri vyvarani noveho Threadu NEZABEZPECI VYTVORENIE POTREBNE TLS ENTRY pre C++ RunTime. Vysledkom je, ze thread vytvoreny cez CreateThread() NEBUDE KOREKTNE FUNGOVAT s C++ funkciami standardnej kniznice, ktore vyuzivaju STATICKE a GLOBALNE PREMENNE.
+!!!!! 6. MS prisiel s riesenim problemu zavedenim funkcie _beginthreadex(), ktora je WRAPPED okolo CreateThread(), pricom PRED ZAVOLANIM CreateThread() VYTVORI TLS ENTRY pre C++ RunTime a pri ukonceni threadu TLS ENTRY UVOLNI.
+7. STATICKE a GLOBALNE PREMENNE C++ RunTime sa ukladaju do triedy '_tiddata', ktora sa vytvara pri volani _beginthreadex() a jej smernik sa ulozi do TLS a naopak pri ukonceni threadu sa uvolni TLS aj pamat alokovana pre tuto strukturu.
+!!! 8. Vsetky C++ RunTime funkcie ako aj standard C++ library boli prepisane, aby namiesto STATICKY a GLOBALNYCH PREMENNYCH pouzivali strukturu '_tiddata' z TLS. Tak je zabezpecena ich korektna funkcionalita.
+!!!!! 9. C++ kedze pouziva SHARED HEAP, musi pri KAZDEJ ALOKACII (dealokacii) PAMATE z HEAP obalit volanie do KRITICKEJ SEKCIE, co vsak ma NEGATIVNY VPLYV na RYCHLOST DYNAMICKEJ ALOKACIE PAMATE.
+!!!!! 10. Ak OMYLOM pouzijem CreateThread() a v threade pouzijem C++ RunTime kniznice, tak RunTime DYNAMICKY ALOKUJE '_tiddata'. AVSAK PROBLEM nastava jednak s funkciou signal() (pretoze thread NIE JE obaleny SEH) a CO HORSIE, ak nezavolam v tomto thread _endthreadex() (co je malo pravdepodobne, ked som thread vytvoril volanim CreateThread()), tak sa '_tiddata' NEUVOLNI a DOCHADZA k MEMORY LEAKS.
+!!! 11. Ak DLL pouzivaju C++ RunTime, tak kedze DLL dostava notifikaciu o vytvoreni a uvolneni noveho threadu, C++ RunTime v reakcii na tieto udalosti alokuje, alebo uvolnuje '_tiddata' a NEDOCHADZA k MEMORY LEAKS (ak samozrejme nepouzivam CreateThread()).
+12. Funkcie _beginthread() a NAJME _endtrhead() by sa NEMALI POUZIVAT. Funkcia _endtrhead() pri ukoncovani threadu UZATVARA HANDLE na THREAD a ked tento HANDLE nahodou potrebujem v inom threade (napriklad na ziskanie navratovej hodnoty) budem mat INVALID HANDLE a samozrejme navratovu hodnotu threadu neziskam.
+//------------------------------------------------------------------------------

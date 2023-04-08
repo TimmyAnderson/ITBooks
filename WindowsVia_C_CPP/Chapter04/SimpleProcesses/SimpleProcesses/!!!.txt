@@ -1,0 +1,72 @@
+//------------------------------------------------------------------------------
+1. Program demonstruje funkciu procesov vo Windows.
+2. Proces je tvoreny dvoma zakladnymi komponentami.
+   A. Kernel objectom reprezentujucim beziaci proces. KO sluzi na manageovanie procesu OS, ako i ukladanie statistickych dat o procese.
+   B. Adresovym priestorom, ktory obsahuje vsetky spustatelne moduly, DLL, data a dynamicky alokovanu pamat.
+!!! 3. Samotny proces NEVYKONAVA KOD. Nato, aby proces mohol vykonavat kod, musi mat jeden alebo viacero THREADS. Po vytvoreni procesu je vytvoreny prvy thread nazyvany PRIMARY THREAD, ktory zacina vykonavanie kodu.
+4. OS prideluje jednotlivym threadom v OS casove kvanta round-robin sposobom, ktore tak mozu (v zavislosti od poctu CPU v systeme) vykonavat paralelne, alebo kvazi paralelne kod procesov beziacich v OS.
+5. Vo Windows sa rozslisuju aplikacie typu GUI a konzlove CUI aplikacie.
+!!! 6. Zatial co v pripade GUI je aplikacia priamo spustena, tak v pripade CUI najprv OS overi, ci je spustena konzola (ci aplikacia nebola spustena z inej konzlovej aplikacie - napriklad cmd.exe) a ak ano tak spusi konzolovu aplikaciu do BEZIACEJ konzoly, inac VYTORI NOVU KONZOLU.
+!!!!! 7. I GUI aplikacie MOZU VYTVARAT NOVU KONZOLU.
+8. To ci sa jedna o konzolovu aplikaciu, alebo GUI je dane priznakom LINKERA '/SUB-SYSTEM', ktory moze byt nastaveny na 'WINDOWS', alebo 'CONSOLE', popripade UPLNE VYHODENY a vtedy sa linker pokusi odvodit o aky typ aplikacie sa jedna z toho aky typ 'main()' je v kode definovany.
+9. Pri spusteni aplikacie dochadza k INICIALIZACII C++ RUNTIME, ktora sa deje nasledujucim sposobom.
+   A. OS NEZAVOLA 'main()' funkciu, ale SPECIALIZOVANU C++ INICIALIZACNU FUNKCIU.
+   B. Ziska sa hodnota Command Line a Enviroment variables.
+   C. Inicializacna funkcia INICIUJE C++ RUNTIME inicializaciou globalnych premennych a statickych premennych.
+   D. Alokuje sa HEAP pre malloc() a calloc().
+   E. Zavolaju sa konstruktory globalnych objektov.
+   F. Zavola sa 'main()' a verzia podla toho ci sa jedna o GUI, alebo CUI aplikaciu a ci pouziva, alebo nepouziva UNICODE.
+   G. Az teraz sa zacina vykonavanie samotneho programu.
+10. Pri UKONCENI 'main()' sa vykonavaju nasledujuce operacie.
+   A. Zavola sa C funkcia 'exit()'.
+   B. Funkcia 'exit()' zavola vsetky funkcie zaregistrovane cez '_onexit()'.
+   C. Volaju sa destruktory vsetkych globalnych objektov.
+   D. Ak je nastaveny DEBUG a _CRTDBG_LEAK_CHECK_DF, tak sa detekuju vsetky MEMORY LEAKS.
+   E. Zavola sa ExitProcess() a ukonci sa aplikacia.
+!!! 11. Starsie verzie C++ obsahovali niekolko GLOBALNYCH PREMENNYCH (deklarovanych v stdlib.h), ktore sa nastavovali pri inicializacii RUNTIME. Teraz su tieto premenne uz VYHODENE. Iba niektore, ako napriklad '__argc' ci '__wargv' ostali zachovane.
+12. Funkcia main() moze mat i verziu s 3 parametrami, kde treti parameter je pole ENVIRONMENT premennych.
+!!! 13. HINSTANCE udava ADRESU PAMATE v adresovom priestore proces do ktoreho bol nacitany DANY MODUL - co moze byt EXE, alebo DLL, ktora bola do daneho PROCESU NACITANA. Hodnotu mozem ziskat pomocou GetModuleHandle().
+!!! 14. Ak chcem v DLL ziskat hodnotu HINSTANCE tak NESMIEM VOLAT GetModuleHandle(NULL), pretoze ta by vratila HINSTANCE EXE PROCESU, ale musim pouzit GetModuleHandleEx(), ako parameter pouzit GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS a takisto ADRESU NA PRAVE VYKONAVANU FUKNCIU - adresu na samu seba. API funkcia GetModuleHandleEx() potom z adresy funkcie (ktora je definovana v DLL) urci HINSTANCE.
+!!!!! 15. HINSTANCE sluzi napriklad na CITANIE RESOURCES, ktore su priradene DANEMU EXE, alebo DLL.
+16. Funkcia GetCommandLine() vracia smernik na VZDY TO ISTE pole obsahujuce Command Line. Tento Command Line je potom mozne rozlozit na jednotlive parametre volanim CommandLineToArgvW().
+17. Environment variables sluzia na ukladanie premennych prostredia, ktore je mozne konfigurovat na urovni systemu ci uzivatela. Syntax EV je Name=Value. Value moze byt bud cisty text, alebo PREMENNA oddelena znakmi %% - napriklad %PATH%. Subsitucii tychto premennych je mozne vykonat volanim funkcie ExpandEnvironmentStrings(). EV su ulozene v Registry a ked ich zmenim musim spravil LOGOFF, aby vsetky programy zmenu zaregistrovali. Eventualne mozem poslat WM_SETTINGCHANGE aplikaciam, ktora tuto Message zachytavaju, aby si refreshli svoje EV.
+18. Environment variables je mozne ziskat viacerymi sposobmi.
+   A. Ziskat ich cez main() ak ju rozsirim o 3. parameter.
+   B. Volat funkciu GetEnvironmentStrings() a nasledne rozparsovat hodnotu zlozenu z viacerych Environment variables.
+   C. Ak poznam meno EV tak volanim GetEnvironmentVariable() ziskam jej hodnotu. Volanim GetEnvironmentVariable() hodnotu EV zas nastavujem.
+!!! 19. API funkcie GetEnvironmentVariable() a SetEnvironmentVariable() pracuju s hodnou SPUTENEHO PROCESU a NIE CELEHO OS.
+20. Pomocou funkcie SetErrorMode() mozem ZABLOKOVAT VYSKAKOVANIE dialogovych okien s ERROR MESSAGE, ked aplikacia vykona fatalnu chybu - napriklad pristupi do nepovolenej pamate.
+!!! 21. Windows si drzi PRE KAZDY PROCES Working Directory. Okrem toho pre kazdy proces uklada i CURRENT DIRECTORY pre KAZDY DRIVE. Tieto hodnoty uklada do Enviroment Variables, pricom ich mena su oznacene tym, ze zacinaju znakom '=' po ktorom nasleduje meno drive. Ak sa Working directory zmeni, tak SetCurrentDirectory() NEZAHOVAVA TUTO HODNOTU, ale C++ _chdir() ANO.
+22. Pomocou API funkcie GetVersionEx() mozem ziskat informaciu o OS, vratane informacie o cisle SP.
+23. Proces sa vytvara pomocou funkcie CreateProcess() a to nasledujucim sposobom.
+   A. Vytvori sa KO typu Process.
+   B. Vytvori sa KO typu Thread.
+   C. Spusti sa Process Entry Point co je funkcia C++ runtime.
+   D. Zavola sa funkcia typu main().
+!!! 24. Funkcia CreateProcess() vrati TRUE i ked proces NIE JE ESTE PLNE INICIALIZOVANY. To moze mat za nasledok, ze ak napriklad niektora DLL procesu CHYBA, tak CreateProcess() vrati TRUE a to I NAPRIEK TOMU, ze vytvaranie procesu v konecnom dosledku zlyha.
+!!!!! 25. API funkcia CreateProcess() musi mat ako druhy parameter 'lpCommandLine', ktory musi byt smernikom na WRITABLE TEXT. Ak je to READONLY TEXT - literal - funkcia zlyha.
+!!!!! 26. Okrem Process a Thread HANDLES mam k dispozicii i ProcessID a ThreadID. Tieto hodnoty BY SOM NEMAL POUZIVAT inak ako na diagnostiku, pretoze ak proces skonci, tak jeho ID MOZE BYT ZNOVA POUZITE a tak ked si ID ulozim NEMAM ISTOTU, ze je to ID TEJ ISTEJ APLIKACIE, lebo medzicasom sa povodna mohla ukoncit a nova vytvorit s TYM ISTYM ID.
+28. Proces moze byt ukonceny nasledujucimi sposobmi.
+   A. Skonci sa beh main() funkcie primarneho threadu. Vtedy C++ runtime TERMINUJE VSETKY BEZIACE THREADS PROCESU.
+   B. Niektory z Threads zavola ExitProcess().
+   C. Iny proces zavola TerminateProcess().
+   D. Vsetky Threads skoncia svoj beh.
+29. Ak program skonci ukoncenim main(), proces sa KOREKTNE uzavrie a zaroven VRATI NAVRATOVU HODNOTU, ktora sa uklada do KO typu Process a je pristupna volanim GetExitCodeProcess().
+!!! 30. Po zavolani ExitProcess() sa proces OKAMZITE UKONCI. Funkcia, ktora ExitProcess() vola NESKONCI - kod za ExitProcess() NEBUDE NIKDY VYKONANY. ExitProcess() zabija i VSETKY THREADS, ktore ESTE BEZIA.
+!!!!! 31. Ak zavolam ExitThread() pre PRIMARY THREAD, tak PRIMARY THREAD sa OKAMZITE UKONCI, ALE KED BEZIA INE THREADS, tak TIETO BEZIA DALEJ a PROCES BEZI DALEJ AZ KYM NESKONCIA. Ak vsak PRIMARY THREAD SKONCI ukoncenim main() AJ KED BEZIA INE THREADS - tieto su ZABITE, pretoze C++ RUNTIME po skonceni main() vola ExitProcess() a ten ZNICI VSETKY OSTATNE THREADS.
+!!!!! 32. Ako pri ExitProcess(), tak i pri ExitThread() sa SICE UVOLNIA RESOURCES drzane OS, ale NEUKONCI SA KOREKTNE C++ RUNTIME a to moze sposbit MEMORY LEAKS.
+!!!!! 33. Jedine korektne volnie ExitProcess() je v C++ RUNTIME FUNKCII, ktora vola main() a ktora ked main() skonci ukonci KOREKTNE PROGRAM DEINICIALIZACIU C++ a NASLEDNYM VOLANIM ExitProcess().
+!!!!! 34. Zaujimavostou je, ze po volani ExitProcess() sa ZAVOLAL DESTRUKTOR GLOBALNEHO OBJEKTU, ale NEZAVOLAL SA DESTRUKTOR LOKALNEHO OBJEKTU (kedze po volani ExitProcess() uz funkcia viac nepokracuje). TOTO JE ROZDIEL OPROTI KNIHE. Pravdepodobne je to ZMENA vo VISUAL C++ 2008.
+!!! 35. API funkcia TerminateProcess() umoznuje zlikvidovat hociktory proces. I ked pri terminovani procesu dochadza k UVOLNENIU PAMETI a UZATVORENIU VSETKYCH HANDLES, tak terminovanie moze napriklad sposobit, ze data ulozene v bufferi disku a pripravene na zapis na disk NEBUDU ZAPISANE. Subor samotny vsak BUDE KOREKTNE UZAVRETY. Po volani TerminateProcess() KERNEL KOMPLETNE UVOLNI PROSTRIEDKY ALKOVANE PROCESOM a po procese NEOSTANE NIC - ZIADNE MEMORY LEAKS.
+36. TerminateProcess() je ASYNCHRONNA a PROCES NEMUSI BYT ESTE TERMINOVANY, ked skoncilo jej volanie.
+37. Ziskam zoznam procesov v systeme je mozne pomocou dvojice API funkcii Process32First() a Process32Next(), alebo mozem ziskat zoznam ID vsetkych procesov volanim EnumProcesses().
+//------------------------------------------------------------------------------
+1. Podstatou UAC je, ze I KED SOM PRIHLASENY ako ADMINISTRATOR, pri spustani aplikacii Windows im prideli Token Standard User a tym obmedzi privilegia pre dany proces.
+2. Privilegia pre dany proces je mozne MENIT IBA PRI SPUSTENI PROCESU a teda po spusteni procesu uz NIE JE MOZNE ich ZMENIT. Preto UAC pri starte aplikacie sa opyta na to ci dana aplikacia ma byt spustena ako SKUTOCNY ADMINISTRATOR.
+3. Program moze DEFINOVAT ci ma UAC po uzivatelovi vyzadovat prihralsenie sa ako ADMINISTRATOR pomocou MANIFESTU, ktory moze byt distribuovany s aplikaciou dvoma spsoobmi.
+   A. Ako prilozeny XML subor s priponou '.manifest'.
+   B. Manifest je EMBEDDED RESOURCE, ktory ma VYSSIU prioritu ako XML a teda ak je definovany tak sa '.manifest' subor IGNORUJE.
+!!! 4. Ak chcem proces spustit tak aby sa spustil pod ADMINISTRATOROM, tak musim ho spustit cez ShellExecuteEx(), kde v parametry 'lpVerb' musim zadat textovy retazec 'runas'. Teda proces sa NESPUSTA cez CreateProcess(), ale cez ShellExecuteEx().
+!!! 5. To ci dany proces bezi pod ADMINISTRATOROM je mozne zistit evaluaciou PROCESS ACCESS TOKEN funkciou GetTokenInformation(), ktora ako parameter musi ma ACCESS TOKEN PROCESU ziskany volanim OpenProcessToken().
+!!! 6. Funkcia GetTokenInformation() vracia typ TOKEN_ELEVATION_TYPE, ktory ucruje ci je dany ACCESS TOKEN LIMITOVANY UAC, alebo NIE.
+//------------------------------------------------------------------------------

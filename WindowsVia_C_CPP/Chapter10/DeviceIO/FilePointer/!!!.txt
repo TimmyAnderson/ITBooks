@@ -1,0 +1,123 @@
+//------------------------------------------------------------------------------
+1. Program demonstruje IO operacie nad Windows.
+2. Windows okrem SYNCHORNNYCH IO OPERACII podporuje i ASYNCHRONNE IO OPERACIE pomocou mechanizmu IO Completion Port.
+!!! 3. IO Completion Port je UNIVERZALNY MECHANIZMUS, ktory je mozne pouzit NIELNE PRE IO OPERACIE, ale i na realizovanie INTER-THREAD komunikacie.
+4. IO operacie pod Windows su realizovane pomerne jednotym API, ktore po otoreni LUBOVOLNEHO DEVICE (okrem socket, pre ktory je specializovane API) umoznuje citat funkciou ReadFile(), resp. ReadFileEx() a zapisovat funkciou WriteFile(), resp. WriteFileEx(). Otvoreny HANDLE je mozne zavriet funkciou CloseHandle() (resp. closesocket() pre sockets).
+!!!!! 5. Pod Windows NAMED PIPE podporuju i komunikaciu MEDZI VIACERYMI PC. Anonymne pipes podporuju iba komunikaciu v ramcie jedneho PC.
+6. Ak pracujem so subormi, dlzku suboru mozem zistit volanim GetFileSize() - vrati 32 bitovu velkost, alebo GetFileSizeEx() - vrati 64 bitovu velkost.
+!!! 7. Kazdy File KO (POZOR NIE HANDLE) ma asociovany POINTER, ktory ukazuje na ktorom mieste sa k suboru bude pristupovat. Tento poitner je asociovany s KO a NIE HANDLE a teda ak na TEN ISTY KO pristupuje VIACERO HANDLES (vytvoreny cez DuplicateHandle()), tak VSETKY MAJU TU ISTU POZICIU POINTER.
+!!!!! 8. File KO sa pri KAZDOM VOLANI CreateFile() vytorvi NOVY. Ak teda otvorim TEN ISTY SUBOR 2 KRAT - 2* volanim CreateFile() - KAZDY ma VLASTNY KO a teda i VLASTNY POINTER.
+9. Funkciou SetEndOfFile() nastavim velkost suboru na hodnotu, ktoru ma aktualne FILE POINTER.
+!!! 10. Windows Vista obsahuje funkciu CancelSynchronousIo(), ktora umoznuje vykonat ZRUSENIE SYNCHRONNYCH VESETKYCH IO operacii nad danym threadom. Thread vsak musi mat nastaveny atribut THREAD_TERMINATE, aby funkcia uspesne skoncila.
+//------------------------------------------------------------------------------
+Asynchronne IO operacie.
+
+1. Na vykonanie asynchronnej operacie je nutne vykonat nasledujuce kroky.
+   A. Vytvorit HANDLE funkciou CreateFile() s nastavenym parametrom FILE_FLAG_OVERLAPPED.
+   B. Pre KAZDU OPERACIU musim vytvorit SEPARATNU INSTANCIU struktury OVERLAPPED a INICIALIZOVAT jej hodnoty.
+   C. Vykonat operaciu ReadFile(), alebo WriteFile() pricom ako parameter prenesiem instanciu OVERLAPPED.
+   D. V pripade USPESNEHO zaregistrovania asynchronnej operacie vrati ReadFile() a WriteFile() FALSE a GetLastError() vracia ERROR_IO_PENDING.
+   E. Niektorym z mechanizmov detekcie konca asynchronnej operacie detekujem koniec operacie a spracujem vysledky.
+   F. Pri spracovani vysledkov mozem na zistenie poctu prenesenych BYTES, resp. vyskyt chyby detekovat bud citanim premennych struktury OVELAPPED (teraz su uz i Internal a InternalHigh dokumentovane), alebo pouzit funkciu GetOverlappedResult(), ktora vycita tieto hodnoty z OVERLAPPED automaticky.
+2. Struktura OVERLAPPED obsahuje nasledujuce premenne.
+   !!! A. Premenne Offset a OffsetHigh urcuju POZICIU odkial zacina IO operacie citanie, resp. zapis. Pre KAZDU IO OPERACIU MUSIM TIETO HODNOTY NASTAVIT, pretoze pri asynchronnych operaciach sa FILE POINTER NEPOUZIVA. Namiesto toho sa pouzivaju prave hodnoty Offset a OffsetHigh.
+   B. Premenna hEvent urcuje HANDLE na EVENT, ktory AK NASTAVIM, bude signalizovany PRI SKONCENI ASYNCHRONNEJ IO OPERACIE. Mozem nastavit aj NULL.
+   C. Premenna InternalHigh je DOKUMENTOVANA a MUSI BYT nastavena na 0. Po skonceni IO operacie urcuje POCET PRENESENYCH BYTES.
+   D. Premenna Internal je DOKUMENTOVANA a MUSI BYT nastavena na 0. Po skonceni IO operacie urcuje ERROR CODE operacie AK SKONCILA CHYBOU.
+!!! 4. Ak vykonam nad tym istym HANDLE VIACERO asynhronnych operacii, tieto sa vykonavaju v NAHODNOM PORADI - podla optimalizacii, ktore robi driver zariadenia a NIE PODLA PORADIA VOLANIA OPERACII.
+!!! 5. KAZDA asychronna operacia musi mat VLASTNU STRUKTURU OVERLAPPED a VLASTNU BUFFER. Pamat pridelena OVERLAPPED a BUFFER NESMIE BYT UVOLNENA AZ DO SKONCENIA IO OPERACI - INAK DOJDE K MEMORY CORRUPTION.
+!!!!! 6. Asynchronna operacia moze byt vykonana i SYNCHRONNE a to vtedy ak su potrebne data v CACHE. Toto sa pri citanie Files stava VELMI CASTO.
+7. Asynchronna IO operacia moze byt zrusena nasledujucimi sposobmi.
+   A. Funkciou CancelIo() je mozne zrusit VSETKY OPERACIE nad DANYM HANDLE.
+   B. Ak ZATVORIM HANDLE daneho zariadenia, tak sa UKONCIA VSETKY IO OPERACIE nad danym zariadenim.
+   C. AK thread sa ukonci, tak VSETKY IO operacie, ktore tento thread spustil su ZRUSENE, OKREM TYCH, ktore maju asociovany Completion Port.
+   D. Funkcia CancelIoEx() umoznuje zrusit KONKRETNU IO OPERACIU identifikovanu strukturou OVERLAPPED.
+!!!!! 8. Na testovanie asynchronnych operacii je VELMI VHODNE VYHODIT CACHING - inak budu casto IO operacie vykonane SYNCHRONNE, kedze subory z disku budu v Cache. Na vypnutie CACHE su potrebne nasledujuce kroky.
+   A. V CreateFile() je potrebne definovat FILE_FLAG_NO_BUFFERING.
+   !!! B. Pamatovy buffer z ktoreho sa citaju data, alebo budu zapisovat data IO operacii, MUSI BYT ZAROVANY na VELKOST SEKTORA. Nato je potrebne pouzit funkcie _aligned_malloc() a _aligned_free().
+   C. Offest od ktoreho citam, alebo zapisujem data MUSI BYT NASOBKOM VELKOSTI SEKTORA.
+   D. Pocet bytes, ktore citam, alebo zapisujem MUSI BYT NASOBKOM VELKOSTI SEKTORA.
+   E. Velkost sektora je mozne zistit volanim GetDiskFreeSpace().
+!!!!! 9. Signalizacia ukoncenia ASYNCHRONNEJ operacie je realizovana viacerymi sposobmi.
+   A. Device HANDLE. Ked operacia skonci, tak sa signalizuje Device HANDLE.
+   B. Event. V strukture OVERLAPPED je mozne definovat EVENT, ktory sa SIGNALIZUJE pri skonceni IO operacie.
+   C. Alertable IO. Su vykonavane ak je thread, ktory VOLAL ReadFileEx(), resp. WriteFileEx() su v ALERTABLE WAIT.
+   !!! D. Completion Ports.
+!!! 10. Device HANDLE sa pri volani funkcie ReadFile(), resp. WriteFile() sa nastavi do NESIGNALIZOVANEHO STAVU. Ked asynchronna IO skonci tak sa tento HANDLE SIGNALIZUJE. Nevyhdou tejto metody je, ze ukoncenie VIACERO IO OPERACII nou nedokazem signalizovat, kedze mam iba jeden HANDLE.
+!!! 11. Signalizaciu Device HANDLE je mozne VYPNUT funkciou SetFileCompletionNotificationModes(). Je to vyhodne, ak pouzivam signalizaciu konca IO cez EVENTS a signalizaciu Device HANDLE NEPOUZIVAM. Vedie k malej casovej uspore.
+12. Ak chcem realizovat PARALELNE VIACERO ASYCNHRONNYCH IO na indikaciu skoncenia NAMIESTO Device HANDLE je mozne pouzit EVENTS. Event vytvorim pomocou CreateEvent() a zaevidujem v strukture OVERLAPPED. Kedze pouzivam pre KAZDU IO VLASTNU OVERLAPPED (co je podmienka asynchronnych IO), tak ma kazda IO vlastny Event, ktory sa pri skonceni operacie SIGNALIZUJE.
+!!! 13. Pouzitie APC v spojitosti s IO prinasa viacere uskalia. Kedze vsetky APC su vykonavane threadom, ktory volal ReadFileEx(), resp. WriteFileEx(), je toto riesenie NESKALOVATELNE. Takisto pouzitie CALLBACK funkcii je neprekticke, kedze neobsahuju kontext (custom data), ktore boli pri volani ReadFileEx(), resp. WriteFileEx().
+//------------------------------------------------------------------------------
+APC.
+
+1. APC je UNIVERZALNY mechanizmus umoznujuci komuniaciu medzi VIACERYMI THREADS, alebo DRIVERS a THREADS, ktory sa pouziva OKREM INEHO i na realizaciu notifikacie konca IO operacie.
+2. APC pri notifikacii konca asynchronnej IO operacie sa pouziva tak, ze DRIVER si zaregistruje APC volanie s danou IO operaciou a ked ta skonci, tak zaradi do APC queue toto volanie, cim sposobi notifikaciu threadu, ktory spustil operaciu - ak je ten v ALERTABLE WAIT.
+!!! 3. APC na pozadi funguje nasledovne.
+   A. KAZDY THREAD ma asociovanu APC QUEUE do ktorej sa ukladaju POZIADAVKY na vykonanie APC operacii.
+   B. APC operacia moze byt LUBOVOLNA FUNKCIA, ktora vykona prisluny kod na THREADE DO KTOREHO APC operaciu ZASLEM.
+   C. Do APC queue moze DRIVER, alebo INY THREAD volanim QueueUserAPC() zaslat poziadavku na vykonanie, ktora sa zaradi do APC queue.
+   !!! D. V APC queue OSTAVAJU REQUEST AZ DO CHVILE, ked dany thread nevykona ALERTABLE WAIT. Pri vykonani ALERTABLE WAIT thread SKONTROLUJE ci APC queue OBSAHUJE REQUEST a ak ANO, tak ho vykona, prico ALERTABLE WAIT HNED SKONCI.
+4. Alertable wait sa vykona iba ak thread pouzije niektoru z nasledujucich funkcii a nastavi prislusny parameter na TRUE.
+   A. SleepEx().
+   B. WaitForSingleObjectEx().
+   C. WaitForMultipleObjectEx().
+   D. SingleObjectAndWait().
+   E. GetQueuedCompletionStatusEx().
+   F. MsgWaitForMultipleObjectsEx().
+!!! 5. Pri ALERTABLE WAIT sa thread chova nasledovne.
+   A. Pred skocenim do WAIT thread skontroluje ci APC queue neobsahuje APC request.
+   B. Ak obsahuje VSETKY POSTUPNE VYKONA a ALERTABLE WAIT IHNED SKONCI ukoncenim volania *Ex() funkcie.
+   C. Ak APC je naopak PRZADNA, tak trheads vstupi do WAIT stavu.
+   D. Ak pocas WAIT dojde k zaslaniu APC do AP queue daneho threadu, ten OKAMZTIE VYKONA VSETKY APC a IHNED SKONCI.
+   !!! E. Funkcie *Ex() teda HNED PO VYKONANI APC SKONCIA, bez toho aby bol nejaky KO SIGNALIZOVANY. Napriklad WaitForSingleObjectEx() po prichode a vykonanni APC IHNED skonci BEZ TOHO aby KO bol SIGNALIZOVANY.
+//------------------------------------------------------------------------------
+Completion Ports.
+
+1. V tradicnych server-side systemoch je spracovanie IO operacii realizovane dvoma sposobmi.
+   A. Synchronne. Poziadavky sa spracuvaju v 1 THREAD sekvencne ako dochadzaju. Nevyhodou je nemoznost vyuzitia viacerych CPU.
+   B. Paralelne. JEDEN THREAD robi ODPOSLUCH POZIADAVIEK na IO zariadeni a pri prichode novej poziadavky VYTVORI NOVY THREAD, ktory poziadavku PARALELNE SPRACUJE. Nevyhodou tohto riesenia je, ze pri velkom pocte poziadaviek sa vytvori velke mnostvo BEZIACICH (SCHEDULABLE) threads a nasledne system robi VELKE MNOZSTVO CONTEXT SWITCHES.
+2. Completion Ports su KOMPROMISOM medzi oboma rieseniami, ktore vychadza z PARALELNEHO SPRACOVANIA, avsak CP umoznuju nastavit MAXIMALNY POCET IO THREADS, ktore mozu spracovavat IO poziadavky.
+3. CP sa pouzivaju nasledovnym sposobom.
+   A. Vytvorim CP pomocou funkcie CreateIoCompletionPort(), kde stanovim MAXIMALNY POCET SCHEDULABLE IO threads.
+   B. Zaregistrujem DEVICE HANDLES volanim CreateIoCompletionPort().
+   C. Vytvorim N-IO THREADS, ktore spracuvaju IO poziadavky. Pocet THREADS by mal by >= ako pocet SCHEDULABLE THREADS nastavenych v bode A.
+   D. Kazdy IO thread vytvoreny v bode C musi V CYKLE volat funkciu GetQueuedCompletionStatus(), ktora privedie threads do WAIT STAVU, cakajuc na KONIEC ASYCNHRONNEJ IO OPERACIE.
+   E. Hlavny thread spusti ASYCNHRONNE IO OPERACIE cez ReadFile(), alebo WriteFile().
+   F. Po skonceni IO operacie je JEDEN Z IO THREADOV prebudeny a zacne spracovat VYSLEDKY ASYNCHRONNEHO IO VOLANIA. Po jeho spracovani ZNOVA VOLA GetQueuedCompletionStatus() - v cykle.
+   G. Ak chcem ukoncit vsetky IO threads, mozem pouzit PostQueuedCompletionStatus(), ktorym mozem (OKREM INEHO) zaslat notifikaciu o konci napriklad tak, ze nastavima ko CP KEY ZVLASTNU HODNOTU, ktoru budu IO THREADS DETEKOVAT a UKONCIA SA.
+!!! 4. CP sa vytvara volanim GetQueuedCompletionStatus(), ktore moze vykonat naraz 2 veci. Vytvori CP a ZAROVEN moze ZAREGISTROVAT DEVICE HANDLE (napriklad FILE HANDLE) ako zariadenie, ktore je monitorovane CP.
+!!! 5. Funkciu GetQueuedCompletionStatus() je vsak PRHLADNEJSIE pouzit nasledovne.
+   A. Pomocou volania HCP=CreateIoCompletionPort(INVALID_HANDLE_VALUE,NULL,0,???), kde ??? je MAXIMALNY POCET SCHDULABLE THREADS vytvorim CP.
+   B. Opakovanim volanim CreateIoCompletionPort(SomeHandle,HCP,Key,0) ZARADIM 1, alebo VIACERO DEVICE HANDLES (SomeHandle) do daneho CP.
+6. Funkcia GetQueuedCompletionStatus() AK NIE JE ZIADEN IO RESPONSE (po ukonceni asynchronnej operacie) funkcia VYKONA WAIT, ktory sa oblokuje bud po skonceni timeout, alebo ked niektora asynchronna operacia skonci A DANY THREAD bol vybrany CP na spracovanie vysledku.
+!!! 7. Vista poskytuje i GetQueuedCompletionStatusEx(), ktora umoznuje prevziat VIACERO REQUEST (ukonceni asynchronnych operacii) a takisto moze vstupit do ALERTABLE WAIT.
+8. Pomocou funkcie PostQueuedCompletionStatus() je mozne do SP ZASLAT REQUEST (simulujuci skoncenie asynchronnej operacie) do CP a tym UKONCIT WAIT sposobeny GetQueuedCompletionStatus(). Pri jej volani mozem definovat KEY, ktory moze v threade volajucom GetQueuedCompletionStatus() sluzit na identifikaciu nejakej specialnej akcie.
+!!! 9. Funkciu PostQueuedCompletionStatus() je VYHODNE mozne pouzit na UKONCENIE IO THRREADS - zaslanim KEY, ktory IO THREAD identifikuje a ukonci sa. TOTO VYUZIVAM VO SVOJICH PROGRAMOCH.
+10.  Pri vytvoreni CP sa vytvori 5 QUEUES.
+   A. Device List - obsahuje zoznam DEVICE HANDLES priradenych DANEMU CP.
+   B. IO Completion Queue - obsahuje FIFO zoznam SKONCENYCH ASYNCHRONNYCH OPERACII (resp. volani PostQueuedCompletionStatus()). Kazda entry obsahuje Key, pocet prenesenych bytes, error code a OVERLAPPED strukturu.
+   C. Waiting Thread Queue - obsahuje LIFO zoznam CAKAJUCICH IO threads - su to tie threads, ktore zavolali GetQueuedCompletionStatus() a cakaju na prichod entry do IO Completion Queue.
+   D. Released Thread Queue - obsahuje zoznam SCHEDULABLE IO threads. Sem patri KAZDY SCHEDULABLE thread, ktory ASPON RAZ volal GetQueuedCompletionStatus(), pretoze po jej volani sa stane IO threadom.
+   E. Paused Thread Queue - obsahuje zoznam IO threads, ktore su vo WAIT STAVE, sposobenom bud volanim nejakej WAIT funkcie, vykonanim synchronnej IO operacie (sem patri i zapis a citenie na konzolu) ci inej priciny ked sa thread dostane do WAIT stavu. Tento zoznam vsak NEOBSAHUJE tie threads, ktore volaju su vo WAIT, kvoli GetQueuedCompletionStatus(), pretoze tieto su v Waiting Thread Queue.
+10. Algoritmus FUNGOVANIA CP je nasledovny.
+   A. Pri vytvoreni CP (funkcia CreateIoCompletionPort()) sa vytvori 5 queues uvedenych v bude 10.
+   B. Pri ASOCIACII DEVICE HANDLE s CP (vykonava sa taktiez volanim CreateIoCompletionPort()) je do Device List ulozeny zaznam obsahujuce DEVICE HANDLE a Key. Od tejto chvile je DEVICE HANDLE TRVALO ASOCIOVANY s danym CP, az kym ho eventualne neasociujem s inym CP.
+   !!! C. Ak LUBOVOLNY THREAD zavola funkciu GetQueuedCompletionStatus() je zaradeny do Waiting Thread Queue a TRVALE SA STAVA IO THREADOM. Teda TRVALE bude REGISTROVANY danym CP v NIEKTOREJ z trojice Thread Queue - az kym thread NESKONCI, alebo sa NEASOCIUJE s INYM CP, eventualne CP nie je ukoncene volanim CloseHandle().
+   D. IO threads ostavaju v Waiting Thread Queue az pokym nepride do IO Completion Queue novy entry. Ten moze prist pri skonceni IO operacie, alebo ak iny thread zavola PostQueuedCompletionStatus().
+   E. Akonahle do IO Completion Queue pride novy entry - CP VYBERIE LIFO SPOSOBOM IO thread, ktory je vo Waiting Thread Queue (volanim GetQueuedCompletionStatus()) a UKONCI volanie GetQueuedCompletionStatus(), zaroven PREMIESTNIAC thread do Released Thread Queue.
+   F. Thread v Released Thread Queue sa stava SCHEDULABLE a MOZE SPRACOVAT VYSELDKY asynchronnej IO operacie.
+   G. V pripade, ze IO thread SKONCIL SPRACOVANI IO operacie MAL BY (i ked samozrejme nemusi) znova zavolat GetQueuedCompletionStatus() a HNED BUDE PRESNUNUTY SPAT do Waiting Thread Queue na VRCHOL LIFO QUEUE.
+   H. V pripade, ze SCHEDULABLE thread v Released Thread Queue SKOCIl do BEZNEHO WAIT (NIE takeho vyvolaneho GetQueuedCompletionStatus()) potom thread je PRESUNUTY do Paused Thread Queue a zaroven CP moze INEHO THREAD, ktory volal GetQueuedCompletionStatus() umoznit sprcovat entry z IO Completion Queue - ak samozrejme ta nie je prazdna.
+   I. Thread, ktory je v Paused Thread Queue sa VRATI do Released Thread Queue ak BEZNY WAIT (NIE taky vyvolany GetQueuedCompletionStatus()) SKONCI. Thread sa stane ZNOVA SCHEDULABLE a moze pokracovat v spravani IO operacie. Ak tento thread zavola GetQueuedCompletionStatus() tak je znova zaradeny do Waiting Thread Queue a moze spracovavat dalsiu poziadavku z IO Completion Queue - ak samozrejme ta nie je prazdna.
+!!!!! 11. IO THREAD je KAZDY THREAD, ktory ASPON RAZ zavolal GetQueuedCompletionStatus(). Takyto thread zvycajne obsahuje CYKLUS, ktory zalova GetQueuedCompletionStatus() - pocas ktoreho sa dostane do WAIT a nasledne az sa prebudi (dojde poziadavka do IO Completion Queue ako reakcia na ukoncenie asynchronnej operacie) thread spracuje data a ZNOVA ZAVOLA GetQueuedCompletionStatus().
+!!!!! 12. Do Paused Thread Queue sa moze dostat KAZDY SCHEDULABLE IO THREAD, ktory bud zavola niektoru WIAT funkciu, alebo vykona INU SYNCHRONNU IO OPERACIE - pricom i VYPIS TEXU NA KONZOLU sposobi WAIT a prechod do Paused Thread Queue.
+!!! 13. Limit na MAXIMALNY POCET SCHEDULABLE sa zadava pri volani CreateIoCompletionPort(). CP sa nasledne snazi drzat pocet threads na stanovenej hodnote. Limit sa dodrziava nasledovne.
+   A. Ak pocet poziadaviek v IO Completion Queue je VYSSI ako pocet MAXIMALNY POCET SCHEDULABLE THREADS, potom DALSI IO THREAD NEBUDE PREBUDENY.
+   B. Ak niektory z SCHEDULABLE IO THREADS sa dostane do BEZNEHO WAIT (NIE sposobeneho GetQueuedCompletionStatus()), tak DALSI IO THREAD (z GetQueuedCompletionStatus()) dostane moznost spracovat nasledujucu IO operaciu. Ak nahodou POCAS SPRACOVANIA thread v Paused Thread Queue je prebudeny, tak DOSASNE MOZE BYT POCET SCHEDULABLE IO THREADS VACSE ako MAXIMALNY POCET SCHEDULABLE THREADS.
+!!!!! 14. MAXIMALNY POCET SCHEDULABLE je spravidla ODLISNY od POCTU IO THREADS. IO threads je zvycajne VIAC ako limit na pocet SCHEDULABLE threads. Doporucuje sa 2 nasobok, teda pocet IO THREADS by mal by 2* pocet CPU v PC.
+!!! 15. MAXIMALNY POCET SCHEDULABLE sa doporucuje stanovit na POCET CPU v PC.
+16. Ak vykonam One-Way operaciu a teda ma nezaujima vysledok IO operacie, tak mozem ZRUSIT pridanie entry do IO Completion Queue pri skonceni asynchronnej IO operacie tym, ze nastavim 'Event' strutkury OVERALLPED a k jeho hodnote BITOVYM OR prihodim cislo 1. Potom CP NEBUDE pri skonceni asynchronnej operacie pridavat entry do IO Completion Queue a zikam tam One-Way operaciu.
+17. Key je OPAQUE hodnota, ktoru mozem pouzit na identifikaciu IO operacie.
+18. Ak je IO operacia vykonana synchronne tak stanradne je ZARADENA POZIADAVKA do IO Completion Queue, aby bol programovy model rovanky pre synchronne a asynchronne spracovanie. Ak NECHCEM pri synchronnom spraovani zaradit entry do IO Completion Queue, mozem nastavit priznak FILE_SKIP_COMPLETION_PORT_ON_SUCCESS vo funkcii SefFileCompletionNotoficationModes().
+!!! 19. Pocet IO threads mozem mat bud staticky pocas behu programu, alebo v zavislosti od zatazenia PC ho mozem dynamicky menit. Je to iba na mne kolko IO threads vytvorim a ako dlho ich necham pracovat.
+//------------------------------------------------------------------------------

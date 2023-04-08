@@ -1,0 +1,30 @@
+//------------------------------------------------------------------------------
+1. Program demonstruje pouzitie User-Mode synchronizacie.
+2. Najjednoduchsim a zaroven NAJRYCHLEJSIM sposobom synchronizacie je pouzit INTERLOCKED FUNKCIE, ktore su schopne ATOMICKY A VELMI RYCHLO realizovat operacie scitania a vymeny hodnot nad 32, resp. 64 bitovymi hodnotami.
+!!! 3. Nato aby INTERLOCKED FUNKCIE fungovali korektne musia byt hodnoty nad ktorymi pracuju v pameti KOREKTNE ZAROVNANE. C++ poskytuje funkciu _aligned_malloc(), ktora allokuje pamat na HEAP s POZADOVANYM ZAROVNANIM.
+!!! 4. Windows API poskytuje i mnozinu funkcii implementujucich THREAD SAFE LINKED LIST pod nazvom SList.
+5. CPU pri prenose dat z a do pamate pouziva 'Cache Line' co je blok SUSEDNYCH 32, 64, alebo 128 bytes (zarovane na 32/64/128 bytes), ktore su CITANE A ZAPISANE NARAZ. Je to optimalizacna vlastnost, kedze program zvycajne pracuje s datovymi polozkami, ktore su blizko od seba (struktury) a pouzitim Cache Lines sa znizuje pocet pristupov do pamate.
+!!! 6. Problem Cache Lines je pri MULTI-CPU, kde sa Cache Lines musia SYNCHRONIZOVAT, ak jedno CPU prepise Cache Line, ktory ma naciany aj iny CPU. Vtedy je Cache Line na inom CPU INVALIDATED - stava sa neplatnym a musi sa znova nacitat z RAM. Zaroven CPU, ktory do pamate svojej Cache Line uspesne zapisal musi data ULOZIT DO RAM. To ma za nasledok nizsiu efektivnost programu.
+!!! 7. Riesenim je oddelit pamat na citani a zapis do BLOKOV O DLZKE CACHE LINE. Tym sa znizi pocet INVALIDATED Cache Lines. Na toto zarovnanie sa da pouzit direktiva preprocesora __declspec(align(#)).
+!!!!! 8. Ak pouzivam na synchronizaciu POLLING, MUSIM SI DAT POZOR NA NASLEDUJUCE PROBLEMY.
+   A. SHARED PREMENNA, ak sa k nej NEPRISTUPUJE ADRESOU, ale cita sa hodnota MUSI BYT OZNACENA ako 'volataile', aby ju kompilator neoptimalizoval tak, ze si ulozi hodnot do Cache a NEBUDE JU CITAT z PAMATE - co by program znefunkcnilo.
+   !!! B. Ak thread realizujuci POLL ma VYSSIU PRIORITU ako THREAD, ktory ma NASTAVIT POLLED hodnotu, potom THREAD s NIZSOU PRIORITOU NIKDY NEDOSTANE CPU, NIKDY NENASTAVI POLLED premennu a VZNIKNE kvazi 'DEAD-LOCK'. !!!!! Program UPLNE NESTVRDNE, vdaka PRIORITY BOOSTING pre STARVED THREADS, ale VYKONAVANIE BUDE STRASNE POMALE, pretoze POLLING THREAD s VYSSOU PRIORITOU BUDE ZRAT TAKMER VSETOK CPU.
+9. Kriticka sekcia vo Windows je realizovana strukturou CRITICAL_SECTION a funkciami EnterCriticalSection() a LeaveCriticalSection(). CS JE REALIZOVANA cez Interlocked funkcie.
+!!! 10. CS implementuju WAITING pomocou Events, ktore vsak vytvara LAZY SPOSOBOM.
+11. CS si interne drzi informaciu, ktory thread a kolko krat drzi CS.
+12. CS pouzivaju SPINNING a pomocou funkcie InitializeCriticalSectionAndSpinCount(), alebo SetCriticalSectionSpinCount() mozem nastavit velkost SPINU.
+13. SlimReaderWriterLock (SRWL) je synchronizacny mechanizmus rozlisujuci medzi READERS a WRITERS. Umoznuje sucasne VIACERO READERS citat NARAZ DATA ale IBA JEDNEMU WRITER zapisovat. Ak zapisuje Writer, ostatne Readers su blokovane.
+!!! 14. ConditionVariables su ROZSIRENIM CS a SRWL umoxnujucim nad nimi definovat PODMIENKU (funkcia SleepConditionVariableCS(), resp. SleepConditionVariableSRW()), iba po ktorej naplneni (volanim WakeConditionVariable() resp. WakeAllConditionVariable()) je CS, resp. SRWL uvolneny.
+!!! 15. Funkcie SleepConditionVariableCS(), resp. SleepConditionVariableSRW() ATOMICKY UVOLNIA CS, resp. SRWL A ZAEOVEN SKOCIA DO WAIT cakajuc na SIGNALIZOVANIE CONDITION VARIABLE.
+!!!!! 16. Funkcie SleepConditionVariableCS(), resp. SleepConditionVariableSRW() SKONCIA, ked JE SPLNENA PODMIENKA a ZAROVEN THREAD ZISKA LOCK.
+//------------------------------------------------------------------------------
+Kriticke sekcie.
+
+1. CS su USER-MODE objekty, ktore KO pouzivaju IBA PRI CONTENTATION (2 a viacej threads zapasi o ten isty Resource).
+!!!!! 2. CS teda na SYNCHRONIZACIU NEPOUZIVA PRIAMO KO - to by bolo POMALE. Naopak CS implementuje VLASTNY THREAD-SAFE mechanizmus na indikaciu ci NEJAKY INY THREAD JE v CS. Na zaklade toho realizuje PRI VSTUPE DO CS (funkcia EnterCriticalSection()) NASLEDOVNY ALGORITMUS - ATOMICKY.
+   A. Ak ZIADEN INY thread NIE JE v CS, tak sa ATOMICKY zapise ID aktualneho threadu a zapise PRIZNAK, ze CS je tymto threadom vlastnena a FUNKCIA HNED SKONCI.
+   B. Ak TEN ISTY THREAD UZ VLASTNI CS, potom sa ATOMICKY ZVECSI REKURZIVNY LOCK-COUNTER a FUNKCIA HNED SKONCI.
+   !!! C. Ak INY THREAD UZ JE V CS, potom sa POUZIJE KO a aktualny thread SKOCI DO WAIT STAVU. FUNKCIA ZABLOKUJE AKTUALNY THREAD.
+????? 3. Funkcia LeaveCriticalSection() ATOMICKY dekrementuje rekurzivne pocitadlo a ZAROVEN AK DETEKUJE, ze NEJAKY IHY THREAD CAKA v EnterCriticalSection() - SIGNALIZUJE EVENT v CS a ten UKONCI WAIT v tomto threade.
+!!!!! 4. CS interne pouzivaju KO, ale IBA V PRIPADE, ZE DOCHADZA ku CONTENTATION. Inak BEZIA CISTO v User-Mode a tym padom SU RYCHLEJSIE AKO Mutexes.
+//------------------------------------------------------------------------------

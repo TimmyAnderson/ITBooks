@@ -1,0 +1,28 @@
+//------------------------------------------------------------------------------
+1. Program demonstruje pouzitie Fibers.
+2. Fibers funkcionalitou trochu pripominaju HW INTERUPTS. Umoznuju prepinat CONTEXT (register instrukcii) do ineho fiber, ktory realizuje uplne odlisnu funkciu. Umoznuju teda pri vykonavani jednej funkcie SKOCIT do UPLNE INEJ funkcie - skokom do ienho fiber, ktory tuto funkciu realizuje.
+!!! 3. Fibers umoznuju implementovat USER-MODE SCHEDULER, ktory bude robit scheduling jednotlivych Tasks (fibers). Tento scheduling sa realizuje v USER-MODE - teda Threads o nom nemaju ani ponatia a je NON-PREMTIVE.
+!!!!! 4. Pre fibers platia nasledujuce zasady.
+   A. Kazdy threads moze VYTVORIT VIACERO FIBERS.
+   B. Dany thread moze VYKONAVAT V DANOM CASE iba JEDEN zo SVOJICH FIBERS.
+   C. Fibers su ASOCIOVANE s THREAD, ktory ICH VYTVORIL.
+!!! 5. Threads NEVEDIA NIC o o FIBERS a dany fiber bezi IBA VTEDY, ked THREAD SCHEDULER priradi threadu, ktory HOSTUJE FIBER CPU.
+!!! 6. Thread moze HOSTOVAT FIBER volanim funkcie ConvertThreadToFiber(). Tato funkcia vytvori PRIMARNY FIBER v danom threade a IHNED DONHO VSTUPI. Vstupit znamena, ze thread POKRACUJE DALEJ VO VYKONAVANI KODU za volanim ConvertThreadToFiber() s tym, ze je teraz uz FIBER a MOZE VYTVARAT DALSIE FIBERS.
+7. Ak thread hostuje fiber, moze tento PRIMARNY FIBER vytvorit DALSIE FIBERS volanim CreateFiber(). Parametrom tejto funkcie je smernik na FUNKCIU, ktora sa SPUSTI ak sa vytvoreny fiber zacne VYKONAVAT.
+!!! 8. Po vytvoreni noveho fiber volanim CreateFiber() sa NOVY FIBER NESPUSTA, iba sa vytvori CONTEXT tohto noveho fiber - teda ulozia sa registre a do tohto CONTEX sa ulozi hodnota instrukcneho registra ukazujuceho na funkciu definovanu v CreateFiber().
+!!!!! 9. Po vytvoreni fibers mozem sa MEDZI NIMI PREPINAT volanim SwitchToFiber(). Tato funkcia ZMENI AKTUALNY CONTEXT !!! THREADU !!! a to tak, ze registre i INSTRUKCNY REGISTER naplni hodnotu CONTEXTU FIBER do ktoreho chcem CHCEM SKOCIT. Tym sa vykonavanie kod ZRAZU PRESUNIE do INEHO FIBER - co moze byt UPLNE INA C++ FUNKCIA. Vykonavanie VSAK NEMENI THREAD, teda i KOD INEHO FIBER sa BUDE VYKONAVAT V TOM ISTOM THREADE ako tom, ktory volal SwitchToFiber(). Program sa teda ZASTAVI na MIESTE VOLANIA SwitchToFiber() a SKOCI NA UPLNE INE MIESTO V PROGRAME, ktore je definovane INYM FIBER.
+!!! 10. Fiber je mozne zlikvidovat volanim DeleteFiber(). DelteFiber() BY SA NEMAL VOLAT NA PRAVE BEZIACI FIBER, pretoze v tom pripade DeleteFiber() AUTOMATICKY ZAVOLA ExitThread() a UKONCI THREAD, ktroy volal DeleteThread().
+!!! 11. DeleteFiber() je ANALOGICKA voci TerminateThread(), no na rozdiel od TerminateThread() funkcia DeleteFiber() KOMPLETNE VYCISTI PAMET.
+!!!!! 12. Ak FIBER FUNKCIA definovana v CreateFiber() pre LUBOVOLNY FIBER SKONCI - potom sa zavola na threade ExitThread() a CELY THREAD SKONCI.
+13. PRIMARNY FIBER vytvoreny volanim ConvertThreadToFiber() je mozne zlikvidovat volanim ConvertFiberToThread(). PRIMARNY FIBER je zlikvidovany a thread pokracuje dalej vo vykonavani kodu za volanim ConvertFiberToThread().
+!!!!! 14. Vista rozsiruje moznosti FIBER o CreateThreadFiberEx(), CreateFiberEx() a ConvertThreadToFiberEx(), ktore umoznuje prenasat do CONTEXT i FLOATING-POINT registers. Standardne FIBER funkcie NEPRENASAJU FLOATING-POINT registers a AK VO FIBERS POUZIJEM FLOATING-POINT operations, tak CELY PROGRAM ZLYHA. Nove Vista funkcie toto obmedzenie odstranuju.
+15. Pomocou funkcie GetCurrentFiber() vracia CONTEXT aktualne vykonavajuceho FIBER.
+16. Funkcia GetFiberData() vracia data asociovane s danym fiber pri jeho vytvarani (ako parameter CreateFiber()).
+17. Tradicne pouzitie fibers je nasledovne.
+   A. Konvertujem thread na FIBER volanim ConvertThreadToFiber().
+   B. Vytvorim jeden, alebo niekolko dalsich Fibers v danom threade volanim CreateFiber().
+   C. Pomocou SwitchToThread() mozem sa teraz medzi jednotlivymi fibers prepinat.
+   D. Ak chcem niektory fiber zlikvidovat volam DeleteFiber().
+   E. Ak chcem PRIMARNY FIBER odstranit zavolam ConvertFiberToThread().
+18. Vista rozsiruje moznosti FIBER o Fiber LOCAL STORAGE pomocou funkcii FlsAlloc(), FlsFree(), FlsGetValue() a FlsSetValue().
+//------------------------------------------------------------------------------

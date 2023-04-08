@@ -1,0 +1,51 @@
+//------------------------------------------------------------------------------
+1. Program demonstruje pouzitie virtualnej pamate vo Windows.
+2. Vo Windows je mozne pamat alokovat 3 sposobmi.
+   A. Alokovat VIRTUALNU PAMAT. Najvyhodnejsie pouzitie pre alokaciu velkych poli a struktur.
+   B. Memory mapped files. Najvyhodnejsie pouzitie pre pracu s velkymi DATA STREAMS a takisto ak chcem zdielat pamat medzi procesmi.
+   C. Heaps. Najvyhodnejsie pouzitie ak alokujem velky pocet malych objektov.
+3. Alokacia VIRTUALNEJ PAMATI sa vykonava v dvoch nezavislych krokoch.
+   A. Rezervovanie adresoveho priestoru. V tomto kroku este NEALOKUJEM SAMOTNU PAMAT, iba vyhradim v ADDRESS SPACE adresy do ktorych bude neskor alokovana pamat.
+   B. Alokovanie STORAGE (RAM, PAGE FILE, MMF). Robi sa nad rezervovanym adresovym priestorom. Je to uz REALNE PRIDELENIE STORAGE (RAM, PAGE FILE, MMF).
+4. Pre rezervovanie virtualneho adresoveho priestoru plati.
+   A. Rezervovanie sa vykonava funkciou VirtualAlloc(), kde ako parameter AllocationType musim dat hodnotu MEM_RESERVE.
+   B. Vo VirtualAlloc() mozem v paramatri Address definovat adresu, ktoru chcem, aby Windows rezervoval. Ak je dana adresa volna a je i dostyatok miesta v adresovom priestore (pozor NIE PAMATI - bavime sa iba o adresovom priestore), tak vrati adresu rezervovaneho adresoveho priestoru. Inak vracia NULL.
+   !!! C. Rezervovany adresovy priestor VZDY ZACINA na adrese, ktora je NASOBKOM ALLOCATION GRANULARITY BOUNDARY co je standardne 64 KB. Teda rezervovany adresovy priestor VZDY ZACINA na adrese delitelnej 64 KB. Hodnotu GRANULARITY mozem ziskat volanim funkcie GetSystemInfo() v hodnote SYSTEM_INFO.dwAllocationGranularity.
+   D. Velkost rezervovaneho STORAGE (RAM, PAGE FILE, MMF) je VZDY NASOBKOM velkostoi PAGE, co je v x86/x64 - 4 KB.
+   E. Ak definujem ako parameter AllocationType OR-hodnotu MEM_TOP_DOWN, tak rezervovanie STORAGE (RAM, PAGE FILE, MMF) bude vykonane od NAJVYSSEJ MOZNEJ ADRESY smerom nadol.
+   F. Pri rezervacii STORAGE (RAM, PAGE FILE, MMF) mozem definovat i PROTECTION (PAGE_READWRITE, PAGE_READONLY, PAGE_EXECUTE, PAGE_EXECUTE_READ, PAGE_EXECUTE_WRITE a PAGE_NOACCESS). Ak je tato hodnota TOTOZNA s PROTECTION pri ALOKACII STORAGE (RAM, PAGE FILE, MMF) v TOTMO REZERVOVANOM ADRESOVOM PRIESTORE, tak Windows, dokaze takto definovany STORAGE (RAM, PAGE FILE, MMF) spravovat EFEKTIVNEJSIE.
+   G. Adresovy priestor sa uvolni volanim VirtualFree(), kde ako parameter FreeType je potrebne uviest MEM_RELEASE. Uvolnit je mozno iba CELY BLOK ADRESOVEHO PRIESTORU, ktory bol rezervovany volanim VirtualAlloc().
+5. Pre alokovanie STORAGE (RAM, PAGE FILE, MMF) plati.
+   A. Alokacia sa robi do REZERVOVANEHO ADDRESS SPACE.
+   B. Rezervovanie sa vykonava funkciou VirtualAlloc(), kde ako parameter AllocationType musim dat hodnotu MEM_COMMIT.
+   !!! C. Rezervovany adresovy priestor VZDY ZACINA na adrese, ktora je NASOBKOM PAGE SIZE co je standardne 4 KB.
+   D. Velkost rezervovaneho STORAGE (RAM, PAGE FILE, MMF) je VZDY NASOBKOM velkosti PAGE, co je v x86/x64 - 4 KB.
+   E. Pri alokovani STORAGE (RAM, PAGE FILE, MMF) mozem definovat i PROTECTION, ktora by MALA (hoci NEMUSI) byt rovnaka ako PROTECTION nastaveny pri rezervovani ADDRESS SPACE. Ak sa zhoduje, je praca s pamatou najefektivnejsia.
+   F. STORAGE (RAM, PAGE FILE, MMF) sa uvolni volanim VirtualFree(), kde ako parameter FreeType je potrebne uviest MEM_DECOMMIT. Uvolnenie STORAGE (RAM, PAGE FILE, MMF) sa robi PO PAGES.
+6. Ak zavolam VirtualAlloc(), kde ako parameter AllocationType musim dat hodnotu MEM_RESERVE | MEM_COMMIT, tak funkcia rezevruje ADDRESS SPACE a ZAROVEN ALOKUJE STORAGE (RAM, PAGE FILE, MMF).
+!!! 7. Vista umoznuje alokovat tzv. LARGE PAGE. LARGE PAGE je blok STORAGE (RAM, PAGE FILE, MMF), ktory JE NON-PAGEABLE (VZDY ULOZENY v RAM) a preto je praca s nou VELMI EFEKTIVNA. Alokacia LARGE PAGE sa robi v nasledujucich krokoch.
+   A. Large Page je alokovana volanim VirtualAlloc().
+   B. Velkost alokovanej STORAGE (RAM, PAGE FILE, MMF) MUSI BYT NASOBKOM DLZKY LARGE PAGE. Velkost LARGE PAGE mozem ziskat volanim GetLargePageMinimum().
+   C. Adresovy priestor a alokacia STORAGE (RAM, PAGE FILE, MMF) MUSIA BYT SUCASNE - VirtualAlloc() musi pouzit: (MEM_RESERVE | MEM_COMMIT).
+   !!! D. Ako AllocationType musim nastavit cez OR priznak MEM_LARGE_PAGES.
+   E. Ako PROTECTED priznak musi byt nastaveny PAGE_READWRITE.
+   !!!!! F. Na vyuzitie LARGE PAGE MUSI mat dany user SE_LOCK_MEMORY_NAME privilagium (pomocou funkcie AdjustTokenPrivileges()) a ZAROVEN MUSI MAT v GROUP POLICY povoleny moznost Lock Pages in Memory.
+!!! 8. Nie vsetky CPU podporuju alokaciu LARGE PAGE.
+!!!!! 9. Po zavolani VirtualAlloc() je CELA pridelena STORAGE (RAM, PAGE FILE, MMF) NASTAVENA na 0.
+10. Pomocou funkcie VirtualProtect() mozem zmenit PROTECTION danje PAGE. Ma to vyuzitie napriklad pri ladeni, ked mam chybu pri prepisovani pamate inou castou programu a chcem zistit, kde k prepisovaniu dochadza.
+11. Windows podporuje optimalizaciu RESETOVANIA PAGES. Ak mam PAGE, v ktorej som NEZMENIL DATA a teda ju NIE JE POTREBNE uklada do PAGE FILE (kedze PAGE FILE obsahuje TO ISTE) tak mozem takuto PAGE RESETNUT. Po RESET su data v nej STRATENE, ale PAGE NIE JE UVOLNENA. Je iba oznacena, ze ak Windows bude potrebovat volnu RAM, tak moze pouzit tuto PAGE. Ak nasledne danu PAGE prorgam, ktory ju resertol znova pouzije, tak je PAGE nacitana z PAGE FILE a program s nou moze dalej pracovat.
+12. Reset virtualnej pamate sa robi volanim VirtualAlloc(), kde v parametri AllocationType nastavim MEM_RESET. Pamat je resetnuta vzdy OD ZACIATKU daneho PAGE a v dlzke, ktora je NASOBKOM dlzky PAGE. Na rozdiel od VirtualAlloc() pouzitej na rezervovanie adresoveho priestoru, alebo alokaciu pri RESET sa zaokruhluje VELKOST resetovanej pamate SMEROM NADOL, aby nedoslo k tomu, ze sa resetne PAGE, kde cast z nej nepatri do oblasti, ktoru som chcel resetovat.
+13. Windows umoznuje optimalizaciu pouzitia adresoveho priestoru a pouzitia RAM pamate pomocou technologie Address Windowing Extenstions (AWE), ktora umoznuje nasledovne optimalizacie.
+   A. Pamat alokovana AWE je VZDY v RAM pamati. Je to teda NON-PAGEABLE pamat, ktora NIKDY NIE JE ulozena do PAGE FILE. Tato vlastnost sa moze s vyhodou vyuzit AKO u 32 bitovych, tak i 64 bitovych systemov.
+   B. AWE umoznuje USETRIT ADRESS SPACE tym, ze NIE CELU alokovanu pamat NARAZ MAPUJE do ADDRESS SPACE. Tato optimalizacia je zalozena na vytvoreni VIACERYCH RAM BLOCKS (blokov ALOKOVANEJ pamate), kde VZDY iba 1 BLOK namapujem do 1 ADDRESS SPACE WINDOWS (rezervovanemu ADDRESS SPACE). Toto umoznuje napriklad REZERVOVAT 1 ADDRESS SPACE WINDOW o dlzke 1 MB a 10 RAM BLOCK, kazdy o dlzke 1 MB, teda celkovo 10 MB. Nasledne mozem VZDY 1 RAM BLOCK namapovat na 1 WINDOWS ADDRESS SPACE. Takto mozem za MALU PENALIZACIU v podobe prepinania mapovania WINDOW na RAM BLOCK oblsuhovat 10 MB RAM v 1 MB ADDRESS SPACE. Samozrejme zmysel ma tato vlastnost iba pri 32 bitovych systemov. U 64 bitovych systemov NEMA VYZNAM, kedze ADDRESS SPACE v 64 bitovom systeme je ENORMNY a DALEKO VACSI ako kapacita RAM.
+14. Pouzitie AWE je mozne vykonat v nasledujucich krokoch.
+   A. REZERVUJEM 1 (samozrejme mozem i viacero) ADDRESS SPACE WINDOW volanim VirtualAlloc(), kde ako parameter AllocationType musim dat hodnotu MEM_RESERVE.
+   B. Pre kazdy ADDRESS SPACE WINDOW alokujem VIACERO RAM BLOCKS volanim funkcie AllocateUserPhysicalPages().
+   !!! C. Pred pouzitim LUBOVOLNEHO RAM BLOCK musim NAMAPOVAT ADRRESS SPACE WINDOW na RAM BLOCK volanim MapUserPhysicalPages().
+   D. Teraz mozem pristupovat k RAM BLOCKU pomocou smernika odkazujuceho na ADRRESS SPACE WINDOW, kedze ADDRESS SPACE bol namapovany na RANM BLOCK.
+   !!! E. Kedykolvek chcem pouzit INY RAM BLOCK, MUSIM znova volat MapUserPhysicalPages().
+   F. Ak chcem ODMAPOVAT RAM BLOCK z daneho ADDRESS SPACE zavolam MapUserPhysicalPages(), pricom za parameter PageArray dam hodnotu NULL.
+   G. Ak dany RAM BLOCK nepotrebujem, odstanim ho volanim FreeUserPhysicalPages().
+   H. ADDRESS SPACE WINDOWS odstranim volanim VirtualFree, kde za parameter FreeType dam hodnotu MEM_RELEASE.
+!!! 15. Nato aby som AWE mohol pouzit MUSI mat dany user SE_LOCK_MEMORY_NAME privilagium (pomocou funkcie AdjustTokenPrivileges()) a ZAROVEN MUSI MAT v GROUP POLICY povoleny moznost Lock Pages in Memory.
+//------------------------------------------------------------------------------

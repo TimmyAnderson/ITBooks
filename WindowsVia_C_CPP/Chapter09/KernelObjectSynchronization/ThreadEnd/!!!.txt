@@ -1,0 +1,26 @@
+//------------------------------------------------------------------------------
+1. Program demonstruje pouzitie Kernel-Object synchronizacie.
+!!! 2. KO synchronizacia na rozdiel od UserMode synchronizacie POSKYTUJE ROZSIRENE MOZNOSTI ako napriklad STANOVENIE TIMEOUT pri synchronizacii, avsak je RADOVO POMALSIA ako User-Mode synchronizacia, kedze je potrebne sa prepinat medzi User-Mode a Kernel-Mode.
+!!! 3. Kazdy KO moze byt signalizovany, alebo nesignalizovany. To KEDY je DANY TYP KO signalizovany a kedy nesignalizovany je DANE TYPOM OBJEKTU.
+   A. Proces je signalizovany, ked SKONCI. Od tej chvile ostava NAVZDY SIGNALIZOVANY.
+   B. Thread je signalizovany, ked SKONCI. Od tej chvile ostava NAVZDY SIGNALIZOVANY.
+   C. AutoResetEvent je zas signalizovany po volani SetEvent() a IHNED je RESETNUTY do NESIGNALIZOVANEHO STAVU.
+4. WaitableTimers umoznuju definovat ABSOLUTNY resp. RELATIVNY CAS, kedy bude KO SIGNALIZOVANY. Po signalizacii sa vyvola definovany EVENT HANDLER.
+!!! 5. Podobne ako Events i Waitable Timers mozu byt MANUAL-RESET, alebo AUTO-RESET.
+6. Cas v ktorom sa ma KO signalizovat sa urcuje v parametri DueTime (funkcia SetWaitableTimer()), ktory ak ma KLADNU HODNOTU, tak sa jedna o ABSOLUTNY CAS a ak ma ZAPORNU HODNOTU, tak sa jedna o RELATIVNY CAS.
+!!! 7. Funkcia SetWaitableTimer() ma i parameter Resume, ktory ked ma hodnotu TRUE, tak v pripade, ze PC je v Sleep rezime, tak ho PREBUDI.
+!!!!! 8. Waitable Timers mozu vyvovalat zaregistrovany CALLBACK (zaregistrujem volanim SetWaitableTimer()) ako APC. Z toho vyplyvaju nasledovne skutocnosti.
+   A. CALLBACK je volany na THREADE, ktory VOLAL SetWaitableTimer().
+   B. CALLBACK je volany IBA KED JE THREAD vo ALERTABLE WAIT - volal nejaku WaitXXXEx(), alebo SleepEx() funkciu.
+   !!!!! C. Thread, ktory volal SetWaitableTimer() a je v ALERTABLE WAIT by NEMAL MAT NASTAVENY WAIT na KO WaitableTimer, inak sa APC NEVYKONA, kedze WAIT V OKAMIHU SIGNALIZOVANIE KO SKONCI - ESTE SKOR AKO BY SA MOHLA VYKONAT APC. Najlepsie je pouzit SleepEx().
+9. Semaphore je KO obsahujuci DWORD Counter, ktory ak ma hodnotu >0 tak KO je SIGNALIZOVANY a ak ==0 tak je SIGBALIZOVANY.
+10. Mutex je KO ANALOGICKY s User-Mode objektom CRITICAL_SECTION.
+!!!!! 11. Zasadnym ROZDIELOM medzi CRITICAL_SECTION a Mutex je v tom, ze Mutex je KO, zatial co CRITICAL_SECTION je User-Mode objekt, ktory POUZIVA INTERNE KO Event na WAITING IBA VTEDY, ked INY THREAD je V KRITICKEJ SEKCII. Vtedy pouzije Event KO nato aby THREAD, ktory sa POKUSA o VSTUP do CS hodil do WAIT STAVU.
+!!! 12. Mutexy SU VALSTNENE THREADOM. V momente, ked je volany WaitXXX() ak je Mutext SIGANLIZOVANY tak VOLANIE HNED SKONCI a Mutex sa PRIRADI DANEMU THREADU a zmeni sa v NESIGNALIZOVANY, cim sa ZABRANI INYM THREADOM v jeho ZISKANI. Mutex ma REKURZIVNY COUNTER, ktory sa pri DALSOM VOLANI WaitXXX() na TOM ISTOM THREADE ZVYSI o 1. Naopak pri volani ReleaseMutex() je pocitadlo znizene a ked je na 0, tak MUTEX JE SIGNALIZOVANY a ZRUSI SA ASOCIACIA s threadom.
+!!!!! 13, Ak thread SKONCI BEZ UVOLNENIE MUTEXU (pocitadlo je >0), tak WINDOWS to ZACHYTI sa AUTOMATICKY UVOLNI MUTEX a PRIRADI HO DALSIEMU THREADU vo WAIT FUNKCII. AVSAK WaitXXX() vracia NIE WAIT_OBJECT_0, ale WAIT_ABANDONED. Avsak OKREM ROZDIELNEJ NAVRATOVEJ HODNOTY sa MUTEX SPRAVA ROVNAKO ako PRI VOLANI ReleaseMutex() TAK I PRI UKONCENI THREADU BEZ VOLANIA ReleaseMutex().
+!!! 14. I VSETKY HANDLES na IO devices ako napriklad FILES su KO, ktore su NESIGNALIZOVANE ak BEZI IO OPERACIA a SIGNALIZOVANE SU AK IO OPERACIA SKONCI.
+15. Okrem WaitForSingleObject() a WaitForMultipleObject() Windows poskytuje i funkcie WaitForIdleObject(), ktora sa skonci, ked dany KO NEMA ZIADEN INPUT (nariklad proces je po starte PLNE INICIALIZOVANY a uz NEMA ZIADEN INPUT vo forme WM_MESSAGE). Funkcia WaitForDebugEvent() sluzi PRE DEBUGGER, ktory ju vola a tym USPI THREAD DEBUGGERA> Tato funkcia konci KED NASTANE DEBUG EVENT. Vtedy debugger thread pokracuje v cinnosti - zobrazi debug info.
+!!! 16. Vista umoznuje DETEKCIU DEAD-LOCKS pomocou Wait Chain Traversal API. Toto API umoznuje detekciu DEADLOCK NIEKTORYCH KO ako Mutexes, Processes, Threads, CS, COM CALLBACKS, ALPC a podobne. Avsak NEUMOZNUJE DETEKCIU DEAD-LOCKS pre SWRLock, Events, Semaphores ci WaitableTimers.
+17. WCT sa inicializuje volanim OpenThreadWaitChainSession(), kde je mozne urcit ci sa bude detekcia robit synchronne, alebo asynchronne. Po skonceni detekcie je potrebne zavolat CloseThreadWaitChainSession() na uvolnenie vsetkych resources.
+18. Funkciou GetThreadWaitChain() je mozne ziskat pole WAITCHAIN_NODE_INFO objektov PRE DANY ThreadID. Funkcia v parametri IsCycle urcuje ci doslo k DEAD-LOCK a pole WAITCHAIN_NODE_INFO obsahuje podrobne informacie o charaktere DEAD-LOCK.
+//------------------------------------------------------------------------------

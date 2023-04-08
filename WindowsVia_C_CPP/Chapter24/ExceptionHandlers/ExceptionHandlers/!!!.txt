@@ -1,0 +1,56 @@
+//------------------------------------------------------------------------------
+1. Program demonstruje pouzitie Structured Exception Handling (SEH) pri zachytavani EXCEPTIONS.
+2. SEH EXCEPTIONS sa rozdeluju do dvoch katogorii.
+   A. HW EXCEPTIONS su generovane HW. ??? Asi sa ma na mysli OS, pretoze niektore HW exceptions ako PAGE FAULT podla mna nemoze generovat priamo CPU, ale OS. Ine ako DIVIDE BY 0 su generovanie PRIAMO CPU.
+   B. SW EXCEPTIONS su generovane v ramci behu API funkcii, alebo i v CUSTOM KODE volanim API funkcie RaiseException().
+3. Zachytavanie EXCEPTIONS sa robim pomocou bloku '__except' pre ktory platia nesledujuce pravidla.
+   A. Za '__try' moze nasledovat BUD '__except', alebo '__finally', ALE NIE OBIDVE NARAZ.
+   B. Za '__try' moze nasledovat IBA JEDEN '__except' blok.
+   C. V '__except' musim vratit JEDNU Z 3 HODNOT: EXCEPTION_EXECUTE_HANDLER, EXCEPTION_CONTINUE_SEARCH a EXCEPTION_CONTINUE_EXECUTION na zaklade ktoreho sa OS rozhoduje ci dany '__except' blok vykona.
+!!! 4. Na rozdiel od '__finally' je '__except' CISTO ZALEZITOSTOU OS a KOMPILATOR do jeho vykonania VSTUPUJE IBA MINIMALNE a to tak, ze pri LINKOVANI EXE suboru sa vytvoria tabulky EXCEPTION HANDLERS blokov, ktore potom OS AUTOMATICKY VOLA.
+!!! 5. Hoci sa v '__try' sa NEDOPORUCUJE pouzit 'goto', 'break', 'continue', tak NA ROZDIEL od '__try' nasledovneho '__finally', kde dochadza k PERFORMANCE HIT, tak v pripade '__try' nasledovaneho '__except' k PERFORMACNE HIT NEDOCHADZA.
+6. Vyraz (resp. volanie funkcie) v '__except' klauzule moze nadobudat jednu z 3 hodnot na zaklade ktorej sa urcuje, KTORA INSTUKCIA PO VZNIKU EXCEPTION sa vykona.
+   A. EXCEPTION_EXECUTE_HANDLER - EXCEPTION je '__except' blokom ZACHYTENA a vykonany je kod v '__except' bloku je vykonany.
+   B. EXCEPTION_CONTINUE_EXECUTION - po vykonani EXCEPTION FILTER, ktory moze vykona OPRAVU CHYBY, ktora viedla k volaniu EXCEPTION dojde k POKRACOVANIU VYKONAVANIA KODU, ktory SPOSOBIL EXCEPTION.
+   C. EXCEPTION_CONTINUE_SEARCH - dany '__except' blok je IGNOROVANY a pokracuje sa vo hladani dalsieho '__except' bloku.
+7. Postupnost krokov, ktore sa vykonaju ak '__except' vracia EXCEPTION_EXECUTE_HANDLER je nasledovna.
+   A. Vykona sa EXCEPTION FILTER vracajuci EXCEPTION_EXECUTE_HANDLER.
+   B. Vykona sa GLOBAL UNWIND.
+   C. Vykona sa kod v '__except' bloku.
+   D. Program pokracuje vykonavanim kodu ZA '__except' blokom.
+!!! 8. Ak program NEZACHYTI EXCEPTION a dochadza ku UNHANDLED EXCEPTION, tak chovanie je INE pri VISTE a XP.
+   A. Vista - NEDOCHADZA ku GLOBAL UNWIND a proces je OKAMZITE TERMINATED.
+   B. XP - DOJDE ku GLOBAL UNWIND a az POTOM je program TERMINATED.
+!!! 9. Global UNWIND je proces, kedy sa volaju VSETKY '__finally' bloky OD MIESTA VZNIKU EXCEPTION az PO MIESTO, kde '__except' ZACHYTIL EXCEPTION.
+!!!!! 10. Ak do '__finally' dam 'return', tak dochadza k ZRUSENIU GLOBAL UNWIND a kod POKRACUJE za TYM '__finally' blokom (za tou funkciou), ktory zavolal 'return'. Ak dojde k ZRUSENIU GLBOAL UNWIND NEVOLA sa ani '__except' blok a kod pokracuje AZ ZA '__except' blokom.
+!!! 11. Kedze RUSENIE GLBOAL UNWIND je technika, ktora sa NEZVYKNE POUZIVAT (hoci obcas moze mat svoje racio), kompilator na pouzitie 'return' vo '__finally' bloku upozorni WARNING C4532.
+12. Postupnost krokov, ktore sa vykonaju ak '__except' vracia EXCEPTION_CONTINUE_EXECUTION je nasledovna.
+   A. Vykona sa EXCEPTION FILTER vracajuci EXCEPTION_CONTINUE_EXECUTION.
+   !!! B. Kod v EXCEPTION FILTER vykona NAPRAVU CHYBY, ktora SPOBILA EXCEPTION.
+   C. Kod pokracuje na PRESNE TEJ ISTEJ INSTRUKCII, ktora SPOSOBILA EXCEPTION. Kedze EXCEPTION FILTER vykonal NAPRAVU, tak k EXCEPTION uz teraz NEDOJDE.
+!!!!! 13. Pouzitie EXCEPTION_CONTINUE_EXECUTION je VELMI PROBLEMATICKA a RIZIKOVE. Zavisi totizto SILNE od TYPU CPU a GENEROVANEHO ASSEMBLY KODU. Platia nasledovne obmedzenia.
+   A. Kompilator moze generovat ASSEMBLY instrukcie tak, ze napriklad su ulozi premennu s hodnotu 0, ktora sa pouziva ako delitel do REGISTRY a ja zbytocne ZMENIM HODNOTU PREMENNEJ, pretoze hodnota REGISTRY sa NEZMENI a pri vrateni a pokuse o opatovne vykonanie CPU instrukcie ZNOVA DOJDE k EXCEPTION, ktora je znova zachytena v EXCEPTION FILTER a dosiahnem tak NEKONECNY CYKLUS.
+   B. Problematicky je i KOD v EXCEPTION HANDLER. Zavisi od TYPU EXCEPTION aky kod tam mozem pouzit. Ak napriklad doslo ku CHYBE STACK a v EXCEPTION FILTER je pouzite mnozstvo kodu, tak PROGRAM MOZE KOMPLETNE ZHAVAROVAT.
+   C. V niektorych VELMI SPECIFICKYCH situaciach vsak MA ZMYSEL, ale je to funkcionalita skor vyuzivana samotnym Microsoft, ako pre bezne pouzitie v programe.
+14. Funkcia GetExceptionCode() vracia DWORD s pricinou, ktora sposobila vznik EXCEPTION. Tuto hodnotu je moze v EXCEPTION FILTER analyzovat a na zaklade nej vratit hodnotu EXCEPTION FILTER. Takisto je ju mozne pouzit v EXCEPTION HANDLER.
+!!!!! 15. Funkciu GetExceptionCode() NIE JE MOZNE POUZIT ak EXCEPTION FILTER je realizovany AKO FUNKCIA. Je ho mozne pouzit IBA v MEDZI ZATVORKAMI v '__except()' bloku, alebo vo VNUTRI '__except' bloku.
+!!! 16. Hodnota vratena GetExceptionCode() zodpoveda BITOVYM PRIZNAKOM ERROR CODE, ktory vracia GetLastError().
+   A. 0-15. bit - ERROR CODE.
+   B. 16-27. bit - Facility code.
+   C. 28. bit - reserved.
+   D. 29. bit - is Micsosoft error code.
+   E. 30-31. bit - severity.
+17. Pomocou funkcie GetExceptionInformation() je mozne ziskat podrobne informacie o generovanej EXCEPTION. Tato funkcia vracia triedu EXCEPTION_POINTER obsahujucu nasledujuce polozky.
+   A. EXCEPTION_RECORD - obsahuje platformovo NEZAVISLE informacie o EXCEPTION.
+   B. CONTEXT - obsahuje platformovo ZAVISLE informacie o EXCEPTION.
+!!!!! 18. Funkciu GetExceptionInformation() je mozne volat IBA v EXCEPTION FILTER. Inde vracia NEPLATNE HODNOTY. Dokonca ju NIE JE mozne volat ani v EXCEPTION HANDLER, pretoze hondoty, ktore vracia sa PRED VYKONANIM EXCEPTION HANDLER zlikviduju.
+19. Struktura EXCEPTION_RECORD obsahuje nasledujuce members.
+   A. ExceptionCode - vracia tu istu hodnotu ako GetExceptionCode().
+   B. ExceptionFlags - ak je 0, znamena to, ze EXCEPTION je CONTINUABLE (EXCEPTION FILTER moze vratit EXCEPTION_CONTINUE_EXECUTION) a ak ma hodnotu EXCEPTION_NONCONTINUABLE tak EXCEPTION FILTER NESMIE hodnit EXCEPTION_CONTINUE_EXECUTION, inak je hned generovana nova EXCEPTION typu EXCEPTION_NONCONTINUABLE_EXCEPTION.
+   C. ExceptionRecord - obsahuje EXCEPTION_RECORD na EXCEPTION, ktora vznikla v EXCEPTION HANDLER. Ak nahodou v EXCEPTION HANDLER vznikne EXCEPTION, tak tato hodnota umoznuje retazit informacie o EXCEPTIONS.
+   D. ExceptionAddress - urcuje CPU adresu, kde doslo k EXCEPTION.
+   E. NumberOfParameters - urcuje pocet parametrov s rozsirujucimi udajmi v poli ExceptionInformation.
+   D. ExceptionInformation - obsahuje pole dlzky NumberOfParameters obsahujuce dodatocne informacie o EXCEPTION. Momentalne iba EXCEPTION_ACCESS_VIOLATION ma definovane rozsirujuce parametre.
+20. Pomocou funkcie RaiseException() je mozne vyvolat SW EXCEPTION v kode. Takato EXCEPTION je zachytavana presne tak isto ako HW EXCEPTION.
+!!! 21. Jeden z rozdielov RaiseException() je v tom, ze ked EXCEPTION FILTER vrati EXCEPTION_CONTINUE_EXECUTION, tak kode NEPOKRACUJE na CPU INSTRUKCII, kde (VO VNUTRI RaiseException()) vznikla EXCEPTION, ale pokracuje AZ ZA VOLANIM RaiseException().
+//------------------------------------------------------------------------------

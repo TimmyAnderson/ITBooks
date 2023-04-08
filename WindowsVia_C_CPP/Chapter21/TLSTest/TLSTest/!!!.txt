@@ -1,0 +1,26 @@
+//------------------------------------------------------------------------------
+1. Program demonstruje pouzitie Thread Local Storage.
+2. TLS je uloziste, ktore je asociovane s KAZDYM threadom, umoznujuc asociovat nejake CUSTOM DATA s danym threadom.
+3. TLS vyuzivaju i standardne C++ funkcie na realizaciu multithread podpory pre C funkcie, ktore pouzivali globalne premenne. Teraz su tieto premene presunute do TLS a tym je zabezpecene, ze si 2 THREADS pouzivajuce standardnu C++ funkciu si vzajomne neprepisu hodnotu, kedze ta uz nie je v zdielanej GLOBVALNEJ PREMENEJ, ale v TLS, pre ktory plati, ze kazdy thread ma VLASTNY TLS.
+4. TLS je vo Windows mozne implementovat STATICKY, alebo DYNAMICKY.
+!!! 5. TLS je interne reprezentovane vo Windows NASLEDOVNE.
+   A. Pri vytvarani procesu je vytvorene BIT-ARRAY s TLS SLOT FLAGS, kde kazdy SLOT FLAG ma binarny stav bud FREE, alebo INUSE. Velkost pola je TLS_MINIMUM_AVAILABLE, co je vo Windows nieco cez 1000.
+   B. Pomocou funkcie TlsAlloc() alokujem SLOT - prvy index, ktory ma nastavenu v ARRAY hodnotu FREE.
+   C. Pri vytvarani THREAD sa pre THREAD vytvori POLE SMERNIKOV o dlzke TLS_MINIMUM_AVAILABLE.
+   D. Ak v danom threade zavolam TlsSetValue(), pricom ako SLOT mu dam HODNOTU VRATENU TlsAlloc() - cislo SLOTU - tak funkcia zapise na POZICIU URCENU HODNOTU SLOTU (index v ARRAY) pozadovanu hodnotu o POINTER SIZE.
+   !!! E. TlsSetValue() teda zapisuje do pola ASOCIOVANEHO s THREADOM a tym je vlastne funkcionalita TLS IMPLEMENTOVANA, pretoze KAZDY THREAD ma VLASTNE POLE TLS HODNOT, ku ktoremu ma EXKLUZIVNY PRISTUP.
+   F. Z TLS SLOTU v danom threadu je mozne citat hodnotu volanim TlsGetValue().
+   G. Ak TLS SLOT nepotrebujem, mozem ho uvolnit volanim TlsFree(), ktora sposobi, ze sa v BIT-ARRAY s TLS SLOT FLAGS pre dany SLOT nastavi hodnota FREE a SLOT moze byt znova pouzity.
+!!!!! 6. Funkcia TlsAlloc() okrem alokacie volneho SLOTU, PRECHADZA VSETKY THREADS v danom procese a NASTAVI pre KAZDY SLOT v danom threade hodnotu na 0. Tym mozem polahky identifikovat, ci som v DANOM THREADE dany SLOT uz naplnil hodnotou - co sa moze pri niektorych algoritmoch vyuzit.
+!!! 7. Funkcie Tls*() sluzia na realizaciu DYNAMICKEHO TLS. Okrem neho existuje i STATICKY TLS. Staticke TLS funguju nasledovne.
+   A. Deklarujem LUBOVOLNU STATICKU, alebo GLOBALNU PREMENNU o LUBOVOLNEJ DLZKE (nemsi byt iba sizeof(POINTER)) a OZNACIM HO direktivou compiler: '__declspec(thread)'.
+   B. Takto oznacena premenna sa pri KOMPILACII hodi do SEPARATNEJ '.tls' SECTION.
+   C. Pri linkovani sa zo VSETKY .OBJ ZLUCIA vsetky '.tls' SECTIONS do JEDNEJ '.tls' SECTION.
+   D. Pri spustani programu sa ZISTI VELKOST '.tls' SECTION EXE a VSETKYCH DLL a ALOKUJE BLOK PAMATE pre vstetky '__declspec(thread)' premenne reprezenujuce TLS STATIC data.
+   !!! E. Alokuje sa IBA JEDEN TLS SLOT pre CELU APLIKACIU.
+   !!! F. Pre KAZDY THREAD sa alokuje SPECIALNY BLOK o velkosti '.tls' SECTION, ktory bude obsahovat SKUTOCNE HODNOTY '__declspec(thread)' premennych pre DANY THREAD.
+   !!! G. SMERNIK na alokovany BLOK pre DANY THREAD sa ulozi do SLOTU alokovanom v BODE E.
+   !!!!! H. Pri KAZDOM ZAPISE/CITANI do '__declspec(thread)' premennej reprezentujucej STATICKE TLS data sa NEZAZAISE/NENACITA hodnota zo GLOBALNEJ/STATICKEJ '__declspec(thread)' PREMENNEJ, ale generuje sa kod (pouzivajuci Tls*() funkcie), ktory PRISTUPI k SLOTU v TLS, ktory REPREZENTUJE BLOK PAMATE pre DANY THREAD a do TOHTO BLOKU sa ZAPISE/NACITA hodnota danej GLOBALNEJ/STATICKEJ '__declspec(thread)' PREMENNEJ.
+   !!!!! I. Teda sa da povedat, ze '__declspec(thread)' sluzia iba ako IDENTIFIKATORY do BLOKU PAMATE alokovanom pre KAZDY THREAD. Pri ZAPISE a CITANI z tychto premennych v skutocnosti NEDOCHADZA k ZAPISU PRIAMO do ADRESY, kde su tieto '__declspec(thread)' premenne ulozene, ale do BLOKU PAMATE pre THREAD v ktorom som ZAPIS/CITANIE z premennej oznacenej '__declspec(thread)' vykonal.
+!!!!! 8. Pri STATICKOM TLS ak pouzijem LoadLibrary() a dana DLL pouziva STATICKE TLS, tak sa BLOK PAMATE, ktory obsahuje STATICKE TLS data MUSI PRE KAZDY THREAD DYNAMICKY ZVACSIT - co i LoadLibrary() vo Viste SKUTOCNE ROBI. Podobne pri volani FreeLibrary() sa musi PRE KAZDY THREAD BLOK PAMATI ZMENSIT o STATICKE TLS DATA, ktore odstranena DLL obsahovala. FreeLibrary() teda musi prejst VSETKY THREADS a tuto zmenu VYKONAT. Znova vo Viste je tento proces PLNE PODPOROVANY.
+//------------------------------------------------------------------------------

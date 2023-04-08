@@ -1,0 +1,17 @@
+//------------------------------------------------------------------------------
+1. Program demonstruje dedicnost Kernel Objects (KO) HANDLES vo Windows.
+2. KO su ZDIELANE NA UROVNI KERNELU a teda su zdielane VSETKYMI PROCESMI OS.
+3. KO HANDLES na rozdiel od KO su ulozene v TABULKE PROCESU a teda su VIAZANE NA PROCES a teda NEMOZU BYT ZDIELANE.
+!!! 4. Windows podporuje viacero sposobom ako moze VIACERO PROCESOV pristupovat k TOMU ISTEMU KO.
+   A. Dedicnost KO HANDLES.
+   B. Pouzitie NAMED KO.
+5. Dedicnost KO HANDLES je realizovana nasledujucimi krokmi.
+   A. Pri vytvarani KO musim definovat v SECURITY_ATTRIBUTES priznak na povolenie dedenia daneho KO (priznak bInheritHandle na TRUE).
+   B. Nasledne pri vytvarani Child procesu musim v CreateProcess() nastavit bInheritHandles na TRUE.
+   C. Pri vytvarani Child procesu Windows prebehne TABLUKU HANDLES v Parent procese a pre VSETKY KO, ktore maju povolene dedenie VYTORI HANDLES v CHILD PROCESE.
+   !!! D. Pri vytvarani HANDLES v Child procese plati, ze su vytvorene PRESNE S TYM ISTYM INDEXOM ako v PARENT PROCESE a teda HODNOTA HANDLE na TEN ISTY KO je V OBOCH PROCESOCH ROVNAKA.
+   E. Pri vytvoreni kazdeho zdedeneho HANDLE v Child procese pocitadlo KO INKREMENTOVANE a KO nie je zlikvidovany az pokym pocitadlo KO neklesne na 0 a teda az pokym Parent i Child proces neuzavru HANDLE volanim CloseHandle().
+   F. Po vytvoreni Child procesu moze Parent proces zaslat HODNOTU HANDLE do Child procesu, kedze HODNOTY HANDLES SU ROVNAKE. Toto sa moze robit lubovolnou interprocesovou komunikaciou, alebo i napriklad zaslanim cez COMMAND LINE pri vytvarani Child procesu.
+   !!! G. AVSAK HANDLES vytvorene v Parent procese PO VYTVORENIE CHILD PROCESU uz NIE SU ZDEDENE DO CHILD PROCESU. Dedia sa IBA TIE HANDLES, ktore EXISTOVALI V CASE VYTVARANIA CHILD PROCESU (a samozrejme mali nastaveny priznak dedicnosti).
+6. Nastavit 'bInheritHandle' NA UZ VYTVORENY HANDLE je mozne pomocou API funkcie SetHandleInformation().
+//------------------------------------------------------------------------------

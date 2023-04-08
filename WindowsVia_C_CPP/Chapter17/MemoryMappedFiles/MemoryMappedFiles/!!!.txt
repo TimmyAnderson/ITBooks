@@ -1,0 +1,85 @@
+//------------------------------------------------------------------------------
+1. Program demonstruje pouzitie Memory Mapped Files vo Windows.
+2. Memory Mapped Files (MMF) maju vo Windows nasledujuce pouzitie.
+   A. Pri spustani programov sa pouzivaju ako STORAGE pre kod, ktory ma program spustat. Namiesto toho, aby sa obsah EXE a DLL kopiroval do PAGE FILE, su .EXE a .DLL asociovane do PAGING SYSTEMU a pri nacitavani programu su cez MMF nacitavane casti kodu do RAM.
+   B. Umoznuju pristupovat k suboru bez nutnosti robit IO operacie v kode, pretoze tieto IO operacie vykonava na pozadi MMF.
+   C. MMF je sposob akym mozu zdielat pamat viacere procesy. Na pozadi i INE FORMY INTER-PROCESS komunikacie POUZIVAJU MMF.
+3. Windows pri spustani programu cez CreateProcess() pouziva nasledujuci algoritmus.
+   A. Vyhlada sa .EXE subor, ktory chcem spustit. Ako ho nenajde, CreateProcess() vracia FALSE.
+   B. Vytvori sa PROCESS KO.
+   C. Rezervuje sa PRIVATE ADDRESS SPACE pre novy proces.
+   D. Pre .EXE subor sa REZERVUJE v ADDRESS SPACE dostatocny priestor. Kazdy EXE subor ma vo Windows stanovenu BASE ADDRESS na ktoru EXE subor mapuje do ADDRESS SPACE. Tuto BASE ADDRESS je mozne nastavit pri kompilacii priznakom /BASE.
+   !!! E. System vytvori z .EXE suboru MMF a tento MMF (odkazujuci na .EXE) sa STAVA SUCASTOU PAGING SYSTEMU. Teda NEDOCHADZA ku KOPIROVANIU EXE suboru do PAGE FILE, ale naopak EXE SUBOR v podobe MMF sa stava sucastou PAGING SYSTEMU.
+   F. System pozrie do tabulky DLL, ktore dany proces potrebuje a ZACNE ICH NACITAVAT.
+   G. Pre KAZDU DLL, ktoru je treba nacitat sa REZERVUJE v ADDRESS SPACE dostatocny priestor. Kazda DLL subor stanovenu BASE ADDRESS na ktoru DLL subor mapuje do ADDRESS SPACE. Tuto BASE ADDRESS je mozne nastavit pri kompilacii priznakom /BASE. Ak system NEVIE NAMAPOVAT DLL do POZADOVANEJ ADDRESS BASE, pokusi sa ju namapovant na INU ADRESU (za cenu isteho performance hit pri spustani), ale to je mozne iba ak DLL nebola kompilovana s priznakom /FIXES.
+   !!! H. System vytvori z kazdeho .DLL suboru MMF a tento MMF (odkazujuci na .DLL) sa STAVA SUCASTOU PAGING SYSTEMU. Teda NEDOCHADZA ku KOPIROVANIU DLL suboru do PAGE FILE, ale naopak DLL SUBOR v podobe MMF sa stava sucastou PAGING SYSTEMU.
+   I. Proces sa spusti a zacne vykonavat kod.
+   !!!!! J. Kedze .EXE i .DLL su ako MMF v SUBOROVOM SYSTEME a NIE v RAM, WINDOWS (??? cez MMF) sa od teraz stara o NACITANIE dat z .EXE/.DLL do RAM a to tak, ze ak program chce pracovat s castou .EXE/.DLL, ktora NIE JE v RAM, tak ju Windows z .EXE/.DLL AUTOMATICKY dotiahne do RAM.
+!!! 4. Ked Windows zavadza 2. INSTANCIU UZ SPUSTENEHO PROGRAMU pouziva MMF VIEW. Cize nad MMF spustenej 1. instancie vytvori NOVY VIEW, cim sa steri pamat. Problem vsak nastava, ze v EXE subore (DLL) je KOD a DATA MIXOVANE VZAJOMNE do jedneho suboru. Data a kod su oddelene NA UROVNI PAGES, kde existuju PAGES pre DATA a PAGES pre KOD. Samozrejme DATA PAGES MUSI MAT KAZDA INSTANCIA VLASTNE KOPIE. Windows postupuje nasledovne.
+   A. Pre kazdu CODE PAGE nastavi PROTECTION na READ_ONLY, cim ZABRANI ZAPISOVANIU do PAGE, ktora obsahuje IBA KOD.
+   B. Pre kazdu DATA PAGE nastavi PROTECTION na COPY_ON_WRITE. Tento priznak zabezpeci, ze pri PRVOM ZAPISE do PAGE sa PRE DANY PROCES SPRAVI KOPIA PAGE, ktora UZ BUDE MAT PROTECTION iba READ_WRITE. Kedze PRI PRVOM ZAPISE sa robi KOPIA pre DANY PROCES, tak KAZDY PROCES ma OSOBITNU DATA PAGE.
+!!!!! 5. Windows vsak umoznuje definovat i SHARED DATA PAGE. Je to PAGE, ktora je SHARED medzi VIACERYMI SPUSTENYMI INSTANCIAMI TOHO ISTEHO EXE/DLL. Shared PAGE sa realizuje nasledovnymi krokmi.
+   A. Medzi #pragma data_seg("SomeSectionName") a #pragma data_seg() definujem VSETKY VOLATILE premenne, ktore chcem mat v SHARED PAGE.
+   !!! B. Nato aby dana premenna bola zdielana MUSI BYT INICIALIZOVANA.
+   C. Pomocou #pragma comment(linker,"/Section:SomeSectionName,RWS") nastavim danu SECTION (PAGE) ako ZDIELANU. Linker nasledne vytvori program so zdielanou PAGE.
+6. SHARED PAGES ma vacsi zmysel pouzivat pri DLL na zdielanie dat. No vo vseobecnosti sa NEDOPORUCUJE POUZIVAT, najma pre security rizika.
+!!! 7. Vseobecna poznamka k PE suborom (EXE/DLL). Subory su LINKEROM delene na SECTION, kde kazda SECTION ma velkost (??? nasobku) velkosti PAGE. Section maku mena podla TYPU SECTION. Napriklad '.text' je SECTION, ktora obsahuje CODE, '.data' obsahuje INICIALIZOVANE DATA a napriklad '.xdata' obsahuje EXCEPTION HANDLING TABLE. Na zaklade TYPU SECTION je Windows schopny pri spstani PE suboru (EXE/DLL) jednotlivym MEMORY PAGES pridelit prisluhajuci PROTECTION atribut. Napriklad pre '.data' je to PAGE_READWRITE, kedze sa jedna o ZAPISOVATELNE DATA a v pripade '.text' je to PAGE_READONLY, kedze CODE NESMIE BYT ZAPISOVATELNY.
+8. Pouzitie MMF sa vykonava v nasledujucich krokoch.
+   A. Vytvorim HANDLE na KO reprezentujuci FILE.
+   B. Vytvorim HANDLE na KO reprezentujuci MEMORY MAPPED FILE.
+   C. Mapujem cely, alebo cast MMF do ADDRESS SPACE procesu.
+   D. Mozem pouzivat MMF.
+   E. Odmapujem MMF z ADDRESS SPACE procesu.
+   F. Uzatvorim HANDLE na KO reprezentujuci MEMORY MAPPED FILE.
+   G. Uzatvorim HANDLE na KO reprezentujuci FILE.
+9. Pri vytvarani KO pre FILE, ktory chcem mapovat cez MMF ma za DesiredAccess parameter v CreateFile() zmysel speficikovat bud GENERIC_READ, alebo (GENERIC_READ | GENERIC_WRITE). Ak dam 0 (ziaden pristup, iba moznost zistenia paramaterov suboru), nebudem moct subor namapovat cez MMF.
+10. MMF KO sa vytvara volanim CreateMappedFile(), pricom musim dodrzat nasledovne pravidla.
+   A. 'File' je HANDLE na FILE, ktory ma byt mapovany.
+   !!! B. 'Protect' urcuje AKA PROTECTION sa pouzije na PAGES, ktore sa cez MMF namapuju do ADDRESS SPACE. Mozem tu pouzit priznaky PAGE_*, ako pri VirtualAlloc(), ale MOZEM ICH OR-ovat s parametrami SEC_*. Napriklad ak pouzijem SEC_IMAGE (NESMIE SA OR-ovat so ZIADNYM INYM ani PAGE_* parametrom), tak FILE je povazovany za EXE (PE subor) a PROTECTION pre PAGES sa bude urcovat Z OBSAHU SECTION PE file. PE file (EXE) je logicky rozdeleny na SECTIONS (data/code - o velkosti PAGE) a podla toho ci sa jedna o DATA SECTION, alebo CODE SECTION sa nastavuju na jednotlive PAGES (reprezentujuce danu SECTION) prislusne PROTECTION ATRIBUTY. Napriklad na CODE sa dava PAGE_READONLY, kedze do CODE SECTION sa samozrejme NESMIE ZAPISOVAT.
+   !!! C. MaximumSizeLow, MaximumSizeHigh urcuje MAXIMALNU VELKOST SUBORU s ktorou MMF dokaze pracovat. Subor MUSI MAT aspon TOLKO BYTES, ktore specifikujem v tychto parametroch (0 znamena pouzit AKTUALNU DLZKU SUBORU). Ak je subor KRATSI a MMF ma READ/WRITE pristup, tak MMF AUTOMATICKY NATIAHNE DLZKU SUBORU na pozadovanu velkost - aby SUBOR SKUTOCNE mal POZADOVANY VELKOST pri mapovani suboru do PAMATE. Teda aby subor MOHOL FUNGOVAT ako MEMORY STORAGE. Ak dam MENSIU HODNOTU ako DLZKA SUBORU, tak dlzka suboru sa NEZMENI. Pri READ_ONLY pristupe MUSIM STANOVIT 0 (aktualna dlzka suboru), kedze subor sa NEMOZE ZVACSIT - je READ ONLY.
+   D. Funkcia CreateMappedFile() pri chybe vracia NULL.
+11. Mapovanie ADDRESS SPACE a MEMORY COMMIT sa vykonava volanim funkcie MapViewOfFile(). Pre MapViewOfFile() platia nasledujuce zasahy.
+   A. V parametri DesiredAccess urcuje pozadovany sposob pristupu k MMF. Velmi dolezity je atribut FILE_MAP_COPY, ktory sa vyuziva pri mapovani EXECUTABLE (.EXE/.DLL) suborov do STORAGE (RAM, PAGE FILE, MMF) pri spustani programov.
+   B. V parametroch FileOffsetHigh a FileOffsetLow definujem OFFSET v MMF od ktoreho chcem zacat mapovanie. Offset MUSI BYT NASOBKOM hodnoty ALLOCATION GRANULARITY, ktoru je mozne ziskat volanim GetSystemInfo(). Standardne je to 64 KB.
+   C. V parametri NumberOfBytesToMap definujem pocet BYTES, ktore chcem mapovat cez MMF. Hodnota 0 znamena vsetko od OFFSET do konca suboru.
+   !!! D. Pri KAZDOM VOLANI MapViewOfFile() sa MAPUJE NOVY ADDRESS SPACE. Opatovne volanie funkcie teda NEODMAPUJE POVODNE MAPOVANIE. Na odmapovanie je treba volat UnmapViewOfFile().
+   !!! E. Kazde volanie MapViewOfFile() ZVYSUJE COUNTER pre FILE i MMF KO. Volanie UnmapViewOfFile() obe counters znizuje.
+12. Odmapovanie ADDRESS SPACE z MMF sa robi volanim UnmapViewOfFile(). Az po zavolani tejto funkcie sa ALOKOVANY STORAGE (RAM, PAGE FILE, MMF) UVOLNUJE.
+13. Funkcia FlushViewOfFile() umoznuje zapisat zmeny v MMF do suboru. Vyuziva sa to najma vtedy ked MMF je mapovana cez siet na subor na inom PC.
+!!! 14. Pomocou funkcie CloseHandle() MUSIM uzavriet HANDLE na FILE i HANDLE na MMF.
+????? 15. Nasledujuce kroky ukazuju postup akym by mal (???) Windows pouzivat MMF pri nacitani a spustani EXECUTABLE suboru (.EXE/DLL).
+   A. Pomocou CreateFile() sa vytvori KO na subor, ktory chcem spustit.
+   B. Pomocou CreateMappedFile() vytvorim nad EXE/DLL MMF, pricom v paramteri 'Protect' sa pouzije SEC_IMAGE. Atribut SEC_IMAGE sposobi, PROTECTION jednotlivych PAGES sa urci na zaklade SECTION PE suboru. PE subor (EXE/DLL) je rozdelni na SECTIONS (kazda ma 1, alebo viacero PAGES), ktoru urcuje typ dat v nej ulozene (kod, data, SEH tabulka a podobne). Na zaklade toho akej SECTION bude dana PAGE patrit sa jej pridali PROTECTION.
+   !!! C. Pre SECTIONS, ktore obsahuju DATA sa nastavi PROTECTION na hodnotu PAGE_EXECUTE_WRITECOPY, co sposobi, ze PRI ZAPISE do PAGE sa VYTVORI v procese KOPIA DANEJ PAGE pre dany proces do ktorej moze proces zapisovat.
+   D. Pomocou MapViewOfFile() vytvorim mapovanie ADDRESS SPACE na MMF. Ak parameter 'DesiredAccess' sa pouzije FILE_MAP_COPY.
+   !!! E. V tejto chvili sa MMF stava SUCASTOU VIRTUANEJ PAMATE pocitaca. NEDOCHADZA teda ku KOPIROVANIU EXE/DLL do PAGE FILE, ale EXE/DLL sa stava sucastou virtualnej pamate.
+   F. Zaroven sa v PAGE FILE COMMITNE STORAGE pre CELU DLZKU EXE/DLL (??? asi len pre WRITABLE PAGES, kedze READ-ONLY PAGES sa mozu kludne Dalej citat z MMF), tak aby bolo DOST STORAGE ak proces zacne ZAPISOVAT do PAGES.
+   G. V tejto chvili teda mam v PAGE FILE rezervovany STORAGE a zaroven MMF je mapovane na EXE/DLL.
+   !!! H. Pri prvom CITANI (citanie, spustenie kodu) z PAGE EXE/DLL suboru (Page je zatial mapovana v MMF) sa PAGE NACITA z MMF a do RAM. Od tejto chvile moze CPU pracovat s kodom, alebo datami v EXE/DLL.
+   !!!!! I. Pri prvom ZAPISE do PAGE EXE/DLL suboru sa SPRAVI LOKALNA KOPIA DANEJ PAGE z MMF a ULOZI SA DO RAM. Takto ma dany subor VLASTNU KOPIU PAGE do ktorej proces ZAPISAL. Tym ostatnu data NEPORUSENE.
+   !!!!! J. V pripade, ze CACHE virtualnej pamate potrebuje PAGE do ktorej sa ZAPISALO presunut do PAGE FILE - MOZE TO SPRAVIT, kedze pri volani MapViewOfFile() (pozri bod F) sa REZERVOVAL STORAGE v PAGE FILE pre cely EXE/DLL.
+   !!! K. Po skonceni programu sa uzavrie odmapuje MMF volanim MapViewOfFile() a zaroven sa cez CloseHandle() uvolni KO pre EXE/DLL i MMF.
+   J. Kedze sa pouzil atribut FILE_MAP_COPY, tak sa POVODNY EXE/DLL subor NEZMENI.
+   !!!!! K. Ak sa spusti DALSIA INSTANCIA toho isteho EXE/DLL, NEVYTVARA sa NOVY MMF, ale pouzije sa UZ VYTVORENY, nad ktorym sa do ADDRESS SPACE NOVEHO PROCESU EXISTUJUCI MMF NAMAPUJE.
+!!! 16. Hoci MMF umoznuje mapovat i velke subory s dlzkou na 2 GB, kedze na 32 bitovom systeme mam k dispozicii ADDRESS SPACE iba do velkosti 2 GB, ak chcem pouzivat velky subor musi VZDY MAPOVAT POSTUPNE CASTI VELKEHO SUBORU pomocou MapViewOfFile() a po skocneni prace s touto castou volat UnmapViewOfFile() a nasledne mozem namapovat INU CAST SUBORU (trebars i nad 2 GB).
+!!! 17. MMF zabezpecuje KOHERENCIU dat. To znamena, ze data, ktore sa zapisuju do MMF su viditelne i z INYCH VIEWS nad MMF. Pre koherenciu dat v MMF platia nasledovne pravidla.
+   A. Ak vytvorim nad TYM ISTYM MMF KO viacero MAPOVANI, tak data medzi nimi su KOHERENTNE - pretoze MMF aj ked mapuje data do inej ADDRESS SPACE na pozadi pouziva ROVNAKE PAGES.
+   B. Ak vytvorim nad TYM ISTYM MMF KO viacero MAPOVANI i v ROZLICNYCH PROCESOCH, tak data su KOHERENTNE - pretoze MMF aj ked mapuje data do inej ADDRESS SPACE na pozadi pouziva ROVNAKE PAGES.
+   C. Ak vytvorim 2 ROZLICNE MMF KO, tak data NEMUSIA BYT KOHERENTNE (mozu, ale nie je to garantovane).
+   D. Ak k FILE mapovanemu cez MMF pristupim cez FILE KO a NIE MMF funkciami ReadFile() a WriteFile() ku KOHERENCII DAT NEDOCHADZA.
+18. Funkcia MapViewOfFileEx() umoznuje speficikovat POZICIU v ADDRESS SPACE, na ktoru sa ma mapovat MMF. Adresa musi byt nasobok velkosti ALLOCATION GRANULARITY. Tato funkcia ma uplatnenie pri zdielani MMF medzi 2 procesmi, kde pomocou nej mozem address spaces v oboch MMF mapovat na tu istu poziciu, co moze byt vyhodne napriklad pre STRUKTURY ako Linked List Item, ktore sa odkazuju na ine Linked List Items a tie maju PEVNE ADRESY. Potom musia byt adresy aby k nim obe procesy mohli pristupovat ROVNAKE.
+!!!!! 19. MMF je NAJEFKETIVNEJSI sposob INTER-PROCESS komunikacie v ramci jedneho PC a ZAKLADOM pre VSETKY INE TYPY komunikacii, ktore interne vyuzivaju MMF.
+!!!!! 20. MMF umoznuje mapovat sa i PRIAMO DO PAGE FILE. To znamena, ze NEMUSIM VYTVARAT EXTRA SUBOR, ale STORAGE sa mapuje priamo z PAGE FILE. Takyto MMF mozem polahky zdielat medzi procesmi. Zdielanie pamate medzi procesmi pomocou MMF mapovanych do PAGE FILE je mozne realizovat nasledujucimi krokmi.
+   A. Zavolam CreateMappedFile(), kde ako FILE HANDLE dam NULL a MUSIM DEFINOVAT !=0 VELKOST pre MaximumSizeLow, MaximumSizeHigh. Funkcia REZEVUJE STORAGE PRIAMO v PAGE FILE.
+   B. Pri volani CreateMappedFile() dam MENO KO, pomocou ktoreho v inom procese pristupim k danemu MMF.
+   C. Teraz uz mozem volat MapViewOfFile() na mapovanie MMF do ADDRESS SPACE daneho procesu a takto ziskavam ZDIELANU PAMAT.
+   D. Po uzavreti vsetkych instancii KO MMF sa uvolni STORAGE v PAGE FILE zabrany MMF.
+21. MMF umoznuju i pouzitie SPARSE FILES a to tym, ze oddelim proces memory RESERVE od memory COMMIT. Tym sa odstrani jedna z nevyhod MMF a to, ze pri ich VYTVORENI musi byt (standardne) cela pamat COMMITED. Rezervacia a nasledna COMMIT pamate sa robi v nasledujucich krokoch.
+   A. Zavolam CreateMappedFile(), kde ako FILE HANDLE dam NULL a MUSIM DEFINOVAT !=0 VELKOST pre MaximumSizeLow, MaximumSizeHigh. Za parameter PROTECT dam OR hodnotu SEC_RESERVE. Tym sposobim, ze NEDOJDE ku COMMIT pamate.
+   B. Zavolam MapViewOfFile(), ktora prideli ADDRESS SPACE zatial este stale NON-COMMITED STORAGE.
+   C. Volanim VirtualAlloc(), kde ako prvy paramater dam adresu vratenu MapViewOfFile() a zaroven ako AllocationType nastavim MEM_COMMIT sposobim COMMIT pamate z PAGE FILE.
+   D. Teraz uz mozem pracovat s pamatou.
+   !!! E. Odstranenie COMMIT sa NEROBI cez VirtualFree(), ale odstranenim mapovania MMF do ADDRESS SPACE volanim UnmapViewOfFile().
+   F. Nasledne je mozne pouzit CloseHandle() na uzavretie KO MMF.
+!!! 22. Windows v NTFS i priamo podporuje SPARSE FILES, ktory umoznuje mapovat MMF na tieto files, cim mam SPARSE MMF mapovane NIE DO PAGE FILE, ale do ineho FILE.
+//------------------------------------------------------------------------------

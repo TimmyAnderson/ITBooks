@@ -1,0 +1,49 @@
+//------------------------------------------------------------------------------
+1. Program demonstruje sposob alokacie pamate vo Windows.
+2. Kazdy proces ma definovany VIRTUALNY ADRESOVY PRIESTOR - teda rozsah VIRTUALNYCH adries, ktore moze proces mat.
+!!! 3. VIRTUALNY ADRESOVY PRIESTOR udava IBA ROZSAH ADRIESS, ktore je mozne pridelovat procesu. NEJEDNA sa O MNOZSTVO PRIDELENEJ REALNEJ PAMATE. VIRTUALNY ADRESOVY PRIESTOR teda NIE JE PAMAT. Su to iba adresy (cisla), ktorym MOZE byt priradena REALNA PAMAT.
+!!! 4. Vo Windows je potrebne rozlisovat NASLEDUJUCE DVE POJMY.
+   A. RAM - je pamat priamo pristupna pre CPU.
+   !!!!! B. STORAGE - je ULOZISTE, kde sa ukladaju data a kod vykonavany programom.
+!!!!! 5. Vo Windows existuju 3 TYPY STORAGE.
+   A. RAM pamet. Je JEDINY STORAGE s ktorym MOZE PRIAMO PRACOVAT CPU. Teda KAZDY BYTE dat ci kodu pred vykonanim v CPU MUSI BYT NAJPRV PRESUNUTY do RAM.
+   B. PAGE file je STORAGE na DISKU a je SUCASTOU VUIRTUALNEJ PAMATE SYSTEMU. Pred pouzitim tejto pamate sa musia data z NEJ SKOPIROVAT do RAM, aby k nim mohol CPU pristupovat.
+   C. Memory-Mapped File. Je to EXE/DLL subor na ktorym sa pomocou MMF Windows namapuje a tento SUBOR NA DISKU sa STAVA SUCASTOU VIRTUALNEJ PAMATE pocitaca.
+!!!!! 6. Cize sa da v podstate povedat, ze RAM je iba akoby CACHE NAD PAGE FILE (resp. MMF). System vdaka moznosti presuvat lubovolne data medzi RAM a PAGE file (MMF) ziskava dodatocny STORAGE pre UKLADANIE DAT.
+//------------------------------------------------------------------------------
+//------------------------------------------------------------------------------
+//------------------------------------------------------------------------------
+1. VIRTUALNY ADRESOVY PRIESTOR je podla typu Windows (ci je 32, alebo 64 bitovy) rozdeleny do 4 skupin.
+   A. NULL-Pointer Assigment - je chraneny segment ADRESNEHO PRIESTORU zacinajuci od adresy 0. V tomto priestore NIE JE MOZNE alokovat STORAGE (RAM, PAGE FILE, MMF) a KAZDY PRISTUP do tychto adries skonci volanim SEH EXCEPTION.
+   B. User-Mode - je cast ADRESNEHO PRIESTORU, ktora sa pouziva na ukladanie INSTRUKCII a DAT PROGRAMU. Prave z tejto oblasti adries su pridelovane adresy pri alokovani STORAGE (RAM, PAGE FILE, MMF).
+   C. 64-KB Off-Limits.
+   D. Kernel-Mode - je ADRESNY PRIESTOR vyuzivany OPERACNYM SYSTEMOM. Do tohto adresneho priestoru NEMOZEM z KODU programu pristupovat, pretoze akykolvek pristup skonci volanim SEH EXCEPTION.
+!!! 2. Zatial co Kernel-Mode ADDRESS SPACE je ZDIELANY a teda vsetky procesy maju ZDIELANU tuto cast ADRESNEHO PRIESTORU, tak v pripade User-Mode, ma KAZDY PROCES OSOBITNY ADDRESS SPACE. To znaci, ze 2 procesy mozu mat NA TEJ ISTEJ ADRESE UPLNE INE DATA. V pripade Kernel-Mode je TO ISTE, avsak Kernel-Mode adresny pristor je pre aplikaciu NEPRISTUPNY.
+!!!!! 3. Alokacia STORAGE (RAM, PAGE FILE, MMF) vo Windows prebieha v DVOCH KROKOCH.
+   A. REZERVOVANIE ADRESOVEHO PRIESTORU.
+   B. ALOKACIA STORAGE (RAM, PAGE FILE, MMF) v REZERVOAVNOM adresovom priestore. 
+4. Pre rezervovanie adresoveho priestoru plati.
+   A. Rezervovanie adresoveho priestoru sa robi funkciou VirtualAlloc() s parametrom MEM_RESERVE.
+   B. Rezervovany adresovy priestor ZACINA na HRANICI BLOKU ALLOCATION GRANULARITY. Velkost ALLOCATION GRANULARITY je v sucastnych OS 64 kB.
+   C. Velkost rezervovaneho adresneho priestoru je NASOBOK PAGE SIZE. Teda aj ked dam rezervovat napriklad 100 bytes, tak v skutocnosti sa rezervuje az PAGE SIZE bytes, co je standardne 4 kB na x86/x64.
+   D. Rezervovany adresovy priestor sa uvolnuje volanim VirtualFree() s parametrom MEM_RELEASE.
+5. Pre alokaciu STORAGE (RAM, PAGE FILE, MMF) plati.
+   !!! A. Je ju mozne robit iba v REZEROVANOM ADRESOVOM PRIESTORE. Teda najprv musi rezervovat adresovy priestor VirtualAlloc() s parametrom MEM_RESERVE.
+   B. Alokacia STORAGE (RAM, PAGE FILE, MMF) sa robi funkciou VirtualAlloc() s parameterom MEM_COMMIT.
+   C. Velkost alokovaneho STORAGE (RAM, PAGE FILE, MMF) je VZDY NASOBOM PAGE SIZE. Ak poziadam o alokovanie napriklad 100 BYTES tak sa VZDY ALKOUJE CELA PAGE.
+   D. Alokovany STORAGE (RAM, PAGE FILE, MMF) sa uvolni volanim VirtualFree() s parametrom MEM_DECOMMIT. Nasledne je mozne UVOLNIT REZERVOVANY ADRESOVY PRIESTOR volanim VirtualFree() s parametrom MEM_RELEASE.
+6. Windows pouziva pri alokacii STORAGE (RAM, PAGE FILE, MMF) CACHING cez PAGE FILES (MMF) do ktoreho je to co sa nezmesti do RAM ulozene. RAM pamat v podstate sluzi iba ako CACHE k PAGE FILE.
+!!! 7. Caching je PODPORENY CPU. CPU dokaze indentifikovat ci pozadovany blok pamati je v RAM a ak nie, tak informuje o tom Windows, ktory zabezpeci nacitanie dat z PAGE FILE, alebo MMF do RAM.
+!!!!! 8. Windows pri spustani aplikacie v skutocnosti NENACITA OBSAH .EXE suboru do PAGE FILE, ale naopak z .EXE suboru (resp. .DLL) spravi MEMORY-MAPPED FILE a .EXE (.DLL) subor sa stane SUCASTOU page-file cache. Teda Windows cita instrukcie programu PRIAMO z .EXE suboru. Ak je vsak dany subor na floppy disk, tak je cely skopirovany do PAGE FILE. Pri CD ci DVD k tomu NEDOCHADZA ak nie je nastaveny priznak /SWAPRUN:CD, pri kompilacii CD.
+9. Windows pouziva pri alokovani optimalizovany model zalozeny na ZDIELANY MEMORY PAGES medzi viacerymi aplikaciami - pouzivajucimi tie iste DLL. Tieto memory pages musia byt CHRANENE PRED ZAPISOM, inak by doslo k poskodeniu PAGE, ktora je zdielana viacerymi aplikacami. Algoritmus zdielania je nasledujuci. 
+   A. Pri vytvoreni procesu su PAGES rozdelene na READ_ONLY, EXECUTABLE a WRITABLE. READ_ONLY, EXECUTABLE  obsahuju zvycajne kod a su nacitane do alokovaneho STORAGE (RAM, PAGE FILE, MMF).
+   B. Pre PAGES v ktorych NIE JE ULOZENY KOD, ale sluzia na ulozenie dat su oznacene ako WRITABLE a je im alokovana STORAGE (RAM, PAGE FILE, MMF). Tieto PAGES - AK JE POUZITA OPTIMALIZACIA - su oznacene atributom PAGE_WRITECOPY, alebo PAGE_EXECUTECOPY.
+   C. Takato PAGE oznacena atributom s atributom PAGE_WRITECOPY, alebo PAGE_EXECUTECOPY moze byt ZDIELANA MEDZI VIACERYMI APLIKACIAMI, vsaka comu dochadza k ZNIZENIU REALNEYCH POTRIEB na pamat.
+   !!! D. Avsak, ked do takto zdielanej PAGE NIEKTORY z PROCESOV potrebuju spravit WRITE, tak Windows MUSI SPRAVIT z tejto zdielanej PAGE KOPIU pre DANY PROCES.
+   E. Pri pokuse o zapis, teda Windows detekuje, ze sa jedna o ZDIELANU PAGE (nastaveny atribut PAGE_WRITECOPY, alebo PAGE_EXECUTECOPY) a vytvori PRE DANY PROCES KOPIU tejto PAGE.
+   F. Nasledne namapuje PAGE do procesu, ktory pozadoval zapis do danej PAGE a tym je vytvorena PLNE FUNKCNA WRITABLE KOPIA.
+!!! 10. Pre optimalny vykon pri pristupe k pamati je DOLEZITE, aby pamat ku ktorej pristupujem bola ZAROVNANA a to tak, aby: (ADRESA % VELKOST_DAT)==0. Ak jej toto dodrzane, tak je pristup k pamati najefektivnejsi.
+11. Ak pristupujem k pamati, ktora NIE JE ZAROVNANA, v ZAVISLOSTI od TYPU CPU sa mozu stat jedna z nasledujucich veci.
+   A. CPU AUTOMATICKY detekuje problem so zarovnanim a generuje AUTOMATICKU KOREKCIU VIACERYMI VYCITANIAMI PAMATE. Takto sa chovaju x86 a x64 CPU.
+   B. CPU generuje PRERUSENIE INT 17H, na zaklade ktoreho Windows generuje SEH EXCEPTION EXCEPTION_DATATYPE_MISALIGMENT. Toto chovanie (potlacenie generovania SEH) je mozne vykonat funkciou SetErrorMode().
+//------------------------------------------------------------------------------

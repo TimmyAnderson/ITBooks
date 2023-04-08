@@ -1,0 +1,34 @@
+//------------------------------------------------------------------------------
+1. Program demonstruje ERROR REPORTING po vzniku UNHANDLED EXCEPTION vo Viste.
+2. Pri pade programu Windows vytvori DUMP padajuceho procesu a pokusi sa ho odoslat na servre Microsoftu. Alternativne je mozne tento DUMP uchovat pre potreby DEBUGGINGU.
+!!! 3. Vo Viste sa pri odosielani chyby na servre Microsoftu porovna DUMP s DUMPS na serveri a ak chyba bola opravena, tak sa odosle pouzivatelovi riesenie problemu. K tejto DB chyb mozu pristupovat DODAVATELIA SW, ktori mozu vdaka tomu analyzovat chyby svojich SW.
+!!! 4. DUMP generovany vo Viste je tvoreny 4 subormi, ktore su ulozene na disku a po odoslani do Miscrosoft sa DEFAULT MAZU - hoci je mozne nastavit ich ponechanie v PC.
+   A. AppCompat.txt - XML subor obsahujuci zoznam MODULES, ktore boli do procesu zavedene.
+   B. Memory.hdmp - KOMPLETNY DUMP padnuteho procesu.
+   C. MiniMemory.mdmp - MINI DUMP padnuteho procesu.   
+   D. Version.txt - verzia Windows.
+5. Vista umoznuje pomocou WER API KOMPLETNE CUSTOMIZOVAT vytvaranie a zasielanie DUMP o padnutom procese.
+!!!!! 6. DUMP sa standardne generuje aby bol odoslany do Microsoft. Ak vsak chcem, aby bol uchovany i LOKALNE a ostali zachovane DUMP subory pre analyzu, je potrebne pomocou funkcie WerSetFlags() nastavit BUD priznak WER_FAULT_REPORTING_FLAG_QUEUE, alebo WER_FAULT_REPORTING_FLAG_QUEUE_UPLOAD. IBA VTEDY, ked je jeden z tychto priznakov nastaveny, tak je DUMP ULOZENY na LOKALNY POCITAC (do tzv. PIPE). Konkretne subory je mozne ziskat z 'Control Panel\System and Security\Action Center\Problem Details', kde v REPORTE sa na konci zobrazi LINK s odkazom na ADRESAR, kde sa DUMP subory nachadzaju. Ak tieto subory su odslane, tak sa ZMAZU, a preto je potrebne pouzit WerSetFlags().
+7. Pomocou funkcie WerGetFlags() je mozne zistit nastavenie FLAGS pre WER.
+8. Pomocou funkcie WerAddExcludedApplication() je mozne pre aplikaciu ZABLOKOVAT GENEROVANIE REPORTU a odosielanie do Microsoft. Takto vyradena aplikacia ak vznikne UNHANDLED EXCEPTION spusti WER iba preto, aby ponukla DEBUGGING padajucej aplikacie. Opatovne zaradenie aplikacie na generovanie reportu je mozne funkciou WerRemoveExcludedApplication().
+9. Pomocou funkcie WerRegisterMemoryBlock() je mozne do generovaneho DUMP pridat MEMORY BLOK. Tento memory blok moze mat maximalne 64 KB. Odregistrovanie MEMORY BLOCK, aby sa nezapisoval do DUMP je mozne vykonat funkciou WerUnregisterMemoryBlock().
+10. Pomocou funkcie WerRegisterFile() je mozne do generovaneho DUMP pridat CUSTOM SUBOR. Odregistrovanie SUBORU, aby sa nezapisoval do DUMP je mozne vykonat funkciou WerUnregisterFile().
+!!! 11. WerRegisterFile() MUSI DEFINOVAT FULL-PATH - INAK NEFUNGUJE. Aspon nie vo Windows 7.
+!!! 12. Vista obsahuje cely subor funkcii na generovanie REPORT DUMP. DUMP moze byt pomocou tychto funkcii plne CUSTOMIZED a MOZE BYT GENEROVANY i ked NEDOCHADZA k PADU PROGRAMU.
+13. Funkcia WerReportCreate() vytvori REPORT a v parametri 'phReportHandle' vracia HANDLE na REPORT.
+14. Funkciou WerReportSetParameter() je mozne nastavit 10 CUSTOM PARAMETROV vo formate KEY-VALUE, ktore su zobrazene v REPORTE. Parametre musim definovat od WER_P0 az po WER_PN, kde N je pocet parametrov, ktore definujem. Maximalna hodnota je WER_P9.
+!!! 15. Ak NEDEFINUJEM cez WerReportSetParameter() CUSTOM PARAMETRE, tak sa pouzije DEFUALT definovane Windows, ktorych je 8 a urcuju meno, verziu aplikacie, meno a verziu module ako aj adresu na ktorej vznikla chyba.
+16. Pomocou funkcie WerReportAddDump() je mozne do REPORT pridat DUMP beziaceho procesu. V parametri 'pExceptionParam' je mozne definovat definovat EXCEPTION, ktoru chcem zaradit do REPORT. Struktura PWER_EXCEPTION_INFORMATION obsahuje parameter EXCEPTION_POINTERS do ktoreho mozem ulozit hodnotu EXCEPTION vratenu funkciou GetExceptionInformation().
+!!! 17. Ak cez WerReportAddDump() pridavam DUMP, tak MUSIM NASTAVIT WER_EXCEPTION_INFORMATION.pExceptionPointers na hodnotu vratenu funkciou GetExceptionInformation(). Z toho vyplyva, ze DUMP sa da pridat IBA AKO REAKCIA na EXCEPTION a IBA v EXCEPTION FILTER, kedze IBA TU, je mozne volat GetExceptionInformation(). Program vsak MOZE POKRACOVAT DALEJ, pokial EXCEPTION je HANDLED.
+18. Pomocou funkcie WerReportAddFile() je mozne do REPORT pridavat CUSTOM subory. V parametri 'pwzPath' MUSI BYT FULL-PATH.
+19. Pomocou funkcie WerReportSetUIOption() je mozne menit texty vo WER GUI.
+!!! 20. Funkcia WerReportSubmit() je KLUCOVOU FUNKCIOU, ktora ODOSIELA REPORT bud do QUEUE, alebo priamo do Microsoft. REPORT je mozne ulozit do QUEUE nastavenim priznaku WER_SUBMIT_QUEUE. Po odoslani REPORT je nastaveny parameter 'pSubmitResult', urcujuci ci odoslanie REPORT bud do QUEUE, alebo do Microsoft bolo uspesne, alebo zlyhalo.
+21. Funkcia WerReportCloseHandle() sluzi na UZAVRETIE HANDLE vrateneho funkciou WerReportCreate(). Zaroven uvolni vsetky resources pouzite pri generovani CUSTOM REPORT.
+!!! 22. Vo Windows XP je mozne NAMIESTO Wer*() funkcii, pouzit ReportFault() na odoslanie chyby do Microsoft.
+!!!!! 23. Vista za pomoci WER umoznuje vykonat RESTART programu, ktory SPADOL. Takisto umoznuje definovat CALLBACK, ktory sa zavola, ked program PADOL - aby som mohol ULOZIT DATA a pri RESTART ich OBNOVIT.
+24. Pomocou funkcie RegisterApplicationRestart() je mozne program zaregistrovat, aby v PRIPADE FATALNEJ CHYBY bol RESTARTOVANY. Funkcia UnregisterApplicationRestart() sluzi na odregistrovanie programu, takze nebude pri pade restartovany.
+!!!!! 25. Windows kontroluje, ci program, ktory MA BYT RESTARTED bezal ASPON MINUTU a iba ak bezal dlhsie, tak ho restartuje. Ak program NEBEZI ASPON 60 SEKUND, tak sa RESTART NEVYKONA - SKUSAL SOM TO.
+26. Pomocou funkcie RegisterApplicationRecoveryCallback() je mozne zaregistrovat CALLBACK, ktory za zavola pri PADE PROGRAMU a v nom moze CALLBACK ULOZIT APLIKACNE DATA, aby sa NESTRATILI. Funkciou UnregisterApplicationRecoveryCallback() je mozne odregistrovat CALLBACK.
+!!! 27. CALLBACK MUSI PRAVIDELNE volat funkciu ApplicationRecoveryInProgress(), aby oznamila WER, ze ZIJE a ROBI CALLBACK. Ak to NESPRAVI v INTERVALE STANOVENOM pri volani RegisterApplicationRecoveryCallback(), tak WER PROGRAM TERMINUJE.
+!!! 28. CALLBACK, ked skonci svoju cinnost musi to oznamit volanim ApplicationRecoveryFinished(), kde parameter udava ci RECOVERY BOLA USPESNA, alebo NEUSPESNE (resp. pouzivatel klikol na CANCEL).
+//------------------------------------------------------------------------------

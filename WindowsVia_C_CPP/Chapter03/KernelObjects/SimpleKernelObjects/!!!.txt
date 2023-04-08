@@ -1,0 +1,16 @@
+//------------------------------------------------------------------------------
+1. Program demonstruje pouzitie Kernel Objects (KO) vo Windows.
+2. KO predstavuje OBJEKT KERNELU, ktory reprezentuje rozlicne objekty ako napriklad File, ci Semaphore. KO je reprezenovany DATOVOU STRUKTUROU obsahujucou STAV DANEHO KO. Tato datova struktura je VSAK NEPRISTUPNA z User mode a je k nej mozne pristupovat iba cez HANDLE.
+3. Kazdy KO je identifikovany pomocou HANDLE, ktory je vytvarany pomocou niektorej z CreateXXX() API funkcii.
+4. HANDLE KO je index do systemovej tabulky PROCESU v ktorej sa drzia odkazy o VSETKY KO vytvorenych PRE DANY PROCES.
+!!! 5. Kedze HANDLE je na UROVNI PROCESU, tak HANLDE NIE JE MOZNE ZDIELAT MEDZI PROCESMI.
+!!! 6. Avsak KO je drzany KERNELOM a MOZE BYT ZDIELANY a to tak, ze v inom procese vytvorim pomocou prislusnych API funkcii HANDLE na TEN ISTY KO. Potom je tento KO zdielany medzi procesmi. Napriklad taka PIPE je takto zdielana, aby mohol pomocou nej mozne komunikovat medzi dvoma procesmi.
+!!! 7. HANDLE na KO je odstraneny volanim CloseHandle(). To ci sa OZAJ KO ZLIKVIDUJE urcuje to ci ho iny proces pouziva, alebo nie. Bez ohladu nato ci KO je skutocne odstraneny, vsak HANDLE po volani CloseHandle() VZDY NEPLATNY.
+8. KO je zlikvidovany zo systemu az ked HO NEPOUZIVA ZIADEN PROCES. Toto je zabezpecene nasledujucim sposobom.
+   A. Pri vytvarani noveho KO je do tabulky KO procesu pridany novy KO - vytvorena datova struktura pre dany KO a jeho HANDLE je vrateny.
+   B. Pocas vytvarania sa zaroven NASTAVI POCITADLO KO na 1.
+   C. Ak INY PROCES otvori TEN ISTY KO, tak KERNEL INKREMENTUJE JEHO POCITADLO.
+   D. Pri volani CloseHandle() sa pocitadlo KO DEKREMENTUJE a v pripade, ze dosiahne hodnotu 0 je KO ZLIKVIDOVANY.
+!!! 9. Ked je proces zlikvidovany, tak VSETKY NEUZAVRETE HANDLES su UZAVRETE a ak dany KO nepouziva iny proces, tak je KO ZLIKVIDOVANY.
+10. Pri vytvarani KO je mozne definova SECURITY_ATTRIBUTES. Zvycajne je tato hodnota na NULL, co znamena, ze sa pouzije SECURITY pridelena danemu procesu.
+//------------------------------------------------------------------------------

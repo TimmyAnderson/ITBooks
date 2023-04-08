@@ -1,0 +1,116 @@
+//------------------------------------------------------------------------------
+1. Program demonstruje vytvaranie DLL vo Windows.
+2. Pouzitie DLL v programoch ma viacero vychod.
+   A. Setria pamat ak su LINKOVANE DYNAMICKY, pretoze sa ukladaju do SPOLOCNYCH PAGES, ktore su pristupne VSETKYM APLIKACIAM. !!! Ak vsak pouzijem staticke linkovanie DLL, tak k zdielaniu DLL NEDOCHADZA a kazdy proces ma VLASTNU KOPIU DLL.
+   B. Umoznuju zdielat RESOURCES, ktore su ulozene v DLL.
+   C. Umoznuju lahko realizovat lokalizaciu.
+   D. Umoznuju vykonavat DLL Hooking.
+   E. Sluzia ako COM InProc server v COM.
+!!! 3. DLL NEVLASTNI ADDRESS SPACE, naopak pri zavedeni DLL do procesu je mapovana do ADDRESS SPACE procesu. Vsetky resources su vlastnene procesom, resp. threadom procesu a nie DLL. DLL po zavedeni, takmer straca svoju identitu a jedna sa viac menej iba o kod zavedeny do ADDRESS SPACE.
+4. DLL sa linkuje pomocou linker priznaku /DLL, ktory vytvara iny image suboru ako pri EXE, takze Windows ho dokaze identifikovat ako DLL.
+!!!!! 5. Velmi VYHODNE je v SOLUTION nastavit EXE projekt aby mal DEPENDENCY na DLL projekt. Ak to spravim, tak NEMUSIM .LIB pridavat v EXE projekte do LINKERA, lebo tato DEPENDENCY to spravi AUTOMATICKY. Samozrejme .DLL musim nakopirovat do Debug adresara EXE programu, aby ho pri starte mohol EXE zaviest.
+//------------------------------------------------------------------------------
+EXTREMNE DOLEZITE UPOZORNENIE
+
+1. DLL moze mat C++ Run-Time Library linkovanu DVOMA SPOSOBMI.
+   A. STATICKY - ked sa NEPOUZIVA C++ Run-Time Library DLL, ale Run-Time kod je PRIAMO VLOZENY DO DLL SUBORU. Dlzka DLL suboru je PODSTANE VACSIA - o cca 50 KB pri Release verzii.
+   B. DYNAMICKY - kde sa POUZIVA C++ Run-Time Library DLL a teda samotne DLL, ktoru generujem NEOBSHAUJE Run-Time kod, pretoze ten si pri spusteni natiahne z prislusnej DLL. Velkost takejto DLL je kratsia o 50 KB.
+!!!!! 2. Z toho vyplyva, ze ak ma EXE, ktory zavadza NIEKOLKO DLL, kludne sa moze stat, ze NIEKOTRE DLL budu mat C++ Run-Time linkovany STATICKY a niektore DYNAMICKY z DLL. Vysledkom je, ze C++ RUNTIME FUNKCIE su v procese ZAVEDENE 2 KRAT.
+!!!!! 3. Dosledkom toho, ze C++ RUNTIME FUNKCIE mozu byt v procese ZAVEDENE 2 KRAT je to, ze napriklad 'malloc()' je zavedena 2 krat, kde ROZNE DLL mozu pouzivat ROZLICNE VERZIE 'malloc()'.
+!!!!! 4. Ak rozne DLL pouzije ROZLICNE VERZIE 'malloc()', pricom KAZDA VERZIA POUZIVA VLASTNY HEAP, znamena to, ze NESMIEM volat 'malloc()' zavedenej zo STATICKY LINKOVANEHO RUN-TIME library a nad vratenymi datami zavolat 'free()' z DYNAMICKY LINKOVANEJ C++ RUNTIME DLL. Ak tak spravim, kedze funkcie pouzivaju ROZNE HEAPS - dojde k MEMORY CORRUPTION.
+//------------------------------------------------------------------------------
+Tento kod je RISKANTNY a ak DLL zaviedla inu verziu C++ RUNTIME, tak ZLYHA.
+
+VOID EXEFunc()
+{
+	PVOID		P=DLLFunc();
+	
+	// Pouzijem 'P'.
+   
+	// Ak EXE pouziva INU verziu 'free() a pristupuje k EXE's C/C++ run-time heap - dojde k MEMORY CORRUPTION.
+	free(pv);
+}
+
+PVOID DLLFunc()
+{
+	// Alokuje blok pamate z DLL's C/C++ run-time heap.
+	return(malloc(100));
+}
+//------------------------------------------------------------------------------
+Spravne riesenie ma vyzerat nasledovne.
+
+VOID EXEFunc()
+{
+	PVOID		P=DLLFunc();
+   
+	// Pouzijem 'P'.
+   
+	// Kedze pouzivam DLL funkciu a ta DLL verziu RUNTIME i HEAP - NEDOJDE k MEMORY CORRUPTION.
+	DLLFreeFunc(pv);
+}
+
+PVOID DLLFunc()
+{
+	// Alokuje blok pamate z DLL's C/C++ run-time heap.
+	return(malloc(100));
+}
+
+BOOL DLLFreeFunc(PVOID P)
+{
+	// Odstrani sa blok pamate z DLL's C/C++ run-time heap.
+	return(free(P));
+}
+//------------------------------------------------------------------------------
+Sposob vytvarania DLL suboru
+
+1. Vytvorim .H subor do ktoreho dam vsetky exportovane funkcie (triedy, premenne).
+!!!!! 2. Subor .H MUSI BYT VEREJNY - pristupny programatorom, ktori chcu vyuzivat vystavene funkcie DLL kniznice - v PROCESE KOMPILACIE programu vyuzivajuceho danu DLL.
+3. V .CPP suboroch implementujem kod exportovanych funkcii. Tieto .CPP subory samozrejme NEMUSIA BYT VEREJNE na rozdiel od .H suborov.
+4. Pri kompilacii sa kazdy .CPP subor kompiluje do .OBJ.
+5. Po kompilacii linker spaja .OBJ subory, vytvarajuc .DLL subor.
+6. Okrem .DLL suboru sa vytvara i .LIB subor obsahujuci zoznam exportovanych funkcii z DLL. Subor .LIB je VEREJNY a pouziva sa pri vytvarani programov vyuzivajucich DLL v PROCESE LINKOVANIA.
+!!! 7. Teda ak chcem pouzivat DLL subor musim vystavit nasledujuce casti.
+   A. Subor .DLL, ktory obsahuje BINARNY KOD a globalne data.
+   B. Subor .H, ktory sa pouzije PRI KOMPILACII programu vyuzivajuceho DLL.
+   C. Subor .LIB, ktory sa pouzije pri LINKOVANI programu vyuzivajuceho DLL.
+//------------------------------------------------------------------------------
+Sposob vytvarania EXE subou vyuzivajuceho DLL subor
+
+1. V kazdom .CPP subore vyuzivajucom funkcie DLL musim spravit INCLUDE .H suboru DLL.
+2. Vytvorim .CPP subory s kodom vyuzivajucim DLL funkcie.
+!!! 3. Pri kompilacii sa kazdy .CPP subor kompiluje do .OBJ. Vdaka existencii .H suboru KOMPILATOR DOKAZE KOD PRELOZIT.
+4. Po kompilacii dochadza k linkovaniu, kedy sa vsetky .OBJ subory spajaju do .EXE suboru.
+!!! 5. Nato aby LINKOVANIE USPESNE PREBEHLO musi mat linker k dispozii .LIB subor pouzivanej .DLL, ktory obsahuje zoznam exportovanych funkcii. Na zaklade tohto zoznamu dokaze LINKER vytvorit EXE subor, ktory referuje na zoznam DLL kniznic, ktore program k svojmu spusteniu potrebuje.
+//------------------------------------------------------------------------------
+Spustanie EXE suboru
+
+1. Loader vytvori virtualny ADDRESS SPACE do ktoreho namapuje EXE subor.
+2. Loader PARSUJE EXE SUBOR, aby zistil, ake DLL subory EXE subor potrebuje k svojmu behu. Zisti to z IMPORT SECTION EXE SUBORU.
+3. Pre kazdy zaznam v IMPORT SEKCII loader NAJDE FYZICKY DLL subor na disku a NAMAPUJE DLL do ADDRESS SPACE PROCESU. Ak niektory DLL subor NEEXISTUJE, tak loader vyhlasi chybu a program sa nepusti.
+4. Ak niektore DLL referuju na ine DLL cely proces sa opakuje a loader parsuje IMPORT SEKCIU danej DLL a nacitava DLL na ktore dana DLL referuje.
+5. Po zavedeni programu je vytvoreny MAIN THREAD a spusta sa jeho vykonavanie.
+//------------------------------------------------------------------------------
+Implementacia DLL
+
+1. V DLL mozem exportovat nasledujuce elementy.
+   A. Funkcie.
+   B. Premenne. Vo vseobecnosti sa NEDPORUCUJE EXPORTOVAT premenne, pretoze sa tym straca oddelenie kodu od dat. Lepsie je zmenu premennych zapuzdit do volania funkcii.
+   C. Triedy. Pri exporte tried sa MUSI POUZIT TEN ISTY KOMPILATOR a LINKER na vytvorenie DLL a EXE, aby boli kompatibilne. Triedy sa z toho dovodu takisto NEDOPORUCUJE EXPORTOVAT.
+2. Prvym krokom k vytvoreniu DLL je vytvorenie .H suboru, ktory obsahuje vsetky EXPORTABLE ELEMENTS. Je VYHODNE vytvorit JEDINY .H SUBOR pre DLL i EXE.
+!!! 3. Kazdy exportovany element musi v DEKLARACII obsahovat 'extern "C" declspec(dllexport)'.
+4. Pri pouziti deklaracie 'extern "C" declspec(dllexport)' sa deje nasledujuce.
+   A. Kompilator, ked narazi na takuto deklaraciu vlozi do .OBJ suboru PRIZNAK o nutnosti EXPORTOVAT dany element.
+   B. Linker, ktory linkuje .OBJ subory detekuje vyskyt PRIZNAKU o nutnosti exportu a a do vytvaranej DLL vlozi informaciu o EXPORTOVANI elementu.
+   C. Linker takisto generuje .LIB subor zo vsetkymi exportovanymi elementami.
+!!! 5. V deklaracii exportovatelnych elementov je VHODNE (i ked nie nutne) pouzit klauzulu 'extern "C"'. Tato klauzula sposobi, ze C++ kompilator NESPRAVI MANGLED NAMES z mien elementov, ktore inak C++ kompilator standardne robi prihodenim dodatocneho retazca k menu elementu (funkcie, premennej, triedy). Takto je dany element IMPORTOVATELNY i z programov pisanych v C, alebo inom programovacom jazyku.
+!!! 6. Ak DLL kompilovanu vo Visual Studio chcem pouzit v INOM PROSTREDI, musim zabezpecit, aby mena exportovanych elementov neboli MANGLED. Visual Studiu vsetky funkcie oznacene '__stdcall' zmeni (spravi z nich MANGLED NAMES), takze su inym prostredim NEDETEKOVANE. Na riesenie danej situacie je mozne pouzit nasledujuce sposoby.
+   A. Pridat do projektu DLL subor .DEF a v nom sekciu EXPORTS. Kazdy element uvedeny v EXPORTS NEBUDE mat meno MANGLED.
+   B. Alternativou je pouzit deklaraciu '#pragma comment(linker,"/export:NormalName=MangledName")', ktora exportuje okrem MANGLED aj normalne meno elementu.
+//------------------------------------------------------------------------------
+Pouzitie DLL v EXE subore
+
+1. Do programu musim vlozit .H subor s exportovanymi elementami DLL, ktore vsak MUSIA BYT OZNACENE atributom 'extern __declspec(dllimport)'.
+2. Pri kompilacii atribut 'extern __declspec(dllimport)' sposobi, ze sa funkcie takto oznacene budu pre EXE subor IMPORTOVAT.
+3. Do programu musim pre LINKER vlozit .LIB subor DLL kniznice, ktoru chcem pouzit.
+!!! 4. Pri spustani programu MUSI BYT DLL PRISTUPNA. Teda ulozena bud v tom isto adresari ako EXE, alebo nan musi odazovat environment variable 'Path'.
+//------------------------------------------------------------------------------

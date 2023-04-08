@@ -1,0 +1,33 @@
+//------------------------------------------------------------------------------
+1. Program demonstruje pouzitie Structured Exception Handling (SEH).
+!!! 2. SEH je technologia podporovana PRIAMO NA UROVNI OS. Nato, aby program mohol vyuzivat SEH, musi KOMPILATOR generovat kod pri vstupe i opusteni SEH, funkcie sluziace ako Exception Handlers (__except), alebo Termination Handlers (__finally), STACK FRAMES a mnoho inych internych dat, ktore su PRIAMO ukladane do EXE suboru (DLL) a vyuzivane Windows na realizaciu SEH.
+!!!!! 3. SEH a C++ EXCEPION su ODLISNY KONCEPT. SEH je podporovany priamo na urovni OS, zatial co C++ EXCEPTIONS su C++ konceptom, ktory je implementovany v KAZDOM KOMPILATORE C++.
+4. Zakladna struktura SEH pozostava z nasledujucich casti.
+   A. __try - strazeny blok v ktorom ked sa vyskytne EXCEPTION, tak je volany bud EXCEPTION HANDLER, alebo TERMINATION HANDLER, eventualne OBIDVE NARAZ.
+   B. __except - je to EXCEPTION HANDLER v ktorom mozem reagovat na vzniknutu EXCEPTION.
+   C. __finally - je TERMINATION HANDLER, ktory je volan BEZ OHLADU NATO, ci __try block skoncil uspesne, alebo generovanim EXCEPTION.
+!!! 5. V skutocnosti __finally je volany TAKMER VZDY.
+   A. Je volany ako reakcia na 'return', 'goto' ci dokonca i 'longjump'.
+   B. NIE JE VOLANY, ak sa v __try, alebo __except bloku ukonci thread volanim ExitThread(), alebo TerminateThread(), eventualne cely proces volanim ExitProcess(), alebo TerminateProcess().
+!!! 6. Ak funkcia vracia hodnotu vo 'finally' bloku, kompilator hodi WARNING 4532, ze chovanie 'return' moze byt NEDETERMINISTICKE.
+!!!!! 7. V skutocnosti, ked pouzijem 'return' v __try bloku a ZAROVEN i vo '__finally' bloku, tak skutocna navratova hodnota bude ta z 'finally' bloku.
+!!!!! 8. Ked v '__try' bloku pouzijem 'return', tak kompilator TO DETEKUJE a robi nasledujucu implementaciu.
+   A. Ulozi si navratovu hodnotu do TEMPORARY premennej.
+   B. Vykona kod 'finally'.
+   C. Po vykonani kodu vykona navrat z funkcie, pricom ako navratovu hodnotu pouzije hodnotu TEMPORARY premennej.
+   !!! D. Ak vsak v kode 'finally' pouzijem 'return', tak tento 'return' PREPISE HODNOTU TEMPORARY premennej, co je i dovod preco navratovou hodnotou je ta, ktoru vratim z '__finally' a NIE '__try'.
+!!!!! 9. Pouzitie 'return' (resp. 'goto') v '__try' sa NEDOPORUCUJE, kedze kompilator MUSI UKLADAT navratovu hodnotu do TEMPORARY premennej co prinasa ZVYSENY OVERHEAD.
+!!!!! 10. Pri niektorych typoch EXCEPTIONS sa '__finally' NEMUSI ZAVOLAT. Jedna sa najma o chyby ako STACK OVERFLOW, alebo ked sa porusi SEH CHAIN.
+!!!!! 11. Blok '__finally" NIE JE VOLANY ak sa v EXCEPTION HANDLER generuje NOVA EXCEPTION.
+!!! 12. Pomocou klucoveho slova '__leave' je mozne opustit '__try' sekciu BEZ TOHO, aby sa realizoval UNWIND.
+!!! 13. Ak EXCEPTION vznikne pocas volania inej funkcie, alebo pri volani 'goto', 'return', 'break', 'continue' sa realizuje UNWIND, ktory je ZNACNE POMALY a preto je potrebne pocet UNWINDS co najviac MINIMALIZOVAT.
+   A. NO UNWIND - ak '__try' skonci normalne, alebo je volany '__leave'.
+   B. LOCAL UNWIND - v '__try' bloku je volany 'goto', 'return', 'break', 'continue'.
+   C. GLOBAL UNWIND - ak dojde k EXCEPTION vo vnorenej funkcii a niektory EXCEPTION HANDLER vrati EXCEPTION_EXECUTE_HANDLER. Ak ZIADEN HANDLER nevrati EXCEPTION_EXECUTE_HANDLER tak proces SKONCI ako TERMINATED.
+!!! 14. Pomocou funkcie AbnormalTermination(), ktoru je mozne volat IBA vo '__finally' bloku je mozne zistit, ci doslo k UNWIND, alebo '__try' skoncil normalne - BEZ UNWIND.
+!!!!! 15. Vo VISTE doslo k zmene architektury vykonavania '__finally'.
+   A. Plati, ze pri vzniku EXCEPTION sa vola '__finally', IBA AK NIEKTORY EXCEPTION HANDLER vrati EXCEPTION_EXECUTE_HANDLER. Ak sa taky nenajde - EXCEPTION je UNHANDLED a program sa UKONCI.
+   !!! B. Do VISTY platilo, ze WinMain() bola obalena '__try' a '__except', kde '__except' VRACAL EXCEPTION_EXECUTE_HANDLER. A preto sa pri vzniku UNHANDLED EXCEPTION tato ZACHYTILA na UROVNI OBALOVEJ FUNKCIE WinMain() (systemova funkcia Windows, ktora vola WinMain()) A PRETO sa VSETKY BLOKY '__finally' VYKONALI a AZ POTOM BOL PROCES TERMINATED.
+   !!! C. Vo VISTE vsak DOSLO K ZMENE, kedy OBAL WinMain() je sice obaleny '__try' a '__except', ale '__except' vracia EXCEPTION_CONTINUE_SERACH, pri ktorom sa PROCES TERMINUJE a NEVOLAJU SA '__finally' bloky.
+   !!!!! D. Takze vo VISTA sa pri UNHANDLED EXCEPTION - NEZAVOLAJU '__finally' BLOKY. Jedinym riesenim je NEDOVOLIT VZNIK UNHANDLED EXCEPTION, co sa da dosihanut obalenim KAZDEHO THREAD do '__try' a '__except', kde '__except' vrati EXCEPTION_EXECUTE_HANDLER.
+//------------------------------------------------------------------------------

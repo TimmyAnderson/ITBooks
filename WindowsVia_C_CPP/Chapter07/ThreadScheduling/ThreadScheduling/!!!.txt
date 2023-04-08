@@ -1,0 +1,58 @@
+//------------------------------------------------------------------------------
+1. Program demonstruje thread scheduling vo Windows.
+2. Kazdy trhead si drzi strukturu CONTEXT v ktorej uchovava registry a dalsie udaje o threade. Tato struktura je asociovana s THREAD KO.
+3. Scheduling threads sa vykonava nasledujucim algoritmom.
+   A. Windows KAZDYCH 15-20ms (presna hodnota sa da zistit volanim GetSystemTimeAdjustment()) Windows zisti, ktore THREADS v systeme su v stave, ze MAJU BYT SCHEDULED.
+   B. Zo SCHEDULED threads vyberie Windows jeden, ktoremu prideli CPU, tym ze do registrov Windows zapise hodnoty z CONTEXT daneho threadu. Thread je tak spusteny a moze vykonavat kod.
+   ????? C. Po dalsich 15-20ms Windows odoberie threadu CPU a ulozi jeho registre do CONTEXT a znova robi vyhodnotenie, ktore threads chcu byt scheduled.
+   !!! D. Velka vacsina threads je vo WAIT STAVE, kedy nic nevykonava a teda ani mu NIE JE PRIDELOVANE CPU.
+!!!!! 4. Kedze vo Windows prebieha zistovanie, ktoremu threadu sa ma pridelit CPU v intervale 15-20ms NEEXISTUJE MECHANIZMUS, ktorym by som Windows prinutil ABY NIEKTORY THREAD bol po VYSKYTE NEJAKEJ UDALOSTI spusteny napriklad do 1ms. Take nieco dokazu iba REAL-TIME SYSTEMY a Windows NIE JE REAL-TIME SYSTEM.
+!!!!! 5. Casove QUANTUM pre jeden thread je 15-20ms. Az po tomto interval MOZE CPU DOSTAT THREADS s ROVNAKOU PRIORITOU.
+!!!!! 6. QUANTUM 15-20ms vsak NEZNAMENA, ze ku CONTEXT SWITCH dochadza iba kazdych 15-20ms, pretoze thread sa moze vzdat svojho casoveho kvanta, moze byt preruseny threadom s vyssou prioritu, alebo moze dojst k priority boosting, kde sa docasne meni priorita threadu. Ak sa v systeme vyskytne thread s VYSSOU PRIORITOU, tak QUANTUM je threadu s NIZSOU PRIORITOU ODOBRANE.
+!!!!! 7. Co je EXTREMNE ZAUJIMAVE, ze ako sa mi chovalo moje demo.
+    A. Na SINGLE-CORE CPU pri sekundovom behu 1 threadu, dostal 65 QUANTUMS (1000/15.6=65).
+    B. Na SINGLE-CORE CPU pri sekundovom behu 2 threads, dostali OBE THREADS okolo 35 QUANTUMS.
+    C. Na SINGLE-CORE CPU pri sekundovom behu 10 threads, dostali THREADS od 2-25 QUANTUMS.
+    D. Na SINGLE-CORE CPU pri sekundovom behu 100 threads, dostali THREADS od 1-12 QUANTUMS, pricom DRVIVA VACSINA mala 1 QUANTUM.
+    !!! E. Na 4-CORE CPU pri sekundovom behu 100 threads, dostali THREADS VZDY 65 QUANTUMS.
+    !!! F. Na 4-CORE CPU pri sekundovom behu 100 threads, dostali THREADS VZDY 64-65 QUANTUMS.
+    !!! G. Na 4-CORE CPU pri sekundovom behu 1500 threads, dostali THREADS 40-41 QUANTUMS.
+    !!!!! I. Zaujimavostou bolo, ze obe stroje bezali na XP-SP3, ale SINGLE-CORE mal nastaveny TimeAdjustmentDisabled na TRUE a 4-CORE na FALSE.
+!!! 8. Thread je po vytvoreni uvedeny do SUSPENDED STATE nastavenim SUSPED pocitadla na 1 a to az do doby, kym nie je PLNE INICIALIZOVANY. Nasledne sa podla hondoty predanej v CreateThread() bud pocitadlo znizi na 0 a THREAD MOZE BYT SCHEDULED, alebo ostane na 1 a thread je SUSPENDED.
+9. Volanim SuspendThread() a ResumeThread() menim pocitadlo SUSPEND STATE, ktore moze mat hodnoty <0,MAXIMUM_SUSPEND_COUNT>. Ak je hodnota pocitadla >0, tak THREAD JE SUSPENDED, ake je 0 tak THREAD JE RESUMED - teda moze byt scheduled na vykonavanie.
+!!!!! 10. EXTREMNE DOLEZITE UPOZORNENIE. Pozastavit thread je VELMI RISKANTNA OPERACIA, ak NEVIEM v AKOM STAVE JE THREAD. Ak thread pri volani SuspendThread() PRAVE ALOKUJE PAMAT z GLOBALNEJ HEAP, ktora POUZIVAT GLOBALNY LOCK, tak ho SUSPENDED THREAD MOZE CHYTIT a MOZE ZABLOKOVAT KOMPLETNE CELU ALOKACIU HEAP a az kym nie je resumed, tak sa NEDA ALOKOVAT PAMAT NA HEAP. Samozrejme tato situacia MOZE VIEST LAHKO k DEADLOCK.
+!!!!! 11. DEADLOCK z bodu 10 sa mi PODARILO NASIMULOVAT - programom 'ThreadSuspend'.
+12. Windows NEMA FUNKCIU pre SUSPEND a RESUME PROCESU, pretoze by NEBOLA 100 PERCENTNA. Problem by spocival v tom, ze pocas enumeracie threadov a zistovani, ktory patri danemu procesu, by mohlo vzniknut novy thread, ktory by uz nebol zahrnuty do enumeracie.
+13. Funkcia Sleep() umoznuje threadu vzdat sa casoveho kvanta v prospech ineho threadu s ROVNAKOU, alebo VYSSOU prioritou.
+14. Funkcia SwitchToThread() umoznuje threadu vzdat sa casoveho kvanta v prospech ineho threadu s LUBOVOLNOU, teda i NIZSOU prioritou.
+15. Merat cas ako dlho bezi nejaky kod je mozne merat viacerymi sposobmi.
+   A. Pouzit rozdiel dvoch volani GetTickCount(), alebo NOVU VISTA FUNKCIU GetTickCount64(). NEVYHODOU JE, ze ak SCHEDULER prerusi beh threadu a prideli kvantum inemu threadu, tak sa i tento cas zarata.
+   B. Pouzit GetThreadTimes() na zmeranie casu ako dlho THREAD bezal. Funkcia ma vyhodou v tom, ze MERIA SKUTOCNY CAS, ktory THREAD BEZAL, teda BEZ CASU, kedy bol CPU prideleny inym threads.
+   C. Pouzit GetProcessTimes() na zmeranie casu ako dlho PROCES bezal. Funkcia zmeria casy VSETKYCH THREADS i TYCH, ktore boli TERMINATED.
+   D. Pouzit NOVE VISTA FUNKCIE QueryThreadCycleTime() a QueryProcessCycleTime().
+   E. Pouzit NOVU VISTA FUNKCIU pre VELMI PRESNE MERANIE CASU - ReadTimeStampCounter(), ktora meria POCET CYKLOV od SPUSTENIA PC.
+   F. Pouzit VYSOKO PRESNE funkcie QueryPerformanceFrequency() a QueryPerformanceCounter().
+!!! 16. CONTEXT je struktura obsahujuca CONTEXT THREADU. Obsahuje hodnoty vsetkych registrov, ktore CPU pouziva (na danej architekture) a sluzi pri THREAD SCHEDULING na ukladanie informacii o hodnotach registrov.
+!!!!! 17. CONTEXT je struktura, ktorej obsah ZAVISI NA ARCHITEKTURE PROCESORA. Od CPU k CPU sa moze lisit. Podla knihy je to JEDINA CPU ZAVISLA STRUKTURA vo Windows.
+18. Hodnotu CONTEXT je mozne citat pomocou GetThreadContext() a zapisovat pomocou SetThreadContext().
+!!!!! 19. Funkcie GetThreadContext() a SetThreadContext() SA NESMU POUZIT ak je THREAD RESUMED, IBA KED JE v SUSPENDED STAVE. Inak je chovanie NEDETERMINISTICKE, pretoze thread pokial je prave vykonavany, tak samozrejme hodnotu registrov okamztie zmeni. Cize tieto funkcie ma zmysel volat IBA Z INEHO THREADU.
+!!! 20. Windows ma v skutocnost 2 TYPY contexts. User context mozem citam pomocou CONTEXT struktury. Ku KERNEL context NEMAM PRISTUP.
+21. Pridelovanie CPU thredom je radene podla priorit. Ak je CPU volne, Windows zisti ci nejaky thread s najvyssou prioritou je SCHEDULABLE. Ak ano, tak mu prideli CPU, inak testuje nizsie priority.
+!!! 22. Thread s nizsou prioritou moze dostat CPU IBA AK ZIADEN THREAD S VYSSOU PRIORITOU NIE JE SCHEDULABLE. Naopak ak bezi thread s NIZSOU prioritou a thread s VYSSOU prioritou sa stne SCHEDULABLE, tak sa thread s nizsou prioritou OKAMZITE ZASTAVI a spusti sa thread s VYSSOU PRIORITOU.
+23. Priorita 0 je rezervovana pre proces nulujuci volne bunky RAM pamete.
+24. Windows implementuje dve typy priorities z ktorych Windows vypocita SKUTOCNU PRIORITU THREADU, podla ktorej prideluje CPU.
+   A. Process priority class - stanovuje zakladnu prioritu pre VSTEKY THREADS daneho PROCESU.
+   B. Relative thread priority - definuje VRAMCI PROCESU RELATIVNU prioritu daneho threadu.
+!!!!! 25. Plati zasada, ze threads s VYSOKOU PRIORITOU by mali vykonavat CO NAJMENEJ INSTRUKCII A POTOM IST DO WAIT STAVU a threads s nizkou prioritou zas opacne mozu vykonavat VELA OPERACII a ist do WAIT STAVU ZRIEDKAVEJSIE.
+26. Zmenu priorit je mozne realizovat volanim SetPriorityClass() a SetThreadPriority() a citat pomocou SetPriorityClass() a SetThreadPriority().
+27. Windows moze DOSASNE ZVYSIT PRIORITU THREADU. To sa udeje napriklad, ked proces dostane User Input, tak tento thread na OKAMZITE zvysenu prioritu o 2, pricom po skonceni KVANTA klesne priorita o 1 a po dalsom kvante klesne na POVODNU HONOTU pod ktoru uz neklesa. Tento proces sa nazyva Priority Boosting.
+!!! 28. Priority Boosting NIKDY NEMENI prioritu threadov v REAL-TIME pasme priorit (>16) a takisto NIKDY NEPRESUNIE bezny thread do REAL TIME pasma.
+29. Priority Boosting je mozne zapinat a vypinat funciami SetProcessPriorityBoost() a SetThreadPriorityBoost() a zistovat toto nastavenie volanim GetProcessPriorityBoost() a GetThreadPriorityBoost().
+!!! 30. K Priority Boosting dochadza i vtedy, ked LOW PRIORITY SCHEDULED thread nedostane CPU po viac ako 3-4 sekundy. Vtedy je threadu JEDNORAZOVO pridelena priorita 15 a umoznene vykonat 2 KVANTA po ktorej sa priorita threadu vrati na povodnu hodnotu.
+!!! 31. Vista umoznuje pre threads pouzivajuce MNOHO IO OPERACII ZNIZIT PRIORITU ICH VYKONAVANIA volanim SetThreadPriority() a parametrom THREAD_MODE_BACKGROUND_BEGIN. Po volani je IHNED ZNIZENA PRIORITA AKTUALNEHO THREADU a VSETKY IO OPERACIE, ktore vyvola MAJU NIZSIU PRIORITU a to az do volnia SetThreadPriority() a parametrom THREAD_MODE_BACKGROUND_END.
+!!! 32. Znizit prioritu IO operacii je mozne i pre dany HANDLE volanim SetFileInformationByHandle(). Takto nastavena priorita ma PREDNOST pred prioritou nastavenou na threade.
+33. Pre niektore architektury ako napriklad NUMA (ale aj pre niektore vysokovykonne aplikacie ako SQL Server) ma zmysel definovat AFINITU, teda priadenie CPU danemu threadu. Po prideleni afinity IBA tento CPU bude vykonavat kod daneho threadu. Vyhodou afinity je lepsie pouzitie CPU cache.
+34. Afinitu mozem menit funkciami SetProcessAffinityMask() a SetThreadAffinityMask(), pricom ako ako masku nastavim bity zodpovedajuce CPU, ktore ma Thread pouzivat. Cianie masiek sa robi volanim GetProcessAffinityMask() a GetThreadAffinityMask().
+35. Niekedy je vhodnejsie definovat afinitu threadu na CPU, BEZ DEFINOVABIA KONKRETNEHO CPU a PONECHANIA ROZHDBUTIA, ktory CPU sa pouuzije pre thread. Toto sa da dosiahnut volanim SetThreadIdealProcesor().
+!!! 36. Vista pomocou Computer Management umoznuje OBMEDZIT POCET CPU vyuzivanych Windows.
+//------------------------------------------------------------------------------

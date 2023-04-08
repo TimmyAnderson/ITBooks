@@ -1,0 +1,37 @@
+//------------------------------------------------------------------------------
+1. Program demonstruje pouzitie Threads vo Windows.
+2. Proces sa skalda z dvoch casti.
+   A. Process KO, do ktoreho okrem ineho su ukladane statisticke data o procese.
+   B. GLOBALNEJ pamate alokovanej pre GLOBALNY HEAP - ZDIELANY VSETKYMI THREADMI, ako aj pamate pre DLL a EXE s kodom a datami.
+3. Thread sa sklada taktiez z dvoch casti.
+   A. Thread KO, do ktoreho okrem ineho su ukladane statisticke data o procese.
+   B. LOKALNEJ pamate alokovanie pre STACK THREADU.
+4. Threads na rozdiel od procesov mozu zdielat KO HANDLES, pretoze tabulka KO HANDLES je definovana GLOBALNE pre CELY PROCES. Samozrejme samotne KO su zdielane v ramci celeho OS, ale HANDLES na nich su ROZDIELNE k KAZDOM PROCESE.
+5. Threads bezia v kontexte procesu pre ktory boli vytvoreny co znaci, ze MOZU PRISTUPOVAT KU GLOBALNEJ PAMATI (adresovemu priestoru) PROCESU.
+6. Threads na rozdiel od procesov bezu DALEKO MENEJ PAMETE, kedze maju ovela menej asociovanych dat. Zatial co proces ma cely adreovy priestor globalnej pamate, kde su vsetky data a kod, tak Thread ma len KO a pamat pre STACK.
+!!! 7. Z bodu 6 vyplyva, ze vo Windows je na paralelne spracovanie ulohy DALEKO VYHODNEJSIE vytvorit NOVY THREAD ako NOVY PROCES.
+8. Thread v API sa vytvara volanim CreateThread() a spusta API funkciu typu THREAD_START_ROUTINE, ktora ma prototyp: 'DWORD WINAPI ThreadFunc(PVOID pvParam)'.
+9. Threads mozu byt ukoncene nasledujucimi sposobmi.
+   A. Thread funkcia skonci. Jedna sa o KOREKTNE UKONCENIE THREADU, ked sa uvolnia vsetky resources a zavolaju destruktory pre C++ triedy.
+   B. Volanim ExitThread(). Kod sa OKAMZTIE SKONCI (ani sa nevrati z funkcie), no NEVOLAJU SA DESTRUKTORY pre C++ objekty. Vysledkom mozu su Memory Leaks ak C++ objekty napriklad alokovali pamat na HEAP, alebo drzia nejake HANDLES. ExitThread() NEUVOLNI ANI C++ RUN-TIME OBJEKTY.
+   C. Volanim _endthreadex(). Sprava sa PODOBNE ako ExitThread() a TAKTIEZ NEVOLA DESTRUKTORY C++ OBJEKTOV, ale aspon KOREKTNE ZLIKVIDUJE C++ RUN-TIME.
+   D. Volanim ThreadTerminate(). Pomocou tejto ASYNCHRONNEJ funkcie mozem zlikvidovat lubovolny thread, nie iba sam seba. OBROVSKOU NEVYHODOU JE, ze Windows NEMAZE STACK a ten ostava v pamati AZ KYM NESKONCI PROCES. Je to preto, ze ak by nahodou iny thread pouzival tuto pamat po volani TerminateThread() by zlahol. Funkcia je ASYNCHRONNA, teda po skoneni jej volania je treba cakat na SIGNALIZOVANIE Thread KO, aby som mal istotu, ze Thread ozaj skoncil.
+   E. Volanim ProcessTerminate().
+!!!!! 10. Obrovskym rozdielom medzi ExitThread() a ThreadTerminate() je, ze ThreadTerminate() NEMAZE STACK TERMINOVANEHO THREADU co ExitThread() urobi.
+11. Ked sa Thread terminuje, tak sa uvonlnia iba TIE TYPY User objektov, ktore VLASTNI THREAD a to Hooks a Windows.
+12. Funkcia GetExitCodeThread() vracia EXIT CODE threadu.
+13. Zivotny cyklus Threads je nasledovny.
+   A. Po vytvoreni Threadu sa vytvori Thread KO, ktory obsahuje struktury CONTEXT s informaciami o registroch pocitaca.
+   B. V ADRESOVOM PRIESTORE PROCESU je alokovany STACK a STACK REGISTER je nastaveny na jeho vrchol.
+   C. Do REGISTRA INSTUKCII je zapisana adresa na SYSTEMOVU FUNKCIU RtlUserThreadStart() - RtlUserThreadStart(PTHREAD_START_ROUTINE, PVOID).
+   D. Do STACKU su zapisane DVE PARAMETRE RtlUserThreadStart(): smernik na THREAD FUNKCIU (parameter typu PTHREAD_START_ROUTINE) a CUSTOM PARAMETER THREADU ZADANY v CreateThread (parameter typu PVOID).
+   !!! E. Zapisanim TYCHTO 2 PARAMETROV do STACK ako aj NASTAVENIM INSTUKCNEHO REGISTRA PRIPRAVIM podmienky na spustenie RtlUserThreadStart(), kedze register instrukcii je nastaveny a STACK obsahuje PRESNE TIE PARAMETER AKO PROTOTYP RtlUserThreadStart().
+   F. Spusti sa vykonavanie RtlUserThreadStart(), ktorej telo obsahuje IBA 3 RIADKY - vid kniha.
+   G. RtlUserThreadStart() obali volanie THREAD FUNKCIE do TRY-CATCH a SPUSTI THREAD FUNKCIU a custom parametrom.
+   H. Ak prebehne THREAD FUNKCIA KOREKTNE, tak sa vykonavanie vrati do RtlUserThreadStart() a ta ZAVOLA ExitThread() a KOREKTNE UKONCI THREAD. Tu UZ JE TO KOREKTNE, kedze ExitThread() MAZE STACK (na rozdiel od TerminateThread()) a zaroven kedze THREAD FUNKCIA SKONCILA KOREKTNYM NARVATOM Z FUNCKIE, musia byt VSETKY OBJEKTY vratane C++ objektov KOREKTNE VYMAZANE. Takze volanie ExitThread() v RtlUserThreadStart() ej KOREKTNE a NESPOSOBUJE MEMORY LEAKS a kedze C++ destruktory boli zavolane uz v THREAD FUNKCII, tak i C++ objekty su KOREKTNE UKOCENE.
+   I. Ak THREAD FUNKCIA ZLYHA - hodi EXCEPTION, potom handler v RtlUserThreadStart() to ZACHYTI a VYHODI VYSTRAZNE OKNO. Nasledne je CELY PROCES UKONCENY volanim ExitProcess().
+   !!!!! J. Popisany proces je IDENTICKY i pre PRIMARNY THREAD, akurat tu RtlUserThreadStart() vola PRED ZAVOLANIM THREAD FUNKCIE, este C++ RUN-TIME FUNKCIU, ktora sa stara o NACITANIE a UVOLNENIE (po skonceni main()) C++ RUN-TIME.
+   !!! K. Funkcia RtlUserThreadStart() konci VZDY BUD VOLANIM ExitThread(), alebo pri EXCEPTION ExitProcess(). Teda funkcia ma navratovu hodnotu VOID. Musi mat, kedze je to ZAKLADNA FUNKCIA THREADU a z nej by sa uz THREAD NEMAL KDE VRATIT. Thread sa teda na konci RtlUserThreadStart() UKONCI a ZLIKVIDUJE SAM SEBA.
+!!! 14. API funkcie GetCurrentProcess() a GetCurrentThread() vracaju PSEUDOHANDLE, ktory NEZVYSUJE POCITADLO KO a preto NIE JE POTREBNE na takyto HANDLE VOLAT CloseHandle().
+!!!!! 15. Ak PSEUDOHANDLE poslem do INEHO THREADU, tak NEBUDE FUNGOVAT, pretoze v skutocnosti NEBUDE ODKAZOVAT na INY THREAD, ale na SAM SEBA. Riesenim je spravit duplikat HANDLE pomocou DuplicateHandle().
+//------------------------------------------------------------------------------

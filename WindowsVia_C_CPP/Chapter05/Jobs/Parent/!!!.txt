@@ -1,0 +1,25 @@
+//------------------------------------------------------------------------------
+1. Program demonstruje Jobs vo Windows.
+2. Jobs umoznuju spravit nad procesmi SKUPINU, ktoru je mozne specialne manageovat a obmedzovat ju rozlicnymi kriteriami ako napriklad mnozstvo prideleneho CPU, prioritu, definovat co moze proces pouzivat GUI a podobne. Joby umoznuju posielanie notifikacie o tom, ze sa ukoncia.
+!!! 3. Ak je PARENT PROCES v nejakom Job potom CHILD PROCES ZDEDI TOTO CLENSTVO a AUTOMATICKY JE TAKTIEZ CLENOM DANEHO JOBU. Je to SECURITY OBMEDZENIE, aby Child procesy NEMOHLI OBCHADZAT LIMITY NASTAVENE DANY JOB.
+!!!!! 4. Vista ak spustim proces cez Windows Explorer AUTOMATICKY ZARADI PROCES DO JOBU s nazvom 'PCA*'. Robi to preto, ze ak LEGACY PROGRAM ZLYHA, aby Vista mohla AUTOMATICKY PONUKNUT spustenie Program Compatibility Assistant. Ak uz je program v Jobe, tak NEMOZE BYT v INOM a tak vytvorenie noveho Job ZLYHA.
+5. Job sa vytvara pomocou API funkcie CreateJobObject(). To ci je dany proces v Jobe sa zistuje volanim IsProcessInJob().
+!!! 6. Job sa musi danemu procesu EXPILICTNE PRIRADIT co sa vykonava volanim AssignProcessToJobObject().
+!!!!! 7. Je vhodne, NIE VSAK NUTNE, spustat proces, ktory ma byt spusteny v JOBE ako SUSPENDED a AZ PO VOLANI AssignProcessToJobObject() ho nechat bezat.
+8. Na Job je mozne definovat mnozstvo omedzenie, ktore potom skupina procesov patriaca pod dany JOB musi splnat. Tieto kriteria sa definuju API funkciou SetInformationJobObject().
+9. Job sa konci, ked sa skoncia VSETKY PROCESY, ktore BEZIA v danom JOBE.
+!!!!! 10. Ak uzavriem JOB KO, potom ZIADEN PROCES NEMOZE PRISTUPIT k JOBU. Samotne procesy JOBU vsak BEZIA DALEJ, ale JOB JE OZNACENY AKO DELETED. Na DELETED JOB NIE JE MOZNE APLIKOVAT ZIADNE API FUNKCIE. Vsetky ZLYHAJU.
+!!!!! 11. JOB KO je SIGNALIZOVANY, ked JOBU uplynie pridelene casove kvantum (definovane cez SetInformationJobObject()). Tento KO VSAK NIE JE SIGNALIZOVANY, ked VSETKY PROCESY v JOBE SKONCIA.
+!!! 12. Ked limitujem JOB na mnozstvo prideleneho CPU, tak KED SKONCI JOB (ak bol limit postaveny na JOB - PerJobUserTimeLimit) SKONCIA I VSETKY PROCESY v JOBE. Teda ak napriklad vytvorim dve proces (vid Test3()) a nastavim im limit na 5 sekund, tak po 5 sekundach OBE SKONCIA, kedze SKONCI CELY JOB.
+!!!!! 13. PROCES MOZE BYT IBA V JEDNOM JOBE a zaroven AK UZ JE V JOBE NEMOZE HO ZMENIT, ANI HO OPUSTIT.
+!!! 14. Procesy sa do JOB pridavaju volanim AssignProcessToJobObject(). Ak Parent vytvarajuci Child proces nie je v JOB, potom IMPLICITNE ani Child nebude v JOB. Ale AK vytvorim Child ako RESUMED PROCES, tak mozem PREDTYM AKO SA SPUSTI ZARADIT HO DO JOB volanim AssignProcessToJobObject(). Takto bude proces ESTE PRED SPUSTENYM ZARADENY do JOB a nasledne volanim ResumeProcess() spustim beh Child procesu - teraz uz clena JOBU.
+!!!!! 15. Proces MOZE ZARADIT SAMEHO SEBA DO JOBU.
+16. API funkcia TerminateJobObject() sposobuje ukoncenie vsetkych procesov v JOBE.
+!!! 17. API Funkcia QueryInformationJobObject() sluzi v zavislosti od hodnoty parametru ' JobObjectInfoClass' sluzi na dve veci.
+   A. Restrikciu vytvaranych JOBS.
+   B. Ziskanie statistickych udajov o JOBE - vratane ID procesov v JOBE.
+!!! 18. O to co sa v JOBE deje je mozne byt notifikovany a to nasledujucim sposobom.
+   A. Vytvorim IO Completition Port objekt pomocou CreateIoCompletionPort().
+   B. CreateIoCompletionPort asociujem s HANDLE na JOB pomocou SetInformationJobObject().
+   B. Spustim monitoring Completition Portu a volanim GetQueuedCompletitionPort() ziskam vysledky o EVENTE.
+//------------------------------------------------------------------------------

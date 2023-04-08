@@ -1,0 +1,18 @@
+//------------------------------------------------------------------------------
+1. Program demonstruje pouzitie Stacks vo Windows.
+2. Stack vo Windows je standardne dlhy 1 MB. Hodnota 1 MB vsak NIE JE MNZOSTVO PAMATE, ktore je ALOKOVANE, ale iba mnzostvo REZERVOVANEHO ADRESS SPACE. Pri starte threadu su ALOKOVANE iba 2 PAGES.
+!!! 3. Stack POUZIVA GUARD PAGE na DYNAMICKE ZVACSOVANIE STACK po povolenu velkost (1 MB).
+4. Stack je vo Windows implementovany nasledovne.
+   A. Pri vytvoreni noveho threadu je REZERVOVANY 1 MB ADDRESS SPACE, ale IBA PRVE 2 PAGES SU ALOKOVANE (COMMIT).
+   B. DRUHA PAGE ma nastaveny PROTECTION na GUARD, co znaci, ze ked chcem do tejto pamate zapist HODI SA SEH EXCEPTION.
+   C. POSLEDNA PAGE NIE JE ALOKOVANA, iba rezervovana. Ak do nej ZAPISEM nasleduje INVALID MEMORY ACCESS EXCEPTION.
+   D. Thread zacne pouzivat STACK.
+   E. AKONAHLE VELKOST na STACK PREKROCI velkost 1 PAGE, tak sa STACK pokusi ZAPISAT do ALOKOVANEJ, no GUARDED PAGE. V tej chvili je generovana SEH EXCEPTION, ktoru WINDOWS ZACHYTI a AUTOMATICKY ALOKUJE DALISU PAGE (PAGE 3) a ZAROVEN ZRUSI GUARD PROTECTION na PAGE 2. PAGE 2 sa stava pametou pre STACK a pre PAGE 3 sa NASTAVI GUARD PROTECTION. Takto sa pamat STACK AUTOMATICKY ZVACSI.
+   F. Pri pouzivani dalsej STACK PAMATE sa alokuju dalsie a dalsie PAGES.
+   G. Akonahle je stack plny tak, ze ostavaju uz iba POSLEDNE 3 PAGES (posledna ja IBA REZERVOVANA) a PAGE s indexom MAX_STACK_PAGE-3 je NAPLNENA, odstrani sa PROTECTION GUARD z MAX_STACK_PAGE-2 a ALOKUJE sa MAX_STACK_PAGE-1 (PAGE s indexom MAX_STACK_PAGE je iba REZERVOVANA a NIE ALOKOVANA).
+   !!! H. Na MAX_STACK_PAGE-1 vsak uz NIE JE APLIKOVANY GUARD PROTECTION a zaroven JE GENEROVANA SEH EXCEPTION_STACK_OVERFLOW.
+   !!!!! I. TERAZ ESTE NEDOSLO k ZAPISU DO NEALOKOVANEJ PAMATE, iba k volaniu SEH, ktore MA PROGRAM UPOZORNIT, ze sa BLIZIM KU KONCU STACK.
+   J. Ak SEH IGNORUJEM a DALEJ ALOKUJEM PAMAT na STACK a ALOKUJEM VIAC PAMATE ako dlzka 2 PAGES, dojde k tomu, ze STACK pointer sa posunie na MAX_STACK_PAGE a pri pokuse o pristup k tejto pamati DOCHADZA k VOLANIU SEH INVALID ACCESS MEMORY. Program nasledne havaruje.
+!!! 5. C++ ma SPECIALNU FUNKCIU, ktora zabezpecuje DOPREDNU ALOKACIU PAMATE. Problem, ktory tato funkcia riesi spociva v tom, ze vo Windows sa GUARD PAGE stara o dodatocnu alokaciu pamate. Teda akykolvek zapis do tejto pamate sposobi rozsirenie STACK - alokaciu dalsej PAGE (pokial uz nie zom na maximalnej dlzke STACK). Avsak v C++ mozem kludne spravit to, ze definujem pole na STACK, ktore bude mat 20 KB (viac ako PAGE) a potom pristupim k POSLEDNEMU PRVKU POLA. Ak by C++ toto nemala osetrene, tak by som pristupil DO NEALOKOVANEJ PAMATE, pretoze STACK ALOKUJE iba 1 PAGE NAVYSE a v pripade pristupu k poslednemu prvku 20 KB pola, by som pristupoval k 5. PAGE nad vrcholom STACK - teda do PAGE, ktora NIE JE GUARD (nie je ani alokovana). Preto C++ pri kazdej alokacii pamate na STACK, ktora je DLHSIA ako 1 PAGE, vykona DOPREDNU ALOKACIU PAMATE pre CELU CELKOST STRUKTURY (resp. pola) alokovaneho na STACK. 
+6. Vo Viste je pomocou funkcie SetThreadsStackGuarantee() mozne presunut GENEROVANIE SEH EXCEPTION_STACK_OVERFLOW skor ako STANDARDNE 1 PAGE pred KONCOM rezervovaneho STACK ADDRESS SPACE.
+//------------------------------------------------------------------------------

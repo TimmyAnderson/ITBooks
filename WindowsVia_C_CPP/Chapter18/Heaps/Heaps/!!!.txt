@@ -1,0 +1,36 @@
+//------------------------------------------------------------------------------
+1. Program demonstruje pouzitie Heaps vo Windows.
+2. Windows definuje objekt HEAP, ktory na rozdiel od operacii nad virtualnou pamatou SAM REALIZUJE MANAGEMENT PAGES - teda SAM SI ALOKUJE a DEALOKUJE PAGE z VIRTUALNEJ PAMATE, ci voci pouzivatelovi HEAP sa HEAP tvari ako JEDEN BLOK PAMATE z ktorej moze alokovat pamat a NEMUSI SA STARAT o ALOKACIU po PAGES. Heaps manageuju toto AUTOMATICKY podla algoritmov, ktore Windows ma vysoko optimalizovane.
+3. Heaps vsetky pamat alokuju z PAGE FILE.
+4. Pri spustani procesu je je vytvorena DEFAULT HEAP, ktorej standarnu velkost 1 MB je mozne zmenit prinakom linker /HEAP. Tuto hodnotu je mozne menit IBA PRE .EXE a NIE pre DLL, pretoze DLL NEMAJU VLASTNU HEAP (ak ju v kode DLL explicitne nevytvorim) a pouzivaju DEFAULT HEAP procesu.
+!!! 5. Mnoho Win32 API funkcii interne vyuziva HEAP. Napriklad vsetky ANSI verzie API funkcii pred volanim konveruju retazec z UNICODE do ANSI a nato je treba najprv alokovat pamat na HEAP, nasledne konvertovat retazec na ANSI, zavolat ANSI verziu API funkcie a pamat z HEAP odstranit.
+!!!!!! 6. DEFUALT HEAP je THREAD SAFE. To znamena, ze z nej mozu alokovat pamat vsetky threads BEZPECNE, pretoze ALOKACIA a DEALOKACIA pamate z HEAP je CHRANENA KRITICKOU SEKCIOU. To vsak znaci i o cosi NIZSI VYKON pri alokacii a dealokacii, kedze tieto operacie sa VZDY robia v CRITICAL SECTION.
+7. Proces moze mat naraz viacero HEAPS, pricom kazda HEAP je identifikovana pomocou HANDLE. Handle DEFAULT HEAP je mozne ziskat volanim GetProcessHeap().
+!!!!! 8. Interne Windows manageuje HEAPS ako LINKED LIST, pricom pri alokacii pamate postupuje nasledovne.
+   A. Ak na HEAP NIE JE NASTAVENY atribut HEAP_GENERATE_EXCEPTIONS, algoritmus vojde do CRITICAL SECTION.
+   B. Prechadza sa LINKED LIST hladajuc volny dostatocne velky blok pamate.
+   C. Alokuje sa blok nastavenim priznaku, ze je alokovany.
+   D. Do LINKED LIST sa prida zaznam o alokovanom bloku.
+   E. Ak na HEAP NIE JE NASTAVENY atribut HEAP_GENERATE_EXCEPTIONS, algoritmus opusti CRITICAL SECTION.
+   F. Alokovany blok sa vrati vo funkcii CreateHeap.
+9. Alokacia pamate na HEAP sa robi funkciou HeapCreate(), ktora v parametri InitialSize urcuje velkost COMMITED PAMATE pri vytvoreni HEAP a v parametri MaximumSize urcuje MAXIMALNU velkost REZERVOVANEHO ADDRESS SPACE. Ak je tato hodnota ==0, tak HEAP bude AUTOMATICKY ALOKOVAT nove PAGES z PAGE FILE az do vycerpania STORAGE.
+!!! 10. Funkcia HeapCreate() v parametri Options umoznuje definovat nasledujuce options.
+   A. HEAP_NO_SERIALIZE - alokacia a dealokacia pamate sa NEBUDE vykonavat v CRITICAL SECTION. Aks a priznak nepouzije, tak sa vsetky alokacie a uvolnovania pamate robia v CRITICAL SECTION.
+   B. HEAP_GENERATE_EXCEPTIONS - vrati EXCEPTION, ked sa HeapAlloc() nepodari alokovat dost pamate. Standardne (ak neaplikujem tento atribut) pri nedostatku pamate vracia HeapAlloc() hodnotu NULL.
+   C. HEAP_CREATE_ENABLE_EXECUTE - musi byt aplikovana, ak HEAP bude obsahovat spustatelny kod, inak pri pokuse o spustenie kodu z HEAP dojde k EXCEPTION.
+11. Pomocou funkcie HeapAlloc() je mozne alokovat blok pamate z HEAP. Funkcia ma parameter Flags, ktory ma podobne hodnoty ako Options z HeapCreate() a umoznuje napriklad vypnut CRITICAL SECTION pri alokacii pamate pocas volania HeapAlloc().
+!!! 12. Pomocou funkcie HeapSetInformation() je mozne nastavit niektore properties HEAP.
+   A. HeapCompatibilityInformation - v XP a 2003 ma HEAP moznost pouzit specializovane algoritmy, ktore ZNIZUJE FRAGMENTACIU. Prave tymto nastavenim zapnem tieto algoritmy.
+   B. HeapEnableTerminationOnCorruption - sposobi, ze pri akejkolvek detekcii memory corruption na HeapXXX() funkcie OKAMZTIE UKONCIA PROGRAM.
+!!! 13. Funkcia HeapReAlloc() umoznuje zmenit velkost HEAP. Ak zvacsujem HEAP a mam na nu vytvorene POINTERS je VELMI DOLEZITE dat priznak HEAP_REALLOC_IN_PLACE_ONLY, aby nedoslo k tomu, ze HEAP realokuje pamat na INY ADDRESS SPACE a dojde k memory corruption.
+14. Funkcia HeapSize(), vracia velkost alokovaneho bloku na danej adrese.
+15. Funkcia HeapFree() uvolnuje zadany blok pamate.
+16. Funkcia HeapDestroy() likviduje HEAP a zaroven uvolnuje vsetku jej pamat.
+!!! 17. V C++ je mozne CUSTOM HEAP elegantne pouzit pomocou pretazenia operatorov 'new' a 'delete' pre danu triedu. Takto mozu instancie danej triedy pouzivat VLASTNY HEAP, nezavisly na DEFAULT HEAP.
+18. Pomocou funkcii  Heap32First, Heap32Next, Heap32ListFirst a Heap32ListNext je mozne prechadzat zoznam HEAPS.
+19. Funkcia GetProcessHeaps() vracia POCET HEAPS.
+20. Pomocou funkcie HeapValidate() je mozne skontrolovat integritu HEAP.
+!!! 21. Funkcia HeapCompact() umoznuje vykonat COMPACT HEAP a uvolnit prebytocnu pamat.
+!!! 22. Funkcie HeapLock() a HeapUnlock() realizuju CRITICAL SECTION nad HEAP. Pouzivaju sa najma interne pre HEAP, ktora ma povolenu serializaciu.
+23. Funkcia HeapWalk() umoznuje prechadzat HEAP a zistovat o nej viacero parametrov v strukture PROCESS_HEAP_ENTRY.
+//------------------------------------------------------------------------------

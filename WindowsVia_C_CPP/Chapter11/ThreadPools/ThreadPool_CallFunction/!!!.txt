@@ -1,0 +1,60 @@
+//------------------------------------------------------------------------------
+1. Program demonstruje pouzitie Thread pools vo Viste.
+2. Vista poskytuje nove API pre implementaciu Threads pools, ktore umoznuje pouzitie TP v nasledujucich situaciach.
+   A. Asynchronne volanie funkcie.
+   B. Volanie funkcie v casovom intervale.
+   C. Volanie funkcie pri signalizovani KO.
+   D. Volanie funkcie pri skonceni asynchronnej IO operacie.
+!!! 3. Kazda aplikacia ma vytvoreny DEFAULT TP, ktory je na zaciatku procesu iba incializovany. No jednotlive threads su vytvarane AZ PRI POUZIVANI TP.
+4. Asycnhronne volanie funkcie sa robi nasledujucimi krokmi.
+   A. Funkciou CreateThreadpoolWork() vytvorim objekt typu TP_WORK, ktory sa pouziva ako identidikator WORK, ktora sa ma vykonat.
+   B. Funkciou SubmitThreadpoolWork() zasielam TP_WORK do TP na vykonanie.
+   C. Funkciou WaitForThreadpoolWorkCallbacks() je mozne pockat na vykonanie daneho TP_WORK. Pomocou parametru CancelPendingCallbacks urcuje ci sa maju PENDING CALLBACKS, ktore este NEBOLI VYKONANE ZRUSIT. Tie TP_WORK, ktore uz SU SPRACOVAVANE v threade TP NIE SU ZRUSENE, ale pocka sa na ich vykonanie.
+   D. Funkciou CloseThreadpoolWork() odstranim strukturu TP_WORK a s nou asociovanu pamat.
+!!! 5. Pomocou funkcie TrySubmitThreadpoolCallback() mozem NARAZ vytvorit TP_WORK a ZARADIT ho do TP.
+6. Volanie funkcie v casovom intervale sa robi nasledujucimi krokmi.
+   A. Funkciou CreateThreadpoolTimer() vytvorim objekt typu TP_TIMER, ktory sa pouziva ako identidikator WORK, ktora sa ma vykonat.
+   B. Funkciou SetThreadpoolTimer() nastavim cas (parameter DueTime) v ktorom sa ma timer vykonat. Pre DueTime plati, ze ak je kladna hodnota urcuje ABSOLUTNY cas a ak je zaporny urcuje RELATIVNY cas. Parameter Period urcuje periodu opakovania v ktorej sa ma timer opakovat. Parameter WindowLength urcuje SIRKU OKNA v ktorom sa moze vykonat timer. Po jeho aplikovani Windows moze ZDRUZIT VIACERO TIMERS, ktore maju expirovat v KRATKOM CASE po sebe. Prave WindowLength urcuje jeho sirku a to tak, ze kazdy TIMER moze expirovat v intervale <ExpirationTime-WindowLength,ExpirationTime+WindowLength> a ak VIACERO TIMERS PRELINA SVOJE INTERVALY, tak sa tieto timers vykonaju NARAZ, cim sa zmensuje pocet CONTEXT SWITCHES.
+   C. Funkciou SetThreadpoolTimer() ak nastavim DueTime na NULL tak ZASTAVIM TIMER.
+   ??? D. Funkciou WaitForThreadpoolTimerCallbacks() je VRAJ mozne pockat na vykonanie prebiehajuceho TIMER. Avsak vyzera to, ze funkcia BEZ OHLADU NA PARAMETER CancelPendingCallbacks VZDY ZRUSI PENDING REQUESTS.
+   E. Funkciou CloseThreadpoolTimer() sa uzatvara TIMER a uvolnuje struktura TP_TIMER.
+!!! 7. Ak nastavim Period, tak sa Timer vyvolavaju v periode definovanej v tomto parametri NEZAVISLE na DLZKE TRVANIA TIMER FUNKCIE, ktora vyskyt timer spracuvava.
+8. Volanie funkcie pri signalizovani KO sa robi nasledujucimi krokmi.
+   A. Funkciou CreateThreadpoolWait()  vytvorim objekt typu TP_WAIT, ktory sa pouziva ako identidikator WORK, ktora sa ma vykonat.
+   B. Funkciou SetThreadpoolWait() asociujem TP_WAIT h HANDLE na KO, ktory pri signalizovani ma sposobit volanie funkcie v TP. V parametri Tiemout mozem stanovit maximalny cas po ktory sa ma na signalizaciu KO cakat. Kladna hondota znamena aboslutny cas, zaporna relativny cas, 0 znamena, ze sa okamzite skontroluje ci objekt nie je signalizovany a NULL znamena nekonecne cakanie.
+   C. Kedze WAIT pouziva interne WaitForMultipleObjects() s maximalnym poctom 64 KO, je VELMI EFEKTIVNA.
+   D. Po vykonani WAIT funkcie MUSIM ZNOVA VOLAT SetThreadpoolWait(), ak chcem znova zaregistrovat dany KO na detekciu signalizacie. Inak povedane, po prvom zavolani WAIT funkcie sa viazanie WAIT a HANDLE RUSI.
+   E. WAIT funkcia sa vola i v pripade, ze VYPRSAL STANOVENY TIMEOUT. Paramter WAIT funkcie WaitResult urcuje ci funkcia bola volana pre signalizovanie KO, alebo pretecenie timeout.
+   F. Funkciou WaitForThreadpoolWaitCallbacks() je mozne pockat na vykonanie daneho TP_WAIT.
+   G. Funkciou CloseThreadpoolWait() odstranim strukturu TP_WAIT a s nou asociovanu pamat.
+9. Volanie funkcie pri skonceni asynchronnej IO operacie sa robi nasledujucimi krokmi.
+   A. Funkciou CreateFile() otvorim HANDLE s priznakom FILE_FLAG_OVERLAPPED.
+   B. Funkciou CreateThreadpoolIo() asoicujem HANDLE s TP_IO.
+   !!!!! C. PRE KAZDOU IO OPERACIOU (ReadFile(), WriteFile()) MUSIM ZAVOLAT StartThreadpoolIo(). AK JU NEZAVOLAM - CELY PROGRAM SPADNE.
+   D. Vykonam ASYNCHRONNU IO operaciou (ReadFile(), WriteFile()).
+   !!!!! E. Ako IO operacia ZLYHA - ReadFile(), alebo WriteFile() vrati FALSE - MUSIM VOLAT CancelThreadpoolIo(). Tuto funkciu je mozne zavolat i na zrusenie prebiehajucich IO operacii.
+   F. Funkciou WaitForThreadpoolIoCallbacks() je mozne pockat na vykonanie IO operacie.
+   G. Funkciou CloseThreadpoolIo() odstranim strukturu TP_IO a s nou asociovanu pamat.
+!!!!! 10. POZOR. Ak pouziva TP IO, potom NESMIEM VOLAT CP FUNKCIE ako CreateIoCompletionPort(). TP si ju pravdepodobne VOLA SAM. Ked som to spravil, tak MI VZDY PROGRAM ZLYHAL na volani CreateThreadpoolIo().
+11. TP umoznuje v CALLBACK zavolat JEDNU (IBA JEDNU) z nasledujucich funkcii, ktora zabezpeci vykonanie AKCIE PRI SKONCENI VYKONAVANIA CALLBACK FUNKCIE v TP.
+   A. LeaveCriticalSectionCallbackReturns() - vola LeaveCriticalSection() pri skoceni CALLBACK funkcie.
+   B. ReleaseMutexWhenCallbackReturns() - vola ReleaseMutex() pri skoceni CALLBACK funkcie.
+   C. ReleaseSemaphoreWhenCallbackReturns() - vola ReleaseSemaphore() pri skoceni CALLBACK funkcie.
+   D. SetEventWhenCallbackReturns() - vola SetEvent() pri skoceni CALLBACK funkcie.
+   E. FreeLibraryWhenCallbackReturns() - vola FreeLibrary() pri skonceni CALLBACK funkcie.
+12. Pomocou funkcie DisassociateCurrentThreadFromCallback() volanej v CALLBACK signalizujem, ze CALLBACK SKONCIL SVOJU CINNOST a hoci CALLBACK moze vykonavat dalsie instrukcie, funkcie WaitForThreadpoolXXXCallback() SA UVOLNIA a ukoncia, takze thread, ktory na ne caka moze pokracovat dalej.
+!!! 13. Windows pri vytvarani procesu vytvori DEFAULT TP, ktory existuje pocas celeho trvania procesu. Ak chcem customizovat pocet threads v TP potom musim vykonat nasledujuce kroky.
+   A. Vytvorit CUSTOM TP volanim CreateThreadpool().
+   B. Skonfigurovat pocet threads v TP volanim SetThreadpoolThreadMinimum() a SetThreadpoolThreadMaximum().
+   C. Inicializovat TP ENVIRONMENT volanim InitializeThreadpoolEnvironment().
+   D. Asociovat TP s TP ENVIRONMENT volanim SetThreadpoolCallbackPool().
+   E. Na konci prace s TP zavolat DestroyThreadpoolEnvironment() a CloseThreadpool() na ukoncenie TP ENVIRONMENT a TP.
+!!! 14. Na ZJEDNODUSENIE UKONCOVANIA TP bol vytvoreny mechanizmus CLEANUP GROUPS, ktory umoznuje pre ASOCIOVAT KAZDY WORK REQUEST s GROUP a nasledne podla potreby vykonat CANCEL nad CELOU GROUP - teda vsetkymi WORK ITEMS v GROUP.
+15. CLEANUP GROUPS funguju tak, ze v TP ENVIRONMENT nastavim CLEANUP GROUP pre DANY WORK ITEM. Dany WORK ITEM sa pri VYTVORENI (volani CreateThreadpooolXXX()) asoicuje s GROUP a pri SKONCENI VYKONAVANIA WORK ITEM (volanie CloseThreadpoolXXX()) sa ODTSRANI z GROUP.
+16. Pouzitie CLEANUP GROUPS sa realizuje v nasledujucich krokoch.
+   A. Group vytvorim volanim CreateThreadpoolCleanupGroup(). 
+   B. Funkciou SetThreadpoolCallbackCleanupGroup() asociujem GROUP s WORK ITEM. Tu mozem zaregistrovat funkciu, ktora sa zavola pri CANCEL daneho WORK ITEM.
+   !!! C. Ak chcem spravit CANCEL danej GROUP zavolam CloseThreadpoolClenupGroupMembers(), ktora zrusi VSETKY ESTE NESPUSTENE WORK ITEMS patriace do danej GROUP. Tie, ktore uz bezia necha skoncit.
+   D. Funkciou CloseThreadpoolClenupGroup() uzavriem GROUP.
+!!!!! 17. Plati - a UVADZA TO I MSDN, ze pod volani CloseThreadpoolCleanupGroup() by som uz NEMAL volat CloseThreadpoolWork() pre jednotlive WORK ITEMS. Ked som to spravil, tak mi PROGRAM SPADOL.
+//------------------------------------------------------------------------------

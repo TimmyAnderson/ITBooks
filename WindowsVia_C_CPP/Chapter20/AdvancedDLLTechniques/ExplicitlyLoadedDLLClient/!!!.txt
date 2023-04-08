@@ -1,0 +1,123 @@
+//------------------------------------------------------------------------------
+1. Program demonstruje pokrocile techniky prace s DLL.
+!!! 2. DLL je mozne okrem IMPLICITNEHO NACITANIA cez .LIB subor a LINKER mozne aj EXPLICITNE nacitat volanim funkcie LoadLibrary().
+3. Funkcia LoadLibrary(), resp. LoadLibraryEx() NAMAPUJE DLL do ADDRESS SPACE procesu.
+4. Funkcia LoadLibraryEx() obsahuje parameter Flags, ktory moze nasobudat nasledujuce hodnoty.
+   A. DONT_RESOLVE_REFERENCES - sposobuje, ze ked DLL obsahuje referencie na ine DLL, tak tieto DLL sa NENACITAJU. Takisto sa NEVOLA DllMain().
+   B. LOAD_LIBRARY_AS_DATAFILE - umoznuje nacitat DLL ako DATOVY SUBOR. DLL nie je zavedena ako DLL (PAGES nemaju pridelenu PROTECTION podla SECTION), ale obsah DLL je namapovany do ADDRESS SPACE ako blok dat. Tato funkcionalita sa vyuziva pri RESOURCE DLL, ktore spravidla NEOBSAHUJU KOD iba RESOURCES. K nim je mozne pomocou API funkcii po nacitani DLL s tymto priznakom polahky pristupovat.
+   C. LOAD_LIBRARY_AS_DATAFILE_EXCLUSIVE - podobne co LOAD_LIBRARY_AS_DATAFILE akurat, ze PAGES maju READ ONLY pristup.
+   ??? D. LOAD_LIBRARY_AS_IMAGE_RESOURCE - podobne co LOAD_LIBRARY_AS_DATAFILE, akurat sa relative virtual addres je patched pri nacitavani DLL.
+   E. LOAD_WITH_ALTERED_SERACH_PATH - podla hodnoty v paramatri DLLPathName umoznuje zmenit sposob vyhladania DLL suboru.
+   F. LOAD_IGNORE_CODE_AUTHZ_LEVEL - umoznuje nacitat DLL bez dodatocne security autorizacie.
+!!! 5. Pomocou funkcie FreeLibrary() je mozne uvolnit ADDRESS SPACE alokovany DLL. DLL si v ramci procesu DRZI COUNTER a preto ak VIACKRAT volam LoadLibrary() nad danou DLL (DLL sa mapuje do ADDRESS SPACE iba raz), tak TOLKO ISTO KRAT musim volat FreeLibrary(). Iba ak pocitadlo klesne na 0, tak je DLL ADDRESS SPACE v danom procese uvolnena.
+6. Funkcia FreeLibraryAndExitThread() umoznuje sucasne uvolnit DLL a ukoncit prave beziac thread. Pouziva sa, ked DLL vytvara v DLLMain() novy thread, ktory ked skonci svoje vykonavanie, DLL ma byt uvolnena z ADDRESS SPACE.
+7. Funkcia GetModuleHandle() umoznuje ziskat HMODULE na DLL z nazvu DLL. Ak dam NULL hodnotu, vrati HMODULE na EXE.
+!!! 8. Pomocou funkcie GetProcAddress() ziskavam adresu na funkciu z DLL. Vratenu adresu musim pretypovat aby mala ZHODNY PROTOTYP ako exportovana funkcia a nasledne ju mozem volat.
+9. Funkcia GetProcAddress() umoznuje najst funkciu v DLL 2 sposobmi.
+   A. Pomocou mena funkcie. Tu treba davat POZOR, aby DLL nevystavila funkciu s MANGLED menom. To sa da osetrit pouzitim 'extern "C"' v deklaracii exportovatelne funkcie v DLL.
+   B. Pomocou ORDINARY NUMBER. Tento sposob sa vsak NEDOPORUCUJE, pretoze NIE JE SPOLAHLIVY. Jedna potrebujem vediet cislo prisluchajuce funkcii v DLL a potom ak nahodou dam NEEXISTUJUCE CISLO, tak sa moze stat, ze GetProcAddress() NOT NULL hodnotu, ktoru NEDOKAZEM ODLISIT od VALIDNEJ ADRESY na DLL funkciu. Preto tento sposob NETREBA POUZIVAT.
+10. DLL kniznica MOZE mat funkciu DllMain(), ktora sa AUTOMATICKY vola pri zavedeni DLL do procesu, resp. vytvoreni noveho threadu v procese. DllMain() NIE JE POVINNA a ma nasledujuce parametre.
+   A. InstDLL - je HANDLE na DLL. Obsahuje adresu v ADDRESS SPACE kde je DLL zavedena. Pouziva sa v niektorych funkciach ako napriklad LoadString(), alebo DialogBox().
+   B. Reason - urcuje dovod preco bola DllMain() volana. Moze nadobudat hodnoty: DLL_PROCESS_ATTACH, DLL_THREAD_ATTACH, DLL_THREAD_DETACH, DLL_PROCESS_DETACH.
+   C. Reserved - ak Reason je DLL_PROCESS_ATTACH, tak NULL znamena, ze DLL bola nacitana dynamicky cez LoadLibrary() a ked NON-NULL, tak DLL bola nacitana STATICKTY. Pri DLL_PROCESS_DETACH DLL bola uvolnena dynamicky cez FreeLibrary() a ked NON-NULL, tak DLL bola uvolnena STATICKTY - pri ukoncovani procesu.
+   !!! D. NAVRATOVA HODNOTA - ma vyznam IBA AK Reason je DLL_PROCESS_ATTACH a urcuje ci DLL bola korektne inicializovana. Ak vrati FALSE, tak nacitanie DLL ZLYHA a LoadLibrary() vrati NULL. V pripade statickeho linkovanie PROGRAM SA TERMINUJE.
+!!! 11. V DllMain() je NEBEZPECNE VOLAT funkcie INYCH DLL, pretoze tieto DllMain() INYCH DLL este NEMUSELI BYT ZAVOLANE a DLL NEMUSIA BYT INICIALIZOVANE.
+12. DllMain() s parametrom DLL_PROCESS_ATTACH je volana, ked sa DLL ZAVADZA do ADDRESS SPACE procesu. Platia pre nu nasledovne pravidla.
+   A. Navratova hodnota DllMain() urcuje ci DLL je korektne inicializovana, alebo nie.
+   B. Funkcia DllMain() je volana v MAIN THREADE procesu, ak je DLL zavedena staticky, alebo v threade volajucom LoadLibrary(), ak je zavedena dynamicky.
+   C. Zavolana je iba ked je DLL SKUTOCNE ZAVEDENA do ADDRESS SPACE. Ak volam LoadLibrary() opakovane a DLL uz je pritomna v ADDRESS SPACE, tak DllMain() zavolana NIE JE.
+13. DllMain() s parametrom DLL_PROCESS_DETTACH je volana, ked sa DLL UVOLNUJE z ADDRESS SPACE procesu. Platia pre nu nasledovne pravidla.
+   A. Funkcia DllMain() je volana pri volani ExitProcess() (volanie DllMain() je sucastou kodu ExitProcess()), co je obvykle v MAIN THREADE procesu, ak je DLL zavedena staticky, alebo v threade volajucom FreeLibrary(), ak je zavedena dynamicky.
+   B. Ak je proces ukonceny volanim TerminateProcess(), tak DllMain() NIE JE VOLANA.
+14. DllMain() s parametrom DLL_THREAD_ATTACH je volana, ked sa v procese VYTVARA NOVY THREAD. Platia pre nu nasledovne pravidla.
+   A. DllMain() je volana iba ak je DLL UZ ZAVEDENA v ADDRESS SPACE a NASLEDNE je vytvorny novy thread.
+   B. Ak zavediem DLL volanim LoadLibrary(), tak DllMain() s DLL_THREAD_ATTACH sa NEVOLA pre EXISTUJUCE THREADS.
+15. DllMain() s parametrom DLL_THREAD_DETACH je volana, ked sa v procese UKONCUJE beziaci THREAD. Platia pre nu nasledovne pravidla.
+   A. Funkcia DllMain() je volana pri volani ExitThread() (volanie DllMain() je sucastou kodu ExitThread()).
+   B. Ak uvolnim DLL volanim FreeLibrary(), tak DllMain() s DLL_THREAD_DETACH sa NEVOLA. Vola sa DllMain() s parametrom DLL_PROCESS_DETTACH.
+   C. Ak je proces ukonceny volanim TerminateThread(), tak DllMain() NIE JE VOLANA.
+!!! 16. Vsetky volania DllMain() su SYNCHRONIZOVANE. To znamena, ze dve volania DllMain() pre TU ISTU DLL NEMOZU sa vykonat PARALELNE. Pouziva sa nato PROCESS-WIDE lock, ktory musi dany THREAD ZISKAT, aby mohol volat DllMain() DLL kniznic. To moze za istych okolnosti (v DllMain() vytvaram thread) sposobit problemy. Priklad je uvedeny v knihe.
+!!! 17. Funkcia DisableThreadLibraryCalls() volana v DllMain pri DLL_PROCESS_ATTACH umoznuje ZAKAZAT volanie DllMain() s parametrami Reason: DLL_THREAD_ATTACH a DLL_THREAD_DETACH.
+!!!!! 18. V C++ na zabezpecenie inicializacie globalnych C++ objektov musi RUN TIME zavolat C++ inicializacne a cistiace rutiny pri volani DllMain(). C++ RUN TIME preto OBALUJE volanie DllMain() funkciou _DllMainCRTStartup(), ktora VNUTORNE VOLA DllMain(). _DllMainCRTStartup() vykonava nasledujucu cinnost.
+   A. V DLL_PROCESS_ATTACH je C++ RUN TIME INICIALIZOVANY a su zavolane kontruktory globalnych C++ objektov. Nasledne je volana DllMain().
+   B. V DLL_PROCESS_DETACH je C++ RUN TIME ODSTRANENY a su zavolane destruktory globalnych C++ objektov. Nasledne je volana DllMain().
+   C. DLL_THREAD_ATTACH a DLL_THREAD_DETTACH su v _DllMainCRTStartup() ignorovane.
+!!! 19. Ak DllMain() v DLL neimplementuje LINKER podhodi CUSTOM IMPLEMENTACIU DllMain(), ktora jedine co spravi je, ze pri DLL_PROCESS_ATTACH vola DisableThreadLibraryCalls(), aby zbytocne nebola volana DllMain() pri zavadzani a odstranovani threadov.
+!!!!! 20. Najlepsie je DllMain() VOBEC NEPOUZIVAT a inicializovat DLL DYNAMICKY - napriklad pri prvom volani funkcie vyzadujucej inicializovane data.
+21. Windows umoznuje aby DLL boli zavadzane ON-DEMAND, teda az pri ZAVOLANI 1. FUNKCIE danej DLL. Funkcionalita je implementovana vo vsetkych verziach Windows a ma nasledovne obmedzenia.
+   A. DLL, ktoru chcem narhat DELAY sposobom NESMIE EXPORTOVAT premenne.
+   B. Kernel32.DLL NEMOZE byt zavedena DELAY sposobom, kedze obsahuje niektore klucove funkcie ako LoadLibrary() ci GetProcessAddress().
+   C. Volania funkcii DELAYED DLL v DllMain() mozu vies k ZRUTENIU PROGRAMU.
+!!! 23. Nato aby DELAY LOADING fungoval musim vykonat nasledujuce kroky.
+   1. Vytvorit STANDARDNU DLL.
+   2. V EXE projekte nastavit 'Project Properties->Linker->Input->Additional Dependencies' na .LIB subor DLL, ktora ma byt DELAY LINKED. Tymto pridam do projektu odkaz na .LIB danej DLL a LINKER dokaze projekt prelikovat.
+   3. V EXE projekte nastavit 'Project Properties->Linker->Input->Delay Loaded DLLs' na .DLL, ktora ma byt DELAY LINKED. Nastavim LINKER, aby danu DLL zavadzal ako DELAYED.
+   4. V EXE projekte nastavit 'Properties->Linker->Advanced->Delay Loaded DLL' nastavit 'Support Unload' ak chcem podporovat UNLOAD DELAY LINKED DLL.
+   5. Nasledne pri PRVOM VOLANI funkcie z DLL je DLL ZAVEDENA. Teda NIE JE ZAVEDENA HNED PRI STARTE PROGRAMU, ale AZ PRI VOLANI PRVEJ FUNKCIE.
+   6. Ak chcem DLL uvolnit zavolam __FUnloadDelayLoadedDLL2(), ktora DYNAMICKY ODSTRANI DLL z ADDRESS SPACE PROJEKTU.
+   7. Ak ZNOVA zavolam nejaku funkciu z DLL, tak DLL sa ZNOVA DELAYED sposobom zavedie.
+24. Ked LINKER zisti, ze nejaka DLL ma byt DELAY LOADED vykonaju sa nasledujuce kroky.
+   A. Namiesto toho, aby linkoval pre kazdu funkciu DLL adresu SKUTOCNEJ FUNKCIE, namiesto toho LINKUJE SPECIALNU FUNKCIU '__delayLoadHelper2()'.
+   B. LINKER prida novu .DIDDATA section do EXE, indikujuca ktore funkcie su DELAY LOADED.
+   C. Ak sa zavola funkcia z DELAYED DLL, tak v skutocnosti sa zavola __delayLoadHelper2(), ktora cez LoadLibrary() DYNAMICKY ZAVEDIE DLL, ziska adresu funkcie, ktoru chcem volat a ZMENI TABULKU FUNKCII tak, ze pre DANY FUNKCIU nahradi adresu __delayLoadHelper2() adresu REALNEJ FUNKCIE z DLL. Tym sa zabezpeci, ze pri KAZDOM DALSOM VOLANI tejto funkcie sa zavola SKUTOCNA FUNKCIA z DLL a NIE __delayLoadHelper2().
+   D. Pre ostatne DLL funkcie NIE JE PRI ZAVEDENI DLL OPRAVENA ICH ADRESA (namiesto adresy na __delayLoadHelper2(), adresa na skutocnu funkciu z DLL). Deje sa tak AZ PRI PRVOM VOLANI DANEJ FUNKCIE. Samozrejme DLL sa uz nezavadza, pretoze ta je zavedena pri PRVOM VOLANI DLL funkcie v bode C.
+   !!! E. Ak __delayLoadHelper2() NEVIE najst DLL kniznicu, alebo DLL funkciu, tak hodi SEH EXCEPTION. Tu je mozne KOREKTNE spracovat (zavolat napriklad nejaku inu funkciu, ktora robi rovnaku cinnost ako funkcia z nenajdenej DELAYED DLL), bez toho aby program sa zrutil. Pri generovani exception dostava EXCEPTION HANDLE smernik na strukturu DelayLoadInfo z ktorej moze zistit, ktora funkcia sa mala volat, ale nenasla sa.
+!!! 25. Pomocou funkcie __FUnloadDelayLoadedDLL2() je mozne DELAYED DLL odstranit z ADDRESS SPACE. Funkcia __FUnloadDelayLoadedDLL2() vykonava nasledujuce kroky.
+   A. Pre KAZDU DLL FUNKCIU nahradi v TABULKE FUNKCII jej SKUTOCNOU ADRESU adresou __delayLoadHelper2().
+   B. Uvolni sa DLL z ADDRESS SPACE volanim FreeLibrary().
+   C. Pri NASLEDNOM volani LUBOVOLNEJ DLL FUNKCIE tym, ze v bode A sa nahradilo jej volanie __delayLoadHelper2() - ta ZNOVA ZAVEDIE DELAYED DLL.
+!!! 26. DELAYED DLL podporuje i HOOKING, kde mozem zavesit HOOKS, ktore umoznuje ZMENIT FUNKCIONALITU __delayLoadHelper2(), alebo ziskavat NOTIFIKACIU o DELAYED DLL. Na implementaciu HOOKS je potrebne vykonat nasledujuce kroky.
+   A. Vytvorit HOOK FUNKCIU s prototypom: 'FARPROC WINAPI DliHook(unsigned, PDelayLoadInfo)', v ktorej mozem implementovat CUSTOMIZACIU __delayLoadHelper2().
+   B. Priradit smernik na funkciu dvojici premennych vystavenych v 'DelayImp.lib': '__pfnDliNotifyHook2' a '__pfnDliFailureHook2'.
+27. Windows umoznuje pomocou '#pragma comment()' vykonat FORWARDING funkcii z jednej DLL do druhej. FORWARDNIG znamena, ze priradim DLL funkcii VIRTUALNE MENO. Takato funkcia sa v DLL VOBEC NENACHADZA. Nachadza sa v INEJ DLL, zvycajne pod uplne inym menom. Pravdepodobne to sluzi na zvysenie citatelnosti kodu.
+28. Forwarding sa robi pomocou syntaxe '#pragma comment(linker, "/export:SomeFunc=DllWork.SomeOtherFunc")' ktoru pouzijem v SVOJEJ DLL na forwardovanie funkcie (SomeFunc) na INU FUNKCIU (SomeOtherFunc) v INEJ DLL (DllWork.DLL). Samozrejme funkcie MUSIA MAT ROVNAKY PROTOTYP.
+29. Pri forwarding funkcia GetProcAddress() zisti z EXPORT SECTION DLL, ze sa jedna o FORWARDED funkciu a zavedie DLL v ktorej je tato funkcia definovana a nasledne sa REKURZIVNE vola GetProcAddress(), ktora vrati adresu skutocnej funkcie.
+30. Windows podporuje koncept KnownDLL, na zabezpecenie jednoduchsie a rychlejsieho nacitavania DLL. Known DLL funguju nasledovne.
+   A. V Registry v kluci [HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Session Manager\KnownDLLs] je zoznam FRIENDLY NAME nazvo DLL ako Name a nazvy DLL, ktore mu zodpovedaju (zvycajne to iste meno s koncovkou DLL).
+   B. Kluc [HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Session Manager\KnownDLLs] kluc 'DllDirectory' nazvom adresaru, kde sa Known DLL nachadzaju.
+   C. Ak sa zavadza DLL cez LoadLibrary() a v nej NEZADAM KONCOVKU .DLL, tak sa DLL hlada STANDARDNYM SPOSOB.
+   D. Ak sa zavadza DLL cez LoadLibrary() a v nej ZADAM KONCOVKU .DLL, tak sa koncovka DLL ODSTRANI a NAZOV DLL sa pouzije na HLADANIE v kluci [HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Session Manager\KnownDLLs]. Ak sa taka NAJDE, tak sa pouzije hodnota najdeneho kluca (meno DLL s koncovkou) a nacita sa DLL z CESTY urcenej v kluci 'DllDirectory'. Ak sa nenajde, dochadza k STANDARDNEMU HLADANIU DLL.
+31. Windows podporuje DLL Redirection. Je to vlastnost, ked sa zdielane DLL nenahravaju z Windows SYTEM DIRECTORY, ale NAJPRV sa pokusi Windows nacitat ich z APLIKACNEHO ADRESARA. Nato, aby to fungovalo, musi sa v aplikacnom adresari vytvori prazdny subor s menom EXEName.exe.local, alebo DLLName.exe.local, eventualne vytvorit adresar s rovenkym menom ako DLL ci EXE. Windows dokaze tento subor detekovat a ak je pritomny nacita DLL/EXE z tohto adresara a nie zo systemoveho adresara. Tato funkcionalita je vsak DEFAULT vo Viste vypnuta.
+32. Pri vytvarani DLL/EXE suboru je definovana PREFERED BASE ADDRESS. PREFERED BASE ADDRESS urcuje na ktoru adresu v ADDRESS SPACE sa CHCE dany DLL/EXE mapovat.
+!!! 33. PREFERED BASE ADDRESS je PREFEROVANA ADRESA na ktoru DLL/EXE by sa CHCEL ZAVIEST. Ak vsak VIACERO DLL/EXE sa chce zaviest na TU ISTU ADRESU, resp. ich rozsahy ADDRESS SPACES sa PREKRYVAJU, tak Windows MUSI ZAVIEST DLL/EXE na INE ADRESY, aby nedoslo ku kolizii. Tento proces sa vola REBASING.
+!!! 34. Dovod preco musi dojt k REBASING je nasledujuci.
+   A. Pri preklade programu sa vo vygenerovanom STROJOVOM KODE pouzivaju v ASSEMBLY INSTRUKCIACH PEVNE ADRESY odvodene od PREFERED BASE ADDRESS.
+   B. Ak sa DLL/EXE NEZAVEDIE na PREFERED BASE ADDRESS, tak ASSEMBLY INSTRUKCIE obsahuju CHYBNE ADRESY a tie MUSIA BYT OPRAVENE, inak by program OKAMZITE ZHAVAROVAL.
+   C. Preto Windows v momente ako zisti, ze danu DLL nemoze zaviest na PREFERED BASE ADDRESS, zacne s procesom REBASING.
+35. REBASING sa vykonava v nasledujucich krokoch.
+   A. VYpocita sa OFFSET medzi SKUTOCNOU BASE ADDRESS a PREFERED BASE ADDRESS.
+   B. Loader prejde REALOKACNU TABULKU, ktora sa vytvara pri likovani DLL a je SUCASTOU DLL (pokial nespecifikujem DLL ako FIXED).
+   C. Pomocou zaznamov v realokacnej tabulke sa ZMENIA ASSEMBLY INSTRUCTIONS v zavedenej DLL, tak aby zodpovedali SKUTOCNEJ BASE ADDRESS na ktoru bola DLL zavedena. Cize sa MENIA priamo ASSEMBLEROVSKE INSTURKCIE a to tak, ze sa k adresam relativnym voci PREFERED BASE ADDRESS prirata OFFSET vypocitany v bode A.
+   D. Po tejto oprave uz ASSEMBLY KOD obsahuje instrukcie s KOREKTNYMI ADRESAMI a moze sa spustit.
+36. Nevyhody REBASING.
+   A. Prechod a uprava ASSEMBLY KODU je POMALA a PREDLZUJE cas zavedenia DLL do procesu.
+   !!!!! B. Pri zmene ASSEMBLY KODU dochadza k ZAPISU do PAGES DLL, ktore su chranene pomocou COPY-ON-WRITE PROTECTION. To vsak znamena, ze v MOMETNE, ked sa ZAPISUJE do tychto PAGES, aby mohli byt modifikovane ASSEMBLY INSTRUCTIONS, dochadza ku COPY-ON-WRITE a PAGES sa z Memory-Maped-File mapovanom na .DLL SUBOR musia ZAVIEST do PAGE FILE, co je jednak POMALE a takisto ZABERA MIESTO v PAGE FILE.
+37. Pomocou linker priznaku /FIXED mozem definovat, ze PREFERED BASE ADDRESS bude NEMENNA. Ak vsak proces ma ADDRESS SPACE na ktoru odkazuje PREFERED BASE ADDRESS uz OBSADENU, tak LOADER ZLYHA a proces sa TERMINUJE s CHYBOU.
+!!! 38. Pre RESOURCE-DLL, ktore NEOBSAHUJU KOD je VHODNE pouzit '/FIXED', pretoze ak ho pouzijem, tak sa do DLL nevklada REALOCATION TABLE a DLL je MENSIA. Avsak ak dam priznam /FIXED, tak moze dojt ku kolizii v ADDRESS SPACE. Preto Windws umoznuje pomocou priznakov LINKER: '/SUBSYSTEM:WINDOWS', alebo '/SUBSYSTEM:CONSOLE, 5.0' vykonat nastavenie, kedy ResourceDLL NEBUDE OBSAHOVAT REALOCATION TABLE, ale zaroven bude DLL bude oznacena, ze NEOBSAHUJE KOD a tym padom pri kolizii adries je mozne RESOURCE DLL presunut v ADDRESS SPACE, BEZ NUTNOSTI robit REBASING.
+!!!!! 39. Windows obsahuje utility REBASE.EXE, ktora umoznuje vykonat nad FINALNOU VERZIOU PROGRAMU REBASING a PREFERED BASE ADDRESSES upravne aby nedochadzalo ku kolizii ZAPISAT do DLL SUBOROV na DISKU. Po aplikacii tejto utility NEDOJDE pri spusteni programu k REBASING a program bude fungovat rychlejsie.
+40. Okrem utility REBASE.EXE je mozne pouzit i API funkciu ReBaseImage(), ktora robi to iste co REBASE.EXE.
+!!! 41. Okrem REBASING k znizeniu vykonosti prispieva i NUTNOST robit pri zavadzani DLL do procesu robit RESOLVING funkcii EXPORTOVANYCH z DLL, ktore EXE IMPORTUJE. Proces RESOLVING vsak sposobuje pri COPY-ON-WRITE PAGES presun PAGES z Memory-Mapped-File DLL do PAGE FILE, co je POMALE. Riesenim je vykonat MANUALNY REBINDING.
+!!! 42. REBINDING je proces kedy sa RESOLVING DLL pre dany EXE subor robi pocas specialneho procesu realizovaneho pomocou BIND.EXE, kedy BIND.EXE zavedie do EXE procesu VSETKY jeho DLL a spravi RESOLVING tychto DLL, cim ziska SKUTOCNE ADRESY FUNKCII IMPORTOVANYCH z DLL a ZAPISE ICH do .EXE SUBORU. Vdaka tomu pri nasledovnom spusteni EXE suboru UZ NIE JE TREBA ROBIT RESOLVING funkcii importovanych z DLL, cim je proces zavadzania procesu RYCHLEJSI.
+43. REBINDING okrem BIND.EXE je mozne robit aj API funkciou BindImageEx(). V poslednom parametri 'StatusRoutine' mozem definovat CALLBACK, ktory sa vola v priebeho procesu BINDING.
+!!! 44. Nato aby REBINDING mohol fungovat musia byt DLL zavedene na svoje PREFERED BASE ADDRESSES a DLL, ktore proces zavadza MUSIA MAT TEN ISTY TIME STAMP ako DLL voci ktorym som robim REBINDING. Ak niektora z tychto podmienok NIE JE SPLNENA - LOADER to AUTOMATICKY DETEKUJE a NEVYUZIJE vykonany REBINDING, ale zavedie proces NORMALNE - teda nacita DLL a spravi REBASING (ak je to nutne) i REBINDING, ktory je nutny. Ak su obe podmienky splnene, tak sa VYUZIJE REBINDING a zavedenie procesu je VELMI RYCHLE.
+!!!!! 45. REBINDING by sa mal robit PRI INSTALACII APLIKACIE, pretoze REBINDING SA MUSI ROBIT voci DLL, ktore su nainstalovane na PC.
+//------------------------------------------------------------------------------
+Sposob vytvarania DLL suboru pre EXPLICITNE NACITANIE
+
+1. Vytvorim .H subor do ktoreho dam vsetky exportovane funkcie (triedy, premenne).
+!!!!! 2. Vsetky exportovane funkcie MUSIA POUZIVAT KLAUZULU 'extern "C"', aby ich mena kompilator nezmenil a NESPRAVIL z NICH MANGLED mena, pretoze potom by bolo komplikovane s nimi pracovat v EXE.
+3. V .CPP suboroch implementujem kod exportovanych funkcii.
+4. Pri kompilacii sa kazdy .CPP subor kompiluje do .OBJ.
+5. Po kompilacii linker spaja .OBJ subory, vytvarajuc .DLL subor.
+6. Okrem .DLL suboru sa vytvara i .LIB subor obsahujuci zoznam exportovanych funkcii z DLL. Subor .LIB je VEREJNY a pouziva sa pri vytvarani programov vyuzivajucich DLL v PROCESE LINKOVANIA.
+!!! 7. Subor .LIB sa pri explicitnom nacitani DLL NEPOUZIVA a je ZBYTOCNY. Pouziva sa IBA PRI IMPLICITNOM nacitani DLL.
+//------------------------------------------------------------------------------
+Sposob vytvarania EXE subou vyuzivajuceho DLL subor
+
+1. Pre kazdu DLL funkciu, ktoru chcem pouzit definuje TYPEDEF definujuci smernik na DLL funkciu.
+2. Zavolam LoadLibrary(), alebo LoadLibraryEx() na namapovanie DLL do ADDRESS SPACE procesu.
+3. Pre kazdu DLL funkciu, ktoru chcem pouzit zavolam GetProcAddress() na ziskanie adresy funkcie.
+4. Adresu vratenu GetProcAddress() pretypujem na jej PROTOTYP definovany cez TYPEDEF.
+5. Teraz ked mam prototyp funkcie s adresou MOZEM FUNKCIU POUZIT.
+6. Po ukonceni pouzivania DLL zavolam FreeLibrary() na UVOLNENIE ADDRESS SPACE v ktorom bola DLL mapovana.
+//------------------------------------------------------------------------------
