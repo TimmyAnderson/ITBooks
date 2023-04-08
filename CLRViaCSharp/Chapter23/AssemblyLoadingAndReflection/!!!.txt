@@ -1,0 +1,110 @@
+//-------------------------------------------------------------------------------------------------------
+1. Solution demonstruje sposoby ako je mozne dynamicky nacitat ASSEMBLIES a ako cez REFLECTION citat ich metadata.
+!!!!! 2. .NET 4.5. VYRAZNE zmenil REFLECTION API, napriklad jeho rozsirenim o podporu LINQ. Toto API by sa malo pouzivat v novych projektoch a takisto je to jedine API, ktore je mozne pouzit vo WINDOWS STORE APPLICATIONS.
+3. ASSEMBLIES je mozne DYNAMICKY nacitavat pomocou nasledujucich METHODS CLASS Assembly.
+   A. METHOD Assembly.Load() pri nactivani sa pouziva STANDARDNY MECHANIZMUS HLADANIA ASSEMBLIES aky pouziva CLR pri zavadzani ASSEMBLIES. ASSEMBLIES su vyhladavane podla ich NAME, alebo pretazena verzia METHOD Assembly.Load() z BYTE ARRAY. Ak sa ASSEMBLY nepodari nacitat, je generovana EXCEPTION FileNotFoundException.
+   !!! B. METHOD Assembly.LoadFrom() skusa najprv STANDARDNY MECHANIZMUS HLADANIA ASSEMBLIES a AZ KED ten ZLYHA, tak sa nacita ASSEMBLY z PATH, ktora bola definovana ako PARAMETER. Interne METHOD Assembly.LoadFrom() pouziva METHOD AssemblyName.GetAssemblyName(), ktora ziska z ASSEMBLY na zadanej PATH ASSEMBLY NAME. ASSEMBLY NAME nasledne je zaslany do STANDARDNEHO MECHANIZMU HLADANIA ASSEMBLIES (vola sa METHOD Assembly.Load()) a az ked ta ZLYHA, nacita sa ASSEMBLY zo zadanej PATH. Ak sa ASSEMBLY nepodari nacitat, je generovana EXCEPTION FileNotFoundException.
+   !!! C. METHOD Assembly.LoadFile() nacitava ASSEMBLIES z PATH, ktory bol uvedeny ako PARAMETER. METHOD vsak NENACITAVA REFERENCED ASSEMBLIES z nacitavanej ASSEMBLY, a preto je potrebne zaregistrovat EVENT Assembly.AssemblyResolve, ktory musi REFERENCED ASSEMBLY MANUALNE NACITAT. Ak sa ASSEMBLY nepodari nacitat, je generovana EXCEPTION FileNotFoundException.
+   D. METHOD Assembly.ReflectionOnlyLoad() vykonava to iste co METHOD Assembly.Load(), akurat ze pre takto nacitanu ASSEMBLIES NIE JE MOZNE SPUSTAT ZIADNE ich MEMBERS, iba prehladavat ich METADATA cez REFLECTION. Pri pokuse spusti CODE METHODS je generovana EXCEPTION InvalidOperationException. METHOD NENACITAVA REFERENCED ASSEMBLIES z nacitavanej ASSEMBLY, a preto je potrebne zaregistrovat EVENT Assembly.ReflectionOnlyAssemblyResolve, ktory musi REFERENCED ASSEMBLY MANUALNE NACITAT.
+   E. METHOD Assembly.ReflectionOnlyLoadFrom() vykonava to iste co METHOD Assembly.LoadFrom(), akurat ze pre takto nacitanu ASSEMBLIES NIE JE MOZNE SPUSTAT ZIADNE ich MEMBERS, iba prehladavat ich METADATA cez REFLECTION. Pri pokuse spusti CODE METHODS je generovana EXCEPTION InvalidOperationException. METHOD NENACITAVA REFERENCED ASSEMBLIES z nacitavanej ASSEMBLY, a preto je potrebne zaregistrovat EVENT Assembly.ReflectionOnlyAssemblyResolve, ktory musi REFERENCED ASSEMBLY MANUALNE NACITAT.
+4. MEMBER METHOD AppDomain.Load() umoznuje nacitat ASSEMBLY do konkretnej APP DOMAIN. Je primarne urcena pre UNMANAGED HOSTS, ktore vdaka nej mozu nacitat ASSEMBLIES do APP DOMAINS, ktore vytvorili. MANAGED PROGRAMS by namiesto nej mali pouzivat METHODS z CLASS Assembly.
+!!! 5. V METHODS Assembly.LoadFrom() a Assembly.ReflectionOnlyLoadFrom() je mozne pouzit aj URI ADDRESS na ASSEMBLIES umiestnene na WEBE, ktora sa nasledne stiahnu z WEBU a nacitaju.
+!!! 6. Uz nacitane ASSEMBLIES NIE JE MOZNE ODSTRANIT z MEMORY. Odstranit je mozne iba CELU APP DOMAIN, ale NIE JEDNOTLIVE ASSEMBLIES a to ani pre ASSEMBLIES nacitanych pomocu Assembly.ReflectionOnlyXXX() METHODS.
+7. Prehladavanie pomocou REFLECTION je POMALA OPERACIA. POMALOU OPERACIOU je aj SPUSTANIE MEMBERS pomocou REFLECTION. Aby sa pri vytvarani ADD-INs minimalizoval pocet SPUSTANI MEMBERS pomocou REFLECTION je dobre v ADD-IN pomocou REFLECTION najst v COMPILE TIME INTERFACE, alebo BASE CLASS, ktory by hladana CLASS mala implementovat a pristupovat PRIAMO k MEMBERS BEZ REFLECTION.
+8. CLASS Type je BASE CLASS pre viacere INTERNE CLASSES ako napriklad RuntimeType. METHOD Object.GetType() v skutocnosti vracia objekt typu RuntimeType, ktory je TYPE OBJECT vytvoreny pri PRVOM PRISTUPE k danemu TYPE v CODE.
+!!! 9. Kedze METHOD Object.GetType() vracia VZDY TU ISTU OBJECT INSTANCE (pre dany APP DOMAIN), pre TEN ISTY TYPE (pre kazdy TYPE existuje iba jedna instancia CLASS Type), tak je mozne aplikovat operator porovnania na 2 volania METHOD Object.GetType() pre OBJECTS tych istych TYPES.
+10. TYPES je v .NET mozne vytvarat pomocou nasledujucich METHODS.
+   A. METHOD Object.GetType() vracia instanciu CLASS Type aktualneho OBJECT.
+   B. STATIC METHODS Type.GetType() akceptuju STRING ako PARAMETER a vrcia instanciu CLASS Type.
+   C. METHOD Type.ReflectionOnlyGetType() vracia instanciu CLASS Type, ktorej METADATA mozu byt spracovavane, ale jej METHODS nemozu byt spustane. .NET vygeneruje EXCEPTION InvalidOperationException, pri pokuse o spustenie METHODS vrateneho TYPE.
+   D. PROPERTY TypeInfo.DeclaredNestedTypes vracia NESTED TYPES, ktore definuje CURRENT TYPE.
+   E. METHOD TypeInfo.GetDeclaredNestedType() vracia NESTED TYPE definovany pomocou NAME, ktory definuje CURRENT TYPE.
+   F. METHOD Assembly.GetType() vracia instanciu CLASS Type pre TYPE zadany podla svojho NAME.
+   G. PROPERTY Assembly.DefinedTypes vracia COLLECTION vsetkych TYPES (instancii CLASS Type), kde definuje dana APP DOMAIN.
+   H. PROPERTY Assembly.ExportedTypes vracia COLLECTION vsetkych PUBLIC TYPES (instancii CLASS Type), kde definuje dana APP DOMAIN.
+11. C# poskytuje i zjednodusenu a OPTIMALIZOVANU verziu ziskania Type OBJECT pomocou OPERATORA 'typeof(TypeName)'. Tento OPERATOR vracia TYPE detekovany v case COMPILE TIME, ktory v RUNTIME pri DERIVED CLASSES ci INTERFACES NEMUSI zodpovedat skutocnemu TYPE daneho OBJECT.
+!!!!! 12. .NET 4.5. definuje NOVY CLASS TypeInfo, ktory je DERIVED z CLASS Type. Je sucastou NOVEJ REFLECTION API.
+!!! 13. Z instancie CLASS Type je mozne ziskat instanciu CLASS TypeInfo volanim METHOD Type.GetTypeInfo().
+!!! 14. Z instancie CLASS TypeInfo je mozne ziskat instanciu CLASS Type volanim METHOD TypeInfo.AsType().
+!!!!! 15. Medzi CLASS Type a TypeInfo su nasledujuce ROZDIELY.
+   A. CLASS Type reprezentuje REFERENCIU na TYPE DEFINITION, ale NIE samotnu TYPE DEFINITION. Vdaka tomu instancia CLASS Type NEVYZADUJE, aby ASSEMBLY ktora obsahuje TYPE referovany instanciou CLASS Type bola nacitana v MEMORY.
+   B. CLASS TypeInfo reprezentuje samotnu TYPE DEFINITION. Vdaka tomu instancia CLASS TypeInfo VYZADUJE, aby ASSEMBLY ktora obsahuje TYPE referovany instanciou CLASS Type bola nacitana v MEMORY.
+   C. CLASS TypeInfo vracia COLLECTIONS typu IEnumerable<T> a teda plne podporuje LINQ.
+   !!! D. CLASS TypeInfo DEDI z CLASS Type.
+   !!!!! E. METHOD TypeInfo.GenericTypeParameters umoznuje ziskat TYPE PARAMETERS (ako napriklad TType) a takisto pre nich CUSTOM ATTRIBUTES.
+!!!!! 16. Hoci CLASS Type JE SERIALIZABLE, kedze METHOD Object.GetType() v skutocnosti vracia instanciu CLASS RuntimeType, ktory NIE JE SERIALIZABLE tak instancie TYPE OBJECTS nie su SERIALIZABLE.
+17. Instancie objektov je cez REFLECTION mozne vytvarat nasledujucimi sposobmi.
+   A. METHOD Activator.CreateInstance() umoznuje vytvorit instancie objektov bud zadanim objektu Type, alebo zadanim STRING, ktory obsahuje nazov daneho TYPE.
+   B. METHOD Activator.CreateInstanceFrom() je analogicka voci CreateInstance() s tym rozdielom, ze METHOD pouziva Assembly.LoadFrom() na nacitanie ASSEMBLY z ktoreho nasledne nacita pozadovany TYPE z ktoreho vytvori instanciu OBJECT.
+   C. METHOD AppDomain.CreateInstance() vytvara instanciu daneho OBJECT, ktory vracia vracia v RETURN VALUE zabaleny ako OBJECT typu ObjectHandle.
+   D. METHOD AppDomain.CreateInstanceFrom() je analogickou METHOD k METHOD AppDomain.CreateInstance(), ktora nacitava ASSEMBLY z definovaneho FILE pomocou METHOD Assembly.LoadFrom(). METHOD vracia OBJECT typu ObjectHandle, ktory obsahuje vytvorenu instanciu daneho OBJECT.
+   E. METHOD AppDomain.CreateInstanceAndUnwrap() vytvara instanciu daneho OBJECT, ktory vracia vracia v RETURN VALUE. METHOD vracia instanciu daneho OBJECT.
+   F. METHOD AppDomain.CreateInstanceFromAndUnwrap() je analogickou METHOD k METHOD AppDomain.CreateInstanceAndUnwrap(), ktora nacitava ASSEMBLY z definovaneho FILE pomocou METHOD Assembly.LoadFrom(). METHOD vracia instanciu daneho OBJECT.
+   G. METHOD Type.InvokeMember() umoznuje vyvolat CONSTRUCTOR a tym aj vytvorit instanciu daneho TYPE.
+   H. METHOD ConstructorInfo.Invoke() je analogicka k Type.InvokeMember().
+   I. VALUE TYPES, ktore maju CONSTRUCTOR je mozne vytvarat pomocou Activator.CreateType(), kde sa v PARAMETERS definuju vsetky PARAMETERS CONSTRUCTOR. Ak VALUE TYPES nemaju CONSTRUCTOR, potom je nutne volat METHOD Activator.CreateType() s jedinym PARAMETER typu Type.
+   !!! J. ARRAYS sa vytvaraju pomocou METHOD Array.CreateInstance().
+   !!! K. DELEGATES sa vytvaraju pomocou METHOD Delegate.CreateDelegate().
+   !!! L. GENERICS sa vytvaraju tak, ze sa z OPEN TYPE (bez substituovanych TYPE PARAMETERS) vytvori CLOSED TYPE pomocou METHOD Type.MakeGenericType(). Vysledkom je OBJECT typu Type reprezentujuci CLOSED TYPE, ktory je mozne vytvorit niektorym z vyssie uvedenych sposobov.
+!!! 18. Niektore METHODS na vytvaranie OBJECTS vracaju OBJECT typu ObjectHandle. Pre CLASS ObjectHandle platia nasledujuce zasady.
+   !!! A. OBJECT typu ObjectHandle umoznuje prenasat vytvorenu instanciu daneho OBJECT medzi APP DOMAINS. OBJECT ObjectHandle umoznuje vytvorit OBJECT v jednej APP DOMAIN, ktory este pred pouzitim je mozne preniest do inej APP DOMAIN a tam vytvorit MATERIALIZACIU. Pri MATERIALIZACII dochadza k asociovaniu novovytvoreneho OBJECT do pozadovanej APP DOMAIN.
+   B. OBJECT ObjectHandle reprezentuje WRAPPER OBJECT okolo novovytvoreneho OBJECT, ktory sa ma prenasat medzi viacerymi APP DOMAINS.
+   C. MATERIALIZACIA ObjectHandle, kedy sa vytvoreny OBJECT asociuje s APP DOMAIN sa robi pomocou METHOD ObjectHandle.Unwrap().
+19. REFLECTION reprezentuje TYPE MEMBERS pomocou CLASS MemberInfo. CLASS MemberInfo ma nasledujuce MEMBERS.
+   A. PROPERTY MemberInfo.Name vracia meno daneho MEMBER.
+   B. PROPERTY MemberInfo.DeclaringType vracia OBJECT typu Type, ktory reprezentuje TYPE v ktorom je MEMBER definovany.
+   C. PROPERTY MemberInfo.ReflectedType vracia OBJECT typu Type, ktory reprezentuje TYPE z ktoreho bol MEMBER ziskany. Pri VIRTUAL METHODS ak NIE SU OVERRIDED tak vracia CLASS v ktorej bola METHOD definovana a ak METHOD bola OVERRIDED, tak vracia CLASS, v ktorej bola METHOD OVERRIDED.
+   D. PROPERTY MemberInfo.Module vracia MODULE v ktorom bol Type vlastniaci dany MEMBER definovany.
+   E. PROPERTY MemberInfo.CustomAttributes vracia COLLECTION CUSTOM ATTRIBUTE DATA vsetkych CUSTOM ATTRIBUTES, ktore su asociovane s danym MEMBER. CUSTOM ATTRIBUTE DATA obsahuju CONSTRUCTOR a NAMED ARGUMMENTS daneho CUSTOM ATTRIBUTE.
+   F. METHOD MemberInfo.GetCustomAttributes() vracia ARRAY CUSTOM ATTRIBUTES, ktore su asociovane s danym MEMBER.
+   G. METHOD MemberInfo.GetCustomAttributesData() vracia ARRAY CUSTOM ATTRIBUTE DATA vsetkych CUSTOM ATTRIBUTES, ktore su asociovane s danym MEMBER. CUSTOM ATTRIBUTE DATA obsahuju CONSTRUCTOR a NAMED ARGUMMENTS daneho CUSTOM ATTRIBUTE.
+!!! 20. CLASS TypeInfo dedi z CLASS Type a ta dedi z CLASS MemberInfo. To znamena, ze vsetky METHODS CLASS MemberInfo su PRISTUPNE v CLASS Type.
+!!! 21. Instancie CLASS MemberInfo je mozne pomocou METHODS CLASS Type. METHODS CLASS MemberInfo maju pretazene verzie METHODS, ktore maju PARAMETER typu BindingFlags. Ak sa pouzije verzie METHODS bez PARAMETER typu BindingFlags, tak standardne sa vracaju PUBLIC NON-STATIC MEMBERS. Nastavenim PARAMETER typu BindingFlags je mozne ziskat vsetky MEMBERS.
+22. CLASS MemberInfo je ABSTRACT CLASS z ktorej dedia nasledujuce CLASSES.
+   A. CLASS Type reprezentuje MEMBER typu NESTED TYPE. CLASS TypeInfo dedi z CLASS Type.
+   B. CLASS MethodBase reprezentuje MEMBER typu METHOD. Je to ABSTRACT CLASS, z ktorej dedia CLASSES ConstructorInfo a MethodInfo.
+   C. CLASS FieldInfo reprezentuje MEMBER typu FIELD.
+   D. CLASS EventInfo reprezentuje MEMBER typu EVENT.
+   E. CLASS PropertyInfo reprezentuje MEMBER typu PROPERTY.
+23. CLASS TypeInfo je sucastou noveho REFLECTION API. CLASS TypeInfo dedi z CLASS Type a ma nasledujuce MEMBERS.
+   A. PROPERTY TypeInfo.DeclaredConstructors vracia vsetky CONSTRUCTORS daneho TYPE.
+   B. PROPERTY TypeInfo.DeclaredFields vracia vsetky FIELDS daneho TYPE.
+   C. PROPERTY TypeInfo.DeclaredMethods vracia vsetky METHODS daneho TYPE. Vracia aj GETTER a SETTER METHODS ci ADD a REMOVE EVENT METHODS.
+   D. PROPERTY TypeInfo.DeclaredNestedTypes vracia vsetky NESTED TYPES daneho TYPE.
+   E. PROPERTY TypeInfo.DeclaredEvents vracia vsetky EVENTS daneho TYPE.
+   F. PROPERTY TypeInfo.DeclaredProperties vracia vsetky PROPERTIES daneho TYPE.
+   G. PROPERTY TypeInfo.GenericTypeParameters vracia vsetky GENERIC PARAMETERS daneho TYPE.
+   H. PROPERTY TypeInfo.ImplementedInterfaces vracia vsetky INTERFACES, ktore implementuje dany TYPE.
+   I. METHOD TypeInfo.AsType() konveruje instanciu CLASS TypeInfo na CLASS typu Type.
+   J. METHOD TypeInfo.GetDeclaredField() vracia pre dany TYPE PUBLIC FIELD podla zadaneho NAME.
+   K. METHOD TypeInfo.GetDeclaredMethod() vracia pre dany TYPE PUBLIC METHOD podla zadaneho NAME.
+   L. METHOD TypeInfo.GetDeclaredMethods() vracia pre dany TYPE vsetky PUBLIC METHODS podla zadaneho NAME.
+   M. METHOD TypeInfo.GetDeclaredNestedType() vracia pre dany TYPE PUBLIC NESTED TYPE podla zadaneho NAME.
+   N. METHOD TypeInfo.GetDeclaredEvent() vracia pre dany TYPE PUBLIC EVENT podla zadaneho NAME.
+   O. METHOD TypeInfo.GetDeclaredProperty() vracia pre dany TYPE PUBLIC PROPERTY podla zadaneho NAME.
+!!! 24. Pomocou METHOD Type.InvokeMember() je mozne vyvolat LUBOVOLNY CALLABLE MEMBER (CONSTRUCTOR, METHOD, EVENT METHODS, PROPERTY METHODS) daneho TYPE. Platia nasledujuce fakty.
+   A. Ak METHOD Type.InvokeMember() vyvola CONSTRUCTOR, dojde k vytvoreniu noveho OBJECT.
+   B. Ak METHOD Type.InvokeMember() vyvola METHOD, tak sa CODE danej METHOD vykona.
+   C. Ak METHOD Type.InvokeMember() zavola GETTER PROPERTY METHOD, tak METHOD vrati hodnotu PROPERTY.
+   D. Ak METHOD Type.InvokeMember() zavola SETTER PROPERTY METHOD, tak METHOD nastavi hodnotu PROPERTY.
+   E. Ak METHOD Type.InvokeMember() zavola ADD EVENT METHOD, tak METHOD prida EVENT HANDLER do EVENT.
+   F. Ak METHOD Type.InvokeMember() zavola REMOVE EVENT METHOD, tak METHOD odstrani EVENT HANDLER z EVENT.
+25. METHOD Type.InvokeMember() pocas volania vykonava nasledujuce kroky.
+   !!! A. BINDING. Je to proces VYHLADANIA MEMBER, ktory sa ma vyvolat. Vyhladavanie sa robi podla NAME, poctu a typov PARAMETERS ako aj dalsich podmienok. Vyhladavanie robia CLASSES DERIVED z CLASS Binder. CLASS Type definuje PROPERTY Type.DefaultBinder, ktory vracia standardnu implementaciu Binder CLASS. Samozrejme je mozne definovat i CUSTOM BINDER ak sa implmentuje CLASS Binder.
+   B. INVOKING. Je to proces VYKONANIA DANEHO MEMEBER. Cinnost je zavisla od TYPU MEMBER. Ak sa jedna o FIELDS, tie je mozne CITAT a ZAPISTOVAT. METHODS je mozne spustit a pomocou CONSTRUCTOR je mozne vytvorit novy OBJECT.
+26. Pri volani METHOD Type.InvokeMember() je pri pristupe k PRIVATE MEMBERS APLIKOVANY CAS (CODE ACCESS SECURITY). Ak volajuca METHOD nema potrebne opravnenia, generuje sa EXCEPTION.
+!!!!! 27. Pouzitie Type.InvokeMember() je POMALE, pretoze pri kazdom vykonani je nutne robit BINDING a az potom INVOKING. Efektivnejsie je spravit iba RAZ BINDING najdenim prislusneho MEMBER (instancie CLASS DERIVED z CLASS MemberInfo) a nasledne volat METHDOS tychto DERIVED CLASSES. Tieto METHODS kedze uz su BOUND, vykonavaju IBA INVOKING, bez vykonania BINDING. Tym je cely proces vyvolavania daneho MEMBER OVELA RYCHLEJSI.
+!!! 28. Ak CLASS deklaruje 2 OVERLOADED METHODS, ktore maju rovnaky NAME, Binder ich MUSI ODLISIT, co robi pomocou poctu a typov PARAMETERS, ktore sa do daneho MEMBER prenasaju. Takto je mozne volat i OVERLOADED METHODS s rozlicnym poctom a typmi PARAMETERS. Stadnardny DefaultBinder podporuje i ZAKLADNE KONVERZIE medzi PRIMITIVE TYPES a teda napriklad ak METHOD ma ako PARAMETERY TYPE Int64 a pri volani Type.InvokeMember() sa zasle TYPE Int32, pricom CLASS NEDEFINUJE METHOD, ktora by mala PARAMETER TYPU Int32, tak bude volana verzia METHOD s parametrom Int64.
+!!! 29. Alternativou voci pouzitiu Type.InvokeMember(), alebo Method.Invoke() je pouzitie klucoveho slova [dynamic] ako sucasti DYNAMIC LANGUAGE RUNTIME. Velkou VYHODOU pouzitia KEYWORD [dynamic] je fakt, ze BINDER je schopny vykonat CACHING po vykonani BINDING daneho MEMBER a potom uz ho iba vyvolavat, bez nutnosti opakovane vykonat BINDING.
+!!! 30. CLASSES zdedene z MemberInfo, vratane CLASS Type su NAROCNE na MEMORY. Ak je nutne ukladat velke mnozstvo OBJECTS zdedenych z CLASS MemberInfo, je efektivnejsie namiesto ukladania CLASSES zdedenych z MemberInfo pouzit nasledujuce STRUCTURES.
+   A. STRUCTURE RuntimeTypeHandle reprezentuje LIGHTWEIGHT STRUCTURE, ktora obsahuje PROPERTY RuntimeTypeHandle.Value typu IntPtr reprezentujuci HANDLE na CLASS typu Type.
+   B. STRUCTURE RuntimeFieldHandle reprezentuje LIGHTWEIGHT STRUCTURE, ktora obsahuje PROPERTY RuntimeFieldHandle.Value typu IntPtr reprezentujuci HANDLE na CLASS typu FieldInfo.
+   C. STRUCTURE RuntimeMethodHandle reprezentuje LIGHTWEIGHT STRUCTURE, ktora obsahuje PROPERTY RuntimeMethodHandle.Value typu IntPtr reprezentujuci HANDLE na CLASS typu MethodInfo.
+31. CLASSES RuntimeTypeHandle, RuntimeFieldHandle a RuntimeMethodHandle a CLASSES Type, FieldInfo a MethodInfo je mozne konvertovat nasledujucimi METHODS.
+   A. STATIC METHOD Type.GetTypeHandle() konvertuje OBJECT typu Type na OBJECT typu RuntimeTypeHandle.
+   B. STATIC METHOD Type.GetTypeFromHandle() konvertuje OBJECT typu RuntimeTypeHandle na OBJECT typu Type.
+   C. PROPERTY FieldInfo.FieldHandle konvertuje OBJECT typu FieldInfo na OBJECT typu RuntimeFieldHandle.
+   D. STATIC METHOD FieldInfo.GetFieldFromHandle() konvertuje OBJECT typu RuntimeFieldHandle na OBJECT typu FieldInfo.
+   E. PROPERTY MethodInfo.MethodHandle konvertuje OBJECT typu MethodInfo na OBJECT typu RuntimeMethodHandle.
+   F. STATIC METHOD MethodInfo.GetFieldFromHandle() konvertuje OBJECT typu RuntimeMethodHandle na OBJECT typu MethodInfo.
+//-------------------------------------------------------------------------------------------------------

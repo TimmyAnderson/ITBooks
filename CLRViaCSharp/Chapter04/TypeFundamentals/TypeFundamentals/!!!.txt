@@ -1,0 +1,63 @@
+﻿//-------------------------------------------------------------------------------------------------------
+1. Program demonstruje zakladne vlastnosti triedy Object.
+2. V .NET su vsetky triedy musia dedit z triedy Object. Tato trieda nema ziadne FIELDS, ale ma nasledujuce meotdy.
+   A. MemberwiseClone() - PROTECTED NON-VIRTUAL metoda, ktora vykonava klonovanie objektu.
+   B. Finalize() - PROTECTED VIRTUAL metoda, ktora je volana pre FINALIZABLE objekty.
+   C. GetType() - PUBLIC NON-VIRTUAL metoda, ktora vracia TYP objektu. To, ze je NON-VIRTUAL zabranuje, aby metoda bola pretazena, kde by potomok mohol vracat INY TYP akeho je objekt v skutocnosti.
+   D. GetHashCode() - PUBLIC VIRTUAL metoda, ktora vracia HASH CODE objektu. Metoda sa pouziva pri niektorych typoch COLLECTIONS.
+   E. Equals() - PUBLIC VIRTUAL metoda, ktora vracia TRUE ak su 2 instancie objektu zhodne, inak FALSE.
+   F. ToString() - PUBLIC VIRTUAL metoda, ktora vracia textovu reprezentaciu objektu vhodnu napriklad pre DEBUG vypisy stavu objektu.
+3. V C# je mozne vykonat nasledujuce pretypovacie operacie.
+   A. Implicitne pretypovanie - robi sa pri pretypovani CHILD -> PARENT a kontroluje sa uz pri KOMPILACII.
+   B. Explicitne pretypovanie cez operator (TypeName) - robi sa pri pretypovani PARENT -> CHILD. Pri tomto pretypovani musi CLR DYNAMICKY ZISTIT, ci PARENT je predkom CHILD, co znamena PERFORMANCE HIT. Ak pretypovanie nie je mozne urobit (pretypovavany objekt nie je predkom pozadovaneho typu) pretypovanie vrati EXCEPTION - InvalidCastException.
+   C. Operator 'is' - nerobi pretypovanie, iba zisti ci objekt je daneho typu, resp. implementuje dany typ/rozhranie.
+   D. Operator 'as' - vykona pretypovanie ak objekt je daneho typu, resp. implementuje dany typ/rozhranie, inak vracia NULL.
+!!! 4. Pretypovanie zo sebou prinasa PERFORMANCE HIT, ktory je dany zistenim ci dany PARENT typ je mozne pretypovat na CHILD typ a preto by malo byt jeho pouzitie cp najviac MINIMALIZOVANE.
+!!!!! 5. Pri pouziti operatorov 'is' a 'as' ak dany typ ma PRETAZENE PRETYPOVACIE OPERATORY, tak ich operatory 'is' a 'as' NEPOUZIVAJU.
+!!! 6. CLR pojem NAMESPACE NEPOZNA. CLR pozna iba mena tried s PLNYM NAZVOM. NAMESPACE je cisto zalezitost konkretneho jazyka.
+7. C# NAMESPACES implementuje tak, ze pri kompilacii pre meno triedy najprv zisti ci takato trieda nie je v niektorej z ASSEMBLY a nasledne skusa pridat KAZDY JEDEN NAMESPACE a vytvorene meno triedy hlada v referovanych NAMESPACES.
+!!! 8. C# umoznuje definovat 2 typy ALIASES.
+   A. INTERNY ALIAS je mozne pouzit na vytvorenie ALIASU, ktory je mozne pouzit na skratene prilis dlhych mien. Vyhodny je napriklad pri deklarovani Dictionary<Key,Value>.
+   B. EXTERNY ALIAS umoznuje riesit problem ak 2 triedy v ROZNYCH ASSEMBLIES maju ROVNAKE MENO i NAMESPACE. Pri definovani sa pouziva syntax 'extern using Alias', kde Alias je MENO REFEROVANEJ ASSEMBLY.
+9. Objekty sa v C# vytvaraju pomocou klucoveho slova 'new'. Pocas vytvorenia objektu sa vykonavaju nasledujuce operacie.
+   A. Vypocita sa velkost objektu. Ta je dana SUCTOM velkosti VSETKYCH FIELDS, dlzky TYPE OBJECT POINTER (odkaz na metadata o TYPE v dlzke 4 bytes pre x86, resp. 8 bytes pre x64) a SYNC BLOCK INDEX (4 bytes).
+   B. Alokuje sa pamat z HEAP a inicializuje sa 0.
+   C. Inicializuju sa hodnoty TYPE OBJECT POINTER a SYNC BLOCK INDEX.
+   D. Zavola sa KONSTRUKTOR, ktory eventualne moze zavolat KONSTRUKTOR predka.
+!!! 10. CLR pri volani metod prenasa parametre tak ako CALLING CONVENTION '__fastcall', pri ktorej platia nasledujuce pravidla.
+   A. Pred zavolanim metody CALLER PRVE 2 PARAMETRE ulozi do REGISTROV ECX a EDX a ostatne parametre (ak su) ulozi do STACK.
+   B. Po parametroch sa do STACK ulozi NAVRATOVA ADRESY metody.
+   C. CALLEE vykona svoj kod, VYCISTI STACK od PARAMETROV a NAVRATOVEJ ADRESY metody a skoci na NAVRATOVU ADRESU metody.
+!!!!! 11. CLR pre KAZDY TYP vytvara SPECIALNY OBJEKT typu 'Type' - TYPE OBJECT, ktory popisuje dany typ a obsahuje ZOZNAM METOD, ktore dany typ implementuje. Instancie objektu potom v polozke TYPE OBJECT POINTER (ktora je pridana do KAZDEHO VYVORENEHO OBJEKTU) obsahuju SMERNIK na TYPE OBJECT. Pomocou TYPE OBJECT POINTER sa CLR vie pre danu instanciu triedy dostat k TYPE OBJECT POPISUJUCOM dany objekt a z neho ziskat ADRESY METOD, ktore dany objekt IMPLEMENTUJE. TYPE OBJECT ma nasledujuce vlastnosti.
+   A. TYPE OBJECT je BEZNY CLR OBJEKT, ktory je typu Type.
+   B. Tak ako KAZDY INY CLR OBJEKT i on obsahuje okrem samotnych FIELDS i TYPE OBJECT POINTER a SYNC BLOCK INDEX.
+   C. V TYPE OBJECT POINTER obsahuje smernik na SPECIALNE VYTVORENY objekt typu Type (Type preto, lebo TYPE OBJECT je typu TYPE), ktory CLR vytvori pri SVOJOM STARTE a ktory v TYPE OBJECT POINTER sa referuje sam na seba.
+   D. TYPE OBJECT obsahuje ENTRIES pre vsetkty STATICKE FIELDS, ktore dany TYP obsahuje.
+   E. TYPE OBJECT obsahuje ENTRIES pre vsetky STATICKE METHODS, ktore dany TYP obsahuje.
+   !!! F. TYPE OBJECT obsahuje ENTRIES pre vsetky NON-VIRTUAL METHODS, ktore dany TYP obsahuje.
+   !!!!! G. TYPE OBJECT obsahuje ENTRIES pre vsetky VIRTUAL METHODS, ktore dany TYP obsahuje a VSETKY VIRTUAL METHODS, ktore obsahuju PARENT TYPY.
+   !!!!! H. Fakt, ze TYP obsahuje ENTRIES ako pre VIRTUAL metody, ktore typ definuje, tak i VIRTUAL metody, ktore definuju JEHO PREDKOVIA JE EXTREMNE DOLEZITY, pretoze do tychto ENTRIES sa ukladaju SKUTOCNE ADRESY METOD, ktore sa maju pri volani VIRTUAL metod zavolat a existencia tychto ENTRIES vlastne UMOZNUJE POLYMORFNE VOLANIE.
+!!! 12. Pri JIT KOMPILACII volania STATICKEJ METODY vykonava JIT nasledujuce kroky.
+   A. Ziska adresu TYPE OBJECT pre typ, ktoreho STATICKU METODU volam.
+   B. V zozname METOD TYPE OBJECT, ktory obsahuje VSETKY METODY DANEHO TYPU (STATICKE i NESTATICKE) sa HLADA ENTRY zodpovedajucej STATICKEJ METODY.
+   C. Ak dana metoda BOLA SKOMPILOVANA, tak ENTRY obsahuje ADRESU METODY, ktoru vrati.
+   D. Ak metoda SKOMPILOVANA NIE JE, tak sa skompiluje a jej adresa sa ulozi do ENTRY v TYPE OBJECT.
+   !!! E. Vratenu adresu na TERAZ UZ SKOMPILOVANU STATICKU METODU potom JIT KOMPILATOR ulozi do VYGENEROVANEHO NATIVNEHO KODU PRELOZENEJ STATICKEJ METODY a teda pri volani meotdy UZ K ZIADNEMU HLADANIU NEDOCHADZA. To sa robi IBA POCAS PROCESU JIT KOMPILACIE.
+!!! 13. Pri JIT KOMPILACII volania NON-VIRTUAL METODY vykonava JIT nasledujuce kroky.
+   A. Z TYPE OBJECT POITNER sa ziska adresa TYPE OBJECT pre typ, ktoreho NON-VIRTUAL METODU volam.
+   B. V zozname METOD TYPE OBJECT, ktory obsahuje VSETKY NON-VIRTUAL METODY DANEHO TYPU sa HLADA ENTRY zodpovedajucej NON-VIRTUAL METODY.
+   !!! C. Ak sa dana ENTRY v objekte NENACHADZA, tak sa pomocou smernika na PARENT TYPE OBJECT REKURZIVNE hlada TEN TYPE OBJECT, ktory ENTRY pre hladanu metodu OBSAHUJE.
+   D. Po najdeni metody ak dana metoda BOLA SKOMPILOVANA, tak ENTRY obsahuje ADRESU METODY, ktoru vrati.
+   E. Ak metoda SKOMPILOVANA NIE JE, tak sa skompiluje a jej adresa sa ulozi do ENTRY v TYPE OBJECT.
+   !!! F. Vratenu adresu na TERAZ UZ SKOMPILOVANU STATICKU METODU potom JIT KOMPILATOR ulozi do VYGENEROVANEHO NATIVNEHO KODU PRELOZENEJ NON-VIRTUAL METODY a teda pri volani meotdy UZ K ZIADNEMU HLADANIU NEDOCHADZA. To sa robi IBA POCAS PROCESU JIT KOMPILACIE.
+!!! 14. Pri JIT KOMPILACII volania NON-VIRTUAL METODY vykonava JIT nasledujuce kroky.
+   A. Volanie VIRTUAL METODY nahradi kodom, ktory DYNAMICKY NAJDE SKUTOCNU ADRESU VIRTUAL METODY.
+   !!! B. Tento kod je vykonavany PRI KAZDOM VOLANI VIRTUAL METODY.
+!!!!! 15. Kod, ktory sa vykonava pri VOLANI VIRTUAL METODY obsahuje nasledujuce kroky.
+ JIT PRIDA pred volanie VIRTUAL METODY SPECIALNY KOD, ktory je volany VZDY pred KAZDYM VOLANIM VIRTUALNEJ METODY. Tento kod obsahuje nasledujuce kroky.
+   A. Z TYPE OBJECT POITNER sa ziska adresa TYPE OBJECT pre typ, ktoreho VIRTUAL METODU volam.
+   !!! B. V zozname METOD TYPE OBJECT, ktory obsahuje VSETKY VIRTUAL METODY DANEHO TYPU sa HLADA ENTRY zodpovedajucej VIRTUAL METODY. Kedze v TYPE OBJECT su ENTRIES I PRE VIRTUAL METODY VSETKYCH PREDKOV, tak ENTRY je VZDY NAJDENA BEZ NUTNOSTI REKURZIVNEHO PREHLADAVANIE, ako je tomu pri JIT KOMPILACII (pozor iba kompilacii a nie vykonani) NON-VIRTUAL METODY.
+   C. Po najdeni metody ak dana metoda BOLA SKOMPILOVANA, tak ENTRY obsahuje ADRESU METODY, ktoru vrati.
+   D. Ak metoda SKOMPILOVANA NIE JE, tak sa skompiluje a jej adresa sa ulozi do ENTRY v TYPE OBJECT.
+   !!! E. Vratena adresa sa pouzje na VOLANIE VIRTUAL METODY. Kedze adresa je adresou SKUTOCNEHO OBJEKTU, tym je volanie POLYMORFNE.
+//-------------------------------------------------------------------------------------------------------

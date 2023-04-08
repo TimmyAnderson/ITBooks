@@ -1,0 +1,100 @@
+//-------------------------------------------------------------------------------------------------------
+1. Program demonstruje pouzivanie GENERIC TYPES, METHODS a DELEGATES.
+2. CLR umoznuje pouzivat GENERICS v nasledujucich strukturach.
+   A. GENERIC REFERENCE TYPES.
+   B. GENERIC VALUE TYPES.
+   C. GENERIC DELEGATES.
+   D. GENERIC INTERFACES. Mozu byt deklarovane pre REFERENCE i VALUE TYPES.
+   E. GENERIC METHODS. Umoznuju definovat TYPE PARAMETER, ktory je NEZAVISLY na pripadnom TYPE PARAMETER definovanom v CLASS, STRUCT ci INTERFACE, ktory danu METHOD deklaruje.
+3. TYPE PARAMETER je PARAMETER reprezentujuci GENERIC TYPE v GENERIC strukture (REFERENCE TYPES, VALUE TYPES, INTERFACES, DELEGATES a METHODS).
+4. TYPE ARGUMENT je realny TYPE, ktory subsituuje TYPE PARAMETER pri vytvarani instancii GENERIC struktur (REFERENCE TYPES, VALUE TYPES, INTERFACES, DELEGATES a METHODS).
+5. Vyhodou pouzitia GENERICS je okrem vyssej typovej bezpecnosti i rychlejsi CODE, pretoze v minulosti sa pouzival na ukladanie VALUE TYPES do NON-GENERIC COLLECTIONS TYPE Object co viedlo k nutnosti vykonat BOXING. Pri pouziti GENERICS to NIE JE NUTNE.
+!!! 6. NAMESPACE System.Collections.Concurrent obsahuje THREAD-SAFE GENERIC COLLECTIONS.
+   A. CLASS ConcurrentStack<Value> je THREAD-SAFE implementacia STACK.
+   B. CLASS ConcurrentQueue<Value> je THREAD-SAFE implementacia QUEUE.
+   C. CLASS ConcurrentQueue<Key,Value> je THREAD-SAFE implementacia DICTIONARY.
+   D. CLASS ConcurrentBag<Value> je THREAD-SAFE implementacia BAG. Na rozdiel od SETS, BAGS podporuju aj duplikatne OBJECTS.
+!!! 7. CLR generuje pri JIT COMPILATION pre KAZDU KOMBINACIU TYPE ARGUMENTS NOVU INSTANCIU GENERIC struktury (REFERENCE TYPES, VALUE TYPES, INTERFACES, DELEGATES a METHODS). To znaci, ze pouzitie GENERIC struktur vedie k ZVYSENEMU NAROKU na MEMORY.
+8. CLR rozdeluje GENERIC TYPES podla toho ci maju definovane vsetky TYPE PARAMETERS na 2 kategorie.
+   A. OPEN TYPES su GENERIC TYPES, ktore NEMAJU definovane VSETKY TYPE PARAMETRS.
+   B. CLOSED TYPES su GENERIC TYPES, ktore MAJU definovane VSETKY TYPE PARAMETRS.
+!!! 9. Pre OPEN a CLOSED typy platia nasledujuce pravidla.
+   A. Pre OPEN aj CLOSED TYPES su generovane TYPE OBJECTS (OBJECTS DERIVED z CLASS Type), ktore reprezentuju dany TYPE.
+   B. STATIC FIELDS su alokovane v TYPE OBJECTS pre CLOSED TYPES, co znamena, ze napriklad List<string> a List<int> maju vlastne STATIC FIELDS.
+   C. STATIC CONSTRUCTORS su definovane pre KAZDY CLOSED TYPE zvlast, co znamena, ze napriklad List<string> a List<int> maju vlastne STATIC CONSTRUCTORS.
+!!! 10. STATIC CONSTRUCTOR v GENERICS TYPED je idealny na kontrolu ci dany TYPE PARAMETER splna poziadavky na TYPE. Ak ich nesplna je mozne hodenim EXCEPTION nepovolit vytvorenie takehoto TYPE.
+11. Ked sa definujuju GENERICS CLASSES, ak dana CLASS ma byt DERIVED, tak je vhodne definovat NON-GENERICS BASE CLASS, ktora bude spolocnou BASE CLASS pre vsetky GENERICS CLASSES. Namiesto BASE CLASS je mozne definovat aj spolocne INTERFACES.
+12. C# umoznuje pomocou KEYWORD [using] definovat CUSTOM TYPE NAME, ktory bude reprezentovat iny TYPE. Je to podobny vyznam aky ma KEYWORD [typedef] v C++. Pri pouziti GENERIC TYPES je mozne vdaka KEYWORD [using] priradit CLOSED TYPES so substituovanymi TYPE PARAMETERS CUSTOM TYPE NAME, ktore je mozne pouzit namiesto CLOSED TYPES ci sa CODE stane citatelnejsim (nepouzivaju sa <>).
+!!! 13. CLR pri JIT COMPILATION do NATIVE CODE dodrzuje nasledujuce zasady.
+   A. Pre kazdy TYPE PARAMETER typu VALUE TYPE je kompilovana SEPARATNA verzia NATIVE CODE. Teda napriklad ak je pre GENERIC TYPE pouzity raz TYPE PARAMETER Int32 a druhykrat TYPE PARAMETER Double JIT generuju 2 ROZLICNE NETIVE FUNCTIONS. Je to preto, lebo VALUE TYPES maju ROZDIELNU VELKOST a takisto preto, lebo casto sa pre ine typy VALUE TYPES pouzivaju ODLISNE CPU INSTRUCTIONS. Napriklad pre scitanie Int32 ma CPU inu INSTRUCTION ako pre scitanie Double.
+   B. Pre vsetky TYPE PARAMETERS typu REFERENCE TYPE je kompilovana JEDINA verzia NATIVE CODE. Teda VSETKY REFERENCE TYPES ZDIELAJU JEDINU VERZIU NATIVE CODE. Tato optimalizacia je mozna vdaka tomu, ze VSETKY REFERENCE TYPES maju velkost SIZEOF(POINTER) a takisto preto, lebo CPU ma pre pracu s POINTER vzdy ROVNAKE CPU INSTRUCTIONS.
+14. CLR umoznuje definovat GENERIC INTERFACES, ktore mozu pouzivat vo svojich METHODS, PROPERTIES a EVENTS TYPE PARAMETER.
+15. CLR umoznuje definovat GENERIC DELEGATES, ktore mozu pouzivat TYPE PARAMETERS vo svojich PARAMETERS a RETURN VALUES.
+!!! 16. CLR umoznuje pre GENERICS DELEGATES a GENERICS INTERFACES (NIE vsak CLASSES) aplikovat mechanizmus COVARIANCE a CONTRAVARIANCE umoznujuci PRETYPOVAT GENERICS DELEGATES/INTERFACES na PROTOTOPOVO ROVNAKE DELEGATES/INTERFACES, ktore maju rovnaky pocet TYPE PARAMETERS, avsak NEMAJU IDENTICKY TYPES TYPE PARAMETERS.
+17. CLR umoznuje nasledujuce typy TYPE PARAMETER VARIANTS.
+   A. INVARIANT TYPE PARAMETERS NEUMOZNUJU konverziu TYPE PARAMETER na iny TYPE.
+   B. CONTRAVARIANT TYPE PARAMETERS umoznuju konverziu GENERIC DELEGATE/INTERFACE s TYPE PARAMETER T1 na GENERIC DELEGATE/INTERFACE s TYPE PARAMETER T2, ak T2 je DERIVED z T1. CONTRAVARIANT TYPE PARAMETERS je mozne pouziva IBA ako PARAMETERS GENERIC DELEGATES, alebo PARAMETER GENERIC INTERFACE METHODS. Definuju sa aplikovanim KEYWORD [in] TYPE PARAMETER.
+   C. COVARIANT TYPE PARAMETERS umoznuju konverziu GENERIC DELEGATE/INTERFACE s TYPE PARAMETER T1 na GENERIC DELEGATE/INTERFACE s TYPE PARAMETER T2, ak T1 je DERIVED z T2. COVARIANT TYPE PARAMETERS je mozne pouziva IBA ako RETURN VALUES GENERIC DELEGATES, alebo RETURN VALUES GENERIC INTERFACE METHODS. Definuju sa aplikovanim KEYWORD [out] TYPE PARAMETER.
+!!! 18. COVARIANTS a CONTRAVARIANTS NIE JE MOZNE POUZIT ak sa TYPE PARAMETERS maju pouzit pre METHOD PARAMETERS oznacenych KEYWORD [ref] a [out].
+!!!!! 19. COVARIANTS a CONTRAVARIANTS NIE JE MOZNE POUZIT ak na suplovanie TYPE Object a VALUE TYPES, aj ked v skutocnosti VSETKY VALUE TYPES su DERIVED z TYPE Object.
+!!!!! 20. COVARIANTS a CONTRAVARIANTS sluzia na to, aby CLOSED DELEGATES/INTERFACES bolo mozne aplikovat UNIVERZALNEJSIE, aj ked TYPE PARAMETERS NIE SU IDENTICKE s ocakavanymi TYPE PARAMETERS, no su navzajom IMPLICITNE KONVERTOVATELNE (DERIVED TYPES na BASE TYPES).
+21. METHODS mozu podobne ako TYPES definovat vlastne TYPE PARAMETERS. TYPE PARAMETERS takychto GENERIC METHODS su NEZAVISLE na TYPE PARAMETERS TYPES v ktorych sa METHODS nechadzaju.
+!!! 22. V pripade, ze sa pri volani GENERIC METHOD nezadaju TYPE PARAMETERS, tak C# ich pri kompilacii pokusi INFERROVAT z TYPES PARAMETERS, ktore boli do METHOD zaslane. REFERENCE TYPES su povazovane za IDENTICKE a teda TYPE String a TYPE Object su povazovane za rovnake. Nie vzdy je to mozne, pretoze ak napriklad GENERIC METHOD s 2 TYPE PARAMETERS vyzaduje, aby obe boli rovnake, no pri volani sa pouzije napriklad BASE a DERIVED TYPES (napriklad String a Int32), tak COMPILER nebude vediet vykonat INFERROVANIE TYPE PARAMETERS.
+!!! 23. GENERIC a NON-GENERIC METHODS MOZU byt OVERRIDEN. To znaci, ze je mozne definovat GENERIC METHOD, ktora bude mat 'N' TYPE PARAMETERS a NON-GENERIC METHOD s 'N' PARAMETERS. C# pri na zaklade TYPOV PARAMETERS zavola bud GENERIC, alebo NON-GENERIC METHOD. C# vykonava TYPE PARAMTER INFERRENCE a PARAMETERS umoznuju zavolat GENERIC aj NON-GENERIC METHODS, C# preferuje volanie NON-GENERIC METHOD.
+24. V C# PROPERTIES, EVENTS, OPERATORS, CONSTRUCTORS a FINALIZERS NEMOZU DEFINOVAT GENERICS TYPE PARAMETERS, ale MOZU POUZIVAT GENERICS TYPE PARAMETERS vo svojich PARAMETERS a BODIES.
+25. GENERICS umoznuje deklarovat CONSTRAINTS pomocou KEYWORD [where]. CONSTRAINTS mnozinu TYPES ktore OBMEDZIA mnozinu TYPES, ktore mozu byt v danom GENERICS konstrukte (CLASS, STRUCT, INTERFACE, METHOD, DELEGATE) pouzite ako TYPE PARAMETER. Pre CONSTRAINTS platia nasledujuce pravidla.
+   A. GENERIC METHODS NEMOZU byt OVERLOADED IBA na zaklade ROZDIELNYCH CONSTRAINTS.
+   B. VIRTUAL METHODS ak su OVERRIDEN v DERIVED CLASS, tak DEDIA vsetky CONSTRAINTS z BASE CLASS. OVERRIDEN METHODS NEMOZU nijako modifikovat svoje CONSTRAINTS a v OVERRIDEN METHODS sa NESMIE definovat KEYWORD [where], inak C# generuje ERROR.
+26. CLR definuje nasledujuce typy CONSTRAINTS.
+   A. PRIMARY CONSTRAINTS.
+   B. SECONDARY CONSTRAINTS.
+   C. CONSTRUCTOR CONSTRAINTS.
+27. Pre PRIMARY CONSTRAINTS platia nasledujuce zasady.
+   A. GENERIC CONSTRUCTS (CLASSES, STRUCTURES, INTERFACES, METHODS, DELEGATES) mozu mat definovany MAXIMALNE 1 PRIMARY CONSTRAINT.
+   B. PRIMARY CONSTRAINT moze obsahovat TYPE. Tento TYPE potom urcuje, ze za TYPE PARAMETERS je mozne subsituovat bud TYPE definovany v CONSTRAINT, alebo DERIVED TYPE z daneho TYPE.
+   !!! C. Ako PRIMARY CONSTRAINT NIE je mozne pouzit TYPES Object, Array, Delegate, MulticastDelegate, ValueType, Enum a Void.
+   D. PRIMARY CONSTRAINT moze obsahovat KEYWORD [class]. V tomto pripade za TYPE PARAMETER je mozne subsituovat LUBOVOLNY REFERENCE TYPE.
+   E. PRIMARY CONSTRAINT moze obsahovat KEYWORD [struct]. V tomto pripade za TYPE PARAMETER je mozne subsituovat LUBOVOLNY VALUE TYPE.
+   !!! F. PRIMARY CONSTRAINT NEMOZE obsahovat VALUE TYPES. To znaci, ze CLR NEUMOZNUJE definovat CONSTRAINT pre konkretny VALUE TYPE, ale iba pre VSETKY VALUE TYPES pouzitim KEYWORD [struct].
+   !!!!! G. PRIMARY CONSTRAINT mozu pouziva IBA NON-SEALED TYPES ako CONSTRAINT TYPES. SEALED TYPES NESMU vystupovat ako PRIMARY CONSTRAINTS a C# pre takyto CONSTRAINT vyhodi kompilacnu chybu. Je to preto, lebo ak by sa ako CONSTRAINT definovala SEALED CLASS, tak by zoznam povolenych TYPES bol obmedzeny na JEDINY SEALED TYPE a v tomto pripade je efektivnejsie GENERIC CODE VOBEC NEPOUZIT, pretoze je rychlejsi.
+   !!! H. PRIMARY CONSTRAINTS je mozne definovat aj pre STRUCTURES ci INTERFACES.
+28. Pre SECONDARY CONSTRAINTS platia nasledujuce zasady.
+   A. GENERIC CONSTRUCTS (CLASSES, STRUCTURES, INTERFACES, METHODS, DELEGATES) moze mat definovane 0, 1, alebo viac SECONDARY CONSTRAINTS.
+   B. Ak je SECONDARY CONSTRAINT INTERFACE, tak TYPE PARAMETER MUSI IMPLEMENTOVAT tento INTERFACE.
+   C. SECONDARY CONSTRAINTS (ozancovane ako NAKED TYPE PARAMETER CONSTRAINTS) je mozne pouzit aj na vytvorenie VAZBY medzi 2 a viacerymi TYPE PARAMETERS. Vdaka nej je napriklad mozne definovat poziadavku aby jeden TYPE PARAMETER dedil z ineho TYPE PARAMETER.
+   !!! D. SECONDARY CONSTRAINTS je mozne definovat aj pre STRUCTURES ci INTERFACES.
+29. Pre CONSTRUCTOR CONSTRAINTS platia nasledujuce zasady.
+   A. GENERICS moze mat definovany MAXIMALNE 1 CONSTRUCTOR CONSTRAINT.
+   B. CONSTRUCTOR CONSTRAINT urcuje podmienku, ze TYPE zadany ako TYPE PARAMETER MUSI MAT definovany DEFAULT (bezparametricky) CONSTRUCTOR.
+   C. CONSTRUCTOR CONSTRAINT NEMOZE byt definovany ak sa pouzije SECONDARY CONSTRAINT 'struct', pretoze VALUE TYPES maju VZDY DEFUALT CONSTRUCTOR a podmienka by bola zbytocne DUPLICITNA.
+30. V GENERIC CONSTRUCTS je mozne vykonavat TYPE CONVERSIONS iba ak to CONSTRAINTS umoznuju, alebo potom pomocou KEYWORD [as].
+!!! 31. KEYWORD [default] je mozne pouzit v GENERICS METHODS na substituovanie DEFAULT VALUE TYPE PARAMETER.
+   A. Pre REFERENCE TYPES je default(T)=null.
+   B. Pre VALUE TYPES default(T) vracia hodnotu VALUE TYPU so VSETKYMI BITS nastavenymi na 0.
+!!!!! 32. Pre EXPRESSIONS (SomeValue==null) a (SomeValue!=null) CLR implementuje specialnu optimalizaciu, ked aj ked nie je definovany CONSTRAINT [class], tak je mozne tieto EXPRESSIONS aplikovat. Ak sa takyto GENERIC CONSTRUCT pouzije pre VALUE TYPES, tak JIT COMPILER automaticky detekuje ci vysledok EXPRESSIONS bude TRUE, alebo FALSE a podla toho bud CODE v EXPRESSION bude do NATIVE CODE vlozeny, alebo bude vyhodeny.
+!!! 33. CLR NEUMOZNUJE pouzivat OPERATORS v GENERIC CONSTRUCTS. Jedine pouzitie OPERATORS v GENERIC CONSTRUCTS je pouzitie OPERATOR== a OPERATOR!= na porovnanie VALUE s NULL VALUE.
+//-------------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------------
+Vysvetlenie CONTRAVARIANT TYPE PARAMETERS.
+
+1. Definuje sa DELEGATE [delegate void DPrint<in TParameter>(TParameter SomeParam)]. Kedze TYPE PARAMETER TParameter je oznaceny KEYWORD [in], tak reprezentuje CONTRAVARIANT TYPE PARAMETER.
+2. Definuje sa HANDLER [void PrintHandler(object SomeParam)]. HANDLER teda prijima Object ako svoj PARAMETER.
+!!! 3. Vytvori sa INSTANCIA DELEGATE [DPrint<string> Callback=new DPrint<string>(PrintHandler)]. Ako je tu vidiet, tak INSTANCIA DELEGATE [void DPrint<string>(string SomeParam)] sa inicializovala HANDLER, ktory ma PARAMETER TYPU Object a NIE String. Ak by TYPE PARAMETER nemal aplikovany KEYWORD [in], tak by takato konverzia NEBOLA MOZNA.
+4. Vyvolanie DELEGATE sa vykonava CODE [Callback("XXX")]. Teda ako PARAMETER sa dava TYPE String, kedze DELEGATE ocakava TYPE String.
+!!!!! 5. Dovod pre ktory je tato konverzia mozna je nasledujuci.
+   A. INSTANCIA DELEGATE 'Callback' ocakava PARAMETER TYPU String.
+   B. Pri vyvolani INSTANCIE DELEGATE 'Callback' sa zavola HANDLER [void PrintHandler(object SomeParam)].
+   !!!!! C. Kedze HANDLER ocakava ako PARAMETER TYPU Object a TYPE String je DERIVED z TYPE Object, tak konverzia je KOREKTNA.
+//-------------------------------------------------------------------------------------------------------
+Vysvetlenie COVARIANT TYPE PARAMETERS.
+
+1. Definuje sa DELEGATE [delegate TReturnValue DGetValue<out TReturnValue>()]. Kedze TYPE PARAMETER TReturnValue je oznaceny KEYWORD [out], tak reprezentuje COVARIANT TYPE PARAMETER.
+2. Definuje sa HANDLER [string GetValueHandler()]. HANDLER teda vracia String ako RETURN VALUE.
+!!! 3. Vytvori sa INSTANCIA DELEGATE [DGetValue<object> Callback=new DGetValue<object>(GetValueHandler)]. Ako je tu vidiet, tak INSTANCIA DELEGATE [delegate TReturnValue DGetValue<out TReturnValue>()] sa inicializovala HANDLER, ktory ma RETURN VALUE TYPU Object a NIE String. Ak by TYPE PARAMETER nemal aplikovany KEYWORD [out], tak by takato konverzia NEBOLA MOZNA.
+4. Vyvolanie DELEGATE sa vykonava CODE [object XXX=Callback()]. Teda RETURN VALUE je TYPU Object, kedze DELEGATE ocakava TYPE Object.
+!!!!! 5. Dovod pre ktory je tato konverzia mozna je nasledujuci.
+   A. INSTANCIA DELEGATE 'Callback' ocakava RETURN VALUE TYPU Object.
+   B. Pri vyvolani INSTANCIE DELEGATE 'Callback' sa zavola HANDLER [string GetValueHandler()].
+   !!!!! C. Kedze HANDLER vracia RETURN VALUE TYPU String a VARIABLE 'XXX' je TYPU Object, pricom TYPE String je DERIVED z TYPE Object, tak konverzia je KOREKTNA.
+//-------------------------------------------------------------------------------------------------------

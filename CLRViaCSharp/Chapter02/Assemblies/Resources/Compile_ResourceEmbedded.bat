@@ -1,0 +1,1 @@
+csc.exe /out:Program_ResourceEmbedded.exe /target:exe /resource:MyResource.txt /r:MSCorLib.dll Program.cs

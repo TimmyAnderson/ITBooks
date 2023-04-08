@@ -1,0 +1,149 @@
+//-------------------------------------------------------------------------------------------------------
+1. Solution demonstruje ako je mozne vyuzivat THREADS na vykonavanie IO operacii.
+2. SYNCHRONNE IO OPERATIONS vo WINDOWS su vykonavane nasledovne.
+   A. V C# CODE sa zavola METHOD FileStream.Read().
+   B. METHOD FileStream.Read() zavola WIN32 API FUNCTION ReadFile().
+   C. WIN32 API FUNCTION ReadFile() vytvori DATA STRUCTURE IRP, ktora obsahuje: FILE HANDLE, FILE POINTER odkial sa maju data z FILE citat, BUFFER kde sa maju data ukladat a POCET BYTES ktore sa maju nacitat.
+   D. WIN32 API FUNCTION ReadFile() zavola WINDOWS KERNEL cim sa spravi prechod z USER MODE do KERNEL MODE. Zaroven sa prenesie i IRP.
+   E. V KERNEL MODE WINDOWS na zaklade FILE HANDLE zisti akemu DEVICE sa ma IO REQUEST poslat. Na zaklade toho je identifikovany DRIVER, ktory na IO OPERATION spracovat.
+   F. IRP je zaslana do DRIVER. Kazdy DRIVER obsahuje IRP QUEUE do ktorej sa IRP ukladaju a odkial ich DRIVER vybera a (spravidla) SEKVENCNE SPRACOVAVA. SEKVENCNE preto, lebo VACSINA DEVICES, ktore DRIVERS obsluhuju vedia v danom case spracovat iba 1 IO OPERATION.
+   !!! G. THREAD, ktory volal FileStream.Read() je v tejto chvili uvedeny do SLEEP modu cim sice CPU NIE JE ZATAZENE, ale THREAD ZBYTOCNE ZABERA MEMORY.
+   H. DEVICE zacne vykonavat IO OPERATION a po jej skonceni su data nacitane v IO OPERATION prenesene do MEMORY a DRIVER je o skonceni IO OPERATION informovany generovanim INTERRUPT.
+   I. Z KERNEL MODE je vysledok IO OPERATION preneseny do USER MODE a WIN32 API FUNCTION ReadFile() skonci.
+   J. Vysledok IO OPERATION je preneseny do .NET a METHOD FileStream.Read() skonci.
+!!!!! 3. OBROVSKOU NEVYHODOU SYNCHRONNYCH IO OPERATIONS je to, ze POCAS VYKONAVANIA IO OPERATION je THREAD BLOKOVANY. Pri pouzivani SYNCHRONNYCH IO OPERATIONS to znamena, ze ak by v danom case bezalo 100 IO OPERATIONS, tak program by musel mat vytvorenych 100 THREADS co znamena velku spotrebu MEMORY (kazdy THREAD v .NET viac ako 1 MB) a takisto po ukonceni IO OPERATIONS ak by naraz mal bezat VELKY POCET THREADS, tak velke mnozstvo CONTEXT SWITCHES.
+4. ASYNCHRONNE IO OPERATIONS vo WINDOWS su vykonavane nasledovne.
+   A. OBJECT FileStream MUSI byt vytvoreny s PARAMETROM FileOptions.Asynchronous.
+   B. V C# CODE sa zavola METHOD FileStream.BeginRead(), pricom ako PARAMETER sa jej preda CALLBACK METHOD, ktora sa zavola po vykonani IO OPERATION, aby v nej mohli byt spracovane vysledky.
+   C. METHOD FileStream.BeginRead() vytvori INTERNU CALLBACK METHOD, ktora sa zavola pri skonceni IO OPERATION a zaroven zavola WIN32 API FUNCTION ReadFile().
+   D. WIN32 API FUNCTION ReadFile() vytvori DATA STRUCTURE IRP, ktora obsahuje: FILE HANDLE, FILE POINTER odkial sa maju data z FILE citat, BUFFER kde sa maju data ukladat a POCET BYTES ktore sa maju nacitat.
+   !!! E. WIN32 API FUNCTION ReadFile() zaregistruje CALLBACK FUNCTION, ktora sa zavola, ked IO OPERATION SKONCI.
+   F. WIN32 API FUNCTION ReadFile() zavola WINDOWS KERNEL cim sa spravi prechod z USER MODE do KERNEL MODE. Zaroven sa prenesie i IRP.
+   G. V KERNEL MODE WINDOWS na zaklade FILE HANDLE zisti akemu DEVICE sa ma IO REQUEST poslat. Na zaklade toho je identifikovany DRIVER, ktory na IO OPERATION spracovat.
+   H. IRP je zaslana do DRIVER. Kazdy DRIVER obsahuje IRP QUEUE do ktorej sa IRP ukladaju a odkial ich DRIVER vybera a (spravidla) SEKVENCNE SPRACOVAVA. SEKVENCNE preto, lebo VACSINA DEVICES, ktore DRIVERS obsluhuju vedia v danom case spracovat iba 1 IO OPERATION.
+   !!!!! I. Po zaradeni IRP do IRP QUEUE DRIVER UKONCI svoj CODE a vykonavanie sa vrati do WIN32 API FUNCTION ReadFile(), ktora sa OKAMZITE UKONCI. 
+   !!! J. Po UKONCENI WIN32 API FUNCTION ReadFile() sa riadenie vrati do .NET METHOD FileStream.BeginRead, ktora OKAMZITE SKONCI. THREAD teda NIE JE BLOCKED.
+   J. DEVICE zacne vykonavat IO OPERATION a po jej skonceni su data nacitane v IO OPERATION prenesene do MEMORY a DRIVER je o skonceni IO OPERATION informovany generovanim INTERRUPT.
+   !!!!! K. DRIVER zachyti INTERRUPT a spracuje vysledky IO OPERATION. Nasledne vola CALLBACK FUNCTION, ktoru zaregistrovala WIN32 API FUNCTION ReadFile().
+   !!! L. CALLBACK FUNCTION vyvola INTERNU CALLBACK FUNCTION, ktoru zaregistrovala METHOD FileStream.BeginRead().
+   !!!!! M. INTERNA CALLBACK FUNCTION, ktora bola zaregistrovana METHOD FileStream.BeginRead() vykona SCHEDULING CALLBACK METHOD, ktoru program zaslal ako PARAMETER do METHOD FileStream.ReadFile() v THREAD POOL.
+   !!! N. THREAD POOL vykona CALLBACK METHOD ktoru program zaslal ako PARAMETER do METHOD FileStream.ReadFile(), ktora na ziskanie vysledku IO OPERATION zavola METHOD FileStream.EndRead() a nasledne moze tento vysledok spracovat.
+!!! 5. ASYNCHRONNA READ IO OPERATION sa nad FileStream vykonavaju nasledovne.
+   A. Vytvori sa FileStream s PARAMETROM FileOptions.Asynchronous.
+   B. Zavola sa METHOD FileStream.BeginRead(). Ako PARAMETER sa zada CALLBACK METHOD, ktora sa zavola pri skonceni READ OPERATION.
+   C. Po vykonani READ OPERATION sa vyvola CALLBACK METHOD.
+   D. V CALLBACK METHOD sa zavola METHOD FileStream.EndRead(), ktora vrati vysledky READ OPERATION.
+!!!!! 6. Pre ASYNCHRONNU READ IO OPERATION nad FileStream platia nasledujuce fakty.
+   !!! A. METHOD FileStream.BeginRead() spusti SYNCHRONNU IO OPERATION, ak NIE JE FileStream vytvoreny s PARAMETROM FileOptions.Asynchronous.
+   !!!!! B. METHOD FileStream.BeginRead(), ak FileStream NEBOL vytvoreny s PARAMETROM FileOptions.Asynchronous sice SPUSTI SYNCHRONNU IO OPERATION, ale NEBLOKUJE THREAD. Namiesto toho VYTVORI NOVY THREAD, ktory vykona SYNCHRONNU IO OPERATION, takze CALLING THREAD NIE JE BLOKOVANY, ale NOVY THREAD, ktory FileStream.BeginRead() vytvorila je BLOKOVANY.
+   !!!!! C. SYNCHRONIZATION OBJECT IAsyncResult.AsyncWaitHandle vrateny METHOD FileStream.BeginRead() je OKAMZITE SINGALIZOVANY a teda sa NEDA pouzit ako INDIKATOR ukoncenia IO OPERATION.
+   !!!!! D. THREAD zavola METHOD FileStream.BeginRead() a PRED UKONCENIM IO OPERATION zavola METHOD FileStream.Dispose(), tak vykonanie METHOD FileStream.Dispose() je POZASTAVENE a vykona sa AZ po zavolani METHOD FileStream.EndRead(). Po zavolani METHOD FileStream.EndRead() je FileStream DISPOSED a pri pristupe k MEMBERS (ktore to kontroluju) je generovana EXCEPTION ObjectDisposedException.
+!!! 7. Velka vyhoda pouzitia ASYNCHRONNYCH IO OPERATIONS je napriklad pri WEB APPLICATIONS, kde KAZDY HTTP REQUEST je obsluzeny THREADOM z THREAD POOL. Tym, ze vykonam ASYNCHRONNU IO OPERATION a zadam CALLBACK METHOD, kde sa maju vysledky spracovat, tak THREAD, ktory bol vyvolany na spravovanie HTTP REQUEST MOZE SKONCIT a THREAD sa VRATI SPAT do THREAD POOL. Nasledne KED SKONCI IO OPERATION, tak je THREAD z THREAD POOL znova vybraty a v CALLBACK METHOD moze spracovat HTTP RESPONSE. Vysledkom je, ze NAMIESTO SYNCHRONNEHO PRISTUPU je THREAD pouzity na vykonanie HTTP REQUEST NIE JE BLOKOVANY, ale VRATENY SPAT do THREAD POOL, cim tento THREAD moze vykonavat INU CINNOST a NIE JE BLOKOVANY ako pri SYNCHRONNOM PRISTUPE.
+!!!!! 8. ASYNCHRONNE IO OPERACIE na pozadi pouzivaju mechanizmus IO COMPLETION PORTS.
+!!! 9. Ak sa THREAD z THREAD POOL dostane do WAIT STATE, tak THREAD POOL je to schopny detekovat a vytvorit NOVY THREAD v TP, kedze jeden z jeho THREADS je vo WAIT STATE.
+10. ASYNCHRONOUS PROGRAMMING MODEL (APM) je zalozeny na nasledujucich principoch.
+   A. Existuje par METHODS BeginXXX() a EndXXX().
+   B. METHOD BeginXXX() obsahuje referenciu na CALLBACK METHOD, ktora sa vyvola pri ukonceni ASYNCHRONNEJ OPERATION.
+   C. V CALLBACK METHOD je potrebne zavolat METHOD EndXXX(), ktora BUD vrati data z IO OPERATION, alebo EXCEPTION, ak METHOD zlyhala.
+!!!!! 11. Pri pouziti APM mozu byt EXCEPTIONS generovane v METHODS BeginXXX() i EndXXX() pricom chovanie je odlisne.
+   !!! A. Ak je EXCEPTION je hodena v METHOD BeginXXX(), tak ASYNCHRONNA OPERATION NIE JE VOBEC SPUSTENA a CALLBACK sa NEZAVOLA.
+   B. Ak IO OPERACIA ZLYHA, tak EXCEPTION je hodena az pri volani METHOD EndXXX() a z hodnoty EXCEPTION je mozne zistit k akej chybe doslo.
+12. Mnohe SERVER SIDE API podporuju ASYNCHRONNY MODEL.
+   A. Pri ASP.NET je nutne na Page nastavit PROPERTY Async na TRUE a zavolat METHOD AddOnPreRenderCompleteAsync() do ktorej sa predaju referencie na METHODS BeginXXX() a EndXXX(). HTTP RESPOSNE NIE JE POSLANY AZ DO DOBY pokym nie je zavolana METHOD EndXXX(), aj ked medzitym THREAD, ktory reagoval na prichod HTTP REQUEST sa uz pocas vykonavania ASYNCHRONNEJ OPERATION davno vratil do THREAD POOL.
+   B. Pri klasickych WEB SERVICE je treba implementovat METHODS BeginXXX() a EndXXX() a obe oznacit ATTRIBUTE [WebMethod].
+   !!! C. Pri WCF je treba implementovat METHODS BeginXXX() a EndXXX(), pricom METHOD BeginXXX() je potrebne oznacit pomocou ATTRIBUTE [OperationContract(AsyncPattern=true)].
+13. APM je mozne pouzit i pre COMPUTE-BOUND OPERATIONS a to s vyuzitim DELEGATES, ktore podporuju APM model.
+!!! 14. APM model ma viacero NEDOSTATKOV na ktore je treba si dat pozor.
+   A. Metodu EndXXX() je nutne volat PRAVE RAZ. Ak je zavolana VIACKRAT, tak 2. volanie moze mat nepredvidatelny vysledok, pretoze pri prvom volani METHOD EndXXX() sa uz mohli uvolnit nejake RESOURCES.
+   !!!!! B. METHOD EndXXX() je NUTNE STALE VOLAT, inak DOJDE k RESOURCE LEAKS. Interne si CLR pri volani METHOD BeginXXX() alokuje interne data, ktore su odstranene IBA PRI VOLANI METHOD EndXXX() alebo UKONCENI PROCESU a preto ked sa nezavola METHOD EndXXX(), tak dojde k RESOURCE LEAK. Okrem toho bez zavolania METHOD EndXXX() nie je mozne zistit ci OPERATION skoncila korektne, alebo chybou.
+   C. APM NEPODPORUJE CANCELLATION.
+15. Od WINDOWS VISTA je mozne pre THREAD a PROCESS nastavit SPECIALNU PRIORITU, kedy VSETKY IO OPERATION, ktore bude THREAD, alebo PROCESS robit budu mat NIZSIU PRIORITU ako je STANDARDNA PRIORITA a tym vysielanie tychto IO operacii NEZAHALCUJE WINDOWS. Typicke vyuzitie je pre PROCESS ako napriklad FILE INDEXER. Bohuzial prioritu THREADU a PROCESU nato aby vysielal nizko prioritne IO OPERATIONS je mozne zmenit IBA cez WIN32 API FUNCTIONS SetThreadPriority() s hodnotami THREAD_MODE_BACKGROUND_BEGIN/THREAD_MODE_BACKGROUND_END a SetPriorityClass() s hodnotami PROCESS_MODE_BACKGROUND_BEGIN/PROCESS_MODE_BACKGROUND_END. Tieto WIN32 API FUNCTIONS nie su priamo v .NET podporovane, iba cez P/Invoke.
+!!!!! 16. APM mode je moze realizovat aj pomocou TASKS. CLASS TaskFactory obsahuje METHOD FromAsync(), ktora VYTVORI TASK z METHODS BeginXXX() a EndXXX(). Zaroven AUTOMATICKY zavola METHOD BeginXXX() a po skonceni IO operacie AUTOMATICKY zavola METHOD EndXXX(). CLASS Task vystavuje i PROPERTIES IAsyncResult ako je AsyncState, IsCompleted a CompletedSynchronously. METHOD FromAsync() ma i PRETAZENE VERZIE, ktore ako PARAMETER maju IAsyncResult, ktory je hodnotou vratenou z METHOD BeginXXX(). V tomto pripade samozrejme METHOD BeginXXX() si musim zavolat SAM. TASK sa SPUSTA AUTOMATICKY a preto sa NESMIE VOLAT METHOD Task.Start().
+17. Okrem APM podporuje .NET i mechanizmus EVENT-BASED ASYNCHRONOUS PATTERN (EAP), ktory je vyuziva NAJMA vo WinForms a WPF. Tento mechanizmus je zalozeny na nasledujucich principoch.
+   A. CALLBACK METHOD volana po vykonani ASYNCHRONNEJ OPERACIE je realizovana ako EVENT HANDLER. CLASS podporujuca EAP vystavuje pre ASYNCHRONNU OPERACIU EVENT, na ktory je treba zaregistrovat EVENT HANDLER, ktory sa vyvola po SKONCENI ASYNCHRONNEJ OPERATION.
+   B. CLASS realizujuca EAP pre ASYNCHRONNU OPERATION vystavuje METHOD XXXAsync(), ktora STARTUJE ASYNCHRONNU OPERACIU a teda je analogiou METHOD BeginXXX().
+!!! 18. EAP ma VIACERO VYHOD i NEVYHOD.
+   A. EAP je POMALSIA ako APM a casto vnutrone je implementovana ako APM.
+   B. Na pouzitie EAP je treba ZAREGISTROVAT EVENT HANDLER, ktory ak dalsie CALLBACKS nie su potrebne, je NUTNE ODREGISTROVAT.
+   C. Problematicke je v EAP i spracovanie EXCEPTIONS pomocou PROPERTY AsyncCompletedEventArgs.Exception. Ak k tejto PROPERTY program NEPRISTUPI, tak EXCEPTION bude UPLNE IGNOROVANA, co nie je vhodne.
+   D. Niektore implementacie EAP (napriklad v BackgroundWorker) podporuju CANCELLATION a PROGRESS CHANGE MONITORING.
+   !!! E. Vo vseobecnosti EAP je MENEJ VYHODNA ako APM a je implementovana iba v 17 CLASSES, zatial co APM je implementovana az v 60 CLASSES.
+19. Pomocou CLASS TaskCompetionSource<TResult> je mozne konverovat EAP na Task. CLASS ma METHODS SetCanceled(), SetException() a SetResult() na nastavenie vysledku EAP. Pomocou PROPERTY Task sa je mozne dostat na instanciu OBJECT Task.
+!!!!! 20. APM a EAP su povazovane za OBSOLETE a boli nahradene ASYNCHRONOUS FUNCTIONS.
+!!! 21. WINDOWS STORE APPLICATIONS NEMAJU API, ktorym by mohli vykonavat SYNCHRONNE IO OPERATIONS. VSETKY IO OPERATIONS MUSIA byt ASYNCHRONNE.
+22. C# 5.0. obsahuje nove KEYWORDS, ktore zjednodusuju pisanie ASYNCHRONNEHO CODE.
+   A. KEYWORD 'async' sluzi na oznacenie ASYNCHRONOUS FUNCTIONS, ktorych CODE sa ma vykonavat ASYNCHRONNE.
+   B. KEYWORD 'await' pouzivany v 'async' METHODS je OPERATOR, ktory oznacuje EXPRESSION obsahujuci spustenie ASYNCHRONNEJ OPERATION (zvycajne volanie ASYNCHRONNEJ FUNCTION). EXPRESSION MUSI vracat OBJECT pre ktory je mozne volat METHOD GetAwaiter() (ako MEMBER METHOD, alebo EXTENSION METHOD).
+!!! 23. CODE ASYNCHRONOUS FUNCTION C# COMPILER preklada na STATE MACHINE, ktora postupne vykonava jednotlive casti ASYNCHRONOUS FUNCTION.
+!!!!! 24. OPERATOR 'await' v ASYNCHRONOUS FUNCTION je pre C# ZARAZKA, ktora definuje NOVY STATE v generovanej STATE MACHINE. C# ROZLOZI CODE ASYNCHRONOUS FUNCTION na jednotlive casti, ktore su oddelene prave OPERATOR 'await'. Z tychto casti vytvori STATES generovanej STATE MACHINE. Jednotlive STATES su vykonavane v OSOBITNYCH TASKS, ktore su naviazane na seba. STATE MACHINE po vykonani kazdeho TASK STATE MACHINE skontroluje ako TASK SKONCIL a ak skoncil hodenim EXCEPTION, tak namiesto vykonania dalsieho TASK generuje EXCEPTION.
+!!!!! 25. Vykonavanie ASYNCHRONOUS FUNCTION SKONCI OKAMZITE, ked CODE narazi na PRVY VYSKYT OPERATOR 'await' a riadenie sa vrati do METHOD, ktora ASYNCHRONOUS FUNCTION zavolala. ASYNCHRONOUS FUNCTION vracia Tast<RETURN_VALUE>, kde RETURN_VALUE je TYPE RETURN VALUE, ktoru ASYNCHRONOUS FUNCTION vracia. CALLER CODE ASYNCHRONOUS FUNCTION, moze vyuzit vrateny TASK na detekciu, kedy CODE ASYNCHRONOUS FUNCTION skoncil a zistit ci skoncil korektne, alebo generovanim EXCEPTION.
+!!! 26. ASYNCHRONOUS FUNCTIONS maju nasledujuce obmedzenia.
+   A. Nemozu sa pouzit v Main() METHOD.
+   B. Nemozu sa pouzit v CONSTRUCTORS
+   C. Nemozu sa pouzit v PROPERTY GETTERS a SETTERS.
+   D. Nemozu sa pouzit v EVENT GETTERS a SETTERS.
+   E. Nemozu mat 'ref' a 'out' PARAMETERS.
+!!! 27. Pouzitie KEYWORD 'await' ma nasledujuce ombedzenia.
+   A. Nemoze byt obaleny v 'lock' KEYWORD ani pomocou volani METHODS Monitor CLASS, pretoze CODE PRED a PO 'await' moze byt vykonavany v ROZLICNYCH THREADS a Monitor CLASS si DRZI informaciu o LOCK OWNERSHIP. Ak by INE THREADS vykonali LOCK a UNNLOCK, Monitor CLASS by to detekoval a generoval EXCEPTION.
+   B. Nemoze byt pouzity v 'catch' BLOCK.
+   C. Nemoze byt pouzity vo 'finally' BLOCK.
+   D. Nemoze byt pouzity v 'unsafe' BLOCK.
+!!!!! 28. C# preklada ASYNCHRONOUS FUNCTIONS nasledujucim sposobom.
+   A. Vygeneruje NOVY CLASS implementujuci INTERFACE IAsyncStateMachine. CLASS je implementaciou STATE MACHINE, ktora vykonava casti CODE POVODNEJ FUNCTION oddelene OPERATOR 'await'.
+   !!! B. Vygenerovany CLASS obsahuje v METHOD IAsyncStateMachine.MoveNext() CODE POVODNEJ FUNCTION modifikovanej tak, aby casti POVODNEJ FUNCTION oddelene OPERATOR 'await' mohli byt vykonavane v OSOBITNYCH TASKS.
+   !!! C. Vygenerovany CLASS ma FIELD typu AsyncTaskMethodBuilder<RETURN_VALUE>, ktory ma v PROPERTY Task ulozeny TASK, ktory je vrateny ako RETURN VALUE POVODNEJ FUNCTION.
+   D. CODE POVODNEJ FUNCTION obsahuje iba VYTVORENIE INSTANCIE vygenerovanej CLASS, jej spustenie a vratenie PROPERTY AsyncTaskMethodBuilder<RETURN_VALUE>.Task.
+   !!!!! E. METHOD IAsyncStateMachine.NextMove() vo vygenerovanej CLASS je OPATOVNE volana pri dokonceni niektorej 'await' OPERATION a vykonava prechod medzi jednotlivymi stavmi STATE MACHINE.
+!!!!! 29. Ak C# objavi OPERATOR 'await' v CODE POVODNEJ FUNCTION, vykonava nasledujuce cinnosti.
+   A. C# zoberie OPERAND OPERATOR 'await' (CODE za 'await' - zvycajne volanie FUNCTION, ktora v RETURN VALUE vracia OBJECT Task) a na tomto CODE zavola METHOD GetAwaiter().
+   !!! B. METHOD GetAwaiter() moze byt sucastou TYPE, ktory CODE za 'await' vracia, alebo to moze byt EXTENSION METHOD.
+   !!!!! C. Vo VACSINE PRIPADOV je CODE za OPERATOR 'await' volanim FUNCTION, ktora vracia instanciu CLASS Task. CLASS TASK implementuje METHOD Task.GetAwaiter(), ktora vracia instanciu CLASS TaskAwaiter.
+   !!!!! D. CODE za OPERATOR 'await' moze obsahovat LUBOVOLNU EXPRESSION, ktora vracia OBJECT na ktory je mozne aplikovat volanie METHOD GetAwaiter(). OPERATOR 'await' teda moze mat namiesto volania METHOD ako OPERAND OBJECT typu Task, ktory ma MEMBER METHOD GetAwaiter().
+   !!!!! E. OBJECT Task, ktory vracia EXPRESSION za OPERATOR 'await' MUSI byt SPUSTENY. METHOD GetAwaiter() ho AUTOMATICKY NESPUSTA.
+!!!!! 30. OPERATOR 'await' je mozne pouzit IBA na EXPRESSIONS pre ktore je mozne volat METHOD, alebo EXTENSION METHOD GetAwaiter().
+!!!!! 31. CUSTOM AWAITER CLASS sa implementuje nasledujucim sposobom.
+   A. CLASS musi implementovat INTERFACES INotifyCompletion a ICriticalNotifyCompletion.
+   B. CLASS musi implementovat METHOD INotifyCompletion.OnCompleted(), ktora musi zavolat zaslanu METHOD ak CUSTOM AWAITER skonci svoju cinnost (TASK).
+   C. CLASS musi implementovat METHOD INotifyCompletion.UnsafeOnCompleted(), ktora musi zavolat zaslanu METHOD ak CUSTOM AWAITER skonci svoju cinnost (TASK).
+   D. CLASS musi implementovat METHOD GetResult(), ktora vracia TType, ak CUSTOM AWAITER je typu Task<TType>. Ak CUSTOM AWAITER je typu Task, tak GetResult() vracia VOID.
+   E. CLASS musi implementovat PROPERTY IsCompleted, ktora vracia BOOLEAN hodnotu ci CUSTOM AWAITER skoncil svoju cinnost (TASK).
+!!! 32. ASYNCHRONOUS FUNCTION moze mat aj RETURN TYPE VOID, avsak potom CALLER METHOD nema ako zistit kedy ASYNCHRONOUS FUNCTION skoncila.
+!!! 33. ASYNCHRONOUS FUNCTIONS bez RETURN TYPE sa vyuzivaju na implementaciu EVENT HANDLERS ako ASYNCHRONOUS FUNCTIONS, kedze EVENT HANDLERS spravidla NEMAJU RETURN VALUES.
+!!!!! 34. ASYNCHRONOUS FUNCTIONS bez RETURN TYPES sice su vykonane ASYNCHRONNE, ale NEMOZE byt na nich aplikovany OPERATOR AWAIT, pretoze nevracia OBJECT typu Task a teda na takuto ASYNCHRONOUS FUNCTION by generovana STATE MACHINE nemala ako zistit, ze skoncila a naviazat nan pokracovanie STATE MACHINE.
+35. .NET LIBRARY ma konvenciu, ked METHODS pomenovane ako XXXAsync() su ASYNCHRONOUS FUNCTIONS a moze byt na nich aplikovany OPERATOR AWAIT.
+!!! 36. METHOD Task.Factory.FromAsync() umoznuje konvertovat APM MODEL na TASK na ktory je mozne aplikovat OPERATOR AWAIT. METHOD Task.Factory.FromAsync() sa pouziva nasledujucim sposobom.
+   A. Ak BeginXXX() ma IBA 2 PARAMETERS typu AsyncCallback a Object, tak je mozne zavolat pretazenu verziu METHOD Task.Factory.FromAsync(), ktora bude mat ako 1. PARAMETER METHOD BeginXXX() a ako 2. PARAMETER METHOD EndXXX(). Vytvoreny TASK zavola najprv METHOD BeginXXX() a ked skonci ASYNCHRONOUS OPERATION, tak zavola METHOD EndXXX().
+   !!! B. Ak BeginXXX() ma aj INE PARAMETERS (napriklad FileStream.BeginRead() ich ma 5), tak je NUTNE MANUALNE ZAVOLAT METHOD BeginXXX() a vrateny IAsyncResult zaslat ako 1. PARAMETER do Task.Factory.FromAsync() a METHOD EndXXX() zaslat ako 2. PARAMETER. TASK automaticky vykona EndXXX() po skonceni ASYNCHRONOUS OPERATION.
+   !!! C. Alternatvne ak ma BeginXXX() aj INE PARAMETERS (napriklad FileStream.BeginRead() ich ma 5), tak je mozne pouzit  GENERICS verziu METHOD Task.Factory.FromAsync(), kde pomocou GENERICS PARAMETERS je mozne definovat chybajuce PARAMETERS BeginXXX() i RETURN VALUE EndXXX().
+!!! 37. WINDOWS standardne NEPODPORUJE CANCELLATION beziacich IO OPERATIONS. Podobne ani ASYNCHRONOUS FUNCTIONS standardne NEPODPORUJU CANCELLATION.
+!!! 38. Ak ASYNCHRONOUS FUNCTION zlyha a hodi EXCEPTION, potom chovanie sa programu zavisi od toho si ASYNCHRONOUS FUNCTION ma RETURN VALUE.
+   A. Ak ASYNCHRONOUS FUNCTION NEMA RETURN VALUE, .NET sa pokusi hodit EXCEPTION v aktualnom EXECUTION CONTEXT. Ak taky neexistuje, EXCEPTION je RETHROWN co spravidla znamena pad programu.
+   B. Ak ASYNCHRONOUS FUNCTION MA RETURN VALUE, tak pomocou vrateneho Task OBJECT je pristupenim k PROPERTY Task.Result mozne detekovat vznik EXCEPTION a zachytit ju.
+39. C# podporuje i LABMDA EXPRESSIONS ako ASYNCHRONOUS FUNCTIONS.
+40. CONSOLE APPLICATIONS nemaju ziaden THREADING MODEL. To znaci, ze CONSOLE APPLICATIONS mozu vytvarat vlastne THREADS lubovolne podla vlastnych potrieb.
+41. WINFORMS, WPF, SILVERLIGHT aj WINDOWS STORE APPLICATIONS maju THREADING MODEL, ktory umoznuje iba MAIN THREAD pristupovat k GUI ELEMENTS. Ostatne THREADS musi odosielat poziadavky na zmenu GUI do MAIN THREAD, ktory zmenu vykona.
+42. ASP.NET vytvara pre KAZDY HTTP REQUEST novy TASK z THREAD POOL. THREAD totho TASK ma pristupne PROPERTIES nastavene podla typu USER, ktory HTTP REQUEST vykonal. To znaci, ze napriklad Thread.CurrentCulture a Thread.CurrentUICulture obsahuju CULTURE podla CLIENTA, resp. Thread.CurrentPrincipal obsahuje IPrincipal HTTP CLIENTA.
+!!! 43. Ak v ASP.NET aplikacii sa vytvori NOVY THREAD, tak tento uz NEMA nastavene CONTEXT INFORMACIE (CULTURE, PRINCIPAL) a tieto musia byt do tohto THREADU prenesene pomocou CLASS SynchronizationContext.
+44. SYNCHRONIZATION CONTEXT implementovany pomocou CLASS SynchronizationContext je mechanizmus, ktory SYNCHRONIZUJE THREADING MODEL s APPLICATION MODELOM. Umoznuje realizovat nasledujuce cinnosti.
+   A. Ak APPLICATION MODEL VYZADUJE, aby na pristup ku GUI CONTROLS bol pouzity TEN ISTY THREAD, ktory CONTROLS vytvoril, tak pomocou METHODS SynchronizationContext.Send() a SynchronizationContext.Post() umoznuje poslat do daneho THREADU CALLBACK v ktorom je moze pristupit ku CONTROLS.
+   B. SynchronizationContext si uchovava IDENTITU a CULTURE informacie a preto ked vykonam CALLBACK METHOD pomocou SynchronizationContext.Send(), alebo SynchronizationContext.Post(), tak v CALLBACK bude IDENTITA a CULTURE nastavena podla hodnoty z CLASS SynchronizationContext.
+   C. SynchronizationContext podporuju ASP.NET, WCF, WPF, WinForms a Silverlight.
+   D. Akutalny SynchronizationContext je mozne ziskat z hodnoty STATIC PROPERTY SynchronizationContext.Current.
+!!!!! 45. OPERATOR AWAIT PLNE PODPORUJE SYNCHRONIZATION CONTEXTS.
+   A. OPERATOR AWAIT spusti ASYNCHRONOUS OPERATION.
+   B. Ak ASYNCHRONOUS OPERATION skonci, tak CLR skontroluje ci THREAD, ktory spustil ASYNCHRONOUS OPERATION pouzival SYNCHRONIZATION CONTEXT.
+   C. Ak SYNCHRONIZATION CONTEXT NEBOL pouzity, tak pokracovanie CODE ASYNCHRONOUS FUNCTION je realizovane v LUBOVOLNOM THREADE z THREAD POOL.
+   !!! D. Ak SYNCHRONIZATION CONTEXT NEBOL pouzity, tak pokracovanie CODE ASYNCHRONOUS FUNCTION je realizovane v THREAD z THREAD CONTEXT. To znaci, ze pri GUI APPLICATIONS je pokracovanie CODE vykonavane v MAIN THREAD, ktory ma pristup k GUI ELEMENTS.
+!!!!! 46. Fakt, ze OPERATION AWAIT standardne VZDY pouziva SYNCHRONIZATION CONTEXT moze sposobit DEADLOCK.
+   A. GUI APPLICATION v ASYNCHRONOUS FUNCTION zavola AWAIT OPERATOR, ktory spusti ASYNCHRONOUS OPERATION.
+   !!! B. MAIN THREAD na TASK vrateny ASYNCHRONOUS FUNCTION APPLICATION OKAMZITE zavola PROPERTY Task.Result, alebo Task.Exception, alebo zavola METHOD Task.Wait(). Volanie tychto MEMBERS sposobi LOCK MAIN THREAD. MAIN THREAD bude cakat kym sa Task NESKONCI.
+   !!!!! C. Kedze vsak AWAIT OPERATOR vyuziva SYNCHRONIZATION CONTEXT, tak pri skonceni ASYNCHRONOUS OPERATION sa STATE MACHINE ASYNCHRONOUS FUNCTION pokusi vykonat CODE za AWAIT OPERATION v MAIN THREAD. Kedze vsak ten je LOCKED, cakajuc na navrat z Task.Result, Task.Exception, alebo Task.Wait(), dojde k DEADLOCK.
+!!!!! 47. Riesenim DEADLOCK je aplikovanie AWAIT OPERATOR na OBJECT typu ConfiguredTaskAwaitable. Realizuje sa nasledujucim sposobom.
+   A. Na Task, na ktory ma byt aplikovany AWAIT OPERATOR sa zavola METHOD Task.ConfigureAwait(FALSE).
+   B. METHOD Task.ConfigureAwait() vracia instanciu CLASS ConfiguredTaskAwaitable.
+   !!! C. CLASS ConfiguredTaskAwaitable MA implementovanu METHOD GetAwaiter() a preto MOZE byt pouziva v AWAIT OPERATOR.
+   !!!!! D. Ak sa AWAIT OPERATOR aplikuje na ConfiguredTaskAwaitable, tak AWAIT OPERATOR (ziskany volanim METHOD Task.ConfigureAwait(FALSE)), tak pri skonceni ASYNCHRONOUS OPERATION sa SYNCHRONIZATION CONTEXT NEZOBERIE do UVAHY a CODE za AWAIT OPERATOR sa vykona v THREAD z THREAD POOL a NIE na MAIN THREAD.
+!!! 48. WIN32 API umoznuje ZNIZIT PRIORITU IO OPERATIONS, ktore dany PROCESS, alebo THREAD vykonava. Vykonava sa to pomocou nasledujucich FUNCTIONS.
+   A. WIN32 API FUNCTION SetPriorityClass() moze prijat v PARAMETER PriorityClass hodnoty PROCESS_MODE_BACKGROUND_BEGIN a PROCESS_MODE_BACKGROUND_END. Hodnota PROCESS_MODE_BACKGROUND_BEGIN znamena, ze vsetky IO OPERATIONS zaslane od volania FUNCTION SetPriorityClass() budu mat BACKGROUND (NIZSIU) PRIORITU. Hodnota PROCESS_MODE_BACKGROUND_BEGIN znamena, ze vsetky IO OPERATIONS od volania FUNCTION SetPriorityClass() budu mat NORMALNU PRIORITU.
+   B. WIN32 API FUNCTION SetThreadPriority() moze prijat v PARAMETER PriorityClass hodnoty THREAD_MODE_BACKGROUND_BEGIN a THREAD_MODE_BACKGROUND_END. Hodnota THREAD_MODE_BACKGROUND_BEGIN znamena, ze vsetky IO OPERATIONS zaslane od volania FUNCTION SetThreadPriority() budu mat BACKGROUND (NIZSIU) PRIORITU. Hodnota THREAD_MODE_BACKGROUND_BEGIN znamena, ze vsetky IO OPERATIONS od volania FUNCTION SetThreadPriority() budu mat NORMALNU PRIORITU.
+//-------------------------------------------------------------------------------------------------------

@@ -1,0 +1,109 @@
+//-------------------------------------------------------------------------------------------------------
+1. Solution demonstruje moznosti serializacie a deserializacie objektov v .NET.
+2. .NET implementuje viacero CLASSES, ktore realizuju rozlicne typy serializacie.
+   A. CLASS System.Xml.Serialization.XmlSerializer vykonava INTEROPERATING SERIALIZATION do XML. CLASS umoznuje vysoku mieru CUSTOMIZATION, vratane moznosti urcenia, ktory MEMBER bude SERIALIZED ako ATTRIBUTE a ktory ako ELEMENT.
+   B. CLASS System.Runtime.Serialization.DataContractSerializer vykonava INTEROPERATING SERIALIZATION DATA CONTRACTS. MEMBERS, ktore maju byt SERIALIZED sa urcuju EXPLICITNE pomocou ATTRIBUTES. Do SERIALIZED STREAM sa NEUKLADAJU CLR TYPE INFORMATION.
+   C. CLASS System.Runtime.Serialization.NetDataContractSerializer vykonava NON-INTEROPERATING SERIALIZATION do XML. Na ROZDIEL od DataContractSerializer, NetDataContractSerializer uklada do SERIALIZED STREAM aj CLR TYPE INFORMATION.
+   D. CLASS System.Runtime.Serialization.Formatters.Binary.BinaryFormatter implementuje INTERFACE IFormatter. Realizuje NON-INTEROPERATING SERIALIZATION do BINARY FORMATU.
+   E. CLASS System.Runtime.Serialization.Formatters.Soap.SoapFormatter implementuje INTERFACE IFormatter. Realizuje NON-INTEROPERATING SERIALIZATION do SOAP FORMATU. Je povazovana za OBSOLETE CLASS, aj ked COMPILER NEGENERUJE WARNING.
+3. Pre DATA CONTRACT SERIALIZATION platia nasledujuce zasady.
+   A. DATA CONTRACT SERIALIZATION implementuje XML SERIALIZATION.
+   B. BASE CLASS pre DATA CONTRACT SERIALIZATION je CLASS typu XmlObjectSerializer.
+   C. CLASS DataContractSerializer implementuje INTEROPERATING SERIALIZATION, ktora do vysledneho XML NEZAPISUJE .NET SPECIFIC data ako napriklad ASSEMBLY NAMES.
+   D. CLASS NetDataContractSerializer implementuje NON-INTEROPERATING SERIALIZATION, ktora do vysledneho XML ZAPISUJE aj .NET SPECIFIC data ako napriklad ASSEMBLY NAMES.
+   E. WCF BY-DEFAULT pouziva DataContractSerializer.
+4. .NET podporuje aj dalsie CLASSES implementujuce INTERFACE IFormatter, ktore realizuju SERIALIZATION BEZ podpory INTEROPERABILITY.
+   A. CLASS BinaryFormatter serializuje do BINARNEHO STREAMU.
+   !!! B. CLASS SoapFormatter serializuje do XML SOAP. Od verzie 2.0 je OBSOLETE (aj ked COMPILER NEHADZE WARNING) a namiesto nej by sa mal pouzivat DataContractSerializer pri serializacii do XML.
+5. Pri SERIALIZATION pomocou BinaryFormatter je potrebne vykonat nasledujuce kroky.
+   A. Na CLASS, ktory ma byt SERIALIZED MUSI byt aplikovany ATTRIBUTE [Serializable].
+   B. Vytvorit instanciu BinaryFormatter.
+   C. Vytvorit OBJECT typu Stream, ktory sa pouzije ako ulozisko, kde sa ulozia serializovane data.
+   D. Zavolat METHOD BinaryFormatter.Serialize(), ktorej PARAMETER OBJECT (ROOT v OBJECT GRAPH), ktory ma byt SERIALIZED. Tuto METHOD je mozne volat I VIACKRAT a serializovat do Stream VIACERO OBJECT TREES.
+6. Pri DESERIALIZATION pomocou BinaryFormatter je potrebne vykonat nasledujuce kroky.
+   A. Vytvorit instanciu BinaryFormatter.
+   B. Zavolat METHOD BinaryFormatter.Deserialize() s PARAMETER typu Stream obsahujucim predtym SERIALIZED data. METHOD vracia Object, ktory je nasledne mozne pretypovat na skutocny TYPE OBJECTU (ROOT v OBJECT GRAPH), ktory bol DESERIALIZED.
+   !!! C. Ak BinaryFormatter.Deserialize() NEDOKAZE vykonat DESERIALIZATION zaslaneho STREAM, hodi EXCEPTION SerializationException.
+!!! 7. Proces SERIALIZATION ma v sebe zakomponovanu logiku, OBJECT, ktory uz bol predtym SERIALIZED (nachadza sa VIACKRAT v OBJECT GRAPH) bude SERIALIZOVAT IBA RAZ a pre ostatne vyskyty tohto OBJECT vlozi iba referenciu na povodny objekt. Tym sa zabranuje vzniku NEKONECNYCH CYKLOV.
+!!! 8. Serializaciu a deserializaciu je mozne pouzit aj ako JEDNODUCHY i ked MENEJ OPTIMALNY sposob ako vytvorit DEEP COPY objektu.
+!!! 9. CLASS BinaryFormatter pri SERIALIZATION uklada PLNE NAZVY ASSEMBLIES kazdeho SERIALIZABLE TYPE. Pri DESERIALIZATION ak dany TYPE NIE JE ZAVEDENY v APP DOMAIN, tak vola METHOD Assembly.Load(). To moze sposobit PROBLEMY pri ADD INNs, ktore mozu mat umiestnene ASSEMBLIES v DIRECTORY ktory STADNARDNY MECHANIZMUS HLADANIA ASSEMBLIES (pouzivany METHOD Assembly.Load()) NEMUSI VEDIET NAJST. Vtedy je mozne zaregistrovat EVENT AppDomain.AssemblyResolve, ktory je volany pri DESERIALIZACII VZDY, ked DESERIALIZER NEVIE NAJST TYP ULOZENY v STREAME DAT. V HANDLER na tento EVENT je potom mozne pouzit Assembly.LoadFrom() na nacitanie pozadovanej ASSEMBLY z NESTANDARDNEHO DIRECTORY.
+10. TYPE moze byt SERIALIZED IBA AK je nan aplikovany ATTRIBUTE [Serializable]. Platia pritom nasledujuce pravidla.
+   A. Serializuju sa VSETKY MEMBERS bez ohladu nato, ci su PRIVATE, PROTECTED, alebo PUBLIC. Ak niektory MEMBER nema byt SERIALIZED MUSI byt nan aplikovany ATTRIBUTE [NonSerialized].
+   B. ATTRIBUTE [Serializable] je mozne aplikovat IBA na CLASS, STRUCT, ENUM a DELEGATE.
+   C. ATTRIBUTE [Serializable] sa AUTOMATICKY NEDEDI a je ho treba aplikovat i na DERIVED CLASSES.
+   !!! D. Pocas PRIEBEHU SERIALIZATION si serializer kontroluje ci ju jednotlive FIELDS serializovatelne. Ak nahodou niektory NIE JE, tak sa hodi EXCEPTION. Obsah Stream potom moze obsahovat NEUPLNE SERIALIZED OBJECT GRAPH, ktory je najlepsie hned zlikvidovat, kedze obsahuje CORRUPTED data.
+   !!!!! E. CLASS oznacena ATTRIBUTE [Serializable] by NEMALA POUZIVAT AUTOMATICKE PROPERTIES, lebo ich BACKED FIELD pri KAZDEJ KOMPILACII MOZE MAT INY NAZOV, cim sa moze stat, ze data, ktore boli SERIALIZED do FILE po COMPILATION uz NEBUDU moct byt z FILE DESERIALIZED, lebo pri COMPILATION sa mena BACKED FIELDS sa ZMENILI.
+   !!! F. Ak sa na FIELD aplikuje ATTRIBUTE [OptionalField] tak to znamena, ze ked pri DESERIALIZATION STREAM NEOBSAHUJE fany FIELD, tak NIE JE GENEROVANA EXCEPTION SerializationException, pretoze dany FIELD je povazovany iba za OPTIONAL.
+11. Mechanizmus SERIALIZATION a DESERIALIZATION podporuje vyvolavanie CUSTOM METHODS na SERIALIZED/DESERIALIZED OBJECT, ktore su volane PRED a PO SERIALIZATION/DESERIALIZATION a mozu lubovolne upravit FIELDS daneho OBJECT podla potrieb. Pre METHODS platia nasledujuce vlastnosti.
+   A. Mozu mat LUBOVOLNE MENO a MOZU BYT PRIVATE.
+   B. Musia vracat VOID a ma 1 parameter typu StreamingContext.
+   C. METHODS musia byt oznacene jednym z ATTRIBUTE: [OnSerializing], [OnSerialized], [OnDeserializing], alebo [OnDeserialized].
+   !!!!! D. METHODS oznacene ATTRIBUTE [OnDeserialized] na OBJECT v OBJECT GRAPH su volane AZ POTOM co je CELY OBJECT GRAPH DESERIALIZED (a v opacnom poradi ako boli OBJECTS DESERIALIZED), tak aby pocas volania tychto METHODS bolo zabezpecene ukoncenie DESERIALIZATION VSETKYCH FIELDS kazdeho OBJECT.
+   !!! E. METHODS oznacene ATTRIBUTE [OnDeserialized] by NEMALI volat METHODS nad DESERIALIZED FIELDS, pretoze tieto FIELDS este NEMUSIA byt PLNE DESERIALIZED.
+12. Vyznam SERIALIZATION a DESERIALIZATION ATTRIBUTES je nasledovny.
+   A. ATTRIBUTE [OnSerializing] oznacuje METHOD, ktora sa vyvola PRED vykonanim SERIALIZATION.
+   B. ATTRIBUTE [OnSerialized] oznacuje METHOD, ktora sa vyvola PO vykonanim SERIALIZATION.
+   C. ATTRIBUTE [OnDeserializing] oznacuje METHOD, ktora sa vyvola PRED vykonanim DESERIALIZATION.
+   D. ATTRIBUTE [OnDeserialized] oznacuje METHOD, ktora sa vyvola PO vykonanim DESERIALIZATION.
+13. Alternativou k vyvolavaniu CUSTOM METHODS pocas SERIALIZATION/DESERIALIZATIOn je implementacia INTERFACE IDeserializationCallback, ktore definuje METHOD IDeserializationCallback.OnDeserialization, ktora je volana PO vykonani DESERIALIZATION a je ju mozne vyuzit na UPDATE FIELDS DESERIALIZED OBJECT.
+!!! 14. NEVYHODOU INTERFACE IDeserializationCallback voci CUSTOM METHODS je, ze vystavuje INTEFACE METHOD IDeserializationCallback.OnDeserialization je PUBLIC a teda moze byt volana aj z CODE MIMO DESERIALIZATION.
+!!!!! 15. Interne FORMATTERS pouzivaju CLASS FormatterServices, ktora poskytuje STATIC HELPER METHODS ktore zjednodusuju implementaciu FORMATTERS.
+16. Pri SERIALIZATION daneho OBJECT FORMATTERS vykonavaju nasledujuci algoritmus.
+   A. FORMATTER zavola METHOD FormatterServices.GetSerializableMembers(), ktora vrati MemberInfo[] so VSETKYMI SERIALIZOVATELNYMI FIELDS daneho OBJECT, bez ohladu nato ci su PRIVATE, PROTECTED, alebo PUBLIC. METHOD NEVRACIA tie FIELDS, ktore su oznacene ATTRIBUTE [NonSerialized].
+   B. FORMATTER zavola METHOD FormatterServices.GetObjectData(), ktorej sa ako PARAMETER da MemberInfo[] vrateny METHOD FormatterServices.GetSerializableMembers() v prechadzajucom bode. METHOD vracia Object[] s HODNOTAMI FIELDS daneho TYPU.
+   C. FORMATTER zapise do STREAM NAJPRV IDENTITU ASSSEMBLY KAZDEHO TYPE, ktory bude SERIALIZED.
+   D. FORMATTER zapise do STREAM HODNOTY FIELDS vratene METHOD FormatterServices.GetObjectData().
+17. Pri DESERIALIZATION daneho OBJECT FORMATTERS vykonavaju nasledujuci algoritmus.
+   A. FORMATTER nacita z STREAM TYPE s IDENTITOU ASSEMBLY v ktorej je TYPE deklarovany. Danu ASSEMBLY, ak este nebola nacitana do PROCESSU sa pokusi nacitat. Ak dana ASSEMBLY sa nepodari nacitat, je hodena EXCEPTION SerializationException.
+   B. FORMATTER zavola METHOD FormatterServices.GetTypeFromAssembly(), ktora nacita dany TYPE z danej ASSEMBLY.
+   !!! C. FORMATTER zavola METHOD FormatterServices.GetUninitializedObject(), ktora VYTVORI INSTANCIU DESERIALIZOVANEHO OBJEKTU, ale NEZAVOLA jej CONSTRUCTOR, iba vynuluje vsetky jej FIELDS.
+   D. FORMATTER zavola METHOD FormatterServices.GetSerializableMembers(), ktora vrati MemberInfo[] so VSETKYMI SERIALIZOVATELNYMI FIELDS daneho OBJECT, bez ohladu nato ci su PRIVATE, PROTECTED, alebo PUBLIC. METHOD NEVRACIA tie FIELDS, ktore su oznacene ATTRIBUTE [NonSerialized].
+   E. FORMATTER vytvori ARRAY Object[] s dlkou rovnou dlzke MemberInfo[] vratenej METHOD FormatterServices.GetSerializableMembers().
+   F. FORMATTER nacita zo STREAMD vsetky FIELDS DESERIALIZED TYPE a vytvori pre nej ARRAY Object[] obsahuji ich hodnoty.
+   G. FORMATTER zavola METHOD FormatterServices.PopulateObjectMembers() s PARAMETERS MemberInfo[] a Object[] ziskanymi v bodoch E a F. METHOD NAPLNI FIELDS vytvoreneho OBJECT hodnotami z ARRAY Object[] cim je DESERIALIZATION KOMPLETNA.
+18. PLNU CUSTOMIZACIU nad serializaciou je mozne dosiahnut ak CLASS implementuje INTERFACE ISerializable. Pomocou tohto INTERFACE je mozne PLNE KONTROLOVAT ktore data sa budu SERIALIZED a DESERIALIZED. Pri implementacii tohto INTERFACE je nutne splnit nasledujuce poziadavky.
+   A. Je nutne implementovat SERIALIZABLE METHOD ISerializable.GetObjectData() s PARAMETERS SerializationInfo a StreamingContext. Tato metoda sluzi na SERIALIZATION a jej ulohou je ulozit do PARAMETER typu SerializationInfo (je to BAG) OBSAH FIELDS, ktore maju byt SERIALIZED.
+   B. Ak CLASS ma BASE CLASS, ktora implementuje ISerializable, v DERIVED verzii METHOD ISerializable.GetObjectData() je NUTNE volat VERZIU METHOD ISerializable.GetObjectData() z BASE CLASS.
+   !!! C. CLASS MUSI implementovat DESERIALIZABLE CONSTRUCTOR s PARAMETERS SerializationInfo a StreamingContext.    CONSTRUCTOR sluzi na DESERIALIZATION a jeho ulohou je NACITAT OBSAH FIELDS z PARAMETER typu SerializationInfo (je to BAG) a ulozit ich do FIELDS.
+   D. Ak CLASS ma BASE CLASS, ktora implementuje ISerializable, v DESERIALIZATION CONSTRUCTOR v DERIVED CLASS je NUTNE zavolat DESERIALIZATION CONSTRUCTOR z BASE CLASS.
+   E. CLASS SerializationInfo je BAG do ktoreho pri SERIALIZATION ukladaju hodnoty FIELDS, ktore nasledne FORMATTER SERIALIZUJE do STREAM. NAOPAK pri DESERIALIZATION su zo SerializationInfo (ktory bol naplneny cez FORMATTER zo STREAM) vybrate hodnoty a su ulozene do FIELDS.
+   !!!!! F. SERIALIZATION METHOD ISerializable.GetObjectData() ani DESERIALIZATION DESTRUCTOR NEVYKONAVAJU samotnu SERIALIZATION/DESERIALIZATION, ale iba ukladaju a vyberaju FIELDS z OBJECT typu SerializationInfo a az SAMOTNY FORMATTER je zodpovedny za SERIALIZATION/DESERIALIZATION obsahu SerializationInfo do pozadovaneho STREAMU.
+   !!! G. DESERIALIZATION CONSTRUCTOR by NEMAL volat METHODS nad DESERIALIZED FIELDS, pretoze tieto FIELDS este NEMUSIA byt PLNE DESERIALIZED.
+!!! 19. Ak FORMATTER pri SERIALIZATION zisti, ze CLASS implementuje INTERFACE ISerializable, tak IGNORUJE VSETKY ATTRIBUTES a namiesto toho vytvori OBJECT typu SerializationInfo, ktory zasla do METHOD ISerializable.GetObjectData(), aby do SerializationInfo (SerializationInfo je BAG) zapisala hodnoty FIELDS daneho OBJECT.
+20. CLASS SerializationInfo ma nasledujuce MEMBERS.
+   A. METHODS SerializationInfo.AddValue() pridavaju FIELD NAME a jeho hodnotu do SerializationInfo.
+   B. METHODS SerializationInfo.GetXXX() vyberaju FIELD hodnotu pre zadany FIELD NAME zo SerializationInfo.
+   !!! C. METHOD SerializationInfo.SetType() umoznuje zmenit TYPE do ktoreho budu FIELDS SERIALIZED/DESERIALIZED.
+   D. PROPERTY SerializationInfo.ObjectType urcuje TYPE do ktoreho budu FIELDS SERIALIZED/DESERIALIZED.
+   E. PROPERTY SerializationInfo.MemberCount urcuje pocet FIELDS, ktore budu SERIALIZED/DESERIALIZED.
+   F. PROPERTY SerializationInfo.AssemblyName urcuje ASSEMBLY v ktorej je TYPE, ktory bude SERIALIZED/DESERIALIZED.
+   G. PROPERTY SerializationInfo.FullTypeName urcuje TYPE (ako STRING) ktory bude SERIALIZED/DESERIALIZED.
+   !!! H. Ak DERIVED CLASS NEMA ZIADNE DODATOCNE FIELDS, tak FORMATTER je schopny 'ZDEDIT' DESERIALIZATION CONSTRUCTOR a to tak, ze ak FORMATTER zisti ze DESERIALIZED CLASS NEMA DESERIALIZATION CONSTRUCTOR, tak hlada ci BASE CLASS ho NEMA a ak ano, tak ho vyvola.
+   !!! I. Ak pri DESERIALIZACII sa zo SerializationInfo vybera hodnotu INEHO TYPU ako sa do SerializationInfo pri SERIALIZATION vlozila (napriklad namiesto Int32 vyberam Int64), tak FORMATTER zavola METHOD INTERFACE IFormatterConverter, aby zabezpecil konverziu TYPES. CUSTOM IMPLEMENTACIU tohto INTERFACE pre BinaryFormatter bohuzial, NIE JE MOZNE do BinaryFormatter VLOZIT, ale ak FORMATTER NAJDE CUSTOM TYPE, tak zisti ci DESERIALIZED TYPE NEIMPLEMENTUJE IConvertible a ak ano, tak ho ZAVOLA. CUSTOM CLASSES ak potrebuju konverziu (pri odlisnosti SERIALIZED a DESERIALIZED TYPES daneho FIELD), mozu implementovat INTERFACE IConvertible, ktoreho METHODS budu na zabezpecenie CUSTOM KONVERZIE volane.
+21. Pri SERIALIZATION a DESERIALIZATION METHOD ISerializable.GetObjectData() i DESERIALIZATION CONSTRUCTOR maju ako parameter OBJECT typu StreamingContext. CLASS StreamingContext ma nasledujuce MEMBERS.
+   A. PROPERTY StreamingContext.State urcuje ci sa SERIALIZATION/DESERIALIZATION uskutocnuje v ramci PROCESU, PC, pomocou REMOTING, ci sa jedna o CLONING objektu do FILE. Podla tejto hodnoty je mozne CUSTOMIZOVAT algoritmus SERIALIZATION/DESERIALIZATION.
+   B. PROPERTY StreamingContext.Context obsahuje LUBOVOLNY CUSTOM OBJEKT, ktory je mozne pouzit pri SERIALIZATION/DESERIALIZATION.
+22. CLASS StreamingContext je pristupna pomocou PROPERTY IFormatter.Context. Tutu PROPERTY je nutne nastavit PRED SERIALIZATION/DESERIALIZATION.
+!!! 23. FORMATTERS umoznuju pocas SERIALIZATION ZMENIT TYPE OBJECTU a namiesto OBJECTU typu 'XXX' ulozit do STREAMU OBJECT typu 'YYY'. Vyuziva sa to napriklad pri SERIALIZATION SINGLETONS. Postup pre zmenu SERIALIZATION TYPE je nasledujuci.
+   A. TYPE 'XXX' MUSI implementovat INTERFACE ISerializable a METHOD ISerializable.GetObjectData(). DESERIALIZATION CONSTRUCTOR vsak CLASS NEMUSI IMPLEMENTOVAT, lebo DESERIALIZATION bude robit CLASS typu 'YYY'.
+   B. V METHOD ISerializable.GetObjectData() v CLASS 'XXX' sa MUSI zavolat METHOD SerializationInfo.SetType(typeof(YYY)), ktorym sa urci, ze do STREAMU sa zapise TYPE 'YYY'. Zaroven do CLASS SerializationInfo sa mozu zapisat hodnoty FIELDS, ktore budu potrebne pri DESERIALIZATION typu 'YYY'.
+   C. TYPE 'YYY' MUSI implementovat INTERFACE IObjectReference a jej METHOD IObjectReference.GetRealObject().
+   !!! D. METHOD IObjectReference.GetRealObject() ma ako PARAMETER OBJECT typu StreamingContext, z ktoreho MUSI DESERIALIZOVAT OBJECT a vratit ho ako RETURN VALUE. TYPE DESERIALIZED OBJECTU, ktory METHOD IObjectReference.GetRealObject() vrati je LUBOVOLNY. Moze to byt 'YYY', ale aj modifikovany 'XXX', resp. pri SERIALIZATION SINGLETONS to moze byt referencia na EXISTUJUCI SINGLETON.
+   E. Pri SERIALIZATION SINGLETON OBJECT FORMATTER AUTOMATICKY zabezpecuje, ze sa do STREAMU ulozi iba 1 SINGLETON OBJECT, kedze FORMATTER detekuje identicke OBJECTS, aby zabranil vzniku NEKONECNYCH CYKLOV.
+24. SERIALIZATION SURROGATES umoznuju aby FORMATTER pri detekcii definovaneho TYPE NAMIESTO SERIALIZACIE DANEHO TYPU zavolal ZAREGISTROVANY SURROGATE OBJECT, ktory bude zodpovedny za SERIALIZATION/DESERIALIZATION daneho TYPE. SERIALIZATION SURROGATES su CLASSES implementujuce INTERFACE ISerializationSurrogate, ktora ma nasledujuce MEMBERS.
+   A. METHOD ISerializationSurrogate.GetObjectData() sa pouziva pri SERIALIZATION a jej ulohou je hodnoty FIELDS SERIALIZED OBJECT zaslaneho ako PARAMETER zapisat do PARAMETER typu SerializationInfo.
+   B. METHOD ISerializationSurrogate.SetObjectData() sa pouziva pri DESERIALIZATION a jej ulohou je BUD NASTAVIT FIELDS DESERIALIZED OBJECT zaslaneho ako PARAMETER, alebo vytvori NOVY OBJECT a vratit ho ako RETURN VALUE. V oboch pripadoch su hodnoty FIELDS nacitavane z OBJECT typu SerializationInfo, ktory je zaslany ako PARAMETER METHOD ISerializationSurrogate.SetObjectData().
+ !!! 25. SERIALIZATION cez SERIALIZATION SURROGATE sa realizuje v nasledujucich krokoch.
+   A. Vytvori sa SERIALIZATION SURROGATE CLASS, ktora implementuje INTERFACE ISerializationSurrogate.
+   B. Implementuje sa METHOD ISerializationSurrogate.GetObjectData(), ktora sa pouziva pri SERIALIZATION. Jej ulohou je hodnoty FIELDS SERIALIZED OBJECT zaslaneho ako PARAMETER zapisat do PARAMETER typu SerializationInfo.
+   C. Implementuje sa METHOD ISerializationSurrogate.SetObjectData(), ktora sa pouziva pri DESERIALIZATION. Jej ulohou je BUD NASTAVIT FIELDS DESERIALIZED OBJECT zaslaneho ako PARAMETER, alebo vytvori NOVY OBJECT a vratit ho ako RETURN VALUE. V oboch pripadoch su hodnoty FIELDS nacitavane z OBJECT typu SerializationInfo, ktory je zaslany ako PARAMETER METHOD ISerializationSurrogate.SetObjectData().
+   D. Vytvori sa OBJECT typu SurrogateSelector, ktory implementuje INTERFACE ISurrogateSelector a pomocou METHOD SurrogateSelector.AddSurrogate() sa pre KAZDY TYPE prida jeho SERIALIZATION SURROGATE OBJECT, ktory vie pre dany TYPE vykonat SERIALIZATION/DESERIALIZATION.
+   E. OBJECT SurrogateSelector sa ulozi do PROPERTY IFormatter.SurrogateSelector daneho FORMATTER. Nasledne FORMATTER pri SERIALIZATION/DESERIALIZATION bude kazdy ZAREGISTROVANY TYPE vykonavat SERIALIZATION/DESERIALIZATION pomocou zaregistrovaneho SERIALIZATION SURROGATE.
+!!!!! 26. VYHODOU SERIALIZATION SURROGATES je, ze CLASS, pre ktoru vykonavaju SERIALIZATION/DESERIALIZATION NEMUSI BYT SERIALIZABLE (NEMUSI mat aplikovany ATTRIBUTE [Serializable].
+27. INTERFACE ISurrogateSelector umoznuje i CHAINING viacerych rozlicnych OBJECTS typu ISurrogateSelector pomocou METHODS ISurrogateSelector.ChainSelector(), ISurrogateSelector.GetNextSelector() a ISurrogateSelector.GetSurrogate(). Pri SURROGATE CHAINING je mozne zviazat viacero SURROGATES do 1 SURROGATE OBJECT, ktory sa pouzite pri SERIALIZATION/DESERIALIZATION.
+!!! 28. FORMATTER standardne uklada do STREAM ASSEMBLY NAME a TYPE NAME vsetkych TYPES, ktore boli SERIALIZED, aby ich pri DESERIALIZATION vedel nacitat. FORMATTER vsak umoznuje ZMENIT nazvy ASSEMBLY NAME a TYPE NAME za LUBOVOLNE HODNOTY (kludne aj NEEXISTUJUCEHO TYPU) a tak napriklad dat KRATSIE NAZVY do STREAMU ako su skutocne nazvy ASSEMBLIES a TYPES. Moznost substitucie ASSEMBLY a TYPE NAMES je mozne vyuzit aj pri VERSIONING. Substitucia ASSEMBLY a TYPE NAMES sa robi nasledujucim sposobom.
+   A. Vytvori sa CLASS implementujuca CLASS SerializationBinder.
+   !!! B. METHOD SerializationBinder.BindToName() pre TYPE zaslany ako PARAMETER MUSI zapisat do OUT PARAMETERS CUSTOM ASSEMBLY NAME a CUSTOM TYPE NAME. Tieto NAMES mozu byt LUBOVOLNE STRINGS a vobec NEMUSIA ZODPOVEDAT REALNEMU TYPE.
+   !!! C. METHOD SerializationBinder.BindToType() pre zaslane PARAMETERS obsahujuce CUSTOM ASSEMBLY NAME a CUSTOM TYPE NAME musi vytvorit instanciu CLASS Type, obsahujuci REALNY TYPE, ktory je ulozeny v STREAM. Do tohto TYPE bude FORMATTER robit DESERIALIZATION zo STREAM.
+   D. Vo FORMATTER je potrebne nastavit PROPERTY IFormatter.Binder na CLASS zdedenu zo CLASS SerializationBinder. FORMATTER nasledne pouzije BINDER pri realizacii SERIALIZATION/DESERIALIZATION.
+//-------------------------------------------------------------------------------------------------------

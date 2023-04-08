@@ -1,0 +1,1 @@
+SN -p MyFullKey.snk MyFullKey.PublicKey

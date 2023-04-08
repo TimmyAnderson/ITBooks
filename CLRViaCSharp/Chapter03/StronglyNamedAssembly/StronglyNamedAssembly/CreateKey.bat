@@ -1,0 +1,1 @@
+SN -k MyFullKey.snk

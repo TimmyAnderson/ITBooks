@@ -1,0 +1,60 @@
+//-------------------------------------------------------------------------------------------------------
+1. Solution demonstruje pouzitie CUSTOM ATTRIBUTES.
+2. ATTRIBUTE je DATA CLASS (mala by obsahovat iba FIELDS a PROPERTIES), ktora sluzi na OZNACENIE TYPE MEMBERS, PARAMETERS, RETURN VALUES, EVENTS, PROPERTIES ci MODULES a ASSEMBLIES. Data z ATTRIBUTES su ulozne do METADATA a stavaju sa TRVALOU CASTOU ASSEMBLY.
+3. Pomocou ATTRIBUTES je mozne oznacit nasledujuce ELEMENTS.
+   A. ASSEMBLY.
+   B. MODULE.
+   C. CLASS.
+   D. STRUCT.
+   E. ENUM.
+   F. INTERFACE.
+   G. DELEGATE.
+   H. FIELD.
+   I. PROPERTY. ATTIBUTES je mozne aplikovat aj na PROPERTY ACCESS METHODS.
+   J. METHOD.
+   K. CONSTRUCTOR.
+   L. EVENT. ATTIBUTES je mozne aplikovat aj na EVENT ADD a REMOVE METHODS a skryty EVENT FIELD.
+   M. METHOD PARAMETER.
+   N. METHOD RETURN VALUE. Ma PREFIX [return], pricom ATTRIBUTE MUSI mat PROPERTY Attribute.ValidOn==AttributeTargets.ReturnValue.
+   O. GENERIC TYPE PARAMETER. Ma PREFIX [typevar], pricom ATTRIBUTE MUSI mat PROPERTY Attribute.ValidOn==AttributeTargets.GenericParameter.
+!!! 4. ATTRIBUTE aplikovany na ELEMENT sa MUSI nachadzat TESNE PRED danym ELEMENT. Pre niektore ELEMENTS vsak nie je mozne definovat ATTRIBUTE iba samotnou poziciou a je nutne pouzit PREFIX, ktory urci na ktory ELEMENT bude dany ATTRIBUTE aplikovany.
+5. Pri aplikacii ATTRIBUTE sa nastavuje jeho hodnota 2 sposobmi.
+   A. VSETKY PARAMETERS CONSTRUCTOR MUSIA byt zadane v IDENTICKOM poradi v akom su zadane v CONSTRUCTOR.
+   B. Pomocou SYNTAX [PROPERTY=VALUE] je mozne nastavit LUBOVOLNU PUBLIC PROPERTY. Taketo PARAMETERS sa nazyvaju NAMED PARAMETERS.
+!!! 6. ATTRIBUTE ak ma byt CLS COMPATIBLE MUSI byt priamo, alebo nepriamo DERIVED z CLASS [Attribute] (ak NIE JE DERIVED z CLASS [Attribute], tak NIE JE CLS COMPATIBLE) a implementovat DEFAULT CONSTRUCTOR.
+!!! 7. CLR umoznuje definovat aj ATTRIBUTES, ktore NIE SU DERIVED z CLASS [Attribute]. Tieto ATTRIBUTES vsak NIE SU CLS COMPLIANT.
+8. Na dany ELEMENT je mozne aplikovat aj VIACERO ATTRIBUTES. Tieto mozu byt aplikovane pomocou viacerych zlozenych zatvoriek, alebo v 1 zlozenej zatvorke oddelene ciarkou.
+!!! 9. Ziskat ATTRIBUTES pre GENERIC TYPE PARAMETER je mozne iba pomocou CLASS TypeInfo.
+10. C# pri aplikovani ATTRIBUTES nevyzaduje aby ak ATTRIBUTE ma v nazve POSTFIX [Attribute] sa tento pisal tiez. Takze napriklad namiesto ATTRIBUTE [SerializableAttribute] staci napisat [Serializable].
+11. Na CUSTOM ATTRIBUTE CLASS by sa mal VZDY aplikovat ATTRIBUTE [AttributeUsage], ktory urcuje na ktore ELEMENTS (METHODS, PROPERTIES, CLASSES, ASSEMBLIES) je mozne dany ATTRIBUTE aplikovat. ATTRIBUTE [AttibuteUsage] ma nasledujuce PROPERTIES.
+   A. PROPERTY AttibuteUsage.AttributeTarget urcuje na ktore ELEMENTS (METHODS, PROPERTIES, CLASSES, ASSEMBLIES) je mozne dany ATTRIBUTE aplikovat.
+   B. PROPERTY AttibuteUsage.AllowMultiple urcuje ci dany ATTRIBUTE je mozne na TEN ISTY ELEMENT aplikovat VIACKRAT.
+   C. PROPERTY AttibuteUsage.Inherited urcuje ci dany ATTRIBUTE sa aplikuje aj na DERIVED CLASSES/METHODS/EVENTS/FIELDS/METHOD PARAMETERS a METHOD RETURN VALUES.
+12. CUSTOM ATTRIBUTE CLASS by mal mat VZDY 1 PUBLIC CONSTRUCTOR, ktory bude obsahovat VSETKY MANDATORY PARAMETERS. Pre OPTIONAL PARAMETERS musi obsahovat WRITABLE PUBLIC PROPERTIES.
+13. CUSTOM ATTRIBUTES mozu mat iba nasledujucu mnozinu TYPES ako svoje FIELDS, PROPERTIES a CONSTRUCTOR PARAMETERS.
+   A. TYPES Boolean a Boolean[].
+   B. TYPES Char a Char[].
+   C. TYPES Byte a Byte[].
+   D. TYPES SByte a SByte[].
+   E. TYPES Int16 a Int16[].
+   F. TYPES UInt16 a UInt16[].
+   G. TYPES Int32 a Int32[].
+   H. TYPES UInt32 a UInt32[].
+   I. TYPES Int64 a Int64[].
+   J. TYPES UInt64 a UInt64[].
+   K. TYPES Single a Single[].
+   L. TYPES Double a Double[].
+   M. TYPES String a String[].
+   N. TYPES Type a Type[].
+   O. TYPES Object a Object[].
+14. Hodnoty FIELDS, PROPERTIES a CONSTRUCTOR PARAMETERS pre CUSTOM ATTRIBUTES MUSIA byt VZDY COMPILE-TIME CONSTANTS.
+!!! 15. CUSTOM ATTRIBUTES su v COMPILE-TIME ukladane do METADATA ako SERIALIZED BYTE ARRAY v specialnom formate. V RUN-TIME pri volani METHODS GetCustomAttribute() a GetCustomAttributes() su DESERIALIZED a ich CONSTRUCTORS su VOLANE.
+16. Detekovat pritomnost ATTRIBUTES nad jednotlivymi ELEMENTS je mozne nasledujucimi sposobmi.
+   A. METHOD IsDefined() je definovana v CLASS Attribute, ako aj v niektorych REFLECTION CLASSES (ako napriklad CLASS MethodInfo ci CLASS ParameterInfo). METHOD iba detekuje PRITOMNOST ATTRIBUTE, ale NEVYTVARA ATTRIBUTE OBJECT z METADATA a teda NIE JE MOZNE zistit hodnoty FIELDS a PROPERTIES daneho ATTRIBUTE.
+   B. METHOD GetCustomAttribute() je definovana v CLASS Attribute, ako aj v niektorych REFLECTION CLASSES (ako napriklad CLASS MethodInfo ci CLASS ParameterInfo). METHOD vytvara a vracia INSTANCIU daneho ATTRIBUTE. ATTRIBUTE vsak NESMIE byt aplikovany na dany ELEMENT VIACKRAT (AllowMultiple==TRUE), inak METHOD hodi EXCEPTION.
+   C. METHOD GetCustomAttributes() je definovana v CLASS Attribute, ako aj v niektorych REFLECTION CLASSES (ako napriklad CLASS MethodInfo ci CLASS ParameterInfo). METHOD vytvara a vracia VSETKY ATTRIBUTES AJ KED je dany ATTIBUTE na TEN ISTY ELEMENT aplikovany VIACKRAT (AllowMultiple==TRUE).
+   !!! D. METHOD CustomAttributeData.GetCustomAttributes() vracia OBJECT typu [CustomAttributeData] z ktoreho je mozne ziskat informacie o ATTRIBUTES, ktore su aplikovane na dane ELEMENTS. VYHODOU tohto sposobu je, ze METHOD NEVYTVARA instancie ATTRIBUTES, ani NESPUSTA ZIADEN CODE, ktory sa tyka ATTRIBUTES (napriklad NEVOLA STATIC CONSTRUCTOR, ak by ATTRIBUTE definoval STATIC CONSTRUCTOR). Vdaka tomu, ze METHOD NESPUSTA pri detekcii ATTRIBUTES ZIADEN CODE, tak je tento sposobom detekcie ATTRIBUTES BEZPECNEJSI, pretoze sa NESPUSTA ziaden potencialne NEBEZPECNY CODE, ktory by mohol byt v CONSTRUCTORS ci PROPERTY METHODS CUSTOM ATTRIBUTES.
+!!! 17. METHODS IsDefined(), GetCustomAttribute() a GetCustomAttributes() vracaju nielen vyskyt daneho ATTRIBUTE, ale ja LUBOVOLNEHO DERIVED ATTRIBUTE (ATTRIBUTE CLASS, ktora je DERIVED z inej ATTRIBUTE CLASS) aplikovaneho na dany ELEMENT.
+18. CLASS Attribute vykonava METHOD OVERRIDING Attribute.Equals(), ktora pomocou REFLECTION zisti ci su 2 instancie danej ATTRIBUTE CLASS zhodne. Okrem toho CLASS Attribute definuje aj METHOD Attribute.Match(), ktora DEFAULT vola Attribute.Equals(), avsak moze byt OVERRIDEN pre sofistikovanejsie porovnanie instancii ATTRIBUTES.
+!!! 19. Ak CUSTOM ATTRIBUTE CLASS je oznacena ATTRIBUTE [Conditional], tak sa pocas kompilacie ATTRIBUTE aplikuje na METADATA IBA VTEDY, ak je CONDITION v [Conditional] SPLNENA. Inak sa IGNORUJE, aj ked definicia samotnej ATTRIBUTE CLASS je pridana do ASSEMBLY.
+//-------------------------------------------------------------------------------------------------------

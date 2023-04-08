@@ -1,0 +1,50 @@
+//-------------------------------------------------------------------------------------------------------
+1. Solution demonstruje pouzivanie INTERFACES v .NET.
+2. CLR VYZADUJE, aby CLASS bola VZDY DERIVED PRAVE z 1 CLASS (okrem CLASS Object). CLASS vsak moze implementovat VIACERO INTERFACES.
+3. INTERFACE je COLLECTION MEMBER SIGNATURES. INTERFACE moze obsahovat METHODS, EVENTS, PROPERTIES a INDEXERS. INTERFACE NEMOZE obsahovat FIELDS a CONSTRUCTORS.
+!!! 4. Aj ked CLR POVOLUJE aby INTREFACE obsahoval aj STATIC MEMBERS (FIELDS, METHODS, CONSTRUCTOR, EVENT, PROPERTY), tak C# tuto vlastnost neimplementuje.
+5. V C# sa INTERFACE definuje pomocou KEYWORD [interface]. KEYWORD [interface] definuje NOVY TYPE pre ktory CLR vytvara METADATA. Na tento TYPE sa je mozne dotazovat pomocou REFLECTION.
+6. CLASS moze definovat NESTED INTERFACE, ale INTERFACE NESTED INTERFACE definovat NEMOZE.
+!!!!! 7. CLR VZDY VYZADUJE, aby ak CLASS implementuje INTERFACE METHODS, boli tieto METHODS VZDY VIRTUAL. Ak v CLASS OVERRIDEN METHOD z INTERFACE nie je oznacena ako VIRTUAL, C# ju AUTOMATICKY oznaci ako VIRTUAL a SEALED. Ak vsak OVERRIDEN METHOD je oznacena ako VIRTUAL, C# FLAG SEALED NEPRIDA.
+!!! 8. Ak CLASS implementuje INTERFACE tak pre implementovane INTREFACE METHODS platia nasledujuce pravidla.
+   A. METHODS musia byt oznacene ako PUBLIC.
+   B. Ak je METHODS oznacena KEYWORD [virtual], tak C# oznaci METHOD FLAG VIRTUAL.
+   !!! C. Ak je METHOD NIE JE oznacena KEYWORD [virtual], tak C# ju pri jej kompilacii ju oznaci FLAGS VIRTUAL (je to vyzadovane CLR) a SEALED.
+!!! 9. KEYWORD [new] aplikovane na METHOD umoznuje PRERUSIT INHERITANCE CHAIN.
+!!! 10. VALUE TYPES mozu implementovat INTERFACES, avsak pri konverzii VALUE TYPE na INTERFACE VZDY dochadza VZDY k BOXING, pretoze INTERFACE je REFERENCE TYPE, ktory musi byt umiestneny na HEAP spolu s OBJECT na ktory referuje.
+!!!!! 11. VIRTUAL METHOD TABLE obsahuje pre KAZDY TYPE nasledujuce zaznamy.
+   !!!!! A. Zaznamy pre VSETKY METHODS, ktore dana TYPE sam definuje. Sem patria aj METHODS, ktore sluzia ako METHOD OVERRIDES pre METHODS z BASE CLASSES a implementovanych INTERFACES.
+   !!! B. Zaznamy pre VSETKY METHODS, ktoru definuju VSETKY jej BASE CLASSES. Tieto su NEZAVISLE od METHODS, ktore definuje TYPE a ktore sluzia ako METHOD OVERRIDES.
+   C. Zaznamy pre VSETKY METHODS, ktoru definuju VSETKY INTERFACES, ktore TYPE implementuje. Tieto su NEZAVISLE od METHODS, ktore definuje TYPE a ktore sluzia ako METHOD OVERRIDES.
+!!!!! 12. Pre VIRTUAL METHOD TABLE plati, ze ked INTERFACE IXXX ma METHOD XXX(), tak CLASS CXXX, ktora implementuje INTERFACE IXXX a obsahuje OVERRIDEN METHOD XXX() ma v skutocnosti az 2 RECORDS vo VIRTUAL METHOD TABLE. Jeden RECORD je pre METHOD IXXX.XXX() z INTERFACE IXXX a druha je METHOD CXXX.XXX(), ktora vykonava METHOD OVERRIDNG METHOD IXXX.XXX().
+!!!!! 13. Ak sa nepouziva EXPLICIT OVERRIDING, tak C# ZLUCI METADATA METHODS reprezentujuce METHOD DERIVED z INTERFACE a METHOD, ktora sluzi ako METHOD OVERRIDE METHOD DERIVED z INTERFACE, tak aby odkazovali na TEN ISTY CODE. CLR to nevyzaduje (METHODS mozu byt NEZAVISLE), ale C# to takto definuje, aby bolo programovanie intuitivnejsie.
+14. INTERFACES plne podporuju GENERICS, teda pre INTERFACE je mozne definovat TYPE PARAMETERS a takisto vyuzivat aj CONAVRIANCE a CONTRAVARIANCE.
+15. INTERFACES mozu mat GENERIC METHODS.
+16. Na GENERICS INTERFACES je mozne aplikovat CONSTRAINTS.
+!!! 17. TYPE PARAMETERS (pre CLASSES, INTERFACES, DELEGATES, METHODS) mozu obsahovat 0-N INTERFACE CONSTRAINTS. Ak je definovanvych viac ako 1 INTERFACE CONSTRAINT TYPE ARGUMENT MUSI implementovat VSETKY INTERFACES.
+!!! 18. Ak ma TYPE PARAMETER CONSTRAINT typu INTERFACE CONSTRAINT a ako TYPE ARGUMENT sa pouzije VALUE TYPE, tak C# ma SPECIALNU OPTIMALIZACIU, ktora pre tieto TYPE ARGUMENT NEPOUZIJU BOXING, ale volanie INTERFACE METHODS generuju MSIL INSTRUCTIONS, ktore NEVYZADUJU BOXING.
+!!!!! 19. Ak CLASS implementuje VIACERO INTERFACES a tieto maju niektore METHOD s ROVNAKY NAME, tak vo VIRTUAL METHOD TABLE je PRE KAZDY INTERFACE vytvoreny SEPARATNY RECORD a implementacia jednotlivych METHODS (rovnako pomenovaych, ale DERIVED z rozlicnych INTERFACES) je mozna IBA cez EXPLICITNE IMPLEMENTOVANY INTERFACE.
+!!! 20. Technika EXPLICITNE implementovanych INTERFACES je mozne s vyhodou pouzit tam, kde sa musia implementovat NON-GENERICS INTERFACES pouzivajuce Object ako PARAMETER ci RETURN VALUE. Ak su NON-GENERIC INTERFACES implementovane EXPLICITNE ich METHOD sa stanu PRIVATE a NEBUDU pristupne bez EXPLICITNEHO PRETYPOVANIA. CLASS potom moze implementovat TYPE SAFE verzie tychto METHODS, ktore budu PUBLIC a teda pristupne zvonku.
+!!! 21. EXPLICITLY OVERRIDEN METHODS NIE SU pristupne z DERIVED CLASSES a to ani po pretypovani na INTERFACE. Po PRETYTOVANI na INTERFACE bude volana CURRENT METHOD cim dojde k RECURSION.
+!!! 22. EXPLICITNE IMPLEMENTOVANE INTERFACES by sa mali pouzivat co najmenej. Vyzaduju totizto nutnost BOXING pre VALUE TYPES , pretoze VALUE TYPES je nutne pri EXPICITNE IMPLEMENTOVANOM INTERFACE nutne NAJPRV PRETYPOVAT na INTERFACE co prinasa BOXING. Problemom je i NEMOZNOST VOLANIA BASE METHOD z EXPLICITNE IMPLEMENTOVANEHO INTERFACE v DERIVED CLASSES, pretoze tieto METHODS su EXPLICITNE PRIVATE.
+//-------------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------------
+Priklad ake METHODS obsahuje VIRTUAL METHOD TABLE.
+
+public class CSomeClass : CSomeBaseClass, IDisposable
+{
+	public Dispose();
+	public SomeMethod();
+}
+
+1. CLASS CSomeClass bude obsahovat RECORDS pre NASLEDUJUCE METHODS.
+   A. RECORDS pre VSETKY METHODS BASE CLASS CSomeBaseClass a jeho BASE CLASSES (Object).
+   B. RECORDS pre VSETKY METHOD INTERFACE IDisposable. Kedze INTERFACE ma iba 1 METHOD Dispose(), tak VIRTUAL METHOD TABLE bude obsahovat tento RECORD.
+   C. RECORD pre METHOD SomeMethod(), ktoru definuje CLAS CSomeClass.
+   !!!!! D. RECORD pre METHOD CSomeClass.Dispose(), ktora sa definuje CSomeClass. Tato METHOD je NEZAVISLA na METHOD IDisposable.Dispose(), ktora bola DERIVED z INTERFACE IDisposable.
+!!!!! 2. Z uvedeneho vyplyva, ze pre CLASS CSomeClass ma 2 RECORDS pre METHOD Dispose() vo svojich METADATA.
+   !!! A. METHOD IDisposable().Dispose() je RECORD obsahujuci METHOD (bez tela), ktora bola DERIVED z INTERFACE IDisposable.
+   B. METHOD CSomeClass.Dispose(), ktora je definovana v CLASS CSomeClass a sluzi ako METHOD OVERRIDE pre METHOD IDisposable().Dispose().
+!!!!! 3. Ak sa nepouziva EXPLICIT OVERRIDING (ako v tomto priklade), tak C# ZLUCI METADATA CLASS CSomeClass a to tak, aby METHODS IDisposable().Dispose() a CSomeClass.Dispose() odkazovali na TEN ISTY CODE. CLR to vsak NEVYZADUJE. Je to cisto iba zalezitost C#.
+//-------------------------------------------------------------------------------------------------------

@@ -1,0 +1,95 @@
+//-------------------------------------------------------------------------------------------------------
+1. Solution demonstruje pouzitie DELEGATES.
+2. DELEGATES su TYPES reprezentujuce CALLBACK METHODS, ktore mozu byt prostrednictom DELEGATES vyvolavane.
+3. DELEGATES su na rozdiel od C++ TYPE SAFE co znamena, ze NIE JE MOZNE do DELEGATE za CALLBACK METHOD vlozit METHOD, ktora by mala nekompatibilne PARAMETERS a RETURN VALUE ako ju vyzaduje DELEGATE.
+4. DELEGATES umoznuju substituovat STATIC a NON-STATIC METHODS ako CALLBACK METHODS DELEGATES.
+!!! 5. DELEGATES podporuju 2 typy COVARIANCE a CONTRAVARIANCE.
+   A. NON-GENERIC COVARIANCE a CONTRAVARIANCE sa uplatnuje na NON-GENERIC DELEGATES. COVARIANCE a CONTRAVARIANCE sa aplikuje na PARAMETERS a RETURN VALUES substituovanych CALLBACK METHODS.
+   B. GENERIC COVARIANCE a CONTRAVARIANCE sa uplatnuje na GENERIC DELEGATES. COVARIANCE a CONTRAVARIANCE sa aplikuje na PARAMETERS a RETURN VALUES ak su tieto subsituovane TYPE PARAMETERS.
+!!! 6. NON-GENERIC DELEGATES umoznuju mechanizmus COVARIANCE a CONTRAVARIANCE, kedy za CALLBACK METHOD je mozne substituovat METHOD, ktora ma NEROVNAKE TYPES pre PARAMETERS a RETURN VALUE ako pozaduje DELEGATE.
+   A. COVARIANCE znamena, ze RETURN VALUE definovana v deklaracii DELEGATE moze byt v CALLBACK METHOD bud toho isteho TYPE, alebo ineho TYPE, ktory je DERIVED z TYPE pouziteho pri deklarovani DELEGATE. Teda ak napriklad ma DELEGATE ako RETURN VALUE TYPE Object, tak takyto DELEGATE BUDE akceptovat aj CALLBACK METHOD, ktora bude mat RETURN VALUE TYPE String, pretoze String je DERIVED z Object.
+   B. COVARIANCE znamena, ze PARAMETER definovany v deklaracii DELEGATE moze byt v CALLBACK METHODbud toho isteho TYPE, alebo ineho TYPE, ktory je BASE TYPE z TYPE pouziteho pri deklarovani DELEGATE. Teda ak napriklad ma DELEGATE ako PARAMETER TYPE String, tak takyto DELEGATE BUDE akceptovat aj CALLBACK METHOD, ktora bude mat PARAMETER TYPE Object, pretoze TYPE Object je BASE CLASS pre TYPE String.
+   !!! C. COVARIANCE a CONTRAVARIANCE sa NEDA UPLATNIT na VALUE TYPES, ani na TYPE 'void'.
+!!! 7. GENERIC DELEGATES umoznuju mechanizmus COVARIANCE a CONTRAVARIANCE, ktory umoznuje pouzit CALLBACK METHODS s inymi PARAMETERS a RETURN VALUES ako vyzaduje DELEGATE.
+   A. CONTRAVARIANT TYPE PARAMETERS umoznuju konverziu GENERIC DELEGATE s TYPE PARAMETER T1 na GENERIC DELEGATE s TYPE PARAMETER T2, ak T2 je DERIVED z T1. CONTRAVARIANT TYPE PARAMETERS je mozne pouziva IBA ako PARAMETERS GENERIC DELEGATES, alebo PARAMETER GENERIC INTERFACE METHODS. Definuju sa aplikovanim KEYWORD [in] TYPE PARAMETER.
+   B. COVARIANT TYPE PARAMETERS umoznuju konverziu GENERIC DELEGATE s TYPE PARAMETER T1 na GENERIC DELEGATE s TYPE PARAMETER T2, ak T1 je DERIVED z T2. COVARIANT TYPE PARAMETERS je mozne pouziva IBA ako RETURN VALUES GENERIC DELEGATES, alebo RETURN VALUES GENERIC INTERFACE METHODS. Definuju sa aplikovanim KEYWORD [out] TYPE PARAMETER.
+!!! 8. COVARIANTS a CONTRAVARIANTS pre GENERIC DELEGATES NIE JE MOZNE POUZIT ak sa TYPE PARAMETERS maju pouzit pre METHOD PARAMETERS oznacenych KEYWORD [ref] a [out].
+!!!!! 9. COVARIANTS a CONTRAVARIANTS pre GENERIC DELEGATES NIE JE MOZNE POUZIT ak na suplovanie TYPE Object a VALUE TYPES, aj ked v skutocnosti VSETKY VALUE TYPES su DERIVED z TYPE Object.
+!!! 10. C# KEYWORD [delegate] konvertuje na definiciu novej CLASS, ktora je DERIVED z CLASS MulticastDelegate (ktora je DERIVED z CLASS Delegate). CLASS ma nasledujuce MEMBERS.
+   A. CONSTRUCTOR. Ako 1. PARAMETER obsahuje TYPE Object, ktory reprezentuje THIS PARAMETER ktory bude pouzity pri volani CALLBACK METHOD, ak tato reprezentuje INSTANCE METHOD. Ak CALLBACK METHOD reprezentuje STATIC METHOD, hodnota tohto PARAMETER je NULL. 2. PARAMETER je TYPE IntPtr a repreznetuje INTERNY IDENTIFIKATOR identifikujuci CALLBACK METHOD, ktoru DELEGATE zapuzdruje. Hodnota IntPtr odkazuje do METADATA TABLES.
+   B. METHOD Invoke(). Ma ROVNAKY PROTOTYPE ako PROTOTYPE definovaneho DELEGATE. Pouziva sa na SYNCHRONNE volanie CALLBACK METHOD, ktoru dany DELEGATE zapuzdruje.
+   C. METHOD BeginInvoke(). Ma ROVNAKE PARAMETERS ako PROTOTYPE definovaneho DELEGATE. Pouziva sa na ZACATIE ASYNCHRONNEHO volania CALLBACK METHOD, ktoru dany DELEGATE zapuzdruje.
+   D. METHOD EndInvoke(). Ma ROVNAKU RETURN VALUE ako PROTOTYPE definovaneho DELEGATE. Pouziva sa na UKONCENIE ASYNCHRONNEHO volania CALLBACK METHOD, ktoru dany DELEGATE zapuzdruje.
+11. ACCESS RIGHTS k DELEGATE CLASS, ktoru C# vygeneruje su IDENTICKE ACCESS RIGHTS aplikovanych na definiciu DELEGATE. Ak napriklad DELEGATE je definovany ako 'internal', tak CLASS generovana z tohto DELEGATE je oznacena ako 'private'. Ak je DELEGATE definovany ako 'public', tak CLASS generovana z tohto DELEGATE je oznacena ako 'public'.
+12. CLR podporuje aj NESTED DELEGATES, pretoze DELEGATES su v skutocnosti CLASSES, takze DELEGATE moze byt definovany vsade tam kde CLASS.
+!!! 13. C# pri detekcii volania DELEGATE generuje CODE, ktory zavola METHOD Invoke() daneho DELEGATE.
+14. CLASS MulticastDelegate je BASE CLASS pre VSETKY DELEGATED. Je DERIVED z CLASS Delegate, ktora je DERIVED z CLASS Object. Obe CLASSES poskytuju nasledujuce MEMBERS.
+   A. FIELD Delegate._target obsahuje OBJECT ktory sa pouzije ako THIS PARAMETER pri volani CALLBACK METHOD, ak ta reprezentuje INSTANCE METHOD. Pri STATIC METHODS obsahuje hodnotu NULL.
+   B. FIELD Delegate._methodPtr je typu IntPtr a obsahuje INTERNY IDENTIFIKATOR identifikujuci CALLBACL METHOD, ktoru DELEGATE zapuzdruje.
+   C. FIELD MulticastDelegate._invocationList je typu Object. Pouziva sa pri DELEGATE CHAINING a obsahuje DELEGATE ARRAY (Delegate[]), ktory obsahuje VSETKY DELEGATES daneho DELEGATE CHAIN. Ak sa CHAINING NEPOUZIVA, tak obsahuje hodnotu NULL.
+   D. PROPERTY Delegate.Target vracia hodnotu FIELD Delegate._target.
+   E. PROPERTY Delegate.Method je TYPE MethodInfo a vracia METHOD, ktoru zapuzdruje DELEGATE. Interne odkazuje na FIELD Delegate._methodPtr z ktorej je schopna vratit hodnotu TYPE MethodInfo.
+   F. INSTANCE METHOD MulticastDelegate.GetInvocationList() vracia ARRAY DELEGATES (Delegate[]) z hodnoty FIELD MulticastDelegate._invocationList obsahujucej vsetky DELEGATES v DELEGATE CHAIN. Ak FIELD MulticastDelegate._invocationList je NULL, tak MulticastDelegate.GetInvocationList() 1 ITEM odkazujuci sa na samotny DELEGATE (THIS).
+   G. INSTANCE METHOD Delegate.DynamicInvoke() vyvola spustenie DELEGATE pomocou LATE BINDING.
+   H. STATIC METHOD Delegate.Combine() sa pouziva na pridanie noveho DELEGATE do DELEGATE CHAIN.
+   I. STATIC METHOD Delegate.Remove() sa pouziva na odstranenie existujuceho DELEGATE z DELEGATE CHAIN.
+   J. STATIC METHOD Delegate.RemoveAll() sa pouziva na odstranenie vsetkych existujucich DELEGATES z DELEGATE CHAIN.
+   K. STATIC METHOD Delegate.CreateDelegate() sa pouziva na vytvorenie novej instancie DELEGATE.
+!!! 15. DELEGATE CHAINING umoznuje, aby 1 DELEGATE OBJECT reprezentoval kolekciu CALLBACK METHODS. Pre DELEGATE CHAINING platia nasledujuce pravidla.
+   A. DELEGATE obsahuje FIELD MulticastDelegate._invocationList v ktorom je ulozeny DELEGATE ARRAY (Delegate[]).
+   B. DELEGATE ARRAY (Delegate[]) reprezentuje ARRAY CALLBACK METHODS, ktore budu vyvolane pri vyvolani DELEGATE.
+   C. DELEGATES sa do DELEGATE CHAIN pridavaju pomocou STATIC METHOD Delegate.Combine().
+   D. DELEGATES sa z DELEGATE CHAIN odstranuju pomocou STATIC METHOD Delegate.Remove().
+!!! 16. DELEGATES sa do DELEGATE CHAIN pridavaju pomocou STATIC METHOD Delegate.Combine(), ktora ma nasledujuce vlasntosti.
+   A. METHOD ma 2 PARAMETERS (existuje aj pretazena verzia s variabilnym poctom PARAMTERS) TYPE Delegate. METHOD vracia v RETURN VALUE TYPE Delegate, ktory obsahuje DELEGATE CHAIN zo vsetkych DELEGATES (tieto DELEGATES mozu uz reprezentovat DELEGATE CHAIN), ktore boli ako PARAMETERS zaslane do METHOD Delegate.Combine().
+   B. Ak niektory z dvojice PARAMETERS obsahuje NULL, tak METHOD vrati NON-NULL PARAMETER.
+   !!! C. Ak oba PARAMETERS su NON-NULL, tak sa vykona DELEGATE CHAINING. METHOD vytvori NOVU instanciu CLASS Delegate, ktora bude vo FIELD MulticastDelegate._invocationList obsahovat ARRAY DELEGATES (Delegate[]) obsahujuci DELEGATES, ktore boli zadane ako PARAMETERS METHOD Delegate.Combine().
+   !!! D. Ak niektory z PARAMETERS METHOD Delegate.Combine() uz BOL CHAINED, tak novovytvoreny DELEGATE bude vo FIELD MulticastDelegate._invocationList obsahovat VSETKY ITEMS z FIELD MulticastDelegate._invocationList. Takze, ak napriklad 1. PARAMETER je DELEGATE, ktory ma vo FIELD MulticastDelegate._invocationList 3 DELEGATES a 2. PARAMETER je DELEGATE, ktory ma vo FIELD MulticastDelegate._invocationList 2 DELEGATES, tak vrateny novovytvoreny DELEGATE (instancia CLASS Delegate) bude vo FIELD MulticastDelegate._invocationList obsahovat VSETKYCH 5 DELEGATES.
+   !!! E. Novovytvoreny DELEGATE pri DELEGATE CHAINING obsahuje i FIELDS Delegate._target a Delegate._methodPtr, avsak ich hodnoty su IRELEVANTNE.
+!!! 17. DELEGATES sa z DELEGATE CHAIN odstranuju pomocou STATIC METHOD Delegate.Remove(), ktora ma nasledujuce vlasntosti.
+   A. METHOD ma PARAMETER TYPE Delegate. METHOD vracia v RETURN VALUE TYPE Delegate reprezentujuci DELEGATE CHAIN s uz odstranenym DELEGATE.
+   B. Ak DELEGATE CHAIN po volani METHOD obsahuje viac ako 1 DELEGATE, tak je vytvorena nova instancia DELEGATE, ktora obsahuje DELEGATE CHAIN bez odstraneneho DELEGATE.
+   C. Ak DELEGATE CHAIN po volani METHOD obsahuje jediny DELEGATE, potom je vrateny tento DELEGATE.
+   D. Ak DELEGATE CHAIN po volani METHOD je prazdna, METHOD vracia hodnotu NULL.
+   E. METHOD pri hladani DELEGATE, ktory ma byt odstraneny prechadza ARRAY vo FIELD MulticastDelegate._invocationList a hlada taky DELEGATE, ktoreho FIELDS Delegate._target a Delegate._methodPtr su ZHODNE s FIELDS Delegate._target a Delegate._methodPtr v DELEGATE zaslanom ako METHOD PARAMETER.
+   F. Ak viacero DELEGATES vyhovuje podmienke na odstranenie, odstranuje sa VZDY iba 1. NAJDENY DELEGATE.
+!!!!! 18. Ak DELEGATE obsahuje DELEGATE CHAIN a je vyvolany, tak STADNARDNA implementacia METHOD Delegate.Invoke() SEKVENCNE vola VSETKY DELEGATES v poradi v akom su ulozene v DELEGATE CHAIN. Ak DELEGATE vracia RETURN VALUE, tak volanie DELEGATE VZDY vrati RETURN VALUE vratenu POSLEDNYM DELEGATE v DELEGATE CHAIN.
+19. C# poskytuje pre jednoduchsie volanie METHODS Delegate.Combine() a Delegate.Remove() pomocou OPERATOR+= a OPERATOR-=. Interne OPERATOR+= vola METHOD Delegate.Combine() a OPERATOR-= vola METHOD Delegate.Remove(). Tieto OPERATORS NIE SU SKUTOCNYMI OPERATORS, ale iba C# SYNTAXOU, ktoru C# pri kompilacii prelozi na volanie METHOD Delegate.Combine() a METHOD Delegate.Remove().
+!!! 20. NEVYHODY STANDARNDEHO MECHANIZMU volania DELEGATE CHAIN su nasledovne.
+   !!! A. Ak DELEGATE definuje RETURN VALUE, tak pri CHAIN sa vrati RETURN VALUE POSLEDNEHO DELEGATE v DELEGATE CHAIN a RETURN VALUES ostatnych DELEGATES su IGNOROVANE.
+   !!!!! B. Ak pocas vykonavania DELEGATES v DELEGATE CHAIN dojde k EXCEPTION, tak sa OSTATNE DELEGATES v CHAIN NEVYKONAJU.
+   C. Ak pocas vykonavania DELEGATES niektory DELEGATE je vykonavany prilis dlho (alebo sa uplne zablokuje), tak zabrzdi vykonavanie ostatnych DELEGATES v DELEGATE CHAIN.
+!!!!! 21. Alternativou voci STANDARDNEMU MECHANIZMU volania DELEGATE CHAIN je pouzitie METHOD MulticastDelegate.GetInvocationList() pomocou, ktorej je mozne ziskat DELEGATE ARRAY (Delegate[]) so vsetkych DELEGATES zaregistrovanymi v DELEGATE CHAIN. Tento ARRAY je mozne pouzit na volanie DELEGATES v LUBOVOLNOM PORADI, na zachytenie EXCEPTIONS z volani jednotlivych DELEGATES ci ziskania a spracovania RETURN VALUES vratenych volaniami jednotlivych DELEGATES.
+!!! 22. DELEGATES mozu byt pouzivat GENERICS, pricom mozu vyuzivat GENERIC COVARIANCE a GENERIC CONTRAVARIANCE.
+!!! 23. DELEGATES podporuju aj nasledujuce typy PARAMETERS.   
+   A. PARAMETER typu [ref].
+   B. PARAMETER typu [out].
+   C. PARAMETER typu [params].
+24. C# umoznuje pri pouzivani DELEGATES viacere typy 'SYNTACTICAL SUGARS', ktore zjednodusuju pracu s DELEGATES.
+   A. C# umoznuje sa pri konstrukcii DELEGATES nemusel v CODE explicitne vytvarat DELEGATE OBJECT, ale namiesto toho sa pouzil iba nazov CALLBACK METHOD pre ktoru C# explicitne vytvori instanciu DELEGATE, ktora obali CALLBACK METHOD.
+   B. C# umoznuje pouzitie LAMBDA EXPRESSIONS, ktore zjednodusuju zapis najma jednoduchych CALLBACK METHODS. Na pozadi C# z LAMBDA EXPRESSION generuje PRIVATE METHOD, ktora obsahuje CODE LAMBDA EXPRESSION.
+   !!! C. C# umoznuje pouzitie ANONYMOUS METHODS. ANONYMOUS METHODS su vsak dnes povazovane za ZASTARALE a namiesto nich sa odporuca pouzivat LAMBDA EXPRESSIONS.
+   !!! D. Pri pouziti LAMBDA EXPRESSIONS a ANONYMOUS METHODS je mozne pouzit LOCAL VARIABLES definovane v METHOD, ktora definuje LAMBDA EXPRESSION (ANONYMOUS METHOD). C# na pozadi PRIVATE CLASS, ktory obsahuje vsetky prenasane PARAMETERS a LOCAL VARIABLS, ktore CODE z LAMBDA EXPRESSION (ANONYMOUS METHOD) pouziva.
+25. Pre LAMBDA EXPRESSIONS platia nasledujuce fakty.
+   A. PARAMETERS LAMBDA EXPRESSIONS sa definuju na lavej strane OPERATOR=> v obycajnych zatvorkach (). Zatvorky vsak nie je nutne pouzit ak ma LAMBDA EXPRESSION iba 1 PARAMETER.
+   B. PARAMETERS LAMBDA EXPRESSIONS mozu mat definovane TYPES, no ak ich nemaju C# dokaze spravit ich INFERRING.
+   C. PARAMETERS LAMBDA EXPRESSIONS mozu byt typu [ref] a [out].
+   !!!!! D. LAMBDA EXPRESSIONS su C# CONSTRUCTS, pre ktore C# generuje PRIVATE METHODS, ktore su vlozene ako CALLBACK METHOD do DELEGATES.
+   !!! E. C# z LAMBDA EXPRESSIONS generuje STATIC METHODS, alebo INSTANCE METHODS. INSTANCE METHODS su generuje ak LAMBDA EXPRESSIONS pouzivaju niektore INSTANCE MEMBERS OBJECT v INSTANCE METHOD su volane. Ak v LAMBDA EXPRESSIONS INSTANCE MEMBERS nie su pouzite, C# generuje STATIC METHOD.
+   F. Ak v LAMBDA EXPRESSIONS sa ma definovat viacero EXPRESSIONS, tak je nutne LAMBDA EXPRESSION obalit do zlozenych zatvoriek {}. Ak takato zlozena LAMBDA EXPRESSIONS ma zaroven vracat RETURN VALUE, tak MUSI pouzit KEYWORD [return].
+!!! 26. Deklarovanie INSTANCE LAMBDA EXPRESSIONS znamena, ze C# generuje nasledujuci CODE.
+   A. Vygeneruje sa PRIVATE INSTANCE METHOD, ktora obsahuje CODE, ktory bol definovany v LAMBDA EXPRESSION. METHOD ma DYNAMICKY generovane MENO, ktore sa moze pri KAZDEJ KOMPILACII MENIT. K METHOD je mozne pristupit cez REFLECTION, ale vzhladom nato, ze sa meno pri kompilacii moze menit sa to silne NEODPORUCA.
+   B. Na mieste, kde sa pouzila LAMBDA EXRESSION je vytvorena INSTANCIA CLASS Delegate, ktory zapudzruje PRIVATE METHOD obsahujucu CODE LAMBDA EXPRESSION.
+!!! 27. Deklarovanie STATIC LAMBDA EXPRESSION znamena, ze C# generuje nasledujuci CODE.
+   A. Vygeneruje sa PRIVATE STATIC METHOD, ktora obsahuje CODE, ktory bol definovany v LAMBDA EXPRESSION. METHOD ma DYNAMICKY generovane MENO, ktore sa moze pri KAZDEJ KOMPILACII MENIT. K METHOD je mozne pristupit cez REFLECTION, ale vzhladom nato, ze sa meno pri kompilacii moze menit sa to silne NEODPORUCA.
+   !!! B. Vygeneruje sa PRIVATE STATIC FIELD TYPE Delegate, ktory je v LAMBDA EXPRESSION CODE inicializovany instanciou TYPE Delegate. FIELD sluzi ako CACHE na ulozenie CACHED DELEGATE, ktory sa pri viacnasobnom pouziti LAMBDA EXPRESSION pouzije namiesto vytvarania novych instancii DELEGATES.
+   C. Pri opakovanom volani PRIVATE STATIC METHOD CODE najprv skontroluje ci STATIC FIELD TYPE Delegate uz bol inicializovany a ak ano, vrati instanciu tohto DELEGATE.
+!!!!! 28. Deklarovanie LAMBDA EXPRESSIONS, ktore pouzivaju LOCAL VARIABLES, alebo METHOD PARAMETERS znamena, ze C# generuje specializovanu CLASS nazyvanu aj CLOSURE, ktora sluzi na prenos LOCAL VARIABLES, alebo METHOD PARAMETERS. C# realizuje nasledujuce kroky.
+   A. Vygeneruje NOVU CLASS, ktora pre KAZDU LOCAL VARIABLE, alebo METHOD PARAMETER, ktoru LAMBDA EXPRESSION pouzila vytvori INSTANCE FIELD.
+   B. CLASS obsahuje INSTANCE METHOD, ktora reprezentuje CODE LAMBDA EXPRESSION a pouziva FIELDS, reprezentujuce LOCAL VARIABLES a METHOD PARAMETERS.
+   C. V mieste kde sa LAMBDA EXPRESSION pouziva, C# generuje CODE, ktory zabezpeci vytvorenie instancie danej CLASS, naplni jej FIELDS hodnotami LOCAL VARIABLES a METHOD PARAMETERS a vytvorenie OBJECT DELEGATE, do ktoreho sa ako CALLBACK METHOD ulozi INSTANCE METHOD z bodu B, ktora obsahuje CODE LAMBDA EXPRESSION.
+!!! 29. DELEGATES umoznuju pomocou REFLECTION DYNAMICKY v RUNTIME naviazat CALLBACK METHODS na DELEGATES. DYNAMICKE naviazanie DELEGATES na CALLBACK METHODS a ich vyvolanie sa vykonava v nasledujucich krokoch.
+   A. Ziska sa instancia na CLASS MethodInfo CALLBACK METHOD, ktora ma byt naviazana DYNAMICKY v RUNTIME na DELEGATE.
+   B. Pomocou STATIC METHOD Delegate.CreateDelegate() sa vykona naviazanie CALLBACK METHOD reprezentovanej OBJECT TYPE MethodInfo na DELEGATE. METHOD Delegate.CreateDelegate() vracia instanciu TYPE Delegate. Ak CALLBACK METHOD je INSTANCE METHOD, potom je nutne volat taku verziu METHOD Delegate.CreateDelegate(), ktora umoznuje preniest aj THIS PARAMETER reprezentujuci OBJECT pre ktory sa ma CALLBACK METHOD zavolat.
+   C. Vytvoreny DELEGATE sa vola pomocou METHOD Delegate.DynamicInvoke() do ktorej sa posiela ako PARAMETER ARRAY Object[] osabhujuci vsetky PARAMETERS danej CALLBACK METHOD. METHOD Delegate.DynamicInvoke() ma ako RETURN VALUE TYPE Object, ktory vracia RETURN VALUE z CALLBACK METHODS (z poslednej CALLBACK METHOD). Ak DELEGATE nema RETURN VALUE, METHOD Delegate.DynamicInvoke() vracia NULL hodnotu. Ak pocet, alebo TYPES PARAMETERS sa nezhoduju s PARAMETERS, ktore ocakava DELEGATE, METHOD Delegate.DynamicInvoke() generuje EXCEPTION [ArgumentException].
+//-------------------------------------------------------------------------------------------------------

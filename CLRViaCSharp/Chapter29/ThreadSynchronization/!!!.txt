@@ -1,0 +1,149 @@
+//-------------------------------------------------------------------------------------------------------
+1. Solution demonstruje pouzitie jednoduchych SYNCHRONIZATION PRIMITIVES.
+2. Pouzitie SYNCHRONIZATION PRIMITIVES je NUTNE ak 2, alebo viacero THREADS pristupuju v TOM ISTOM case k TYM ISTYM VARIABLES, pricom aspon 1 THREAD vykonava WRITE do tychto VARIABLES.
+3. Pouzitie SYNCHRONIZATION PRIMITIVES vsak zaroven znamena ZNIZENIE VYKONU PROGRAMU, kedze vsetky CPU musia koordinovat svoju cinnost aby realizovali LOCK a dochadza ku THREAD CONTENTATION co obmedzuje moznosti paralelneho vykonavania CODE.
+!!!!! 4. FCL GARANTUJE, ze VSETKY STATIC METHODS su THREAD-SAFE. Teda bud vobec nepristupuju k SHARED VARIABLES, alebo pouzivaju LOCK.
+!!! 5. FCL vsak NEGARANTUJE, ze NON-STATIC METHODS su THREAD-SAFE.
+6. .NET podporuje 3 typy SYNCHRONIZATION PRIMITIVES.
+   A. USER-MODE CONSTRUCTS. Su EXTREMNE RYCHLE, pretoze su priamo realizovane specializovanymi CPU INSTRUCTIONS, ktore podporuje CPU. Kedze KERNEL o nich nevie, tak NEVYKOMAVAJU BLOCKING daneho THREAD a ten je aj pocas drzania LOCK neustale SCHEDULABLE. CPU v tomto pripade vykonava SPINNING, az kym nedostane pristup k SHARED RESOURCE.
+   B. KERNEL-MODE CONSTRUCTS. Su DALEKO POMALSIE, pretoze su podporovane na UROVNI KERNELU a pri ich pouziti je treba prejst do KERNEL modu, co je dost pomala operacia. Ich vyhodou je vsak to, ze o nich KERNEL vie a THREADS, ktore su v KERNEL MODE LOCK su BLOCKED a prestanu byt SCHEDULABLE.
+   C. HYBRID CONSTRUCTS. Su kombinaciou USER-MODE a KERNEL-MODE CONSTRUCTS. Spravidla HYBRID CONSTRUCTS vykonavaju nejaky cas SPINNING a ak za nastaveny pocet CYCLES nedojde k uvolneniu LOCK, tak sa pouzije KERNEL MODE LOCK, ktory vykona THREAD BLOCKING.
+7. LIVELOCK je ERROR pri ktorom THREAD DONEKONECNA caka na pridelenie USER MODE LOCK, ktory je DONEKONECNA blokovany inym THREADOM.
+8. DEADLOCK je ERROR pri ktorom THREAD DONEKONECNA caka na pridelenie KERNEL MODE LOCK, ktory je DONEKONECNA blokovany inym THREADOM.
+!!!!! 9. LIVELOCK je DALEKO HORSI ako DEADLOCK, pretoze THREADS v LIVELOCK NIE SU BLOCKED a vykonavaju SPINNING, cim beru vykon CPU.
+10. .NET podporuje 2 typy USER-MODE CONSTRUCTS.
+   A. VOLATILE CONSTRUCTS. Umoznuju ATOMICKY READ a WRITE do VARIABLES, ktore su KOREKTNE ALIGNED v MEMORY.
+   B. INTERLOCKED CONSTRUCTS. Umoznuju jednoduche ATOMICKE OPERACIE nad VARIABLES, ktore su KOREKTNE ALIGNED v MEMORY.
+!!!!! 11. CLR GARANTUJE, ze pristup k nasledujucim TYPES, ak su SPRAVNE ALIGNED je ATOMICKY.
+   A. Boolean.
+   B. Char.
+   C. Byte.
+   D. SByte.
+   E. Int16.
+   F. UInt16.
+   G. Int32.
+   H. UInt32.
+   I. IntPtr.
+   J. UIntPtr.
+   K. Single.
+   L. VSETKY REFERENCE TYPES.
+!!!!! 12. CLR NEGARANTUJE ATOMICKY PRISTUP k nasledujucim typom VARIABLES.
+   A. Boolean - ak je NEKOREKTNE ALIGNED.
+   B. Char - ak je NEKOREKTNE ALIGNED.
+   C. Byte - ak je NEKOREKTNE ALIGNED.
+   D. SByte - ak je NEKOREKTNE ALIGNED.
+   E. Int16 - ak je NEKOREKTNE ALIGNED.
+   F. UInt16 - ak je NEKOREKTNE ALIGNED.
+   G. Int32 - ak je NEKOREKTNE ALIGNED.
+   H. UInt32 - ak je NEKOREKTNE ALIGNED.
+   I. IntPtr - ak je NEKOREKTNE ALIGNED.
+   J. UIntPtr - ak je NEKOREKTNE ALIGNED.
+   K. Single - ak je NEKOREKTNE ALIGNED.
+   L. VSETKY REFERENCE TYPES - ak je NEKOREKTNE ALIGNED.
+   !!! M. Int64 - BEZ OHLADU na to ako je ALIGNED. Realne vsak na X64 PLATFORMS JE PRISTUP k takymto VARIABLES ATOMICKY.
+   !!! N. UInt64 - BEZ OHLADU na to ako je ALIGNED. Realne vsak na X64 PLATFORMS JE PRISTUP k takymto VARIABLES ATOMICKY.
+   !!! O. Double - BEZ OHLADU na to ako je ALIGNED. Realne vsak na X64 PLATFORMS JE PRISTUP k takymto VARIABLES ATOMICKY.
+!!!!! 13. USER-MODE CONSTRUCTS a to ako VOLATILE CONSTRUCTS, tak i INTERLOCKED CONSTRUCTS VYZADUJU, aby VARIABLES nad ktorymi ma byt vykonana ATOMICKA OPERACIA boli KOREKTNE ALIGNED v MEMORY, inak HODIA EXCEPTION DataMisalignedException. Potrebne zarovnanie je zavisle od TYPU VARIABLE.
+   A. TYPES Byte a SByte musia byt ALIGNED na ADRESE delitelnej 1. Teda vlastne mozu byt hocikde.
+   B. TYPES Int16 a UInt16 musia byt ALIGNED na ADRESE delitelnej 2.
+   C. TYPES Int32, UInt32 a Single musia byt ALIGNED na ADRESE delitelnej 4.
+   D. TYPES Int64, UInt64 a Double musia byt ALIGNED na ADRESE delitelnej 8.
+   E. TYPES IntPtr, UIntPtr a Double musia byt ALIGNED na ADRESE delitelnej 4, alebo 8, podla toho ci je WINDOWS X86, alebo X64.
+!!!!! 14. CLR STANDARDNE pre VSETKY FIELDS v DATA STRUCTURES (CLASS i STRUCT) zabezpecuje KOREKTNY ALIGNMENT, takze pristup k FIELDS NESPOSOBUJE problemy pri MULTI-THREAD programoch.
+!!!!! 15. DATA STRUCTURE ALIGNMENT je mozne zmenit pomocou ATTRIBUTES [StructLayout] a [FieldOffset]. Ich aplikacia moze sposobit to, ze pristup k FIELDS NEBUDE THREAD-SAFE a bude treba pouzit THREAD SYNCHRONIZATION CONTRUCTS na zabezpecenie THREAD-SAFE pristupu k FIELDS.
+   A. ATTRIBUTE [StructLayout(LayoutKind.Explicit)] sa aplikuje na CLASS, alebo STRUCT a urcuje, ze FIELDS bude mat CUSTOM ALIGN.
+   B. ATTRIBUTE [FieldOffset(XXX)], kde 'XXX' je ciselny OFFSET urcuje na ktorom BYTE sa bude dany FIELD v DATA STRUCTURE nachadzat.
+!!!!! 16. Aj KOREKTNE ALIGNED VARIABLES, ktore sa pouzivaju na riadenie toku medzi VIACERYMI THREADS MUSIA byt zabezpecene pomocou THREAD-SAFE CONSTRUCTS (VOLATILE VARIABLES, SYNCHRONIZATION OBJECTS), pretoze COMPILER moze vykonavat OPTIMALIZCIE, ktore NEGARANTUJU KOREKTNE BEH CODE v MULTI-THREAD PROGRAMOCH.
+!!!!! 17. Pri optimalizacii CODE C#, JIT aj CPU GARANTUJU, ze NEZMENI SEMANTIKU CODE. Problem je v tom, ze SEMANTIKU CODE zachovava iba v kontexte 1 THREADU. Pri optimalizacii CODE C#, JIT ani CPU NEGARANTUJU, ze OPTIMALIZOVANY CODE NEZMENI SEMANTIKU vhladom k VIACERYMI THREADS. VOLATILE CONSTRUCTS zabezpecuju, ze optimalizacia CODE C#, JIT aj CPU sa VYPNE v danom CODE a NENARUSI SEMANTIKU ani vo kontexte VIACERYCH THREADS.
+!!!!! 18. Jednym zo ZAKLADNYCH PROBLEMOV COMPILERS v MULTI-THREAD PROGRAMS je, ze vykonavaju OPTIMALIZACIE, ktore zabezpecuju korektny beh IBA pre SINGLE-THREAD OPERACIE. Pri MULTI-THREAD OPERACIACH mnohe optimalizacie, ktore COMPILER vykonava mozu sposobit CHYBNY MUTLI-THREADOVY PROGRAM. Nasledujuce zoznam obsahuje OPTIMALIZACIE, ktore mozu sposobit CHYBNY MULI-THREADOVY PROGRAM.
+   A. COMPILER moze WHILE CONDITION v ktorom sa porovnava VARIABLE 'XXX' iba RAZ, ak sa VARIABLE XXX v cykle NEMENI. Takyto cyklus sa potom bud VOBEC NEVYKONA (ak je CONDITION na zaciatku cyklu FALSE), alebo sposobi NEKONECNY CYKLUS, ak (ak je CONDITION na zaciatku cyklu TRUE). Ak vsak VARIABLE 'XXX' je pocas behu THREADU zmenena v INOM THREADE, potom tato OPTIMALIZACIA ZNEFUNKCNI KOREKTNE napisany MULTI-THREADOVY PROGRAM.
+   B. COMPILER moze PREHODIT PORADIE vykonavania viacerych READ a WRITE OPERACII. To moze sposobit PROBLEM v MULTI-THREADOVYCH OPERACIACH. Ak CODE v THREAD 1 najprv nastavi VARIABLE 'XXX' a po nej 'YYY', pricom CODE v THREADE 2 ocakava, ze k VARIABLE 'YYY' pristupi az pri urcitej hodnote 'XXX', potom prehodenie nastavenia VARIABLES 'XXX' a 'YYY' v THREAD 1, ZNEFUNKCNI MULTI-THREADOVY PROGRAM.
+   C. Poradie citania VARIABLES z MEMORY moze byt v CPU ZMENENE. Ak v THREADE 1 sa k VARIABLE 'YYY' pristupuje iba ak ma VARIABLE 'XXX' istu hodnotu, pricom VARIABLE 'XXX' je v THREADE 2 menena, potom sa moze stat, ze ak CPU v THREAD 1 NAJPRV nacita VARIABLE 'YYY' a az PO NEJ VARIABLE 'XXX', pricom THREAD 2 medzitym VARIABLE 'XXX' ZMENI, tak CODE v THREAD 1 NEBUDE fungovat KOREKTNE.
+!!! 19. C# CODE moze byt optimalizovany nasledujucimi systemami.
+   A. C# COMPILER vykonava optimalizaciu pri generovani MSIL CODE.
+   B. JIT COMPILER vykonava optimalizaciu pri generovani CPU INSTRUCTIONS.
+   !!! C. CPU vykonava optimalizaciu CPU INSTRUCTIONS.
+!!!!! 20. Pomocou nasledujucich METHODS je mozne VYPNUT OPTIMALIZACIE, ktore by mohli NARUSIT BEH MULTI-THREADOVEHO PROGRAMU a to ako v C#, tak i v JIT, a takisto i na CPU.
+   !!! A. METHOD Volatile.Read() zabzepecuje, ze CITANIE VARIABLE zadanej ako PARAMETER sa USKUTOCNI PRESNE v BODE VOLANIA Volatile.Read(), pricom VSETKY READ a WRITE operacie, vykonane PO VOLANI Volatile.Read() (AZ KYM NESKONCI METHOD), su vykonane AZ POTOM co Volatile.Read() NACITA VARIABLE do MEMORY.
+   !!! B. METHOD Volatile.Write() zabzepecuje, ze ZAPIS VARIABLE zadanej ako PARAMETER sa USKUTOCNI PRESNE v BODE VOLANIA Volatile.Write(), pricom VSETKY READ a WRITE operacie, vykonane PRED VOLANIM Volatile.Write() (OD ZACIATKU METHOD), su vykonane PREDTYM NEZ Volatile.Write() ZAPISE VARIABLE do MEMORY.
+   C. METHOD Thread.MemoryBarrier() nepristupuje k PAMATI, ale zabezpecuje, ze VSETKY READ a WRITE operacie OD ZACIATKU METHOD az po volanie Thread.MemoryBarrier() SU VYKONANE PRED VOLANIM Thread.MemoryBarrier() a VSETKY READ a WRITE operacie od volania Thread.MemoryBarrier() AZ DO KONCA METHOD su vykonane AZ PO VOLANI Thread.MemoryBarrier(). Tato metoda je NAJMENEJ POUZIVANA.
+!!!!! 21. Pouzitie Volatile.Read() a Volatile.Write() by malo byt NASLEDOVNE.
+   A. Pri pristupe k SHARED VARIABLES, ktore sa pouzivaju na riadenie toku medzi VIACERYMI THREADS.
+   B. METHOD Volatile.Write() by sa mala pouzit ako POSLEDNY WRITE zo vsetkych SHARED VARIABLES, ktorymi sa riadi tok medzi VIACERYMI THREADS.
+   C. METHOD Volatile.Read() by sa mala pouzit ako PRVY READ zo vsetkych SHARED VARIABLES, ktorymi sa riadi tok medzi VIACERYMI THREADS.
+!!! 22. C# podporuje KEYWORD 'volatile', ktore je mozne aplikovat na VALUE TYPES. Aplikacia KEYWORD 'volatile' ma nasledujuci vplyv na VARIABLES.
+   A. Kazda READ operacia nad premennou typu VOLATILE je realizovana cez Volatile.Read().
+   B. Kazda WRITE operacia nad premennou typu VOLATILE je realizovana cez Volatile.Write().
+   !!!!! C. CLR vypne VSETKY OPTIMALIZACIE na VOLATILE VARIABLES, vratane toho, ze VZDY SU TIETO VARIABLES CITANE z PHYSICAL MEMORY a NIKDY NIE SU UKLADANE DO CPU REGISTROV.
+   !!! D. VOLATILE VARIABLES NIE JE MOZNE prenasat do funkcie ako REF alebo OUT hodnoty.
+   E. Pristup k VOLATILE VARIABLES je prirodzene POMALSI ako k beznym VARIABLES, kedze su vypnute OPTIMALIZATIONS. Kazda READ operacia nad VARIABLE typu VOLATILE je realizovana cez Volatile.Read() a kazda WRITE operacia nad VARIABLE typu VOLATILE je realizovana cez Volatile.Write().
+23. INTERLOCKED CONSTRUCTS su realizovane pomocou CLASS Interlocked, ktora ma STATICKE METODY pracujuce nad rozlicnymi TYPMI (VALUE TYPES, Object i GENERICS VERZIE pre CLASSES), ktore vykonavaju PRIMITIVNE OPERACIE ATOMICKYM SPOSOBOM.
+   A. METHOD Interlocked.Increment() vykonava ATOMICKU INKREMENTACIU.
+   B. METHOD Interlocked.Decrement() vykonava ATOMICKU DEKREMENTACIU.
+   C. METHOD Interlocked.Add() vykonava ATOMICKU operaciu ADD.
+   D. METHOD Interlocked.Exchange() ATOMICKY VYMENI POVODNU HODNOTU VARIABLE za NOVU a vrati POVODNU HODNOTU.
+   !!! E. METHOD Interlocked.CompareExchange() ATOMICKY porovna VARIABLE v OPERAND_1 s OPERAND_3. Ak OPERAND_1==OPERAND_3, tak ATOMICKY do VARIABLE v OPERAND_1 vlozi OPERAND_2. Inak neurobi nic. METHOD VZDY vracia POVODNU HODNOTU OPERAND_1, bez ohladu na to ci METHOD hodnotu OPERAND_1 zmenila, alebo nie.
+!!!!! 24. Vsetky METHODS Interlocked CLASS sluzia podobne ako METHODS Volatile.Read() a Volatile.Write() ako MEMORY BARRIERS. To znaci, ze VSETKY OPERACIE, ktore su v CODE PRED Interlocked METHODS su aj FYZCKY vykonane SKOR a VSETKY OPERACIE, ktore su v CODE ZA Interlocked METHODS su aj FYZCKY vykonane NESKOR.
+!!! 25. V C# je mozne MEMORY BARRIERS vykonavat nasledujucimi konstrukciami.
+   A. Pouzitim METHOD Thread.MemoryBarrier().
+   B. Pouzitim METHODS CLASS Volatile.
+   C. Pouzitim METHODS CLASS Interlocked.
+   D. Pristupom k VOLATILE VARIABLES.
+   E. Pouzitim SYNCHRONIZATION PRIMITIVES.
+!!! 26. METHOD Interlocked.CompareExchange() je mozne vyuzit na implementaciu CUSTOM LOCKS. CUSTOM SPIN LOCK je mozne implementovat nasledujucim sposobom.
+   A. Pred vstupom do CRITICAL SECTION sa vykona WHILE cyklus, ktory vyonava SPINING PERIODICKYM volanim METHOD Interlocked.CompareExchange().
+   B. Do METHOD Interlocked.CompareExchange() sa zasle SHARED_VARIABLE, inicializovana na 0, COMPARABLE VALUE 0 a NEW VALUE 1.
+   !!! C. Cyklus WHILE sa opakuje az kym Interlocked.CompareExchange(), ktora vracia POVODNU HODNOTU SHARED_VARIABLE nevrati hodnoti 0.
+   !!! D. Vratenie hodnoty 0 znamena, ze THREAD ZISKA LOCK a MOZE pristupit ku CRITICAL SECTION.
+   !!!!! E. Kedze METHOD Interlocked.CompareExchange() v pripade, ze SHARED_VARIABLE==0 ATOMICKY nastavi SHARED_VARIABLE na 1, tak VSETKY OSTATNE THREADS, ktore v METHOD Interlocked.CompareExchange() NEZMENILI hodnotu SHARED_VARIABLE ziskaju RETURN VALUE 1 a budu WHILE CYKLUS.
+   F. THREADS, pre ktore Interlocked.CompareExchange() vratila hodnotu 1, vykonavaju SPINING CYKLUS, cakajuc, kym THREAD drziaci LOCK ho neuvolni.
+   !!! G. Ak THREAD, ktory drzi LOCK ho chce uvolnit, zavola METHOD Interlocked.Exchange(), ktora ATOMICKY nastavi SHARED_VARIABLE do hodnoty 0.
+   !!!!! H. Kedze teraz je SHARED_VARIABLE==0, tak METHOD Interlocked.CompareExchange() JEDNEHO z THREAD vrati hodnotu 0 a tento THREAD ziska LOCK.
+!!! 27. SPINNING sa SILNE NEDOPUCURUCUJE na SINGLE-THREAD systemoch, kedze THREADS, ktore vykonavaju SPINNING ZBYTOCNE BLOKUJU THREAD, ktory DRZI LOCK, ci sa vykona VYRAZNE SPOMALUJE.
+!!! 28. CLR obsahuje VALUE TYPE SpinLock, ktora implementuje EFEKTIVNY SPIN LOCK.
+!!! 29. CLR obsahuje VALUE TYPE SpinWait, ktora implementuje EFEKTIVNY SPINING pouzivany v SPIN LOCKS.
+!!!!! 30. Kedze SpinLock aj SpinWait su VALUE TYPES NESMU sa prenasat medzi METHODS ako PARAMETER, lebo ako kazdy VALUE TYPE sa vykona KOPIA hodnoty a SYNCHRONIZATION NEBUDE FUNGOVAT.
+!!! 31. METHOD Thread.Yield() zisti ci na TOM ISTOM CPU je SCHEDULED iny THREAD a ako ano tak CURRENT THREAD sa VZDA SVOJHO KVANTA, Ak na danom CPU NIE JE ZIADEN SCHEDULED THREAD, tak CURRENT THREAD POKRACUJE DALEJ vo vykonavani.
+!!!!! 32. METHOD Thread.SpinWait() umoznuje pre HYPERTHREADED CPU vykonat isty pocet CPU CYKLOV v SPINING a ked THREAD NEZISKA LOCK, tak Thread.SpinWait() vykona SPECIALIZOVANU CPU INSTRUCTION, ktora umoznu na HYPERTHREADED CPU prepnutie CPU do DRUHEHO CPU THREADU. V SYSTEMOCH, ktore NEMAJU HYPTERTHREADED CPU je METHOD IGNOROVANA.
+33. Pre KERNEL-MODE SYNCHRONIZATION CONSTRUCTS platia nasledujuce fakty.
+   A. KERNEL-MODE SYNCHRONIZATION CONSTRUCTS su POMALSIE ako USER-MODE SYNCHRONIZATION CONSTRUCTS, kedze pri ich pouziti je potrebne prejst do KERNEL MODE, co je vzdy pomala operacia.
+   B. KERNEL-MODE SYNCHRONIZATION CONSTRUCTS umzonuju priviest THREAD do WAIT STAVU, ked na rozdiel od SPINING neberie CPU CYKLY.
+   C. KERNEL-MODE SYNCHRONIZATION CONSTRUCTS je mozne pouzit na synchronizaciu medzi THREADS v ROZLICNYCH PROCESOCH.
+   D. KERNEL-MODE SYNCHRONIZATION CONSTRUCTS umoznuju nastavit TIMEOUT pocas ktoreho sa ma cakat na signalizaciu daneho KERNEL OBJECT. Po uplynuti TIMEOUT ktoreho je THREAD PREBUDENY.
+   E. KERNEL-MODE SYNCHRONIZATION CONSTRUCTS umoznuju, aby THREAD bol prebudeny, ak VSETKY z 'N' KERNEL-MODE SYNCHRONIZATION CONSTRUCTS boli SIGNALIZED.
+   F. KERNEL-MODE SYNCHRONIZATION CONSTRUCTS umoznuju, aby THREAD bol prebudeny, ak ASPON 1 z 'N' KERNEL-MODE SYNCHRONIZATION CONSTRUCTS boli SIGNALIZED.
+!!!!! 34. KERNEL-MODE SYNCHRONIZATION CONSTRUCTS pre svoju schopnost priviest THREAD do BLOCKING STATE je vhodne pouzivat tam, kde je potrebne drzat LOCK na DLHSI CAS. Naopak, tak kde je LOCK drzany iba velmi kratky cas, su vhodnejsie USER-MODE SYNCHRONIZATION CONSTRUCTS ako napriklad SPIN LOCKS.
+!!! 35. VSETKY KERNEL-MODE SYNCHRONIZATION CONSTRUCTS interne su implementovane pomocou 2 PRIMARNYCH KERNEL-MODE CONSTRUCTS - EVENT a SEMAPHORE. Teda napriklad MUTEX je interne implementovany cez EVENTS.
+36. CLR poskytuje CLASS WaitHandle z ktorej su zdedene CLASSES ManualResetEvent, AutoResetEvent, Semaphore a Mutex. CLASSES WaitHandle poskytuje nasledujuce MEMBERS.
+   A. CONSTRUCTOR vytvara volanim WIN32 API FUNCTION synchronizacny KERNEL-MODE OBJECT.
+   B. PROPERTY WaitHandle.SafeWaitHandle obsahuje HANDLE na synchronizacny KERNEL-MODE OBJECT.
+   C. METHODS WaitHandle.Close() a WaitHandle.Dispose() odstranuju KERNEL-MODE OBJECT vytvoreny v CONSTRUCTOR.
+   D. METHOD WaitHandle.WaitOne() umoznuje cakat na SIGNALIZACIU KERNEL-MODE OBJECT.
+   E. METHOD WaitHandle.SignalAndWait() umoznuje signalizovat jeden KERNEL-MODE OBJECT a cakat kym nebude signalizovany INY KERNEL-MODE OBJECT.
+   F. STATIC METHOD WaitHandle.WaitAll() umoznuje cakat na SIGNALIZACIU VSETKYCH KERNEL-MODE OBJECTS z ARRAY KERNEL-MODE OBJECTS. Maximalna dlzka ARRAY je 64.
+   G. STATIC METHOD WaitHandle.WaitAny() umoznuje cakat na SIGNALIZACIU ASPON 1 KERNEL-MODE OBJECT z ARRAY KERNEL-MODE OBJECTS. Maximalna dlzka ARRAY je 64.
+   H. FIELD WaitHandle.SafeWaitHandle obsahuje HANDLE na KERNEL-MODE OBJECT.
+!!! 37. VSETKY SYNCHRONIZACNE METHODS CLASS WaitHandle sluzia ako MEMORY BARRIER.
+38. CLASSES ManualResetEvent a AutoResetEvent su zdedene z CLASS EventWaitHandle a implementuju BOOLEAN VARRIABLE ovladanu KERNELOM, ktora moze byt v SIGNALIZOVANOM (metoda EventWaitHandle.Set()), alebo NESIGNALIZOVANOM (metoda EventWaitHandle.Reset()) stave.
+   A. CLASS AutoResetEvent reprezentuje AUTO RESET EVENT. AUTO RESET EVENT je po privedeni do SIGNALIZED STATE a uvolneni jedneho THREADU je EVENT AUTOMATICKY KERNELOM vrateny do NON-SIGNALIZED STATE.
+   B. CLASS ManualResetEvent reprezentuje MANUAL RESET EVENT. MANUAL RESET EVENT je po privedeni do SIGNALIZED STATE v ktorom ostava, az kym nie je MANUALNE nastaveny do NON-SIGNALIZED STATE volanim METHOD ManualResetEvent.Reset().
+39. CLASS Semaphore implementuje KERNEL OBJEKT reprezentujuci Int32. Ak je hodnota 0, tak je objekt NON-SIGNALIZED a ak je hodnota >0, tak je SIGNALIZED. Trieda ma naseldujuce MEMBERS.
+   A. CONSTRUCTOR vytvori KERNEL-MODE OBJECT nastavi hodnotu pocitadla na stanovenu hodnotu.
+   B. METHOD Semaphore.WaitOne() DEKREMENTUJE hodnotu pocitadla.
+   !!! C. METHOD Semaphore.Release() INKREMENTUJE hodnotu pocitadla. Ak sa METHOD Semaphore.Release() zavola tolkokrat, ze je PREKROCENA POCIATOCNA HODNOTA zadana v CONSTRUCTOR, tak sa generuje EXCEPTION SemaphoreFullException.
+40. CLASS Mutex je PODOBNA CLASS AutoResetEvent, avsak ma ROZSIRUJUCU LOGIKU, ktora dokaze ASOCIOVAT THREAD, ktory ma ZACHYTIL MUTEX a takisto dokaze pocitat REKURZIVNY LOCKING nad MUTEX. CLASS Mutex ma nasledujuce vlastnosti.
+   A. METHOD Mutex.WaitOne() ak je MUTEX SIGNALIZED, zmeni ho do NON-SIGNALIZED STATE a METHOD sa ukonci. Ak MUTEX je v NON-SIGNALIZED STATE a zaroven volajuci THREAD NEDRZI MUTEX, tak volanie METHOD ZABLOKUJE THREAD, az kym nebude MUTEX SIGNALIZED.
+   !!! B. MUTEX si drzi informaciu o tom, ktory THREAD DRZI LOCK a OPATOVNE volanie METHOD Mutex.WaitOne() INKREMENTUJE INTERNY COUNTER, pricom METHOD Mutex.WaitOne() OKAMZITE SKONCI.
+   !!! C. METHOD Mutex.Release() DEKREMENTUJE INTERNY COUNTER, pricom ak jeho hodnota je 0, tak MUTEX je privedeny do SIGNALIZED STATE a JEDEN z THREAD cakajucich na dany MUTEX ho dostane.
+   !!! D. Ak THREAD drziaci MUTEX 'N' krat zavolal METHOD Mutex.WaitOne(), tak MUSI 'N' krat zavolat METHOD Mutex.Release(), aby bol MUTEX privedeny do SIGNALIZED STATE.
+   !!! E. Ak METHOD Mutex.Release() zavola THREAD, ktory NEDRZI tento MUTEX, tak METHOD Mutex.Release() hodi EXCEPTION ApplicationException.
+   !!!!! F. Ak THREAD, ktory ma MUTEX SKONCI, bez jeho UVOLNENIA, tak VSETKY OSTATNE THREADS, ktore pre dany MUTEX volali Mutex.WaitOne() GENERUJU EXCEPTION AbandonedMutexException.
+   G. Celkovo sa MUTEX VELMI NEPOUZIVA.
+!!!!! 41. MUTEX na ROZIDLE od MANUAL RESET EVENTS, AUTO RESET EVENTS a SEMAPHORES je REKURZIVNY.
+42. CLR podporuje mechanizmus, ktorym je mozne pri vyvolat CALLBACK METODU na THREADE z THREAD POOL ak KERNEL-MODE SYNCHRONIZATION OBJECT bol SIGNALIZED. Realizuje sa nasledujucim sposobom.
+   A. Zavola sa METHOD ThreadPool.RegisterWaitForSingleObject(), ktorej ako PARAMETER sa odovzda HANDLER na DELEGATE typu WaitOrTimerCallback, ktory sa zavola ked je KERNEL-MODE SYNCHRONIZATION OBJECT SIGNALIZED.
+   B. METHOD ThreadPool.RegisterWaitForSingleObject() prijima v 1. PARAMETRI WaitHandle, co znamena, ze moze prijat LUBOVOLNY KERNEL-MODE SYNCHRONIZATION OBJECT na ktoreho SIGNALIZED STATE caka.
+   C. METHOD ThreadPool.RegisterWaitForSingleObject() umoznuje zadefinovat i cas, ktory sa ma na SIGNALIZACIU KERNEL-MODE SYNCHRONIZATION OBJECT CAKAT, pricom ak pocas tejto DOBY OBJECT NIE JE SIGNALIZED, tak je vyvolany CALLBACK DELEGATE WaitOrTimerCallback s FALSE v 2. PARAMETRI. Pomocou 2. PARAMETRA CALLBACK DELEGATE WaitOrTimerCallback je mozne zistit ci bol CALLBACK DELEGATE vyvolany pretoze bol KERNEL-MODE SYNCHRONIZATION OBJECT SIGNALIZED, alebo expiroval TIMEOUT.
+   D. METHOD ThreadPool.RegisterWaitForSingleObject() vracia OBJECT typu RegisteredWaitHandle, ktoreho METHOD RegisteredWaitHandle.Unregister() sluzi na ukoncenie volani CALLBACK DELEGATES typu WaitOrTimerCallback zaregistrovanej pomocou METHOD ThreadPool.RegisterWaitForSingleObject().
+   !!!!! E. METHOD RegisteredWaitHandle.Unregister() ma ako PARAMETER WaitHandle, ktory ak je NON-NULL, tak je SIGNALIZED hned ako VSETKY CALLBACK DELEGATES typu WaitOrTimerCallback, ktore boli v case volania RegisteredWaitHandle.Unregister() SCHEDULED boli vykonane.
+//-------------------------------------------------------------------------------------------------------

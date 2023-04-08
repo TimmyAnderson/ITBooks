@@ -1,0 +1,118 @@
+//-------------------------------------------------------------------------------------------------------
+1. Solution demonstruje sposoby ako je mozne pouzivat STRONGLY NAMED ASSEMBLIES.
+2. CLR podporuje 2 typy ASSEMBLIES podla toho ci maju, alebo nemaju STRONG NAME.
+   A. WEAKLY TYPED ASSEMBLIES su ASSEMBLIES, ktore NEMAJU STRONG NAME a CLR ich NEDOKAZE JEDINECNE IDENTIFIKOVAT. ASSEMBLIES su nacitavane IBA podla ich FILENAME a to aku VERSION, PUBLIC KEY ci CULTURE dana ASSEMBLY ma CLR NEROZLISUJE pri nacitacani ASSEMBLY do PROCESSU. Riadi sa iba najdenym FILENAME.
+   B. STRONGLY TYPED ASSEMBLIES su ASSEMBLIES, ktore MAJU STRONG NAME a CLR ich dokaze JEDINECNE IDENTIFIKOVAT a nacitavat KOREKTNU VERZIU ASSEMBLY.
+3. ASSEMBLIES mozu byt nasadene pri DEPLOYMENT 2 sposobmi.
+   A. PRIVATE DEPLOYMENT - ASSEMBLIES sa nachadzaju v DIRECTORY, alebo SUBDIRECTORIES programu, ktory dane ASSEMBLIES pouziva. Takto mozu byt DEPLOYED ako WEAKLY, tak i STRONGLY NAMED ASSEMBLIES.
+   B. GLOBAL DEPLOYMENT - ASSEMBLIES sa nachadzaju v GAC. Takto je mozne nasadit IBA STRONGLY NAMED ASSEMBLIES.
+!!! 4. Doporucuje sa VZDY POUZIVAT STONGLY NAMED ASSEMBLIES, pretoze tieto maju JEDINECNU IDENTITU a je ich mozne nasadzovat ako PRIVATNE, tak aj GLOBALNE.
+5. WEAK NAME je zlozeny z 3 casti.
+   A. ASSEMBLY NAME BEZ EXTENSION (bez DLL, ci EXE).
+   B. VERSION. Verziu CLR pri WEAKLY TYPED ASSEMBLIES UPLNE IGNORUJE.
+   C. CULTURE. CLR ho pouziva pri hladanie SATELLITE ASSEMBLIES.
+6. STRONG NAME je zlozeny zo 4 casti.
+   A. ASSEMBLY NAME BEZ EXTENSION (bez DLL, ci EXE).
+   B. VERSION.
+   C. CULTURE.
+   D. PUBLIC KEY. Na identifikaciu sa pouziva CELY PUBLIC KEY (uklada sa do AssemblyDef), ale pri referovani z inej ASSEMBLY (AssemblyRef) sa vyuziva PUBLIC KEY TOKEN. PUBLIC KEY TOKEN je 8 BYTES dlhy HASH kod z PUBLIC KEY.
+7. CLASS AssemblyName obsahuje HELPER METHODS pre pracu s ASSEMBLY NAME.
+!!! 8. KLUCOVOU castou STRONG NAME je PUBLIC KEY, ktory je ziskany z dvojice PUBLIC/PRIVATE KEY a kazda firma vytvarajuca .NET ASSEMBLIES (PROVIDER) si moze vytvorit vlastny par klucov, ktore potom sluzia na JEDINECNU IDENTIFIKACIU ASSEMBLY, ako aj na JEDNOZNACNEHO IDENTIFIKOVANIA PUBLISHERA danej ASSEMBLY.
+9. PRIVATE/PUBLIC KEYS par sa generuje prikazom [SN -k FileName.snk] z ktoreho je nasledne mozne vyextrahovat PUBLIC KEY prikazom [SN -p Filename.snk Filename.PublicKey].
+!!!!! 10. Velmi DOLEZITE je UVEDOMIT si ROZDIEL medzi PUBLIC KEY a PUBLIC KEY TOKEN.
+   A. PUBLIC KEY je SUCASTOU STRONG NAME (dlhy podla typu ALGORITHM - zvycajne 160 BYTES), je ukladany do AssemblyDef a sluzi na JEDNOZNACNU IDENTIFIKACIU ASSEMBLY.
+   B. PUBLIC KEY TOKEN je iba 8 BYTES dlhy HASH z PUBLIC KEY, ktory sa uklada do AssemblyRef (POZOR AssemblyRef a NIE AssemblyDef) a sluzi na REFEROVANIE na STRONGLY NAMED ASSEMLBLY z INYCH ASSEMBLIES. Pouzitie TOKEN na urcenie REFERENCII na ASSEMBLIES bolo zavedene preto, lebo PUBLIC KEY je VELMI DLHY a mat pre KAZDU REFEROVANU ASSEMBLY KOMPLETNY PUBLIC KEY by znamenalo mat ovela dlhsie ASSEMBLIES.
+!!!!! 11. Pre PUBLIC KEY a PUBLIC KEY TOKEN platia nasledujuce skutocnosti.
+   A. PUBLIC KEY sluzia na JEDNOZNACNU IDENTIFIKACIU ASSEMBLY a na OVERENIE KRYPTOGRAFICKEHO PODPISU ASSEMBLY. ASSEMBLY (presnejsie jej HASH VALUE) pri vytvarani je podpisana PRIVATE KEY PUBLISHERA, ktory ASSEMBLY vytvoril. Do ASSEMBLY sa vlozi PUBLIC KEY, ktory nasledne sluzi na dekryptovanie HASH VALUE ASSEMBLY kryptovanej PRIVATE KEY.
+   B. PUBLIC KEY TOKEN sluzi pri odkazovani sa na INU ASSEMBLY, kde sa v AsssemblyRef NEUKLADA CELY PUBLIC KEY referovanej ASSEMBLY (ktory ma 160 BYTES a bol by prilis dlhy), ale iba 8 BYTES DLHY HASH PUBLIC KEY - PUBLC KEY TOKEN. Takto sa pri REFEROVANI na ASSEMBLIES SETRI DOST MIESTA v subore ASSEMBLY.
+   !!!!! C. CLR pri zistovani identity ASSEMBLY vypocita HASH CODE z PUBLIC KEY referovanej ASSEMBLY, ktory je CELY ulozeny v MANIFESTE refervanej ASSEMBLY (v AssemblyDef). Tento HASH VALUE porovna so zaznamom v AssemblyRef. Ak sedi, tak dana ASSEMBLY je povazovana za hladanu ASSEMBLY a CLE ju nacita.
+!!! 12. ASSEMBLY je mozne PRIDELIT STRONG NAME (podpisat ju) pomocou prikazu [CSC.EXE /keyfile:Filename.snk].
+!!!!! 13. Podpisanie ASSEMBLY (ASSEMBLY SIGNING) je vykonavane v nasledujucich krokoch.
+   A. Pre vsetky FILES, OKREM SUBORU OBSAHUJUCEHO MANIFEST je vypocitana HASH VALUE, ktora je ulozena do TABLE FileDef v ASSEMBLY MANIFEST. HASH ALGORITHM je standardne SHA 1 a je ho mozne zmenit AL.EXE OPTION [/algid].
+   B. Pre PE32+ FILE obsahujuci MANIFEST (DLL/EXE) do ktoreho sa pridali HASH VALUES ostatnych ASSEMBLY FILES je vypocitany HASH. Tento HASH je vypocitany z TAKMER CELEHO PE32+ FILE. (HASH VALUE neobsahuje niektore fragmenty PE32+ FILE ako napriklad PE32 CHECKSUM ci priestor pre ulozene RSA.) Na vypocet HASH sa VZDY pouziva SHA 1 a neda sa to zmenit.
+   C. HASH VALUE vypocitanu pre (takmer) cely PE32+ FILE obsahujuci MANIFEST je SIGNED pomocou PRIVATE KEY z PUBLIC/PRIVATE KEY PAIR daneho PUBLISHERA. Takto vznikne DIGITALNY PODPIS ASSEMBLY - RSA.
+   !!! D. Podpisana ASSEMBLY HASH VALUE (DIGITALNY PODPIS ASSEMBLY - RSA) sa ulozi do PE32+ (EXE/DLL) FILE, do vyhradenej casti, ktora nebola zaratana pri vypocte HASH VALUE v bode B.
+   !!! E. CELY PUBLIC KEY z PUBLIC/PRIVATE KEY PAIR daneho PUBLISHERA sa ULOZI do TABLE AssemblyDef MANIFESTU. Tento sluzi na DEKRYPTOVANIE RSA (ASSEMBLY HASH VALUE) a porovnanie s ASSEMBLY HASH VALUE, ktoru CLR pouzije na kontrolu ci ASSEMBLY NEBOLA MODIFIKOVANA a podpis je od PUBLISHERA, ktory ASSEMBLY vytvoril.
+   !!!!! F. Ak sa ASSEMBLY referuje na INE STRONGLY NAMED ASSEMBLIES, tak si do AssemblyRef NEZAPISUJE CELY PUBLIC KEY REFEROVANEJ ASSEMBLY, pretoze je PRILIS DLHY, ale iba 8 BYTES dlhy HASH jeho PUBLIC KEY, ktory sa potom porovnava pri nacitani referovanej ASSEMBLY s HASH kodom vypocitanym z PUBLIC KEY referovanej ASSEMBLY. Ten ma KAZDA ASSEMBLY ulozena v AssemblyDef.
+!!!!! 14. Pri overovani ci ASSEMBLY nebola modifikovana CLR vypocita ASSEMBLY HASH CODE, ktory porovna s RSA (ASSEMBLY HASH CODE ulozenom v samotnej ASSEMBLY) DEKRYPTOVANYM pomocou PUBLIC KEY, ktory je tiez v ASSEMBLY ulozeny.
+15. Ak je STRONGLY NAMED ASSEMBLY instalovana GLOBALNE, tak sa instaluje do GLOBAL ASSEMBLY CACHE (GAC), ktora je standardne umiestnena v C:\Windows\Microsoft.NET\Assembly.
+!!! 16. GAC je strukturovana do SUBDIRECTORIES, ktore obsahuju ASSEMBLY NAME, VERSION i PUBLIC KEY TOKEN. Pre ASSEMBLY NATIVE IMAGES je nazov GENEROVANY. Adresarova struktura GAC je vsak VNUTORNYM IMPLEMENTACNYM DETAILOM CLR a program by NIKDY sa NEMAL referovat na ASSEMBLY v GAC na ZAKLADE PATH k danej ASSEMBLY.
+17. Instalovanie a odinstalovanie ASSEMBLIES do GAC sa vykonava prikazom [GACUTIL.EXE], ktory ma nasledujuce OPTIONS.
+   A. '/i [AssemblyPath]' - instaluje ASSEMBLY do GAC.
+   !!! B. '/u [AssemblyName]' - odinstaluje ASSEMBLY z GAC. POZOR tu sa dava ASSEMBLY NAME a NIE ASSEMBLY PATH ako pri instalacii.
+   C. '/il [AssemblyPath1] ... [AssemblyPathN]' - instaluje viacero ASSEMBLIES do GAC.
+   D. '/ul [AssemblyPath1] ... [AssemblyPathN]' - odinstaluje viacero ASSEMBLIES z GAC.
+   E. '/l [AssemblyNameFilter]' - zobrazi vsetky ASSEMBLIES v GAC podla filtra [AssemblyNameFilter].
+   !!! F. '/r [ReferenceScheme] [ReferenceID] [Description]' - umoznuje asociovat ASSEMBLY v GAC s WINDOWS INSTALLER a vytvori zavislost medzi programom a ASSEMBLY.
+!!! 18. Ukladanie ASSEMBLIES do GAC je treba VZDY DOBRE ZVAZIT, pretoze sa tym narusa filozofia XCOPY DEPLYMENT - ASSEMBLIES je treba REGISTROVAT do GAC pri instalacii a odregistrovat pri odinstalovani. Preto PRIVATE DEPLOYMENT je PREFEROVANY MODEL DEPLOYMENT a GAC by sa mala pouzivat IBA PRE SHARED ASSEMBLIES.
+!!! 19. Pri KOMPILACII (POZOR NIE v RUNTIME) ked sa referujem na STRONGLY NAMED ASSEMBLY, tak CSC.EXE v skutocnosti NEHLADA referovanu ASSEMBLIES v GAC, ale nasledujucim sposobom.
+   A. WORKING DIRECTORY.
+   !!! B. DIRECTORY, kde je umiestneny CSC.EXE. Tento adresar OBSAHUJE VSETKY Microsoft ASSEMBLIES, ktore su ulozene i v GAC a PRETO I BEZ PREHLADANIA GAC kompilacia KOREKTNE PREBEHNE, lebo VSETKY zdielane Microsoft ASSEMBLIES su v tomto DIRECTORY.
+   C. DIRECTORY definovany v '/lib' parametri CSC.EXE.
+   D. DIRECTORY definovany v LIB ENVIRONMENT VARIABLE.
+!!!!! 20. Pri kompilacii su STANDARDNE .NET kniznice linkovane z DIRECTORY, kde sa NACHADZA CSC.EXE a NIE z GAC. Kedze vsak NAZVY SUBOROV pre tieto ASSEMBLIES maju ROVNAKE MENO pre ROZLICNE CPU ARCITEKTURY (X86, X64), tak NEMOZU byt v DIRECTORY, kde je CSC.exe OBE VERZIE SUBOROV (maju rovnaky nazov). Riesenim je, ze v adresari, kde je CSC.EXE je IBA verzia ASSEMBLY IBA pre JEDNU CPU ARCHITEKTURU a ta sa pouzije. Je JEDNO pre AKE CPU je tam verzia, pretoze pri KOMPILACII sa pouzivaju IBA METADATA z ASSEMBLY a TIE SU ROVNAKE pre VSETKY CPU ARCHITEKTURY. Pri referovani sa na ASSEMBLY pri spustani programu sa pouzije SKUTOCNA VERZIA ASSEMBLY pre KONKRETNU CPU ARCHITEKTURU z GAC.
+!!!!! 21. CLR ako pri instalacii ASSEMBLY do GAC, tak i pri SPUSTANI PROGRAMU, ktory obsahuje referencie na STRONGLY NAMED ASSEMBLIES kontroluje PODPISANY HASH CODE, ktory je ulozeny do ASSEMBLY, aby zistil, ci nedoslo k NEPOVOLENEJ modifikacii ASSEMBLY FILES. Kontrolovane su aj HASH CODES vsetkych ASSEMBLY FILES pri MULTI-FILE ASSEMBLIES, aby sa zabezpecilo, ze ani tieto FILES neboli zmenene. Porovnania sa vykonavaju nasledujucim sposobom.
+   A. CLR zisti hodnotu HASH CODE STRONGLY NAMES ASSEMBLY, ktory bol podpisany PRIVATE KEY PUBLISHERA.
+   B. Tento HASH CODE ROZKODUJE - zrusi podpis - pomocou PUBLIC KEY, ktory sa nachadza v ASSEMBLY - v TABLE AssemblyDef.
+   C. Nasledne je vypocitany HASH CODE ASSEMBLY (resp. FILE v ktorom je MANIFEST) a POROVNANY s HODNTOU HASH CODE ziskaneho v BODE B. Ak NESEDIA, znamena to, ze ASSEMBLY FILE BOL ZMENENY a CLR takyto FILE NENACITA a hodi EXCEPTION.
+   D. Vsetky FILES pri MULTI-FILES ASSEMBLIES su takisto skontrolovane vypoctom ich HASH CODES, ktory je porovnany s HASH CODES pre tieto FILES, ktore su ulozene v TABLE FileDef MANIFESTU. Znova ak nesedia, tak tieto FILES boli modifikovane a CLR ich NENACITA a hodi EXCEPTION.
+22. DELAY SIGNING je technika podpisu ASSEMBLY splnajuca nasledujuce podmienky.
+   A. ASSEMBLY OBSAHUJE v AssemblyDef hodnotu PUBLIC KEY a teda MA STRONG NAME.
+   B. ASSEMBLY HASH vypocitavany ako HASH FILE obsahujuceho MANIFEST vsak NIE JE PODPISANY PRIVATE KEY a teda ani NIE JE ULOZENY ako RSA v ASSEMBLY.
+!!! 23. Pre ASSEMBLIES podpisane pomocou DELAY SIGNING platia nasledujuce fakty.
+   A. ASSEMBLIES MAJU STRONG NAME, pretoze OBSAHUJU PUBLIC KEY v AssemblyDef.
+   B. ASSEMBLIES, ktore sa na DELAY SIGNED ASSEMBLIES REFERUJU maju v AssemblyRef i PUBLIC KEY TOKEN co znamena, ze ked sa ASSEMBLY napokon podpise PRIVATE KEY, tak sa ASSEMBLIES, ktore na tuto ASSEMBLY referovali NEMUSIA ZNOVA PREKOMPILOVAT, pretoze PUBLIC KEY ASSEMBLY, ktora bola DELAY SIGNED a teraz uz je podpisana PRIVATE KEY sa NEZMENIL.
+   C. Nato aby taketo ASSEMBLIES mohli byt zaradene do GAC je potrebne VYPNUT KONTROLU RSA (podpisu ASSEMBLY PRIVATE KEY) pomocou priznaku '-Vr' prikazu GACUtil.EXE. Ak dana ASSEMBLY je uz PODPISANA i PRIVATE KEY (pri DEPLOYMENT) tak je mozne ZNOVA ZAPNUT KONTROLU RSA pomocou parametru '-Vu'.
+   D. ASSEMBLIES je mozne skompilovat ako DELAY SIGNED ASSEMBLY pouzitim priznaku '/delaysign' prikazov AL.EXE a CSC.EXE. Pri kompilacii je NUTNE zadat cez parameter '/keyfile:Filename.PublicKey' PUBLIC KEY.
+   E. ASSEMBLIES je mozne neskor podpisat PRIVATE KEY pomocou priznaku '-R' prikazu GACUtil.EXE.   
+!!! 24. PUBLIC/PRIVATE KEY PAIRS pouzivane pri podpisovani ASSEMBLIES mozu byt ulozene aj v CRYPTOGRAPHIC SERVICE PROVIDERS (CSP). Pri pouzivani CSP ako STORE pre PUBLIC/PRIVATE KEY PAIR je potrebne pouzivat v CSC.EXE NAMIESTO OPTION '/keyfile' pouzivat OPTION '/keycontainer' a v AL.EXE NAMIESTO OPTION '/keyfile' OPTION pouzivat '/keyname'.
+!!! 25. .NET RUNTIME NEOBSAHUJE utilitu GACUtil.EXE, a preto, ked chcem zaregistrovat ASSEMBLY do GAC, ktora ma iba .NET RUNTIME, mal by som pouzit Windows Installer (MSI).
+!!!!! 26. CLR pri JIT KOMPILACII vykonava detekciu na ake MEMBERS, akych TYPES kompilovana METHOD referuje a na zaklade toho nacitava prislusne ASSEMBLIES. Postup je nasledovny.
+   A. Pred vykonanim JIT KOMPILACIE METODY analyzuje CLR na ktore MEMBERS, sa referuju MSIL INSTRUCTIONS v METHOD CODE.
+   B. Pre kazdy MEMBER (FIELS, METHOD, PROPERTY, EVENT), ktory METHOD pouziva je zisteny TYPE do ktoreho patri.
+   C. Ak je TYPE zisteny v bode B v ROVNAKEJ ASSEMBLY i ROVNAKOM MODULE (FILE) ako KOMPILOVANA METHOD, tak sa vytvori interna struktura reprezentujuca dany MEMBER a TYPE.
+   D. Ak je TYPE zisteny v bode B v ROVNAKEJ ASSEMBLY v INOM MODULE (FILE), tak sa pomocou informacie vo FileRef nacita dany FILE, skontroluje sa ci nebol umyselne TAMPERED a vytvori sa interna struktura reprezentujuca dany MEMBER a TYPE.
+   E. Ak je TYPE zisteny v bode B v ODLISNEJ ASSEMBLY, tak CLR NACITA tuto ASSEMBLY (bud z GAC, ak tam je, alebo ako PRIVATE ASSEMBLY) a z MANIFESTU zisti v ktorom MODULE (FILE) sa nachadza pozadovany TYPE, ktory potom nacita (ak to nie je FILE obsahujuci MANIFEST, tak sa nacita prislusny MODULE z FileDef a urobi sa kontrola na TAMPERING) a vytvori sa interna struktura reprezentujuca dany MEMBER a TYPE.
+27. Pri vykonavani ASSEMBLY BINDING (pocas vyhladavania ASSEMBLIES) je mozne zaregistrovat EVENTS AppDomain.AssemblyResolve, AppDomain.ReflectionOnlyAssemblyResolve, AppDomain.TypeResolve a AppDomain.ResourceResolve, ktore su volane, ked ASSEMBLY BINDING zlyha a kde je mozne tieto ASSEMBLIES nacitat MANUALNE.
+28. Standardne .NET ASSEMBLIES sa nacitavaju NIE podla VERSION voci ktorej boli KOMPILOVANE, ale voci VERSION CLR, ktora bezi v procese. Ta urci, ktore verzie STANDARDNYCH ASSEMBLIES sa nacitaju. Tento proces sa vola UNIFICATION a sluzi MICROSOFTU pre zjednodusenie testovania CLR a STANDARDNYCH ASSEMBLIES.
+29. Pri nacitavani ASSEMBLIES z GAC sa berie do uvahy aj CPU ARCHITECTURE voci ktorej bola ASSEMBLY kompilovana. Ak pre danu CPU ARCHITECTURE existuje SPECIALIZOVANA VERZIA ASSEMBLY, tak sa nacita ta, ak nie tak sa nacita CPU ARCHITECTURE AGNOSTIC ASSEMBLY.
+30. V pripade, ze sa medzi rozlicnymi verziami zmeni pozicia TYPE a ten sa presunie do inej ASSEMBLY, tak pomocou ATTRIBUTES [TypeForwardedToAttribute] a [TypeForwardedFromAttribute] je mozne presmerovat referencie na dany TYPE do novej ASSEMBLY.
+31. Cestu k ASSEMBLIES je mozne modifikovat pomocou .CONFIG FILE v ELEMENTE '<assemblyBinding/>'. Tento ELEMENT ma nasledujuce SUBELEMENTS.
+   A. <probing> - umoznuje definovat atribut 'privatePath', ktory sa pouziva ako u WEAKLY NAMED ASSEMBLIES, tak i STRONGLY NAMES ASSEMBLIES. V pripade WEAKLY NAMED ASSEMBLIES urcuje SUBDIRECTORIES aplikacneho DIRECTORY, kde sa ma zacat PROBING - hladanie ASSEMBLY. V pripade STRONGLY NAMED ASSEMBLIES (ale IBA ak nie je nastavena hodnota 'codeBase') urcuje FULL PATH (moze byt aj na Webe), kde sa ma zacat PROBING hladanej ASSEMBLY. Cesta NEMUSI BYT SUBDIRECTORY APLIKACNEHO DIRECTORY.
+   B. <dependentAssembly> - umoznuje definovat pravidla (ktore verzie a z ktorej PATH) ako sa budu REFEROVANE ASSEMBLIES nacitavat.
+32. ELEMENT <dependentAssembly> umoznuje, aby ADMINISTRATOR SYSTEMU vykonal REBINDING VERZII danej ASSEMBLY, alebo urcil PATH, kde je ASSEMBLY umiestnena. Takisto je mozne povolit, alebo zakazat PUBLISHER POLICY ASSEMBLIES. Tento ELEMENT ma nasledujuce SUBELEMENTS.
+   A. <assemblyIdentity> - urcuje identitu ASSEMBLY pre ktoru chcem modifikovat jej nastavenia.
+   B. <bindingRedirection> - urcuje, ktora verzia ASSEMBLY sa ma mapovat na novu (opravenu od chyb) verziu ASSEMBLY.
+   C. <codeBase> - urcuje DIRECTORY (v pripade WEAKLY NAMED ASSEMBLY SUBDIRECTORY), alebo Web PATH kde sa ma hladat ASSEMBLY.
+   D. <publisherPolicy> - umoznuje zapnut, alebo vypnut PUBLISHER POLICY.
+!!! 26. PUBLIHSER POLICY umoznuje PODOBNE ako <bindingRedirection> v .CONFIG SUBORE definovat REDERECTION VERZII DANEJ ASSEMBLY. Zasadny ROZDIEL je v tom, ze PUBLISHER POLICY je SPECIALNY TYP ASSEMBLY, ktoru vydava PUBLISHER a teda PUBLISHER a NIE ADMINISTRATOR SYSTEMU (ako v pripade <bindingRedirection>) URCUJE POTREBNY REDIRECTION. PUBLIHSER POLICY sa pouziva kde PUBLISHER povodnej ASSEMBLY opravi tuto ASSEMBLY a zmeni jej verziu. Vytvorenim PUBLISHER POLICY ASSEMBLY a jej distribuovanim spolu s NOVOU VERZIOU ASSEMBLY umoznuje si VYZIADAT REDIRECTION z povodnej verzie ASSEMBLY na NOVU VERZIU. ADMINISTRATOR ma moznost ZAKAZAT PUBLIHSER POLICY pomocou <publisherPolicy>.
+!!! 27. PUBLIHSER POLICY ASSEMBLY sa generuje pomocou AL.EXE nasledujucim sposobom.
+   A. Vytvori sa .CONFIG FILE, ktory MOZE OBSAHOVAT IBA <assemblyBinding> a v nom mozu byt nastavene IBA ELEMENTS <assemblyIdentity>, <bindingRedirect> a <codeBase>, ktore urcia ktora verzia ASSEMBLY sa ma pouzit za ktoru novu verziu.
+   B. Pomocou prikazu [AL.EXE /out:Policy.1.0.MyAssembly.DLL /version:1.0.0.0 /keyfile:MyKeyFile.snk /linkresource:MyAssembly.config] sa vytvori PUBLISHER POLICY ASSEMBLY, ktora presmeruje MyAssembly.DLL o verzii 1.0 na verziu zadanu v .CONFIG FILE [MyAssembly.config]. ASSEMBLY NAME [Policy.1.0.MyAssembly.DLL] je KLUCOVE. Prave pomocou neho dokaze CLR zistit, ze sa jedna o PUBLISHER POLICY ASSEMBLY. Parameter '/version' urcuje verziu PUBLISHER POLICY ASSEMBLY a nie ASSEMBLY na ktoru sa aplikuje. FILE [MyAssembly.config] musi byt do ASSEMBLY vlozeny ako LINKER RESOURCE (bude v osobitnom FILE v MULTI-FILE ASSEMBLY) a PRAVE TENTO .CONFIG FILE obsahuje informaciu o presmerovani verzie ASSEMBLY. FILE 'MyKeyFile.snk' musi obsahovat TEN ISTY PUBLIC/PRIVATE KEY PAIR, ktory sa pouzil na podpis ASSEMBLY na ktorou sa ma PUBLISHER POLICY aplikovat.
+   C. Vytvorena PUBLISHER POLICY ASSEMBLY je nasledne distribuovana spolu s NOVOU VERZIOU ASSEMBLY na ktoru sa ma PUBLISHER POLICY aplikovat.
+   !!! D. PUBLISHER POLICY ASSEMBLY MUSI byt instalovana do GAC. ASSEMBLY na ktoru sa aplikuje vsak v GAC NEMUSI byt ulozena.
+   E. Na to, aby sa PUBLISHER POLICY vobec aplikovala, MUSI byt v .CONFIG FILE ASSEMBLY, na ktoru sa ma PUBLISHER POLICY aplikovat povolena pomocou SETTINGS v.CONFIG FILE <publisherPolicy apply="yes">.
+//-------------------------------------------------------------------------------------------------------
+Priklady z ILDASM.
+
+1. STRONGLY NAMED ASSEMBLY ma v AssemblyDef ulozeny CELY PUBLIC KEY.
+
+        Name : Program_StronglyNamedAssembly
+	    Public Key    : 00 24 00 00 04 80 00 00  94 00 00 00 06 02 00 00  00 24 00 00 52 53 41 31 
+                      : 00 04 00 00 01 00 01 00  4b df 31 7f 4e f0 62 90  60 c0 75 83 ab 12 18 f4 
+                      : 51 a7 fc 0e d8 e6 c6 97  27 1b b2 9c 17 a3 5a fd  54 59 31 21 e1 35 df 9e 
+                      : fb 77 fe f0 e0 2c 1d e4  cc bc 66 25 6d 09 18 c9  1c 27 90 cf 4b 0c 5e 45 
+                      : 54 34 a6 cc 18 84 b6 d0  2f 53 26 44 78 a8 a1 84  3b 0b 64 3e 19 dd f2 7f 
+                      : 08 d2 55 78 81 84 37 de  f7 c5 91 2a 8a 1e dc 64  91 d0 de ee 51 68 ae 61 
+                      : cd 35 1f 3f 57 8f 02 87  1e 53 48 4b 36 03 0c 9a.
+
+2. Ak sa REFERUJEM na STRONGLY NAMED ASSEMBLY (bez ohladu ci sa referujem zo STRONGLY, alebo WEAKLY NAMED ASSEMBLY), tak v AssemblyRef mam IBA PUBLIC KEY TOKEN - HASH kod z PUBLIC KEY. Nasledujuci priklad je odkaz ZO STRONGLY NAMED ASSEMBLY na INU STRONGLY NAMED ASSEMBLY.
+
+	Public Key or Token: b7 7a 5c 56 19 34 e0 89 
+	Name: mscorlib.
+
+3. Tento priklad ukazuje ze i WEAKLY NAMED ASSEMBLIES obsahuju referencie na STRONGLY TYPED ASSEMBLIES cez PUBLIC KEY TOKEN.
+
+    Public Key or Token: b7 7a 5c 56 19 34 e0 89 
+	Name: mscorlib.
+//-------------------------------------------------------------------------------------------------------

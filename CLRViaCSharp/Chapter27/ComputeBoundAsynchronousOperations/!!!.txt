@@ -1,0 +1,243 @@
+//-------------------------------------------------------------------------------------------------------
+1. Solution demonstruje pouzitie THREAD POOLS na realizaciu COMPUTED-BOUND OPERATIONS.
+2. THREAD POOL (THREAD POOL) je mnozina THREADS, ktore spravovane CLR. CLR ich POCET reguluje podla toho kolko POZIADAVIEK na VYKONANIE THREAD POOL dostava. Ak pocet novych poziadaviek je vysoky, tak THREAD POOL zvysi pocet THREADS v THREAD POOL tym, ze vytvori nove, ktore budu poziadavky spracovavat. Ak je pocet poziadaviek nizky, takze niektore THREADS v THREAD POOL iba stoja, bez toho, aby vykonavali nejaku cinnost, tak ich THREAD POOL po nejakom case ZLIKVIDUJE, cim setri RESOURCES, kedze nic nerobiace THREADS su NAROCNE na MEMORY.
+!!! 3. V PROCESSE EXISTUJE TOLKO THREAD POOL, kolko je v nom zavedenych CLR. Aj je iba JEDNO CLR (co je drviva vacsina pripadov), tak existuje iba JEDEN SPOLOCNY THREAD POOL, pre VSETKY APP DOMAINS.
+4. Pre THREAD POOL platia nasledujuce fakty.
+   A. THREAD POOL pri vytvoreni neobsahuje ZIADEN THREAD.
+   B. THREAD POOL si drzi THREAD SAFE QUEUE do ktorej uklada TASKS, ktore maju byt vykonane ASYNCHRONNE.
+   C. Ak THREAD POOL detekuje prichod TASK do TASK QUEUE a nema vytvoreny ziaden THREAD, tak ho vytvori a TASK v nom zacne vykonavat.
+   D. Ak TASK QUEUE je prazdna, tak sa THREADS z THREAD POOL NEUVOLNUJU OKAMZITE, ale az po nejakom case, ak nepridu dalsie TASKS do TASK QUEUE. Tym sa znizuje pocet casovo narocnych operacii uvolnenia THREADS.
+   E. Ak TASK QUEUE obsahuje prilis vela TASKS, tak THREAD POOL vytvori dalsie THREADS, aby cakajuce TASKS boli spracovavane rychlejsie.
+   !!! F. Ak niektory THREAD z THREAD POOL SKONCI EXCEPTION, tak je AUTOMATICKY UKONCENY CELY PROGRAM.
+6. Interne THREAD POOL kategorizuje THREADS do 2 kategorii.
+   A. COMPUTED-BOUND THREADS. Tieto THREADS vykonavaju nejaku VYPOCTOVU OPERACIU.
+   B. IO THREADS. Tieto THREADS su sputene na pri UKONCENI IO OPERACIE, ked sa mozu spracovat data vratene z IO operacie.
+7. THREAD POOL je implementovany v CLASS ThreadPool. Ma nasledujuce MEMBERS.
+   A. STATIC FUNCTION QueueUserWorkItem() vklada novy WORK ITEM (TASK) do TASK QUEUE.
+   B. STATIC FUNCTION GetMinThread() vracia minimalny pocet THREADS, ktore budu bezat v THREAD POOL.
+   C. STATIC FUNCTION GetMaxThread() vracia maximalny pocet THREADS, ktore budu bezat v THREAD POOL.
+   D. STATIC FUNCTION SetMinThread() nastavuje minimalny pocet THREADS, ktore budu bezat v THREAD POOL.
+   E. STATIC FUNCTION SetMaxThread() nastavuje maximalny pocet THREADS, ktore budu bezat v THREAD POOL. Standardne je MAXIMALNY pocet THREADS okolo 1000 THREADS na THREAD POOL.
+8. Vo WINDOWS STORE APPLICATIONS CLASS ThreadPool NIE JE PRIAMO PRISTUPNY, ale je mozne vyuzit Task CLASS.
+!!! 9. Kazdy THREAD ma so sebou asociovany EXECUTION CONTEXT obsahujuci data asociovane s THREADOM, ako napriklad SECURITY informacie, HOST SETTINGS, alebo LOGICAL CALL CONTEXT. Patria sem napriklad i data ulozene v PROPERTY Thread.Principal.
+!!! 10. Standardne pri vytvoreni NOVEHO THREADU je EXECUTION CONTEXT KOPIROVANY z EXISTUJUCEHO THREADU do NOVEHO THREADU, aby napriklad informacie ako Principal ostali zachovane i v novom THREADE. To vsak vedie k PERFORMANCE HIT. Pomocou STATICKYCH metod triedy ExecutionContext.SuppressFlow() a ExecutionContext.RestoreFlow() je mozno tento PRENOS EXECUTION CONTEXT medzi THREADS POVOLIT, alebo ZAKAZAT. Ak je zakazany, tak novo vytvoreny THREAD NEMA SKOPIROVANY EXECUTION CONTEXT z THREADU, ktory ho vytvoril.
+11. CLASS ExecutionContext ma nasledujuce MEMBERS.
+   A. STATIC METHOD CaptureContext() ziska instanciu CLASS ExecutionContext z CURRENT THREAD.
+   B. METHOD CreateCopy() vytvori kopiu instancie CLASS ExecutionContext.
+   C. STATIC METHOD SuppressFlow() pozastavi kopirovanie EXECUTION CONTEXT z CURRENT THREAD do THREADS, ktore vytvori, alebo iniciuje (v THREAD POOL).
+   D. STATIC METHOD RestoreFlow() obnovi kopirovanie EXECUTION CONTEXT z CURRENT THREAD do THREADS, ktore vytvori, alebo iniciuje (v THREAD POOL).
+   E. STATIC METHOD Run() spusti vykonavanie zadanej METHOD v CURRENT THREAD so zadanym EXECUTION CONTEXT.
+12. .NET ma podporu pre COOPERATIVE THREAD CANCELLTION. COOPERATIVE THREAD CANCELLTION je CANCELLATION, kedy THREAD, ktory ma byt CANCELLED musi AKTIVNE zistovat ci neprisla poziadavka na CANCELLATION a ak ano, tak THREAD UKONCIT.
+13. COOPERATIVE THREAD CANCELLTION je realizovany pomocou nasledujucich CLASSES a STRUCTURES.
+   A. CLASS CancellationTokenSource generuje instancie CLASS CancellationToken a zaroven obsahuje METHOD Cancel(), ktora iniciuje THREAD CANCELLATION.
+   B. STRUCTURE CancellationToken pouziva THREAD, ktory ma byt CANCELLED, aby zistil, ci doslo k poziadavke na THREAD CANCELLATION.
+   C. STRUCTURE CancellationTokenRegistration obsahuje CALLBACK METHOD, ktora sa zavola ako doslo k THREAD CANCELLATION.
+14. CLASS CancellationTokenSource ma nasledujuce MEMBERS.
+   A. CONSTRUCTOR ma ako PARAMETER TIMEOUT. Ak sa pouzije tento CONSTRUCTOR, tak CANCELLATION je volana AUTOMATICKY po vyprsani daneho TIMEOUT.
+   !!! B. METHOD Cancel() iniciuje CANCELLATION. Pretazena verzia prijima BOOL PARAMETER, ktory urcuje ci sa maju dalsie CALLBACK METHODS volat, ak niektora z nich generuje EXCEPTION.
+   C. METHOD CancelAfter() automaticky generuje CANCELLATION po vyprsani zadaneho TIMEOUT.
+   D. STATIC METHOD CreateLinkedTokenSource() generuje COMBINED CancellationTokenSource, ktory pozostava z VIACERYCH instancii CancellationTokenSource. Ak NIEKTORA z instancii CancellationTokenSource je CANCELLED, tak je CANCELLED aj COMBINED CancellationTokenSource.
+15. STRUCTURE CancellationToken ma nasledujuce MEMBERS.
+   A. PRIVATE FIELD odkazujuci na CancellationTokenSource.
+   B. OPERATOR== porovnava 2 instancie CLASS CancellationToken na rovnost.
+   C. OPERATOR!= porovnava 2 instancie CLASS CancellationToken na nerovnost.
+   !!! D. METHOD Register() zaregistruje CALLBACK METHOD, ktora ma byt zavolana pri zavolani METHOD CancellationTokenSource.Cancel() v kontexte THREADU, ktory zavolal METHOD CancellationTokenSource.Cancel(), alebo pri nastaveni PARAMETER UseCancellationContext na TRUE sa zavola v CURRENT SYNCHRONIZATION CONTEXT.
+   E. PROPERTY IsCancellationRequested vracia informaciu ci doslo k poziadavke na THREAD CANCELLATION.
+   F. PROPERTY WaitHandle je SIGNALIZED, ak doslo k poziadavke na THREAD CANCELLATION.
+   G. PROPERTY CanBeCanceled vracia TRUE, ak instancia CancellationToken moze byt CANCELLED. FALSE je vratena iba pre instanciu CancellationToken.None.
+   !!! H. STATIC PROPERTY None vracia instanciu CancellationToken, ktora NEMOZE BYT NIKDY CANCELLED. CancellationToken.CanBeCanceled pre nu vracia hodnotu FALSE.
+16. STRUCTURE CancellationTokenRegistration ma nasledujuce MEMBERS.
+   A. OPERATOR== porovnava 2 instancie CLASS CancellationTokenRegistration na rovnost.
+   B. OPERATOR!= porovnava 2 instancie CLASS CancellationTokenRegistration na nerovnost.
+   !!! C.METHOD Dispose() ak je zavolana, tak sa ZRUSI CALLBACK METHOD a tato sa pri volani CancellationTokenSource.Cancel() NEZAVOLA.
+17. CANCELLATION pomocou CLASS CanellationTokenSource sa robi nasledujucim sposobom.
+   A. Vytvori sa VARIABLE typu CancellationTokenSource, ktora v PROPERTY CancellationToken obsahuje STRUCTURE CancellationToken.
+   !!! B. Pomocou METHOD CancellationTokenSource.Register() je OPTIONALLY mozne zaregistrovat 1 az N VIAC CALLBACK METHODS, ktore budu PRI CANCELLATION VOLANE. PARAMETER UseCancellationContext urcuje ci sa bude CALLBACK volat PRIAMO na THREADE, ktory je VOLAL CancellationTokenSource.Cancel(), alebo sa zavola v CURRENT SYNCHRONIZATION CONTEXT.
+   !!! C. METHOD CancellationTokenSource.Register() vracia instanciu STRUCTURE CancellationTokenRegistration, ktory implementuje IDisposable. Volanim CancellationTokenRegistration.Dispose() sa ZRUSI REGISTRACIA CALLBACK METHOD a tato NEBUDE ZAVOLANA.
+   !!! D. V THREADE, ktory PODPORUJE COOPERATIVE CANCELLATION je NUTNE PPRAVIDELNE kontrolovat stav PROPERTY CancellationToken.IsCancellationRequest, alebo cakat na SIGNALIZACIU EVENT v PROPERTY CancellationToken.WaitHandle. Ak je PROPERTY CancellationToken.CancellationToken nastavena na TRUE, alebo je EVENT CancellationToken.WaitHandle SIGNALIZOVANY, tak je POVINNOSTOU THREADU, aby co NAJSKOR UKONCIL svoju CINNOST.
+   E. CANCELLATION sa realizuje volanim METHOD CancellationTokenSource.Cancel(). Tato existuje v 2 verziach. Jedna ma BOOL parameter, ktory urcuje, ze ci ak je pomocou CancellationToken.Register() zaregistrovanych VIACERO CALLBACK METHODS a NIEKTORA z NICH HODI EXCEPTION, ci sa ma, alebo nema pokracovat vo VYKONAVANI DALSICH CALLBACK METHODS. Ak je tento parameter TRUE, tak sa pri PRVEJ EXCEPTION volanie inych CALLBACKS ZASTAVI a CancellationTokenSource.Cancel() hodi EXCEPTION. Ak je FALSE, tak volanie CALLBACKS pokracuje a az po zavolani VSETKYCH CancellationTokenSource.Cancel() vracia AggregatedException.
+   !!! F. Pomocou CONSTRUCTOR CancellationTokenSource s TIMEOUT PARAMETER, alebo pomocou METHOD CancellationTokenSource.CancelAfter() sa CANCELLATION vykona AUTOMATICKY po vyprsani daneho TIMEOUT.
+18. CLASS Task umoznuje definovat novy TASK. TASK je cinnost, ktora je vykonana PARALELNE podobne ako REQUEST v THREAD POOL, avsak ma daleko lepsiu podporu na VRATENIE VYSLEDKOV, previazanie s inymi TASKS, podporu CANCELLATION, CHILD TASKS a mnoho inych vlastnosti.
+19. Existuju 2 typy TASKS.
+   A. CLASS Task umoznuje volat METHOD s PARAMETER typu Object, ktora nevracia ziadnu RETURN VALUE.
+   B. CLASS Task<T> umoznuje volat CLASS s PARAMETER typu Object, ktora vracia RETURN VALUE typu T.
+20. CLASS Task ma nasledujuce MEMBERS.
+   A. PROPERTY Status urcuje stav TASK a je typu TaskStatus. Urcuje v akom stave je dany TASK a ak skoncil, tak urcuje ci skoncil KOREKTNE (RanToCompletion), bol CANCELED (Canceled), alebo hodil EXCEPTION (Faulted).
+   !!! B. PROPERTY Result (je iba v Task<T>) vracia hodnotu typu T, ktoru vratil TASK. Ak TASK este NESKONCIL, tak je THREAD, ktory pristupil k Result privedeny do WAIT stavu.
+   !!! C. PROPERTY Exception vracia EXCEPTION ak TASK SKONCIL GENEROVANI EXCEPTION. hodnotu typu T, ktoru vratil TASK. Ak TASK este NESKONCIL, tak je THREAD, ktory pristupil k Exception privedeny do WAIT stavu.
+   D. PROPERTY CreationOptions typu EnumCreationOptions obsahuje optimalizacne nastavenia, zadane pri konstrukcii TASK, ktore sa aplikuju pri vykonani TASK.
+   !!! E. PROPERTY Id udava unikatny ID typu Int32, ktore sa vsak vytvara AZ PRI PRVOM PRISTUPE k TEJTO PROPERTY. Dokonca sa vytvori i pri PRVOM PRISTUPE cez DEBUGGER. Id je vo forme COUNTER, ktory sa pri KAZDOM NOVOM TASK ZVYSUJE.
+   F. PROPERTY IsCompleted vychadza z hodnoty Status a urcuje ci dany TASK SKONCIL v COMPLETED STATE.
+   G. PROPERTY IsCanceled vychadza z hodnoty Status a urcuje ci dany TASK SKONCIL v CANCELLED STATE.
+   H. PROPERTY IsFaulted vychadza z hodnoty Status a urcuje ci dany TASK SKONCIL vo FAULT STATE.
+   I. PROPERTY AsyncState vracia TASK STATE DATA, ktore boli do TASK zaslane v case vytvorenia TASK.
+   J. STATIC PROPERTY Factory vracia instanciu TaskFactory, ktoru je mozne pouzit na vytvaranie novych TASKS.
+   K. METHOD Dispose() uvolni vsetky RESOURCES asociovane s danym TASK.
+   L. METHOD Start() spusta TASK.
+   M. METHOD Run() vytvara a zaroven spusta novy TASK.
+   !!! N. METHOD Wait() umoznuje EXPLICITNE CAKAT na SKONCENIE TASKU. Ak TASK ESTE NEZACAL (ale UZ BOLA VOLANA METODA Start()), tak je TASK pri volani Wait() vykonany OKAMZITE a to na THREADE, ktory VOLAL Wait(). Vyhodou tejto implementacie je, ze sa NEVYTVARA NOVY THREADS a teda ani nedochadza k PERFORMACE HIT s tym spojenym.
+   O. STATIC METHOD WaitAny() umoznuje cakat na skoncenie JEDNEHO z VIACERYCH TASKS.
+   P. STATIC METHOD WaitAll() umoznuje cakat na skoncenie VSETKYCH TASKS.
+   Q. METHOD ContinueWith() umoznuje vytvrit NOVY TASK, ktory sa spusti po dokonceni tohto TASKU.
+   R. METHOD ContinueWith<T>() umoznuje vytvrit NOVY TASK, ktory sa spusti po dokonceni tohto TASKU a ma ako RETURN VALUE objekt typu T.
+   S. METHOD ConfigureAwait() nakonfiguruje AWAITER TaskAwaiter pouzity na cakanie na ukoncenie daneho TASK.
+   T. METHOD GetAwaiter() vracia AWAITER OBJECT TaskAwaiter pouzity na cakanie na ukoncenie daneho TASK.
+   U. STATIC METHOD Yield() vracia AWAITABLE TASK YieldAwaitable, ktory sa vrati do CURRENT CONTEXT, ked TASK na ktory caka skonci.
+   V. STATIC METHOD Delay() vytvori TASK, ktory nic nerobi, iba sa po stanovenom case automaticky ukonci.
+   W. STATIC METHOD FromResult() vytvori TASK, ktory sa OKAMZITE SKONCI, pricom ako RETURN VALUE vrati VALUE stanovenu ako PARAMETER.
+   X. METHOD RunSynchronously() SYNCHRONNE spusti dany TASK na TASK SCHEDULER.
+!!! 21. Ak TASK hodi EXCEPTION, tak METHOD Wait(), alebo PROPERTY Result vrati EXCEPTION TYPU AggregateException, ktora obsahuje nasledujuce MEMBERS.
+   A. PROPERTY InnerExceptions je KOLEKCIA EXCEPTIONS, ktore sa vyskytli pocas vykonavania TASKU. Kolekcia obsahuje VIAC ako 1 EXCEPTION, iba ak 1 TASK generuje dalsie CHILDREN TASKS.
+   !!! B. Metoda Handle() umoznuje oznacit pomocou PREDIKATU niektore z EXCEPTIONS z kolekcie InnerExceptions su HANDLED. Ak NIE SU VSETKY EXCEPTIONS v InnerExceptions oznacene za HANDLED, tak Handle() ZNOVA GENERUJE AggregateException, ale uz iba s tymi EXCEPTIONS, ktore NEBOLI HANDLED.
+   C. Metoda Flatten() umoznuje vytvorit AggregatedException, ktorej COLLECTION InnerExceptions bude obsahovat VSETKY POVODNE EXCEPTIONS okrem EXCEPTIONS typu AggregatedException. Namiesto nich budu do COLLECTION InnerExceptions NOVEJ AggregatedException vlozene obsahy ich AggregatedException.InnerExceptions PROPERTIES. To znaci, ze NOVA AggregatedException uz bude obsahovat iba 1 UROVEN EXCEPTIONS a PROPERTY InnerExceptions NEBUDE obsahovat EXCEPTIONS typu AggregatedException.
+!!!!! 22. Ak k Task.Exception NEPRISTUPIM a EXCEPTION NESPRACUJEM, tak tieto EXCEPTIONS budu IGNOROVANE, no program na rozdiel od ThreadPool.QueueUserWorkItem() NESKONCI PADOM. Pomocou EVENT TaskScheduler.UnobservedTaskException je mozne zaregistrovat odber tychto UNHANDLED EXCEPTIONS a pripradne ich ZACHYTIT a SPRACOVAT. EVENT TaskScheduler.UnobservedTaskException je volany az FINALIZER THREADOM po uvolneni daneho Task OBJECT v GC.
+23. Pre METHOD Task.WaitAny() nasledujuce fakty.
+   A. METHOD WaitAny() vykona THREAD BLOCKING, ak ZIADEN z TASKS sa NEUKONCIL.
+   B. METHOD vracia INDEX na TASK, ktory sa ukoncil a sposobil ukoncenie THREAD BLOCKING, alebo -1, ak expiroval TIMEOUT.
+   C. Ak NIEKTORY TASK bol CANCELLED, tak je generovana EXCEPTION AggregateException, ktora obsahuje OperationCancelledException.
+   D. Ak METHOD WaitAny() bola CANCELLED, tak je generovana EXCEPTION OperationCancelledException.
+24. Pre METHODS Task.WaitAny() a Task.WaitAll() platia nasledujuce fakty.
+   A. METHOD WaitAall() vykona THREAD BLOCKING, pokym VSETKY TASKS nie su UKONCENE.
+   B. METHODS BOOL VALUE indikujucu si VSETKY TASKS boli ukoncene, alebo doslo k expiracii TIMEOUT.
+   C. Ak NIEKTORY TASK bol CANCELLED, tak je generovana EXCEPTION AggregateException, ktora obsahuje OperationCancelledException.
+   D. Ak METHOD WaitAll() bola CANCELLED, tak je generovana EXCEPTION OperationCancelledException.
+!!! 25. TASKS podporuju CANCELLATION nasledujucim sposobom.
+   A. Pretazena verzia CONSTRUCTOR Task obsahuje ako PARAMETER CancellationToken.
+   !!! B. CODE v TASK MUSI PERIODICKY kontrolovat ci CancellationToken nie je v CANCELLED a ak ano, tak MUSI HODIT EXCEPTION OperationCanceledException, aby system mohol identifikovat, ze doslo ku CANCELLATION.
+   !!! C. CLASS CancellationToken ma METHOD CancellationToken.ThrowIfCancellationRequested(), ktora hodi EXCEPTION OperationCanceledException, ak CancellationToken je v CANCELLED STATE.
+   D. Ak TASK bol CANCELLED, tak PROPERTY Task.Result, resp. Task.Wait() vracia EXCEPTION typu AggregatedException, ktora obsahuje v PROPERTY AggregateException.InnerExceptions EXCEPTION TYPU OperationCanceledException, podla ktorej mozem zistit, ze TASK skoncil ako CANCELED.
+26. Pomocou METHOD Task.ContinueWith() je mozne vytvorit NOVY TASK, ktory sa spusti HNED AKO TASK pre ktory sa Task.ContinueWith() zavolal SKONCI. Pre Task.ContinueWith() platia nasledujuce pravidla.
+   A. METHOD vracia ako RETURN VALUE NOVY TASK, ktory sa spusti po ukonceni TASKU na ktory bola METHOD Task.ContinueWith() zvolana.
+   B. TASK METHOD, ktora obsahuje CODE TASKU, ktory sa vykona po skonceni naviazaneho TASKU ma ako prvy PARAMETER instanciu CLASS Task, obsahujucu SKONCENY TASK.
+   !!! D. Pomocou Task.ContinueWith() je mozne naviazat VIACERO TASKS, ktore budu spustene po skonceni TASK pre ktory bola volana METHOD Task.ContinueWith(). Vsetky tieto TASKS zaregistrovane pomocou ContinueWith() budu SPUSTENE PARALELNE.
+   !!!!! C. METHOD ma ako PARAMETER objekt typu TaskContinuationOptions, ktory urcuje CI SA MA NOVY TASK SPUSTIT, ked PREDCHADZAJUCI skoncil USPESNE, HODENIM EXCEPTION, alebo VYKONANIM CANCELLATION, eventualne kombinaciou niektorych z moznosti. Ak niektore z TASKS naviazanych pomocou ContinueWith() NIE SU VYKONANE (pretoze napriklad maju podmienku korektneho skoncenia predchadzajuceho TASKU a ten bol CANCELED), tak tieto ostatne TASKS su CANCELED - teda JE PRE NICH HODENA EXCEPTION OperationCanceledException.
+   E. Ak pri volani Task.ContinueWith() TASK uz SKONCIL, tak sa novy TASK spusti OKAMZITE.
+!!! 27. METHOD Task.ContinueWith() je mozne pouzit aj pre PODMIENENE vykonanie naviazaneho TASK a to nasledujucim sposobom.
+   A. Ak METHOD Task.ContinueWith() ma ako PARAMETER hodnotu TaskContinuationOptions.OnlyOnRanToCompletion, tak sa NAVIAZANY TASK vykona IBA ak bol POVODNY TASK vykonany USPESNE.
+   B. Ak METHOD Task.ContinueWith() ma ako PARAMETER hodnotu TaskContinuationOptions.OnlyOnFaulted, tak sa NAVIAZANY TASK vykona IBA ak bol POVODNY TASK skoncil hodenim EXCEPTION.
+   C. Ak METHOD Task.ContinueWith() ma ako PARAMETER hodnotu TaskContinuationOptions.OnlyOnCanceled, tak sa NAVIAZANY TASK vykona IBA ak bol POVODNY TASK bol CANCELLED.
+   !!!!! D. Ak POVODNY TASK skonci INAK ako NAVIAZANY TASK ocakaval (napriklad skonci v CANCELLED stave, pricom NAVIAZANY TASK ma byt spusteny pri USPESNOM SKONCENI), tak NAVIAZANY TASK je AUTOMATICKY CANCELLED.
+!!! 28. Trieda TaskContinuationOptions moze nadobudat nasledujuce hodnoty.
+   A. None - DEFAULT.
+   B. PreferFairness - TASK SCHEDULER hodi novy TASK do GLOBAL THREAD POOL, namiesto do WORKER THREAD LOCAL QUEUE.
+   C. LongRunning - v THREAD POOL je vytvoreny novy THREAD, ktory je dedikovany na vykonanie danej operacie.
+   D. AttachToParent - asociacia PARENT-CHILD TASKS.
+   E. ExecuteSynchronously - THREAD, ktory vykonal POVODNY TASK, vytvori i TASK vytvoreny cez ContinueWith(). Ak uz THREAD SKONCIL, tak je novy TASK vykonany na THREADE, ktory volal ContinueWith().
+   !!! F. NotOnRanToCompletion - novy TASK NIE JE SPUSTENY ak POVODNY skoncil KOREKTNE.
+   !!! G. NotOnFaulted - novy TASK NIE JE SPUSTENY ak POVODNY skoncil HODENIM EXCEPTION.
+   !!! H. NotOnCanceled - novy TASK NIE JE SPUSTENY ak POVODNY skoncil ako CANCELED.
+   !!! I. OnlyOnCanceled - novy TASK JE SPUSTENY IBA AK POVODNY skoncil ako CANCELED.
+   !!! J. OnlyOnFaulted - novy TASK JE SPUSTENY IBA AK POVODNY skoncil HODENIM EXCEPTION.
+   !!! K. OnlyOnRanToCompletion - novy TASK JE SPUSTENY IBA AK POVODNY skoncil KOREKTNE.
+!!!!! 29. Pomocou TaskCreationOptions.AttachToParent alebo TaskContinuationOptions.AttachToParent je mozne v TASK vytvorit CHILD TASK. Takyto CHILD TASK je PEVNE ZVIAZANY s PARENT TASK, co znamena, ze PARENT TASK je POVAZOVANY ZA SKONCENY, AZ KED VSETKY CHILDREN TASKS SKONCIA.
+!!!!! 30. Pomocou TaskCreationOptions.DenyChildAttach alebo TaskContinuationOptions.DenyChildAttach je mozne ZABRANIT, aby TASK vytvaral CHILD TASK. Ak PARENT TASK vytvori CHILD TASKS, tak tieto NEBUDU PEVNE ZVIAZANE s PARENT TASK a PARENT TASK NECAKA na SKONCENIE CHILD TASKS, ale SKONCI OKAMZITE po skonceni jeho CODE.
+!!! 31. METHOD Task.Dispose() uvolnuje INTERNY ManualResetEvent OBJECT. Kedze vsak FINALIZER vola Task.Dispose(), tak ho nie je nutne volat z CODE a staci nechat GC, aby ho zavolal.
+32. READ-ONLY PROPERTY Task.Id obsahuje ID daneho TASKU. Prideluje sa AZ po PRVOM CITANI tejto PROPERTY. Hodnota je pre kazdy novy TASK INKREMENTOVANA, aby KAZDY TASK mal UNIKATNE ID.
+33. STATIC PROPERTY Task.CurrentId urcuje ID TASKU v ktorom prave CODE bezi. Ak nebezi v TASK, vrati NULL.
+34. PROPERTY Task.Status obsahuje STAV daneho TASK. Moze nadobudat nasledujuce hodnoty.
+   A. Created - TASK bol vytvoreny, ale este NEBOL SPUSTENY.
+   B. WaitingForActivation - TASK este nebol spusteny, ale caka na AUTOMATICKE spustenie .NET architekturou. V tomto stave je napriklad TASK, ktory bol vytvoreny volanim METHOD Task.ContinueWith(), ktory este nebol spusteny.
+   C. WaitingToRun - TASK uz BOL SPUSTENY, ale TASK SCHEDULER ho ESTE NESPUSTIL.
+   D. Running - TASK bezi.
+   E. WaitingForChildrenToComplete - TASK SKONCIL svoju cinnost a caka na to kym CHILD TASKS skoncia svoju cinnost.
+   F. RanToCompletion - FINALNY STAV. TASK skoncil USPESNE.
+   G. Canceled - FINALNY STAV. TASK bol CANCELLED.
+   H. Faulted - FINALNY STAV. TASK skoncil generovanim UNHANDLED EXCEPTION.
+!!! 35. CLASS TaskCompletionSource<TResult> sluzi na EMULACIU OBJECT Task<TResult>. Pod pojmom EMULACIA sa mysli, ze TaskCompletionSource<TResult> NEMA ASOCIOVANY DELEGATE a teda sa ZIADEN DELEGATE NESPUSTA v NOVOM THREADE, ale je CISTO NA PROGRAME, aby pomocou METHODS CLASS TaskCompletionSource<TResult> EMULOVAL PRECHOD triedy Task<TResult> do jedneho zo statov 'RanToCompletion', 'Faulted', alebo 'Canceled'. CLASS ma nasledujuce MEMBERS.
+   A. Task - PROPERTY vracia OBJECT typu Task<TResult> EMULUJUCI SKUTOCNY TASK.
+   B. SetResult() - nastavuje hodnotu Task.Result a vykonava prechod do stavu 'RanToCompletion'. Hodi EXCEPTION, ak prechod do tohto stavu NIE JE MOZNY, lebo TASK je uz vo FINALNOM STAVE.
+   C. TrySetResult() - nastavuje hodnotu Task.Result a vykonava prechod do stavu 'RanToCompletion'. Hodi FALSE, ak prechod do tohto stavu NIE JE MOZNY, lebo TASK je uz vo FINALNOM STAVE.
+   D. SetException() - nastavuje hodnotu Task.Exception a vykonava prechod do stavu 'Faulted'. Hodi EXCEPTION, ak prechod do tohto stavu NIE JE MOZNY, lebo TASK je uz vo FINALNOM STAVE.
+   E. TrySetException() - nastavuje hodnotu Task.Exception a vykonava prechod do stavu 'Faulted'. Hodi FALSE, ak prechod do tohto stavu NIE JE MOZNY, lebo TASK je uz vo FINALNOM STAVE.
+   F. SetCanceled() - nastavuje hodnotu Task.IsCanceled na TRUE a vykonava prechod do stavu 'Canceled'. Hodi EXCEPTION, ak prechod do tohto stavu NIE JE MOZNY, lebo TASK je uz vo FINALNOM STAVE.
+   G. TrySetCanceled() - nastavuje hodnotu Task.IsCanceled na TRUE a vykonava prechod do stavu 'Canceled'. Hodi FALSE, ak prechod do tohto stavu NIE JE MOZNY, lebo TASK je uz vo FINALNOM STAVE.
+!!! 36. TASK vytvoreny pomocou CLASS TaskCompletionSource<TResult> NIE JE TREBA SPUSTAT volanim Start(), kedze v skutocnosti TASK NEMA ASOCIOVANY ZIADEN DELEGATE a teda ani NESPUSTA DELEGATE v THREAD.
+37. CLASSES TaskFactory a TaskFactory<TResult> umoznuju vytvorit FACTORY CLASS s niektorymi prednastavenymi PROPERTIES, ktora nasledne moze byt pouzita ako FACTORY CLASS na vytvaranie jednotlivych TASKS. CLASSES TaskFactory a TaskFactory<TResult> maju nasledujuce MEMBERS.
+   A. METHOD StartNew() vytvori NOVY TASK z TASK FACTORY.
+   B. METHOD ContinueWhenAll() definuje NOVY TASK, ktory sa vykona AK VSETKY DEFINOVANE TASKS SKONCIA, pricom NIE JE MOZNE DEFINOVAT podmienku ci skoncili KOREKTNE, hodenim EXCEPTION, alebo boli CANCELED. Su vyvolavane BEZ OHLADU nato ako skoncili TASKS.
+   C. METHOD ContinueWhenAny() definuje NOVY TASK, ktory sa vykona AK NIEKTORY Z DEFINOVANYCH TASKS SKONCIL, pricom NIE JE MOZNE DEFINOVAT podmienku ci skoncili KOREKTNE, hodenim EXCEPTION, alebo boli CANCELED. Su vyvolavane BEZ OHLADU nato ako skoncili TASKS.
+   D. METHOD FromAsync() vytvara NOVY TASK, ktory sa vyvola na zaciatku, alebo na konci zaslaneho IAsyncResult OBJECT.
+   E. PROPERTY CancellationToken vracia nastaveny CancellationToken.
+   F. PROPERTY ContinuationOptions vracia nastavene TaskContinuationOptions.
+   G. PROPERTY CreationOptions vracia nastavene TaskCreationOptions.
+   H. PROPERTY Scheduler vracia nastaveny TaskScheduler.
+!!! 38. Pomocou CLASS TaslScheduler je mozne definovat TASK SCHEDULER vykonavajuci SCHEDULING TASKS. CLASS TaskScheduler je BASE CLASS z ktorej su dedene 2 ZAKLADNE CLASSES. Okrem nich je definovat i CUSTOM TASK SCHEDULERS.
+   A. DEFAULT TASK SCHEDULER - je ho mozne ziskat volanim STATIC PROPERTY TaskScheduler.Default. Tento TASK SCHEDULER pracuje nad THREAD POOL a jednotlive THREADS prideluje prave z THREAD POOL.
+   !!! B. SYNCHRONIZATION CONTEXT TASK SCHEDULER - je mozne ziskat pomocou STATIC METHOD TaskScheduler.FromCurrentSynchronizationContext() a pracuje NAD SYNCHRONIZATION CONTEXT. To znamena, ze VSETKY TASKS SU SMEROVANE cez SYNCHRONIZATION CONTEXT. V pripade WPF programov to znamena, ze su vykonane v GUI THREADE programu a MOZU PRISTUPOVAT ku GUI ELEMENTS.
+39. STATIC CLASS Parallel obsahuje niekolo METHODS, ktore ZJEDNODUSUJU implementaciu PARALELNYCH ALGORITHMS. Na pozadi POUZIVAJU TASKS. CLASS Parallel ma nasledujuce MEMBERS.
+   A. STATIC METHODS For() a For<T>() realizuju cyklus s PARAMETER typu Int32, alebo Int64, pricom KAZDY ITEM cyklu bude vykonany PARALELNE.
+   B. STATIC METHODS ForEach<T>() a ForEach<T1,T2>() - realizuju iteraciu VSETKYMI ITEMS zadanej COLLECTION, pricom KAZDY ITEM cyklu bude vykonany PARALELNE.
+   C. STATIC METHOD Invoke() umoznuje PARALELNE VYKONAT viacero Action DELEGATES.
+40. Pre METHODS vykonavane cez CLASS Parallel platia naseldujuce zasady.
+   !!! A. Metody For(), ForEach() a Invoke() KONCIA AZ KED su VSETKY ITERACIE nad vstupnou COLLECTION UKONCENE. Teda az VSETKY TASKS UKONCIA SVOJU CINNOST a KAZDY ITEM z COLLECTION je SPRACOVANY.
+   !!!!! B. THREAD, ktory SPUSIL For(), ForEach(), alebo Invoke() je BLOKOVANY AZ DO SKONCENIA VSETKYCH ITERACII a TAKTIEZ SAM je JEDNYM Z THREADOV, ktore SPRACUVAVAJU JEDNOTLIVE ITEMS. Teda THREAD sa stane AKTIVNOU SUCASTOU POOL THREADOV, ktore vykonavaju ITERACIE PARALELNEHO ALGORITMU.
+   C. Ak niektory z ITEMS hodi UNHANDLED EXCEPTION, tak METHODS For(), ForEach() a Invoke() hodia EXCEPTION AggregateException.
+   D. Pomocou PARAMETER typu ParallelOptions je mozne definovat CUSTOM SCHEDULER, CancellationToken pre CENCELLING a MaxDegreeOfParallelism pre urcenie maximalnej urovne paralelizmu, ktora bude pri vykonavani povolena.
+!!! 41. METHODS For() a ForEach() umoznuju definovat 3 DELEGATES s nasledujucim vyznamom.
+   A. LocalInit() je METHOD, ktora sa zavola ako PRVA pre KAZDY TASK (POZOR NIE ITEM), ktory sa pouzije pri spracovani Parallel.For(), alebo Parallel.ForEach(). Sluzi na INICIALIZACIU daneho iteracie. Jej RETURN VALUE je PRENESENA ako posledny PARAMETER do METHOD Body().
+   B. Body() je METHOD v ktorej sa vykonava spracovanie daneho ITEM, pricom ako PARAMETERS ma RETURN VALUE METHOD LocalInit() vykonanej pre dany ITEM, ako aj INDEX daneho ITEM. Ma taisto i PARAMETER typu ParallelLoopState, ktory mozu sluzit na predcasne ukoncenie PARALELNEHO ITEROVANIA. Jej RETURN VALUE je prenesena do METHOD LocalFinally().
+   !!! C. LocalFinally() je METHOD, ktora sa vykona PO VYKONANI Body(), pre KAZDY TASK (POZOR NIE ITEM), ktory sa pouzil pri spracovani Parallel.For(), alebo Parallel.ForEach() a to aj ked Body() hodila UNHANDLED EXCEPTION. Je to METHOD typ Action<TItemType>, ktora uz nevracia ziadnu RETURN VALUE.
+!!! 42. V METHOD Body() je ako PARAMETER prenasany objekt typu ParallelLoopState, ktory sluzi ako prostriedok komunikacie medzi JEDNOTLIVYMI ITEMS. Ma nasledujuce MEMBERS.
+   !!! B. METHOD Stop() umoznuje KTOREMUKOLVEK ITEM poziadat o ZASTAVENIE VYKONAVANIA VSETKYCH ITERACII. Po zavolani je hodnota PROPERTY IsStopped nastavena na TRUE a nasledujuce ITEMS ju MOZU KONTROLOVAT a ak je na TRUE, tak ZASTAVIT SVOJU CINNOST.
+   !!! A. METHOD Break() umoznuje KTOREMUKOLVEK ITEM poziadat o ZASTAVENIE VYKONAVANIA NASLEDUJUCICH ITERACII po TEJ ITERACII, ktora VOLALA Break().
+   C. PROPERTY IsStopped udava ci ktorykolvek ITEM volal Stop().
+   D. PROPERTY IsExceptional udava ci KTORYKOLVEK ITEM neskonci hodenim UNHANDLED EXCEPTION.
+   !!! E. PROPERTY LowestBreakIteration udava NAJNIZSI ITEM, ktory zavolal Break(). Podla tejto hodnoty mozem zistit, KOLKO ITEMS BOLO VYKONANYCH pred zavolanim PRVEHO Break(). Samozrejme mohli byt vykonane aj INE ITEMS s INDEXOM VYSSIM ako LowestBreakIteration (ak ich vykonanie sa ukoncilo skor ako nejaky skorsi ITEM stihol volat Break()), ale hodnota LowestBreakIteration udava, ze TOLKO ITEMS BOLO BEZPECNE SPRACOVANYCH a mozem spracovat ich vysledky.
+   !!!!! F. PROPERTY ShouldExitCurrentIteration umoznuje KAZDEMU ITEM PERIODICKY KONTORLOVAT a ak je nastaveny na TRUE (bol volany Stop(), Break(), doslo ku CANCELLATION, alebo niektory ITEM hodil UNHANDLED EXCEPTION) tak UKONCIT SVOJU CINNOST.
+!!!!! 43. Zasadny rozdiel medzi ParallelLoopState.Stop() a ParallelLoopState.Break() je nasledujuci.
+   A. Zavolanie ParallelLoopState.Break() na 100. ITERACII z 1000 ITERACII znamena, ze ITERACIAM <1,100> sa UMOZNI DOKONCIT SVOJI CINNOST (ParallelLoopState.ShouldExitCurrentIteration==false), ale iteracie <101,1000> (ParallelLoopState.ShouldExitCurrentIteration==true) sa MOZU, ale i NEMUSIA VYKONAT podla toho, ci ITEM UZ BOL SPUSTENY, alebo nie.
+   B. Zavolanie ParallelLoopState.Break() na 100. ITERACII z 1000 ITERACII znamena, ze na KAZDEJ ITERACII bude nastavena PROPERTY (ParallelLoopState.ShouldExitCurrentIteration==true) a teda aj ITERACIE mozu byt STOPPED.
+!!! 44. METHODS Parallel.For() a Parallel.ForEach() vracaju ako RETURN VALUE hodnotu typu ParallelLoopResult, ktora ma nasledujuce properties.
+   A. PROPERTY LowestBreakIteration je hodnota NAJNIZSIEHO ITEM, ktory volal Break().
+   B. PROPERTY IsCompleted urcuje ci VSETKY ITEMS BOLI SPRACOVANE. Je nastaveny na FALSE I PO ZAVOLANI Break() niektorym z ITEMS.
+45. PLINQ je rozsirenie LINQ umoznujuce vykonavat LINQ QUERIES PARALELNE. PLINQ obsahuje 2 zakladne CLASSES.
+   A. CLASS ParallelQuery<T> implementujuca IEnumerable<T> reprezentuje PLINQ QEURY nad ktorou je mozne vykonavat PARALELNE verzie LINQ OPERATORS ako aj specializovane PLINQ OPERATORS ako napriklad AsOrdered() ci AsUnordered().
+   B. STATIC CLASS ParallelEnumerable obsahuje EXTENSION METHODS CLASS ParallelQuery<T>, ktore obsahuju PARALELNU implementaciu LINQ OPERATORS (napriklad Where(), Select(), SelectMany(), GroupBy(), Join(), OrderBy(), Skip(), Take()) ako aj PLINQ OPERATORS (AsOrdered() ci AsUnordered()).
+!!! 46. PLINQ interne pouziva objekty Task.
+!!! 47. PLINQ standardne spracovava ITEMS zo VSTUPNEJ KOLEKCIE BEZ ZACHOVANIA PORADIA. Tym, ze kazdy ITEM je vykonavany ROZLICNYMI THREADS, tak VYSLEDKY PLINQ QUERY mozu byt vratene v INOM PORADI v akom boli DEFINOVANE vo VSTUPNEJ COLLECTION. Ak je potrebne aby vysledky boli spravovane so ZACHOVANIM PORADIA, tak musim pouzit OPERATOR AsOrdered(). Avsak NUTNOST spracovat vysledky ORDERED sposobom znamena, ze QUERY sa VYKONA POMALSIE ako keby sa pouzil UNORDERED SPOSOB.
+48. PLINQ pomocou CLASS ParallelEnumerable rozsiruje LINQ o nasledujuce OPERATORS.
+   A. AsParallel() je KLUCOVY OPERATOR, ktory TRANSFORMUJE LINQ QUERY do PLINQ QUERY.
+   B. AsSequential() je spatny OPERATOR, ktory TRANSFORMUJE PLINQ QUERY do LINQ QUERY.
+   !!! C. AsOrdered() STANDRADNE je VACSINA PLINQ OPERATOROV vykonavana UNORDERED SPOSOBOM, kde ITEMS su vykonavane v ROZLICNYCH THREADS. Ak chcem aby ITEMS boli VYKONAVANE ORDERED SPOSOBOM, tak mozem pouzit operator AsOrdered(). Po jeho pouziti budu ITEMS spracovavane v poradi v akom su definovane vo vstupnej COLLECTION.
+   D. AsUnordered() je opacny OPERATOR k AsOrdered(). Po jeho aplikovani budu jednotlive ITEMS vykonavane UNORDERED SPOSOBOM.
+!!!!! 49. ITEROVANIE PLINQ QUERY pomocou 'foreach' je VZDY v 1 THREADE a to nasledovne.
+   A. Prikaz 'foreach' prinuti PLINQ aby sa spustila.
+   B. PLINQ zacne spracovavat jednotlive ITEMS PARALELNE.
+   !!! C. OKAMZITE ako PLINQ doda do 'foreach' PRVY VYSLEDOK (ak sa pouzije AsUnordered(), tak to nemusi byt vysledok z 1. ITEM v COLLECTION), tak tento je spracovany CODE v 'foreach'.
+   !!!!! D. V danom case 'foreach' dokaze spracovat iba 1 ITEM dodany PLINQ. Ak teda PLINQ dodava ITEMS VELMI RYCHLO, tak 'foreach' vysledky ulozi do QUEUE, odkial sa SEKVENCNE budu postupne spracovavat.
+!!!!! 50. Namiesto 'foreach' je pomocou METHOD ParallelEnumerable.ForAll() mozne vykonat i ITEROVANIE VYSLEDKAMI PLINQ QUERY PARALELNE. Funguje to nasledujucim sposobom.
+   A. METHOD ParallelEnumerable.ForAll() prinuti PLINQ aby sa spustila.
+   B. PLINQ zacne spracovavat jednotlive ITEMS PARALELNE.
+   !!! C. OKAMZITE ako PLINQ doda do ParallelEnumerable.ForAll() PRVY VYSLEDOK (ak sa pouzije AsUnordered(), tak to nemusi byt vysledok z 1. ITEM v COLLECTION), tak ParallelEnumerable.ForAll() vytvori NOVY TASK obsahujuci CODE zadany v ParallelEnumerable.ForAll().
+   !!!!! D. V danom case ParallelEnumerable.ForAll() dokaze spracovat 'N' ITEMS dodanych PLINQ. Ak teda PLINQ dodava ITEMS VELMI RYCHLO, tak ParallelEnumerable.ForAll() vytvori NOVE TASKS, ktore budu vykonavane PARALELNE.
+   !!!!! E. POZOR. Kedze PLINQ a ParallelEnumerable.ForAll() pouzivaju TEN ISTY THREAD POOL, tak pripadne ZABLOKOVANIE ParallelEnumerable.ForAll() (napriklad pomalym CODE) spomali zablokovanie TASKS obsahujucich este nevykonane PLINQ ITEMS. To znaci, ze SPOMALENIE ParallelEnumerable.ForAll() sposobi SPOMALENIE PLINQ QUERY. Problem je mozne riesit pouzitim ParallelEnumerable.WithDegreeOfParallelism() a ParallelEnumerable.WithExectutionMode().
+51. CLASS ParallelEnumerable obsahuje viacero METHODS, ktorym je mozne CUSTOMIZOVAT chovanie PLINQ QUERIES.
+   A. METHOD WithCancellation() umoznuje definovat CancellationToken, pomocou ktoreho je mozne vykonat CANCELLATION danej PLINQ QUERY.
+   B. METHOD WithDegreeOfParallelism() umoznuje definovat MAXIMALNY POCET THREADS, ktore sa pouziju na vykonanie PLINQ QUERY.
+   C. METHOD WithExectutionMode() umoznuje definovat pomocou hodnoty typu ParallelExecutionMode to ci ITEMS sa budu spracovavat PARALELNE, alebo CAST Z NICH SEKVENCE. PLINQ ma implementovany optimalizacny mechanizmus, ktory niektore operatory (First(), Last(), Skip(), Take()) realizuje SEKVENCNE. Ak chcem prinutit PLINQ, aby VSETKY OPERATORY VYKONAVAL PARALELNE tak pomocou tejto metody mozem nastavit hodnotu ParallelExecutionMode.ForceParallelism.
+   D. METHOD WithMergeOptions() umoznuje definovat ako budu VYSLEDKY SPRACOVANIA ITEMS SPOJENE. Pomocou hodnoty typu ParallelMergeOptions je mozne definovat ci spracovanie ma byt rychlejsie, ale viac narocne na pamat (FullyBuffered), menej vykonne, ale setriace pamat (NotBuffered), alebo optimalne na rychlost i pamat (AutoBuffered).
+!!! 52. CLASS System.Theading.Timer umoznuje definovat DELEGATE typu TimerCallback, ktory je volany v pozadovanom case. Pre triedu Timer platia nasledujuce zasady.
+   A. Cas DueTime, predavany cez CONSTRUCTOR, alebo pomocou METHOD Change() definuje cas, kedy sa TIMER sputi po PRVYKRAT po VYTVORENI objektu Timer, alebo po zavolani METHOD Change().
+   B. Cas Period, predavany cez CONSTRUCTOR, alebo pomocou METHOD Change() definuje cas, kedy sa TIMER sputi po PRVOM SPUSTENI CALLBACK METHOD. Ak zadam hodnotu Infinite (-1), tak sa CALLBACK zavola IBA RAZ.
+   C. State je hodnota, ktoru je mozne zadat do CONSTRUCTOR a ktora sa prenasa do TimerCallback METHOD.
+   !!! D. Pomocou metody Timer.Dispose() je mozne UVOLNIT TIMER, pricom Dispose() ma i PRETAZENU VERZIU s objektom typu WaitHandle, ktory je SIGNALIZED, ked sa ukoncia VSETKY PENDING CALLBACKS.
+   !!!!! E. Ak sa zavola Time.Finalize(), tak sa AUTOMATICKY ZRUSIA VSETKY PENDING CALLBACKS. A preto je NEVYHUNUTNE, aby existovala na Timer VZDY PLATNA REFERENCIA (aby to bol ROOTED objekt), po dobu pokial sa maju volat CALLBACKS.
+53. .NET podporuje viacero typov TIMERS.
+   A. System.Theading.Timer je CLASS, ktora pracuje nad THREAD POOL a to tak, ze samotnemu TIMERU je priradeny iba JEDEN THREAD, ale CALLBACKS su vykonavane na SEPARATNYCH THREADS.
+   B. System.Windows.Forms.Timer je TIMER pre WinForms, ktory pouziva na svoju implementaciu WM_TIMER.
+   C. System.Windows.Threading.DispatcherTimer je ekvivalentny TIMER pre WPF.
+   D. Windows.UI.Xaml.DispatcherTimer je ekvivalentny TIMER pre WINDOWS STORE APPLICATIONS.
+   E. System.Timers.Timer je OBSOLETE TIMER, ktory je WRAPPER okolo System.Theading.Timer a ktory by uz NEMAL BYT POUZIVANY. Jedinou jeho vyhodou je, ze dedi z Component a je ho teda cez DESIGNER umiestnit na plochu.
+!!! 54. Standardny THREAD POOL je implementovany nasledujucim sposobom.
+   A. Standardny THREAD POOL implementuje GLOBALNU QUEUE typu FIFO do ktorej su ukladane jednotlive ITEMS pri volani ThreadPool.QueueWorkItem() a CLASS Timer.
+   B. Okrem GLOBALNEHO THREAD POOL, existuje pre KAZDY THREAD POOL THREAD i LOKALNA QUEUE. Do tejto QUEUE su ukladane TASKS, ktore THREAD z THREAD POOL VYTVORIL.
+   !!! C. Po skonceni spracovania ITEM z THREAD najprv skontroluje LOKALNU QUEUE, kde NEPOTREBUJE POUZIT LOCK a ak nie je prazda, vybera (LIFO algoritmom) a vykonava ITEMS z tejto QUEUE.
+   !!! D. Ked LOKALNA QUEUE je PRAZDNA, tak prehlada LOKALNE QUEUES OSTATNYCH THREADS s THREAD POOL. Pristup k tymto QUEUES uz MUSI BYT LOCKED a teda je i POMALSI. Ak THREAD najde nejaky ITEM v QUEUE patriacich INEMU THREAD, tak ho vyberie a spracuje.
+   !!! E. Ak ani v LOKALNYCH QUEUES INYCH THREADS nenajde dany THREAD ziaden ITEM, tak pozrie do GLOBALNEJ QUEUE a ak v nej je ITEM, tak ho vykona. I ku GLOBALNEJ QUEUE MUSI BYT pristup s vyuzitim LOCKS.
+   F. Ak THREAD NENAJDE volny ITEM ani v GLOBALNEJ QUEUE, tak je privedeny do SLEEP STATE, cakajuc na nove ITEMS.
+   !!! G. Ak tie do isteho casu ziaden novy ITEM nepride, tak je THREAD VYRADENY z THREAD POOL a ZLIKVIDOVANY.
+   H. Ak pridu do THREAD POOL nove ITEMS, tak THREAD POOL zacne vytvarat nove THREADS, pricom zaroven monitoruje ako rychlo jednotlive THREADS spracovavaju ITEMS a podla potreby moze THREAD POOL vytvorit dalsie THREADS.
+!!! 55. Na vykon MULTI-THREAD aplikacii ma ZASADNY VPLYV i pristup k MEMORY. Kazde CPU ma SUPER RYCHLU CPU CACHE PAMAT, do ktorej si uklada data ku ktorym bolo naposledy pristupene. Pre pouzitie tejto CACHE platia nasledujuce zasady.
+   A. Ak je potrebny pristup k datam, ktore NIE SU v CPU CACHE, tak su nacitane z RAM po BLOKOCH (zvycajna dlzka 64 BYTES). Tento MEMORY BLOCK sa nazyva CACHE LINES. Citanie cely CACHE LINES je VYHODNEJSIE, pretoze je VYSOKA PRAVDEPODOBNOST, ze program bude pristupovat k datam, ktore su v MEMORY FYZICKY BLIZKO VEDLA SEBA a teda pri pouziti CACHE LINES sa zvysuje pravdepodobnost, ze pri dalsom pristupe, bude tento v TEJ ISTE CACHE LINE, cim sa ZMENSI POCET PRISTUPOV do RAM.
+   B. Ak vsak VIACERO CPU PRISTUPUJE k TEJ ISTEJ CACHE LINE, tak jednotlive CPU MUSIA PRISUP k nim SYNCHRONIZOVAT, teda CPU si musi natiahnut POSLEDNU VERZIU CACHE LINE z CPU, ktory k danej CACHE LINE ako posledny pristupoval, co vedie k PERFORMANCE HIT. Preto je idealne, ak 2 ROZLICNE THREADS PRISTUPUJU co NAJMENEJ k DATA, ktore su FYZICKY BLIZKO VEDLA SEBA a teda MOZU BYT NA TEJ ISTE CACHE LINE. Inak to vedie k PERFORMANCE HIT.
+//-------------------------------------------------------------------------------------------------------

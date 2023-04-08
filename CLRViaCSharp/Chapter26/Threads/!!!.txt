@@ -1,0 +1,72 @@
+//-------------------------------------------------------------------------------------------------------
+1. Solution demonstruje pouzitie THREADS v .NET.
+2. PROCESS je entita v ktorej bezi CODE PROGRAMY. PROCESS obsahuje RESOURCES. Okrem ADDRESS SPACE ci HANDLES na HW DEVICES ma i JEDEN, alebo VIACERO THREADS.
+3. THREAD si je mozne predstavit ako VIRTUALNY CPU, pomocou ktoreho moze program vykonavat svoje instrukcie. Skutocne CPU je potom PRIDELOVANE OS JEDNOTLIVYM THREADS, kedy THREAD REALNE vykonava instrukcie programu.
+4. WINDOWS je PREEMPTIVE OS, ktory ma SCHEDULER, ktory PRIDELUJE a ODOBERA CPU JEDNOTLIVYCH THREADS podla definovanych algoritmov WINDOWS.
+!!! 5. THREAD obsahuje viacero DATA STRUCTURES, ktore ZATAZUJU SYSTEM a ZNIZUJU JEHO VYKONNOST.
+   A. THREAD KERNEL OBJECT. Je KERNEL OBJECT, ktory obsahuje mnozstvo PROPERTIES popisujucich THREAD. Obsahuje aj THREAD CONTEXT co je MEMORY BLOCK do ktoreho sa ukladaju STAVY VSETKYCH CPU REGISTROV. V x86 ma velkost okolo 700 bytes v x64 okolo 1240 bytes.
+   !!! B. THREAD ENVIRONMENT BLOCK (TEB). USER MODE BLOCK, ktory obsahuje dodatocne informacie o THREAD, ako je napriklad HEADER pre EXCEPTION-HANDLING-CHAIN, TLS, ci datove struktury pre GDI a OpenGL.
+   !!!!! C. User mode STACK. V .NET VZDY PRI VYTVORENI THREAD je RESERVED 1 MB ADDRESS SPACE i COMMIT 1 MB VIRTUAL MEMORY. To je VELKY ROZDIEL oproti NATIVE THREADS, ktore pri vytvoreni sa vykona iba RESERVATION 1 MB ADDRESS SPACE, ale COMMIT VIRTUAL MEMORY sa robi iba na 2 PAGES - teda par KB. Tym padom NATIVE THREADS su OVELA MENEJ PAMATOVO NAROCNE ako MANAGED THREADS. Samozrejme COMMIT sa NEROBI z FYZICKEJ RAM PAMATE, ale na VIRTUAL MEMORY.
+   !!!!! D. KERNEL MODE STACK. Obsahuje STACK pouzivany DRIVERS a OS v KERNEL MODE. WINDOWS pri volani KERNEL MODE FUNCTION skopiruje PARAMETERS zaslane z USER MODE do KERNEL MODE STACK a DRIVERS a OS mozu dalej s nimi pracovat. Velkost KERNEL MODE STACK v X86 je 12 KB a v X64 24 KB.
+   E. DLL NOTIFICATION. Pri vytvoreni ci ukonceni THREAD musi byt DLLMain() pre KAZDU DLL v PROCESSE VYVOLANA, co pri VELKOM POCTE THREADS znamena, ze VYTOVRENIE a UKONCENIE THREAD je SPOMALENE NUTNOSTOU NOTIFIKOVAT VSETKY DLL v PROCESE. DLL NOTIFICATION je vyuzivana napriklad C++ RUNTIME na inicializaciu TLS ENTRIES ci STATIC VARIABLES, ktore C++ RUNTIME k behu potrebuje.
+!!! 6. TEB obsahuje HEADER pre EXCEPTION-HANDLING-CHAIN. EXCEPTION-HANDLING-CHAIN funguje nasledujucim sposobom.
+   A. Pri vstupe do TRY BLOCK sa do EXCEPTION-HANDLING-CHAIN prida ENTRY na VRCHOL CHAIN.
+   B. Pri opusteni TRY BLOCK sa z EXCEPTION-HANDLING-CHAIN odoberie ENTRY z VRCHOLU CHAIN.
+   C. Pri vzniku EXCEPTION sa enumeruju jednotlive ENTRIES z EXCEPTION-HANDLING-CHAIN, pomocou ktorych sa nachadzaju a spustaju CATCH a FINALLY BLOCKS.
+!!!!! 7. THREADS maju NEZAVISLE STACKS pre USER a KERNEL MODES. WINDOWS pri prechode medzi USER MODE a KERNEL MODE STACKS kopiruje PARAMETERS a RETURN VALUES, cim vytvara NEZAVISLOST medzi oboma STACKS.
+!!! 8. THREADS z hladiska priority su pridelovane NEZAVISLE na PROCESE do ktoreho patria. Ich priorita je vsak ovplyvnena prioritou procesu, ktory automaticky zvysi CELKOVU PRIOTITU DANEHO THREADU.
+9. WINDOWS prideluje THREADS casove QUANTUM pocas ktoreho ma pridelene CPU a moze vykonavat svoju cinnost. Po vyprsani QUANTUM je CPU pridelene inemu THREADU a dochadza ku CONTEXT SWITCH. QUANTUM v DESKTOP SYSTEMOCH trva okolo 30ms - teda 2 PROCESSOR TICKS. U serverovych systemov tato hodnota moze byt ina, spravidla vacsia.
+10. Ak CPU je priradene inemu THREADU tak dochadza k procesu CONTEXT SWITCH, ktory pozostava z nasledujucich operacii.
+   A. Nacitaju sa hodnoty CPU REGISTERS a ulozia sa do datovej struktury CONTEXT pre THREAD, ktoremu EXPIROVALO QUANTUM.
+   B. THREAD SCHEDULER vyberie iny THREAD, ktoremu ma byt pridelene CPU.
+   C. Do CPU REGISTERS sa ulozia hodnoty z datovej struktury CONTEXT pre THREAD, ktoremu ma byt CPU pridelene.
+!!! 11. Pouzitie viacerych THREADS prinasa okrem vyssej efektivity aj nasledujuce problemy.
+   A. Viac alokovanej pamate. Kazdy THREAD alokuje interne struktury a USER MODE a KERNEL MODE STACKS. USER MODE STACK ma standardne dlzku 1 MB. Zatial co NATIVE THREAD vykona iba ADDRESS SPACE RESERVATION, tak CLR THREAD vykona RESERVATION aj COMMIT, cim sa spotrebuva VIRTUAL MEMORY.
+   B. CONTEXT SWITCH trva isty pocet cyklov procesora a ten nemoze pocase CONTEXT SWITCH vykonavat inu cinnost.
+   !!! C. Po CONTEXT SWITCH, ak sa vykonava THREAD z INEHO PROCESU tak je vysoka pravdepodobnost, ze data s ktorymi THREAD pracuje NEBUDU v CPU CACHE a bude treba ich teda nacitat z RAM.
+!!! 12. WINDOWS ma OPTIMALIZACIU, ze ked po vyprsani QUANTUM prideli THREAD SCHEDULER CPU TOMU ISTEMU THREADU (ak THREAD nie je v SLEEP stave), takze CONTEXT SWITCH sa NEROBI a namiesto toho THREAD pokracuje dalej vo svojej cinnosti. To je vyhoda, lebo CONTEXT SWITCH je CASOVO NAROCNA operacia.
+!!! 13. Ak .NET spusti GARBAGE COLLECTION, tak pocas jeho behu su VSETKY THREADS v danom programe musia byt POZASTAVENE. Teda cim viac THREADS, tym nizsia vykonnost.
+14. CPU architektury umoznujuce paralelne vykonavanie je mozne rozdelit do nasledujucich skupin.
+   A. MULTI-CPU COMPUTERS. V PC je viac ako 1 CPU. MULTI-CPU COMPUTERS su pomerne cenovo narocne a maju velku spotrebu, preto sa dnes pouzivaju menej.
+   B. HYPERTHREADED CPU. Su to PROCESSORS, kde CPU dokaze naraz vykonavat IBA JEDNU INSTRUKCIU, ale ma 2 SADY REGISTROV a pre WINDOWS sa HYPERTHREADED CPU tvari ako 2 CPU. WINDOWS potom spravi SCHEDULING pre 2 THREADS do CPU a SAMOTNE CPU BEZ ZASAHU WINDOWS ROZHODUJE o ICH EFEKTIVNOM PREPINANI, kedy sa vykonava jeden a kedy druhy THREAD. Spravidla prepinanie sa robi napriklad ked jeden THREAD pozaduje data, ktore nie su v CPU CACHE, alebo pri BRANCH MISPREDICTION. Tym, ze SCHEDULING robi PRIAMO CPU, tak je CONTEXT SWITCH EFEKTIVNEJSI BEZ UCASTI WINDOWS. WINDOWS vsak dokaze detekovat pritomnost HYPERTHREADED CPU a rozhadzuje THREADS tak, aby najprv vytazil vsetky CORES (CPU) v systeme a az ked je potrebny vyssie vykon, tak spravi SCHEDULING aj HYPERTHREADED CPU na ktorych uz bezi iny THREAD. To znaci, ze WINDOWS sa snazi minimalizovat situaciu, kedy by na jednom HYPERTHREADED CPU bezalo viacero THREADS, kedze v danom case iba 1 THREAD dokaze HYPERTHREADED CPU vykonavat.
+   C. MULTI-CORE CPU. Su to CPU, ktore maju v jednom SOCKETE (puzdre pre CPU) VIACERO LOGICKYCH CPU, ktore su PARALELNE SCHOPNE VYKONAVAT VIACERO THREADS. Na ROZDIEL od HYPERTHREADED CPU sa tu jedna o SKUTOCNY PARALELIZMUS, kde v danom case bezi NARAZ VIACERO THREADS.
+!!! 15. Beh SKUTOCNE PARALELNYCH VYKONAVANYCH THREADS vsak vedie k PROBLEMOM pri pristupe k RESOURCES (napriklad RAM) o ktore jednotlive CPU zacnu zapasit. Jedinym z rieseni je NUMA architektura, kde CPU su rozdelene do NODES, pricom KAZDY NODE ma VLASTNU PAMAT ku ktorej vie pristupovat VELMI RYCHLO. Ak vsak CPU z NODE 1 potrebuje pristup do MEMORY spravovanej NODE 2, tak dochadza k VELKEMU PEFRORMANCE HIT. WINDOWS vsak dokaze pre NUMA optimalizovat pridelovanie THREADS do NODES, aby spracovanie bolo efektivnejsie.
+!!! 16. Standardne WINDOWS pre x86 moze pouzivat 32 LOGICKYCH CPU a pre x64 64 LOGICKYCH CPU. Kedze uz dnes existuju systemi s vacsim poctom LOGICKYCH CPU, tak WINDOWS dokaze DELIT CPU do CPU GROUPS po maximalne 32, resp. 64 CPU v jednej GROUP a tak obist toto ombedzenie. Tyka sa to vsak iba systemov WINDOWS 2008 R2. CPU GROUP je konstituovana nasledovne.
+   A. Pocitac moze mat 1, alebo VIACERO CPU GROUPS.
+   B. Kazda CPU GROUP moze mat 1, alebo VIACERO NUMA NODES.
+   C. Kazdy NUMA NODE moze mat 1, alebo VIACERO SOCKETS (puzdier pre CPU).
+   D. Kazdy SOCKET (puzdro pre CPU) obsahuje 1, alebo VIACERO LOGICKYCH CPU (CPU CORES).
+   E. Kazdy LOGICKY CPU moze spravovat 1, alebo VIACERO THREADS ak pouziva HYPERTHREADING.
+17. Aj napriek tomu, ze CLR mapuje CLR THREADS priamo na NATIVE THREADS, v buducnosti moze dojst k zmene a preto na tomto predpoklade nie je mozne stavat.
+!!! 18. Kniznica WinRT NEMA CLASS Thread a THREADING je znacne OBMEDZENY. Dovodom je snaha znizit pocet THREADS mapovanych na NATIVE THREAD, ktore mozu programy vytvarat a tym aj limitovat spotrebu RESOURCES, najma MEMORY.
+19. Triedou na vytvorenie noveho THREAD je CLASS Thread. Ma nasledujuce metody.
+   A. Start() - vytvori FYZICKY THREAD a ZACNE ho VYKONAVAT.
+   B. Join() - caka kym THREAD NESKONCI a az ked THREAD skonci, skonci sa i volanie tejto metody. Je mozne definovat TIMEOUT ako dlho sa maximlane ma cakat na skoncenie THREADU.
+   C. Abort() - ASYNCHRONNYM SPOSOBOM generuje POZIADAVKU na ABORT daneho THREADU. Metoda skonci OKAMZITE a ABORT sa vykona AZ KED sa THREAD ukonci svoju cinnost. V THREADE, ktory bol ABORTED je generovana EXCEPTION ThreadAbortException. Tato EXCEPTION sice moze byt chytena v CATCH BLOCK, ale na konci CATCH BLOCK je generovana znova, az kym THREAD nevyskoci z THREAD FUNCTION cim sa ukonci.
+!!! 20. Ak ma dojst ku CONTEXT SWITCH, tak THREAD SCHEDULER vykona nasledujuce cinnosti.
+   A. Skontroluje stav vsetkych THREADS.
+   B. Odfiltruje tie THREADS, ktore nie su vo WAIT STATE.
+   C. Vyberie jeden z THREADOV, ktory nie je vo WAIT STATE a prideli mu CPU.
+21. WINDOWS NIE JE REAL TIME OS a teda NEMOZE garantovat, ze dany THREAD pri vyskyte nejakeho HW EVENT sa spusti do daneho casu. Casy kedy THREAD ma prideleny CPU su NEDETERMINISTICKE.
+!!! 22. WINDOWS SCHEDULER vykonava SCHEDULING THREADS nasledujucim sposobom.
+   A. Kazdy THREAD ma definovanu PRIORITU v rozmedzi <0,31>, kde 31 je NAJVYSSIA priorita.
+   B. CPU je pridelovane IBA SCHEDULABLE THREADS. THREAD je SCHEDULABLE, ake NIE JE vo WAIT STATE.
+   C. VZDY plati, ze SCHEDULABLE THREAD s VYSSOU PRIORITOU ma PREDNOST pred SCHEDULABLE THREAD s NIZSOU PRIORITOU. To znaci, ze ak existuje SCHEDULABLE THREAD s prioritou 15, tak SCHEDULABLE THREADS s prioritami <0,14> NEDOSTANU CPU a CPU bude priradene THREADU s prioritou 15.
+   !!!!! D. Ak CPU ma prideleny THREAD s NIZSOU PRIORITOU a THREAD s VYSSOU PRIORITOU sa stane SCHEDULABLE, tak beziaci THREAD je OKAMZITE POZASTAVENY (aj ked este ma casove QUANTUM) a CPU je pridelene THREADU s VYSSOU PRIORITOU.
+   !!! E. Ak existuje VIACERO SCHEDULABLE THREADS s ROVNAKOU PRIORITOU a ZIADEN SCHEDULABLE THREAD s VYSSOU PRIORITOU, tak SCHEDULER vyberie jeden z THREADOV z ROVNAKOU PRIORITOU pomocou ROUND ROBIT algoritmu a tomu prideli CPU.
+   !!! F. Dany algoritmus SCHEDULERA ma NEVYHODU, ze moze viest k THREAD STARVATION. K tomu dochadza vtedy, ak THREAD s VYSOKOU PRIORITOU je dlhodobo SCHEDULABLE (nie je vo WAIT STATE). V tomto pripade THREADS s NIZSOU PRIORITOU NEDOSTANU CPU a tomuto stavu sa hovori THREAD STARVATION.
+   !!! G. WINDOWS riesi THREAD STARVATION tym, ze THREADS, ktore su v THREAD STARVATION stave je UMELO ZVYSENA PRIORITA, aby im SCHEDULER (ak nebezi iny THREAD s VYSSOU PRIORITOU) pridelil CPU.
+23. THREADS maju priority definovane v rozpati <0,31>, kde 31 je THREAD s najvyssou prioritou a THREAD s prioritou 0 ma ju najnizsiu. WINDOWS ma prioritu 0 rezervovanu pre ZERO PAGE THREAD, ktory nuluje uvolnene MEMORY PAGES.
+24. Prioritu THREADU v USER MODE NIE JE MOZNE NASTAVOVAT CISELNE, ale iba pomocou PREDDEFINOVANYCH HODNOT je mozne nastavit priority PROCESU a priority THREADU. Tieto dve hodnoty sa vzajomne kombinuju a vytvoria vyslednu hodnotu priority v intervale <0,31> podla ktorej SCHEDULER prideli CPU danemu THREADU.
+!!! 25. V KERNEL MODE je PRIORITU THREAD mozne nastavovat CISELNE na LUBOVOLNU HODNOTU z intervalu <0,31>.
+!!! 26. Na spustenie PROCESSES s NAJVYSSOU REALTIME PRIORITY je potrebna PERMISSION [Increase Scheduling Priority]. Tuto PERMISSION maju ADMINISTRATORS i POWER USERS.
+27. V CLR je mozne nastavit IBA PRIORITU THREADU, ale nie PRIORITU PROCESSU. Tym sa zabranuje, aby napriklad APP DOMIAN v ASP.NET zmenila PRIORITU CELEHO ASP.NET PROCESSU.
+!!! 28. WINDOWS STORE APPLICATIONS NEUMOZNUJU menit PRIORITU THREADU ani PROCESSU.
+!!!!! 29. WINDOWS STORE APPLICATIONS bezia IBA ked su FOREGROUND. Ak WINDOWS STORE APPLICATIONS nie su viditelne na obrazovke, tak WINDOWS AUTOMATICKY ZASTAVI VSETKY THREADS daneho WINDOWS STORE PROCESSU.
+30. CLR THREADS mozu byt FOREGROUND a BACKGROUND.
+   A. FOREGROUND THREAD je THREAD, ktory ak bezi, tak sa program NEUKONCI ani ked MAIN THREAD bol uz ukonceny. To znamena, ze program skonci, az ked su VSETKY FOREGROUND THREAD UKONCENE.
+   B. FOREGROUND THREAD je THREAD, ktory je TERMINATED, ak sa MAIN THREAD UKONCI a teda jeho CODE NEMUSI dobehnut do konca, ale moze byt nasilne ukonceny pri ukonceni MAIN THREAD.
+31. CLR umoznuje KEDYKOLVEK zmenit THREAD z FOREGROUND na BACKGROUND a naopak pomocou PROPERTY Thread.IsBackground.
+32. THREAD POOL THREADS su VZDY BACKGROUND.
+33. THREAD POOL ma vyhodu oproti EXPLICITNE VYTVARANYM THREAD pomocou CLASS Thread, ze si SAM MANAGEUJE vytvaranie a ukoncovanie THREADS pomocou internych optimalizovanych algoritmov.
+//-------------------------------------------------------------------------------------------------------

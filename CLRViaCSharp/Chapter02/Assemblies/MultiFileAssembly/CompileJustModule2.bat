@@ -1,0 +1,1 @@
+csc.exe /out:Module2.netmodule /target:module /r:MSCorLib.dll Module2.cs

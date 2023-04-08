@@ -1,0 +1,69 @@
+//-------------------------------------------------------------------------------------------------------
+1. Solution demonstruje pouzitie rozlicnych MEMBERS, ktore je mozne definovanat v TYPES.
+2. V TYPES je mozne definovat nasledujuce druhy MEMBERS.
+   A. CONSTANTS. Je to STATICKA VALUE.
+   B. STATIC a INSTANCE FIELDS.
+   C. STATIC a INSTANCE CONSTRUCTORS.
+   D. STATIC a INSTANCE METHODS.
+   E. OVERLOADED OPERATORS. Nie su sucastou CLS standardu.
+   F. CONVERSION OPERATORS. Nie su sucastou CLS standardu.
+   G. PROPERTIES a INDEXERS (PROPERTIES s PARAMETERS).
+   H. STATIC a INSTANCE EVENTS.
+   I. NESTED TYPES.
+3. CLR pre TYPES, ktore nie su NESTED definuje nasledujuce ACCESS RIGHTS, ktore urcuju z akych ASSEMBLIES budu TYPES pristupne.
+   A. PUBLIC. V C# KEYWORD [private]. Takyto TYPE je viditelny z LUBOVOLNEJ ASSEMBLY.
+   B. INTERNAL. V C# KEYWORD [internal]. Takyto TYPE je viditelny iba z CURRENT ASSEMBLY.
+!!! 4. CLR podporuje koncept FRIENDY ASSEMBLIES, kedy ASSEMBLY moze pomocou ATTRIBUTE [assembly:InternalsVisibleTo("AssemblyName")] definovat ASSEMBLY, ktora moze pouzivat jej INTERNAL TYPES a INTERNAL MEMBERS.
+5. TYPE MEMBERS mozu mat priradene ACCESS RIGHTS, ktore urcuju ktore TYPES (a ich MEMBERS) mozu pristupit k danemu MEMBERS daneho TYPE. CLR definuje nasledujuce ACCESS RIGHTS.
+   A. PRIVATE. V C# KEYWORD [private]. TYPE MEMBERS su pristupne z CURRENT TYPE a z MEMBERS vsetkych NESTED TYPES.
+   B. FAMILY. V C# KEYWORD [protected]. TYPE MEMBERS su pristupne z CURRENT TYPE, z vsetkych NESTED TYPES a zo vsetkych DERIVED TYPE bez ohladu na to v ktorej ASSEMBLY su definovane.
+   C. FAMILY AND ASSEMBLY. V C# tento ACCESS RIGHT je UNSUPPORTED. TYPE MEMBERS su pristupne z CURRENT TYPE, zo vsetkych NESTED TYPES a zo vsetkych DERIVED TYPES definovanych v CURRENT ASSEMBLY.
+   D. ASSEMBLY. V C# KEYWORD [internal]. TYPE MEMBERS su pristupne z LUBOVOLNEHO TYPE v CURRENT ASSEMBLY.
+   E. FAMILY OR ASSEMBLY. V C# KEYWORD [protected internal]. TYPE MEMBERS su pristupne zo vsetkych NESTED TYPES, z DERIVED TYPES bez ohladu na to v ktorej ASSEMBLY su definovane a LUBOVOLNEHO TYPE v CURRENT ASSEMBLY.
+   E. PUBLIC. V C# KEYWORD [public]. TYPE MEMBERS su pristupne z LUBOVOLNEHO TYPE v LUBOVOLNEJ ASSEMBLY.
+6. MEMBERS daneho TYPE su pristupne IBA ak je samotny TYPE pristupny (ma prislusny ACCESS RIGHT).
+!!! 7. Kontrolu ci CODE ma pristup k danemu MEMBER je VZDY vykonavana ako na urovni LANGUAGE COMPILER, tak v RUNTIME aj na urovni JIT COMPILER, aby sa zabranilo nepovolenemu pristupu, ak by COMPILER nahodou generoval nekorektny CODE a pristup k nepristupnemu MEMBER by povolil.
+!!! 8. C# NEUMOZNUJE, aby pri METHOD (i PROPERTY) OVERRIDING mala OVERRIDEN METHOD INY ACCESS RIGHT ako BASE METHOD. Toto obmedzenie je vsak iba C# obmedzenim. CLR UMOZNUJE, aby OVERRIDEN METHOD mala VOLNEJSI ACCESS RIGHT ako BASE METHOD, ale NEUMOZNUJE, aby OVERRIDEN METHOD mala RESTRIKTIVNEJSI ACCESS RIGHT ako BASE METHOD.
+9. STATIC CLASS je CLASS, ktora umoznuje definovat iba STATIC MEMBERS (FIELDS, METHODS, PROPERTIES, EVENTS). STATIC CLASS je iba C# CONSTRUCT a NIE CLR CONSTRUCT. V skutocnosti C# zo STATIC CLASS generuje ABSTRACT SEALED CLASS bez CONSTRUCTORS.
+10. KEYWORD [partial] umoznuje definovat jeden TYPE (CLASS, STRUCTURE, INTERFACE) vo viacerych FILES, ktore C# zluci do jednej CLASS. PARTIAL CLASS je C# CONSTRUCT, ktory CLR NEPOZNA.
+!!! 11. KEYWORD [new] vo vyzname zrusenia INHERITANCE CHAIN je mozne aplikovat aj na NESTED CLASSES.
+12. CLR definuje z 3 rozlicne typy METHODS.
+   A. STATICKE METHODS.
+   B. NON-VIRTUAL INSTANCE METHODS.
+   C. VIRTUAL INSTANCE METHODS.
+13. CLR definuje 2 INSTRUCTION na volanie METHODS.
+   A. INSTRUCTION [call] sa pouziva na volanie STATIC a NON-VIRTUAL INSTANCE METHODS. Pomocou INSTRUCTION [call] je vsak mozne volat aj VIRTUAL INSTANCE METHODS, avsak tieto METHODS su volane ako NON-VIRTUAL INSTANCE METHODS.
+   B. INSTRUCTION [callvirt] sa pouziva na volanie VIRTUAL INSTANCE METHODS. Pomocou INSTRUCTION [callvirt] je vsak mozne volat aj NON-VIRTUAL INSTANCE METHODS, avsak tieto METHODS su volane ako NON-VIRTUAL INSTANCE METHODS.
+14. Ak je INSTRUCTION [call] pouzita na volanie STATIC METHOD, CLR vykonava nasledujuce kroky.
+   A. CODE musi EXPLICITNE urcit TYPE pre ktoru sa ma STATIC METHOD volat.
+   B. CLR v zadanom TYPE najde danu STATIC METHOD, alebo hodi EXCEPTION.
+15. Ak je INSTRUCTION [call] pouzita na volanie NON-VIRTUAL INSTANCE METHOD, CLR vykonava nasledujuce kroky.
+   A. CLR detekuje TYPE VARIABLE pre ktoru sa ma NON-VIRTUAL INSTANCE METHOD vyvolat.
+   !!! B. V detekovanom TYPE CLR hlada danu METHOD. Ak ju nenajde, METHOD je hladana v BASE TYPES. Ak METHOD nie je najdena, generuje sa EXCEPTION.
+   !!! C. CLR teda hlada METHOD v TYPE urcenom TYPE pouzitej VARIABLE a NIE SKUTOCNEHO TYPE, ktoreho je OBJECT pre ktory je METHOD volana.
+   !!!!! D. CLR teda vykonava ROVNAKE NATIVE INSTRUCTIONS pri volani NON-VIRTUAL INSTANCE METHODS a VIRTUAL INSTANCE METHODS.
+   !!!!! E. INSTRUCTION [call] predpoklada, ze OBJECT pouzity na volanie METHOD NIE je NULL. CLR pre INSTRUCTION [call] NEVYKONAVA EXPLICITNU KONTORLU ci volany OBJECT ma NULL VALUE a teda sa moze stat (v MSIL), ze METHOD bude volana aj ked OBJECT ma hodnotu NULL.
+16. Ak je INSTRUCTION [call] pouzita na volanie VIRTUAL INSTANCE METHOD, CLR vykonava nasledujuce kroky.
+   A. CLR detekuje TYPE VARIABLE pre ktoru sa ma VIRTUAL INSTANCE METHOD vyvolat.
+   !!! B. V detekovanom TYPE CLR hlada danu METHOD. Ak ju nenajde, METHOD je hladana v BASE TYPES. Ak METHOD nie je najdena, generuje sa EXCEPTION.
+   !!!!! C. CLR teda hlada METHOD v TYPE urcenom TYPE pouzitej VARIABLE a NIE SKUTOCNEHO TYPE, ktoreho je OBJECT pre ktory je METHOD volana.
+   !!!!! D. CLR teda vykonava ROVNAKE NATIVE INSTRUCTIONS pri volani NON-VIRTUAL INSTANCE METHODS a VIRTUAL INSTANCE METHODS.
+   !!!!! E. INSTRUCTION [call] predpoklada, ze OBJECT pouzity na volanie METHOD NIE je NULL. CLR pre INSTRUCTION [call] NEVYKONAVA EXPLICITNU KONTORLU ci volany OBJECT ma NULL VALUE a teda sa moze stat (v MSIL), ze METHOD bude volana aj ked OBJECT ma hodnotu NULL.
+17. Ak je INSTRUCTION [callvirt] pouzita na volanie NON-VIRTUAL INSTANCE METHOD, CLR vykonava nasledujuce kroky.
+   A. CLR detekuje TYPE VARIABLE pre ktoru sa ma NON-VIRTUAL INSTANCE METHOD vyvolat.
+   !!! B. V detekovanom TYPE CLR hlada danu METHOD. Ak ju nenajde, METHOD je hladana v BASE TYPES. Ak METHOD nie je najdena, generuje sa EXCEPTION.
+   !!!!! C. CLR teda hlada METHOD v TYPE urcenom TYPE pouzitej VARIABLE a NIE SKUTOCNEHO TYPE, ktoreho je OBJECT pre ktory je METHOD volana.
+   !!!!! D. CLR teda vykonava ROVNAKE NATIVE INSTRUCTIONS pri volani NON-VIRTUAL INSTANCE METHODS a VIRTUAL INSTANCE METHODS.
+   !!!!! E. INSTRUCTION [call] predpoklada, ze OBJECT pouzity na volanie METHOD NIE je NULL. CLR pre INSTRUCTION [call] NEVYKONAVA EXPLICITNU KONTORLU ci volany OBJECT ma NULL VALUE a teda sa moze stat (v MSIL), ze METHOD bude volana aj ked OBJECT ma hodnotu NULL.
+18. Ak je INSTRUCTION [callvirt] pouzita na volanie VIRTUAL INSTANCE METHOD, CLR vykonava nasledujuce kroky.
+   A. CLR detekuje TYPE daneho OBJECT pre ktoru sa ma VIRTUAL INSTANCE METHOD vyvolat.
+   !!! B. CLR v danom TYPE vyhlada POLYMORFICKY danu METHOD, ktoru nasledne zavola.
+   !!!!! C. JIT COMPILER pri kompilovani INSTRUCTION [callvirt] prida do NATIVE INSTRUCTION CODE, ktory vykonava kontrolu ci OBJECT pre ktory je METHOD volana NIE JE NULL. Ak je NULL, CODE generuje EXCEPTION.
+   !!!!! D. CLR pri volani VIRTUAL INSTANCE METHODS teda pouziva SKUTOCNY TYPE OBJECT pre ktory je METHOD volana a nie TYPE VARIABLE.
+!!!!! 19. CLR pri volani INSTANCE METHODS pomocou INSTRUCTION [call] NEVYKONAVA kontrolu ci OBJECT pre ktory maju byt METHODS volane nie je NULL. CLR umoznuje zavolat INSTANCE METHODS aj ked OBJECT pre ktory maju byt volane je NULL. V tomto pripade za THIS PARAMETER dosadi CLR hodnotu NULL. Ak sa v METHOD THIS PARAMETER NEPOUZIJE, tak METHOD sa USPESNE VYKONA. Tuto situaciu sa mi podarilo nasimulovat v MSIL LANGUAGE.
+!!!!! 20. C# pri volani NON-VIRTUAL INSTANCE METHODS pouziva ako INSTRUCTION [call], tak i INSTRUCTION [callvirt].
+   !!!!! A. C# pouziva INSTRUCTION [call] IBA ak je NON-VIRTUAL INSTANCE METHOD volana v CODE VIRTUAL METHOD pomocou KEYWORD [base]. Dovod pouzitia INSTRUCTION [call] spociva v tom, ze ak by sa pouzila INSTRUCTION [callvirt], namiesto METHOD v BASE CLASS by sa zavolala POLYMORFICKY CURRENT METHOD, cim by doslo k NEKONECNEMU REKURZIVNEMU volaniu CURRENT METHOD a tym padom i k STACK OVERFLOW. Kedze sa vsak pouzije INSTRUCTION [call], ktora vola METHOD na zaklade TYPE VARIABLE (BASE CLASS), tak za zavola METHOD BASE CLASS a NIE CURRENT METHOD.
+   !!! B. Vo VSETKYCH ostatnych pripadoch C# pouziva na volanie NON-VIRTUAL INSTANCE METHODS INSTRUCTION [callvirt]. Je to preto, lebo INSTRUCTION [callvirt] vola NON-VIRTUAL INSTANCE METHODS NEVIRTUALNE, no zaroven vykonava kontrolu ci OBJECT pre ktory je METHOD volana nie je NULL. Ak je NULL, je generovana EXCEPTION. Vdaka pouzitiu INSTRUCTION [callvirt] namiesto logickejsej INSTRUCTION [call] C# garantuje vzdy kontrolu ci OBJECT pre ktory je METHOD volana nie je NULL.
+   !!! C. Pre VALUE TYPES vola NON-VIRTUAL INSTANCE METHODS a VIRTUAL INSTANCE METHODS VZDY pomocou INSTRUCTION [call].
+!!! 21. Oznacenie VIRTUAL INSTANCE METHOD za SEALED ma za nasledok, ze JIT COMPILER pri jej volani generuje NATIVE CODE, ktory vola danu METHOD NEVIRTUALNE (kedze SEALED METHOD nemoze byt DERIVED). Taketo volanie je RYCHLEJSIE ako VIRTUALNE volanie METHOD.
+//-------------------------------------------------------------------------------------------------------

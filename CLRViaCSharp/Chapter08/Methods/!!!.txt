@@ -1,0 +1,106 @@
+//-------------------------------------------------------------------------------------------------------
+1. Solution demonstruje pouzitie METHODS, CONSTRUCTORS a OPERATORS v C#.
+2. CLR umoznuje definovat 3 typy CONSTRUCTORS.
+   A. CONSTRUCTORS pre REFERENCE TYPES. Vola sa [.ctor()].
+   B. CONSTRUCTORS pre VALUE TYPES. Vola sa [.ctor()].
+   C. STATIC (TYPE) CONSTRUCTORS pre TYPES. Vola sa [.cctor()].
+3. Pre CONSTRUCTORS pre REFERENCE TYPES platia nasledujuce pravidla.
+   A. CONSTRUCTOR ma v MSIL meno [.ctor()].
+   B. Pred zavolanim CONSTRUCTOR su vsetky FIELDS vynulovane.
+   C. CONSTRUCTORS nie su INHERITED z BASE TYPE.
+   D. Ak dany TYPE NEMA CONSTRUCTOR, tak C# prenho vygeneruje bezparametricky DEFAULT CONSTRUCTOR, ktory vola DEFAULT CONSTRUCTOR BASE TYPE. Pre ABSTRACT CLASSES je DEFAULT CONSTRUCTOR PROTECTED a pre NON-ABSTRACT CLASSES je DEFAULT CONSTRUCTOR PUBLIC.
+   E. V C# (nie je to podmienka CLR) CONSTRUCTOR MUSI VZDY volat CONSTRUCTOR BASE TYPE. Ak BASE TYPE obsahuje DEFAULT CONSTRUCTOR, tak ho C# AUTOMATICKY zavola. Ak obsahuje iba parametricky CONSTRUCTOR, tak je ho nutne EXPLICITNE zavolat, inak C# hodi COMPILATION ERROR.
+   F. Pre STATIC CLASSES C# CONSTRUCTOR NEGENERUJE.
+   H. TYPE moze mat viacero CONSTRUCTORS s rozlicnou SIGNATURE.
+   !!! G. CONSTRUCTOR sa NEMUSI vzdy VOLAT. Napriklad pri volani METHOD Object.MemberwiseClone() sa CONSTRUCTOR NEVOLA. Takisto pri DESERIALIZACII sa CONSTRUCTOR ZVYCAJNE NEVOLA.
+   !!! H. CONSTRUCTOR by NEMAL volat v svojom tele VIRTUAL METHODS, pretoze ak tie su v DERIVED CLASS OVERRIDEN a CONSTRUCTOR BASE CLASS ich zavola, vyvolaju sa tieto OVERRIDEN METHODS SKOR ako sa bol zavolany CONSTRUCTOR DERIVED CLASS. To moze potencialne sposobit problemy, ak OVERRIDEN METHOD v DERIVED CLASS predpoklada, ze vsetky FIELDS uz boli v CONSTRUCTOR inicializovane.
+   !!! I. INLINE inicialziacia FILEDS podporovana C# je implementovana tak, ze priradenia hodnot jednotlivym FIELDS su vykonane este PRED zavolanim BASE CONSTRUCTOR.
+   J. Pomocou KEYWORD [this] moze CONSTRUCTOR v danom TYPE volat iny CONSTRUCTOR tohto TYPE.
+4. Pre CONSTRUCTORS pre VALUE TYPES platia nasledujuce pravidla.
+   A. CONSTRUCTOR ma v MSIL meno [.ctor()].
+   !!! B. VALUE TYPES nepotrebuju mat definovany CONSTRUCTOR. Ak CODE pre VALUE TYPE nedefinuje CONSTRUCTOR, C# NEVYGENERUJE DEFAULT PARAMETER-LESS CONSTRUCTOR.
+   !!! C. C# NEUMOZNUJE pre VALUE TYPES vytvarat PARAMETER-LESS CONSTRUCTOR. Ak by sa CODE pokusil takyto CONSTRUCTOR vytvorit, C# by generoval COMPILATION ERROR.
+   D. VALUE TYPES v MSIL MOZU definovat PARAMETER-LESS CONSTRUCTOR.
+   E. C# umoznuje definovat IBA CONSTRUCTOR, ktory ma PARAMETERS.
+   !!! F. C# umoznuje pre VALUE TYPES volat CONSTRUCTOR s PARAMETERS pomocou KEYWORD [new]. Ak sa CONSTRUCTOR pre VALUE TYPE nezavola, tak C# NEVOLA ZIADEN CONSTRUCTOR. Je to OPTIMISATION FEATURE pre zvysenie vykonu a takisto, kedze C# NEUMOZNUJE definovat PARAMETER-LESS CONSTRUCTOR pre VALUE TYPES, tak tieto TYPES (ak neboli napisane v inom LANGUAGE) takmer nikdy PARAMETER-LESS CONSTRUCTOR NEMAJU.
+   G. Pred zavolanim CONSTRUCTOR C# vynuluje vsetky FIELDS VALUE TYPE.
+   H. INLINE inicializacia pre VALUE TYPES NIE JE MOZNA.
+   !!! I. CONSTRUCTOR pre VALUE TYPES MUSI INICIALIZOVAT VSETKY FIELDS, predtym nez skonci, inak C# generuje COMPILATION ERROR.
+   !!! J. C# umoznuje v CONSTRUCTOR VALUE TYPE pomocou SYNTAXE [this=new SValueType()] EXPLICITNE vynulovat VSETKY FIELDS VALUE TYPE 'SValueType'.
+5. Pre STATIC CONSTRUCTOR platia nasledujuce pravidla.
+   A. CONSTRUCTOR ma v MSIL meno [.cctor()].
+   B. C# umoznuje definovat STATIC CONSTRUCTOR pre REFERENCE i VALUE TYPES, avsak NIE pre INTERFACES, aj ked CLR to umoznuje.
+   !!!!! C. Pre VALUE TYPES sa STATIC CONSTRUCTOR NEDOPORUCA definovat, pretoze NIE VZDY musi byt ZAVOLANY. Napriklad, ked sa definuje VALUE TYPE ARRAY, tak sa STATIC CONSTRUCTOR pri VYTVORENI ARRAY NEZAVOLA a zavola sa az pri prvom volani METHOD ARRAY ITEMS. Dokonca sa NEZAVOLA ani pri nastaveni FIELD daneho VALUE TYPE.
+   !!!!! D. JIT COMPILER pri pristupe k TYPE, ktory ma definovany STATIC CONSTRUCTOR kontroluje ci pre dany TYPE uz bol volany STATIC CONSTRUCTOR. Ak nie, tak JIT COMPILER VLOZI do generovaneho NATIVE CODE specialny CODE ktory vyvola STATIC CONSTRUCTOR.
+   !!! E. CLR GARANTUJE, ze volanie STATIC CONSTRUCTOR sa VYKONA IBA RAZ a je THREAD SAFE. Teda ak by 2 THREADS paralelne pouzili 1. krat ten isty TYPE, tak sa na volanie STATIC CONSTRUCTOR uvali LOCK a vyvola sa IBA RAZ. Nasledne 2. THREAD uz NEBUDE volat STATIC CONSTRUCTOR.
+   !!! F. Ak 2 STATIC CONSTRUCTOR referuju na seba (pouzivaju vzajomne svoje TYPES), tak poradie v akom budu STATIC CONSTRUCTORS volane je NEDEFINOVANE, a preto sa nedoporucuje pisat CODE, ktory by zavisel na poradi volania STATIC CONSTRUCTORS. Je to cosi podobne ako INICIALIZACIA STATIC VARIABLES v C++.
+   !!! G. Ak STATIC CONSTRUCTOR hodi EXCEPTION tak TYPE, ktory ho definoval je v dane APP DOMAIN NEPOUZITELNY a pristup ku akemukolvek MEMBER vedie ku generovaniu EXCEPTION [TypeInitializationException].
+   H. C# podporuje INLINE inicializaciu FIELDS a to dokonca aj pre VALUE TYPES. Pre tuto INLINE inicializaciu C# vlozi prislusny CODE do STATIC CONSTRUCTOR.
+   I. STATCI CONSTRUCTOR je mozne volat i EXPLICITNE pomocou METHOD RunTimeHelpers.RunClassContructor().
+!!! 6. Staticky FINALIZER NIE JE V CLR IMPLEMENTOVANY. Je ho vsak mozne ciastocne simulovat pripojenim sa na EVENT AppDomain.DomainUnload, ktory je volany, ked je DOMAIN UNLOADED, kedy su UNLOADED i VSETKY TYPES pouzite v danej APP DOMAIN.
+!!! 7. CLR umoznuje volat STATIC CONSTRUCTORS dvoma sposobmi.
+   A. PRECISE MODE kedy je STATIC CONSTRUCTOR je volany TESNE pred PRVYM pristupom k TYPE. V tomto pripade TYPE NEMA NASTAVENY PRIZNAK [BeforeFieldInit].
+   B. BEFORE FIELD INIT MODE kedy je STATIC CONSTRUCTOR je volany PRED PRVYM pristupom k TYPE, ale NEMUSI byt tesne pred pouzitim TYPE, ale je na C# kedy STATIC CONSTRUCTOR zavola. (Moze napriklad ho volat hned pri spusteni programu, alebo na zaciatku METHOD, ktora pristupuje k danemu TYPE.) V tomto pripade TYPE MA NASTAVENY PRIZNAK [BeforeFieldInit]. Tato alternativa je EFEKTIVNEJSIA, pretoze umoznuje zavolat MODE kedy napriklad NA ZACIATKU METHOD a NIE pred prvym pristupom k TYPE, co ak sa deje napriklad v CYKLE, tak KAZDA ITERACIA CYKLU potom nesie PERFORMANCE HIT, pretoze je tam vlozeny CODE, kontrolujuci ci STATIC CONSTRUCTOR uz bol, alebo nebol zavolany.
+!!! 8. C# nastavuje FLAG [BeforeFieldInit] na TYPE podla nasledujucich zasad.
+   A. TYPE ma EXPLICITNE DEFINOVANY STATIC CONSTRUCTOR, tak sa FLAG [BeforeFieldInit] na danom TYPE NENASTAVI.
+   B. Ak TYPE pouziva pre STATIC FIELDS INLINE INICIALIZACIU a NEMA EXPLICITNE DEFINOVANY STATIC CONSTRUCTOR, tak sa FLAG [BeforeFieldInit] na danom TYPE NASTAVI.
+   C. Pre VSETKY OSTATNE REFERENCE TYPES sa FLAG [BeforeFieldInit] NASTAVUJE.
+!!! 9. Postup ktory vykonava CLR pri volani STATIC CONSTRUCTOR.
+   A. Pred JIT COMPILATION danej METHOD, je zisteny ZOZNAM TYPES ku ktoremu METHOD CODE pristupuje.
+   B. Pre KAZDY TYPE JIT COMPILER skontroluje, ci uz bol prenho zavolany STATIC CONSTRUCTOR.
+   !!! C. Ak NEBOL, tak JIT COMPILER do NATIVE CODE prida NATIVE INSTRUCTIONS, ktore zabezpecia volanie STATIC CONSTRUCTOR. To ci sa pridaju na zaciatok METHOD, alebo az pred prvym pouzitim daneho TYPE urcuje FLAG [BeforeFieldInit] nastaveny na danom TYPE.
+   !!!!! D. Ak sa STATIC CONSTRUCTOR zavola, potom JIT COMPILATOR pre DALSIE METHODS pouzivajuce dany TYPE pocas JIT COMPILATION NEPRIDA do NATIVE CODE NATIVE INSTRUCTIONS, ktore by volali STATIC CONSTRUCTOR. Tym je generovany NATIVE CODE o trosku rychlejsi.
+   !!!!! E. Ak by METHOD, ktorej NATIVE CODE obsahuje volanie STATIC CONSTRUCTOR ho ho NEZAVOLALA (pri PRECISE MODE, ak by METHOD skoncila pred zavolanim STATIC CONSTRUCTOR), tak by sa i do CODE DALSEJ JIT COMPILED METHOD, ktora pouziva dany TYPE pridal NATIVE CODE na volanie (kontrolu nutnosti volania) STATIC CONSTRUCTOR. NATIVE CODE tejto METHOD by obsahoval TESTOVANIE ci uz STATIC CONSTRUCTOR BOL VOLANY a to by malo za nasledok NEUSTALY PERFORMANCE HIT.
+   !!! F. Aj je METHOD, ktora vyvolala STATIC CONSTRUCTOR OPATOVNE COMPILED JIT COMPILER (napriklad ak je JIT COMPILED CODE odstraneny z MEMORY, kvoli nedostatku MEMORY), tak opakovana JIT COMPILATION uz NEPRIDA volanie STATIC CONSTRUCTOR, kedze sa ten uz vyvolal.
+10. Pre OPERATORS platia v CLR nasledujuce zasady.
+   A. CLR OPERATORS ani OPERATOR OVERLOADING NEPOZNA. Je to cisto zalezitost prislusneho PROGRAMMING LANGUAGE ako OPERATORS bude interpretovat.
+   !!!!! B. OPERATORS VZDY interpretuje COMPILER daneho PROGRAMMING LANGUAGE a prave COMPILER sa rozhoduje aku cinnost vykona. C# pre OPERATORS nad NUMERIC TYPES generuje specializovanu MSIL INSTRUCTION, zatial co pre CLASSES/STRUCTS vola METHOD, ktora dany OVERLOADED OPERATOR reprezentuje.
+   !!! C. Aj ked CLR OPERATORS NEPOZNA, tak CLS definuje RULES pre pomenovanie METHODS, ktore reprezentuju OVERLOADED OPERATORS. Vdaka tymto RULES je mozne tieto METHODS interpretovat ako OPERATORS v rozlicnych PROGRAMMING LANGUAGES.
+   D. OVERLOADED OPERATOR MUSI byt vzdy PUBLIC STATIC METHOD.
+   E. C# VYZADUJE, aby aspon 1 PARAMETER OVERLOADED OPERATOR bol ROVNAKEHO TYPE ako TYPE, ktory OVERLOADED OPERATOR definuje.
+   F. METHODS implementujuce OVERLOADED OPERATORS su oznacene pomocou FLAG [specialname]. C# iba takto oznacene METHODS povazuje za OVERLOADED OPERATORS. Ak FLAG [specialname] NIE JE NASTAVENY, tak C# NEDOKAZE priradit pre dany OPERATOR volanie tejto METHOD. Preto napriklad ani NIE JE MOZNE vytvorit METHOD, ktora by splnala PROTOYP OVERLOADED OPERATOR v LANGUAGE, ktory OVERLOADED OPERATORS a predpokladat, ze C# ju dokaze indentifikovat a namapovat na OPERATOR. C# to NEDOKAZE, lebo tato METHOD nebude mat nastaveny FLAG [specialname].
+   !!! G. V C# ked je pretazeny OPERATOR== MUSI sa pretazit aj OPERATOR!=, inak COMPILER hodi ERROR. Takisto COMPILER hodi WARNING, ak nie su pretazene METHODS Object.Equals() a Object.GetHashCode().
+   !!!!! H. CLR NEPODPORUJE OVERLOADED OPERATORS ako INSTANCE METHODS danej CLASS/STRUCT ako to podporuje C++.
+!!! 11. C# interpretuje OVERLOADED OPERATORS nasledujucim sposobom.
+   A. Ak sa jedna o NUMERIC TYPES ako Int32, Int64, Single ci Double, tak C# OVERLOADED OPERATOR interpretuje ako MSIL INSTRUCTION. Napriklad OPERATOR+ sa interpertuje ako MSIL INSTRUCTION [add].
+   B. Ak sa jedna o STRING, tak sa vola METHOD String.Concat().
+   C. Ak sa jedna o iny TYPE, tak sa hlada OVERLOADED OPERATOR, ktory sa zavola ako METHOD.
+!!! 12. CLR podporuje OVERLOADED OPERATORS aj pre VALUE TYPES.
+!!! 13. C# PODPORUJE CONVERSION OPERATORS, ktore umoznuju konverzie medzi TYPES.
+   A. CONVERSION OPERATOR musi byt PUBLIC STATIC METHOD.
+   B. CONVERSION OPERATOR musi obsahovat bud ako PARAMETER alebo RETURN VALUE TYPE v ktorom je definovany.
+   C. CONVERSION OPERATOR sa definuje uvedenim jedneho z KEYWORDS [implicit], alebo [explicit] za ktorym nasleduje KEYWORD [operator]. Za KEYWORD [operator] musi nasledovat DESTINATION TYPE na ktory sa ma CONVERSION vykonat a ako PARAMETER sa musi pouzit SOURCE TYPE z ktoreho sa ma CONVERSION vykonat.
+   !!! D. CONVERSION OPERATOR moze byt bud IMPLICITNY (KEYWORD [implicit]), alebo EXPLICITNY (KEYWORD [explicit]). Ak je CONVERSION OPERATOR IMPLICITNY, tak pri konverzii NIE JE POTREBNE pouzit operator pretypovania [(TYPE)]. OPERATOR sa zavola AUTOMATICKY. Ak je CONVERSION OPERATOR EXPLICITNY, tak pri konverzii JE NUTNE pouzit operator pretypovania [(TYPE)], aby sa OPERATOR zavolal.
+   !!! D. CONVERSION OPERATORS sa NEPOUZIVAJU pri KEYWORDS [as] a [is].
+14. To ci CONVERSION OPERATOR ma byt IMPLICITNY, alebo EXPLICITNY je dane iba potrebami daneho TYPE a NEPLATIA TU ZIADNE OMBEDZENIA. Avsak doporucuje sa definovat ich nasledovne.
+   A. IMPLICITNY CONVERSION OPERATOR by sa mal pouzivat, ked pri pretypovani NEDOCHADZA k STRATE PRESNOSTI.
+   B. EXPLICITNY CONVERSION OPERATOR by sa mal pouzivat, ked pri pretypovani DOCHADZA k STRATE PRESNOSTI.
+15. Okrem CONVERSION OPERATORS .NET definuje aj mnozinu nezavaznych RULES, ktore je odporucene aplikovat na realizaciu funkcionality CONVERSION OPERATORS.
+   A. Definovat CONSTRUCTOR, ktory ma ako parameter TYPE, ktory mat byt konverovany na TYPE, ktoreho je CONSTRUCTOR.
+   B. Definovat INSTANCE METHOD ToXXX(), ktora vracia TYPE [XXX]. Tato METHOD konvertuje hodnotu TYPE ktoremu METHOD patri na TYPE [XXX].
+!!! 16. CLR podporuje CONVERSION OPERATORS aj pre VALUE TYPES.
+17. Pre EXTENSION METHODS platia nasledujuce pravidla.
+   A. EXTENSION METHODS umoznuju rozsirit uz EXISTUJUCE TYPES, ku ktorym NIE JE dostupny SOURCE CODE pomocou specialnej SYNTAXE, kde 1. PARAMETER takejto EXTENSION METHOD MUSI BYT oznaceny KEYWORD [this]. TYPE tohto PARAMETER zaroven urcuje s ktorym TYPE bude EXTENSION METHOD zviazana.
+   B. EXTENSION METHODS MUSIA byt STATIC a definovane v STATIC TYPES.
+   !!! C. Ak sa SOURCE CODE v danou SOURCE CODE FILE chce dotazovat na EXTENSTION METHODS daneho TYPE, MUSI pomocou KEYWORD [using] vlozit NAMESPACE v ktorom je TYPE obsahujuci EXTRENSTION METHODS definovany.
+   !!! D. Ak SOURCE CODE FILE obsahuje NAMESPACE TYPE, ktory obsahuje EXTENSION METHODS, tak IntelliSense tieto EXTENSION METHODS zobrazi.
+   !!!!! E. Ak ma TYPE definovanu INSTANCE METHOD s IDENTICKYM NAME ako EXTENSION METHOD, tak INSTANCE METHOD bude volana NAMIESTO EXTENSION METHOD.
+   !!! F. Ak sa 2 EXTENSION METHODS dostanu do konfliktu (maju rovnake PROTOTYPES), C# generuje COMPILATION ERROR.
+   !!!!! G. EXTENSION METHODS su 'DERIVED'. To znaci, ze su pristupne aj v DERIVED TYPES.
+   !!! H. Pre EXTENSION METHODS CLR NEGENERUJE CODE, ktory by kontroloval ci hodnota [this] PARAMETER je NON-NULL. Kludne sa teda moze stat, ze sa EXTENSION METHOD zavola s NULL hodnotou v [this] PARAMETER.
+   !!!!! I. EXTENSION METHODS mozu sluzit ako DELEGATE HANDLERS. Tieto HANDLERS vsak NIE SU VYVOLAVANE ako STATIC METHODS, ale ako INSTANCE METHODS toho OBJECT ktoreho EXTENSION METHOD bola priradena ako DELEGATE HANDLER do DELEGATE.
+   !!! J. Pri C# COMPILATION su vsetky EXTENSION METHODS, vsetky TYPPES obsahujuce EXTENSTION METHODS a vsetky ASSEMBLIES obsahujuce TYPES obsahujuce EXTENSION METHODS oznacene ATTRIBUTE [Extension]. To umoznuje rychlejsie vyhladavanie EXTENSION METHODS pocas kompilacie.
+!!! 18. EXTENSION METHODS je mozne definovat na nasledujuce TYPES.
+   A. REFERENCE TYPES.
+   B. VALUE TYPES.
+   C. ENUMERATES.
+   D. INTERFACES.
+   E. DELEGATES.
+15. Pre PARTIAL METHODS platia nasledujuce zasady.
+   A. PARTIAL METHODS mozu byt definovane IBA v PARTIAL CLASSES, PARTIAL STRUCTS, alebo PARTIAL STATIC CLASSES.
+   B. PARTIAL METHODS su VZDY PRIVATE aj ked C# neumoznuje definovat jej pristupove prava.
+   !!! C. Ak PARTIAL METHOD NIE JE PRETAZENA, tak sa jej volanie UPLNE VYNECHA z CODE tych METHODS, ktore ju mali zavolat, cim sa VYRAZNE ZVYSUJE RYCHLOST VYKONANIA CODE.
+   !!! D. Kedze volanie PARTIAL METHOD ak PARTIAL METHOD nie je pretazena sa uplne VYHODI z CODE, PARTIAL METHODS NESMU MAT RETURN VALUES, ani [out] PARAMETERS, aj ked mozu mat [ref] PARAMETERS.
+   E. Ak PARTIAL METHOD definuje v definicii aj pretazeny INE ATTRIBUTES na METHOD, PARAMETERS ci RETURN VALUES, tieto su skombinovane.
+   F. Ak dana PARTIAL METHOD nie je pretazena, tak ju NEMOZNO pouzit ako DELEGATE HANDLER.
+//-------------------------------------------------------------------------------------------------------

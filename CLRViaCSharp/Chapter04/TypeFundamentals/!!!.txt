@@ -1,0 +1,84 @@
+//-------------------------------------------------------------------------------------------------------
+1. Program demonstruje zakladne vlastnosti CLASS Object.
+2. V .NET su vsetky CLASS musia byt DERIVED z CLASS Object. Tato CLASS nema ziadne FIELDS, ale ma nasledujuce METHODS.
+   A. METHOD Object.MemberwiseClone() je PROTECTED NON-VIRTUAL METHOD, ktora vykonava klonovanie daneho OBJECT.
+   B. METHOD Object.Finalize() je PROTECTED VIRTUAL METHOD, ktora je volana pre FINALIZABLE OBJECTS.
+   C. METHOD Object.GetType() je PUBLIC NON-VIRTUAL METHOD, ktora vracia OBJECT TYPE (instanciu CLASS Type). To, ze je NON-VIRTUAL zabranuje, aby METHOD bola OVERRIDEN, kde by OVERRIDEN VERZIA mohla vracat INY (NESPRAVNY) TYPE akeho je OBJECT v skutocnosti.
+   D. METHOD Object.GetHashCode() je PUBLIC VIRTUAL METHOD, ktora vracia HASH CODE daneho OBJECT. METHOD sa pouziva napriklad v DICTIONARIES na ukladanie ITEMS do BAGS.
+   E. METHOD Object.Equals() je PUBLIC VIRTUAL METHOD, ktora vracia TRUE ak su 2 OBJECTS zhodne, inak vracia FALSE.
+   F. METHOD Object.ToString() je PUBLIC VIRTUAL METHOD, ktora vracia textovu reprezentaciu daneho OBJECT vhodnu napriklad pre DEBUG vypisy stavu daneho OBJECTU.
+!!!!! 3. Kazdy OBJECT ma 2 SPECIALNE FIELDS.
+   !!! A. FIELD TYPE_OBJECT_POINTER obsahuje ADDRESS na instanciu CLASS Type, ktora reprezentuje TYPE daneho OBJECT. Vdaka FIELD TYPE_OBJECT_POINTER CLR dokaze v RUNTIME urcit akeho TYPE je dany OBJECT co sa vyuziva pri VIRTUAL METHOD CALLS.
+   B. FIELD SYNC_BLOCK_INDEX obsahuje INDEX do SYNCHRONIZATION BLOCK TABLE na SYNCHRONIZATION BLOCK, ktory prinalezi daneho OBJECT.
+4. CLR pri vytvarani OBJECTS vykonava nasledujuce kroky.
+   A. Vypocita sa velkost OBJECT v BYTES, ktore bude dany OBJECT potrebovat. Velkost OBJECT je dana SUCTOM velkosti VSETKYCH FIELDS (vratane FIELDS BASE CLASSES), dlzky TYPE OBJECT POINTER (odkaz na METADATA o TYPE v dlzke 4 BYTES pre x86, resp. 8 BYTES pre x64) a SYNC BLOCK INDEX (4 BYTES).
+   B. Alokuje na HEAP MEMORY o vypocitanej dlzke, ktoru inicializuje na 0.
+   C. Inicializuje TYPE OBJECT POINTER a SYNC BLOCK INDEX.
+   D. Zavola CONSTRUCTOR daneho OBJECT.
+   !!! E. Aj ked CLR to nerobi, tak VACSINA COMPILERS v CONSTRUCTOR daneho OBJECT vola BASE CONSTRUCTOR.
+5. V C# je mozne vykonat nasledujuce pretypovacie operacie.
+   A. Implicitne pretypovanie sa robi pri pretypovani CHILD -> PARENT a kontroluje sa uz v COMPILE TIME.
+   B. Explicitne pretypovanie cez OPERATOR(TYPE) sa robi pri pretypovani PARENT -> CHILD. Pri tomto pretypovani musi CLR v RUNTIME zitit, ci PARENT je predkom CHILD, co znamena PERFORMANCE HIT. Ak pretypovanie nie je mozne urobit (pretypovavany OBJECT nie je predkom pozadovaneho typu) pretypovanie vrati EXCEPTION [InvalidCastException].
+   C. OPERATOR 'is' nerobi pretypovanie, iba zisti ci OBJECT je daneho TYPE, resp. dedi/implementuje dany TYPE (CLASS/INTERFACE).
+   D. OPERATOR 'as' vykona pretypovanie ak OBJECT je daneho TYPE, resp. dedi/implementuje dany TYPE (CLASS/INTERFACE). Ak OBJECT nie je daneho TYPE, resp. nededi/neimplementuje dany TYPE (CLASS/INTERFACE), OPERATOR vracia hodnotu NULL.
+!!! 6. OPERATOR 'is' vracia FALSE, ak mu je zaslana NULL hodnota.   
+!!!!! 7. Pri pouziti OPERATORS 'is' a 'as' ak dany TYPE ma OVERLOADED CAST OPERATORS, ich OPERATORS 'is' a 'as' NEPOUZIVAJU. Pouzivaju sa iba pri vykonavani CASTINGU.
+!!! 8. Pretypovanie zo sebou prinasa PERFORMANCE HIT, ktory je dany zistenim ci dany PARENT typ je mozne pretypovat na CHILD typ a preto by malo byt jeho pouzitie cp najviac MINIMALIZOVANE.
+9. NAMESPACE sa definouje pomocou KEYWORD [namespace].
+10. NAMESPACES (KEYWORD [namespace]) je mozne do seba vnarat. Ak je CLASS 'ABC' definovane v NAMESPACE 'XXX' a NAMESPACE 'YYY', tak jej NAME bude 'XXX.YYY.ABC'.
+!!!!! 11. CLR pojem NAMESPACE NEPOZNA. Je to cisto iba zalezitost C#. CLR pozna iba CLASSES, ktore mozu obsahovat znak '.'. C# interne robi PARSING CLASS NAME podla znaku '.' a posledna sekcia je CLASS NAME a vsetky predchadzajuce su NAMESPACE NAMES.
+!!!!! 12. V MSIL NAMESPACES NIE JE vobec mozne definovat. Je mozne definovat iba CLASS NAMES, kde su znaky '.' a tym simulovat C# NAMESPACES.
+13. C# poskytuje KEYWORD [using] pomocou, ktoreho je mozne definovat NAMESPACES, ktore sa budu v danom SOURCE FILE pouzivat.
+14. C# vytvara CLASS NAMES pri kompilacii tak, ze pre kazdy CLASS NAME najprv zisti ci takato CLASS sa nachadza v niektorej z ASSEMBLIES a ak nie, skusa ku CLASS NAME pridat KAZDY JEDEN NAMESPACE definovany pomocou KEYWORD [using] a zlozeny CLASS NAME hlada v referovanych ASSEMBLIES.
+!!! 15. C# umoznuje KEYWORD [using] pouzit aj na definiciu ALIASES. C# definuje 2 typy ALIASES.
+   A. INTERNY ALIAS je mozne pouzit na vytvorenie ALIASU, ktory je mozne pouzit na skratene prilis dlhych CLASS NAMES. Vyhodny je napriklad pri deklarovani Dictionary<Key,Value>.
+   B. EXTERNY ALIAS umoznuje riesit problem ak 2 CLASSES v ROZNYCH ASSEMBLIES maju ROVNAKE CLASS NAME i NAMESPACE. Pri definovani sa pouziva syntax 'extern using Alias', kde Alias je MENO REFEROVANEJ ASSEMBLY.
+!!! 16. JIT COMPILER pred kompilaciu kazdej METHOD vykonava nasledujuce kroky.
+   A. Prejde zoznamom vsetkych TYPES, ktore sa v METHOD nachadzaju a skontroluje ci ASSEMBLY v ktorej je dany TYPE definovany je natiahnuta do MEMORY.
+   B. Ak sa TYPE v MEMORY nenachadza, nacita prislusnu ASSEMBLY do MEMORY.
+   !!! C. Pre nove TYPES su na HEAP vytvorene TYPE OBJECTS. TYPE OBJECT je instancia CLASS Type, ktora dedi z CLASS Object a obsahuje VSETKY STATIC FIELDS a METHOD TABLE.
+   D. Vykona CODE COMPILATION danej METHOD z MSIL do NATIVE INSTRUCTIONS.
+   !!!!! E. ADDRESS na danu METHOD potom ulozi do METHOD TABLE TYPE OBJECT, aby sa k nej CLR vedelo dostat.
+!!!!! 17. CLR pre KAZDY TYP vytvara SPECIALNY TYPE OBJECT. Pre TYPE OBJECT platia nasledujuce fakty.
+   A. TYPE OBJECT je bezna CLR CLASS typu Type, ktora dedi z CLASS Object.
+   B. Tak ako KAZDY INY CLR OBJECT i TYPE OBJECT obsahuje okrem beznych FIELDS i FIELDS TYPE_OBJECT_POINTER a SYNC_BLOCK_INDEX.
+   !!! C. Kazdy CLR OBJECT obsahuje FIELD TYPE_OBJECT_POINTER, ktorym sa OBJECT referuje na svoj TYPE OBJECT. Tym je vytvorena vazba medzi OBJECT a TYPE, ktoreho OBJECT je.
+   !!! D. V TYPE OBJECT hodnota FIELD TYPE_OBJECT_POINTER referuje na SPECIALNE VYTVORENY OBJECT typu Type (Type preto, lebo TYPE OBJECT je typu TYPE), ktory CLR vytvori pri svojom starte a ktoreho FIELD TYPE_OBJECT_POINTER sa referuje sam na seba.
+   !!!!! E. TYPE OBJECT obsahuje ENTRIES pre vsetky STATICKE FIELDS, ktore dany TYPE obsahuje. STATIC FIELDS su teda vlastne INSTANCE FIELDS prislusneho TYPE OBJECTU (CLASS Type).
+   !!!!! F. TYPE OBJECT obsahuje METHOD TABLE v ktorej su ulozene ADDRESSES VSETKYCH METHODS, ktore dany TYPE definuje (resp. definuju jeho BASE CLASSES). Tato informacia je pre CLR EXTREMNE DOLEZIA, pretoze pomocou nej dokaze nasjt ADDRESSES METHODS, ktore pre dany TYPE je mozne volat.
+   !!!!! G. Fakt, ze TYPE OBJECT obsahuje ENTRIES ako pre VIRTUAL METHODS, ktore TYPE definuje, tak i VIRTUAL METHODS, ktore definuju BASE CLASSES je EXTREMNE DOLEZITY, pretoze do tychto ENTRIES sa ukladaju SKUTOCNE METHOD ADDRESSES, ktore sa maju pri volani VIRTUAL MMETHODS zavolat a existencia tychto ENTRIES vlastne UMOZNUJE POLYMORFNE VOLANIE.
+!!!!! 18. TYPE OBJECT obsahuje METHOD TABLE v ktorej su ulozene ADDRESSES VSETKYCH METHODS, ktore dany TYPE definuje. Tato informacia je pre CLR EXTREMNE DOLEZIA, pretoze pomocou nej dokaze nasjt ADDRESSES METHODS, ktore pre dany TYPE je mozne volat. CLR ju vyuziva nasledujucim sposobom.
+   A. Pri volani METHOD sa CLR pozrie do METHOD TABLE daneho TYPE OBJECT, aby zistil METHOD ADDRESS na ktorej sa CODE volanej METHOD nachadza.
+   !!! B. Ak volana METHOD este NEBOLA COMPILED, vykona jej COMPILATION a jej ADDRESS ulozi do METHOD TABLE TYPE OBJECT.
+   C. Po vykonani COMPILATION, alebo ak METHOD uz bola COMPILED, CLR volanu METHOD vykona.
+!!!!! 19. Fakt, ze TYPE OBJECT obsahuje ENTRIES ako pre VIRTUAL METHODS, ktore TYPE definuje, tak i VIRTUAL METHODS, ktore definuju BASE CLASSES je EXTREMNE DOLEZITY, pretoze do tychto ENTRIES sa ukladaju SKUTOCNE METHOD ADDRESSES, ktore sa maju pri volani VIRTUAL MMETHODS zavolat a existencia tychto ENTRIES vlastne UMOZNUJE POLYMORFNE VOLANIE. METHOD TABLE TYPE OBJECT tak reprezentuje vlastne VIRTUAL METHOD TABLE.
+!!! 20. CLR pri volani METHODS prenasa PARAMETERS pomocou CALLING CONVENTION '__fastcall', pri ktorej platia nasledujuce pravidla.
+   A. Pred zavolanim METHOD CALLER ulozi prve 2 PARAMETRS do REGISTERS ECX a EDX a ostatne PARAMETERS (ak su) sa ulozia do STACKU.
+   B. Po PARAMETERS sa do STACK ulozi RETURN ADDRESS na ktoru volana METHOD skoci po vykonani svojho CODE.
+   C. Vykona sa volana METHOD.
+   D. Volana METHOD vycisti STACK od LOCAL VARIABLES, PARAMETERS a RETURN ADDRESS na ktoru METHOD napokon skoci.
+!!! 21. JIT COMPILER pri kompilacii volania STATIC METHOD vykonava nasledujuce kroky.
+   !!!!! A. JIT COMPILER identifikuje TYPE, ktoreho METHOD ma byt volana. Kedze pri volani STATIC METHODS je VZDY nutne definovat TYPE (TYPE.METHOD()), CLR uz zo samotneho volania vie o aky TYPE sa jedna.
+   B. Pre indikovany TYPE JIT ziska ADDRESS na jeho TYPE OBJECT.
+   C. V METHOD TABLE daneho TYPE OBJECT sa najde ENTRY, ktora zodpoveda hladanej STATIC METHOD.
+   D. Ak volana METHOD uz bola COMPILED, ENTRY obsahuje METHOD ADDRESS. Ak METHOD este NEBOLA COMPILED, tak sa JIT vykona jej COMPILATION a jej ADDRESS sa ulozi do ENTRY v METHOD TABLE TYPE OBJECT.
+   !!! E. ADDRESS v METHOD TABLE sa pri JIT COMPILATION vlozi do VYGENEROVANEHO NATIVE CODE na miesta volania danej METHOD (za NATIVE INSTRUCTION [CALL]). Tento proces sa vykonava iba pocas JIT COMPILATION.
+!!! 22. JIT COMPILER pri kompilacii volania NON-VIRTUAL INSTANCE METHOD vykonava nasledujuce kroky.
+   !!!!! A. JIT COMPILER identifikuje TYPE, ktoreho METHOD ma byt volana. Identifikacia je vykonana podla TYPE, ktory je definovany v deklaracii VARIABLE. Jedna sa teda o JIT COMPILE-TIME urcenie TYPE podla VARIABLE TYPE.
+   B. Pre indikovany TYPE JIT ziska ADDRESS na TYPE OBJECT daneho TYPE.
+   C. V METHOD TABLE daneho TYPE OBJECT sa najde ENTRY, ktora zodpoveda hladanej NON-VIRTUAL INSTANCE METHOD.
+   !!! D. Ak TYPE NEOBSAHUJE danu METHOD, tak CLR REKURZIVNE prehladava BASE TYPES (TYPE OBJECT obsahuje FIELD odkazujuci na BASE CLASS) az kym hladanu METHOD nenajde.
+   E. Ak volana METHOD uz bola COMPILED, ENTRY obsahuje METHOD ADDRESS. Ak METHOD este NEBOLA COMPILED, tak sa JIT vykona jej COMPILATION a jej ADDRESS sa ulozi do ENTRY v METHOD TABLE TYPE OBJECT.
+   !!! F. ADDRESS v METHOD TABLE sa pri JIT COMPILATION vlozi do VYGENEROVANEHO NATIVE CODE na miesta volania danej METHOD (za NATIVE INSTRUCTION [CALL]). Tento proces sa vykonava iba pocas JIT COMPILATION.
+!!! 23. JIT COMPILER pri kompilacii volania VIRTUAL INSTANCE METHOD vykonava nasledujuce kroky.
+   !!!!! A. JIT COMPILER vlozi do CODE volanej METHOD specialny CODE, ktory sa vola pri KAZDOM VOLANI METHOD. Tento CODE zoberie hodnotu OBJECT FIELD TYPE_OBJECT_POINTER, ktora obsahuje ADDRESS na TYPE OBJECT.
+   B. V METHOD TABLE najdeneho TYPE OBJECT sa najde ENTRY, ktora zodpoveda hladanej VIRTUAL INSTANCE METHOD.
+   !!!!! C. Kedze v TYPE OBJECT su ENTRIES i pre VIRTUAL METHODS vsetkych BASE CLASSES (je to nutne, aby DERIVED CLASS mohli mat poznacene ADDRESSES vsetkych OVERRIDEN METHODS), tak ENTRY je VZDY NAJDENA aj BEZ nutnosti REKURZIVNEHO PREHLADAVANIA, ako je tomu pri JIT COMPILATION (pozor iba COMPILATION a nie vykonani) NON-VIRTUAL METHOD.
+   D. Ak volana METHOD uz bola COMPILED, ENTRY obsahuje METHOD ADDRESS. Ak METHOD este NEBOLA COMPILED, tak sa JIT vykona jej COMPILATION a jej ADDRESS sa ulozi do ENTRY v METHOD TABLE TYPE OBJECT.
+   !!! E. ADDRESS v METHOD TABLE sa pri JIT COMPILATION vlozi do VYGENEROVANEHO NATIVE CODE na miesta volania danej METHOD (za NATIVE INSTRUCTION [CALL]). Tento proces sa vykonava iba pocas JIT COMPILATION.
+!!!!! 24. Zasadny rozdiel medzi volanim NON-VIRTUAL a VIRTUAL INSTANCE METHOD je v nasledujucich pravidlach.
+   A. ADDRESS NON-VIRTUAL METHOD je urcena v JIT COMPILE-TIME a v RUNTIME ju uz netreba hladat.
+   !!! B. ADDRESS NON-VIRTUAL METHOD je urcena az v RUNTIME a to tak, ze CLR vlozi do volanej METHOD CODE, ktory z TYPE OBJECT volaneho OBJECT urci skutocny TYPE. Urcenie TYPE je teda realizovane v RUNTIME pri KAZDOM volani METHOD.
+!!!!! 25. Ak CLASS je DERIVED z BASE CLASS, potom v jej METHOD TABLE TYPE OBJECT su ulozene aj ENTRIES pre VSETKY VIRTUAL METHODS BASE CLASSES. Je to preto, aby v RUNTIME nemusel i VIRTUAL METHOD rekurzivne prehladavat METHOD TABLES TYPE OBJECTS vsetkych BASE CLASSES, pretoze by to VYRAZNE SPOMALOVALO bez programu.
+!!! 26. METHOD Object.GetType() vracia hodnotu svojho FIELD TYPE_OBJECT_POINTER obsahujuceho ADDRESS na TYPE OBJECT daneho OBJECT.
+//-------------------------------------------------------------------------------------------------------

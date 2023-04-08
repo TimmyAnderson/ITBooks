@@ -1,0 +1,153 @@
+//-------------------------------------------------------------------------------------------------------
+1. Solution demonstruje sposoby ako je mozne kompilovat a linkovat .NET programy.
+2. C# program je mozne kompilovat pomocou TOOL [CSC.EXE]. Je to kompilator C# LANGUAGE a ma nasledujuce OPTIONS.
+   A. '/out:FileName' - definuje meno FILE, ktory je vysledkom kompilacie.
+   B. '/target:winexe' - generuje WINDOWS EXE.
+   C. '/target:exe' - generuje CONSOLE EXE.
+   D. '/target:appcontainerexe' - generuje WINDOWS STORE EXE.
+   E. '/target:module' - generuje CLR MODULE.
+   F. '/target:library' - generuje DLL.
+   G. '/target:winmdobj' - generuje WINMDOBJ FILE, ktory je vstupom do TOOL [WinMDExp.EXE], ktory modifikuje METADATA, aby boli pouzitalne vo Windows Runtime.
+   H. '/reference:AssemblyName' - definuje ASSEMBLY na ktoru sa generovana ASSEMBLY referuje.
+   I. '/nostdlib' - zabranuje AUTOMATICKEMU PRIDANIU referencie na MSCorLib.dll.
+   J. '@ResponseFileName' - meno RESPONSE FILE.
+   K. '/noconfig' - zabrani pouzitiu CSC.RSP.
+   L. '/addmodule:ModuleName' - pridava MODULE do kompilovanej ASSEMBLY.
+   M. '/resource:FileName' - OPTION umoznuje vlozit do ASSEMBLY EMBEDDED RESOURCE. FYZICKY VLOZI do ASSEMBLY (PE32+ FILE) RESOURCE z FILE 'FileName'.
+   N. '/linkresource:FileName' - OPTION umoznuje vlozit do ASSEMBLY LINKED RESOURCE. Do ASSEMBLY VLOZI REFERENCIU na RESOURCE FILE z FILE 'FileName'. FILE 'FileName' musi byt distribuovany spolu s ASSEMBLY.
+   O. '/win32res:FileName' - do ASSEMBLY prida WIN32 RESOURCE FILE (.RES) s nazvom 'FileName'.
+   P. '/win32icon:FileName' - do ASSEMBLY prida WIN32 ICON FILE (.ICO) s nazvom 'FileName'.
+   Q. '/win32manifest:FileName' - do ASSEMBLY pridava WIN32 MANIFEST, ktory urcuje ACCESS RIGHTS programu pre UAC.
+   R. '/nowin32manifest' - zabrani vlozeniu WIN32 MANIFEST, ktory urcuje ACCESS RIGHTS programu pre UAC do ASSEMBLY.
+3. Zakladne TYPES su definovane v ASSEMBLY MSCorLib.dll, ktora musi byt referovana z kazdeho .NET programu a ak v CSC.EXE ju nepridam ako referenciu, tak sa prida automaticky. To mozem vypnut pouzitim kompilacneho OPTION '/nostdlib'.
+4. CSC.exe umoznuje definovat RESPONSE FILE pomocou syntaxe '@ResponseFileName'. RESPONSE FILE obsahuje KOMPILACNE PRIZNAKY, ktore chcem pri kompilacii pouzit. Pouzitim RESPONSE FILE NEMUSIM VYPISOVAT VSETKY KOMPILACNE PRIZNAKY do COMMAND LINE.
+!!! 5. Okrem CUSTOM RESPONSE FILES CLR vyhladava i STANDARDNE RESPONSE FILES 'CSC.RSP' a to bud v DIRECTORY, odkial sa kompiluje, alebo v DIRECTORY, kde je umiestneny .NET. Tieto subory obsahuju GLOBALNE KOMPILACNE PRIZNAKY, ktore sa pouziju pri KAZDEJ KOMPILACII. Ak lokalny CSC.RSP, alebo CUSTOM RESPONSE FILE, resp. COMMAND LINE su v konflikte, tak najvyssiu prioritu ma COMMAND FILE, po nom CUSTOM RESPONSE FILES, po nom CSC.RSP v DIRECTORY, kde sa assembly kompiluje a napokon globalny CSC.RSP v DIRECTORY, kde je .NET. Pouzitie CSC.RSP je mozne zakazat priznakom '/noconfig'.
+!!! 6. Vysledkom kompilacie je bud MODULE, alebo ASSEMBLY (typu EXE, WINEXE, WINDOWS STORE EXE, alebo DLL).
+7. Skompilovany MODULE/ASSEMBLY obsahuje nasledujuce informacie.
+   A. PE32+ HEADER. Je to WINDOWS EXECUTABLE FILE HEADER obsahujuci informacie ako napriklad platformu (X86/X64) pre ktoru bol MODULE/ASSEMBLY vytvoreny.
+   B. CLR HEADER. Obsahuje informacie ako je meno MODULE/ASSEMBLY, verziu CLR pre ktoru bola MODULE/ASSEMBLY vytvoreny, STRONG NAME - ak sa jedna o ASSEMBLY a MethodDef na Main() metodu, ak sa jedna o EXE FILE.
+   C. METADATA. Subor rozlicnych METADATA o definovanych MODULES, TYPES, MEMBERS (FIELDS, PROPERTIES, EVENTS, METHODS), referovanych ASSEMBLIES a MANIFEST.
+   D. IL CODE. Samotny MSIL CODE MODULE/ASSEMBLY.
+!!! 8. MODULE METADATA su tvorene 3 kategoriami dat.
+   A. DEFINITION TABLES. Obsahuju informacie o danom MODULE a zoznam TYPES a ich MEMBERS (FIELDS, PROPERTIES, EVENTS, METHODS) kazdeho TYPE, ktory definuje dany MODULE.
+   B. REFERENCE TABLES. Obsahuju zoznam vsetkych ASSEMBLIES, MODULES, pouzitych TYPES a pouzitych MEMBERS (iba pouzitych, nie vsetkych), na ktore sa MODULE referuje do inych MODULES (v ROVNAKEJ, alebo INEJ ASSEMBLY).
+   C. MANIFEST. Obsahuje informacie popisujuce ASSEMBLY.
+!!!!! 9. POZOR METADATA (DEFINITION TABLES a REFERENCE TABLES) su VIAZANE VZDY NA MODULE a NIE NA ASSEMBLY. ASSEMBLY METADATA su obsiahnute v ASSEMBLY MANIFEST.
+10. MODULES obsahuju nasledujuce METADATA DEFINITION TABLES.
+   A. ModuleDef - je iba 1 pre cely MODULE. Obsahuje MODULE FILE NAME a EXTENSION ci MODULE ID typu GUID, ktore je unikatne pre MODULE a umoznuje ho jednoznacne identifikovat aj ked sa nazov MODULE FILE zmeni.
+   B. TypeDef - obsahuje 1 ENTRY pre KAZDY TYPE. Kazda ENTRY obsahuje TYPE NAME, BASE TYPE daneho TYPE, TYPE FLAGS (PUBLIC, PRIVATE), pre kazdu METHOD jej INDEX do MethodDef TABLE, pre kazdy FIELD jej INDEX do FieldDef TABLE, pre kazdy EVENT jej INDEX do EventDef TABLE a pre kazdu PROPERTY jej INDEX do PropertyDef TABLE.
+   C. MethodDef - obsahuje 1 ENTRY pre KAZDU METHOD. Kazda ENTRY obsahuje METHOD NAME, FLAGS (PRIVATE, PUBLIC, STATIC, VIRTUAL, ABSTRACT, FINAL), METHOD SIGNATURE (PARAMETERS, RETURN VALUE), OFFSET v MODULE na poziciu, kde sa nachadza IL CODE. Kazda ENTRY referuje aj na ParamDef TABLE, kde su dodatocne informacie o PARAMETERS danej METHOD.
+   D. ParamDef - obsahuje 1 ENTRY pre KAZDU PARAMETER KAZDEJ METHOD, ktoru MODULE OBSAHUJE. KAZDA ENTRY obsahuje NAME, TYPE a FLAGS (IN, OUT, RETVAL).
+   E. FieldDef - obsahuje 1 ENTRY pre KAZDY FIELD, ktoru MODULE OBSAHUJE. KAZDA ENTRY obsahuje NAME, TYPE a FLAGS (PUBLIC, PRIVATE).
+   F. EventDef - obsahuje 1 ENTRY pre KAZDY EVENT, ktory MODULE OBSAHUJE. KAZDA ENTRY obsahuje NAME, TYPE a FLAGS (PUBLIC, PRIVATE).
+   G. PropertyDef - obsahuje 1 ENTRY pre KAZDU PROPERTY, ktoru MODULE OBSAHUJE. KAZDA ENTRY obsahuje NAME, TYPE a FLAGS (PUBLIC, PRIVATE).
+11. MODULES obsahuju nasledujuce METADATA REFERENCE TABLES.
+   A. AssemblyRef - obsahuje 1 ENTRY pre KAZDY ASSEMBLY, ktorej TYPES MODULE obsahujuci AssemblyRef pouziva. Kazda ENTRY obsahuje ASSEMBLY NAME (BEZ EXTENSION), VERSION NUMBER, CULTURE, PUBLIC KEY TOKEN, PUBLISHER PUBLIC KEY, FLAGS a HASH VALUE ASSEMBLY.
+   B. ModuleRef - obsahuje 1 ENTRY pre KAZDY REFERENCED MODULE, na ktore  MODULE obsahujuci ModuleRef pouziva. Obsiahnute su oba TIE REFERENCED MODULES, ktorych TYPES su z daneho MODULE referovane. Pri MULTI-FILES ASSEMBLIES, ak dany MODULE sa NEREFERUJE na ZIADEN TYPE z REFERENCED MODULE, tak tento REFERENCED MODULE NIE JE PRIDANY do tejto TABLE. Pridane su iba tie REFERENCED MODULES na ktorych TYPY sa dany MODULE REFERUJE. ModuleRef obsahuje MODULE NAME (BEZ EXTENSION).
+   C. TypeRef - obsahuje 1 ENTRY pre KAZDY TYPE, na ktory sa dany MODULE REFERUJE. KAZDA ENTRY obsahuje TYPE NAME a miesto, kde sa dany TYPE nachadza. Ak je implementovany v INOM TYPE, tak obsahuje referenciu na TypeRef. Ak je implementovany v TOM ISTOM MODULE, tak obsahuje referenciu na ModuleDef. Ak je implementovany v INOM MODULE, tak obsahuje referenciu na ModuleRef. Ak je implementovany v INEJ ASSEMBLY, tak obsahuje referenciu na AssemblyRef.
+   D. MemberRef - obsahuje 1 ENTRY pre KAZDY MEMBER, na ktory dany MODULE REFERUJE. KAZDA ENTRY obsahuje MEMBER NAME, SIGNATURE (pri METHODS PARAMETERS a RETURN VALUE) a referenciu na TypeRef TYPE, ktory dany MEMBER definuje.
+12. Podrobne informacie o vygenerovanom MODULE/ASSEMBLY je mozne ziskat pomocou programu TOOL [ILDasm.EXE].
+13. MANIFEST obsahuje informacie o ASSEMBLY, ktore umoznuju ASSEMBLY IDENTIFIKOVAT a zaviest VSETKY FILES, z ktorych sa dana ASSEMBLY sklada. MANIFEST obsahuje tieto informacie.
+   A. ASSEMBLY NAME, VERSION, CULTURE a PUBLISHER.
+   B. Zoznam vsetkych MODULES, ktore ASSEMBLY obsahuje.
+   !!! C. Zoznam vsetkych FILES (MODULES, alebo RESOURCE FILES), z ktorych je dana ASSEMBLY zlozena. Na zaklade tejto informacie z MANIFEST moze CLR ZAVIEST ASSEMBLY do MEMORY.
+   D. Zoznam vsetkych exportovatelnych TYPES z danej ASSEMBLY.
+!!! 14. ASSEMBLY je tvorena 1-N FILES. Tieto FILES mozu byt nasledujucich typov.
+   A. MODULE - je skompilovany CODE obsahujuci TYPES a MMETHODS tvoriace jeden celok - MODULE.
+   !!! B. LINKED RESOURCE - je LUBOVOLNY FILE, ktoreho REFERENCIA sa pri kompilacii a linkovani vlozi do ASSEMBLY.
+!!! 15. RESOURCES mozu byt 2 typov.
+   A. LINKED RESOURCES. Tieto RESOURCE NIE SU SUCASTOU ASSEMBLY FILES (PE32+ FILES), ale ASSEMBLY iba referuje na EXTERNE FILES, ktore MUSIA byt distribuovane spolu s ASSEMBLY.
+   B. EMBEDDED RESOURCES. RESOURCE FILES su fyzicky VLOZENE do PE32+ FILE a stavaju sa sucastou ASSEMBLY.
+!!! 16. SINGLE-FILE ASSEMBLY moze obsahovat nasledujuce casti.
+   A. 1 MODULE.
+   B. O-N EMBEDDED RESOURCES.
+!!! 17. SINGLE-FILE ASSEMBLY moze obsahovat nasledujuce casti.
+   A. 1-N MODULE.
+   B. O-N EMBEDDED RESOURCES.
+   C. O-N LINKED RESOURCES.
+!!!!! 18. SINGLE-FILE ASSEMBLY teda MOZE LUBOVOLNY POCET EMBEDDED RESOURCES, ale NEMOZE OBSAHOVAT ANI JEDNU LINKED RESOURCE, pretoze potom by to uz bol MULTI-FILE ASSEMBLY.
+!!!!! 19. MULTI-FILE ASSEMBLY je tvorena 1-N MODULES a 0-N RESOURCE FILES. MODULE je bud SKOMPILOVANY CODE, obsahujuci METADATA a IL CODE. Pre MODULE platia nasledujuce zasady.
+   A. MODULE NIE JE SAMOSTATNE SPUSTITELNY. Nato, aby ho CLR mohol zaviest, MODULE MUSI byt SUCASTOU ASSEMBLY.
+   !!!!! B. Ak ma ASSEMBLY VIAC MODULES, tak sa dany MODULE (RESOURCE FILE) nacita AZ VTEDY, ked program SPUSTA NIEKTORY z TYPES DEFINOVANYCH v tomto MODULE (resp. ak program pristupi k danemu RESOURCE). To umoznuje napriklad, aby sa ASSEMBLY rozdelila do 2 MODULES, ked 1. MODULE bude obsahovat casto pouzivane TYPES a 2. MODULE bude obsahovat zriedkavo pouzivane TYPES. Ak program vyuzivajuci takuto MULTI-FILES ASSEMBLY NIKDY NEPOUZIJE TYPE z 2. MODULE, tak sa tento NIKDY NEZAVEDIE do MEMORY a CLR ho NIKDY NEBUDE POTREBOVAT NATIAHNUT ani k nemu PRISTUPIT. To je mozne s vyhodou pouzit napriklad pri distribucii ASSEMBLIES cez INTERNET, kde sa malo pouzivane TYPES (resp. RESOURCES) ulozia do SEPARATNYCH MODULES (RESOURCE FILES), ktore ak ich program nepouzije NEMUSIA VOBEC STAHOVAT z INTERNETU a ASSEMBLY bude NORMALNE FUNOGOVAT i bez toho aby NEPOUZITE MODULES (RESOURCE FILES) boli stiahnute z INTERNETU do PC.
+   !!! C. VISUAL STUDIO podporuje iba SINGLE-FILE ASSEMBLIES. Na vytvorenie MULTI-FILES ASSEMBLIES je NUTNE pouzit C# COMPILER [CSC.EXE] a ASSEMBLY LINKER [AL.EXE] z COMMAND LINE.
+   D. V CSC.exe sa MODULE kompiluje priznakom '/t:module' a MODULE sa pridava do ASSEMBLY pomocou priznaku '/addmodule:ModuleName'.
+   !!! E. MULTI-FILES ASSEMBLIES tvorene viacerymi MODULES, alebo RESOURCE FILES sa LINKUJU pomocou ASSEMBLY LINKER [AL.EXE].
+!!! 20. Pouzitie MULTI-FILES ASSEMBLIES ma nasledujuce vyhody.
+   A. ASSEMBLIES je mozne rozdelit do MODULES podla toho, ktore TYPES ci RESOURCES su pouzivane CASTO a ktore ZRIEDKA. To je mozne s vyhodou pouzit napriklad pri distribucii ASSEMBLIES cez INTERNET, kde sa malo pouzivane TYPES (resp. RESOURCES) ulozia do SEPARATNYCH MODULES (RESOURCE FILES), ktore ak ich program nepouzije NEMUSIA VOBEC STAHOVAT z INTERNETU a ASSEMBLY bude NORMALNE FUNOGOVAT i bez toho aby NEPOUZITE MODULES (RESOURCE FILES) boli stiahnute z INTERNETU do PC.
+   !!! B. ASSEMBLIES mozu mat LINKED RESOURCES, co su LUBOVOLNE FILES, ktore su ulozene ako SEPARATNE FILES na ktore sa ASSEMBLY MANIFEST iba REFERUJE, ale NIE SU VLOZENE PRIAMO v ASSEMBLY (PE32+) FILE danej ASSEMBLY.
+   C. Jednotlive MODULES mozu byt vytvorene v ROZLICNYCH LANGUAGES a pomocou ASSEMBLY LINKER [AL.EXE] spojene do 1 ASSEMBLY.
+   !!!!! D. OBROVSKOU VYHODOU MULTI-FILES ASSEMBLIES (ktore NEMAJU STRONG NAME) je moznost MODIFIKOVAT MODULES BEZ TOHO, aby doslo k MODIFIKACII ASSEMBLY.
+!!!!! 21. OBROVSKOU VYHODOU MULTI-FILES ASSEMBLIES (ktore NEMAJU STRONG NAME) je moznost MODIFIKOVAT MODULES BEZ TOHO, aby doslo k MODIFIKACII ASSEMBLY. Nasledujuci priklad uvadza ako je to mozne vykonat.
+   A. Vytvoria sa N-MODULES (resp. RESOURCES FILES) z ktorych sa pomocou [CSC.EXE], alebo [AL.EXE] vytvori ASSEMBLY.
+   B. Tuto ASSEMBLY je mozne vlozit do ako REFERENCE do inych ASSEMBLIES a normalne pouzivat.
+   !!!!! C. Ak sa teraz MODULES MODIFIKUJU, tak po ich skompilovani je mozne ASSEMBLY DALEJ POUZIVAT aj BEZ NUTNOSTI REKOMPLILACIE ASSEMBLY. Samozrejme zmena MODULES NESMIE BYT taka pri ktorej by sa MODIFIKOVALI METADATA napriklad ODSTRANENIM, alebo MODIFIKACIOU existujucich TYPES. Takato zmena by viedla k NUTNOSTI REKOMPILACIE CELEJ ASSEMBLY. Avsak ak sa MODULES zmenia iba tak, ze sa napriklad MODIFIKUJE CODE EXISTUJUCICH METHODS, alebo v pripade RESOURCE FILES sa modifikuje ich obsah, tak takuto zmenu MODULES (RESOURCE FILES) ASSEMBLY AKCEPTUJE a ZMENENE MODULES (RESOURCE FILES) POUZIJE aj BEZ NUTNOSTI VYKONAT REKOMPILACIU.
+22. ASSEMBLY MANIFEST je tvoreny nasledujucimi METADATA TABLES.
+   A. AssemblyDef - obsahuje 1 RECORD popisujuci danu ASSEMBLY. Obsahuje ASSEMBLY NAME (bez EXTENSION ci PATH), VERSION, CULTURE, FLAGS, HASH ALGORITHM a PUBLISHER PUBLIC KEY.
+   B. FileDef - obsahuje 1 RECORD pre KAZDY FILE, ktory NEOBSAHUJE MANIFEST a bol vlozeny do MULTI-FILE ASSEMBLY. Pri SINGLE-FILE ASSEMBLY je tato TABLE PRAZDNA. Kazdy RECORD obsahuje FILE NAME s EXTENSION (BEZ PATH), HASH VALUE daneho FILE.
+   !!! C. ManifestResourceDef - obsahuje 1 RECORD pre KAZDY LINKED ci EMBEDDED RESOURCE. Kazdy RECORD obsahuje RESOURCE NAME a FLAGS. Ak sa jedna o EMBEDDED RESOURCE tak RECORD obsahuje aj OFFSET a LENGTH STREAMU v ktorom je obsah RESOURCE ULOZENY. V pripade LINKED RESOURCE RECORD obsahuje INDEX do TABLE FileDef, ktory obsahuje RESOURCE FILE.
+   D. ExportedTypeDef - obsahuje 1 RECORD pre kazdy PUBLIC TYPE zo VSETKYCH FILES OKREM FILE obsahujuceho MANIFEST, pretoze tieto data sa daju priamo z FILE obsahujuceho MANIFEST nacitat. Kazdy RECORD obsahuje TYPE NAME a INDEX do TABLE FileDef.
+23. Na LINKOVANIE .NET programu je mozne pouzit aj TOOL [AL.EXE]. Tato TOOL umoznuje LINKOVAT uz SKOPILOVANE MODULES do ASSEMBLY. Ak ASSEMBLY je tvorena viacerymi MODULES, tak vysledkom linkovania je MULTI-FILE ASSEMBLY tvorena VIACERYMI FILES.
+   A. '/out:FileName' - definuje FILE NAME, ktory je vysledkom kompilacie.
+   B. '/target:winexe' - generuje WINDOWS EXE.
+   C. '/target:exe' - generuje konzolovy EXE.
+   D. '/target:appcontainerexe' - generuje WINDOWS STORE EXE.
+   E. '/target:module' - generuje CLR Module.
+   F. '/target:library' - generuje DLL.
+   G. '/reference:AssemblyName' - definuje ASSEMBLY na ktoru sa generovana ASSEMBLY referuje.
+   H. '/main:Namespace.Type.MethodName' - definuje Main() METHOD programu. Pri pouziti tohto OPTION LINKER [AL.EXE] vytvori PRIMITIVNU STATICKU METHOD __EntryPoint(), ktora vola METHOD definovanu tymto OPTION. Podmienkou vsak je, ze ako trieda 'Type' tak i METHOD 'MethodName' musia byt PUBLIC.
+   I. '/embed:FileName' - OPTION umoznuje vlozit do ASSEMBLY EMBEDDED RESOURCE. FYZICKY VLOZI do ASSEMBLY (PE32+ FILE) RESOURCE z FILE 'FileName'.
+   J. '/link:FileName' - OPTION umoznuje vlozit do ASSEMBLY LINKED RESOURCE. Do ASSEMBLY VLOZI REFERENCIU na RESOURCE FILE z FILE 'FileName'. FILE 'FileName' musi byt distribuovany spolu s ASSEMBLY.
+   M. '/win32res:FileName' - do ASSEMBLY prida WIN32 RESOURCE FILE (.RES) s nazvom 'FileName'.
+   N. '/win32icon:FileName' - do ASSEMBLY prida WIN32 ICON FILE (.ICO) s nazvom 'FileName'.
+!!! 24. MULTI-FILE ASSEMBLIES je mozne vytvarat aj pomocou [CSC.EXE]. TOOL [AL.EXE] vsak umoznuje aj vytvaranie SATELLITE ASSEMBLIES, ktore NEBOSAHUJU MODULES, iba RESOURCES a MANIFEST.
+25. V ASSEMBLIES je do PE32+ FILES vkladany aj WIN32 VERSION RESOURCE. Jeho hodnoty sa nastavuju pomocou sady ATTRIBUTES ako napriklad [assembly:AssemblyProduct] ci [assembly:AssemblyVersion]. Udaje z WIN32 VERSION RESOURCE je mozne zobrazit v WIBDOWS EXPLORER, alebo pomocou CLASS System.Diagnostics.FileVersionInfo.
+26. Verzia ASSEMBLY sa sklada zo 4 cisel udavajucich MAJOR verziu, MINOR verziu, BUILD NUMBER a REVISION NUMBER. Je vhodne tuto konvenciu dodrzat, pretoze niektore TOOLS ju vyuizvaju pri zistovani, ktora verzia je UPGRADE prechadzajucej.
+27. ASSEMBLIES mozu mat az 3 rozlicne typy verzii.
+   A. ASSEMBLY FILE VERSION - udava verziu ASSEMBLY FILE. CLR tuto hodnotu NIJAKO NEINTERPRETUJE.
+   B. ASSEMBLY INFORMATION VERSION - udava verziu produktu do ktorej ASSEMBLY FILE patri. CLR tuto hodnotu NIJAKO NEINTERPRETUJE.
+   C. ASSEMBLY VERSION - je VERSION ASSEMBLY, ktoru CLR vyuziva pre VERSIONING pre STRONGLY NAMED ASSEMBLY.
+28. CULTURE urcuje JAZYKOVU MUTACIU ASSEMBLY. CULTURE spolu s ASSEMBLY NAME, VERSION a PUBLIC KEY urcuje STRONG NAME danej ASSEMBLY.
+!!! 29. Standardne sa ASSEMBLIES, ktore maju realizvat JAZYKOVU PODPORU robia nasledujucim sposobom.
+   A. Vytvorim CULTURE-NEUTRAL ASSEMBLY, ktora NEMA DEFINOVANU CULTURE.
+   B. Pre KAZDU CULTURE vytvorim SATELLITE ASSEMBLY, ktora NEOBSAHUJE ZIADEN KOD (moze, ale nie je to vhodne) ale obsahuje RESOURCES pre danu CULTURE. SATELLITE ASSEMBLY MUSI mat nastavenu CULTURE.
+   C. Kazdu SATELLITE ASSEMBLY musim umiestnit do SUBDIRECTORY, ktory ma meno ukoncene menom CULTURE.
+30. SATELLITE ASSEMBLY, ktora NEMA ZIADEN CODE sa da vytvorit IBA pomocou [AL.EXE] do ktorej sa vlozia potrebne RESOURCE FILES.
+31. Pre instalaciu WINDOWS STORE programov platia nasledujuce zasady.
+   A. Vsetky ASSEMBLIES, ktore program pouziva musia byt ulozene v .APPX FILE.
+   B. Pri instalacii programu sa vytvori TILE v START WINDOW a ASSEMBLIES sa nakopiruju do DIRECTORY.
+   C. Pri instalacii TEJ ISTEJ VERZIE PROGRAMU pre INEHO USER sa vytvori pre daneho USER TILE, ale zaroven sa pouziju uz nainstalovane ASSEMBLIES.
+   D. Pri instalacii INEJ VERZIE PROGRAMU sa tato uklada do NEZAVISLEHO DIRECTORY, takze jednotlive verzie su NEZAVISLE.
+   E. Pri odinstalovani programu sa odstrani TILE a ak dany program uz NEMA ZIADEN DALSI USER nainstalovany, tak sa vymaze aj DIRECTORY v ktorom bol program nainstalovany.
+!!! 32. PRIVATLY DEPLOYED ASSEMBLIES su ASSEMBLIES, ktore su ulozene v IDENTICKOM DIRECTORY ako program. Ak chcem pouzivat aj ASSEMBLIES z niektoreho zo SUBDIRECTORIES DIRECTORY v ktorom je .EXE FILE programu, tak tieto SUBDIRECTORIES je mozne definovat v .CONFIG FILE v sekcii Configuration->Runtime->AssemblyBinding->Probing->PrivatePath, kde je mozne zadat 1-N ciarkou oddelenych RELATIVNYCH PATHS voci DIRECTORY v ktorom je program ulozeny. Ine DIRECTORIES ako DIRECTORY a SUBDIRECTORIES v ktorom je program ulozeny POUZIVAT NIE JE MOZNE.
+!!! 33. CLR pri zavadzani programu, ked hlada referencovane ASSEMBLIES, pouziva proces PROBING - proces vyhladavania ASSEMBLIES v SUBDIRECTORIES (iba SUBDIRECTORIES a nie uplne inych DIRECTORY) adresara, kde je program umiestneny. V .CONFIG FILE je mozne definovat jednu, alebo viacero PRIVATE PATHS, ktore ukazuju na SUBDIRECTORY DIRECTORY, kde sa NACHADZA PROGRAM. Ak mam ASSEMBLY nazvanu MyAssembly, tak CLR najprv hlada subor MyAssembly.dll a potom MyAssembly.exe a to nasledujucim sposobom. (AppDir je adresar, kde sa nachadza program.)
+   A. AppDir\MyAssembly.dll.
+   B. AppDir\MyAssembly\MyAssembly.dll.
+   C. AppDir\PrivatePath_1\MyAssembly.dll. PrivatePath_1 je 1. konfigurovatelna PATH v PRIVATE PATH v .CONFIG FILE. PrivatePaths moze byt LUBOVOLNY POCET.
+   D. AppDir\PrivatePath_1\MyAssembly\MyAssembly.dll. PrivatePath_1 je 1. konfigurovatelna PATH v PRIVATE PATH v .CONFIG FILE. PrivatePaths moze byt LUBOVOLNY POCET.
+   E. AppDir\PrivatePath_2\MyAssembly.dll. PrivatePath_2 je 2. konfigurovatelna PATH v PRIVATE PATH v .CONFIG FILE. PrivatePaths moze byt LUBOVOLNY POCET.
+   F. AppDir\PrivatePath_2\MyAssembly\MyAssembly.dll. PrivatePath_2 je 2. konfigurovatelna PATH v PRIVATE PATH v .CONFIG FILE. PrivatePaths moze byt LUBOVOLNY POCET.
+   G. AppDir\MyAssembly.exe.
+   H. AppDir\MyAssembly\MyAssembly.exe.
+   I. AppDir\PrivatePath_1\MyAssembly.exe. PrivatePath_1 je 1. konfigurovatelna PATH v PRIVATE PATH v .CONFIG FILE. PrivatePaths moze byt LUBOVOLNY POCET.
+   J. AppDir\PrivatePath_1\MyAssembly\MyAssembly.exe. PrivatePath_1 je 1. konfigurovatelna PATH v PRIVATE PATH v .CONFIG FILE. PrivatePaths moze byt LUBOVOLNY POCET.
+   K. AppDir\PrivatePath_2\MyAssembly.exe. PrivatePath_2 je 2. konfigurovatelna PATH v PRIVATE PATH v .CONFIG FILE. PrivatePaths moze byt LUBOVOLNY POCET.
+   L. AppDir\PrivatePath_2\MyAssembly\MyAssembly.exe. PrivatePath_2 je 2. konfigurovatelna PATH v PRIVATE PATH v .CONFIG FILE. PrivatePaths moze byt LUBOVOLNY POCET.
+!!! 34. TOOL [FusLogVw.EXE] umoznuje zobrazovat poradie v akom su ASSEMBLY FILES nacitavane CLR do MEMORY.
+//-------------------------------------------------------------------------------------------------------
+ASSEMBLIES, MODULES a RESOURCES.
+
+1. MODULE je FILE obsahujuci METADATA a IL CODE. Teda je to FILE, ktory VZDY OBSAHUJE MANAGED METADATA a IL CODE.
+2. RESOURCE je LUBOVOLNY FILE, ktory je LINKED z ASSEMBLY. Teda RESOURCE NEOBSAHUJE ZIADNE METADATA ani IL CODE.
+3. RESOURCES su 2 typov.
+   A. LINKED RESOURCES vystupuju ako SEPARATNE FILES, ktore MUSIA byt DISTRIBUOVANE SPOLU S ASSEMBLY.
+   B. EMBEDDED RESOURCES su RESOURCES, ktorych OBSAH bol PRIAMO VLOZENY do ASSEMBLY FILE.
+4. ASSEMBLY moze byt SINGLE-FILE, alebo MULTI-FILE ASSEMBLY.
+!!! 5. SINGLE-FILE ASSEMBLY moze obsahovat nasledujuce casti.
+   A. 1 MODULE.
+   B. O-N EMBEDDED RESOURCES.
+!!! 6. MULTI-FILE ASSEMBLY moze obsahovat nasledujuce casti.
+   A. 1-N MODULE.
+   B. O-N EMBEDDED RESOURCES.
+   C. O-N LINKED RESOURCES.
+!!!!! 7. SINGLE-FILE ASSEMBLY teda MOZE LUBOVOLNY POCET EMBEDDED RESOURCES, ale NEMOZE OBSAHOVAT ANI JEDNU LINKED RESOURCE, pretoze potom by to uz bol MULTI-FILE ASSEMBLY.
+//-------------------------------------------------------------------------------------------------------

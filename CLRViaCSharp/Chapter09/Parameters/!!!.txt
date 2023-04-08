@@ -1,0 +1,42 @@
+//-------------------------------------------------------------------------------------------------------
+1. Solution demonstruje pouzitie rozlicnych typov PARAMETERS a ich prenos do METHODS, ci CONSTRUCTORS.
+2. Pre OPTIONAL PARAMETERS (obsahuju DEFAULT VALUE) platia nasledujuce zasady.
+   A. OPTIONAL parametre MUSIA BYT DEFINOVANE, az po PARAMETERS BEZ DEFAULT VALUE, avsak PRED PARAMETER do ktoreho sa ukladaju VARIABLE PARAMETERS.
+   !!! B. DEFUALT hondoty v OPTIONAL parametroch MUSIA BYT COMPILE-TIME CONSTANTS a musia byt PRIMITIVE TYPES (Int32, String), ENUMERATIONS, alebo DEFAULT VALUES definovane pomocou KEYWORD [default]. Tieto DEFAULT VALUES sa pri COMPILATION do METADATA CALLER CODE.
+   C. OPTIONAL PARAMETERS NIE JE mozne pouzit pre [ref] a [out] PARAMETERS.
+   !!! D. Pri definovani DEFAULT VALUE je mozne pouzit KEYWORD [default].
+   !!! E. DEFAULT VALUES je mozne definovat i pre CONSTRUCTORS, DELEGATES a INDEXERS.
+   !!!!! F. Ak sa DEFAULT VALUE zmeni potom je NEVYHNUTNE vykonat RECOMPILATION vsetkych ASSEMBLIES, ktore TYPE so zmenenou DEFAULT VALUE pouzivaju. Je to preto, lebo DEFAULT VALUES su ulozene v METADATA CALLER CODE a nie METADATA CALLED CODE.
+!!! 3. OPTIONAL PARAMETERS su v C# implementovane nasledovne.
+   A. Ak dany PARAMETER ma DEFUALT VALUE, tak je oznaceny ATTRIBUTE [Optional].
+   B. Ak dany PARAMETER ma DEFUALT VALUE, tak je oznaceny aj ATTRIBUTE [DefaultParameterValue].
+   !!! C. Pri vytvarani ATTRIBUTE [DefaultParameterValue] sa do jeho CONSTRUCTOR ulozi definovana DEFAULT VALUE.
+   D. Ked COMPILER zisti, ze niektory z METHOD PARAMETERS chyba, tak skontroluje pritomnost ATTRIBUTE [DefaultParameterValue] a jeho DEFAULT VALUE pouzije ako hodnotu daneho PARAMETER.
+   !!!!! E. C# COMPILER DEFAULT VALUES pouziva ROVNAKO ako CONSTANTS. To znamena, ze pri COMPILATION CALLER CODE C# vytiahne z ATTRIBUTES [DefaultParameterValue] aplikovanych na PARAMETERS ich DEFAULT VALUES a tieto ulozi do vygenerovaneho MSIL CODE.
+   !!!!! F. Ak po nasadeni ASSEMBLY dojde k zmene DEFAULT VALUE je NUTNE vykonat RECOMPILATION VSETKYCH ASSEMBLIES, ktore sa referuju na TYPE, ktory obsahuje zmenene DEFAULT VALUES. Ak sa tak nestane, referovane ASSEMBLIES budu obsahovat STARU DEFAULT VALUE co moze sposobit problemy podobne ako je to pri CONSTANTS.
+4. Pre NAMED PARAMETERS platia nasledujuce zasady.
+   A. NAMED PARAMETERS sa musia nachadzat AZ ZA VSETKYMI NON-DEFAULT PARAMETERS, ale PRED 'PARAMS' PARAMETER.
+   B. NAMED PARAMETERS su interpretovane v poradi v akom su definovane v CODE, ktory vola danu METHOD.
+   C. NAMED PARAMETERS MOZU obsahovat aj KEYWORDS [ref] a [out].
+   D. NAMED PARAMETERS je mozne zapisovat v LUBOVOLNOM PORADI, bez ohladu nato v akom poradi boli definovane v definicii METHOD.
+5. KEYWORD [var] umoznuje aby C# COMPILER si SAM IDENTIFIKOVAL akeho TYPE je dana VARIABLE. Pocas COMPILATION C# na zaklade toho aka VALUE je priradena do danej VARIABLE je identifikovany dany TYPE. VARIABLES typu [var] su IBA SKRATENYM ZAPISOM sluziacim nato, aby nebolo treba vypisovat MENO TYPE pri deklaracii VARIABLE a aby si to C# v pri COMPILATION identifikoval sam.
+6. KEYWORD [var] je mozne pouzivat IBA pre LOCAL VARIABLES. Nie je ho mozne pouzivat pre FIELDS, ani PARAMETERS.
+7. Pre PARAMETERS typu [ref] a [out] platia nasledujuce zasady.
+   A. PARAMETERS typu [ref] a [out] su prenasane do METHODS BY-REFERENCE a nie BY-VALUE ako ostatne typy PARAMETERS. Vdaka tomu mozu METHODS vo svojom CODE ZMENIT HODNOTU REFERENCIE, ktora je potom vratena do CALLER METHOD.
+   !!!!! B. CLR pri pouziti PARAMETERS typu [ref] a [out] C# generuje MSIL CODE, ktory zabezpecuje, ze PARAMETER sa bude prenasat BY-REFERENCE. C# generuje pre PARAMETERS typu [ref] a [out] IDENTICKY MSIL CODE, avsak tieto 2 typy PARAMETERS rozlisuje v METADATA, kde sa odlisuju v 1 nastavenom FLAG.
+   C. PARAMETERS typu [ref] MUSIA byt CALLER METHOD INICIALIZOVANE.
+   D. PARAMETERS typu [out] NEMUSIA byt CALLER METHOD INICIALIZOVANE, ale CALLER METHOD ho MUSI INICIALIZOVAT pred svojim ukoncenim.
+   !!! E. METHOD OVERLOADING, IBA na zaklade rozdielnosti daneho PARAMETER v tom ci je typu [ref], alebo [out] NIE JE MOZNE. Je to preto lebo FLAG, ktory ich odlisuje NIE JE sucastou METHOD SIGNATURE.
+   !!!!! F. METHOD OVERLOADING na zaklade rozdielnosti ci PARAMETER ma, alebo nema nastaveny NIEKTORY z typov [ref], alebo [out] vsak JE MOZNE. To znamena, ze CLR akceptuje 2 METHODS, kde v 1. METHOD sa pouzije PARAMETER typu 'T' a v 2. METHOD sa pouzije PARAMETER typu 'ref T', alebo 'out T'.
+   !!! G. Pri pouziti PARAMETERS typu [ref] a [out] kvoli zabezpeceniu TYPE SAFETY, MUSI BYT PRENASANY TYPE IDENTICKY s TYPE DEKLAROVANYM v METHOD SIGNATURE. Ak NIE JE (napriklad PARAMETER je TYPE 'out object' prenesie sa 'out string'), tak C# COMPILER GENERUJE ERROR.
+8. Pre METHODS s PREMENLIVYM poctom PARAMETRS platia nasledujuce pravidla.
+   A. Iba POSLEDNY PARAMETER moze byt oznaceny KEYWORD [params] a MUSI byt typu ARRAY (lubovolneho TYPE).
+   !!! B. C# oznacuje PARAMETER oznaceny KEYWORD [params] ATTRIBUTE [ParamArray].
+   C. C# pri COMPILATION VZDY NAJPRV vyhladava METHOD s ROVNAKOU SIGNATURE, ktora NEMA aplikovany PARAMETER typu [params] a AZ ked TYPE NEMA takuto METHOD, skusi hladat METHODS so zodpovedajucou SIGNATURE, ktora ma aplikovany PARAMETER typu [params], teda METHODS METODY s PARAMETER oznacenym ATTRIBUTE [ParamArray].
+   D. Pri prenose PARAMETERS typu [params] je mozne pouzit SYNTAX rovnaku ako pri volani METHODS, alebo preniest vytvoreny ARRAY. Je mozne preniest aj NULL VALUE.
+   E. Pouzitie PARAMETERS typu [params] prinasa mensi PERFORMANCE HIT.
+9. Pri definovani METHODS sa odporuca dodrziavat nasledujuce zasady.
+   A. METHOD PARAMETERS by mali mat WEAKEST POSSIBLE TYPE. To znaci, ze sa preferuju BASE CLASSES pred DERIVED CLASSES a BASE INTERFACES pred DERIVED INTERFACES. To umoznuje pouzit ako PARAMETERS VACSIE spektrum TYPES.
+   B. METHOD RETURN VALUES by mali mat STRONGEST POSSIBLE TYPE. To znaci, ze sa preferuju DERIVED CLASSES pred BASE CLASSES a DERIVED INTERFACES pred BASE INTERFACES. To umoznuje METHOD CALLERS pouzit vsetky PROPERTIES a METHODS DERIVED TYPE.
+10. CLR a teda ani C# NEPODPORUJE CONSTANT PARAMETERS.
+//-------------------------------------------------------------------------------------------------------

@@ -1,0 +1,46 @@
+//-------------------------------------------------------------------------------------------------------
+1. Solution demonstruje pouzitie properties v C#.
+2. CLR podporuje 2 typy PROPERTIES.
+   A. PARAMETERLESS PROPERTIES su klasicke PROPERTIES, zvycajne pouzivane na pristup k FIELD, alebo vypocet kalkulovanej hodnoty.
+   B. PARAMETERFULL PROPERTIES umoznuju definovat PARAMETERS pri pristupe k PROPERTIES. C# podporuje tieto properties IBA vo forme INDEXERA.
+3. C# pri definovani PROPERTY (bez ohladu na to ci sa jedna o PARAMETERLESS, alebo PARAMETERFULL PROPERTY) vklada do ASSEMBLY nasledujuce data.
+   A. METHOD get_XXX(), kde 'XXX' je PROPERTY NAME. Tato METHOD sa vklada IBA ked je definovana GETTER METHOD k PROPERTY.
+   B. METHOD set_XXX(), kde 'XXX' je PROPERTY NAME. Tato METHOD sa vklada IBA ked je definovana SETTER METHOD k PROPERTY.
+   C. METADATA o PROPERTY. Tieto METADATA CLR NIJAKO NEVYUZIVA, ale v PROGRAMS je k nim pristup mozny cez REFLECTION. PROGRAMS tak mozu zistit ake PROPERTIES dana CLASS definuje. Toto casto vyuzivaju rozlicne TOOLS ako napriklad XAML PARSER.
+!!! 4. PROPERTIES a tym padom aj METHODS get_XXX() a set_XXX() mozu byt STATIC, NON-STATIC, VIRTUAL a ABSTRACT.
+!!! 5. Ak niektory LANGUAGE NEMA PODPORU pre PROPERTIES, je mozne k nim pristupit pomocou volania PROPERTY GETTER a SETTER METHODS.
+6. AUTOMATIC PROPERTIES maju nasledujuce vlastnosti.
+   A. C# COMPILER pre AUTOMATIC PROPERTIES AUTOMATICKY definuje PRIVATE FIELD, ktoreho NAME je GENEROVANE COMPILER.
+   B. OBE GETTER, i SETTER METHODS MUSIA byt definovane, inak by s AUTOMATIC PROPERTIES nebolo mozne pracovat. Ak by totizto nebol GETTER, nie je ako zapisanu hodnotu vycitat (k vygenerovanemu FIELD sa nie je ako dostat z C#) a ak by nebol definovany SETTER, tak hodnotu PROPERTY NIE JE mozne NASTAVIT. A preto AUTOMATIC PROPERTIES MUSIA musia ako GETTER, tak i SETTER METHODS.
+   !!!!! C. ZASADNOU NEVYHODOU AUTOMATIC PROPERTIES je, ze pri KAZDEJ COMPILATION sa NAME PRIVATE FIELD MENI. Ak sa AUTOMATIC PROPERTY pouziva na SERIALIZATION, tak po RECOMPILATION nebude mozne SERIALIZED DATA DESERIALIZED.
+7. OBJECT a COLLECTIONS je mozne INICIALIZOVAT pomocou specialnej SYNTAX pre ktoru platia nasledujuce pravidla.
+   A. Ak PROPERTY daneho OBJECT ma SETTER, potom je ju mozne cez INITIALIZER nastavit.
+   B. Pomocou INTIALIZER SYNTAX je mozne do ARRAY pridat viacero ARRAY ITEMS.
+   !!! C. V pripade, ze COLLECTION IMPLEMENTUJE INTERFACE IEnumerable, alebo INTERFACE IEnumerable<T> a ma implementovanu METHOD Add(), tak tuto METHOD INITALIZER SYNTAX vola na inicializaciu COLLECTION ITEMS.
+   !!!!! D. V pripade, ze COLLECTION IMPLEMENTUJE INTERFACE IEnumerable, alebo INTERFACE IEnumerable<T> a NEMA IMPLEMENTOVANU METHOD Add(), tak INTIALIZER NEFUNGUJE a C# generuje COMPILER ERROR.
+   !!! E. Pomocou INITIALIZER SYNTAX je mozne volat METHOD Add() aj ked ma 2 (a viac) PARAMETERS, takze napriklad INITIALIZER SYNTAX je mozne pouzit aj pre pridavanie ITEMS do COLLETION TYPE Dictionary<Key,Value>.
+8. ANONYMOUS TYPES su TYPES, ktore generuje C# na zaklade definovania zoznamu PROPERTIES, ktore ma dany TYPE obsahovat. Pre ANONYMOUS TYPES platia nasledujuce zasady.
+   A. ANONYMOUS TYPES generuje C# COMPILER pri COMPILATION a maju SCOPE IBA v RAMCI 1 METHOD.
+   B. Pre kazdy ANONYMOUS TYPE C# COMPILER generuje PRIVATE READONLY FIELDS (ANONYMOUS TYPES su IMMUTABLE) z hodnot, ktore boli definovane pri vytvoreni ANONYMOUS TYPE. Mena ANONYMOUS TYPE FIELDS je mozne definovat bud EXPLICITNE, alebo si ho C# odvodi z nazvov hodnot (LOCAL VARIABLES, FIELDS, PROPERTIES), ktore sa pouzili na jeho vytvorenie. Podobne aj TYPES si C# odvodi z nazvov hodnot (LOCAL VARIABLES, FIELDS, PROPERTIES), ktore sa pouzili na vytvorenie ANONYMOUS TYPE.
+   C. C# COMPILER deklaruje pre ANONYMOUS TYPES CONSTRUCTOR s PARAMETERS pre KAZDY FIELD.
+   D. C# COMPILER deklaruje pre ANONYMOUS TYPES PUBLIC READONLY PROPERTIES pre KAZDY FIELD.
+   !!! E. C# COMPILER deklaruje ANONYMOUS TYPES METHODS GetHashCode(), Equals() aj ToString(), ktore na zaklade VALUES VSETKYCH FIELDS generuju zodpovedajuci vystup.
+   !!!!! F. Ak v JEDNEJ METHOD sa definuje VIACERO ANONYMOUS TYPE OBJECTS a tieto TYPES MAJU ROVNAKE FIELDS, tak C# COMPILER vygeneruje pre VSETKY OBJECTS IBA JEDEN ANONYMOUS TYPES a OBJECTS su potom INSTANCIAMI tohto TYPE na ktorym je mozne napriklad volat porovnavaciu METHOD Equals().
+9. TYPES Tuple a Tuple<> sluzia na definovanie TYPE, ktory ma 1-N FIELDS. OBJECTS typu Tuple, resp. Tuple<> su podobne ANONYMOUS TYPES, avsak s tym rozdielom, ze OBJECT tychto TYPES mozu figurovat ako FIELDS, ci METHOD PARAMETERS. Pre TUPLES platia nasledujce vlastnosti.
+   A. .NET definuje 8 CLASSES Tuple<> obsahuje 1-7 GENERIC PARAMETERS, kde pre kazdy PARAMETER Tuple<> obsahuje PRIVATE READONLY FIELD a READ-ONLY PROPERTY.
+   B. Kazdy CLASS Tuple<> implementuje INTERFACES IComparable, IStructuralEquatable a IStructuralComparable.
+   !!! C. STATIC CLASS Tuple sluzi ako CLASS FACTORY a obsahuje GENERIC METHODS Tuple.Create<>() sluziace na vytvorenie OBJECTS TYPE Tuple<> na zaklade TYPES vsetkych PARAMETERS, ktore su do METHODS Tuple.Create<>() zaslane. C# si na zaklade TYPES vsetkych PARAMETERS vytvori instanciu prislusneho OBJECT TYPE Tuple<>.
+   D. Ak je nutne definovat viac ako 8 GENERIC PARAMETERS je mozne vyuzit CLASS Tuple<> s 8 GENERIC PARAMETERS, kde za posledny PARAMETER sa pouzije dalsia instancia CLASS Tuple<> v ktorej sa definuju PARAMETERS 8-N.
+10. Podobnu funkcionalitu ako CLASS Tuple<> obsahuje i CLASS ExpandoObject definovana ako sucast DYNAMIC LANGAUGE RUNTIME. Tento OBJECT uklada PROPERTIES do Dictionary<> do ktoreho je mozne PROPERTIES PRIDAVAT i ODSTRANOVAT ich.
+11. PARAMETERFUL PROPERTIES (INDEXERS) su PPROPERTIES, ktore mozu obsahovat 1-N PARAMETERS. Pre PARAMETERFUL PROPERTIES platia nasledujuce vlastnosti.
+   A. C# umoznuje definovat viacero PARAMETERFUL PROPERTIES (INDEXERS), ktore vsak MUSIA mat ROZLICNE SIGNATURES (bud rozlicny pocet, alebo TYPES PARAMETERS).
+   B. C# NEUMOZNUJE definovat viacero PARAMETERFUL PROPERTIES s ROZLICNYMI NAMES. Vsetky PARAMETERFUL PROPERTIES su definovane pomocou KEYWORD [this] a pristupuje sa k nim pomocou OPERATOR[], kde pri PARAMETERFUL PROPERTIES s viacerymi PARAMETERS sa pouzije OPERATOR[PARAM1,PARAM2,...,PARAMN].
+   !!! C. CLR UMOZNUJE aby 1 TYPE definovat PARAMETERFUL PROPERTIES s ROZLICNYMI NAMES.
+   !!! D. Kedze C# NEDOKAZE VOLAT PARAMETERFUL PROPERTIES s ROZLICNYMI NAMES, tak potrebuje mat definovane, ktoru PARAMETERFUL PROPERTY z tych ktore definuje TYPE ma vola pri pouziti OPERATOR[]. C# to zistuje na zaklade ATTRIBUTE [DefaultMember] aplikovaneho na TYPE, ktory urcuje NAME PARAMETERFUL PROPERTY, ktory ma volat. Ostatne PARAMETERFUL PROPERTIES vie volat IBA pomocou REFLECTION.
+   !!!!! E. C# podporuje aj VIRTUAL ci ABSTRACT PARAMETERFUL PROPERTIES, ale NEPODPORUJE STATIC PARAMETERFUL PROPERTIES.
+   !!! F. C# pri kompilacii generuje pre PARAMETERFUL PROPERTIES DEFAULT NAME 'Item' a vygenerovane METHODS su get_Item() a set_Item(). Tento NAME je mozne zmenit pomocou ATTRIBUTE [IndexerName]. Ak TYPE ma deklarovanych VIACERO PARAMETERFUL PROPERTIES (s inou SIGNATURE), tak ATTRIBUTE [IndexerName] je NUTNE aplikovat na VSETKY PROPERTIES.
+   !!! G. CLR NEROZLISUJE v METADATA medzi PARAMETERLESS a PARAMETERFUL PROPERTIES. Rozdielne su IBA POCTOM PARAMETERS. Pre obe su okrem PROPERTY METADAT generovane i dve METHODS (GETTER a SETTER).
+!!!!! 12. JIT COMPILER dokaze pre JEDNODUCHE PROPERTIES s JEDNODUCHYM CODE v GETTER a SETTER konvertovat ich volanie na INLINE METHODS a teda volanie tychto METHODS NEMA ZIADEN PERFORMANCE HIT. Ak vsak napriklad sa pouzije v GETTER a SETTER METHODS TRY-CATCH-FINALLY BLOCK, tak INLINE NIE JE MOZNY.
+!!! 13. GETTER i SETTER METHODS moze mat definovane ODLISNE ACCESS RIGHTS. ACCESS RIGHTS vsak MUSIA BYT RESTRIKTIVNEJSIE ako su ACCESS RIGHTS samotnej PROPERTY.
+!!! 14. CLR ani C# NEPODPORUJU GENERIC PROPERTIES.
+//-------------------------------------------------------------------------------------------------------

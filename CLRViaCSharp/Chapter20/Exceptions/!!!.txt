@@ -1,0 +1,132 @@
+//-------------------------------------------------------------------------------------------------------
+1. Solution demonstruje pouzitie EXCEPTIONS.
+2. EXCEPTIONS poskytuju jednoduchsi sposob ako moze CODE informovat o vzniku ERROR. EXCEPTIONS nahradzuju RETURN VALUES a GLOBAL ERROR VARIABLES pouzivane ako sposob indikovania ERRORS vo Win32 API.
+!!!!! 3. EXCEPTIONS v CLR su interne implementovane cez Windows SEH.
+4. EXCEPTIONS sa v C# deklaruju pomocou 1 TRY BLOCK, 0-N CATCH BLOCKS a 0-1 FINALLY BLOCKS. TRY BLOCK musi mat VZDY bud aspon 1 CATCH BLOCK, alebo prave 1 FINALLY BLOCK.
+5. EXCEPTIONS pozostavaju z nasledujucich BLOCKS.
+   A. TRY BLOCK obsahuje CODE, ktory ma byt kontrolovany na pritomnost EXCEPTIONS.
+   B. CATCH BLOCK obsahuju CODE, ktory je zavolany pri vyskyte daneho typu EXCEPTION. CATCH BLOCK moze EXCEPTION bud spracovat, alebo EXCEPTION znova ju hodit.
+   C. FINALLY BLOCK sa vola VZDY bez ohladu nato ci EXCEPTION bola, alebo nebola spracovana.
+6. K TRY BLOCK moze prisluchat 0-N CATCH BLOCKS. Pre CATCH BLOCKS platia nasledujuce fakty.
+   A. CATCH BLOCK ma ako identifikator CATCH TYPE. CATCH TYPE je je bud CLASS Exception, alebo CLASS, ktora je DERIVED z CLASS Exception. K CATCH TYPE moze byt priradena VARIABLE pomocou, ktorej je mozne zistit podrobnosti o danej EXCEPTION.
+   !!! B. CATCH BLOCKS MUSIA byt zaradzovane v takom poradi respektujucom dedicsku hierarchiu CATCH TYPES. Ak CATCH TYPE 'B' je DERIVED z CATCH TYPE 'A', tak CATCH BLOCK pre CATCH TYPE 'B' MUSI BYT PRED CATCH BLOCK pre CATCH TYPE 'A'.
+   C. Ak CATCH BLOCK NEMA definovany CATCH TYPE, tak za CATCH TYPE je dosadena CLASS Exception. Takyto CATCH BLOCK zachyti KAZDU EXCEPTION.
+   D. EXCEPTION je zachytana tym CATCH BLOCK, ktoreho CATCH TYPE je bud zhodny z TYPE hodenej EXCEPTION, alebo CATCH TYPE je BASE TYPE TYPE hodenej EXCEPTION.
+   E. Ak ziaden CATCH BLOCK nezachyti EXCEPTION, EXCEPTION je vyhodena z daneho TRY BLOCK.
+   !!! F. Ak METHOD NEZACHYTI EXCEPTION, tak EXCEPTION je vyhodena do METHOD VYSSIE v CALL STACK.
+   !!!!! G. Ak ZIADNA METHOD danu EXCEPTION NEZACHYTI, EXCEPTION je povazovana za UNHANDLED EXCEPTION. UNHANDLED EXCEPTION sposobi ze PROCESS bude TERMINATED.
+   H. V CATCH BLOCK je mozne vo WATCH WINDOW zobrazit zachytenu EXCEPTION pomocou KEYWORD [$exception].
+   I. Po skonceni CATCH BLOCK, ak TRY BLOCK obsahuje aj FINALLY BLOCK, je tento BLOCK VZDY VYKONANY.
+!!!!! 7. Ak EXCEPTION nie je zachytena v METHOD, ktora ju vygenerovala, CLR hlada vhodny CATCH BLOCK v METHOD VYSSIE v CALL STACK. Ak takyto CATCH BLOCK je najdeny, CLR vykona VSETKY FINALLY BLOCKS, v METHODS, ktore EXCEPTION NEZACHYTILI (ak prisluchajuce TRY BLOCK FINALLY BLOCKS definovali).
+8. CATCH BLOCK moze EXCEPTION spracovat jednym z nasledujucich sposobov.
+   A. CATCH BLOCK EXCEPTION SPRACUJE vykonanim celeho svojho tela. CODE po skonceni CATCH BLOCK nasleduje bud FINALLY BLOCK, ak bol definovany, alebo pokracuje vykonavanim CODE, ktory sa nachadza za TRY BLOCK, ktory zodpoveda danemu CATCH BLOCK.
+   B. CATCH BLOCK hodi INY TYPE EXCEPTION. V tomto pripade by NOVA EXCEPTION mala mat nastavenu PROPERTY Exception.InnerException obsahujucu POVODNOU EXCEPTION.
+   C. CATCH BLOCK hodi spravi RETHROW, ktory hodi TEN ISTY TYPE EXCEPTION.
+!!! 9. EVENT AppDomain.FirstChanceException je vyvolavany ESTE PRED PREDTYM ako sa ZACNE PROCES VYHLADAVANIA CATCH BLOCK.
+10. EXCEPTION sa vyvolavaju pomocou KEYWORD [throw].
+11. FINALLY BLOCK sa vykonava VZDY, bez ohladu na to ci bola, alebo nebola generovana EXCEPTION. Pre FINALLY BLOCK platia nasledujuce fakty.
+   A. TRY BLOCK moze mat maximalne 1 FINALLY BLOCK.
+   !!! B. FINALLY BLOCK sa vykona AZ POTOM ako sa najde zodpovedajuci CATCH BLOCK a to dokonca aj ked CATCH BLOCK je najdeny v METHOD vyssie v CALL STACK. CLR teda najprv vyhlada CATCH BLOCK v celkom CALL STACK (ak ho nema aktualna METHOD) a AZ PO JEHO NAJDENI su volane VSETKY FINALLY BLOCKS, ktore medzi vznikom EXCEPTION a CATCH BLOCK boli v METHODS v CALL STACK definovane.
+   !!! C. Ak je THREAD ABORTED, alebo APP DOMAIN UNLOADED, tak CLR na asociovanych THREADS vyvola EXCEPTION [ThreadAbortException], ktora umozni vykonanie FINALLY BLOCKS pre dany THREAD.
+   !!! D. Ak vsak je PROCESS NASILNE TERMINATED (napriklad jeho padom, alebo volanim METHOD Environment.FailFast()), k vyvolaniu FINALLY BLOCKS NEDOCHADZA.
+   !!! E. FINALLY BLOCKS mozu generovat EXCEPTION. V tomto pripade CLR postupuje standardnym sposobom, avsak ak bol FINALLY BLOCK volany ako sucast spracovania EXCEPTION, potom informacie o POVODNEJ EXCEPTION budu STRATENE a nahradene NOVOU EXCEPTION.
+!!!!! 12. CLR UMOZNUJE generovat EXCEPTIONS i z CLASSES, ktore NIE SU DERIVED z CLASS [Exception]. Taketo EXCEPTION su NON-CLS COMPLIANT EXCEPTIONS. Od verzie CLR 2.0. vsak VSETKY NON-CLS COMPLIANT EXCEPTIONS su OBALENE do EXCEPTION CLASS [RuntimeWrappedException] a teda v momende hodenia NON-CLS COMPLIANT EXCEPTION CLR AUTOMATICKY takuto EXCEPTION konvertuje na EXCEPTION [RuntimeWrappedException]. CLASS [RuntimeWrappedException] obsahuje PROPERTY RuntimeWrappedException.WrappedException TYPE [Object], ktora obsahuje povodnu NON-CLS COMPLIANT EXCEPTION.
+!!! 13. C# umoznuje generovat IBA EXCEPTIONS DERIVED z CLASS [Exception] a kedze aj EXCEPTIONS, ktore NIE SU DERIVED z CLASS [Exception] CLR obali do EXCEPTION [RuntimeWrappedException], tak CATCH blok, ktory ma ako CATCH TYPE CLASS [Exception] ZACHYTI VSETKY i NON-CLS COMPLIANT EXCEPTIONS.
+14. CLASS Exception obsahuje nasledujuce PROPERTIES a METHODS.
+   A. PROPERTY Exception.Message obsahuje textovu sprava popisom danej EXCEPTION.
+   B. PROPERTY Exception.Data obsahuje DICTIONARY v ktorom su dodatocne informacie o EXCEPTION.
+   C. PROPERTY Exception.HResult vracia HRESULT hodnotu asociovanu s danu EXCEPTION.
+   D. PROPERTY Exception.StackTrace je PROPERTY, ale v skutocnosti vyvola CODE, ktory DYNAMICKY zisti STACK TRACE danej EXCEPTION.
+   E. PROPERTY Exception.Source obsahuje nazov ASSEMBLY, ktora generovala EXCEPTION.
+   F. PROPERTY Exception.TargetSite obsahuje meno METHOD, ktora generovala EXCEPTION.
+   G. PROPERTY Exception.HelpLink obsahuje LINK na HELP, ktory sa vsak iba zriedkakedy pouziva.
+   H. PROPERTY Exception.InnerException vracia INNER EXCEPTION. Ak dana EXCEPTION bola hodena v CATCH BLOCK, tak je mozne hodnit novu EXCEPTION a nastavit hodnotu jej PROPERTY Exception.InnerException, aby sa nestratili informacie o povodnej EXCEPTION.
+   I. METHOD Exception.GetBaseException() vracia NAJVYSSIU EXCEPTION v EXCEPTION CHAIN. EXCEPTION CHAIN je tvorena vsetkymi EXCEPTIONS v PROPERTY Exception.InnerException.
+   J. METHOD Exception.GetObjectData() umoznuje v DERIVED CLASSES vykonat SERIALIZATION danej EXCEPTION.
+!!!!! 15. Hodnota PROPERTY Exception.StackTrace sa ZISTUJE AZ pri jej ZAVOLANI. CLR si pri THROW EXCEPTION zapamate poziciu v STACK, kde bola EXCEPTION hodena a az pri dotaze na PROPERTY Exception.StackTrace je zisteny cely STRACK TRACE od CATCH BLOCK az po miesto, kde bola EXCEPTION hodena. Ak sa vykona RETHROWING danej EXCEPTION (pouzije sa KEYWORD [throw] bez vytvorenia novej EXCEPTION), tak CLR ZACHOVA STACK TRACE. Avsak ZACHOVA sa IBA CLR STACK TRACE, zatial co WINDOWS STACK TRACE o EXCEPTION sa RESETNE od NOVEHO THROW. To ma za nasledok, ze WINDOWS SEH STACK TRACE obsahuje STACK TRACE iba od bodu, kde bola EXCEPTION RETHROWN. Property Exception.StackTrace teda vypise SPRAVNY STACK TRACE zacinajuci POVODNOU EXCEPTION, ale WINDOWS zobrazi STACK TRACE iba od bodu kde bola EXCEPTION RETHROWN. To znamena, ze ak napriklad PROGRAM spadne a na reporting chyby sa pouzije WINDOWS ERROR REPORTING, tak ten bude obsahovat iba STACK TRACE od bodu, kde bola EXCEPTION RETHROWN.
+!!! 16. Pri definovani CUSTOM EXCEPTIONS platia nasledujuce zasady.
+   A. EXCEPTION CLASS musi byt DERIVED z CLASS [Exception], alebo z niektorej z jej DERIVED CLASSES.
+   B. EXCEPTION CLASS musi obsahovat SERIALIZATION CONSTRUCTOR, pretoze EXCEPTION CLASSES MUSIA byt SERIALIZABLE, aby boli prenositelne cez APP DOMAINS.
+   C. EXCEPTION CLASS musi obsahovat implementaciu METHOD Exception.GetObjectData(), pretoze EXCEPTION CLASSES MUSIA byt SERIALIZABLE, aby boli prenositelne cez APP DOMAINS.
+!!!!! 17. THREADS NEMOZU byt v CATCH, ani vo FINALLY BLOCKS ABORTED. Teda EXCEPTION [ThreadAbortException] NEMOZE BYT HODENA pri vykonavani CODE v CATCH a FINALLY BLOCKS.
+18. Ak APP DOMAIN sa pri vzniku EXCEPTION dostane do stavu ked nemoze byt vykonana RECORVERY, je ju mozne odstranit z PROCESS volanim METHOD AppDomain.Unload().
+!!! 19. Ak sa PROGRAM dostane do stavu, ze nie jej mozny jeho RECOVERY je ho mozne OKAMZITE UKONCIT volanim METHOD Environment.FastFail(). METHOD Environment.FastFail() NESPOSOBI vyvolanie FINALLY BLOCKS, ale sposobi vyvolanie FINALIZER METHODS pre CLASSES, ktore su DERIVED z CLASS CriticalFinalizerObject.
+!!! 20. FINALLY BLOCK je AUTOMATICKY volany v nasledujucich pripadoch.
+   A. Pri pouziti KEYWORD [lock].
+   B. Pri pouziti KEYWORD [using].
+   C. Pri enumerovani COLLECTION pomocou KEYWORD [foreach] je METHOD IDisposable.Dispose() daneho ENUMERATOR (INTERFACE [IEnumerator]) volana vo FINALLY BLOCK.
+   D. Pri definovani FINALIZER METHOD je FINALIZER METHOD BASE CLASS volana vo FINALLY BLOCK.
+21. V pripade, ze do EXCEPTION je nutne pridat nejake CUSTOM DATA, je mozne vyuzit DICTIONARY Exception.Data, ktora moze obsahovat lubovolne KEY-VALUE data.
+22. Ak EXCEPTION nie je zachytania ZIADNYM CATCH BLOCK a EXCEPTION sa dostane na uroven THREAD METHOD, potom je EXCEPTION povazovana za UNHANDLED EXCEPTION a PROGRAM je OKAMZITE TERMINATED. Zaroven informacie o ERROR je zapisane do WINDOWS LOG.
+!!! 23. Standardny sposob ako zachytit UNHANDLED EXCEPTION je napojit sa na EVENT AppDomain.UnhandledException. Okrem tohto EVENTU poskytuju jednotlive APPLICATION MODELS aj dalsie moznosti ako zachytit UNHANDLED EXCEPTIONS. Napriklad WPF vystavuje EVENT Application.DispatcherUnhandledException.
+!!!!! 24. Ak sa zavola METHOD Thread.Abort() CLR vykonava nasledujuci algoritmus.
+   A. Na THREAD, ktory ma byt ABORTED sa nastavi Thread.AbortRequested==TRUE.
+   B. CLR zabezpeci, aby sa v THREAD, ktory ma byt ABORTED generovala EXCEPTION [ThreadAbortException].
+   C. Tuto EXCEPTION NIE JE MOZNE ZACHYTIT v CATCH BLOCK, pretoze CLR na konci kazdeho CATCH BLOCK generuje EXCEPTION [ThreadAbortException] znova (pokial sa nezavolala METHOD Thread.ResetAbort(), ktora zabrani THREAD ABORT).
+   !!! D. Cielom generovanie EXCEPTIONS [ThreadAbortException] je dostat THREAD do SAFE PLACE kedy moze byt ABORTED. THREAD je SAFE PLACE ak vykonava MANAGED BLOCKING METHOD.
+   !!! E. Ak sa THREAD dostane generovanim EXCEPTION [ThreadAbortException] do SAFE PLACE, CLR skonroluje ci je Thread.AbortRequested==TRUE.
+   F. Ak THREAD ma byt ABORTED, tak sa vykonaju vsetky FINALLY BLOCKS a THREAD sa ukocni.
+   !!! G. EXCEPTION [ThreadAbortException] ak sa stane UNHANDLED EXCEPTION NESPOSOBI ABORT daneho PROGRAM, ale CLR iba ukonci dany THREAD a PROGRAM moze pokracovat dalej. Je to zasadny rozdiel oproti inym EXCEPTIONS, ktore ak su UNHANDLED, CLR okamzite vykona ABORT daneho PROGRAM.
+!!! 25. SEH EXCEPTION z UNAMANGED CODE STANDARDNE skoncia OKAMZITYM UKONCENIM PROGRAMU. Avsak aplikaciou ATTRIBUTE [HandleProcessCorruptedStateExceptions] na METHOD je mozne docielit aby SEH generovana v danej METHOD bola konverovana na MANAGED EXCEPTION.
+26. METHOD RuntimeHelper.EnsureSufficientExecutionStack() sluzi na kontrolu ci na STACK je dost miesta na vykonanie 'priemernej' METHOD. Ak STACK je prilis zaplneny, generuje sa EXCEPTION [InsufficientExecutionStackException]. METHOD RuntimeHelper.EnsureSufficientExecutionStack() je mozne vyuzit napriklad v RECURSIVE METHODS.
+27. VISUAL STUDIO pomocou prikazu [Debug->Exceptions] umoznuje definovat, ktore EXCEPTIONS bude zachytavat a ktore bude ignorovat pri ich vyskyte, alebo pri vzniku UNHANDLED EXCEPTION.
+!!!!! 28. CONSTRAINED EXECUTION REGIONS (CER) je mechanizmus umoznujuci ZABRANIT CLR aby GENEROVAL tzv. ASYNCHRONNE EXCEPTIONS (OutOfMemoryException, StackOverflowException, ThreadAbortException) v bloku oznacenom ako CER a radsej ich generoval ESTE PRED VYKONANIM CER BLOCK pocas volania METHOD RuntimeHelpers.PrepareConstrainedRegions(). CER definuje OBMEDZENIA ako pre CLR, tak i pre PROGRAM v tom ake operacie moze v METHODS, CLASSES ci ASSEMBLIES ktore NEMAJU GENEROVAT ASYNCHRONNE EXCEPTIONS vykonavat. Medzi ZAKAZANE OPERACIE v CER patria nasledovne operacie.
+   A. Explicitne alokovanie MEMORY.
+   B. BOXING.
+   C. Pouzitie LOCKS.
+   D. Volanie VIRTUAL METHODS, ktore NIE SU CER PREPARED (nie je pre nich volana METHOD RuntimeHelpers.PrepareMethod()).
+   E. Volanie DELEGATES, ktore NIE SU CER PREPARED (nie su pre nich volane METHODS RuntimeHelpers.PrepareDelegate() a RuntimeHelpers.PrepareContractedDelegate()).
+   F. Pouzitie MULTIDIMENSIONAL ARRAYS.
+   G. Volanie METHODS cez REFLECTION.
+   H. SERIALIZATION.
+!!! 29. CLR za CER BLOCK povazuje aj BLOCK TRY-CATCH-FINALLY (aj ked nie iba) ale IBA AK je PRED NIM volana METHOD RuntimeHelpers.PrepareConstrainedRegions(). Ak pred TRY-CATCH-FINALLY NIE JE volanie METHOD RuntimeHelpers.PrepareConstrainedRegions() potom takyto TRY-CATCH-FINALLY NIE JE CER BLOCK.
+!!! 30. CER sa definuje v 2 krokoch.
+   A. Pomocou ATTRIBUTE [ReliabilityContract] je nutne oznacit METHODS, CLASSES, alebo ASSEMBLIES, ktorych vykonavanie ma byt do co NAJVACSEJ MIERY GARANTOVANE ze pocas neho nedojde ku generovaniu ASYNCHRONOUS EXCEPTION.
+   !!! B. Tesne pred vykonanim CER BLOCK (napriklad TRY-CATCH-FINALLY BLOCK), teda BLOCK, ktory ma byt vykonany BEZ TOHO, aby v nom bola generovana ASYNCHRONOUS EXCEPTION sa zavola METHOD RuntimeHelpers.PrepareConstrainedRegions(). CER nasledne prejde cely CODE v CER BLOCK, ktory je oznaceny ATTRIBUTE [ReliabilityContract] a vykona jeho JIT COMPILATION. Pocas tohto procesu su nacitavane ASSEMBLIES pre tie TYPES, ktore sa v CER BLOCK pouzivaju. Ak CLASSES pouzivane v CER BLOCK definuju STATIC CONSTRUCTORS, tak tieto su VYKONANE. Ak JIT NEDOKAZE vykonat JIT COMPILATION, alebo v STATIC CONSTRUCTOR dojde k EXCEPTION, tak tieto ASYNCHRONOUS EXCEPTIONS su generovane ESTE POCAS volania METHOD RuntimeHelpers.PrepareConstrainedRegions(), teda PRED samotnym CER BLOCK.
+!!!!! 31. Skratka CER je mechanizmus, ktory PRINUTI CLR urobit VSETKO PRETO, aby MINIMALIZOVAL MOZNOST, ze DOJDE k ASYNCHRONOUS EXCEPTION pocas vykonavania CODE v CER BLOCK oznaceneho ATTRIBUTE [ReliabilityContract]. Typicky sa CER pouziva nato, aby som MINIMALIZOVALA MOZNOST hodenia ASYNCHRONOUS EXCEPTION vo FINALLY BLOCK. Aby skratka NEDOSLO k tomu, ze ak TRY BLOCK hodi EXCEPTION, tak sa prisluchajuci FINALLY BLOCK NEVYKONA CELY. Pred takymto TRY BLOCK je nutne volat METHOD RuntimeHelpers.PrepareConstrainedRegions(), ktora vykona JIT COMPILATION a ak NARAZI na PROBLEM vyzadujuci hodenie ASYNCHRONOUS EXCEPTION, tak ju hodi POCAS VOLANIA METHOD RuntimeHelpers.PrepareConstrainedRegions() a NIE AZ v CER BLOCK.
+!!! 32. Za CER BLOCKS su povazovane tieto BLOCKS.
+   A. BLOCK TRY-CATCH-FINALLY, ak sa pred nim vola METHOD RuntimeHelpers.PrepareConstrainedRegions().
+   B. METHOD, ktorej instancia CLASS [RuntimeMethodHandle] je zaslana ako PARAMETER METHOD RuntimeHelpers.PrepareMethod().
+   C. METHOD, ktorej instancia CLASS [Delegate] je zaslana ako PARAMETER METHOD RuntimeHelpers.PrepareDelegate(), alebo RuntimeHelpers.PrepareContractedDelegate().
+!!! 33. Volanie METHOD RuntimeHelpers.PrepareConstrainedRegions() realizuje nasledujuce kontroly.
+   A. Do MEMORY sa zavedu VSETKY ASSEMBLIES, ktorych METHODS, TYPES, alebo aj samotne ASSEMBLIES v CER BLOCK su oznacene pomocou ATTRIBUTE [ReliabilityContract]. Pri zavadzani ASSEMBLIES do MEMORY sa robi kontrola ci su ASSEMBLIES fyzicky pritomne na DISKU a neboli napriklad neopravnene modifikovane.
+   B. Vykonava sa OKAMZITA JIT COMPILATION pre vsetky METHODS v CER BLOCK oznacene ATTRIBUTE [ReliabilityContract].
+   C. ZAVEDU sa VSETKY TYPES v CER BLOCK, ktore este neboli zavedene a spustia sa ich STATIC CONSTRUCTORS (ak ich TYPES definuju).
+   !!! D. Ak JIT COMPILATION ZLYHA, alebo ASSEMBLIES obsahujuce volane METHODS sa NENAJDU nad DISKU tak je ASYNCHRONOUS EXCEPTION je generovana pocas volania METHOD RuntimeHelpers.PrepareConstrainedRegions().
+   !!!!! E. METHOD RuntimeHelpers.PrepareConstrainedRegions() umoznuje aby potencialne ASYNCHRONOUS EXCEPTIONS boli hodene este pocase volania METHOD RuntimeHelpers.PrepareConstrainedRegions() a NIE AZ POCAS VYKONAVANIA CER BLOCK.
+34. CODE CONTRACTS je EXTENSION C#, VISUAL STUDIO a dalsich TOOLS umoznujucich definovat CONDITIONS v CODE, ktore musia byt splnene, aby bol dany CODE povazovany za uspesne vykonany. CODE CONDITIONS sa delia do 3 kategorii.
+   A. PRE-CONDITIONS su CODE CONDITIONS, ktore su kontrolovane PRED ZACIATKOM vykonavania METHOD v ktorej su definovane. Sluzia na validaciu METHOD ARGUMENTS.
+   B. POST-CONDITIONS su CODE CONDITIONS, ktore su kontrolovane PO SKONCENI vykonavania METHOD v ktorej su definovane. Sluzia na validaciu RETURN VALUES, alebo FIELDS, ktore boli danou METHOD modifikovane.
+   C. INVARIATNS su CODE CONDITIONS, ktore urcuju ake hodnoty musia FIELDS po skonceni volania kazdej PUBLIC METHOD a PUBLIC PROPERTY splnat.
+35. Zakladom CODE CONTRACTS je CLASS [Contract], ktora obsahuje STATIC METHODS umoznujuce definovat CODE CONDITIONS, ktore musia byt dodrzane pri volani a vykonavani METHODS ci PROPERTIES. CLASS [Contract] ma nasledujuce MEMBERS.
+   A. METHOD Contract.Requires() definuje PRE-CONDITION.
+   B. METHOD Contract.Ensures() definuje POST-CONDITION.
+   C. METHOD Contract.EnsuresOnThrow<TException>() definuje POST-CONDITION pri vzniku EXCEPTION [TException].
+   !!! D. METHOD Contract.Result() je METHOD, ktora urcuje ocakavanu hodnotu RETURN VALUE, ktoru METHOD ma vratit, aby bola CODE CONDITION splnena.
+   !!! E. METHOD Contract.OldValue() je METHOD, ktora urcuje ocakavanu hodnotu, ktoru ma mat ARGUMENT, alebo FIELD na zaciatku vykonavania METHOD.
+   !!! F. METHOD Contract.OldValue() je METHOD, ktora urcuje ocakavanu hodnotu, ktoru ma mat OUT ARGUMENT na konci volania METHOD.
+   G. METHOD Contract.Invariant() umoznuje definovat INVARIANT CODE CONDITION.
+   !!! H. EVENT Contract.ContractFailed je EVENT, ktory sa vola VZDY ked niektory CODE CONTRACT ZLYHA. Obsahuje ako PARAMETER OBJECT TYPE [ContractFailedEventArgs], ktoreho METHOD ContractFailedEventArgs.SetHandled() UMOZNUJE ZRUSIT stav narusenia CODE CONTRACT a dany CODE CONTRACT uz NEBUDE povazovany v danom volani za NARUSENY. Zvycajne tento EVENT je pouzivany TOOLS pracujucimi nad CODE CONTRACTS.
+!!! 36. TOOLS pre CODE CONTRACTS NIE SU SUCASTOU VISUAL STUDIO a je ich NUTNE stiahnut ako osobitny PACKAGE.
+!!!!! 37. Aj ked CODE CONTRACTS funguju IBA ak do PROJECT je pridany COMPILATION SYMBOL [CONTRACTS_FULL], tak jeho EXPLICITNE PRIDANIE vyhodnoti CLASS [Contract] ako ERROR a hodi DIALOG BOX s ERROR. Tento COMPILATION SYMBOL musi pridavat az SPECIALIZOVANY TOOL, ktory je nutne stiahnut z WEBU.
+38. CODE CONTRACTS sa aplikuju nasledujicmi sposomi.
+   A. PRE-CONDITIONS a POST-CONDITIONS sa definuju volanim METHODS CLASS Contract (Contract.Requires(), Contract.Ensures()) VZDY naz ZACIATKU danej METHOD. Obsahuju CONDITIONS, ktore sa maju skontrolovat bud pred zacatim vykonavania METHOD, alebo pri jej skonceni.
+   B. INVARIANTS sa definuju v SPECIALNYCH METHODS, ktore NEMAJU RETURN VALUE, su sucastou CLASS, ktora pouziva CODE CONTRACTS. MUSIA byt oznacene ATTRIBUTE [ContractInvariantMethod]. V tychto METHODS NESMIE BYT ZIADEN INY CODE, iba volanie METHODS Contract.Invariant() s definovanymi CONDITIONS pre hodnoty FIELDS danej CLASS. Tieto METHOD su AUTOMATICKY volane VZDY PRI VOLANI PUBLIC MEMBERS na kontrolu ci INVARIANT CODE CONDITIONS boli splnene.
+39. Ak dojde k naruseniu niektoreho z CODE CONTRACTS, CLR vykonava nasledujucu cinnost.
+   A. Zavolaju sa EVENT HANDLERS zaregistrovane pre EVENT Contract.ContractFailed s PARAMETER TYPE [ContractFailedEventArgs].
+   B. EVENT HANDLERS mozu vykonavat LUBOVOLNU CINNOST ako je napriklad vykonanie LOGGING narusenia daneho CODE CONTRACTS, alebo vykonat PROCESS TERMINATION.
+   !!! C. Ak EVENT HANDLER vyhodnoti, ze narusenie daneho CODE CONTRACT NIE JE KRITICKE, moze zavolat METHOD ContractFailedEventArgs.SetHandled(), ktora oznaci narusenie CODE CONTRACT za zachytene a spracovane. CLR nasledne vykona dalsie EVENT HANDLERS a ak ziaden z nich nezavola METHOD ContractFailedEventArgs.SetUnwind() je narusenie spracovane a NESPOSOBI generovanie EXCEPTION.
+   !!! D. Ak niektory EVENT HANDLER zavola METHOD ContractFailedEventArgs.SetUnwind() (bez ohladu na to ci iny HANDLER volal, alebo nevolal METHOD ContractFailedEventArgs.SetHandled()), tak CLR po skonceni vykonavania vsetkych EVENT HANDLERS generuje INTERNU EXCEPTION [ContractException]. Kedze CLASS [ContractException] je PRIVATE CLASS, NIE JE ju mozne zachytit v CATCH BLOCK.
+   !!! E. Ak niektory EVENT HANDLER hodi UNHANDLED EXCEPTION, tato EXCEPTION je ZACHYTENA a nasledne su vyvolane vsetky ostatne EVENT HANDLERS. Po ich skonceni je generovana EXCEPTION [ContractException].
+   !!!!! F. Ak ziaden EVENT HANDLER nebol zaregistrovany, alebo ziaden z nich nezavolal METHOD ContractFailedEventArgs.SetHandled(), a ContractFailedEventArgs.SetUnwind() a nehodil UNHANDLED EXCEPTION, narusenie CODE CONTRACT je spracovane standardnym sposobom. V nom CLR notifikuje HOST o naruseni CODE CONTRACT. V pripade NON-INTERACTIVE PROGRAMS (WINDOWS SERVICE) je zavolana METHOD Environment.FastFail(), ktora vykona PROCESS TERMINATION. V pripade INTERACTIVE PROGRAMS sa vyhodi MESSAGE BOX umoznujuci vykonat DEBUGGING. Ak sa nepoziada o vykonanie DEBUGGING, CLR hodi EXCEPTION [ContractException].
+!!! 40. CODE v CODE CONDITIONS, alebo INVARIANT CHECK METHODS musi byt VZDY SIDE-EFFECT FREE.
+41. CODE CONTRACTS su pocas RUNTIME kontrolovane nasledovne.
+   A. Pred vykonavanim METHOD obsahujucej CODE CONTRACTS su skontrolovane VSETKY PRE-CONDITIONS.
+   !!!!! B. POST-CONDITIONS MUSIA byt vykonane TESNE PRED SKONCENIM METHOD. Tato funkcionalita je realizovana pomocou TOOL [CCREWRITE.EXE], ktory je AUTOMATICKY spustany na KONCI kazdeho ASSEMBLY COMPILATION. TOOL [CCREWRITE.EXE] zabezpeci MODIFIKACIU ASSEMBLY tak, ze do METHODS obsahujucich POST-CONDITIONS vlozi PRED KAZDU [ret] MSIL INSTRUCTION specialny CODE, ktory skontroluje vsetky POST-CONDITION.
+   !!!!! C. Ak je dana METHOD/PROPERTY PUBLIC, tak TOOL [CCREWRITE.EXE] zabezpeci pre tieto METHODS/PROPERTIES modifikaciu ich CODE a to tak, ze PRED MSIL INSTRUCTION [ret] vlozi CODE, ktory vykona VSETKY METHODS oznacenej ATTRIBUTE [ContractInvariantMethod]. Pomocou nich sa kontroluju INVARIANT CODE CONDITIONS, ktore testuju ci FIELDS nadobudaju ocakavane VALUES. INVARIANT CODE CONDITIONS sa NEKONTROLUJU pre METHODS IDisposable.Dispose() ci FINALIZER METHODS, pretoze po ich volani je OBJECT povazovany za zlikvidovany a kontrolovat jeho stav uz nema vyznam.
+   D. V pripade narusenia CODE CONTRACT je vyvolany EVENT Contract.ContractFailed, ktory urcuje ako sa narusenie CODE CONTRACT spracuje.
+!!! 42. TOOL [CCCHECK.EXE] umoznuje vykonavat STATIC CHECKS, kedy sa kontroluje CODE ci neobsahuje potencialne chybny CODE. Pomcou METHODS Contract.Assert() a Contract.Assume() je mozne ovplyvnit cinnost TOOL [CCCHECK.EXE]. Ak STATIC CHECK ZLYHA, generuje sa uz POCAS COMPILATION WARNING.
+43. TOOL [CCCHECK.EXE]  samozrejme NEMOZE BYT UPLNE SPOLAHLIVY a detekovat VSETKY narusenia CODE CONTRACTS. Ak niektore CODE CONTRACTS NEDOKAZE OVERIT je mozne pouzit Contract.Assume(), ktora de-facto ZRUSI STATIC CHECK danej CODE CONDITION.
+!!! 44. TOOL [CCREFGEN.EXE] umoznuje presunut VSETKY CODE CONTRACTS do SPECIALNEJ ASSEMBLY, ktoru jednotlive nastroje kontrolujuce CODE CONTRACTS pouziju na kontrolu CODE CONTRACTS. To umoznuje zmensit velkost povodnej ASSEMBLY.
+45. Pomocou TOOL [CCDOCGEN.EXE] je mozne generovat do XML DOCUMENTATION aj informacie o CODE CONTRACTS, z ktorej je potom napriklad pomocou TOOL [SANDCASTLE.EXE] mozne generovat dokumentaciu obsahujucu informacie o CODE CONTRACTS.
+//-------------------------------------------------------------------------------------------------------

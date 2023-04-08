@@ -1,0 +1,171 @@
+//-------------------------------------------------------------------------------------------------------
+1. Solution demonstruje integraciu WinRT s .NET.
+2. WinRT je WINDOWS API umoznujuce pristupovat k WINDOWS KERNEL. WinRT je ALTERNATIVOU k WIN32 API.
+3. WinRT podobne ako COM umoznuje vytvarat COMPONENTS, ktore su prenositelne medzi viacerymi LANGUAGES ako napriklad C++, C#, JavaScript ci VB.
+4. WinRT COMPONENTS je mozne vytvarat niektorym z nasledujucich sposobov.
+   A. C++ APPLICATIONS sa kompiluju do NATIVE CODE, pricom CODE je treba kompilovat zvlast pre kazdu PLATFORM (X86, X64 a ARM).
+   B. .NET APPLICATIONS sa kompiluju do MSIL, ktory je nasledne kompilovany JIT COMPILER do NATIVE CODE pre danu PLATFORM.
+   C. JavaScript APPLICATIONS sa distribuuju ako SOURCE CODE, ktory je kompilovany JavaScript VIRTUAL MACHINE do NATIVE CODE pre danu PLATFORM.
+!!! 5. WinRT COMPONENTS standardne NIE SU POUZITELNE v DESKTOP ENVIRONMENT, avsak je mozne vytvorit PROJECT TYPU PORTABLE CLASS LIBRARY, ktora je pristupna v METRO i DESKTOP ENVIRONMENT a ktora moze pouzivat niektore kniznice WinRT.
+!!!!! 6. WinRT NIE JE KOMPLEXNE API (podobne ako Win32 API) a poskytuje iba CLASSES umoznujuce virtualizovat HW RESOUCES. Preto WinRT poskutuje napriklad tieto API.
+   A. HW DEVICES.
+   B. STORAGE.
+   C. NETWORKING.
+   D. GRAPHICS a MULTIMEDIA.
+   E. SECURITY.
+   F. THREADING.
+   !!! G. UI.
+   !!!!! H. XAML.
+!!!!! 7. WinRT NEOBSAHUJE napriklad pracu so STRINGS, alebo LINQ. Podpora tychto API je zalezitostou pouziteho PROGRAMMING LANGUAGE a NIE WinRT.
+!!!!! 8. WinRT je postaveny na COM technologii, avsak METADATA NIE su vystavene cez COM TYPE LIBRARIES, ale v standarde EXMA-355. Standard EXMA-355 vyuziva aj .NET na vystavovanie METADAT ASSEMBLIES.
+!!!!! 9. Interoperabilita medzi WinRT a .NET je zabezpecena nasledovne.
+   A. Ak je .NET COMPONENT zaslana do WinRT COMPONENT, tak sa vytvori CCW WRAPPER cez ktory WinRT COMPONENT pristupuje k .NET COMPONENT.
+   B. Ak je WinRT COMPONENT pouziva WinRT COMPONENT, tak sa vytvori RCW WRAPPER cez ktory .NET COMPONENT pristupuje k WinRT COMPONENT.
+10. WinRT COMPONENT maju FILE EXTENSION .WINMD.
+!!! 11. Na to, aby .NET mohol vyuzivat WinRT COMPONENTS je nutne vykonavat PROJECTIONS medzi .NET a WinRT. PROJECTIONS je mozne rozdelit do 2 kategorii.
+   A. CLR PROJECTIONS. Su vykonavane IMPLICITNE CLR. Medzi CLR PROJECTIONS patria napriklad konverzia DATA TYPES ci konverzia .NET EVENTS na WinRT EVENTS.
+   B. FRAMEWORK PROJECTIONS. Su vykonavane EXPLICITNE (MANUALNE), kde CODE musi volat WinRT API CLASSES na vykonanie tychto PROJECTIONS. FRAMEWORK PROJECTIONS sa vykonavaju pre zlozite PROJECTIONS, ktore CLR NEDOKAZE vykonat IMPLICITNE.
+!!! 12. .NET vacsinu WinRT CLASSES vystavuje PRIAMO cez RCW, avsak niektore WinRT CLASSES interne MAPUJE do INYCH TYPES, pricom povodny WinRT TYPE pri importe METADAT oznaci ako PRIVATE TYPE, aby nebol z .NET priamo pristupny, iba cez MAPPED TYPE. MAPPING je vykonavany nasledovne.
+   A. PRIMITIVE TYPES su mapovane PRIAMO na .NET TYPES BEZ akehokolvek MAPPING.
+   B. .NET String TYPE je MARSHALLED do HSTRING WinRT TYPE.
+   C. .NET Object TYPE je MARSHALLED do IInspectable* TYPE.
+   D. Standardne WinRT TYPES NIE su MAPPED, ale su PRIAMO PRISTUPNE cez RCW.
+   E. Casto pouzivane WinRT TYPES su MAPPED na .NET TYPES. Napriklad WinRT TYPE Windows.Foundation.Uri je MAPPED na .NET TYPE System.Uri a WinRT TYPE Windows.Founda­tion.HResult je MAPPED na .NET TYPE System.Exception.
+!!!!! 13. PUBLIC SEALED CLASSES definovane v [WINDOWS STORE APP] NIE SU WinRT COMPONENTS. WinRT COMPONENTS su iba PUBLIC SEALED CLASSES definovane v PROJECT TYPES [WINDOWS RUNTIME COMPONENT].
+!!!!! 14. Obmedzenia WinRT TYPE SYSTEMS sa vztahuju IBA na PUBLIC SEALED CLASSES (WinRT COMPONENTS) definovane v PROJECT TYPES [WINDOWS RUNTIME COMPONENT].
+!!!!! 15. ERRORS v METHODS sa vo WinRT definuju vratenim RETURN VALUE typu Windows.Foundation.HResult. CLR vykonava MAPPING tychto VALUES na EXCEPTIONS. MAPPING sa realizuje nasledujucim sposobom.
+   A. Ak Windows.Foundation.HResult obsahuje VALUE, ktora je WELL-KNOWN, CLR namapuje tuto hodnotu na SPECIALIZOVANU .NET EXCEPTION. Napriklad HRESULT E_OUTOFMEMORY je MAPPED na EXCEPTION typu OutOfExceptionMemory.
+   !!! B. Ak Windows.Foundation.HResult obsahuje VALUE, ktora NIE JE WELL-KNOWN, CLR namapuje tuto hodnotu na EXCEPTION typu Exception, pricom nastavi PROPERTY Exception.HResult na hodnotu zodpovedajucu hodnote Windows.Foundation.HResult.
+   !!!!! C. WinRT COMPONENTS NEPODPORUJU export CUSTOM EXCEPTIONS.
+16. Pri zlozitejsich TYPES a OPERATIONS CLR nedokaze vykonat PROJECTION medzi CLR a WinRT TYPES. V takomto pripade je PROJECTION nutne vykonat v CODE volanim specializovanych API FUNCTIONS. Medzi taketo explicitne v CODE vykonane PROJECTIONS patria tieto PROJECTIONS.
+   A. Realizacia ASYNCHRONOUS OPERATIONS.
+   B. INTEROPERABILITY medzi CLR STREAMS a WinRT STREAMS.
+   C. Zasielanie DATA BLOCKS medzi CLR a WinRT COMPONENTS.
+!!! 17. WinRT API NEVYSTAVUJE METHODS pre vykonavanie SYNCHRONOUS IO OPERATIONS. VSETKY IO OPERATIONS su vo WinRT realizovane ako ASYNCHRONOUS IO OPERATIONS.
+18. ASYNCHRONOUS OPERATIONS sa vo WinRT vykonavaju v nasledujucich krokoch.
+   A. Pomocou METHOD XXXAsync() sa spusti ASYNCHRONOUS OPERATION.
+   B. METHOD XXXAsync() vracia OBJECT typu IAsyncInfo.
+   C. Pomocou METHOD IAsyncInfo.Cancel() je mozne vykonat CANCELLATION IO OPERATION.
+   D. Pomocou EVENT IAsyncXXX.Completed je mozne zaregistrovat CALLBACK METHOD, ktora sa vyvola pri skonceni IO OPERATION.
+   !!! E. CALLBACK METHOD ma PARAMETER typu AsyncStatus pomocou, ktoreho je mozne zistit ci OPERATION skoncila SUCCESSFULLY, vo FAILURE ci v CANCELLATION.
+   !!! F. Pomocou METHOD IAsyncXXX.GetResults() je mozne ziskat RESULT IO OPERATION.
+   !!!!! G. V CALLBACK METHOD je NUTNE zavolat METHOD IAsyncInfo.Close() na uvolnenie RESOURCES.
+   !!! H. Ak sa EVENT IAsyncXXX.Completed zaregistruje CALLBACK METHOD az potom co skonci IO OPERATION, tak CALLBACK sa vyvola OKAMZITE po ZAREGISTROVANI CALLBACK METHOD.
+!!! 19. VSETKY ASYNCHRONOUS METHODS vracaju OBJECT typu IAsyncInfo, ktory ma nasledujuce MEMBERS.
+   A. PROPERTY IAsyncInfo.Id vracia ID ASYNCHRONOUS OPERATION.
+   B. PROPERTY IAsyncInfo.ErrorCode vracia EXCEPTION, ktora bola hodena, ak IO OPERATION skoncila vo FAILURE.
+   C. PROPERTY IAsyncInfo.Status vracia stav IO OPERATION.
+   D. METHOD IAsyncInfo.Cancel() vykonava CANCELLATION IO OPERATION.
+   E. METHOD IAsyncInfo.Close() uvolni RESOURCES asociovane s IO OPERATION.
+20. INTERFACE IAsyncAction reprezentuje ASYNCHRONOUS OPERATION, ktora NEVRACIA RESULT OBJECT.
+   A. METHOD IAsyncAction.GetResults() vracia VOID, pretoze OPERATION NEMA RESULT.
+   B. EVENT IAsyncAction.Completed umoznuje zaregistrovat DELEGATE, ktory za zavola ked ASYNCHRONOUS OPERATION skonci (SUCCESSFULLY, vo FAILURE, alebo CANCELLED).
+21. INTERFACE IAsyncActionWithProgress<TProgress> reprezentuje ASYNCHRONOUS OPERATION, ktora NEVRACIA RESULT OBJECT, ale vykonava NOTIFICATION o priebehu ASYNCHRONOUS OPERATION.
+   A. METHOD IAsyncAction.GetResults() vracia VOID, pretoze OPERATION NEMA RESULT.
+   B. EVENT IAsyncAction.Completed umoznuje zaregistrovat DELEGATE, ktory za zavola ked ASYNCHRONOUS OPERATION skonci (SUCCESSFULLY, vo FAILURE, alebo CANCELLED).
+   C. EVENT IAsyncAction.Progress umoznuje zaregistrovat DELEGATE, ktory bude volany na notifikovanie CALLER o priebehu ASYNCHRONOUS OPERATION.
+22. INTERFACE IAsyncOperation<TResult> reprezentuje ASYNCHRONOUS OPERATION, ktora VRACIA RESULT OBJECT typu TResult.
+   A. METHOD IAsyncAction.GetResults() vracia TResult reprezentujuci RESULT danej ASYNCHRONOUS OPERATION.
+   B. EVENT IAsyncAction.Completed umoznuje zaregistrovat DELEGATE, ktory za zavola ked ASYNCHRONOUS OPERATION skonci (SUCCESSFULLY, vo FAILURE, alebo CANCELLED).
+23. INTERFACE IAsyncOperation<TResult> reprezentuje ASYNCHRONOUS OPERATION, ktora VRACIA RESULT OBJECT typu TResult a vykonava NOTIFICATION o priebehu ASYNCHRONOUS OPERATION.
+   A. METHOD IAsyncAction.GetResults() vracia TResult reprezentujuci RESULT danej ASYNCHRONOUS OPERATION.
+   B. EVENT IAsyncAction.Completed umoznuje zaregistrovat DELEGATE, ktory za zavola ked ASYNCHRONOUS OPERATION skonci (SUCCESSFULLY, vo FAILURE, alebo CANCELLED).
+   C. EVENT IAsyncAction.Progress umoznuje zaregistrovat DELEGATE, ktory bude volany na notifikovanie CALLER o priebehu ASYNCHRONOUS OPERATION.
+24. Pre INTERFACES zdedene z IAsyncInfo CLR implementuje AWAITER METHODS vo forme EXTENSION METHODS. Vdaka nim sa ASYNCHRONOUS OPERATIONS stavaju ASYNCHRONOUS METHODS na ktore je mozne pouzit OPERATOR AWAIT.
+!!! 25. Ak sa pouzije OPERATOR AWAIT pri volani ASYNCHRONOUS OPERATION je NUTNE spracovat EXCEPTIONS OperationCanceledException a CUSTOM EXCEPTION na zachytenie CANCELLATION, resp. ERROR danej ASYNCHRONOUS OPERATION.
+!!! 26. CLR ma implementovanu pre INTERFACES zdedene z IAsyncInfo METHOD AsTask() vdaka ktorej je mozne pre TASKS vratene OPERATOR AWAITER aplikovat CANCELLATION TOKEN a definovat PROGRESS DELEGATE, ktory bude volany ako informacia o PROGRESS vykonavania ASYNCHRONOUS OPERATION.
+27. Ak sa WinRT STREAMS maju pouzit v .NET, je nutne vykonat MANUAL PROJECTION v CODE medzi WinRT a CLR STREAMS. Tu je mozne vykonat nasledujucim sposobom.
+   A. Pouzit EXTENSION METHODS CLASS WindowsRuntimeStorageExtensions (resp. analogicke CLASSES pre ine typy WinRT STREAMS), ktore umoznuju otvorit FILE ako READ, alebo WRITE CLR Stream CLASS.
+   B. Pouzit EXTENSION METHODS CLASS WindowsRuntimeStreamExtensions, ktore umoznuju konvertovat WinRT STREAMS na CLR Stream CLASSES.
+!!! 28. Pouzitie METHODS WindowsRuntimeStreamExtensions.AsStream(), ktore konvertuju WinRT STREAMS na CLR Stream CLASSES ma nasledujuce vyhody.
+   A. Ak viacero CLR Stream OBJECTS reprezetuje TEN ISTY WinRT STREAMS, tak tieto STREAMS su PREPOJENE, co znaci, ze zmena v jednej instancii CLR CLASS Stream sa prejavi v dalsich instanciach CLR CLASS Stream.
+   !!! B. Instancie CLR CLASS Stream vratene METHODS WindowsRuntimeStreamExtensions.AsStream() interne pouzivaju BUFFERING. Vdaka nemu, ak napriklad z READ ONLY STREAM sa citaju data po malych castiach, tieto su nacitana NARAZ do CLR BUFFER a citane z neho, cim sa znizuje pocet prechodov medzi CLR a WinRT COM OBJECTS.
+29. WinRT definuje INTERFACE IBuffer, ktory repreznetuje BYTE ARRAYS vo WinRT. INTERFACE IBuffer ma nasledujuce MEMBERS.
+   A. PROPERTY IBuffer.Capacity vracia velkost alokovanej MEMORY v BUFFER v BYTES.
+   B. PROPERTY IBuffer.Length vracia a umoznuje nastavit pocet BYTES, ktore su z IBuffer.Capacity vyuzite na ulozenie dat.
+!!! 30. INTERFACE IBuffer NEPOSKYTUJE METHODS na pristup k datam v BUFFER. WinRT definuje COM INTERFACE (je to standardny COM INTERFACE a nie WinRT COMPONENT) pomocou ktoreho mozu UNMANAGED WinRT COMPONENTS pristupit k POINTER na BUFFER DATA.
+!!! 31. Kedze v SAFE MANAGED CODE NIE JE MOZNE pristupovat k POINTERS, CLR definuje v CLASS WindowsRuntimeBufferExtensions sadu EXTENSIONS METHODS, ktore umoznuju vykonat CONVERSION medzi CLR BYTE ARRAY a CLR MemoryStream CLASS a IBuffer WinRT INTERFACE a opacne medzi IBuffer WinRT INTERFACE a CLR BYTE ARRAY a CLR MemoryStream CLASS.
+32. CLASS WindowsRuntimeBufferExtensions definuje nasledujuce EXTENSION METHODS.
+   A. METHOD WindowsRuntimeBufferExtensions.AsBuffer() obali instanciu BYTE[] pomocou IBuffer INTERFACE.
+   B. METHOD WindowsRuntimeBufferExtensions.GetWindowssRuntimeBuffer() obali instanciu MemoryStream pomocou IBuffer INTERFACE.
+   C. METHOD WindowsRuntimeBufferExtensions.AsStream() obali IBuffer INTERFACE pomocou CLR Stream CLASS.
+   D. METHOD WindowsRuntimeBufferExtensions.ToArray() NAKOPIRUJE obsah IBuffer do BYTE[] pristupny z CLR.
+33. CLR definuje CLASS WindowsRuntimeBuffer umoznuje vytvorit IBuffer OBJECT, ktory ma BUFFER ulozeny v MANAGED HEAP.
+34. WinRT definuje CLASS Buffer, ktory umoznuje vytvorit IBuffer OBJECT, ktory ma BUFFER ulozeny v NATIVE HEAP.
+!!! 35. .NET PROJECT [WINDOWS RUNTIME COMPONENT] umoznuje vytvorit WinRT COMPONENT, ktora moze byt pouzita v NATIVE LANGUAGES ako C++, alebo MANAGED LANGUAGES ako napriklad C#, alebo VB.
+!!!!! 36. EXTREMNE DOLEZITE. Ak WinRT COMPONENT napisana v C# bude pouzivana IBA v MANAGED prostredi, NEMA ZIADEN ZMYSEL VYTVARAT WinRT COMPONENT. WinRT COMPONENT pri vytvarani OBJECTS ci volanim OBJECT MEMBERS pouziva RCW a CCW WRAPPERS, ktore SPOMALUJU cinnost programu. DALEKO LEPSIE je definovat STANDARDNU .NET ASSEMBLY, ktora je PLNE v MANAGED prostredi a volanie jej METHODS je PRIAME, nevyzadujuce pouzit RCW a CCW WRAPPERS.
+37. Pri vytvoreni .NET PROJECT typu [WINDOWS RUNTIME COMPONENT] Visual Studio vykona nasledujuce cinnosti.
+   A. Vytvori sa PROJECT typu CLASS LIBRARY.
+   B. PROJECT ma nastaveny COMMAND LINE PARAMETER /t:winmdobj.
+   C. PROJECT po kompilacii generuje FILE typu .WINMDOBJ, reprezentujuci WinRT COMPONENT pouzitelnu z C#,C++,VB ci JavaScript.
+   !!! D. COMPILER generuje MIERNE ODLISNY MSIL CODE, ako pri generovani standardnej CLR ASSEMBLY.
+   !!!!! E. Po vygenerovani .WINMDOBJ FILE je tento FILE zaslany do TOOL [WinMDExp.exe]. Tento TOOL vykona kontrolu WinRT TYPE RULES a zaroven vykona aj AUTOMATICKE TYPE PROJECTIONS, kde CLR TYPES su MAPPED na WinRT TYPES. TOOL [WinMDExp.exe] NEMODIFIKUJE MSIL CODE, iba METADATA.
+   !!!!! F. Po vsetkych upravach TOOL [WinMDExp.exe] generuje FILE typu .WINMD, ktory je validna WinRT COMPONENT a moze byt nacitana z INYCH LANGUAGES.
+   !!!!! G. Cize je to az TOOL [WinMDExp.exe], ktory vytvara z MIERNE MODIFIKOVANEJ ASSEMBLY (uz COMPILER mierne modifikuje MSIL CODE) validnu WinRT COMPONENT.
+38. TOOL [ILDASM.EXE] dokaze citat .WINMD FILES.
+!!!!! 39. Ak .NET APPLICATION pouziva WinRT COMPONENT vytvorenu v MANAGED CODE, tak WINDOWS kvoli optimalizacii NEPOUZIJE RCW a CCW WRAPPERS. Vysledkom tohto kroku je VYSSIA RYCHLOST APPLICATION, no zaroven aj niektore STRIKTNE WinRT RULES NEMUSIA byt DODRZIAVANE. Napriklad ARRAYS MOZU byt PRESENESE v IN-OUT PARAMETERS co WinRT standardne NEUMOZNUJE. Je preto velmi DOLEZITE, aby pri testovani WinRT COMPONENT vytvorenej v MANAGED CODE bolo testovanie vykonane z UNMANAGED APPLICATIONS, kedy WINDOWS dodrziava VSETKY WinRT RULES a mozu sa tak odhalit SKRYTE ERRORS.
+//-------------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------------
+WinRT TYPE SYSTEM RULES.
+
+!!!!! 1. Nasledujuce RULES sa tykaju IBA PROJECTS typu [WINDOWS RUNTIME COMPONENT] a NETYKAJU sa PROJECTS typu [WINDOWS STORE APP]. [WINDOWS STORE APP] su KLASICKE .NET APPLICATIONS vyuzivajuce WinRT COMPONENTS, no nie su to WinRT COMPONENTS.
+!!!!! 2. Nasledujuce RULES sa tykaju iba PUBLIC TYPES, pretoze iba tieto su EXPORTOVANE ako WinRT COMPONENTS. Na PRIVATE TYPES (CLASSES, INTERFACES, STRUCTURES, ENUMS) sa tieto obmedzenia NEVZTAHUJU.
+3. WinRT COMPONENTS musia deklarovat NAMESPACES s menom IDENTICKYM ako je FILE NAME WinRT COMPONENT (bez FILE EXTENSION .WIN), s menom, ktore je SUBNAMESPACE FILE NAME WinRT COMPONENT (bez FILE EXTENSION .WIN).
+!!! 4. WinRT COMPONENTS NEMAJU spolocny BASE CLASS. Avsak .NET vykonava PROJECTION kadzeho OBJECT, takze WinRT COMPONENT ziska METHODS, ktore su DERIVED z .NET Object CLASS ako napriklad Object.GetType() ci Object.ToString().
+5. WinRT COMPONENTS podporuju VSETKY PRIMITIVE TYPES okrem SByte. To znamena, ze SByte NESMIE byt pouzity v PUBLIC MEMBERS PUBLIC TYPES, ale MOZE byt pouzity v PRIVATE MEMBERS PUBLIC TYPES ci telach METHODS PUBLIC TYPES (a samozrejme aj PRIVATE TYPES).
+6. WinRT COMPONENTS podporuju INHERITANCE a POLYMORPHISM, avsak VACSINA standardnych WinRT COMPONENTS INHERITANCE a POLYMORPHISM NEVYUZIVA, aby tieto WinRT COMPONENTS mohli byt pouzite aj zo SCRIPT LANGUAGES ako napriklad JavaScript.
+!!!!! 7. Aj ked WinRT COMPONENTS PODPORUJU INHERITANCE a POLYMORPHISM, tak v .NET NIE JE MOZNE implementovat INHERITANCE a POLYMORPHISM pre WinRT CLASSES. Kazda WinRT COMPONENT MUSI byt PUBLIC a SEALED CLASS. A kedze je SEALED, tak NEMOZE byt BASE CLASS v DERIVED CLASS.
+!!! 8. PRIVATE CLASSES, kedze NIE SU WinRT COMPONENTS, tak INHERITANCE a POLYMORPHISM PODPORUJU aj v .NET.
+9. WinRT COMPONENTS podporuju STRUCTURES s nasledujucimi obmedzeniami.
+   A. STRUCTURES MUSIA mat iba FIELDS zodpovedajuce WinRT TYPES, WinRT STRUCTURES, STRING, alebo ENUM.
+   B. STRUCTURES NESMU mat CONSTRUCTORS.
+   D. STRUCTURES NESMU mat METHODS.
+   E. STRUCTURES NESMU mat PRIVATE FIELDS.
+   F. STRUCTURES NESMU mat PROPERTIES.
+   G. Vacsina standardnych WinRT STRUCTURES je konvertovana na .NET STRUCTURES a naopak.
+   !!! H. Skratka WinRT STRUCTURES mozu mat IBA PUBLIC FIELDS.
+10. WinRT COMPONENTS podporuju NULLABLE TYPES, ktore konvertuju na WinRT TYPES IReference<T>.
+11. WinRT COMPONENTS podporuju ENUMS, avsak tieto MUSIA byt bud typu Int32, alebo UInt32. Ak su typu UInt32, tak su hodnoty ENUMS povazovane za FLAGS.
+12. WinRT COMPONENTS podporuju INTERFACES, avsak INTERFACE METHODS musia mat ako PARAMETERS a RETURN VALUES WinRT TYPES.
+13. WinRT COMPONENTS podporuju METHODS s nasledujucimi obmedzeniami.
+   A. METHOD OVERLOADING je mozny IBA ak OVERLOADED verzie METHODS maju ROZLICNY POCET PARAMETERS.
+   B. Ak OVERLOADED verzie METHODS sa lisia IBA v TYPE PARAMETERS a NIE POCTE, tak na jednu z OVERLOADED METHODS je NUTNE aplikovat ATTIBUTE [DefaultOverload].
+   C. OPERATOR OVERLOADING NIE JE podporovany.
+   D. DEFAULT ARGUMENTS NIE SU podporovane.
+   E. METHOD moze mat PARAMETER bud typu IN, alebo OUT, ale NIE IN aj OUT. Preto KEYWORD 'ref' NIE JE PODPOROVANY.
+14. WinRT COMPONENTS podporuju s nasledujucimi obmedzeniami.
+   A. WinRT COMPONENTS mozu pouzivat iba WinRT COMPATIBLE TYPES.
+   B. WinRT COMPONENTS NESMU definovat PARAMETRICKE PROPERTIES (INDEXERS).
+   C. WinRT COMPONENTS NESMU definovat WRITE-ONLY PROPERTIES.
+15. WinRT COMPONENTS podporuju s nasledujucimi obmedzeniami.
+   A. WinRT COMPONENTS mozu v DELEAGTES pouzivat WinRT COMPATIBLE TYPES.
+   B. WinRT COMPONENTS pre DELEGATES NEPODPORUJU METHODS Delegate.BeginInvoke() a Delegate.EndInvoke().
+   !!! C. WinRT COMPONENTS vytvaraju pre DELEGATES CCW WRAPPERS. DELEGATES su uvolnene z MEMORY az ked je CCW WRAPPER uvolneny WinRT COMPONENT, ktora DELEGATE pouzivala.
+!!! 16. ERRORS v METHODS sa vo WinRT definuju vratenim RETURN VALUE typu Windows.Foundation.HResult. CLR vykonava MAPPING tychto VALUES na EXCEPTIONS. MAPPING sa realizuje nasledujucim sposobom.
+   A. Ak Windows.Foundation.HResult obsahuje VALUE, ktora je WELL-KNOWN, CLR namapuje tuto hodnotu na SPECIALIZOVANU .NET EXCEPTION. Napriklad HRESULT E_OUTOFMEMORY je MAPPED na EXCEPTION typu OutOfExceptionMemory.
+   !!! B. Ak Windows.Foundation.HResult obsahuje VALUE, ktora NIE JE WELL-KNOWN, CLR namapuje tuto hodnotu na EXCEPTION typu Exception, pricom nastavi PROPERTY Exception.HResult na hodnotu zodpovedajucu hodnote Windows.Foundation.HResult.
+   !!!!! C. WinRT COMPONENTS NEPODPORUJU export CUSTOM EXCEPTIONS.
+17. WinRT COMPONENTS podporuju STRING nasledujucim sposobom.
+   A. STRINGS su IMMUTABLE.
+   !!! B. Do WinRT COMPONENTS STRINGS NESMU byt zasielane ako NULL, inak je generovana EXCEPTION ArgumentException. Ak vsak su OBE WinRT COMPONENT aj WinRT APPLICATION pisane v .NET, tak .NET toto umozni.
+   !!! C. STRINGS su z CLR do WinRT prenasane BY-REFERENCE, pricom su pocas volania WinRT METHOD PINNED a UNPINNED pri navrate z WinRT METHOD.
+   !!! D. STRINGS su z WinRT do CLR vzdy KOPIROVANE.
+18. WinRT COMPONENTS vykonavaju MAPPING TYPE Windows.Foundation.DateTime na CLR TYPE DataTimeOffset a opacne CLR konvertuje CLR TYPE DataTimeOffset na WinRT TYPE Windows.Foundation.DateTime.
+19. WinRT COMPONENTS vykonavaju MAPPING TYPE Windows.Foundation.Uri na CLR TYPE Uri a opacne CLR konvertuje CLR TYPE Uri na WinRT TYPE Windows.Foundation.Uri. WinRT COMPONENTS podporuju IBA ABSOLUTNE URI a pri pokuse o zaslatie RELATIVNHO URI do WinRT COMPONENT je generovana EXCEPTION ArgumentException.
+!!! 20. WinRT INTERFACE Windows.Foundation.IClosable CLR MAPUJE na INTERFACE IDisposable. Zasadny ROZDIEL medzi IClosable a IDisposable je v tom, ze v METHOD IClosable.Close() sa NESMU vykonavat IO OPERATIONS a VSETKY IO OPERATIONS MUSIA byt UKONCENE PRED volanim METHOD IClosable.Close(), inak dojde k STRATE dat, ktore mali byt IO OPERATION v IClosable.Close() ulozene.
+!!!!! 21. Z C++ CODE sa NEDA volat ani IDisposable.Dispose(), ani Windows.Foundation.IClosable.Dispose(), ale METHODS su AUTOMATICKY volat v DESTRUCTORS.
+!!! 22. WinRT COMPONENTS podporuju SINGLE DIMENSION ZER-BASED ARRAYS. WinRT COMPONENTS dokazu vykonat MARSHALING tychto ARRAYS s nasledujucimi obmedzeniami.
+   A. ARRAY moze byt WinRT METHOD preneseny ako IN PARAMETER oznacene ATTRIBUTE .
+   B. ARRAY moze byt WinRT METHOD preneseny ako OUT PARAMETER.
+   !!! C.ARRAY NESMIE byt WinRT METHOD preneseny ako IN/OUT PARAMETER. To znamena, ze WinRT METHOD NESMIE ZMENIT OBSAH ARRAY. Moze iba ARRAY prijat ako IN PARAMETER, alebo zaslat do CALLER METHOD ako OUT PARAMETER, ale nie modifikovat.
+   !!!!! D. Obmedzenie pre IN/OUT ARRAY PARAMETERS NIE JE striktne kontrolovane WinRT, a preto sa moze stat, ze WinRT COMPONENT, ktora modifikuje ARRAY bude fungovat, no neexistuje garancia funkcionality, kedze to nie je sucast WinRT specifikacie.
+23. WinRT COMPONENTS podporuju prenos COLLECTIONS ako IN-OUT PARAMETERS. WinRT COLLECTIONS su pri prenose do CLR MAPPED nasledujucim sposobom.
+   A. WinRT CLASS IIterable<T> je MAPPED na CLR CLASS IEnumerable<T>.
+   B. WinRT CLASS IVector<T> je MAPPED na CLR CLASS IList<T>.
+   C. WinRT CLASS IVectorView<T> je MAPPED na CLR CLASS IReadOnlyList<T>.
+   D. WinRT CLASS IMap<K,V> je MAPPED na CLR CLASS IDictionary<TKey,TValue>.
+   E. WinRT CLASS IMapView<K,V> je MAPPED na CLR CLASS IReadOnlyDictionary<TKey,TValue>.
+   F. WinRT CLASS IKeyValuePair<K,V> je MAPPED na CLR CLASS KeyValuePair<TKey,TValue>.
+!!!!! 24. WinRT COMPONENTS NESMU vystvavovat CLR COLLECTIONS, ale iba CLR INTERFACES, ktore su MAPPED na WinRT INTERFACES.
+//-------------------------------------------------------------------------------------------------------

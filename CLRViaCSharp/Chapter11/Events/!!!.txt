@@ -1,0 +1,30 @@
+//-------------------------------------------------------------------------------------------------------
+1. Solution demonstruje pouzitie EVENTS.
+2. EVENTS umoznuju zaregistrovat INSTANCE, alebo STATIC CALLBACK METHODS, ktore budu pri vzniku nejakeho EVENT o nom notifikovane vyvolanim zaregistrovanych METHODS.
+3. EVENT CONSUMERS ak chcu prijimat EVENTS musia zaregistrovat CALLBACK METHODS. Ak naopak EVENT CONSUMERS nemaju zaujem dalej prijimat EVENTS mozu odregistrovat zaregistrovane CALLBACK METHODS.
+4. Pri pouzivani EVENTS je vhodne dodrzat nasledujuci PATTERN.
+   A. Definovat CLASS 'XXXEventArgs' DERIVED z EventArgs, ktora bude prenasat vsetky PARAMETERS daneho EVENTU. Ak EVENT nema ziadne PARAMETERS je mozne pouzit STATIC OBJECT EventArgs.Empty.
+   B. Definovat EVENT MEMBER typu EventHandler<XXXEventArgs>, kde 'XXXEventArgs' je TYPE definovany v kroku 1. CLASS EventHandler<TType> je DELEGATE CLASS, ktora sa doporujuce pouzivat ako EVENT TYPE, no C# umoznuje pouzit LUBOVOLNY DELEGATE TYPE. Doporucuje sa vsak aby DELEGATE TYPE mal ako RETURN VALUE VOID, aj ked ani to nie je nutne.
+   C. Definovat PROTECTED METHOD, ktora vyvolava EVENT.
+   D. Definovat METHOD, ktora sposobi vznik EVENT.
+!!!!! 5. Pri vyvolavani EVENTS moze dojst k NEBEZPECNEJ RACE CONDITION. Iny THREAD moze v tom istom case ako je volany EVENT vykonat odregistrovanie CALLBACK METHOD a nastavit hodnotu EVENT na NULL co by sposobilo vznik [NullReferenceException]. Riesenim je ulozit hodnotu EVENT do TEMPORARY VARIABLE a pred spustenim EVENT otestovat ci TEMPORARY VARIABLE NIE JE NULL. Problem vsak je, ze NESTACI pouzit klasicke priradenie do TEMPORARY VARIABLE pomocou OPERATOR=. C# i JIT COMPILER by v totizto v RELEASE BUILDS mohli vykonat OPTIMISATION, ktora by sposobila, ze by sa TEMPORARY VARIABLE VOBEC NEVYTVORILA. Preto na priradenie hodnoty EVENT do TEMPORARY VARIABLE je NUTNE pouzit METHOD Volatile.Read(). Tato METHO ZABRANI C# i CLR vykonat OPTIMISATION a hodnota EVENT bude VZDY priradena do TEMPORARY VARIABLE THREAD SAFE sposobom.
+!!! 6. C# pri definovani EVENT C# definuje v CLASS nasledujuce MEMBERS.
+   A. PRIVATNY FIELD typu DELEGATE, ktory sa pouzil pri deklaracii EVENT.
+   !!! B. METHOD add_XXX(), kde XXX je EVENT NAME. Tato METHOD THREAD-SAFE sposobom PRIDAVA novy HANDLER do DELEGATE. Jej ACCESS RIGHTS su definovane EVENT ACCESS RIGHTS.
+   !!! C. METHOD remove_XXX(), kde XXX je EVENT NAME. Tato METHOD THREAD-SAFE sposobom ODOBERA novy HANDLER do DELEGATE. Jej ACCESS RIGHTS su definovane EVENT ACCESS RIGHTS.
+   D. METADATA TYPE EventInfo, ktore logicky zvazuju PRIVATE FIELD a obe METHODS do jednej logickej entity. CLR vsak tieto metadata IGNORUJE. Vyuzivaju ich vsak COMPILERS, resp. je ich mozne pouzit pri REFLECTION.
+!!! 7. EVENTS mozu byt aj VIRTUAL, alebo STATIC. V tomto pripade su vygenerovane METHODS add_XXX() a remove_XXX() definovane ako VIRTUAL, resp. STATIC.
+8. V C# na registrovanie a odregistrovanie EVENT HANDLERS sa pouzivaju pretazene OPERATORS OPERATOR+= a OPERATOR-=.
+   A. OPERATOR+= preklada C# do volania METHOD add_XXX() EVENT 'XXX'.
+   B. OPERATOR-= preklada C# do volania METHOD remove_XXX() EVENT 'XXX'.
+!!! 9. C# umoznuju EXPLICITNE DEFINOVAT METHODS add_XXX() a remove_XXX(). Pre toto explicitne definovanie platia nasledujuce pravidla.
+   !!! A. Kedze C# pri EXPLICITNOM definovani METHODS add_XXX() a remove_XXX() NEGENERUJE AUTOAMTICKY PRIVATE DELEGATE MEMBER, je NUTNE definovat DELEGATE MEMBER MANUALNE. Toto je mozne vyuzit na OPTIMALIZACIU, ktora by napriklad NEPOTREBOVALA instanciu DELEGATE pre KAZDY EVENT, ked CLASS implementuje velky pocet EVENTS. Napriklad triedy typu Control mozu mat i 70 EVENTS a prave tieto CLASSES interne vyuzivaju DICTIONARY, ktory sa naplni iba TYMI DELEGATES, ktore boli SKUTOCNE ZAREGISTROVANE.
+   B. Explicitne definovana METHOD add_XXX() sa definuje pomocou KEYWORD [add].
+   C. Explicitne definovana METHOD remove_XXX() sa definuje pomocou KEYWORD [remove].
+!!! 10. CLASS EventHandlerList je optimalizovana CLASS, ktora umoznuje CLASSES, ktore vyzaduju definovanie velkeho poctu malo pouzivanych EVENTS, aby NEBOLO potrebne pre KAZDY EVENT definovat specialny PRIVATE DELEGATE MEMBER, ktory by znamenal prilis velke OBJECTS. CLASS EventHandlerList ma interne udrziavany DICTIONARY, do ktoreho sa ukladaju iba instancie DELEGATES, ktore REALNE OBJECT POUZIVA. Nevyhoda tejto CLASS je ze NIE JE THREAD-SAFE. Pouziva sa v nasledujucich krokoch.
+   A. Pre DELEGATES, ktore chce CLASS pouzivat sa zavola METHOD EventHandlerList.AddHandler(), pricom ako DICTIONARY KEY je mozne pouzit lubovolny OBJECT.
+   B. DELEGATES je mozne vyvolat pomocou OPERATOR[] a METHOD DynamicInvoke().
+   C. Zaregistrovane DELEGATES je mozne odregistrovat volanim METHOD EventHandlerList.RemoveHandler().
+11. CLASS EventHandlerStore je analogiou EventHandlerList pouzivanou vo WPF. Takisto ako CLASS EventHandlerList vsak NIE JE THREAD-SAFE.
+!!!!! 12. CLASSES, ktore definuju EVENTS a implementuju INTERFACE IDisposable by mali v METHOD IDisposable.Dispose() ODREGISTROVAT VSETKY ZAREGISTROVANE EVENTS, ktore SAMOTNA CLASS zaregistrovala.
+//-------------------------------------------------------------------------------------------------------

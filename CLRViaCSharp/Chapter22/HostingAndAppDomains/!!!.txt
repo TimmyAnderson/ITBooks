@@ -1,0 +1,158 @@
+//-------------------------------------------------------------------------------------------------------
+1. Solution demonstruje CLR HOSTING a pouzitie APP DOMAINS.
+2. Windows pozna IBA NATIVE PROCESSES. Vsetky .NET PROGRAMS teda bezia ako NATIVE PROCESSES do ktoreho je CLR HOSTED. Po spusteni CLR, CLR vykonava MANAGED CODE v UNMANAGED PROCESS.
+!!! 3. Programy vytvorene pre MANAGED prostredie AUTOMATICKY zavedu prostrednictvom SPECIALNEJ INICIALIZACIE v PROCESS LOADER, ktory je schopny z PE-FILE zistit, ze sa ma do PROCESS zaviest CLR HOST a spustit prislusnu ASSEMBLY.
+!!! 4. CLR je implementovany ako COM OBJECT v DLL CLR.DLL. Kedze vsak v PC mozu byt nainstalovane viacere verzie CLR, .NET obsahuje specialnu NATIVE DLL (NIE COM SEVRER) MSCorEE.DLL nazyvanu aj SHIM. Ak PC obsahuje viac verzii CLR, tak SHIM je vzdy iba v 1 VERZII (resp. 2, ak sa podporuje X86 aj X64) z NAJNOVSIEHO CLR, ktory rozponava aj starsie CLR. SHIM vykonava nasledujuce kroky.
+   A. SHIM z PE-FILE zisti aka verzia CLR sa ma nacitat.
+   B. SHIM preveri .CONFIG FILE ci neobsahuje explicitne urctenie verzie CLR, ktoru PROCESS pozaduje. Ak ano, pouzije sa tato verzia.
+   C. SHIM nasledne nacita verziu CLR do PROCESS pomocou FUNCTION CLRCreateInstance(). Vysledkom volania tejto FUNCTION COM INTERFACE ICLRMetaHost, ktory umoznuje zistit nainstalovane verzie CLR.
+   !!!!! D. Nasledne sa zavola METHOD ICLRMetaHost->GetRuntime(), ktora vrati instanciu COM INTERFACE ICLRRuntimeInfo pre danu verziu CLR. V tejto chvili sa zavedza CLR do PROCESS.
+   E. Pomocou METHOD ICLRRuntimeInfo->GetInterface() sa ziska instancia COM INTERFACE ICLRRuntimeHost pomocou, ktore je mozne zaviest ASSEMBLY do PROCESS a spustit jej vykonavanie, cim sa spusti vykonavanie MANAGED CODE.
+!!!!! 5. Kazdy UNMANAGED PROGRAM moze vykonat CLR HOSTING, kedy do svojho PROCESS zavedie CLR a MANAGED ASSEMBLIES. CUSTOM CLR HOST je mozne implementovat v nasledujucich krokoch.
+   A. Do NATIVE CODE sa zavedie referencia na [MetaHost.h] a LIBRARY [MSCorEE.lib]. LIBRARY [MSCorEE.lib] obsahuje CLR HOSTING API.
+   B. Pomocou FUNCTION CLRCreateInstance() sa vytvori COM INTERFACE ICLRMetaHost na META HOST OBJECT. Je to COM OBJECT, ktory umoznuje zistit NAINSTALOVANE VERZIE CLR a zaviest POZADOVANU VERZIU DLL.
+   !!!!! C. Pomocou METHOD ICLRMetaHost->GetRuntime() sa zavedie POZADOVANU VERZIU CLR reprezentovana COM INTERFACE ICLRRuntimeInfo. V tejto chvili sa zavedza CLR do PROCESS.
+   !!! D. Pomocou METHOD ICLRRuntimeInfo->GetInterface() je mozne ziskat instanciu COM INTERFACE ICLRRuntimeHost, ktora reprezentuje CLR HOST.
+   !!! E. Zavolanim METHOD ICLRRuntimeHost->Start() je mozne spustit CLR HOST.
+   !!!!! F. Pomocou METHOD ICLRRuntimeHost->ExecuteInDefaultAppDomain() je mozne zaviest ASSEMBLY v CLR HOST. Je to najjedoduchsi sposob zavedenia ASSEMBLIES. CLR poskytuje aj dalsie sposoby. METHOD ICLRRuntimeHost->ExecuteInDefaultAppDomain() obsahuje aj nazov ENTRY POINT FUNCTION danej ASSEMBLY. ENTRY POINT FUNCTION MUSI byt STATIC METHODS, ktora ma PROTOTYPE [int Method(string Argument)]. Spustenim ENTRY POINT FUNCTION sa spusti MANAGED CODE v UNMANAGED PROCESS.
+   !!!!! G. METHOD ICLRRuntimeHost->ExecuteInDefaultAppDomain() skonci v tom momente, ked skonci vykonavanie MANAGED CODE. RETURN VALUE z int Method(string Argument) je prenesena do UNMANAGED PROCESS na spracovanie.
+   !!! H. CLR sa zastavuje volanim METHOD ICLRRuntimeHost.Stop(). Tuto METHOD je mozne volat po skonceni volania METHOD ICLRRuntimeHost->ExecuteInDefaultAppDomain(), ale je ju mozne zavolat aj ASYNCHRONNE na prerusenie vykonavania CLR a tym aj beziaceho MANAGED CODE.
+   !!! I. Po ukonceni CLR je mozne uvolnit vytvorene INTERFACES, ale CLR HOST NEBUDE odstraneny z MEMORY daneho NATIVE PROCESS.
+!!!!! 6. CLR ak uz je raz zavedeny do MEMORY NATIVE PROCESS, tak z neho NEMOZE byt NIKDY ODSTRANENY az kym proces NESKONCI. CLR NEPOSKUTUJE moznost dynamickeho odstranenia CLR z MEMORY daneho NATIVE PROCESS.
+7. CLR od verzie 4.0 na rozdiel od predchadzajucich verzii CLR umoznuje PARALELNY BEH VIACERYCH VERZII CLR v JEDNOM PROCESS.
+8. TOOL [ClrVer.exe] umoznuje ziskat zoznam nainstalovanych CLR ako aj zoznam CLR zavedenych do NATIVE PROCESS.
+9. APP DOMAINS logicky deli PROCESS na viacero logickych SUB-PROCESSES, ktore su VZAJOMNE ODDELENE v nasledujucich vlastnostiach.
+   A. OBJECTS vytvorene v jednej APP DOMAIN NEMOZU PRIAMO PRISTUPOVAT k OBJECTS vytovrenym v INEJ APP DOMAIN. Pristupovanie je mozne IBA NEPRIAMO pomocou MARSHALLING.
+   B. APP DOMAINS mozu byt uvolnovane z MEMORY NEZAVISLE na INYCH APP DOMAINS. Jedine DEFAULT APP DOMAIN nemoze byt NIKDY uvolnena z PROCESS a uvolnena je az pri skonceni celeho PROCESS.
+   C. Kazda APP DOMAIN moze mat INE SECURITY SETTINGS.
+   D. Kazda APP DOMAIN moze byt ODLISNE CONFIGURATIONS.
+   E. Kazda APP DOMAIN ma VLASTNE VERZIE ASSEMBLIES, ktore si zavadza NEZAVISLE od INYCH APP DOMAINS.
+   !!! F. Kazda APP DOMAIN ma VLASTNE TYPE OBJECTS, ktore su NEZAVISLE na INYCH APP DOMAINS. Kedze TYPE OBJECTS su pre KAZDU APP DOMAIN vytvorene NEZAVISLE, kazda APP DOMAIN obsahuje VLASTNU VERZIU STATIC FIELDS, pretoze tie sa ukladaju prave do TYPE OBJECTS. Nezavislost TYPE OBJECTS je NUTNA, aby APP DOMAINS mohli byt odstranovane NEZAVISLE na inych APP DOMAINS.
+   !!!!! G. Kazda APP DOMAIN ma VLASTNU VERZIU MSIL CODE pre KAZDU METHOD. To znaci, ze MSIL CODE jednotlivych METHODS medzi APP DOMAINS NIE JE SHARED. Nezavislost MSIL CODE je NUTNA, aby APP DOMAINS mohli byt odstranovane NEZAVISLE na inych APP DOMAINS.
+   !!!!! H. Kazda APP DOMAIN ma VLASTNU VERZIU NATIVE CODE ktory bol COMPILED JIT COMPILER. To znaci, ze NATIVE CODE jednotlivych METHODS medzi APP DOMAINS NIE JE SHARED. Nezavislost NATIVE CODE je NUTNA, aby APP DOMAINS mohli byt odstranovane NEZAVISLE na inych APP DOMAINS.
+   !!!!! I. CLR umoznuje zaviest ASSEMBLIES ako DOMAIN NEUTRAL ASSEMBLIES. Taketo ASSEMBLIES potom maju TYPE OBJECTS, MSIL CODE i NATIVE CODE SHARED medzi VSETKYCH APP DOMAINS. To znaci, ze aj STATIC FIELDS (su sucastou TYPE OBJECTS) maju ROVNAKE VALUES vo VSETKYCH APP DOMAINS. Vyhodou DOMAIN NEUTRAL ASSEMBLIES je, ze su v PROCESS zavedene iba raz. Nevyhodou je, ze NIE su ostranovane pri ukonceni APP DOMAIN, ale az pri ukonceni celeho PROCESS. Prikladom ASSEMBLY, ktora je zavadzana ako DOMAIN NEUTRAL ASSEMBLY je ASSEMBLY [MSCorLib.DLL].
+   !!!!! J. APP DOMAINS NEVYTVARAJU, ani NEVLASTNIA THREADS. THREADS mozu vykonavat CODE z LUBOVOLNEJ APP DOMAIN, ak maju k OBJECTS v danej APP DOMAIN pristup. Ak ma byt CODE v jednej APP DOMAIN vykonavany PARALELNE s CODE v inej APP DOMAIN, tak EXPLICITNE je nutne vytvorit novy THREAD pre kazdu novu APP DOMAIN a spustit CODE v nej, napriklad pomocou METHODS AppDomain.ExecuteAssembly(). To v ktorej APP DOMAIN CODE bezi je mozne zistit pomocou STATIC METHOD Thread.GetDomain().
+10. OBJECTS v REMOTE APP DOMAINS je mozne vytvarat pomocou nasledujucich METHODS.
+   A. METHOD AppDomain.CreateInstance() vytvara OBJECT v REMOTE APP DOMAIN. Ako RETURN VALUE vracia instanciu TYPE ObjectHandle z ktorej volanim METHOD ObjectHandle.Unwrap() sa vytvara v CURRENT APP DOMAIN PROXY OBJECT na OBJECT v REMOTE APP DOMAIN.
+   B. METHOD AppDomain.CreateInstanceAndUnwrap() vytvara OBJECT v REMOTE APP DOMAIN a zaroven ako RETURN VALUE vracia PROXY OBJECT na OBJECT v REMOTE APP DOMAIN.
+!!! 11. APP DOMAIN aby bola nezavisla na inych APP DOMAINS NEUMOZNUJE PRIAMY PRISTUP OBJECT vytvorenom v jednej APP DOMAIN z INYCH APP DOMAINS. K OBJECT v inych APP DOMAINS je mozne pristupovat na zaklade toho o aky TYPE sa jedna. CLR podporuje 2 verzie pristupu k OBJECTS v REMOTE APP DOMAIN.
+   A. MARSHAL BY REFERENCE.
+   B. MARSHAL BY VALUE.
+12. Pre MARSHAL BY REFERENCE platia nasledujuce fakty.
+   A. TYPE, ktory ma byt MARSHALLED BY REFERENCE MUSI byt DERIVED z CLASS MarshalByRefObject.
+   !!! B. Ak sa pomocou METHOD AppDomain.CreateInstance(), alebo METHOD AppDomain.CreateInstanceAndUnwrap() vytvori instancia TYPE v REMOTE APP DOMAIN, tak do CURRENT APP DOMAIN je vrateny PROXY OBJECT odkazujuci sa na REMOTE OBJECT.
+   C. Volanim METHODS cez PROXY OBJECT CLR zabezpecuje, ze METHODS sa budu volat na REMOTE OBJECT v REMOTE APP DOMAIN.
+   !!! D. Po uvolneni APP DOMAIN sa REMOTE OBJECT ZLIKVIDUJE. Ak v CURRENT APP DOMAIN nan existuje PROXY OBJECT, tak tento sa stava neplatnym a pri prvom pokuse o zavolanie niektoreho jeho MEMBER je generovana EXCEPTION [AppDomainUnloadedException].
+13. Pre MARSHAL BY VALUE platia nasledujuce fakty.
+   A. TYPE, ktory ma byt MARSHAL BY VALUE MUSI byt SERIALIZED. To znaci, ze nan MUSI byt aplikovany ATTRIBUTE [Serializable].
+   !!! B. Ak sa pomocou METHOD AppDomain.CreateInstance(), alebo METHOD AppDomain.CreateInstanceAndUnwrap() vytvori instancia TYPE v REMOTE APP DOMAIN, tak do CURRENT APP DOMAIN je vrateny NOVA INSTANCIA TYPE. To znaci, ze volanie tychto METHODS sposobi vytvorenie 2 INSTANCII daneho TYPE. Vytvorene OBJECTS v CURRENT a REMOTE APP DOMAINS su UPLNE NEZAVISLE.
+   !!! C. Volanim METHODS cez MARSHAL BY VALUE znamena, ze METHODS sa volaju VZDY na CURRENT OBJECT v CURRENT APP DOMAIN a NIKDY sa nevolaju na REMOTE OBJECT v REMOTE APP DOMAIN.
+   !!! D. Po uvolneni APP DOMAIN sa REMOTE OBJECT ZLIKVIDUJE, avsak CURRENT OBJECT ostava NADALEJ PLATNY, az kym CURRENT APP DOMAIN nie je zlikvidovana.
+   !!!!! E. TYPES oznacene ATTRIBUTE [DataContract] NIE SU POVAZOVANE za SERIALIZABLE a teda ich OBJECTS NIE SU pouzitelne z REMOTE APP DOMAINS.
+!!!!! 14. Ak TYPE NIE JE DERIVED z CLASS MarshalByRefObject ani NIE JE SERIALIZABLE, tak k nemu NIE JE MOZNE pristupovat z REMOTE APP DOMAIN. Pri pokuse o takyto pristup dojde ku generovaniu EXCEPTION [SerializationException].
+15. Nasledujuce kroky definuju postup akym je mozne pracovat s APP DOMAIN.
+   A. Novu APP DOMAIN je mozne vytvorit volanim STATIC METHOD AppDomain.CreateDomain(), kde je mozne definovat CONFIGURATION a SECURITY SETTINGS pre APP DOMAIN.
+   !!! B. Pomocou METHOD AppDomain.CreateInstanceAndUnwrap() je mozne vytvorit novy OBJECT novovytvorenej REMOTE APP DOMAIN. Ak sa vytvori OBJECT, ktoreho TYPE je DERIVED z CLASS MarshalByRefObject tak METHOD AppDomain.CreateInstanceAndUnwrap() vrati PROXY OBJECT na skutocny OBJECT v REMOTE APP DOMAIN. Ak sa vytvori OBJECT, ktoreho TYPE je SERIALIZABLE (oznaceny ATTRIBUTE [Serializable]) tak METHOD AppDomain.CreateInstanceAndUnwrap() vrati KOPIU OBJECT v CURRENT APP DOMAIN z REMOTE APP DOMAIN. METHOD AppDomain.CreateInstanceAndUnwrap() teda sposobi vytvorenie 2 OBJECTS.
+   C. Pri zavolani METHOD novovytvoreneho OBJECT ak je jeho TYPE DERIVED z CLASS MarshalByRefObject je METHOD volana cez PROXY OBJECT na REMOTE APP DOMAIN. Pri zavolani METHOD novovytvoreneho OBJECT ak je jeho TYPE SERIALIZABLE (oznaceny ATTRIBUTE [Serializable]) sa METHOD vola v CURRENT APP DOMAIN na lokalnej kopii tohto OBJECT.
+   !!! D. Pocas volania objektu v REMOTE APP DOMAIN, THREAD vykonava CODE v REMOTE APP DOMAIN zak kym volanie neskonci.
+   !!! E. APP DOMAIN je mozne odstranit volanim METHOD AppDomain.Unload(). Toto volanie sposobi okrem ineho i ODSTRANENIE OBJECTS z MEMORY, ktore boli v danej APP DOMAIN vytvorene. Ak na tieto OBJECTS este stale odkazuju PROXY OBJECTS, potom tieto PROXY OBJECTS budu NEPLATNE a pokus o vyvolanie METHODS na takychto PROXY OBJECTS skonci hodenim EXCEPTION [AppDomainUnloadedException]. Naopak, pre OBJECTS, ktore su SERIALIZABLE (oznaceny ATTRIBUTE [Serializable]) je vzdy odstranena iba OBJECT v REMOTE APP DOMAIN a jeho kopia v CURRENT APP DOMAIN ostava nadalej platna.
+!!! 16. Ak sa pomocou AppDomain.CreateInstanceAndUnwrap() vytvara instancia TYPE, ktory je DERIVED z MarshalByRefObject, do CURRENT APP DOMAIN sa vrati PROXY OBJECT. PROXY OBJECT ma nasledujuce vlastnosti.
+   A. PROXY OBJECT je vytvoreny DYNAMICKY na zaklade TYPE REMOTE OBJECT, ktory PROXY reprezentuje.
+   B. Pri vytvarani REMOTE OBJECT v REMOTE APP DOMAIN METHOD AppDomain.CreateInstanceAndUnwrap() docasne prejde do REMOTE APP DOMAIN, aby po vytvoreni REMOTE OBJECT sa z neho vratila spat.
+   C. PROXY OBJECT ma tie iste METHODS ako REMOTE OBJECT.
+   !!! D. PROXY OBJECT NEMA FIELDS povodneho OBJECT, avsak CLR generuje specialny CODE, ktory cez PROXY vola REMOTE OBJECT na ktorom vola NEDOKUMENTOVANE METHODS Object.FieldGetter() a Object.FieldSetter(), ktore zabezpecia citanie a nastavenie FIELDS REMOTE OBJECT.
+   !!! E. PROXY OBJECT NIE JE DERIVED z CLASS MarshalByRefObject, avsak CLR definuje specialnu implementaciu, kedy PROXY OBJECT sa tvari, ako by bol DERIVED z MarshalByRefObject a aj METHOD MarshalByRefObject.GetType() vracia TYPE MarshalByRefObject.
+   !!!!! F. Pri volani METHODS PROXY OBJECT dochadza k prechodu medzi APP DOMAINS kedy THREAD zacne vykonavat CODE v REMOTE APP DOMAIN, az kym volanie METHOD neskonci a CODE sa nevrati do volajucej APP DOMAIN.
+   !!!!! G. Skutocny REMOTE OBJECT po vytvoreni METHOD AppDomain.CreateInstanceAndUnwrap() NIE JE PRIRADENY do ziadnej VARIABLE a teda sa OKAMZITE po vytvoreni stane ROOT-LESS a teda aj kandidatom na GC. Avsak zivotnost REMOTE OBJECTS je mozne zaistit pretazenim METHOD MarshalByRefObject.InitializeLifetimeService(). Tato METHOD definuje TIMEOUT pocas ktoreho sa musi zavola niektora z METHODS PROXY OBJECT, ktory vyvola METHOD REMOTE OBJECT. Ak sa ziadna METHOD v danom intervale nezavola, tak je REMOTE OBJECT ZLIKVIDOVANY a PROXY OBJECT bude referovat na NEPLATNY REMOTE OBJECT. Ak METHOD AppDomain.CreateInstanceAndUnwrap() vrati hodnotu NULL, tak zivotnost REMOTE OBJECT je NEKONECNA.
+17. Pomocou METHOD AppDomain.Unload() je mozne odstranit APP DOMAIN. Pri odstranovani sa vykonava nasledujuci algoritmus.
+   A. CLR pozastavi VSETKY THREADS v procese.
+   !!! B. CLR zisti, ktore THREADS vykonavaju CODE v APP DOMAIN, ktora ma byt zrusena a vyvolaju na danych THREADS ThreadAbortException. Ak tato EXCEPTION je v pripade odstranovania APP DOMAIN UNHANDLED, tak CLR ju IBA IGNORUJE a NEUKONCI CELY PROCESS. CLR NEMOZE zastavit THREADS pokial bezia vykonavaju CRITICAL CODE, ako napriklad FINALLY BLOCK, a preto CLR caka 10 sekund na to ci sa THREADS zastavia a ak sa to nepodari, METHOD AppDomain.Unload() vracia EXCEPTION [CannotUnloadAppDomainException].
+   !!! C. Ak THREAD, ktory zavolal AppDomain.Unload() vykonava CODE APP DOMAIN, ktora ma byt zlikvidovana, tak CLR vytvori NOVY THREAD, ktory je zodpovedny za zlikvidovanie THREADU, ktory zavolal METHOD AppDomain.Unload().
+   D. CLR prejde HEAP a pre VSETKY PROXY OBJEKTY nastavi priznak, ze REMOTE OBJECTS boli odstranene.
+   E. CLR sposobi vyvolanie GC, ktory zavola METHODS Object.Finalize() a odstrani vsetky objekty vytvorene na zlikvidovanej APP DOMAIN.
+   F. CLR spusti pozastavene THREADS a METHOD AppDomain.Unload() sa ukonci.
+18. APP DOMAIN moze byt monitorovana na mnozstvo BYTES, ktore pouziva i mnozstvo casu, ktory CODE stravil v danej APP DOMAIN. Na zaklade tychto udajov sa HOST moze rozhodnut zlikvidovat APP DOMAIN volanim METHOD AppDomain.Unload(). Monitoring APP DOMAIN sa vykonava pomocou nasledujucich PROPERTIES.
+   !!! A. STATIC PROPERTY AppDomain.MonitoringIsEnabled zapina MONITORING APP DOMIAN. PROPERTY je mozne nastavit iba na TRUE. Ak uz je raz nastavena na TRUE, nie je ju mozne zmenit spat na FALSE.
+   B. STATIC PROPERTY AppDomain.MonitoringSurvivedProcessMemorySize vracia pocet BYTES alokovanych vsetkymi APP DOMAINS.
+   C. PROPERTY AppDomain.MonitoringTotalAllocatedMemorySize vracia pocet BYTES alokovanych danou APP DOMAIN.
+   D. PROPERTY AppDomain.MonitoringSurvivedMemorySize vracia pocet BYTES aktualne pouzivanych danou APP DOMAIN.
+   E. PROPERTY AppDomain.MonitoringTotalProcessorTime vracia cas, ktory CODE stravil v danej APP DOMAIN.
+!!! 19. CLASS AppDomain obsahuje EVENT AppDomain.FirstChanceException, ktory umoznuje zachytavat FIRST CHANCE EXCEPTIONS ESTE PREDTYM ako CLE zacne hladat CATCH BLOCK. V HANDLER tohto EVENT NIE JE MOZNE EXCEPTION ZACHTYTIT, iba spracovat, ako napriklad zalogovat.
+!!!!! 20. Ak v CODE ktory cez PROXY komunikuje s REMOTE OBJECT v REMOTE APP DOMAIN dojde k EXCEPTION, ktora NIE JE v REMOTE APP DOMAIN zachytena, tak je EXCEPTION pomocou SERIALIZATION prenesena do CURRENT APP DOMAIN kde sa hlada prislusny CATCH BLOCK.
+   A. V REMOTE APP DOMAIN este PRED hladanim CATCH BLOCK, ak ma APP DOMAIN zaregistrovane EVENT HANDLERS pre EVENT AppDomain.FirstChanceException, tak su tieto EVENT HANDLERS vykonane. Tu sa napriklad moze zapisat do LOGU informacia o EXCEPTION.
+   B. V REMOTE APP DOMAIN je hladany CATCH BLOCK. Ak je najdeny, tak sa vyvola a CODE moze dalej normalne pokracovat.
+   !!!!! C. Ak REMOTE APP DOMAIN NEOBSAHUJE CATCH BLOK, tak EXCEPTION je SERIALIZED do LOCAL APP DOMAIN (ktora volala METHOD PROXY OBJECT) a v LOCAL APP DOMAIN je generovana NOVA EXCEPTION s rovankym obsahom ako v REMOTE APP DOMAIN. CALL STACK ostava zachovany.
+   D. V LOCAL APP DOMAIN este PRED hladanim CATCH BLOCK, ak ma APP DOMAIN zaregistrovane EVENT HANDLERS pre EVENT AppDomain.FirstChanceException, tak su tieto EVENT HANDLERS vykonane. Tu sa napriklad moze zapisat do LOGU informacia o EXCEPTION.
+   E. V LOCAL APP DOMAIN je hladany CATCH BLOCK. Ak je najdeny, tak sa vyvola a CODE moze dalej normalne pokracovat uz v LOCAL APP DOMAIN.
+   !!! F. Ak CATCH BLOCK NEBOL najdeny, generuje sa UNHANDLED EXCEPTION.
+21. Programy napisane CISTO v .NET ako napriklad CONSOLE programy, WPF programy, NT Services ci Win Forms programy su SELF-HOSTED procesy. Pri ich zavedeni je AUTOMATICKY ZAVEDENY SHIM (MSCorEE.DLL), ktory nasledne zavedie spravnu verziu CLR. Nasledne sa najde METHOD Main(), ktora sa spusti. Po jej skonceni je NATIVE PROCES, ktory poskytol SELF-HOSTING UKONCENY.
+22. V SILVERLIGHT je KAZDY SILVERLIGHT CONTROL spusteny v SEPARATNEJ APP DOMAIN, ktora skonci pri ukoceni danej WEB PAGE, alebo pri prechode na inu WEB PAGE.
+!!! 23. ASP.NET je HOSTED ako ISAPI.DLL, ktora pri si pri prvej poziadavke na WEB SERVER zavedie CLR. Nasledne pre KAZDU WEB APPLICATION pri prvom WEB REQUEST na nu vytvori NOVU APP DOMAIN. To znamena, ze KAZDA WEB APPLICATION je ulozena v separatnej APP DOMIAN. Vyhodou tohto postupu je, ze nasledujuce WEB REQUESTS na WEB APPLICATION, pre ktoru je uz vytvorena APP DOMAIN sa vykonaju v tejto APP DOMAIN, cim odpada nacitavanie ASSEMBLIES pre TYPES, ktore uz boli nacitane predchadzajucimi WEB REQUESTS. Takisto nie je nutna JIT COMPILATION tych METHODS, ktore boli JIT COMPILED predchadzajucimi WEB REQUESTS. Ak uplynie stanoveny TIMEOUTS pocas ktoreho nedojde ziaden WEB REQUEST, tak APP DOMAIN a tym aj WEB APPLICATION je odstranena z MEMORY. APP DOMAIN je odstranovana aj pri zmene ASSEMBLIES ak sa instaluje nova verzia WEB APPLICATION. Vdaka uplnej izolacii APP DOMAINS je mozne v 1 PROCESS WEB SERVER mat naraz spustenych viacero WEB APPLICATIONS.
+24. SQL SERVER zavadza CLR pri poziadavke na vykonanie STORED PROCEDURE napisanej v MANAGED CODE (pouziva MANAGED OBJECTS). Kazda MANAGED STORED PROCEDURE bezi vo VLASTNEJ APP DOMAIN.
+!!! 25. HOST moze definovat i CUSTOM APP DOMAIN MANAGER, ktoreho ulohou je riadit vytvaranie a pridelovanie APP DOMAINS, ich SECURITY APP DOMAINS a CONFIGURATION APP DOMAINS. APP DOMAIN MANAGER moze byt realizovany 2 sposobmi.
+   A. V UNMANAGED CODE volanim METHODS COM INTERFACES.
+   B. V MANAGED CODE implementovanim CLASS AppDomainManager v ASSEMBLY, ktora MUSI BYT instalovana do GAC.
+26. CUSTOM APP DOMAIN MANAGER umoznuje realizovat 3 cinnosti.
+   A. Centralizuje miesto vytvarania APP DOMAINS, kedy KAZDA POZIADAVKA na vytvorenie NOVEJ APP DOMAIN je smerovana do AppDomainManager a ten rozhoduje ci sa VYTVORI NOVA APP DOMAIN, alebo sa pouzije EXISTUJUCA APP DOMAIN.
+   B. Umoznuje komunikaciu z UNMANAGED HOST do MANAGED CODE, pretoze KAZDA NOVOVYTVORENA instancia AppDomainManager (vytvara sa jedna pre KAZDU APP DOMAIN) je zaslana cez CCW do UNMANAGED HOST, ktory pomocou tohto POINTER moze komunikovat s MANAGED CODE.
+   C. Umoznuje CUSTOMIZOVAT vytvarane APP DOMAINS.
+27. APP DOMAIN MANAGER umoznuje CUSTOMIZOVAT proces vytvarania novych APP DOMAINS nasledujucim sposobom.
+   A. Pri poziadavke na vytvorenie NOVEJ APP DOMAIN je volana METHOD AppDomainManager.CreateDomain() na APP DOMAIN, kde bola volana METHDO AppDomain.CreateDomain(). APP DOMAIN MANAGER sa moze rozhodnut VYTVORIT NOVU APP DOMAIN, alebo vratit EXISTUJUCU APP DOMAIN. V pripade, ze vracia NOVU APP DOMAIN, tak ju moze CUSTOMIZOVAT pomocou AppDomainSetup.
+   B. Ak AppDomainManager.CreateDomain() vytvori NOVU APP DOMAIN, tak je pre tuto APP DOMAIN v tejto APP DOMAIN je vytvorena instancia AppDomainManager.
+   !!! C. Na AppDomainManager vytvorenej v NOVEJ APP DOMAIN je volana METHOD AppDomainManager.InitializeNewDomain(), kde je mozne inicializovat APP DOMAIN. Kedze tato METHOD uz bezi v NOVOVYTVORENEJ APP DOMAIN je mozne priamo v tejto APP DOMAIN vykonat prislusne inicializacie. Zvycajne sa pouziva na nacitanie ASSEMBLIES do APP DOMAIN. Tato METHOD sa vola AJ PRE DEFAULT APP DOMAIN. VSETKY zmeny v PARAMETRI typu AppDomainInfo su PREMIETNUTE do NOVOVYTVORENEJ APP DOMAIN. Cize AppDomainManager.InitializeNewDomain() JEDINE MIESTO, kde je mozne zmenit PARAMETRE AppDomainInfo pre DEFAULT APP DOMAIN.
+   D. CLR ziska hodnotu PROPERTY AppDomainManager.ApplicationActivator. Vratenu CLASS typu AppDomainManager je mozne IMPLEMENTOVAT a pomocou tejto implementacie je mozne CUSTOMIZOVAT, ako su APPLICATIONS aktivovane cez APPLICATION MANIFEST.
+   E. CLR ziska hodnotu PROPERTY AppDomainManager.HostExecutionContextManager. Vratenu CLASS typu HostExecutionContextManager je mozne IMPLEMENTOVAT a pomocou tejto implementacie je mozne CUSTOMIZOVAT, ako budu CONTEXT INFORMATION prenasane cez hranice THREADS.
+   F. CLR ziska hodnotu PROPERTY AppDomainManager.HostSecurityManager. Vratenu CLASS typu HostSecurityManager je mozne IMPLEMENTOVAT a pomocou tejto implementacie je mozne konfigurovat SECURITY novovytvorenej APP DOMAIN.
+!!! 28. CLASS AppDomainManager sa pouziva nasledujucim sposobom.
+   A. Vytvori sa CUSTOM APP DOMAIN MANAGER, tym, ze sa implementuje CLASS, ktora je DERIVED z AppDomainManager. ASSEMBLY v ktorej sa CUSTOM APP DOMAIN MANAGER nachadza musi byt zaregistrovana v GAC.
+   B. CUSTOM APP DOMAIN MANAGER sa zaregistruje v CLR bud MANAGED CODE pomocou CLASS AppDomainSetup, alebo pomocou .CONFIG FILE, alebo v UNMANAGED CODE daneho HOST volanim METHOD ICLRControl->SetAppDomainManagerType(). Vo vsetkych pripadoch je nutne zadat FULL NAME ASSEMBLY v GAC a nazov TYPE, ktory obsahuje CUSTOM APP DOMAIN MANAGER.
+   C. Nasledne CLR pri vytvarani novych APP DOMAINS pouziva CUSTOM APP DOMAIN MANAGER.
+   !!!!! D. Pre KAZDU NOVOVYTVORENU APP DOMAIN sa vytvori NOVA INSTANCIA zaregistrovaneho CUSTOM APP DOMAIN MANAGER.
+29. CLASS AppDomainManager dedi z MarshalByRefObject a ma nasledujuce MEMBERS.
+   A. STATIC METHOD AppDomainManager.CreateDomainHelper() je HELPER METHOD na vytvaranie NOVYCH APP DOMAINS.
+   !!! B. VIRTUAL METHOD AppDomainManager.CreateDomain() je volana pri poziadavke na vytvorenie NOVEJ APP DOMAIN. CUSTOM APP DOMAIN MANAGER moze bud VYTVORIT NOVU APP DOMAIN, alebo vratit EXISTUJUCU APP DOMAIN.
+   !!! C. VIRTUAL METHOD AppDomainManager.InitializeNewDomain() je volana pri poziadavke na INICIALIZACIU NOVEJ APP DOMAIN. APP DOMAIN MANAGER moze v tejto METHOD CUSTOMIZOVAT vytvaranu APP DOMAIN. METHOD je volana z NOVOVYTVORENEJ APP DOMAIN.
+   !!! D. VIRTUAL METHOD AppDomainManager.CheckSecuritySettings() vracia BOOLEAN hodnotu, informujucu o tom ci specifikovana OPERATION ma SECURITY RIGHTS na vykonanie v APP DOMAIN.
+   E. PROPERTY AppDomainManager.EntryAssembly vracia ENTRY ASSEMBLY daneho programu.
+   F. PROPERTY AppDomainManager.InitializationFlags vracia INITIALIZATION FLAGS APP DOMAIN MANAGER.
+   G. PROPERTY AppDomainManager.ApplicationActivator vracia APPLICATION ACTIVATOR pouzivany pri aktivacii ADD-INS.
+   H. PROPERTY AppDomainManager.HostSecurityManager vracia instanciu HostSecurityManager, ktory CLR pouzije pre nastavenie SECURITY pre danu APP DOMAIN.
+   I. PROPERTY AppDomainManager.HostExecutionContextManager vracia instanciu HostExecutionContextManager, ktory urcuje sposob akym budu tiect informacie o CONTEXT medzi THREADS.
+!!! 30. CLR umoznuje definovanie ESCALATION POLICIES, ktore urcuju ako sa ma CLR pri vyskyte urciteho FAILURE zachovat. CLR definuje nasledujuce typy FAILURES, ktorych osetrenie je mozne CUSTOMIZOVAT.
+   A. FAILURE to ALLOCATE RESOURCE vznika ked niektory RESOURCE ako napriklad MEMORY nemoze byt alokovany. Sem patria aj FAILURES ako napriklad STACK OVERFLOW.
+   !!! B. FAILURE to ALLOCATE RESOURCE in CRITICAL REGION vznika ked niektory RESOURCE ako napriklad MEMORY nemoze byt alokovany v CODE, ktory zavisi od STATE, ktory je SHARED medzi VIACERYMI THREADS. CRITICAL REGION je detekovany AUTOMATICKY CLR a to tak, ze CLR detekuje ci CODE v ktorom doslo k FAILURE to ALLOCATE RESOURCE caka na nejake LOCKS (SYNCHRONIZATION PRIMITIVES). Ak ano, tak takato FAILURE to ALLOCATE RESOURCE je povazovana za FAILURE to ALLOCATE RESOURCE in CRITICAL REGION. Na to, aby CLR dokazal detekovat CRITICAL REGIONS je NUTNE pouzivat .NET SYNCHRONIZATION PRIMITIVES a nie nejake CUSTOM SYNCHRONIZATION mechanizmi.
+   C. FATAL RUNTIME ERRORS vznikaju ked dojde k internej chybe samotneho CLR.
+   D. ORPHANED LOCK vznika ako THREAD, ktory vytvoril LOCK bol TERMINATED BEZ TOHO, aby doslo k UVOLNENIU LOCK.
+!!! 31. ESCALATION POLICIES mozu specifikovat pre kazdy TYPE FAILURE rozlicne ACTIONS ako sa ma CLR zachovat pri vyskyte danej FAILURE.
+   A. THROW EXCEPTION - dochadza k hodeniu EXCEPTION, ktoru je v kode moze zachytit a spracovat.
+   B. GRACEFULLY ABORT THREAD on which FAILURE OCCURED - THREAD, ktory sposobil FAILURE je GRACEFULLY ABORTED. To znaci, ze v THREADE je hodena EXCEPTION ThreadAbortException a vsetky FINALLY BLOCKS su VYKONANE.
+   C. RUDELY ABORT THREAD on which FAILURE OCCURED - THREAD, ktory sposobil FAILURE je RUDELY ABORTED. To znaci, ze v THREADE NEMUSIA byt vykonane FINALLY BLOCKS. RUDE ABORT sa zvycajne vykonava ak THREAD nie je schopny byt GRACEFULLY ABORTED v stanovenom case.
+   D. GRACEFULLY ABORT APP DOMAIN on which FAILURE OCCURED - APP DOMAIN, ktora sposobila FAILURE je GRACEFULLY ABORTED. To znaci, ze VSETKY THREADS v vytvorene v danej APP DOMAIN su GRACEFULLY ABORTED a zodpovedajce APP DOMAIN DATA STRUCTURES su korektne uvolnene.
+   E. RUDELY ABORT APP DOMAIN on which FAILURE OCCURED - APP DOMAIN, ktora sposobila FAILURE je RUDELY ABORTED. To znaci, ze v THREADS NEMUSIA byt vykonane FINALLY BLOCKS. Takisto NEMUSIA BYT vykonane FINALIZERS, okrem CRITICAL FINALIZERS. RUDE ABORT sa zvycajne vykonava ak APP DOMAIN nie je schopna byt GRACEFULLY ABORTED v stanovenom case.
+   F. GRACEFULLY EXIT PROCESS - PROCESS je GRACEFULLY EXITED. To znaci, ze VSETKY APP DOMAINS su GRACEFULLY ABORTED, vsetky FINNALY BLOCKS su volane a vseetky FINALIZERS su vykonane.
+   G. RUDELY EXIT PROCESS - PROCESS je RUDELY EXITED. CLR sa nepokusa vykonat GRACEFULLY ABORT APP DOMAIN a tie su rovno RUDELY ABORTED.
+   H. DISABLE CLR - CLR je DISABLED, ale UNMANAGED PROCESS bezi dalej. Toto sa vyuziva napriklad v SQL SERVER, kde pri pade CLR SQL SERVER bezi dalej.
+32. Pri vzniku UNHANDLED EXCEPTION CLR postupuje v zavislosti od toho, aby CODE vygeneroval tuto EXCEPTION.
+   A. Ak UNHANDLED EXCEPTION vznikne v NON-CRITICAL CODE tak CLR spusti proces GRACEFULLY ABORT THREAD, ktory ak do stanoveneho casu nie je ukonceny, spusti sa RUDELY ABORT THREAD.
+   B. Ak UNHANDLED EXCEPTION vznikne v CRITICAL CODE (CATCH BLOCKS, FINALLY BLOCKS, FINALIZERS, CRITICAL FINALIZERS), tak CLR spusti proces GRACEFULLY ABORT APP DOMAIN, ktora ak do stanoveneho casu nie je ukoncena, spusti sa RUDELY ABORT APP DOMAIN.
+!!! 33. HOST, ktory umoznuje pouzivat UNTRUSTED ASSEMBLIES, ak ma byt bezpecny by mal zavadzat UNTRUSTED ASSEMBLIES nasledujucim sposobom.
+   A. Po prichode poziadavky na vykonanie CODE z UNTRUSTED ASSEMBLY by mal HOST ziskat THREAD z THREAD POOL.
+   B. V THREAD by mal vytvorit novu APP DOMAIN, ktorej obmedzi PERMISSIONS tak, aby mohla bezpecne zaviest UNTRUSTED ASSEMBLY.
+   C. THREAD vstupi do TRY BLOCK v ktorom spusti vykonanie UNTRUSTED CODE z UNTRUSTED ASSEMBLY v novej APP DOMAIN s obmedzenymi PERMISSIONS.
+   D. Kedze UNTRUSTED CODE je vykonavany v APP DOMAIN s obmedzenymi PERMISSIONS, nemoze vykonat nebezpecnu operaciu.
+   !!! E. Ak by UNTRUSTED CODE vosiel do INFINITE LOOP (alebo neskoncil do stanoveneho TIMEOUT), HOST moze po vyprsani TIMEOUT zavolat METHOD Thread.Abort() na THREAD v ktorom bezi UNTRUSTED CODE.
+   F. Zavolanie METHOD Thread.Abort() sposobi vygenerovanie EXCEPTION [ThreadAbortException] v UNTRUSTED CODE.
+   !!!!! G. UNTRUSTED CODE, aj keby EXCEPTION nahodou zachytil v CATCH BLOCK, tak po skonceni CATCH BLOCK CLR OKAMZITE znova generuje EXCEPTION [ThreadAbortException]. Aj ked opakovane hodenie EXCEPTION [ThreadAbortException] je mozne zablokovat volanim METHOD Thread.ResetAbort(), tak APP DOMAIN so znizenymi PERMISSION (nema PERMISSION SecurityPermission s PROPERTY SecurityPermission.ControlThread==TRUE) zavolanie tejto METHOD NEDOVOLI.
+   !!!!! H. Ak by UNTRUSTED CODE v CATCH BLOCK ci FINALLY BLOCK sa dostal do INFINITE LOOP, HOST ma moznost poziadat CLR o ESCALATION POLICY, kedy sa namiesto GRACEFULLY THREAD ABORT, spravi RUDELY THREAD ABORT, ktory sposobi nasilne ukoncenie THREAD bez ohladu na to ci bezal v CATCH BLOCK, alebo FINALLY BLOCK.
+   !!! I. Kedze UNTRUSTED CODE NEMA moznost zablokovat generovanie EXCEPTION [ThreadAbortException], napokon sa vyvola CATCH BLOCK patriacemu v TRY BLOCK vytvorenom HOST v bode C.
+   !!! J. V CATCH BLOCK v THREAD z THREAD POOL v HOST CODE za zavola METHOD Thread.ResetAbort(), ktora zablokuje dalsie generovanie EXCEPTION [ThreadAbortException].
+   K. Teraz moze CATCH BLOCK vratit nejaky ERROR CODE a moze uvolnit THREAD vytvoreny v bode A.
+!!! 34. Ak sa zavola METHOD Thread.Abort() CLR vykonava nasledujuci algoritmus.
+   A. Na THREAD, ktory ma byt ABORTED sa nastavi Thread.AbortRequested==TRUE.
+   B. CLR zabezpeci, aby sa v THREAD, ktory ma byt ABORTED generovala EXCEPTION [ThreadAbortException].
+   C. Tuto EXCEPTION NIE JE MOZNE ZACHYTIT v CATCH BLOCK, pretoze CLR na konci kazdeho CATCH BLOCK generuje EXCEPTION [ThreadAbortException] znova (pokial sa nezavolala METHOD Thread.ResetAbort(), ktora zabrani THREAD ABORT).
+   !!! D. Cielom generovanie EXCEPTIONS [ThreadAbortException] je dostat THREAD do SAFE PLACE kedy moze byt ABORTED. THREAD je SAFE PLACE ak vykonava MANAGED BLOCKING METHOD.
+   !!! E. Ak sa THREAD dostane generovanim EXCEPTION [ThreadAbortException] do SAFE PLACE, CLR skonroluje ci je Thread.AbortRequested==TRUE.
+   F. Ak THREAD ma byt ABORTED, tak sa vykonaju vsetky FINALLY BLOCKS a THREAD sa ukocni.
+   !!! G. EXCEPTION [ThreadAbortException] ak sa stane UNHANDLED EXCEPTION NESPOSOBI ABORT daneho PROGRAM, ale CLR iba ukonci dany THREAD a PROGRAM moze pokracovat dalej. Je to zasadny rozdiel oproti inym EXCEPTIONS, ktore ak su UNHANDLED, CLR okamzite vykona ABORT daneho PROGRAM.
+//-------------------------------------------------------------------------------------------------------

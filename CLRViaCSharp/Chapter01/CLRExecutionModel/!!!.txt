@@ -1,0 +1,87 @@
+//-------------------------------------------------------------------------------------------------------
+1. Solution demonstruje zakladne koncepty CLR.
+2. CLR je spolocny RUNTIME do ktoreho kazdy CLR COMPATIBLE LANGUAGE kompiluje svoj CODE. Tento CODE je potom spusteny pod CLR, ktory mu poskytuje SERVICES ako napriklad.
+   A. MEMORY MANAGEMENT a GARBAGE COLLECTION.
+   B. THREADING a SYNCHRONIZATION.
+   C. COMMON TYPE SYSTEM.
+   D. JUST IN TIME COMPILATION.
+   E. REFLECTION.
+   F. ASSEMBLY LOADING.
+   G. SECURITY.
+   H. EXCEPTION HANDLING.
+3. Kompilatory CLR COMPATIBLE generuju MANAGED MODULES a ASSEMBLIES vo forme PE32, resp. PE32+ suborov, ktore obsahuju nasledujuce casti.
+   A. PE32, resp. PE32+ HEADER (iba pre X64). Obsahuje informaciu o type suboru, case vytvorenia suboru rozlicne FLAGS a mnoho ineho.
+   B. CLR HEADER. Obsahuje informacie o verzii CLR voci ktorej ma byt ASSEMBLY zavedene, STRONG NAME, adresu na METADATA a rozlicne FLAGS.
+   C. METADATA. Obsahuju kompletnu informaciu o typoch definovanych v ASSEMBLY ako aj typoch v ASSEMBLIES na ktore ASSEMBLY referuje.
+   D. IL kod. Je to samotny MSIL CODE.
+4. CLR podporuje DATA EXECUTION PREVENTION (nemoznost spustit CODE z NONEXECUTABLE MEMORY PAGES) a ADDRESS SPACE LAYOUT RANDOMIZATION (nahodne umiestnovanie MODULES a ASSEMBLIES v ADDRESS SPACE).
+!!! 5. C++/CLI je JEDINYM CLR LANGUAGE, ktory podporuje KOMBINACIU MANAGED a UNMANAGED kodu. Na generovanie CLR ASSEMBLY je nevyhnutne, aby bol pouzity priznak kompilatora '/CLR'.
+6. ASSEMBLY je tvorena 1-N MODULES. ASSEMBLY je zakladny UNIT REUSE, SECURITY a VERSIONING.
+7. ASSEMBLY je tvorena nasledujuci castami.
+   A. MANIFEST. Je mnozina tabuliek obsahujucich METADATA. METADATA obsahuju informacie o PUBLIC TYPES, o FILES (MODULES) tvoriacich ASSEMBLY a RESOURCE FILES, ktore su sucastou ASSEMBLY.
+   B. MODULE FILES. MODULE obsahuje METADATA a MSIL kod. Zvycajne ASSEMBLY ma IBA 1 MODULE, ale je mozne vytvorit i ASSEMBLIES s VIACERYMI MODULES. VISUAL STUDIO vsak tuto moznost NEPODPORUJE.
+   C. RESOURCE FILES. Lubovolne RESOURCE FILES, ktore su linkovane k ASSEMBLY ako RESOURCES.
+!!! 8. TOOL [CLRVer.exe] umoznuje zistit ake verzie CLR su v PC nainstalovane. FLAG -all vracia zoznam vsetkych beziacich CLR PROCESSES aj s verziou CLR, ktoru pouzivaju. Prikazom [CLRVer.exe [PID] je mozne zistit aku CLR pouziva PROCESS s danym PID.
+9. CLR umoznuje generovat CODE pre platformy: X86, X64 a Windows RT (ARM). Pomocou OPTION '/platform:anycpu' je mozne skompilovat verziu, ktora bude bezat pod VSETKYMI ARCHITEKTURAMI. Ak vsak ASSEMBLY pouziva aj UNMANAGED CODE, ktory je vzdy kompilovany pre konkretnu architekturu, moze pomocou '/platform:XXX', kde XXX je meno architektury, definovat pre aku CPU architekturu bude ASSEMBLY kompilovana.
+!!! 10. OPTION '/platform:anycpu32preferred' urcuje, ze CODE na X86 platformach ma bezat ako 32 BIT ASSEMBLY. Je to vyhodne napriklad pre setrenie pamate, ak nie je 64 BIT ADDRESS SPACE potrebny.
+!!! 11. Prikazom [DumpBin.exe Filename] je mozne zistit VELMI PODROBNE informacie o EXE, alebo DLL subore.
+!!! 12. Prikazom [CorFlags.exe Filename] je mozne zistit zakladne informacie o EXE, alebo DLL subore, ako napriklad aku verziu CLR ci PE pouziva a zaroven aj modifikovat napriklad CLR HEADER.
+13. WINDOWS spustanie .NET programu realizuje nasledujucim sposobom.
+   A. Z PE FILE HEADER sa zisti ci sa ma vytvorit X32, alebo X64 BIT ADDRESS SPACE.
+   B. Zavedie sa HLAVNA CLR LIBRARY MSCorEE.dll pozadovanej verzie aka je deklarovana v CLR HEADER.
+   C. Vytvori sa MAIN THREAD, ktory zavola funkciu v MSCorEE.dll, ktora INICIALIZUJE CLR a spusti Main() METHOD .NET programu.
+!!! 14. Ak UNMANAGED PROCESS zavola Win32 API FUNCTION LoadLibrary() a podhodi mu .NET ASSEMBLY, tak WINDOWS AUTOMATICKY zavedie do UNMANAGED PROCESS CLR a ASSEMBLY nahra do PROCESSU.
+15. Kazdy CLR LANGUAGE je kompilovany do MSIL. LANGUAGES ako C# ci VB obsahuju IBA PODMNOZINU vlastnosti, ktore ma MSIL. Ak chce tieto vlastnosti pouzit a dany LANGUAGE ich nepodporuje, mozem pouzit taky co ich podporuje, alebo napisat kod priamo v MSIL.
+!!!!! 16. JIT COMPILATION je vykonavana v nasledujucich krokoch.
+   A. Pre METHOD, ktora este nebola COMPILED sa zisti ZOZNAM TYPES, ktore dana METHOD pouziva.
+   B. Pre kazdy TYPE je vytvorena (pokial uz neexistuje) TABLE obsahujuca RECORD pre pre KAZDU METHOD daneho TYPE.
+   C. METHOD RECORD obsahuje ADDRESS na ktorej METHOD zacina. Pokial METHOD daneho TYPE este NEBOLA COMPILED, tak BY-DEFAULT ADDRESS odkazuje na UNDOCUMENTED FUNCTION JITCompiler(). JITCompiler() je substituovana FUNCTION, ktora ma vykonat COMPILATION METHOD, ktoru substituuje.
+   D. FUNCTION JITCompiler() realizuje JIT COMPILATION METHOD, ktoru substituuje tym, ze najprv ALOKUJE MEMORY do ktorej sa bude ukladat NATIVNY COMPILED CODE METHOD, ktora ma byt COMPILED.
+   E. FUNCTION JITCompiler() SPUSTI VERIFIKACIU a COMPILATION MSIL INSTRUCTIONS COMPILED METHOD a NATIVE INSTRUCTIONS ulozi MEMORY alokovanej v predchadzajucom kroku.
+   F. Po kompilacii sa TABLE daneho TYPE sa NAHRADI v RECORD zodpovedajucom COMPILED METHOD jej ADDRESS z FUNCTION JITCompiler() za ADDRESS, kde sa ulozil NATIVNY CODE COMPILED METHOD.
+   G. Po JIT COMPILATION je COMPILED METHOD SPUSTENA a po jej vykonani FUNCTION JITCompiler() skonci.
+   !!! H. OPAKOVANE spustenie uz predtym COMPILED METHOD znamena sa najde TABLE zodpovedajuca danemu TYPE a v nej RECORD zodpovedajuci volanej METHOD. Kedze RECORD obsahuje uz ADDRESS na NATIVNE INSTRUCTIONS a nie na FUNCTION JITCompiler(), tak sa vykona NATIVNY CODE danej METHOD a JIT COMPILATION sa uz NEOPAKUJE.
+!!! 17. Podobne ako NATIVNE COMPILES je i C# a JIT kompilator schopny optimalizacie. Optimalizacia sa robi na 2 urovniach.
+   A. Optimalizacia generovaneho MSIL CODE. Ovlada sa PRIZNAKOM '/optimize'. Pri '/optimize+' je optimalizacia ZAPNUTA a pri '/optimize-' je optimalizacia VYPNUTA.
+   B. Optimalizacia NATIVNEHO CODE generovaneho cez JIT. Ovlada sa PRIZNAKOM '/debug'. Pri '/debug-' je OPTIMALIZACIA ZAPNUTA a pri '/debug+', '/debug:pdbonly' a '/debug:full' je optimalizacia CIASTOCNE, alebo UPLNE VYPNUTA.
+!!! 18. Miera DEBUG informacii emitovanych do NATIVE CODE je ovladana priznakom '/debug', ktory moze nadobudat nasledujuce hodnoty.
+   A. '/debug-' - VYPNE debugging (negeneruje sa .PDB) a realizuje sa NATIVE CODE pri JIT COMPILATION.
+   B. '/debug+' - generuje sa .PDB subor.
+   !!!!! C. '/debug:pdbonly' - generuje .PDB subor. Program je mozne ladit IBA KED BOL SPUSTENY z DEBUGGER. Ak NEBOL, ale naopak k beziacej instancii bol debugger ATTACHED, tak sa zobrazia iba ASSEMBLER instrukcie.
+   !!! D. '/debug:full' - generuje .PDB subor a umoznuje ziskat FULL DEBUGGING aj ked sa k PRIPOJIM k PROCESU, ktore NEBOL SPUSTENY z DEBUGGER. Tato option vsak zmensuje moznosti optimalizacie kodu a preto by sa v RELEASE BUILDS NEMALA POUZIVAT.
+!!!!! 19. Pri zapnutom DEBUGGINGU su do MSIL pridavane INSTRUCTIONS ako NOP, alebo INSTRUCTIONS skoku na nasledujucu adresu, ktore sluzia ako ZARAZKY pre umiestnenie BREAKPOINTS, alebo na realizaciu 'Edit and Contrinue' DEBUGGING.
+!!! 20. V pripade, ze JIT kompilacia sposobuje problemy s vykonnostou, je mozne pouzit NGEN.exe na generovanie NATIVNYCH IMAGES ASSEMBLIES, ktore je mozne nasledne distribuovat namiesto klasickych ASSEMBLIES (ktore vsak je NUTNE distribuovat TIEZ).
+!!! 21. CLASS System.Runtime.ProfileOptimization umoznuje pri spusteni APPLICATION ulozit PROFILE DATA na DISK. Tieto data obsahujuce informaciu, ktore METHODS APPLICATION pouzvala je mozne pouzit pri dalsich spusteniach APPLICATION. JIT CODE tychto METHODS vdaka tymto DATAM bude PARALELNE COMPILED na VIACERYCH CORES v MULTI CODE SYSTEMOCH. V SINGLE CODE SYSTEMOCH je tato CLASS IGNOROVANA.
+!!!!! 22. MSIL je STACK BASED ASSEMBLER, ktory NEPOZNA REGISTRE a PARAMETRE a RETURN VALUES VSETKYCH OPERACII su prenasane cez STACK. Vdaka tomu je VELMI JEDNODUCHO mozne vytvorit vlastny COMPILER do MSIL, kedze napisat COMPILER, ktory nepouziva REGISTRY a pouziva iba STACK je programatorsky OVELA JEDNODUCHSIE. CPU REGISTRE su pouzivane az JIT COMPILER, ktory kompiluje MSIL do NATIVNEHO CODE.
+!!! 23. INSTRUKCIE MSIL NEPOZNAJU TYPY. Napriklad INSTRUKCIA ADD NIE JE SPECIFICKA pre INTEGER a LONG TYPES. Existuje IBA JEDNA INSTRUKCIA INT, ktora je az pri interpretacii do NATIVNEJ INSTRUKCIE konverovana na prislusnu NATIVNU INSTRUKCIU.
+!!! 24. CLR pred samotnou kompilaciou vykonava proces VERIFIKACIE MSIL kodu. Verifikuje ci generovany MSIL je korektny, ci napriklad METHODS maju spravny pocet PARAMETERA a spravnu RETURN VALUE. Takto VERIFIKACIA pred JIT zabezpeci, ze generovane MSIL su KOREKTNE a NIE JE v NICH CHYBA. (Ta by mohla vzniknut napriklad pri chybe C# kompilatora, alebo ak by som MSIL pisal rucne.)
+!!! 25. Proces verifikacie okrem ineho zabranuje tomu, aby doslo k CHYBNEMU PRISTUPU do PAMATE a poskodeniu dat v ramci 1 PROCESSU. To umoznilo vytvorit model APP DOMAINS, kde v 1 PROCESSE bezi VIACERO APP DOMAINS - nezavisle beziacich SUBPROCESSES, ktore su chranene pred vzajomnym poskodenim. APP DOMAINS vyuzivaju niektore robustne SERVER aplikacie ako SQL server ci IIS. Je mozne implementovat aj CUSTOM HOST pomocou HOSTING API.
+26. CLR v zavislosti od toho ci pouzivam potencialne NEBEZPECNY CODE umoznuje generovat 2 typy CODE.
+   A. SAFE CODE - je VERIFIKOVATELNY SAFE CODE, ktory NEPOUZIVA POINTERS, ani ine potencialne nebezpecne operacie.
+   B. UNSAFE CODE - je kod, ktory vyuziva napriklad POINTERS a preto je POTENCIALNE NEBEZPECNY. METHODS pouzivajuce UNSAFE CODE musia byt oznacene klucovym slovom 'unsafe' a zaroven ASSEMBLIES v ktorych su musia mat nastaveny kompilacny priznak '/unsafe'.
+27. UNSAFE CODE moze byt vykonany iba ako ma CODE PERMISSION SecurityPermission pricom SecurityPermissionFlag je nastaveny na hodnotu 'SkipValidation'.
+28. TOOL [PEVerify.EXE [Filename]] umoznuje skontrolovat ci dana ASSEMBLY neobsahuje UNSAFE CODE.
+29. TOOL [NGEN.EXE] umoznuje generovat ASSEMBLY NATIVE IMAGE a tym predist nutnosti vykonania JIT kompilacie. NGEN sa zvycajne robi pri instalacii programu. Aj ked obcas moze zvysit rychlost, tak ma i viacere nevyhody.
+   !!! A. Aj pri distribucii NATIVE IMAGES ne STALE NUTNE DISTRIBUOVAT i povodne ASSEMBLIES s MSIL CODE, aby CLR malo odkial nacitat METADATA, a tak pouzitim NGEN NIE JE MOZNE spravit kod BEZPECNYM proti REVERSE ENGINEERING, pretoze ASSEMBLIES s MSIL musia byt distribuovane.
+   B. CLR pri spusteni ASSEMBLY porovna verziu CLR, ASSEMBLY a WINDOWS pre ktoru bol NATIVE IMAGE vytvoreny. Ak ten nesedi, tak je pouzita klasicka JIT kompilacia. K zmene moze dojst aj po instalovani SERVICE PACK pre WINDOWS, alebo UPDATE pre .NET.
+   C. Niektore specializovane optimalizacie, ktore je mozne robit iba pocas runtime (adresy statickych premennych v JIT su zname a netreba ich dynamicky zistovat ako pri pouziti NGEN) nie je mozne aplikovat pre NGEN a preto moze dojst k spomaleniu vykonavania CODE.
+30. TOOL [NGEN.EXE] dokaze vykonat aj UPDATE vsetkych ASSEMBLIES, pre ktore existuje NATIVE IMAGE. Toto pouziva .NET INSTALLER pri instalacii novsej verzie .NET.
+31. TOOL [MPGO.EXE] umoznuje pre SPUSTENY PROGRAM generovat PROFILING DATA, ktore su ulozene do ASSEMBLIES, ktore dany program tvoria. Tieto data dokaze TOOL [NGEN.EXE] vyuzit na generovanie OPTIMALIZOVANEJSIE NATIVE IMAGE a tym ZRYCHLIT beh daneho programu.
+!!! 32. CLR definuje VELKE MNOZSTVO ROZLICNYCH VLASNTOSTI z ktorych KAZDY .NET LANGUAGE moze implementovat iba ISTU CAST. Minimum, ktore vsak musi KAZDY .NET LANGUAGE implementovat, aby bol generovany CODE POUZITELNY i v INOM LANGUAGE je standard CLS. 
+33. Subor vlastnosti, ktore .NET podporuje je mozne rozdelit do 3 skupin.
+   A. CLR/CTS - je standard obsahujci zoznam VSETKYCH VLASTNOSTI, ktore podporuje CLR. Vsetky tieto vlastnoti su pristupne v LANGUAGE MSIL, ktory ako JEDINY implementuje KOMPLETNU FUNKCIONALITU CLR/CTS standardu.
+   B. C#, VB.NET, C++/CLI - z CLR/CTS kazdy LANGUAGE (okrem MSIL) podporuje iba urcitu PODMNOZINU zo jeho vlastnosti. Teoreticky by KAZDY LANGUAGE mohol podporovat vsetky vlastnosti, no okrem MSIL to ziaden LANGUAGE nerobi. Plati vsak, ze KAZDY LANGUAGE MUSI podporovat SUMBNOZINU vlastnosti, ktore obsahuje standard CLS.
+   C. CLS - je MINIMALNA MNOZINA VLASTNOSTI, ktore musi KOMPILATOR .NET LANGUAGE podporovat, aby mohol vyuzivat ASSEMBLIES napisane v INOM LANGUAGE. Je to MINIMALNA FUNKCIONALITA, ktoru MUSI KAZDY .NET LANGUAGE PODPOROVAT.
+!!! 34. CLS teda definuje MINIMALNY SUBSET zo vsetkych vlastnosti CLR/CTS, ktore musi KOMPILATOR .NET LANGUAGE podporovat, aby mohol pouzivat ASSEMBLIES napisane v inom LANGUAGE. Tieto ASSEMBLIES vsak MUSIA by CLS KOMPATIBILNE. To znamena, ze NESMU POUZIVAT v !!! PUBLIC TYPOCH (PRIVATE MOZU) !!! FEATURES, ktore su MIMO CLS STANDARDU. Sem patria napriklad nasledujuce vlastnosti.
+   A. Nazvy metod sa NESMU LISIT IBA VELKOSTOU PISMEN (CASE SENSITIVE), pretoze CLS standard NEVYZADUJE, aby bol jazyk CASE SENSITIVE. Ak ASSEMBLY obsahuje PUBLIC/PROTECTED metody v PUBLIC typoch rozlisene iba vdaka CASE SENSITIVITY, tak NIE JE CLS KOMPATIBILNA.
+   B. V ASSEMBLY sa NESMU pouzivat TYPY ako UInt32, pretoze tieto NIE SU v CLS STANDARDE a ine programovacie jazyky ich NEMUSIA POZNAT. Ak ASSEMBLY pouziva dane TYPY v PUBLIC/PROTECTED METHODS PUBLIC TYPES, tak NIE JE CLS KOMPATIBILNA.
+!!!!! 35. Nato, aby ASSEMBLY bola CLS kompatibilna musi dodrziavat CLS standard, ale IBA VO VEREJNE PRISTUPNYCH MEMBERS (METHODS, FIELDS, PROPERTIES, EVENTS) VEREJNYCH TYPOV (PUBLIC), pretoze IBA TIETO je mozne pouzit MIMO z INEJ ASSEMBLY. PRIVATE TYPY, alebo PRIVATE MEMBERS KLUDNE MOZU POUZIT aj NON-CLS VLASTNOSTI a takato ASSEMBLY BUDE POUZITELNA z INYCH PROGRAMOVACICH JAZYKOV. Obmedzenie sa tyka IBA PUBLIC MEMBERS PUBLIC TYPES.
+36. CLR definuje atribut [CLSCompliant], ktory prikaze kompilatoru, aby skontrolovat ci dana ASSEMBLY je CLS COMPLIANT - teda ci VSETKY JEJ VEREJNE TYPY su CLS COMPLIANT. Ak najde nejaky problem, tak ho vyhlasi ako WARNING.
+!!!!! 37. CLR interne pozna iba 2 typy MEMBERS na ktore su VSETKY MEMBERS pri kompilaci konvertovane.
+   A. FIELDS - konvertuju sa nan klasicke FIELS, ale aj casti EVENTS (instancia DELEGATE).
+   B. METHODS - konvertuju sa nan klasicke METHODS, CONSTRUCTORS, pristupove METHODS PROPERTIES EVENTS a INDEXERS.
+38. Interoperabilitu medzi NATIVE a MANAGED CODE je mozne realizovat nasledujucimi sposobmi.
+   A. P/Invoke - umoznuje z MANAGED CODE volat NATIVNE DLL FUNCTIONS.
+   B. COM RCW - umoznuje z MANAGED CODE volat NATIVNE COM OBJECTS.
+   C. COM CCW - umoznuje z NATIVE CODE volat MANAGED CODE vystaveny ako COM OBJECTS.
+//-------------------------------------------------------------------------------------------------------

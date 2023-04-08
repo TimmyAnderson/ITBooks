@@ -1,0 +1,173 @@
+//-------------------------------------------------------------------------------------------------------
+1. Solution demonstruje pouzitie HYBRID SYNCHRONIZATION CONSTRUCTS.
+2. HYBRID SYNCHRONIZATION CONSTRUCTS su kombinaciou USER-MODE CONSTRUCTS a KERNEL-MODE CONSTRUCTS.
+!!! 3. HYBRID SYNCHRONIZATION CONSTRUCTS sa snazia pokial 2 THREADS nie su v CONTENTION pouzivat iba USER-MODE CONSTRUCTS na synchronizaciu, ktora je DALEKO VYKONNEJSIA. Ak vsak DOJDE ku CONTENTION, tak sa pouzije KERNEL-MODE CONSTRUCTS, aby cakajuci THREAD bol uvedeny do WAIT stavu a zbytocne nevykonaval SPINNING, ktory zatazuje CPU.
+!!! 4. Mnohe CLR HYBRID SYNCHRONIZATION CONSTRUCTS DYNAMICKY ALOKUJU KERNEL-MODE CONSTRUCT az pri PRVEJ CONTENTION a takisto podporuju CANCELLATION cez CencellationToken.
+5. CLASS ManualResetEventSlim je HYBRIDNOU ANALOGIOU CLASS ManualResetEvent, ktora podporuje SPINING. Ma nasledujuce MEMBERS.
+   A. METHOD ManualResetEventSlim.Set() nastavuje MANUAL RESET EVENT SLIM do SIGNALIZED STATE.
+   B. METHOD ManualResetEventSlim.Reset() nastavuje MANUAL RESET EVENT SLIM do NON-SIGNALIZED STATE.
+   !!! C. METHOD ManualResetEventSlim.Wait() vykonava SPINNING a neskor i BLOCKING, ak MANUAL RESET EVENT SLIM nie je SIGNALIZED. METHOD umoznuje definovat CancellationToken na vykonanie CANCELLATION.
+   D. METHOD ManualResetEventSlim.Dispose() uvolnuje RESOURCES asociovane s MANUAL RESET EVENT SLIM.
+   E. PROPERTY ManualResetEventSlim.WaitHandle obsahuje instanciu KERNEL OBJECT typu WaitHandle, ktory sa pouziva na BLOCKING THREAD, ak pocas SPINNING nebol uvolneny LOCK. Je to READONLY PROPERTY.
+   F. PROPERTY ManualResetEventSlim.IsSet urcuje ci je MANUAL RESET EVENT SLIM SIGNALIZED. Je to READONLY PROPERTY.
+   G. PROPERTY ManualResetEventSlim.SpinCount urcuje pocet SPINS vykonavanych pocat SPINNING. Je to READONLY PROPERTY.
+6. CLASS SemaphoreSlim je HYBRIDNOU ANALOGIOU CLASS Semaphore, ktora podporuje SPINING. Ma nasledujuce MEMBERS.
+   !!! A. METHOD SemaphoreSlim.Wait() DEKREMENTUJE SEMAPHORE COUNTER. Ak COUNTER>0, tak METHOD OKAMZITE SKONCI. Ak COUNTER==0, tak METHOD vykonava SPINNING a neskor i BLOCKING, ak MANUAL RESET EVENT SLIM nie je SIGNALIZED. METHOD umoznuje definovat CancellationToken na vykonanie CANCELLATION.
+   !!!!!! B. METHOD SemaphoreSlim.WaitAsync() JE AWAITABLE verziou METHOD SemaphoreSlim.Wait().
+   C. METHOD SemaphoreSlim.Release() INKREMENTUJE SEMAPHORE COUNTER o 1, alebo zadanu VALUE, cim nastavuje SEMAPHORE SLIM do SIGNALIZED STATE.
+   D. METHOD SemaphoreSlim.Dispose() uvolnuje RESOURCES asociovane s SEMAPHORE SLIM.
+   E. PROPERTY SemaphoreSlim.AwaitableWaitHandle obsahuje instanciu KERNEL OBJECT typu WaitHandle, ktory sa pouziva na BLOCKING THREAD, ak pocas SPINNING nebol uvolneny SEMAPHORE. Je to READONLY PROPERTY.
+   F. PROPERTY ManualResetEventSlim.CurrentCount vracia hodnotu SEMAPHORE COUNTER. Je to READONLY PROPERTY.
+!!! 7. SLIM verzia pre AUTO RESET EVENT NEEXISTUJE, ale je ju mozne SIMULOVAT vytvorenim SemaphoreSlim s hodnotou MaxCount rovnou 1.
+!!! 8. CLASS Monitor realizuje implementaciu CRITICAL SECTION v CLR. CLR ma pre nu SPECIALNU PODPORU (SYNC BLOCKS) a takisto i C# ma pre tento CLASS specializovany KEYWORD 'lock', ktory zjednodusuje pracu s MONITOR. Trieda MONITOR je HYBRID SYNCHRONIZATION CONSTRUCTS, ktory ma nasledujuce vlastnosti.
+   A. Umoznuje definovat EXKLUZIVNY LOCK - definovat CRITICAL SECTION.
+   B. Umoznuje REKURZIVNY LOCK.
+   C. Obsahuje informaciu o THREADE, ktory DRZI LOCK.
+   !!! D. Podporuje SPINNING.
+   !!! E. Ma podporu v MSIL i CLR.
+9. STATIC CLASS Monitor implementuje MONITOR (CRITICAL SECTION) a ma nasledujuce MEMBERS).
+   A. STATIC METHOD Monitor.Enter() ziskava LOCK, ak je MONITOR SIGNALIZED. Ak je MONITOR NON-SIGNALIZED, tak THREAD vykona SPINNING a ak ani po jeho skonceni nie je LOCK RELEASED, tak je THREAD BLOCKED.
+   B. STATIC METHOD Monitor.Exit() uvolnuje LOCK. Ak THREAD NEVLASTNI LOCK, tak METHOD generuje EXCEPTION SynchronizationLockException.
+   C. STATIC METHOD Monitor.IsEntered() vracia informaciu ci CURRENT THREAD vlastni, alebo nevlastni LOCK.
+   D. STATIC METHOD Monitor.Pulse() notifikuje THREAD, ktory caka na uvolnenie daneho LOCK, ze doslo k zmene stavu tohto LOCK. Zmena stavu NEZNAMENA, ze LOCK bol RELEASED.
+   E. STATIC METHOD Monitor.TryEnter() vykona pokus o ziskanie LOCK a vracia RETURN VALUE o tom ci LOCK ziskala, alebo nie.
+   !!! F. STATIC METHOD Monitor.Wait() UVOLNI LOCK a ZAROVEN vykona BLOCKING CURRENT THREAD, az kym CURRENT THREAD ZNOVA NEZISKA dany LOCK. METHOD Monitor.Wait() sa pouziva na implementaciu CONDITIONAL VARIABLES.
+!!! 10. MONITOR interne vyuziva SYNC BLOCKS. Kazdy OBJECT v .NET moze mat asociovany 1 SYNC BLOCK. MONITOR pouziva SYNC BLOCKS nasledujucim sposobom.
+   !!! A. CLR pri vytvarani .NET PROCESS vytvori SYNC BLOCKS ARRAY (je to DYNAMICKY RESIZABLE ARRAY) do ktoreho su ukladane vytvorene SYNC BLOCKS.
+   B. Ak CLR vytvori OBJECT (instanciu CLASS), tak s nim asociuje POINTER na OBJECT Type reprezentujuci TYPE daneho OBJECT a INDEX do SYNC BLOCKS ARRAY, ktory inicializuje na -1. Ak je INDEX do SYNC BLOCKS ARRAY rovny -1, tak OBJECT NEMA asociovany ZIADEN SYNC BLOCK.
+   C. Ak nejaky THREAD zavola nad danym OBJECT METHOD Monitor.Enter(), tak CLR najde v SYNC BLOCK ARRAY volny ITEM a jeho INDEX zapise do INDEXU SYNC BLOCKS ARRAY daneho OBJECT. Tymto sa pre dany OBJECT vytvori SYNC BLOCK, ktory mozu MONITORS pouzivat na realizaciu CRITICAL SECTIONS.
+   !!! D. Ak THREAD zavola nad danym OBJECT METHOD Monitor.Exit(), CLR skontroluje ci niektory THREAD NECAKA na priradenie asociovaneho SYNC BLOCK. Ak ZIADEN THREAD NECAKA na priradenie SYNC BLOCK, tak SYNC BLOCK je UVOLNENY zo SYNC BLOCK ARRAY a zaroven INDEX do SYNC BLOCK ARRAY pre dany OBJECT je nastaveny na -1. Tymto CLR UVOLNUJE nepotrebny SYNC BLOCK.
+!!!!! 11. SYNC BLOCK obsahuje v jednom zazname nasledujuce udaje.
+   A. THREAD ID, ktory DRZI LOCK.
+   B. Pocitadlo THREADS, ktore CAKAJU na LOCK.
+   C. Pocitadlo REKURZIVNEHO LOCK.
+   D. KERNEL OBJECT na realizaciu WAIT pri CONTENTION.
+12. CLASS MONITOR (KEYWORD 'lock') by sa NEMAL pouzivat pre nasledujuce typy OBJECT.
+   A. VALUE TYPES, pretoze pri zaslani VALUE TYPE do METHODS Monitor.Enter() a Monitor.Exit() by sa vytvoril BOXED OBJECT na ktory by sa aplikoval LOCK, vysledkom coho by bola STRATA SYNCHRONIZACIE.
+   B. Na CLASSES typu Type, pretoze LOCK uvaleny na OBJECT typu Type by bol SHARED medzi APP DOMAINS.
+   C. Na CLASSES typu String, pretoze LOCK uvaleny na OBJECT typu Type by bol SHARED medzi APP DOMAINS a zaroven pri zlucovani STRINGS aj v ramci 1 APP DOMAIN by mohol LOCK na STRING zablokovat INY STRING s TOU ISTOU HODNOTOU.
+!!! 13. ATTRIBUTE [MethodImpl(MethodImplOptions.Synchronized)] obaluje volanie METHOD pomocou CLASS Monitor. NEBEZPECENSTVO tohto ATTRIBUTE je, ze v pripade NON-STATIC METHODS sa do METHODS Monitor CLASS zasiela 'this' hodnota, ktora je PUBLIC a v pripade STATIC METHODS sa posiela OBJECT Type, ktory zablokuje tento OBJECT vo VSETKYCH APP DOMAINS.
+14. KEYWORD 'lock' GENERUJE CODE, kde v TRY-FINALLY su pouzite METHODS CLASS Monitor a to tak, ze HNED PO TRY nasledujce volanie metody Monitor.Enter() a vo FINALLY BLOKU je volanie Monitor.Leave().
+15. CLASS ReaderWriterLockSlim umoznuje ODDELIT READER THREADS od WRITER THREADS, kedy v danom case ku CRITICAL SECTION moze pristupit VIACERO READER THREADS, ale iba 1 WRITER THREAD. CLASS ReaderWriterLockSlim ma nasledujuce vlastnosti.
+   A. Pomocou CONSTRUCTOR s PARAMETER typu LockRrcursionPolicy je mozne ZAPNUT, alebo VYPNUT PODPORU pre REKURZIU. REKURZIA vsak VYRAZNE ZNIZUJE EFEKTIVITU tohto LOCKU.
+   B. CLASS podporuje UPGRADE z READER LOCK na WRITER LOCK a naopak DOWNGRADE z WRITER LOCK na READER LOCK.
+   !!! C. WRITER THREADS maju VZDY PREDNOST pre READER THREADS ak cakaju na LOCK. Ak teda WRITER aj READER THREADS cakaju na READER WRITER LOCK, tak WRITER THREAD bude UPREDNOSTNENY pri ziskani LOCK pred READER THREAD.
+16. CLASS ReaderWriterLockSlim ma nasledujuce MEMBERS.
+   A. METHOD ReaderWriterLockSlim.EnterReadLock() ziskava READER LOCK, ak LOCK NIE JE LOCKED, alebo je LOCKED pomocou READER LOCK. Ak LOCK je LOCKED vo WRITER LOCK, tak METHOD vykona BLOCKING CURRENT THREAD.
+   B. METHOD ReaderWriterLockSlim.EnterWriterLock() ziskava WRITER LOCK, ak je LOCK NIE JE LOCKED. Ak LOCK je LOCKED READER, alebo WRITER LOCK, tak METHOD BLOCKING CURRENT THREAD.
+   C. METHOD ReaderWriterLockSlim.EnterUpgradeableReadLock() ziskava UPGRADEABLE READER LOCK, ak LOCK NIE JE LOCKED, alebo je LOCKED pomocou READER LOCK. Ak LOCK je LOCKED vo WRITER LOCK, tak METHOD vykona BLOCKING CURRENT THREAD.
+   D. METHOD ReaderWriterLockSlim.TryEnterReadLock() skusi ziskat READER LOCK. Ak LOCK NIE JE MOZNE ZISKAT, METHOD vrati ako RETURN VALUE hodnotu FALSE.
+   E. METHOD ReaderWriterLockSlim.TryEnterWriterLock() skusi ziskat WRITER LOCK. Ak LOCK NIE JE MOZNE ZISKAT, METHOD vrati ako RETURN VALUE hodnotu FALSE.
+   F. METHOD ReaderWriterLockSlim.TryEnterUpgradeableReadLock() skusi ziskat UPGRADEABLE READER LOCK. Ak LOCK NIE JE MOZNE ZISKAT, METHOD vrati ako RETURN VALUE hodnotu FALSE.
+   G. METHOD ReaderWriterLockSlim.ExitReadLock() uvolni READER LOCK.
+   H. METHOD ReaderWriterLockSlim.ExitWriterLock() uvolni WRITER LOCK.
+   I. METHOD ReaderWriterLockSlim.ExitUpgradeableReadLock() uvolni UPGRADEABLE READER LOCK.
+   J. METHOD ReaderWriterLockSlim.Dispose() uvolnuje RESOURCES asociovane s READER WRITER LOCK SLIM.
+   K. PROPERTY ReaderWriterLockSlim.CurrentReadCount vracia pocet THREADS, ktore vlastnia READER LOCK.
+   L. PROPERTY ReaderWriterLockSlim.RecursiveReadCount vracia pocet rekurzivnych READER LOCKS, ktore CURRENT THREAD ziskal.
+   M. PROPERTY ReaderWriterLockSlim.RecursiveUpgradeCount vracia pocet rekurzivnych UPGRADABLE READER LOCKS, ktore CURRENT THREAD ziskal.
+   N. PROPERTY ReaderWriterLockSlim.RecursiveWriteCount vracia pocet rekurzivnych WRITER LOCKS, ktore CURRENT THREAD ziskal.
+   O. PROPERTY ReaderWriterLockSlim.WaitingReadCount vracia pocet THREADS, ktore cakaju na ziskanie daneho READER LOCK.
+   P. PROPERTY ReaderWriterLockSlim.WaitingUpgradeCount vracia pocet THREADS, ktore cakaju na ziskanie daneho UPGRADABLE READER LOCK.
+   Q. PROPERTY ReaderWriterLockSlim.WaitingWriteCount vracia pocet THREADS, ktore cakaju na ziskanie daneho WRITER LOCK.
+   R. PROPERTY ReaderWriterLockSlim.IsReadLockHeld urcuje ci READER LOCK je priradeny.
+   S. PROPERTY ReaderWriterLockSlim.IsUpgradeableReadLockHeld urcuje ci UPGRADABLE READER LOCK je priradeny.
+   T. PROPERTY ReaderWriterLockSlim.IsWriteLockHeld urcuje ci WRITER LOCK je priradeny.
+   U. PROPERTY ReaderWriterLockSlim.RecursionPolicy vracia RECURSION POLICY, ktora urcuje ci READER WRITER LOCK podporuje RECURSION.
+!!! 17. CLR podporuje aj CLASS ReaderWriterLock. Ta je vsak TAK POMALA a ma CHYBY, ze by sa NEMALA NIKDY POUZIVAT a NAMIESTO NEJ JE TREBA POUZIVAT CLASS ReadWriterLockSlim.
+18. CLASS CountdownEvent je OPAK CLASS Semaphore. CLASS CountdownEvent v CONSTRUCTOR umoznuje nastavit hodnotu pociatocneho COUTER. Ak je COUNTER>0, tak CountdownEvent je NON-SIGNALIZED a ak je COUNTER==0, tak CountdownEvent je SIGNALIZED. CLASS CountdownEvent ma nasledujuce MEMBERS.
+   !!!!! A. CONSTRUCTOR nastavi COUNTER na hodnotu -XXX, kde XXX je hodnota zadana ako PARAMETER CONTRUCTOR.
+   !!! B. METHOD CountdownEvent.Signal() DEKREMENTUJE COUNTER, pricom ak je COUNTER==0, tak hodi EXCEPTION InvalidOperationException.
+   !!! C. METHOD CountdownEvent.Wait() vykonava SPINNING a neskor i BLOCKING, ak COUNTDOWN EVENT nie je SIGNALIZED. METHOD umoznuje definovat CancellationToken na vykonanie CANCELLATION.
+   D. METHOD CountdownEvent.AddCount() INKREMENTUJE COUNTER, pricom ak je COUNTER==0, tak hodi EXCEPTION InvalidOperationException.
+   E. METHOD CountdownEvent.TryAddCount() sa pokusi INKREMENTOVAT COUNTER, pricom ak je COUNTER==0, tak vrati v RETURN VALUE hodnotu FALSE.
+   F. METHOD CountdownEvent.Reset() nastavi COUNTER na zadanu hodnotu, alebo INITIAL VALUE.
+   G. METHOD CountdownEvent.Dispose() uvolnuje RESOURCES asociovane s COUNTDOWN EVENT.
+   H. PROPERTY CountdownEvent.WaitHandle obsahuje instanciu KERNEL OBJECT typu WaitHandle, ktory sa pouziva na BLOCKING THREAD, ak pocas SPINNING nebol uvolneny LOCK. Je to READONLY PROPERTY.
+   I. PROPERTY CountdownEvent.IsSet urcuje ci je COUNTDOWN EVENT SIGNALIZED. Je to READONLY PROPERTY.
+   J. PROPERTY CountdownEvent.InitialCount vracia pociatocnu COUNTER.
+   J. PROPERTY CountdownEvent.CurrentCount vracia aktualnu COUNTER.
+19. CLASS Barrier sluzi na KOORDINACIU CINNOSTI VIACERYCH THREADS ak PARALELNY ALGORITMUS je tvoreny viacerymi KROKMI, kde KAZDY KROK sa moze vykonat AZ ked VSETKY THREADS VYKONAJU PREDCHADZAJUCI KROK. Pouzitie CLASS je nasledovne.
+   A. V CONSTRUCTOR sa nastavi POCET THREADS participujucich na ALGORITME, ako aj CALLBACK METHOD, ktora sa bude volat, ak VSETKY THREADS SKONCIA DANY KROK.
+   B. Ak niektory THREAD PARALELNEHO ALGORITMU UKONCI svoj KROK musi volat METHOD Barrier.SignalAndWait(). METHOD vykona BLOCKING daneho THREAD a to az dovtedy kym VSETKY THREADS NEUKONCIA DANY KROK a nezavolaju METHOD Barrier.SignalAndWait().
+   C. Po skonceni daneho KROKU je volana CALLBACK METHOD, ktora ma PARRAMETER instanciu CLASS Barrier. Pomocou PROPERTY Barrier.CurentPhaseNumber je mozne zistit, ktory KROK sa prave UKONCIL. CALLBACK METHOD je volana na THREAD, ktory ako POSLEDNY zavolal METHOD Barrier.SignalAndWait().
+   D. Nasledne PARALELNY ALGORITHM moze spustit dalsi KROK.
+20. CLASS Barrier ma nasledujuce MEMBERS.
+   A. CONSTRUCTOR umoznuje nastavit pocet THREADS, ktore budu vykonavat PARALELNY ALGORITHM, ako aj CALLBACK METHOD, ktora sa vyvola po skonceni KAZDEHO KROKU PARALELNEHO ALGORITHM.
+   B. METHOD Barrier.AddParticipant() umoznuje pridat dalsi THREAD na ktory bude OBJECT typu Barrier cakat pri vykonavani PARALELNEHO ALGORITHM.
+   C. METHOD Barrier.RemoveParticipant() umoznuje odstranit THREAD na ktory bude OBJECT typu Barrier ma cakat pri vykonavani PARALELNEHO ALGORITHM.
+   !!! D. METHOD Barrier.SignalAndWait() signalizuje, ze dany THREAD ukoncil AKTUALNY KROK. METHOD zaroven vykona BLOCKING CURRENT THREAD a to az do doby, kym VSETKY THREADS neukoncia AKTUALNY KROK a nezavolaju METHOD Barrier.SignalAndWait(). METHOD Barrier.SignalAndWait() podporuje aj TIMEOUT a CANCELLATION pomocou PARAMETER typu CancellationToken.
+   E. METHOD Barrier.Dispose() uvolnuje RESOURCES asociovane s BARRIER.
+   F. PROPERTY Barrier.ParticipantsRemaining urcuje pocet THREADS na vykonanie ktorych OBJECT Barrier caka, aby mohol prejst do dalsieho KROKU.
+   G. PROPERTY Barrier.ParticipantCount urcuje pocet THREADS na vykonanie ktorych OBJECT Barrier caka, aby mohol prejst do dalsieho KROKU.
+   H. PROPERTY Barrier.ParticipantsRemaining urcuje pocet THREADS na vykonanie ktorych OBJECT Barrier v AKTUALNOM KROKU este caka, aby mohol prejst do dalsieho KROKU.
+   I. PROPERTY Barrier.CurrentPhaseNumber vracia cislo AKTUALNEHO KROKU, ktory OBJECT Barrier vykonava.
+21. CLR poskytuje 2 CLASSES pomocou, ktorych je mozne THREAD SAFE SPOSOBOM vytvorit LAZY INITIALIZED VARIABLE, teda VARIABLE, ktora sa VYTVORI AZ PO PRVOM PRISTUPE k NEJ.
+   A. Lazy<T> je CLASS, ktorej objekty mozem pouzit na vytvorenie LAZY INITIALIZED VARIABLES.
+   B. LazyInitializer<T> je STATIC CLASS, ktora je analogicka k Lazy<T> s tym rozdielom, ze NETREBA VYTVARAT INSTANCIU CLASS Lazy<T>, ale pouzit STATIC METHOD LazyInitializer.EnsureInitialized<T>().
+22. CLASS Lazy<T> ma nasledujuce MEMBERS.
+   !!! A. CONSTRUCTOR definuje CALLBACK METHOD, ktoru CLASS zavola na vytvorenie INSTANCIE CLASS 'T'. DRUHY PARAMETER urcuje ci bude vytvaranie VALUE realizovane THREAD-SAFE sposobom.
+   B. PROPERTY Lazy<T>.Value vracia VALUE typu 'T'. Ak VALUE NIE JE VYTVORENA, zavola sa CALLBACK METHOD na vytvorenie VALUE.
+   C. PROPERTY Lazy<T>.IsValueCreated vracia informaciu ci VALUE typu 'T' bola vytvorena, alebo nie.
+!!! 23. CONDITION VARIABLE PATTERN je sposob ako je mozne testovat THREAD-SAFE SPOSOBOM KOMPLEXNU PODMIENKU. V .NET je ho mozne realizovat nasledujucim sposobom.
+   A. THREAD_1 pomocou METHOD Monitor.Enter() vstupi do CRITICAL SECTION a ZISKA LOCK.
+   B. CODE THREAD_1 nasledne kontroluje KOMPLEXNU PODMIENKU. Aj je FALSE a THREAD MUSI CAKAT, tak zavola METHOD Monitor.Wait() a ako PARAMETER je jej zaslany TEN ISTY LOCK, aky sa dal do Monitor.Enter() v bode A.
+   !!! C. Volanie METHOD Monitor.Wait() sposobi, ze THREAD_1 je privedeny do WAIT STAVU, ale ZAROVEJ JE UVOLNENY LOCK, ktory THREAD_1 drzal. THREAD_1 je teda vo WAIT STAVE, ale NEMA LOCK.
+   D. THREAD_2 zavola METHOD Monitor.Enter() a VSTUPI do CRITICAL SECTION, kedze LOCK bol v THREAD_1 uvolneny.
+   !!! F. Ak THREAD_2 vo svojom CODE zmeni hodnotu KOMPLEXNEJ PODMIENKY na TRUE, tak zavola METHOD Monitor.Pulse(), alebo METHOD Monitor.PulseAll().
+   !!!!! G. Pri volani METHOD Monitor.Pulse(), alebo METHOD Monitor.PulseAll() THREAD_2 este STALE DRZI LOCK.
+   H. THREAD_2 zavola Monitor.Exit() cim UVOLNI SVOJ LOCK.
+   !!! I. THREAD_1 ktory volal METHOD Monitor.Wait(), kedze BOLA ZAVOLANA METHOD Monitor.Pulse() ZNOVA ZISKA LOCK a UKONCI volanie METHOD Monitor.Wait(). Kedze ma LOCK, moze testovat KOMPLEXNU PODMIENKU, pre ktoru THREAD_2 zabezpecil, aby vratila hodnotu TRUE.
+   !!! J. Ak je KOMPLEXNA PODMIENKA SPLNENA, tak THREAD_1 CODE CRITICAL SECTION STRAZENEJ touto KOMPLEXNOU PODMIENKOU.
+   K. Po UKONCENI CRITICAL SECTION THREAD_1 zavola METHOD Monitor.Exit() cim DEFINITIVNE UVOLNI LOCK.
+   !!! L. Rozdiel medzi METHOD Monitor.Pulse() a METHOD Monitor.PulseAll() je, ze v tom, ze METHOD Monitor.PulseAll() ukonci volania METHOD Monitor.Wait() pre VSETKY THREADS (samozrejme, az ked THREAD volajuci Monitor.Pulse() resp. Monitor.PulseAll() UVOLNI LOCK) zatial co METHOD Monitor.Pulse() uvolni NAJDLHSIE cakajuci THREAD. Tieto THREADS vsak NEPOKRACUJU okamzite dalej, ale AZ KED ZNOVA ZISKAJU LOCK, pricom v DANOM CASE IBA 1 THREAD MOZE ZISKAT LOCK.
+!!!!! 24. CLASS SemaphoreSlim ma AWAITABLE METHOD SemaphoreSlim.WaitAsync(), ktoru je mozne pouzit na realizaciu ASYNCHRONOUS SYNCHRONIZATION. ASYNCHRONOUS SYNCHRONIZATION predstavuje mechanizmus, je mozne ASYNCHRONNE spustit CUSTOM CODE, ktory bude spusteny ak LOCK na ktory CUSTOM CODE caka je UVOLNENY. Zaroven CUSTOM CODE bude CHRANENY tymto LOCK, az kym ho neuvolni. ASYNCHRONOUS SYNCHRONIZATION je mozne realizovat nasledujucim sposobom.
+   A. CODE, ktory ma byt chraneny LOCK zavola METHOD SemaphoreSlim.WaitAsync().
+   B. METHOD SemaphoreSlim.WaitAsync() vracia Task, resp. Task<bool>, ktory je UKONCENY, az ked je SEMAPHORE SLIM SIGNALIZED.
+   C. CODE, ktory ma byt chraneny LOCK naviaze na TASK NOVY TASK cez METHOD Task.ContinueWith().
+   !!! D. NOVY TASK bude volany po skonceni beziaceho TASK a ZAROVEN CODE v tomto NOVOM TASK bude chraneny SEMAPHORE SLIM.
+   !!! E. Po skonceni CODE v NOVOM TASK MUSI CODE tohto TASK ZAVOLAT METHOD SemaphoreSlim.Release().
+25. CLASS ConcurrentExclusiveSchedulerPair poskytuje dvojicu TaskScheduler, ktore funguju nasledovne.
+   A. PROPERTY ConcurrentExclusiveSchedulerPair.ExclusiveScheduler vracia instanciu TaskScheduler, ktora spusti iba 1 TASK v danom case, ak nebezi INY TASK spusteny pomocou ConcurrentExclusiveSchedulerPair.ExclusiveScheduler, alebo ConcurrentExclusiveSchedulerPair.ConcurrentScheduler.
+   B. PROPERTY ConcurrentExclusiveSchedulerPair.ConcurrentScheduler vracia instanciu TaskScheduler, ktora spusti iba 'N' TASK v danom case, ak nebezi INY TASK spusteny pomocou ConcurrentExclusiveSchedulerPair.ExclusiveScheduler, alebo ConcurrentExclusiveSchedulerPair.ConcurrentScheduler.
+   C. METHOD ConcurrentExclusiveSchedulerPair.Complete() umoznuje prinutit obe instancie TaskScheduler, aby neakceptovala dalsie TASKS.
+   D. PROPERTY ConcurrentExclusiveSchedulerPair.Completion vracia instanciu Task, ked SCHEDULER ukoncil spracovanie TASKS.
+26. CLR implementuje v NAMESPACE System.Collections.Concurrent nasledujuce THREAD-SAFE COLLECTIONS.
+   A. CLASS ConcurrentQueue<T> reprezentuje implementaciu THREAD-SEFE QUEUE.
+   B. CLASS ConcurrentStack<T> reprezentuje implementaciu THREAD-SEFE STACK.
+   C. CLASS ConcurrentBag<T> reprezentuje implementaciu THREAD-SEFE BAG.
+   D. CLASS ConcurrentDictionary<T> reprezentuje implementaciu THREAD-SEFE DICTIONARY.
+   !!! E. CLASS BlockingCollection<T> reprezentuje WRAPPER nad IProducerConsumerCollection<T> umoznujuci realizovat BLOCKING ADD a REMOVE ITEMS z COLLECTIONS. To znamena, ze ak COLLECTION je FULL (dosiahla stanoveny maximalny pocet ITEMS), alebo EMPTY, tak operacie ADD, resp. REMOVE su BLOKOVANE az kym ITEM nie je PRIDANY, resp. ODSTRANENY z COLLECTION.
+27. Pre ConcurrentQueue<T> platia nasledujuce zasady.
+   A. METHODS ConcurrentQueue<T>.Enqueue() a ConcurrentQueue<T>.TryDequeue() sluzia na NON-BLOCKING OPERACIE ADD a REMOVE.
+   B. METHODS ConcurrentQueue<T>.TryXXX() maju PARAMETER typu REF a ako RETURN VALUE vracaju TRUE, ak operacia bola uspesne vykonana (ITEM bol odstraneny z COLLECTION) a FALSE ako sa operacia nepodarila (COLLECTION je PRAZDNA).
+   C. CLASS implementuje IProducerConsumerCollection<T>.
+   D. CLASS pouziva INTERLOCKED OPERACIE na implementaciu LOCKU.
+   !!!!! E. METHOD ConcurrentQueue<T>.GetEnumerator() vracia KOPIU COLLECTION v CASE VOLANIA ConcurrentQueue<T>.GetEnumerator().
+28. Pre ConcurrentStack<T> platia nasledujuce zasady. Metody TryXXX() vracaju hodnotu ako REF PARAMETER a vracaju TRUE, ak operacia bola uspesne vykonana (ITEM bol odstraneny z COLLECTION) a FALSE ako sa operacia nepodarila (COLLECTION je PRAZDNA).
+   A. METHODS ConcurrentStack<T>.Push() a ConcurrentStack<T>.TryPop() sluzia na NON-BLOCKING OPERACIE ADD a REMOVE.
+   B. METHODS ConcurrentStack<T>.TryXXX() maju PARAMETER typu REF a ako RETURN VALUE vracaju TRUE, ak operacia bola uspesne vykonana (ITEM bol odstraneny z COLLECTION) a FALSE ako sa operacia nepodarila (COLLECTION je PRAZDNA).
+   C. CLASS implementuje IProducerConsumerCollection<T>.
+   D. CLASS pouziva INTERLOCKED OPERACIE na implementaciu LOCKU.
+   !!!!! E. METHOD ConcurrentStack<T>.GetEnumerator() vracia KOPIU COLLECTION v CASE VOLANIA ConcurrentStack<T>.GetEnumerator().
+29. Pre ConcurrentBag<T> platia nasledujuce zasady.
+   A. METHODS ConcurrentBag<T>.Add() a ConcurrentBag<T>.TryTake() sluzia na NON-BLOCKING OPERACIE ADD a REMOVE.
+   B. METHODS ConcurrentBag<T>.TryXXX() maju PARAMETER typu REF a ako RETURN VALUE vracaju TRUE, ak operacia bola uspesne vykonana (ITEM bol odstraneny z COLLECTION) a FALSE ako sa operacia nepodarila (COLLECTION je PRAZDNA).
+   C. CLASS implementuje IProducerConsumerCollection<T>.
+   D. CLASS pre KAZDY TRHEAD obsahuje MINI COLLECTION. Ak je ITEM pridany do BAG, tak sa prida do MINI COLLECTION DANEHO THREADU. Pri VYBERE ITEM z COLLECTION, ak sa DANY ITEM nachadza v MINI COLLECTION THREADU, ktory ROBI VYBER ITEMU, tak je pouzita INTERLOCKED OPERACIA. Ak vsak MINI COLLECTION DANEHO THREADU NEOBSAHUJE DANY ITEM, tak je pouzity Monitor na IMPLEMENTACIU LOCK a VYBERU ITEM z MINI COLLECTION INEHO THREADU.
+   !!!!! E. METHOD ConcurrentBag<T>.GetEnumerator() vracia KOPIU COLLECTION v CASE VOLANIA ConcurrentBag<T>.GetEnumerator().
+30. Pre ConcurrentDictionary<T> platia nasledujuce zasady.
+   A. METHODS ConcurrentDictionary<T>.AddOrUpdate(), ConcurrentDictionary<T>.TryAdd(), ConcurrentDictionary<T>.TryUpdate() a ConcurrentDictionary<T>.TryRemove() sluzia na NON-BLOCKING OPERACIE ADD, UPDATE a REMOVE.
+   B. METHODS ConcurrentBag<T>.TryXXX() maju PARAMETER typu REF a ako RETURN VALUE vracaju TRUE, ak operacia bola uspesne vykonana (ITEM bol odstraneny z COLLECTION) a FALSE ako sa operacia nepodarila (COLLECTION je PRAZDNA).
+   C. CLASS pouziva Monitor na implementaciu LOCKU.
+   D. METHOD ConcurrentDictionary<T>.GetEnumerator() vracia COLLECTION BEZ VYTVORENIA KOPIE COLLECTION a teda POCAS ENUMERACIE teda MOZE DOJST K ZMENE COLLECTION.
+31. Pre BlockingCollection<T> platia nasledujuce zasady.
+   A. CLASS sluzi ako WRAPPER pre triedy implementujuce INTERFACE IProducerConsumerCollection<T> na implementaciu BLOCKING ADD a REMOVE OPERACII.
+   B. CLASS implementuje IDisposable, pricom volanie METHOD BlockingCollection<T>.Dispose() uvolni RESOUCES asociovane s BlockingCollection<T>.
+   C. METHODS BlockingCollection<T>.TryAdd() a BlockingCollection<T>.TryTake() implementuju BLOKACNE OPERACIE ADD a REMOVE.
+   !!! D. METHOD BlockingCollection<T>.TryAdd() je BLOCKED ak POCET ITEMS v COLLECTION dosiahne MAXIMALNEHO POCTU ITEMS stanoveneho v CONSTRUCTOR.
+   !!! E. METHOD BlockingCollection<T>.TryTake() je BLOCKED ak COLLECTION je EMPTY.
+   F. BLOCKED OPERACIE PODPORUJU CANCELLATION cez CancellationToken.
+   !!! G. METHODS BlockingCollection<T>.GetConsumingEnumerable() a BlockingCollection<T>.CompleteAdding() sluzia na realizaciu mechanizmu, kde THREAD CITAJUCI ITEMS z COLLECTION zavola BlockingCollection<T>.GetConsumingEnumerable() vo FOREACH. Tento FOREACH NESKONCI DOVTEDY, KYM INY THREAD NEZAVOLA BlockingCollection<T>.CompleteAdding(). Medzitym INY THREAD MOZE PRIDAVAT NOVE ITEMS a CITAJUCI THREAD ich bude OKAMZTIE VYTAHOVAT z COLLECTION. FOREACH vsak NESKONCI SKOR kym NIE JE ZAVOLANA METHOD BlockingCollection<T>.CompleteAdding().
+   !!!!! H. STATIC METHODS BlockingCollection<T>.AddToAny(), BlockingCollection<T>.TryAddToAny(), BlockingCollection<T>.TakeFromAny() a BlockingCollection<T>.TryTakeFromAny() umoznuju z COLLECTION objektov typu BlockingCollection<T> PRIDAVAT a ODSTRANOVAT ITEMS, pricom ITEMS su PRIDAVANE do LUBOVOLNEJ COLLECTION, ktora este NIE JE PLNA a naopak ITEMS su ODSTRANOVANE z LUBOVOLNEJ COLLECTION, ktora NIE JE EMPTY. Vdaka tymto METHODS je mozne polahky implementovat POOL COLLECTIONS TYPU BlockingCollection<T>.
+//-------------------------------------------------------------------------------------------------------
