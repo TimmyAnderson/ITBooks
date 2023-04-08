@@ -1,0 +1,68 @@
+﻿//-------------------------------------------------------------------------------------------------------
+1. Program demonstruje pouzitie animacii vo WPF.
+2. Hoci vo WPF je mozne robit animacie 'rucne' napriklad pomocou DispatcherTimer, tak WPF ma i NATIVNU podporu animacii pomocou triedy Animatable. Vyuziva sa na realizaciu jednoduchych animacii najme pri zobrazenie GUI ELEMENTS ako su napriklad posuny pri stlaceni tlacitka. Komplexne 3D animacie napriklad pre hry je samozrejme potrebne naprogramovat rucne.
+3. Zakladnou triedou pre animacie je Animatable, ktora definuje BeginAnimation(). Tato metoda sluzi na zaciatok procesu animacie. Ako parameter ma DP ktoru chcem animovat (IBA DP MOZU BYT ANIMOVANE) a AnimationTimeline urcujuci HODNOTU ANIMOVANEJ PROPERTY v CASE.
+!!! 4. Metodu BeginAnimation() ma i UIElement, pomocou ktorej mozem ZACAT ANIMACIU DP daneho ELEMENTU.
+5. Z triedy Animatable dedi trieda Timeline obsahujuca properties na definovanie SEGMENTU CASU ako je ZACIATOK, POCET OPAKOVANI, alebo RYCHLOST animacie. Obsahuje properties ako BeginTime, Duration, alebo FillBehavior.
+6. Property Timeline.FillBehavior urcuje AKA HODNOTA ANIMOVANEJ DP bude nastavena po SKONCENI animacie.
+   A. HoldEnd - hodnota DP OSTANE na takej hodnote ako ju animacia nastavila. To znaci, ze EFEKT ANIMACIE, ktory ma v hierarchii DEDICNOSTI DP NAJVYSSIU PRIORITU OSTANE v PLATNOSTI.
+   B. Stop - hodnota DP SA ZMNENI NA POVODNU HODNOTU ako bola PRED ZACATIM ANIMACIE. To znaci, ze EFEKT ANIMACIE, ktory ma v hierarchii DEDICNOSTI DP NAJVYSSIU PRIORITU OSTANE sa ZRUSI - a hodnota DP preto SKOKOVO skoci na POVODNU HODNOTU ako ked DP NEBOLA APLIKOVANA.
+7. Trieda AnimationTimeline dedena z Timeline pridava KLUCOVU METODU CreateClock(), ktora vracia objekt typu Clock zodpovedny ukladanie informacii potrebnych pre ukladanie STAVU animacie. Sam vsak animaciu NEREALIZUJE.
+!!! 8. WPF podporuje 22 ROZNYCH ANIMACII PODLA TYPU. Kazda animacia ma BASE CLASS XXXAnimationBase, kde XXX je meno typu urcujuca TYP DP, ktory chcem animovat. Sem patria triedy ako napriklad DoubleAnimationBase ci Int32AnimationBase.
+!!! 9. Z kazdej XXXAnimationBase su zdenene pre dany typ 1-3 CHILD CLASSES.
+   A. XXXAnimationUsingKeyFrames. KAZDA z 22 typov animacii tuto animaciu implementuje.
+   B. XXXAnimation - realizuje animaciu LINEARANOU INTERPOLACIOU HONDOTY medzi hodnotami From a To. 17 z 22 typov animacii tuto animaciu implementuje.
+   C. XXXAnimationUsingPath. Iba 3 z 22 typov animacii tuto animaciu implementuje.
+!!! 10. Animaciu je mozne zacat i volanim metody ApplyAnimationClock() definovanej v UIElement.
+11. Animacie je v XAML mozne spustat pomocou TRIGGERES. Aj ked je mozne pouzit LUBOVOLNY TYP TRIGGER, tak najcastejsie sa pouziva EventTrigger, ktory spusti nejaku AKCIU ako reakciu na vyvolanie niektore z EVENT.
+!!! 12. Okrem Style definuje i FrameworkElement KOLEKCIU Triggers, ktora vsak NA ROZDIEL od STYLE TRIGGERS MOZE OBSAHOVAT IBA objekty typu EventTrigger.
+13. Trieda EventTrigger obsahuje nasledujuce properties.
+   A. SourceName - meno ELEMENTU, ktoreho vyvolanie RE spusti TRIGGER.
+   B. RoutedEvent - meno, ktoreho vyvolanie spusti TRIGGER.
+   C. Actions - kolekcia objektov typu TriggerAction, ktore sa spustia, ked sa spusti TRIGGER.
+!!! 14. VSETKY TriggerAction sa vyvolaju ako ELEMENT s meno definovanym s SourceName vyvola RE definovany v property RoutedEvent. TriggerAction je vsak iba BASE CLASS z ktorej su zdedene nesledujuce CHILD classes.
+   A. BeginStoryboard - pouziva sa na ANIMACIU.
+   B. SoundPlayerAction - spusti prehravanie ZVUKU.
+   C. ControllableStoryboardAction - spusti animaciu, ktoru je mozne pozastavit, pokracovat ci uplne zastavit. Teda je ovladatelna.
+!!! 15. Najcastejsie sa pouziva BeginStoryboard, ktory obsahuje JEDEN OBJEKT TYPU Storyboard ulozeny v property Storyboard.
+!!! 16. Storyboard obsahuje v property Children KOLEKCIU OBJEKTOV TYPU Timeline (reprezentuje animaciu). Z toho vyplyva, ze Storyboard moze obsahovat VIACERO ANIMACII, ktore sa SPUSTIA NARAZ.
+17. Storyboard obsahuje AP, ktore nastavuju, ktory ELEMENT a ktora jeho PROPERTY sa bude ANIMOVAT.
+   A. Target - ELEMENT, ktoreho DP sa bude animovat.
+   B. TargetName - MENO ELEMENTU, ktoreho DP sa bude animovat.
+   C. TargetProperty - MENO DP, ktora sa bude animovat.
+!!!!! 18. Kedze Target, Target a TargetProperty su AP je ich mozne podobne ako VSETKY AP nastavit i na CHILDREN OBJEKTY objektu Storyboard. A kedze Storyboard osahuje 1-N ANIMACII, tak pre KAZDU ANIMACIU je mozne nastavit INE HODNOTY TYCHTO AP, ci dosiahnem, ze sa bude KAZDOU ANIMACIOU ANIMOVAT INY ELEMENT a DP.
+19. Property Duration udava dlzku trvania animacie. V XAML moze byt zadana ako cas a to od dni az po zlomky sekudny. Ak zadam hodnotu 'Automatic' tak znamena, ze sa nastavi DEFAULT hodnota co je 1 sekunda.
+20. Pri animaciach XXXAnimation pomocou hodnoty From sa udava ZACIATOCNA HODNOTA ANIMOVANEJ DP a pomocou To zas KONCOVA HODNOTA ANIMOVANEJ DP. Ak VYNECHAM From, tak animacia zacina na AKTUALNE NASTAVENEJ HODNOTE DP.
+21. Property By je ALTERNATIVOU voci To a urcuje o KOLKO sa ma pocas animacie zmenit hodnota ANIMOVANEJ DP. Hodnoty To a By su VZAJOMNE VYLUCITELNE a ak definujem obe, tak sa pouzije To.
+22. Ak v XXXAnimation nastavim SUCASTNE From a To, alebo From a By, mozem nastavit i hodnotu IsAdditive. Ak je na TRUE, tak sa From a To PRIRATA k AKTUALNEJ HODNOTE DP a animacia prebieha medzi ActualDP+From a ActualDP+To (resp. ActualDP+From+By).
+23. Property AutoReverse ak ja na TRUE sposobi, ze po skonceni animacie sa spusti REVREZNA ANIMACIA z To do From.
+24. Property RepeatBehavior urcuje kolko krat sa ma animacia opakovat. Moze obsahovat i desatinne cisla, kedy sa animacia nezopakuje pri poslednej iteracii cela. Hodnotu je mozne nastavit i na CAS, ktory potom udava ako dlho cela animacia trva. Ak Duration je 3 sekundy a RepeatBehavior je nastaveny na 10 sekund, tak sa vykonaju 3 cele animacie a 1/3 z 3. animacie. Tuto hodnotu je mozne nastavit i na hodnotu 'Forever', kedy animacia trva nekonecne dlho.
+25. Ak v XXXAnimation nastavim SUCASTNE From a To, alebo From a By, mozem nastavit i hodnotu IsCumulative. Ak je na TRUE, tak sa pri opakovani animacie sa HODNOTA DP NEUSTALE ZVYSUJE pri KAZDEJ DALSEJ ITERACII. Ak mam From 10 a To 20 a mam 3 opakovania tak hodnota DP sa bude menit 10->20, 20->30 a 30->40.
+26. Property BeginTime urcuje cas zaciatky animacie. Vyuziva sa vtedy ked sa naraz na jeden EventTrigger spusti VIACERO ANIMACII, tak vdaka tomu mozem niektoru z nich pozdrzat.
+27. Property SpeedRatio urcuje rychlost animacie - teda ako rychlo sa bude menit hodnota DP.
+28. Pomocou ELEMENTU ParallelTimeline je mozne zdruzit VIACERO PARALENE BEZIACICH ANIMACII a aplikovat na ne PROPERTIES SPOLOCNE pre VSETKY ANIMACIE, ktore do ParallelTimeline vlozim. Casto sa to vyuziva na definovane napriklad BeginTime ak chcem sadu animacii spustit v rovnakom case, ale neskor ako ine animacie. Taketo animacie je vyhodne dat do ParallelTimeline.
+!!! 29. Ked definujem animaciu v STYLE, tak je mozne animovat DP iba ELEMENTS na KTORY JE STYLE APLIKOVANY.
+!!! 30. Ak beziaciu animaciu prerusi ina animacia, ktora vsak meni TU ISTU DP ELEMENTU, tak property HandoffBehavior urcuje co sa stane.
+   A. SnapshotAndReplace - default hodnota znamenajuza, ze NOVA ANIMACIA zoberie AKTUALNU ANIMOVANU HODNOTU DP a SPUSTI sa.
+   B. Compose - prva animacia BEZI ESTE CHVILU DALEJ a az potom sa spusti 2. animacia.
+!!! 31. Animacie je mozne spustit aj pomocou TRIGGER, ktory definuje kolekcie objektov typu TriggerAction - BeginActions a ExitActions, ktore je mozne naplnit instancia TriggerAction, ako napriklad BeginStoryboard.
+32. Animaciu je mozne RIADIT pomocou tried zdedenych z ControllableStroryboardAction, kde patria napriklad PauseStoryboard, ResumeStoryboard, alebo StopStoryboard.
+!!! 33. ControllableStroryboardAction obsahuje property BeginStoryboardName v ktorej definujem MENO BeginStoryboard, ktorou som animaciu spustil.
+!!!!! 34. Plati, ze BeginStoryboard a vsetky ControllableStroryboardAction, ktore ju maju ovladat MUSIA BYT v TEJ ISTEJ TRIGGERS KOLEKCII, inak NEFUNGUJU.
+!!! 35. Pri kresleni pomocou DrawingContext maju mnohe metody DrawingContext pretazene verzie, ktore prijimaju ako parameter AnimationClock. Vdaka nim je mozne definovat pri vykresleni nejakeho Visual objektu rovno definovat i jeho animaciu.
+36. V Timeline je mozne pomocou properties AccelerationRatio a DeaccelerationRatio mozne definovat definovat ZRYCHLENIE a SPOMALENIE animacie. Obe hodnoty sa urcuju ako PERCENTO z Duration, pricom AccelerationRatio sa uplatnuje v case <0,AccelerationRatio*Duration> a DeaccelerationRatio sa uplatnuje v case <DeaccelerationRatio*Duration,Duration>.
+37. Animacie typu XXXAnimationWithKeyFrames umoznuje realizovat NELINERANY PRIEBEH ANIMACIE, ktory je urceny kolekcou XXXKeyFrameCollection. Tato kolekcia je vysvena v property KeyFrames a je do nej mozne ukladat objekty ZDEDENE z XXXKeyFrame.
+38. Trieda XXXKeyFrame, kde XXX je meno datoveho typu ma implementovane 1 az 3 potomkov v zavislosti od XXX.
+   A. DiscreteXXXAnimationUsingKeyFrame - v case KeyTime nastavi DISKRETNE (skokom) hodnotu animovanej DP na hodnotu definovanu v property Value.
+   B. LinearXXXAnimationUsingKeyFrame - LINEARNYM PRECHODOM zmeni hodnotu animovanej DP, z PRECHADZAJUCEJ HODNOTY DP (definovanej predchadzajucim KeyFrame, alebo ak je to 1. KeyFrame tak aktualnou hodnotou DP. Cas sa definuje pomocou KeyTime a hodnota v property Value.
+   C. SplineXXXAnimationUsingKeyFrame - PRECHODOM po BEZIEROVEJ KRIVKE zmeni hodnotu animovanej DP, z PRECHADZAJUCEJ HODNOTY DP (definovanej predchadzajucim KeyFrame, alebo ak je to 1. KeyFrame tak aktualnou hodnotou DP. Cas sa definuje pomocou KeyTime a hodnota v property Value. BERZIEROVA KRIVKA sa definuje v property KeySpline a udruje DVOJICU RIADIAICH BODOV, ktore MUSIA BYT v INTERVALE <0,0>-<1,1>. Ako pociatocny bod krivky sa povazuje hodnota <0,0> a ako koncovy <1,1>. V Vezierovej krivke je ako X pouzity cas a vypocitana hodnota Y je v intervale <0,0>-<1,1>. Tato hodnota sa potom pouzije pre vypocet skutocnej hodnoty animovanej DP. Aj je vysledok napriklad 0.5, tak hodnota DP je (From+To)/2 - cize polovica.
+!!! 39. Ak v POSLEDNOM XXXKeyFrame nedefinujem KeyTime, tak sa ako cas poklada cas Duration - koniec animacie.
+!!! 40. Ak KeyTime NEDEFINUJEM, tak sa nastavi na hodnotu 'Uniform', ktora znamena, ze KeyTime sa pre VSETKY XXXKeyFrame nastavia ROVNOMERNE. Teda ak mam 5 XXXKeyFrame, tak sa cas pre kazdy XXXKeyFrame zvysi o 1/5 Duration.
+!!! 41. Hodnotu KeyTime je mozne definovat i percentualne ako za ciselnu hodnotu dam znak '%'.
+!!! 42. Ak pre KeyTime definujem hodnotu 'Paced', tak sa RYCHLOST ANIMACIE pri prechode do daneho XXXKeyFrame NEZMENI. Teda cas sa prisposobi tak, aby ZACHOVAL RYCHLOST ZMENY z predchadzajuceho segmentu XXXKeyFrame.
+43. WPF pre 3 triedy implementuje i XXXAnimationUsingPath: DoubleAnimationUsingPath, PointAnimationUsingPath a MatrixAnimationUsingPath. Tieto typy animacii pouzivaju na urcenie hodnoty animovanej hodnoty DP Path, ktoru definujem v property PathGeometry.
+!!!!! 44. Medzi SplineXXXAnimationUsingKeyFrame a XXXAnimationUsingPath su zasadne ROZDIELY.
+   A. SplineXXXAnimationUsingKeyFrame - vypocitava pre hodnotu X, ktora je ODVODENA OD AKTUALNEHO CASU ANIMACIE hondotu Y pomocou BEZIEROVEJ KRIKVY definovanej v SplineXXXAnimationUsingKeyFrame.
+   B. XXXAnimationUsingPath - vypocita najprv CELU DLZKU PATH a na zaklade toho KOLKO PERCENT z CASU ANIMACIE UPLYNULO skoci do PERCENTUALNE ZODPONEDAJUCEJ POZICIE v Path a z nej URCI HODNOTY X, Y a Angle. X a Y su pozicie X a Y v Path a Angle je aktualny sklon useku Path v stupnoch. Cize ak napriklad mam 10 sekundovu animaciu a som v 4 sekunde, tak za hodnoty X, Y a Angle urcia z pozicie Path v 40 PERCENTACH jej CELKOVEJ DLZKY.
+!!!!! 45. XXXAnimationUsingPath v danom case vyratava az 3 hodnoty. Ak pouzijem PointAnimationUsingPath, tak Point je definovany z hodnot X a Y. Ak pouzijem DoubleAnimationUsingPath, potom v property Source MUSIM definovat, ktoru property X, Y, alebo Angle chcem pre animaciu pouzit. Trieda MaxtrixAnimationUsingPath generuje TRANSFORMACNU MATIXU z Path definovanej v PathGeometry. Tato transformacna matica ma hodnoty OffsetX=X a OffsetY=Y a jej telo (M11, M12, M21 a M22) obsahuje ROTACNU MATICU podla Angle. Nato aby ROTACNA MATICA bola definovana je treba nastavit property DoesRotateWithTangent na TRUE.
+//-------------------------------------------------------------------------------------------------------

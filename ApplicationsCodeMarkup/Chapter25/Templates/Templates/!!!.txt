@@ -1,0 +1,36 @@
+﻿//-------------------------------------------------------------------------------------------------------
+1. Program demonstruje pouzitie Templates.
+2. Templates vo WPF umoznuju kompletne nahradit VIZUALNU STRANKU ELEMENTU, pricom vsak jeho funkcnost ostane zachovana.
+!!! 3. Standardne vo WPF su ELEMENT 'LOOKLESS' a ich vizual je definovany IBA pomocou TEMPLATES.
+!!! 4. WPF definuje VIACERO TYPOV TEMPLATES podla toho na aky ucel sluzia.
+   A. ControlTemplate - urcuje VYZOR daneho Control. Instancia ControlTemplate sa uklada do property Control.Template. Je to NAJKOMPLEXNEJSIA TEMPLATE, ktoru je vsak i najtazsie implementovat.
+   B. ItemsPanelTemplate - definuje ROZLOZENIE CHILD OBJEKTOV na ItemsControl. Instancia sa uklada do property ItemsPanel.
+   C. DataTemplate - urcuje VYZOR DANEHO ITEM pri pouzivani ItemsControl. Je to NAJCASTEJSIE POUZIVANY TEMPLATE, ktory umoznuje nadefinovat PRESNY VYZOR napriklad ListBox kde donho cez DATA BINING mapujem komplexny objekt s mnozstvom stlpcov a tie chcem zobrazit. Vizualna stranka tychto stlpcov potom bude zobrazena prave pomocou DataTemplate. DataTemplate sa pri ItemsControl uklada do property ItemTemplate a v pripade View do property CellTemplate.
+   D. HierarchicalDataTemplate - je zdedena z DataTemplate a pouziva sa v TREE VIEW v property TreeViewItem na deklarovanie HIERARCHICKEJ STRUKTURY DAT.
+!!! 5. Parent trieda pre vsetky TEMPLATE triedy je trieda FrameworkTemplate. Definuje KLUCOVU property VisualTree do ktorej ukladam VIZUALNY TREE vsetkych ELEMENTS, ktore budu VIZUALNE REPREZENTOVAT dany ELEMENT.
+!!! 6. Do property VisualTree sa uklada objekt typu FrameworkElementFactory, ktory umoznuje vytvorit HIERARCHIU FACTORY ELEMENTS co NIE SU SKUTOCNE ELEMENTS, ale iba akesi SABLONY podla ktorych sa SKUTOCNE ELEMENTS vytvoria pri vytvarani ELEMENTU s nastavenym TEMPLATE (ktory obsahuje v property VisualTree objekt FrameworkElementFactory).
+!!!!! 7. VYHODOU definovania TEMPLATES v XAML je to, ze XAML umoznuje pri definicii TEMPLATES pouzit nazvy ELEMENTS, ktore zodpovedaju SKUTOCNYM ELEMENTS (pouzijem napriklad triedu Button, ak chcem definovat Button) a XAML ich AUTOMATICKY KONVERUJE na FACTORY ELEMENTS - triedy zdedene z FrameworkElementFactory.
+8. Trieda ControlTemplate definuje properties Triggers a TargetType, ktorou je mozne definovat TYPE ELEMENTU na ktory sa ma dany ControlTemplate aplikovat.
+!!! 9. Pri definicii TEMPLATE mozem vyuzivat TemplateBinding. Pomocou tohto BINDING je mozne MAPOVAT PROPERTIES ELEMENTU na PROPERTIES ELEMENTS, ktore tvoria VISUAL TREE danej TEMPLATE. Ak teda napriklad mam v TEMPLATE TextBlock a jeho Foregorund property chcem nastavit na ROVNAKU HODNOTU ako bude mat Foreground property ELEMENTU na ktory TEMPLATE aplikujem, tak pouzijem TemplateBinding.
+10. TEMPLATES sa zvycajne definuju v Resources a CASTO sa definuju ako SUCAST STYLE. Teda v Style pomocou Setter nastavim hodnotu property Template daneho ELEMENTU.
+!!! 11. Trieda ContentPresenter sluzi na ZOBRAZENIE CONTENT v ContentControl ELEMENTS. Ak ju pouzijem v TEMPLATE, tak je NAHRADENA OBSHOM property Content ELEMENTU na ktory bola TEMPLATE aplikovana.
+!!! 12. Velkou NEVYHODOU ControlTemplate je, ze pri jej pouziti musim NAHRADIT CELU ZOBRAZOVACIU LOGIKU daneho ELEMENT. Alternativou je pouzitie DATA TEMPLATES, ktore mozu byt aplikovane i v ContentControl.
+!!!!! 13. Trieda ContentPresenter obsahuje property ContentTemplate (property ContentTemplate je vystavena i na urovni triedy ContentElement), ktoru je mozne nastavit na DataTemplate. Tato TEMPLATE sa aplikuje na CONTENT, ktory vlozim do ContentControl (napriklad do Button). Takto je mozne docielit aby som naformatoval OBSAH ContentControl na zaklade DATA TEMPLATE.
+!!! 14. Trieda DataTemplate ma property DataType v ktorej mozem definovat typ podla ktoreho ContentControl si AUTOMATICKY VYHLADAJU TEMPLATE v RESOURCES.
+!!! 15. Trieda ContentControl obsahuje property ControlTemplateSelector do ktorej mozem ulozit objekt typu DataTemplateSelector. Trieda DataTemplateSelector umoznuje vytvorit SELECTOR, ktory na zaklade TYPU ktory sa do ContentControl ide ulozit vrati DataTemplate, ktora dany TYP ZOBRAZI v ContentControl.
+16. Triedy zdedene z ItemsControl mozu pomocou property ItemsPanel definovat TRIEDU ZDEDENU z ItemsPanelTemplate. ItemsPanelTemplate MUSI OBSAHOVAT ako ROOT OBJEKT ELEMENT typu Panel. Tento PANEL potom sluzi na ROZLOZENIE ELEMENTS v ItemsControl. Standardne sa pouziva ItemsPresenter, ktora ma ako ROOT nastaven StackPanel.
+17. Triedy zdedene z ItemsControl mozu pomocou property ItemTemplate urcit objekt typu DataTemplate, ktory bude sluzit ako TEMPLATE pre ZOBRAZENIE DANEHO ITEM.
+18. Trieda XmlDataProvider moze sluzit ako SOURCE (property Source) v ItemsControl, vdaka ktorej je mozne mapovat PRIAMO HODNOTY z XML do WPF ELEMENTS.
+!!! 19. Na mapovanie XML ELEMENTOV a XML ATRIBUTOV pri pouziti XmlDataProvider je NUTNE v BINDING pouzit property XPath, ktora definuje XPATH na ELEMENT, alebo ATRIBUT, ktory chcem namapovat cez BINDING.
+   A. Pomocou syntaxte XPath=SomeElementName je mozne v BINIDNG namapovat na hodnotu XML ELEMENT.
+   B. Pomocou syntaxte XPath=@SomeAttributeName je mozne v BINIDNG namapovat na hodnotu XML ATTRIBUTE.
+20. HierarchicalDataTemplate umoznuje mapovat HIERACHICKE DATA do HIERACHICKYCH ELEMENTS ako napriklad Menu, alebo TreeView.
+!!! 21. HierarchicalDataTemplate funguje podobne ako ControlTemplateSelector, cize VYBER toho AKY TEMPLATE SA POUZIJE je dany TYPOM DAT, ktore sa maju zobrazit. Typ dat sa urcuje v property DataType, ktory mozem nastavit BUD na C# typ (ak vykonavam mapovanie voci C# POCO objektom), ALEBO na XML typ (ak vykonavam mapovanie voci XmlDataProvider).
+!!! 22. Trieda HierarchicalDataTemplate ma i property ItemsSource, ktora definuje SOURCE pre NASLEDUJUCU UROVEN HIERARCHIE DAT.
+!!! 23. V HierarchicalDataTemplate teda algoritmus mapovania funguje asi takto.
+   A. TreeView na ktory su namapovane cez property Source HIERARCHICKE DATA zoberie hodnotu XPath (eventualne Path, ak sa jedna o mapovanie na C# POCO) a NACITA XML.
+   B. V XML (resp. C# triede, ak mapujem na POCO) aplikuje XPath a zisti TYP DAT (bud XML, alebo C#), ktore sa maju na ROOT UROVNI TreeView zobrazit.
+   !!! C. Podla typu ZACNE HLADAT v RESOURCES VSETKY DataTemplate, alebo HierarchicalDataTemplate, ktorych property DataType JE ZHODNA s TYPOM, ktory sa ma v ROOT UROVNI zobrazi. Ak ju najde tak tuto TEMPLATE APLIKUJE na zobrazenie ITEMS na ROOT UROVNI.
+   D. AK JE DANA TEMPLATE HierarchicalDataTemplate, tak sa SKONTROLUJE HODNOTA property ItemsSource. Ak tato je nastavena na DALSI ZRDOJ DAT (napriklad SUBNODE v TOM ISTOM XML subore), tak sa algoritmus opakuje. To znamena, ze sa URCI TYP DAT a ZNOVA SA HLADA DataTemplate, alebo HierarchicalDataTemplate, ktorych property DataType JE ZHODNA s tymto TYPOM.
+24. XAML umoznuje pomocou XAML EXTENSION x:Data definova XML data PRIAMO v XAML.
+//-------------------------------------------------------------------------------------------------------

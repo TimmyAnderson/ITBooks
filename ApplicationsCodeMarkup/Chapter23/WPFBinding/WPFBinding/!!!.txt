@@ -1,0 +1,47 @@
+﻿//-------------------------------------------------------------------------------------------------------
+1. Program demonstruje moznosti pouzitia BINDINGS vo WPF.
+2. Bidning umoznuje AUTOMATICKE ZVIAZANIE PROPERTIES medzi SOURCE a DESTINATION objektom. Source, Destination, alebo i obe su casto WPF ELEMENTS.
+3. Binding zjednodusuje GUI programovanie, pretoze odburava nutnost pisania inicializacneho kodu, ktory pri spustani formulara nastavi properties ELEMENTS z BUSINESS objektov a pri opustani formulara opacne naplni BUSINESS OBJEKTY z properties ELEMENTS.
+!!! 4. Binding sa VZDY APLIKUJE na TARGET objekt, ktory MUSI BYT ZDEDENY z DependencyObject. Property, ktoru pomocou BINDING MAPUJEM MUSI by DP.
+!!! 5. SOURCE PROPERTY z ktorej CITAM DATA do TARGET PROPERTY NEMUSI BYT DP. Zavisi to od TYPU BINDING (property Mode) ci Source property MUSI BYT DP.
+!!!!! 6. Ak vsak SOURCE PROPERTY je DP, tak AUTOMTICKY ma tato DP NOTIFIKACIU o ZMENE, co je vyhodne pri TwoWay BINDING.
+7. BINDING mozem definovat 3 sposobmi.
+   A. V XAML pomocou Binding MARKUP EXTENSION.
+   B. V XAML pomocou ELEMENT SYNTAX pouzitim Binding objektu.
+   C. Pomocou C# vytvorenim Binding objektu.
+8. V C# ak definujem BIDNING musim vykonat nasledujuce kroky.
+   A. Vytvorim objekt Binding.
+   B. Definujem SOURCE PROPERTY.
+   C. Definujem SOURCE OBJEKT (ELEMENT).
+   D. Na TARGET OBJEKTE (ktory jej dedeny z FrameworkElement) zavolam metodu SetBinding(), kde ako parameter dam TAGRET PROPERTY a v bode 1 vytvoreny objekt typu Binding.
+9. Bidning definuje pomocou property Mode nasledujuce TYPY BINDINGS.
+   A. OneTime - TARGET property sa naplni hodnotou SOURCE property IBA RAZ pri INICIALIZACII TARGET objektu. Dodatocne zmeny hodnoty uz NIE SU PRENESENE do TARGET property.
+   B. OneWay - TARGET property sa naplni hodnotou SOURCE property VZDY PRI ZMENE SOURCE PROPERTY.
+   C. OneWayToSource - VYZNAM TARGET a SOURCE je PREHODENY a teda hodnota sa prenasa vzdy z TARGET PROPERTY do SOURCE PROPERTY. Vyznam tohto typu BINDING je najma vtedy ak TARGET PROPERTY NIE JE DP - co je PODMIENKA pre BINDING. V tomto pripade aplikujem BINDING na PROPERTY LOGICKEHO SOURCE OBJEKT (ktory sa stava TARGET objektom). Tato property LOGICKEHO SOURCE OBJEKTU samozrejme MUSI BYT DP. Nasledne pouzijem tento Mode a dosiahnem prenos hodnoty do property, ktora NIE JE DP.
+   D. TwoWay - KAZDA ZMENA v SOURCE, alebo TARGET property je prenesena do TARGET, resp. SOURCE. Hodnoty TARGET a SOURCE properties tu teda SYNCHRONIZOVANE a VZDY ROVNAKE.
+!!!!! 10. Pri OneWay, OneWayToSource a TwoWay ak sa ma hodnota TARGET property ZMENIT potom MUSI SOURCE PROPERTY IMPLEMENTOVAT NOTIFIKACNY MECHANIZMUS napriklad implementaciou rozhrania INotifyPropertyChanged.
+!!! 11. Vsetky triedy zdedene z FrameworkElement obsahuju property DataContext, ktora moze byt nastavena na LUBOVOLNY OBJEKT, ktory sa AK v BINDING NEDEFINUJEM TARGET OBJECT, tak sa pouzije NAMIESTO NEHO.
+!!! 12. DataContext sa DEDI v ramci LOGICAL TREE co znamena, ze ak nastavit DataContext napriklad na ROOT ELEMENT, tak na tento objekt sa mozu pomocou BIDING ODKAZOVAT VSETKY CHILD ELEMENTS.
+13. DEFAULT hodnota Mode sa LISI od property k property a najjednoduchsie je VZDY DEFINOVAT HODNOTU Mode.
+!!! 14. Property Path triedy Binding umoznuje definovat CELU PATH k TARGET PROPERTY, vratane INDEXOVANIA POMOCOU OPERATORA [].
+15. V pripade, ze je potrebne pocas operacie BINDING konvertovat hodnoty mozem v property Converter definovat triedu implementaciu IValueConverter, ktora bude konvertovat medzi hodnotami SOURCE a TARGET typu.
+!!! 16. Na triedu implementujuciu IValueConverter je VHODNE aplikovat atribut [ValueConversion], ktory sluzi ako HINT pre XAML parser ake typy je CONVERTER schopny konvertovat.
+17. WPF implementuje i triedu MultiBinding pomocou, ktorej je mozne definovat BINDING, kde TARGET PROPERTY bude naplnena z VIACERYCH SOURCE PROPERTIES.
+!!! 18. MultiBinding MUSI VZDY deinovat Converter, ktory musi byt triedou implementujucou rozhranie IMultiValueConverter.
+!!! 19. Ak IValueConverter a IMultiValueConverter NEDOKAZE KONVERTOVAT HODNOTU, tak MUSI VRATIT NULL.
+20. Prenos hodnoty zo SOURCE do TARGET pre BINDING je OKAMZITY. Ak napriklad je SOURCE TextBox, tak pri KAZDOM VLOZENI NOVEHO ZNAKU dochadza k prenosu do TARGET PROPERTY.
+!!! 21. Naopak pri OneWayToSource a TwoWay BINDINGS je OKAMIH prenosu hodnoty z TARGET do SOURCE definovany property UpdateSourceTreigger, ktora moze nadobudat nasledovne hodnoty.
+   A. LostFocus - k prenosu hodnoty z TARGET do SOURCE nastava pri STRATE FOCUS.
+   B. PropertyChanged - k prenosu hodnoty z TARGET do SOURCE nastava VZDY PRI ZMENE HODNOTY.
+   C. Explicit - k prenosu hodnoty z TARGET do SOURCE nastava pri zavolani metody BindingExpression.UpdateSource().
+!!! 22. Pre dany BIDNING je mozne ziskat jeho BindingExpression volanim metody FrameworkElement.GetBindingExpression() alebo STATICKEJ metody BindingOperations.GetBindingExpression().
+23. Pri definovani BINDING mozem ElementName pouzit IBA AK JE SOURCE ELEMENTOM. Ak vsak SOURCE object NIE JE ELEMENT, potom MUSIM pouzit proeprty Source, ktorou sa mozem odkazovat na LUBOVOLNY OBJEKT.
+!!!!! 24. Ak ma SOURCE PROPERTY poskytovat notifikaciu o SVOJEJ ZMENE mozem to robit nasledujucimi sposobmi.
+   A. Source objekt moze byt zdedeny z DependencyObject a DEFINOVAT DP, ktora AUTOMATICKY REALIZUJE NOTIFIKACIU o ZMENE.
+   B. Source objekt moze byt POCO s .NET property XXX (sluziaciu ako SOURCE PROPERTY pre BINDING). Ak POCO definuje property typu EventHandler s menom 'XXXChanged', tak WPF sa AUTOAMTICKY PRIPOJI NA TENTO EVENT a VZDY pri jeho volani sa NACITA NOVA HODNOTA z .NET property.
+   C. Source objekt moze implementovat rozhranie INotifyPropertyChanged a volat jeho EVENT PropertyChanged VZDY, ked dojde k zmene niektorej z jeho PROPETRIES (sluziacich ako SOURCE PROPERTIES pre BINDING) s MENOM PROPERTY, ktora sa zmenila. Pri volani tohto EVENT si BINDING automaticky nacita NOVU HODNOTU ZMENENEJ PROPERTY.
+!!! 25. Binding obsahuje i property RelativeSource pomocou, ktore je mozne sa definovat ako SOURCE objekt v RAMCI LOGICAL TREE.
+   A. 'RelativeSource self' - znamena odkaz na ELEMENT, v ktorom sa pouziva BINDING.
+   B. Ak v AncestorType definujem TYPE, tak WPF najde PRVY PARENT DANEHO TYPU a ten sa pouzije ako SOURCE v BINDING.
+   C. Ak okrem AncestorType definujem i AncestorLevel=N, tak ako SOURCE sa pouzije N-ty PARENT DANEHO TYPU.
+//-------------------------------------------------------------------------------------------------------

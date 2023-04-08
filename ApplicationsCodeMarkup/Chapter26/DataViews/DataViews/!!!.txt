@@ -1,0 +1,34 @@
+﻿//-------------------------------------------------------------------------------------------------------
+1. Program demonstruje zobrazenie dat vo WPF a pouzivanie DATA VIEWS.
+!!! 2. Pri pouzivani WPF je VELMI VYHODNE pre data, ktore maju byt zobrazene DEDIKOVAT POCO triedu, ktora bude obsahovat vsetky properties a ZAROVEN je VHODNE ak implementuje INotifyPropertyChanged.
+!!! 3. Rozhranie INotifyPropertyChanged obsahuje EVENT PropertyChanged, ktory by KAZDA PROPERTY mala zavolat AK DOSLO K ZMENE JEJ HODNOTY. To umoznuje v BINDINGS aby POCO NOTIFIKOVALA BINDING o ZMENE HODNOT SVOJICH PROPERTIES a tym padom sa urobil BINIDNG UPDATE.
+!!! 4. Pri zobrazovani DATA FORMS sa zvycajne ako SOURCE DAT nastavuje property DataContext, ktora ma tu vyhodu, ze DEDI sa v RAMCI HIERARCHIE VISUAL TREE.
+!!! 5. Ak chcem do DATA FORMS ukladat KOLEKCIU OBJEKTOV, tak je VYHODNE pouzit NAMIESTO Array[], alebo List<> kolekciu ObservableCollection<>, ktora je SUCASTOU WPF. Kolekcia ObservableCollection<> ma nasledujuce vlastnosti.
+   A. Implementuje rozhranie INotifyPropertyChanged a to tak, ze AK ITEM v KOLEKCII TIEZ IMPLEMENTUJE rozhranie INotifyPropertyChanged, tak ObservableCollection<> pri PRIDANI ITEM do KOLEKCIE AUTOMATICKY REGISTRUJE EVENT INotifyPropertyChanged.PropertyChanged a teda PRI KAZDEJ ZMENEJ LUBOVOLNEJ PROPERTY LUBOVOLNEHO ITEM v kolekcii sa VYVOLA EVENT ObservableCollection<>.PropertyChanged.
+   B. Implementuje rozhranie INotifyCollectionChanged a to tak, ze ak je ITEM ADDED, alebo REMOVED z ObservableCollection<>, tak sa vola EVENT CollectionChanged.
+6. WPF podporuje implementaciu VIEWS. View je ABSTRAKTNY POHLAD na DATA V KOLEKCII, ktory poskytuje nasledujuce operacie.
+   A. Udrzuje si POZICIU na AKTUALNY ZAZNAM v kolekcii.
+   B. Dokaze vykonavat FILTERING.
+   C. Dokaze vykonavat GROUPING.
+   D. Dokaze vykonavat SORTING.
+!!!!! 7. AKEKOLVEK OPERACIE na VIEW NESPOSOBUJU ZMENU v KOLEKCII, ktoru VIEW OBALUJE.
+8. Zakladna trieda pre VIEWS je CollectionView. Kolekciu, ktoru chcem pomocou tejto triedy obalit musim zadat v konstruktore, pricom kolekcia MUSIM IMPLEMENTOVAT IEnumerable<>. Trieda CollectionView obsahuje viacere properties a methods.
+   A. Count - pocet zaznamov vo VIEW - NEMUSI BYT ZHODNY s DLZKOU KOLEKCIE, ak pouzijem FILTERING.
+   B. CurrentItem a CurrentPosition - obsahuju informacie o AKTUALNOM ITEM, alebo pozicii.
+   C. MoveCurrentTo(), MoveCurrentToFirst(), MoveCurrentToLast(), MoveCurrentToNext(), MoveCurrentToPosition() a MoveCurrentToPrevious() - umoznuju presun AKTUALNEHO RECORD na inu poziciu.
+   D. CollectionChanged, CurrentChanged, CurrentChanging a PropertyChanged - EVENTS o zmene VIEW, alebo jeho ITEMS.
+   E. IsCurrentAfterLast a IsCurrentBeforeFirst - urcuje ci je AKTUALNA POZICIA na zaciatku, alebo na konci VIEW.
+9. Trieda ListCollectionView, ktore je POTOMKOM CollectionView MUSI mat ako vstupnu kolekciu triedu impelemntujucu IList.
+!!! 10. Pomocou statickej metody CollectionViewSource.GetDefaultView() je mozne ziskat pre dany objekt (KOLEKCIU) DEFAULT VIEW.
+!!!!! 11. Ak CollectionView pouzijem ako DataContxt a ZAROVEN cez BINDING MAPUJEM PROPERTIES ELEMENTOV, tak pri PRECHODE cez CollectionView, alebo PRIDANI ci UBRANI RECORDU do VIEW (presnejsie kolekcie, ktora VIEW OBALUJE) sa AUTOMATICKY POSUNIE INDEX AKTUALNEHO ZAZNAMU a ZMENIA VSETKY BINDINGS, ukazujuc na NOVY RECORD. Ak zarovne RECORD IMPLEMENTUJE INotifyPropertyChanged tak ZMENY v PROPERTIES daneho RECORDS su AUTOMATICKY PREMIETNUTE do PROPERTIES ELEMENTU.
+12. SORTING sa vykonava pomocou kolekcie SortDescriptions, do ktorej je mozne pridat 1, alebo VIACERO objektov typu SortDescription. Kazdy SortDescription reprezentuje jednu property podla ktorej sa robi SORTING. Ak ich je v SortDescriptions viac, tak v pripade, ze podla prveho SortDescription su 2 items rovnake, pouzije sa na druhy SortDescription.
+!!!!! 13. Ak pridam do KOLEKCIE, ktora je OBALENA VIEW novy RECORD a ZAROVEN je VIEW SORTOVANY, tak sa novy RECORD NEULOZI na POZICIU, ktora by mu prisluhala podla SORTINGU. Nato, aby sa vykonal SORTING je POTREBNE VOLAT METODU CollectionView.Refresh().
+14. FILTERING sa robi nastavenim property CollectionView.Filter na Predicate<object>, ktory urci, ktore RECORDS sa maju odfiltorvat.
+!!! 15. Zatial co FILTERING je podporovany PRIAMO CollectionView, tak SORTING a GROUPING podporuje az ListCollectionView.
+!!! 16. Ak zmenim hodnotu property Filter, tak dochadza AUTOMATICKY k volaniu Refresh(). Ak vsak zmenim iba vnutornu logiku vykonavania Filter, tak musim Refresh() volat sam, aby sa mohol FILTER uplatnit.
+17. GROUPING umoznuje rozdelit RECORDS do GROUPS a to tak, ze pre kazdy RECORD vratim MENO GROUP do ktorej patri.
+18. ListCollectionView obsahuje kolekciu GroupsDescriptions do ktorej je mozne pridavat objekty ZDEDENE z GroupsDescription. WPF obsahuje IBA JEDNU implementaciu PropertyGroupsDescription, ktora umoznuje vykonat GROUPING na zakladne hodnoty property. Ak to nevyhovuje, mozem definovat CUSTOM CLASS zdedenu z GroupsDescription.
+!!! 19. V GroupsDescriptions moze byt aj VIACERO GroupsDescription a kazdy RECORD je potom zaradeny do VIACERYCH GROUPS.
+!!! 20. Zobrazenie GROUPS v ListBox ma na starosti property ListBox.GroupStyle, ktora je KOLEKCIOU obsahujucou JEDEN, alebo VIACERO objektov typu GroupStyle. Objekty GroupStyle urcuju ako bude vyzerat HEADER a takisto Style definovany cez ContainerStyle a CUSTOM PANEL definovany v property Panel.
+!!! 21. Ak mam VIACERO GROUP STYLES tak rozhodovanie, ktory sa pre ktoru GROUP aplikuje robi GroupStyleSelector, ktory sa nastavi na delegat realizujuci rozhodovanie, ktory GROUP STYLE sa pouzije pre danu GROUP definovanu CISELNYM LEVELOM.
+//-------------------------------------------------------------------------------------------------------

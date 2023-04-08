@@ -1,0 +1,82 @@
+﻿//------------------------------------------------------------------------------
+1. Program demonstruje pouzitie RoutedEvents - RE vo WPF.
+2. RE umoznuju aby EVENT prechadzal cez ELEMENT TREE a jednotlive ELEMENTS v TREE boli NOTIFIKOVANE o vzniku tohto EVENT.
+3. RE maju ako parameter typ RoutedEventAgrs, ktory dedi z EventArgs. RoutedEventAgrs ma nasledujuce parametre.
+   A. RoutedEvent. Definuje instanciu RoutedEvent, ktora vyvolala EVENT.
+   B. Source. Urcuje SOURCE ELEMENT, ktory generoval EVENT.
+   C. OriginalSource. Urcuje SUB-ELEMENT v SOURCE ELEMENT. Ak SOURCE ELEMENT je tvoreny VIACERYMI ELEMENT (napriklad ScrollBar ma 3 BUTTONS), tak OriginalSource bude obsahovat tento SUB-ELEMENT.
+   D. Handled. Urcuje ci EVENT je HANDLED. Ak ho nastavim na TRUE, tak EVENT NIE JE DALEJ ROUTED do OSTATNYCH ELEMENTS.
+!!! 4. RE je definovana ako STATICKA READONLY instancia triedy RoutedEvent.
+!!! 5. WPF ELEMENT ak definuju RE, tak definuju i metodu OnRoutedEventName(), ktoru je mozne pouzit na notifikaciu, ze dany EVENT bol vyvolany.
+!!! 6. RE mozu byt 2 typov.
+   A. TUNNEL EVENT - je generovany smerom OD ROOT ELEMENTU k ELEMENTU, ktory EVENT GENEORVAL.
+   B. BUBBLE EVENT - je generovany smerom OD ELEMENTU, ktory EVENT GENEORVAL k ROOT ELEMENTU.
+!!! 7. WPF pre standardne EVENTS zvycajne definuje OBE TUNNEL i BUBBLE, pricom ako prvy je vykonany TUNNEL EVENT a az po nom BUBBLE EVENT.
+!!!!! 8. Ak chcem zachytit RE v ELEMENTE, ktory ho NEPOZNA (napriklad Click na Grid, ktory ma Buttons) potom MUSIM POUZIT METODU AddHandler() definovanu v UIElement.
+9. Pri pouzivani Keyboard ak stlacit ALFA-NUMERICKU KLAVESU, tak sa okrem tradicnych EVENTS ako KeyDown (TUNNEL i BUBBLE verzia) a KeyUp (TUNNEL i BUBBLE verzia) sa vyvolava i TextInput EVENT (TUNNEL i BUBBLE verzia).
+10. RE sa definuje ako STATICKA READONLY premenna typu RoutedEvent.
+!!! 11. Vytvorenie RE prebieha v nasledujucich krokoch.
+   A. Deklarujem premennu typu RoutedEvent.
+   B. V STATICKOM KONSTRUKTORE volam metodu EventManager.RegisterRoutedEvent(), kde v parametroch okrem ineho definujem TYP PARAMETRA v RE, ktory musi byt dedeny z RoutedEvent a TYP RE (TUNNELING, BUBBLING).
+   C. V triede vytvorim EVENT, ktory v 'add' vola DependecnyObject.AddHandler() a v 'remove' vola DependecnyObject.RemoveHandler().
+!!! 12. RE sa vyvolava volanim DependecnyObject.RaiseEvent().
+!!!!! 13. TUNNEL a BUBBLE EVENTS (napriklad PreviewMouseDown a MouseDown) su na sebe UPLNE NEZAVISLE. Chovanie, ktore zabezpecuje, ze ak PreviewMouseDown je HANDLED tak sa NEVOLA MouseDown je IBA INTERNOU IMPLEMENTACIOU v BASE CLASS (UIElement) a NIJAKO NESUSI s FUNKCIONALIOU RE. Inak povedane RE NEOVPLYVNUJU to, ze ak je TUNNEL RE HANDLED nevola sa BUBBLE RE. Je to iba na DANEJ IMPLEMENTACII konkretnej dvojice RE ci sa BUBBLE EVENT po tom co je TUNNEL EVENT HANDLED bude, alebo nebude volat.
+14. Nad myskou su implementovane tieto RE.
+   A. MouseMove a PreviewMouseMove.
+   B. MouseEnter a MouseLeave.
+   C. MouseDown, PreviewMouseDown, MouseUp a PreviewMouseUp - VSEOBECNE BUTTON EVENTS.
+   D. MouseLeftButtonDown, PreviewMouseLeftButtonDown, MouseRightButtonDown a PreviewMouseRightButtonDown, MouseLeftButtonUp, PreviewMouseLeftButtonUp, MouseRightButtonUp a PreviewMouseRightButtonUp - SPECIALIZOVANE BUTTON EVENTS.
+   E. MouseWheel a PreviewMouseWheel - WHEEL EVENTS volane pri pohybe kolecka.
+   F. MouseDoubleClick.
+   G. LostMouseCapture - je volany ked dojde k STRATE CAPTURE realizovaneho volanim CaptureMouse(). K tomu moze dojst bud tym, ze zavolam ReleaseMouseCapture(), alebo WINDOWS AUTOMATICKY ZRUSI CAPTURING, ked uvolnim tlacitko mysi, a klepnem na inu aplikaciu.
+15. Stylus pouzivany v TabletPC je mozne vo WPF monitorovat nasledujucimi sposobmi.
+   A. Pouzit triedy z namespace Windows.Input.StylusPlugin. Su to LOW-END triedy.
+   B. Zachytavat StylusXXX EVENTS definovane v triede UIElement, ktore su analogiou MOUSE EVENTS.
+   C. Pouzit HIGH-END triedu InkCanvas.
+!!! 16. Keyboard events su zachytavane iba ak ELEMENT MA FOCUS, co je indikovane property IsKeyboardFocused. Nato, aby element mohol ziskat FOCUS MUSI mat nastavenu property Focusable na TRUE. FOCUS je pre dany ELEMENT mozne nastavit volanim metody Focus(). Zmenu Focus je mozne detekovat pomocou EVENTS: GotKeyboardFocus, PreviewGotKeyboardFocus, LostKeyboardFocus a PreviewLostKeyboardFocus.
+17. Keyboard generuje nasledujuce events.
+   A. KeyDown.
+   B. TextInput. Je volany iba pre ALFA-NUMERICKE znaky a obsahuje kod ZNAKU (respektujuc napriklad stlacenie Shift) a NIE IBA KOD KLAVESY.
+   C. KeyUp.
+!!! 18. WPF obsahuje i STATICKE triedy Mouse a Keyboard umoznujuce ziskat informacie o stave mysi a klavesnice.
+//------------------------------------------------------------------------------
+Priklady genervania EVENTS.
+
+1. RIGHT button. Event NIE JE ZACHYTENY v Button a preto prechadza najprv PreviewMouseDown od Window do TextBlock a nasledne MouseDown z TextBlock do Window.
+
+PreviewMouseDown	Window		TextBlock	TextBlock
+PreviewMouseDown    Grid        TextBlock   TextBlock
+PreviewMouseDown    Button      TextBlock   TextBlock
+PreviewMouseDown    TextBlock   TextBlock   TextBlock
+MouseDown			TextBlock   TextBlock   TextBlock
+MouseDown           Button      TextBlock   TextBlock
+MouseDown           Grid        TextBlock   TextBlock
+MouseDown           Window      TextBlock   TextBlock
+----- TERAZ UVOLNIM BUTTON.
+PreviewMouseUp		Window		TextBlock	TextBlock
+PreviewMouseUp      Grid        TextBlock   TextBlock
+PreviewMouseUp      Button      TextBlock   TextBlock
+PreviewMouseUp      TextBlock   TextBlock   TextBlock
+MouseUp             TextBlock   TextBlock   TextBlock
+MouseUp             Button      TextBlock   TextBlock
+MouseUp             Grid        TextBlock   TextBlock
+MouseUp             Window      TextBlock   TextBlock
+
+
+2. LEFT button MouseDown. Event je ZACHYTENY v OnMouseLeftButtonDown() kde je VYKONANY MOUSE CAPTURE az do UVOLNENIA BUTTON.
+
+PreviewMouseDown    Window      TextBlock	TextBlock
+PreviewMouseDown    Grid        TextBlock   TextBlock
+PreviewMouseDown    Button      TextBlock   TextBlock
+PreviewMouseDown    TextBlock   TextBlock   TextBlock
+MouseDown           TextBlock	TextBlock   TextBlock
+----- V Button.OnMouseLeftButtonDown() dochadza ku CAPTURE MOUSE BUTTON a zaroven je Handled nastavena na TRUE, takze RE NIE JE DALEJ GENEROVANY.
+----- TERAZ UVOLNIM BUTTON.
+PreviewMouseUp		Window		Button		Button
+PreviewMouseUp      Grid        Button      Button
+PreviewMouseUp      Button      Button      Button
+----- V Button.OnPreviewMouseRightButtonDown() dochadza ku UVOLNENIU CAPTURE MOUSE BUTTON, zaroven je Handled nastavena na TRUE a ZAROVEN JE GENEROVANY Click EVENT. Click EVENT NEMA TUNNEL VERZIU.
+Click               Button      Button      Button
+Click               Grid        Button      Button
+Click               Window      Button      Button.
+//------------------------------------------------------------------------------

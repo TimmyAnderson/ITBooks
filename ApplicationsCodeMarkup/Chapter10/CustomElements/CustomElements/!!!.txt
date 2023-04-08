@@ -1,0 +1,31 @@
+﻿//------------------------------------------------------------------------------
+1. Program demonstruje vytvaranie CUSTOM ELEMENTS.
+2. CUSTOM ELEMENTS je mozne vytvarat dedenim z UIElement, alebo niektoreho z jeho potomkov. Najcastejie sa CUSTOM ELEMENT dedi z nasledujucich tried.
+   A. UIElement - obsahuje zakladnu funkcionalitu ELEMENTU.
+   B. FrameworkElement - rozsiruje funkcionalitu UIElement o DP ako Foreground, Backround, HorizontalAligment, VerticalAligment, BorderBrush, BorderThickness a dalsie.
+   C. Control - property Focusable ma na TRUE a teda podporuje ziskanie FOCUS. Takisto definuje DP pre pracu s TEXTOM a preto ak ELEMENT pouziva TEXT, tak je mozne s vyhodou vyuzit dedenie z Control.
+!!! 3. Pri definicii CUSTOM ELEMENTS sa pretazuje metoda OnRender(), ktora obsahuje DrawingContext umoznujuci ukladat VIZUALNY OBSAH, ktory sa ma renderovat.
+!!! 4. WPF NERENDERUJE obsah ELEMENTS PRIAMO, ale v metode OnRender() iba naplna interny zoznam vizualnych objektov, ktore sa vsak renderuju az ked to WPF povazuje za potrebne. Management kedy WPF renderuje obsah ELEMENTS je dany internymi algoritmami WPF.
+5. Pri implementacii CUSTOM ELEMENT, ktore su dedene z FrameworkElement je klucove implementovat nasledujuce metody.
+   A. MesureOverride() - sluzi na vypocet velkost plochy, ktoru na zobrazenie potrebuje dany ELEMENT.
+   B. OnRender() - realizuje zapis VIZUALNYCH prvkov do KOLEKCIE, ktore sa pouziju ak WPF potrebuje vykonat rendering.
+!!! 6. Ak dedim z UIElement NAMIESTO MesureOverride() implementujem MeasureCore(), pretoze FrameworkElement pretazuje MesureOverride() v ktorej znizi velkost SizeAvialable o Margin a nasledne vola MesureOverride().
+7. Pre MouseOverride() platia nasledujuce zasady.
+   A. Parameter SizeAvialable udava MAXIMALNU VELKOST, ktoru moze ELEMENT vyuzit. Tato hodnota ma CASTO hodnotu PositiveInfinity, kedy ELEMENT NEMA OMBEDZENU svoju VELKOST. Je to typicke v pripade, ze PARENT ELEMENT je StackPanel, alebo Window s nastavenou property SizeToContent na TRUE, tak hodnota SizeAvialable je PositiveInfinity.
+   !!! B. Metoda NESMIE VRACAT hodnotu Size v ktorej by Width, alebo Height nadobudal hodnotu PositiveInfinity, inak je hodena EXCEPTION.
+   !!! C. Hodnota SizeAvialable je ZNIZENA o HODNOTU Margin CUSTOM ELEMENT. To zabezpecuje metoda FrameworkElement.MeasureCore(), ktora po znizeni hodnot SizeAvialable o Margin vola MesureOverride().
+   D. Ak pre ELEMENT nastavim Width, alebo Height tak tieto hodnoty su pouzite ako SizeAvialable.
+   E. Ak pre ELEMENT nastavim MinWidth, alebo MinHeight tak SizeAvialable bude mat MINIMALNU velkost (MinWidth,MinHeight).
+   F. Ak pre ELEMENT nastavim MaxWidth, alebo MaxHeight tak SizeAvialable bude mat MAXIMALNU velkost (MaxWidth,MaxHeight).
+   !!! G. SizeAvialable NIE JE OVPLYVNENA hodnotami, ktore nastavim v ELEMENT pre VerticalAligment a HorizontalAligment, avsak metoda OnRender() ich uz BERIE DO UVAHY.
+   !!!!! H. MouseOverride() by mala vraciat PRIRODZENU VELKOST ELEMENTU. Pre niektore ELEMENTS ako Image, ktory zobrazuje obrazok metoda vracia velkost obrazku. Avsak pre VACSINU ELEMENTS sa NEDA POVEDAT, co presne je jeho PRIRODZENE VELKOST a zalezi na IMPLEMENTACII DANEHO CUSTOM ELEMENT co si pod nimi stanovi.
+   !!!!! I. Mnoho ELEMENTS vracia ako prirodzenu velkost 0. To vsak NEZNAMENA, ze sa ELEMENT vykresli s 0 VELKOSTOU, pretoze AK su HorizontalAligment a VerticalAligment nastavene na 'Stretch', potom sa ELEMENT ROZTIAHNE do celej velkosti PARENT ELEMENTU.
+   !!!!! J. Metoda MouseOverride() by pri svojich vypoctoch NEMALA POUZIVAT HODNOTY Width a Height, kedze tie su ZOHLADNENE uz v parametri SizeAvialable, ktory by mala MouseOverride() RESPEKTOVAT.
+   !!! K. Ak. hodnota vratena MouseOverride() VACSIA ako SizeAvailable tak DOCHADZA ku CLIPPING v na ploche danej SizeAvailable.
+   !!!!! L. Metoda MouseOverride() BY MALA pri svojich vypoctoch zahrnat hodnotu Padding.
+8. Pre metodu OnRender() platia nasledovne zasady.
+   A. Metoda ma ako vstupny parameter hodnotu DrawingContext pomocou ktorej definujem zoznam grafickych primitiv, ktore sa maju pocas renderovacej fazy renderovat.
+   !!!!! B. Metoda BY MALA pri svojich vypoctoch respektovat hodnotu HorizontalContentAligment a VerticalContentAligment.
+   !!! C. Metoda BY MALA pri svojich vypoctoch IGNOROVAT hodnoty HorizontalAligment a VerticalAligment, pretoze za ich aplikaciu je zodpovedny PARENT ELEMENT.
+   !!! D. Metoda BY MALA pri svojich vypoctoch IGNOROVAT hodnotu Margin, pretoze za jej aplikaciu je zodpovedny PARENT ELEMENT.
+//------------------------------------------------------------------------------

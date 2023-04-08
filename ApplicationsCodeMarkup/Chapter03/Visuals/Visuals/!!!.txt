@@ -1,0 +1,45 @@
+﻿//------------------------------------------------------------------------------
+1. Program demonstruje pouzitie Visuals vo WPF.
+2. Zakladnou triedou realizujucou rendering je trieda Visual. Visual ma nasledujuce child objekty.
+   A. UIElement - je zakladom pre KAZDY ELEMENT. Obsahuje metodu OnRender(), ktora ma ako parameter DrawingContext, ktora obsahuje bezne renderovacie metody.
+   B. ContainerVisual - obsahuje KOLEKCIU Visuals.
+   C. Viewport3DVisual - pouziva sa na rendering Visual3D do 2D VIEWPORT.
+   D. HostVisual (dedeny z ContainerVisual) - reprezentuje Visual objekt, ktory moze byt pripojeny KDEKOLVEK do VisualTree.
+   E. DrawingVisual (dedeny z ContainerVisual) - umoznuje 2D RENDERING pomocou metody RenderOpen(), ktora vracia DrawingContext, ktory po skonceni zaradozvania GRAFICKYCH PRIMITIV A OPERACII urcenych na renderovanie musi zavolat Close().
+3. WPF obsahuje i triedu Visual3D, ktora dedi z DependencyObject a pouziva sa na rendering 3D grafiky. Aj Visual3D obsahuje viacero zdedenych tried vykonavajucich podobnu cinnost ako potomkovia Visual.
+!!! 4. Nato aby som mohol renderovat Visual je potrebne vykonat niekolko nasledujucich krokov.
+   A. Pre kazdy Visual volat AddVisualChild() a AddLogicalChild() na pridanie do vizualneho a logickeho stromu.
+   B. Pretazit property VisualChildrenCount, ktora vrati pocet renderovanych Visuals.
+   C. Pretazit metodu GetVisualChild(), ktora vrati dany Visual podla indexu.
+   !!! D. Kedze Visual NEMA LAYOUT FAZU, nato aby sa mohol ZOBRAZIT (napriklad v Element) je potrebne VYTVORIT HOST - objekt triedy podporujucej LAYOUT ako napriklad UIElement.
+!!!!! 5. Pomocou triedy DrawingVisual je mozne realizovat rendering nasledujucim sposobom.
+   A. Do kolekcie Children pridat instancie objektov Visual. Tieto objekty bude potom DrawingVisual renderovat.
+   B. Pouzit metodu RenderOpen() na vytvorenie DrawingContext, ktory obsahuje renderovacie metody (pre ciaru, elipsu ci obdlznik).
+!!!!! 6. Samotny Visual NIE JE MOZNE PRIAMO ZOBRAZIT do Element ako Content, pretoze NEMA LAYOUT FAZU - teda vypocet LAYOUT. Preto je treba vytvorit HOST. MSDN o tom PISE: 'Architecturally, the Visual object does not include support for other application development requirements / WPF features that are not immediately related to its rendering, such as the following: Event handling, LAYOUT, Styles, Data binding and Globalization.'
+//------------------------------------------------------------------------------
+Vztah medzi jednotlivymi objektami ucastnymi pri RENDERINGU
+
+1. DependencyObject - realizuje funkcionalitu DEPENDENCY PROPERTY SYSTEMU.
+2. Visual : DependencyObject - podporuje RENDERING SUPPORT vratane HitTesting a Transformation.
+   A. Output display: Rendering the persisted, serialized drawing content of a visual.
+   B. Transformations: Performing transformations on a visual.
+   C. Clipping: Providing clipping region support for a visual.
+   D. Hit testing: Determining whether a specified coordinate (point) or geometry is contained within the bounds of a visual.
+   E. Bounding box calculations: Determining the bounding rectangle of a visual.
+!!!!! 3. Visual vsak NEPODPORUJE LAYOUT FAZU a preto NEMOZE BYT PRIAMO RENDEROVANY, iba prostrednictvom Visual CONTAINER ako napriklad UIElement, ktory PODPORUJE LAYOUT FAZU. Zoznam NEPODPOROVANYCH OPERACII: Event handling, Layout, Styles, Data binding, Globalization.
+4. UIElement : Visual - PODPORUJE LAYOUT FAZU a preto MOZE BYT HOST pre Visual. Standardne obsahuje KOLEKCIU Visual OBJEKTOV, nad ktorymi VYKONAVA LAYOUT FAZU a tym ich dokaze zobrazit. Zoznam PODPOROVANYCH CINNOSTI.
+   A. Can render as a child element (UIElement derives from Visual, a high level graphics class).
+   B. Contains logic that is used to size and position possible child elements of a UIElement (when interpreted by a layout system).
+   C. Can respond to user input (including control of where input is getting sent to via their handling of event routing, or routing of commands).
+   D. Can raise routed events that travel a route through the logical element tree.
+   E. Supports some aspects of the animation system.
+5. FrameworkElement : UIElement - dalej ROZSIRUJE moznosti UIElement napriklad o Styles, alebo vyraznejsiu podporu Animations.
+!!!!! 6. DrawingVisual : ContainerVisual : Visual - je Visual, ktory umoznuje definovat OBSAH TOHO CO SA BUDE RENDEROVAT. Prave pomocou jeho metody RenderOpen() vracajucej triedu DrawingContext je mozne PRIDAVAT do Visual instancie objektov Drawing, ktore tvoria SAMOTNY OBSAH toho co sa bude renderovat.
+!!!!! 7. Drawing : Animatable - je LOW LEVEL trieda pouzivana na 2D RENDERING. Jej vyhodou je, ze kedze NEPODPORUJE ani Inputs ci Layout je VHODNA na renderovanie ZLOZITEJ 2D GRAFIKY (ktora nepotrebuje features ako HIT TESTING jednoltivych ciar ci elips tvoriach grafiku), ktora sluzi ako napriklad BACKGROUND pre nejaky ELEMENT. V spojeni s ELEMENT potom Drwing vykonava KOMPLEXNY RENDERING a ELEMENT poskytuje LAYOUT ci HIT TESTING.
+!!!!! 8. Zasadny rozdiel medzi Visual a DrawingVisual je, ze Visaul je iba CONTAINTER, ktory NEOBSAHUJE PROSTRIEDKY pre REDNERING. Ma metody na ukladanie KOLEKCIE VISUALS. Avsak DrawingVisual je uz GRAFICKOU IMPLEMENTACIOU Visual, ktora ma PROSTRIEDKY NA REDNERING - metodu RenderOpen().
+!!! 9. CUSTOM 2D rendering je vo WPF realizovany dvoma moznostami.
+   A. Trieda UIElement ma metodu OnRender(), ktora ma ako parameter DrawingContent.
+   B. Pomocou DrawingVisual, ktora ma metodu RenderOpen() vracajucu DrawingContent.
+!!!!! 10. DrawingVisual sa pouziva PRE RENDERING KOMPLEXNEJ GRAFIKY, ktora NEPOTREBUJE vlastnosti ako LAYOUT, EVENTS ci DATA-BINING.
+!!!!! 11. UIElement sa pouziva naopak AK POTREBUJEM LAYOUT, HIT TESTING, EVENTS.
+//------------------------------------------------------------------------------

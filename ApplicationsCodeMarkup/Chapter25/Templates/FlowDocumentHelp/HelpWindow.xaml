@@ -1,0 +1,42 @@
+﻿<Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="FlowDocumentHelp.HelpWindow"
+        Title="Help" Width="600" Height="500"
+        WindowStartupLocation="CenterScreen"
+        ShowInTaskbar="False">
+    <Window.Resources>
+        <XmlDataProvider x:Key="MData" Source="Help/HelpContents.xml" XPath="HelpContents" />
+
+        <HierarchicalDataTemplate DataType="Topic" ItemsSource="{Binding XPath=Topic}" >
+            <StackPanel Orientation="Horizontal">
+                <Image Name="MImg" Source="Help/HelpImageQuestionMark.png" Margin="2" Stretch="None" />
+                
+                <TextBlock Text="{Binding XPath=@Header}" FontSize="10pt" VerticalAlignment="Center" />
+            </StackPanel>
+
+            <HierarchicalDataTemplate.Triggers>
+                <DataTrigger Binding="{Binding RelativeSource={RelativeSource AncestorType={x:Type TreeViewItem}}, Path=HasItems}" Value="True">
+                    <Setter TargetName="MImg" Property="Image.Source" Value="Help/HelpImageClosedBook.png" />
+                </DataTrigger>
+
+                <DataTrigger Binding="{Binding RelativeSource={RelativeSource AncestorType={x:Type TreeViewItem}}, Path=IsExpanded}" Value="True">
+                    <Setter TargetName="MImg" Property="Image.Source" Value="Help/HelpImageOpenBook.png" />
+                </DataTrigger>
+            </HierarchicalDataTemplate.Triggers>
+        </HierarchicalDataTemplate>
+    </Window.Resources>
+
+    <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="33*" />
+            <ColumnDefinition Width="Auto" />
+            <ColumnDefinition Width="67*" />
+        </Grid.ColumnDefinitions>
+
+        <TreeView Name="MTreevue" Grid.Column="0" ItemsSource="{Binding Source={StaticResource MData}, XPath=Topic}" SelectedValuePath="@Source" SelectedItemChanged="TreeViewOnSelectedItemChanged" />
+
+        <GridSplitter Grid.Column="1" Width="6" HorizontalAlignment="Center" VerticalAlignment="Stretch" />
+
+        <Frame Name="MFrame"  Grid.Column="2" Navigated="FrameOnNavigated" />
+    </Grid>
+</Window>

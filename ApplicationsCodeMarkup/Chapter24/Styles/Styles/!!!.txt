@@ -1,0 +1,38 @@
+﻿//-------------------------------------------------------------------------------------------------------
+1. Program demonstruje pouzitie Styles.
+2. Style umoznuje definovat NARAZ VIACERO PROPERTIES daneho ELEMENT a tak vytvorit JEDNOTNY VZHLAD GUI pre dany program.
+3. Style je zdedeny z object a obsahuje property Setters. Setters obsahuje KOLEKCIU typu SetterBaseCollection do ktorej je mozne pridavat objekty TYPU SetterBase.
+4. WPF obsahuje 2 typy objektov, ktore dedia zo SetterBase.
+   A. Setter - umoznuje nastavit LUBOVOLNU PROPERTY daneho ELEMENTU.
+   B. EventSetter - umoznuje definovat pre LUBOVOLNY EVENT C# HANDLER, ktory sa vyvola ak nastane dany event.
+!!! 5. Kolekcia SetterBaseCollection moze obsahovat LUBOVOLNU KOMBINACIU objektov Setter a EventSetter.
+6. Trieda Setter obsahuje property Property definujucu DP, ktoru Setter nastavi. Property Value urcuje hodnotu na ktoru sa DP nastavi.
+!!! 7. Ked aplikujem Setter na ELEMENT a ZAROVEN nastavim danu property i lokalne, tak LOKALNE NASTAVENIE ma PRIORITU pred SETTER.
+8. Triedy FrameworkElement a FrameworkContentElement obsahuje property Style, ktoru nastavim na objekt typu Style a tak nastavym STYLE daneho ELEMENT.
+9. Setter sa zvyvajne pouziva ako Resource.
+!!! 10. Ak VIACERO RESOURCES definuje Style s TYM ISTYM KEY, tak sa aplikuje IBA TEN, ktore je v LOGICAL TREE BLIZSIE. Zaroven vsak plati, ze NEDOCHADZA k DEDENIU SETTERS. Aplikuju sa IBA SETTERS toho STYLE, ktory sa pouzil.
+!!! 11. Ak aplikujem Style, ktory ma Setter s property, ktoru dany ELEMENT NEOBSAHUJE, tak je tento Setter IGNOROVANY.
+!!! 12. Ak hodnotu, ktoru chcem cez Setter nastavit NIE JE MOZNE DEFINOVAT cez STRING, tak mozem pouzit ELEMENT SYNTAX.
+13. Trieda Style ma property Resources a tak RESOURCES, ktore sa pouzivaju IBA V STYLE je lepsie definovat v tejto kolekcii.
+14. Trieda Style ma property TagetType, ktora udava na ktory TYPE sa bude dany Style aplikovat. Ak definujem TagetType A ZAROVEN NEDEFINUJEM HODNOTU x:Key, tak sa Style aplikuje na VSETKY DANY ELEMENT v ktorom je Style deklarovany a VSETKY CHILD ELEMENTS, ktore maju typ rovny hodnote TagetType. Ak naopak DEFINUJEM TagetType i x:Key, tak sa dany Style aplikuje IBA NA na ten ELEMENT, ktory ma Style NASTAVENY na RESOURCE (obsahujuci objekt Style) s ROVNAKYM x:Key a ZAROVEN ma typ rovny hodnote TagetType.
+!!! 15. V property TagetType musi byt PRESNY TYP na ktory sa ma Style aplikovat. NEMOZNO POUZIT PARENT TYPE, iba KONKRETNY TYP. Teda ak dam Control, tak sa Style na Button NEAPLIKUJE, aj ked Button JE POTOMKOM triedy Control.
+!!! 16. Na definovanie TagetType sa pouziva XAML rozsirenie x:Type, ktore je analogiou C# operatora typeof().
+!!!!! 17. KLUCOVE PRAVIDLO pre Styles je, ze na 1 ELEMENT sa aplikuje MAXIMALNE 1 STYLE a to PRVY, ktory MA ZHODNY Key, alebo TargetType. Po NAJDENI zodpovedajuceho Style sa ZIADEN INY STYLE UZ NA ELEMENT NEAPLIKUJE.
+!!! 18. Ak chcem aby PROPERTIES VIACERYCH STYLES BOLI DEDENE, tak MUSIM pouzit property BasedOn a nastavit ho na EXISTUJUCI OBJEKT STYLE (ulozeny v Resources).
+!!! 19. Pri nastavani BasedOn mozem pouzit i nastavenie podla TargetType a to nasledujucou syntaxou BasedOn="{StaticResource {x:Type Button}}". Plati, ze TargetType Style, ktory pouziva BasedOn="{StaticResource {x:Type Button}}" BasedOn MUSI BYT TOTOZNY, alebo ZDEDENY TYP z TYPU, ktory specifikujem v BasedOn. TargetType DOKONCA MOZE BYT AJ PARENT TRIEDA (napriklad Control) a novy Style (pouzivajuci BasedOn) moze mat TargetType==Button.
+!!!!! 20. Setters je mozne aplikovat iba na DP. Na bezne C# properties ich aplikovat NEMOZNO.
+!!!!! 21. Pomocou Setters nie je mozne nastavovat napriklad Content na nejaky ELEMENT (resp. Visual), pretoze vo WPF jeden ELEMENT/VISUAL moze mat IBA JEDEN PARENT a ked definujem v Style nejake ELEMENT/VISUAL, tak je SHARED MEDZI VSETKYMI POUZITIAMI STYLE a tym padom ma tento SHARED ELEMENT VIAC PARENTS - co ej PORUSENIE principu na ktorom pracuje WPF.
+!!! 22. V Setters JE MOZNE POUZIVAT BINDINGS.
+23. Okrem FrameworkElement je Style definovany i v FrameworkContentElement co znamena, ze STYLES mozem aplikovat i na objekty TextElement, ktore pouzivam vo FlowDocument a tak STYLES sluzia podobne ako CSS v HTML.
+24. Pomocou EventSetter zo SetterBase je mozne nastavit cez STYLE i ROUTED EVENT na SPOLOCNY HANDLER definovany v C#. V praxi sa EventSetter pouziva OVELA ZRIEDKAVEJSIE ako Setter. Moze mat vsak vyuzitie napriklad ak chcem cez 1 HANDLER obsluhovat VIACERO BUTTON CLICKS.
+25. Trieda Style ma property Triggers. Triggers je KOLEKCIA TriggerBase objektov. TriggerBase vo WPF ma nasledujucich potomkov.
+   A. Trigger - aplikuje sa ak JE SPLNENA PODMIENKA, ze DP (na C# properties NEFUNGUJE) nastavena v Property nadobuda hodnotu definovanu vo Value. Je to najbeznejsi typ TRIGGER.
+   B. EventTrigger - aplikuje sa ak JE SPLNENA PODMIENKA, ze je odpaleny RE.
+   C. MultiTrigger - aplikuje sa ak su VSETKY PODMIENKY v kolekcii Conditions SPLNENE. Objekt Condition musi mat nastavenu hodnotu Property a Value a je splneny ak Property nadobuda hodnotu Value.
+   D. DataTrigger - aplikuje sa ak JE SPLNENA PODMIENKA, ze BINDING (definovany v property Binding) nadobuda hodnotu definovanu vo Value.
+   E. MultiDataTrigger - aplikuje sa ak su VSETKY PODMIENKY v kolekcii Conditions SPLNENE. Objekt Condition musi mat nastavenu hodnotu Binding a Value a je splneny ak BINDING nadobuda hodnotu Value.
+!!! 26. Trigger definuje KOLEKCIU Setters (POZOR NEMYSLIT SI ICH so SETTERS v Style - tieto Setters sa tykaju IBA Trigger i ked su to tie iste .NET triedy) v ktorej definujem SETTERS, ktore sa maju vykonat AK SA APLIKUJE DANY SETTER. Setter je mozne aplikovat IBA NA DP - tak ako kazdy iny Setter.
+!!!!! 27. ROZDIEL medzi SETTER (definovanom PRIAMO v Style.Setters) a SETTERS DEFINOVANYCH v TRIGGER (Trigger.Setters) je v tom, ze Style.Setters sa aplikuje IBA RAZ PRI INICIALIZACII ELEMENTU, zatial co Trigger.Setters sa aplikuje VZDY, ked JE PODMIENKA daneho TRIGGER SPLNENA.
+!!!!! 28. Pre TRIGGER plati, ze ak PODMIENKA definovana v TRIGGER PRESTANE BYT PLANTA (pouzivaju sa DP, takze automaticky je zmena notifikovana), tak sa TRIGGER DEAKTIVUJE a TRIGGEROM NASTAVENA HODNOTA sa VRATI na HODNOTU, AKO KED TRIGGER NIE JE APLIKOVANY.
+!!! 29. PORADIE v ktorom su TRIGGERS DEFINOVANE urcuje PORADIE v KTOROM BUDU APLIKOVANE. Ak VIACERO TRIGGERS SPLNA SVOJE PODMIENKY, tak su VSETKY APLIKOVANE a TO V PORADI v AKOM SU ZADANE v kolekcii Triggers.
+//-------------------------------------------------------------------------------------------------------

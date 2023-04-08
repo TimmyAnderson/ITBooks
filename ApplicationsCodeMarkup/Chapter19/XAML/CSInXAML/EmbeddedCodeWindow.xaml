@@ -1,0 +1,57 @@
+﻿<Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="Petzold.CompileXamlOnly.EmbeddedCodeWindow"
+        Title="Embed Code in XAML"
+        SizeToContent="WidthAndHeight"
+        ResizeMode="CanMinimize"
+        Loaded="WindowOnLoaded">
+    <StackPanel>
+        <Button HorizontalAlignment="Center"
+                Margin="24"
+                Click="ButtonOnClick">
+            Click the Button
+        </Button>
+
+        <Ellipse Name="MEllipse" 
+                 Width="200"
+                 Height="100"
+                 Margin="24" 
+                 Stroke="Red"
+                 StrokeThickness="10" />
+
+        <ListBox Name="MListBox" 
+                 Width="150"
+                 Height="150"
+                 Margin="24"
+                 SelectionChanged="ListBoxOnSelection" />
+
+        <!-- Deinujem C# kod v XAML. -->
+        <x:Code>
+            <![CDATA[
+//-------------------------------------------------------------------------------------------------------            
+        void WindowOnLoaded(object Sender, RoutedEventArgs Args)
+        {
+            foreach (System.Reflection.PropertyInfo Prop in typeof(Brushes).GetProperties())
+                MListBox.Items.Add(Prop.Name);
+        }
+//-------------------------------------------------------------------------------------------------------            
+        void ButtonOnClick(object Sender, RoutedEventArgs Args)
+        {
+            Button          Btn=Sender as Button;
+            
+            MessageBox.Show(string.Format("The button labled '{0}' has been clicked.",Btn.Content));
+        }
+//-------------------------------------------------------------------------------------------------------            
+        void ListBoxOnSelection(object Sender, SelectionChangedEventArgs Args)
+        {
+            string                          StrItem=MListBox.SelectedItem as string;
+            System.Reflection.PropertyInfo  Prop=typeof(Brushes).GetProperty(StrItem);
+            
+            MEllipse.Fill=(Brush)Prop.GetValue(null, null);
+        }
+//-------------------------------------------------------------------------------------------------------            
+            ]]>
+        </x:Code>
+
+    </StackPanel>
+</Window>

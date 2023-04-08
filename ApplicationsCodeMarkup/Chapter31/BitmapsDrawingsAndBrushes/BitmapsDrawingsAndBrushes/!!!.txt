@@ -1,0 +1,74 @@
+﻿//-------------------------------------------------------------------------------------------------------
+1. Program demonstruje pouzitie bitmap ako aj moznosti kreslenia vo WPF.
+2. Vo WPF sa na zobrazenie RASTROVEJ BITMAPY zvycajne pouziva ELEMENT Image, ktoreho Source je mozne nastavit na objekt typu ImageSource.
+3. ImageSource je BASE CLASS z ktorej su zdedene 2 zakladne triedy.
+   A. BitmapSource - ja abstraktou triedou pre bitmapy, teda RASTEROVU GRAFIKU.
+   B. DrawingImage - je triedou pre renderovanie VEKTOROVEJ GRAFIKY.
+!!! 4. Vzhladom na to, ze Image moze obsahovat ako BitmapSource, tak i DrawingImage, tak ELEMENT Image moze zobrazovat RASSTEROVU i VEKTOROVU grafiku.
+5. BitmapSource obsahuje properties PixelWidth a PixelHeight, DpiX, DpiY ci PixelFormat. PixelFormat udava format bitmapy (napriklad Bgr32 - pre RGB). Property Palette sa pouziva iba ako bitmapa pouziva INDEX farby z PALETY FARIEB.
+6. Trieda BitmapImage dedi z BitmapSource a obsahuje property UriSource, ktory je mozne nastavit na URI, ktore moze byt identifikatorom bitmapy na disku, alebo na sieti.
+7. Trieda BitmapImage ma property SourceRect, ktoru je mozne PRI NACITAVANI definovat vyrez, ktory chcem z bitmapy na vytvorenie novej bitmapy vybrat.
+8. Pomocou metody BitmapEncoder.Save() je mozne bitmapu ulozit na disk.
+!!! 9. Trieda BitmapImage podporuje formaty BMP, JPG, GIF, TIFF a PNG.
+!!! 10. Ak chcem v kode renderovat bitmapu je mozne pouzit triedu RenderTargetBitmap, do ktorej je mozne vykreslovat vsetky objekty zdedene z Visual, teda DrawingVisual, alebo LUBOVOLNY ELEMENT.
+11. Property Image.Stretch udava ako sa bitmapa roztiahne ak jej velkost nesedi z velkostou PARENT ELEMENTU do ktoreho je vlozeny Image. Hodnota None znamena, ze POVODNA VELKOST OSTANE ZACHOVANA.
+!!! 12. Ak renderujem do bitmapy ELEMENT, tak je NUTNE zavolat jeho metody Measure() a Arrange(), aby si ELEMENT mohol vypocitat svoju velkost.
+13. Ak chcem vytvorit bitmapu ako POLE BYTES, potom je vyhodne pouzit STATICKU metodu BitmapSource.Create(). Metoda ma aklo parametre velkost, pocet DPI, pixel format, paletu (pouziva sa iba pri INDEXOVANYCH bitmapach), STRIDE (urcuje v BYTES SKUTOCNU DLZKU RIADKU BITMAPY - hodnota MUSI BYT >= ako pocet BYTES potrebnych na ulozenie riadku) a samotne POLE BYTES BITMAPY.
+!!! 14. Pre POLE BYTES plati, ze KAZDY RIADOK je ZAROVNANY na VELKOST BYTE, teda ak napriklad vychadza, ze dany riadok zabera 55.25 bytes, tak hodnota STRIDE MUSI BYT ASPON 56.
+!!! 15. Pre POLE BYTES plati, ze PRVY BYTE je PIXEL VLAVO HORE bity v BYTES su ukladana od NAJVYZNAMNEJSIE po NAJMENEJ VYZNAMNY. Ak teda mam 55.25 bytes, tak 52 bytes bude plne zaplnenych a NAJVYZNAMNEJSIE 2 bity z 56. byte budu obsahovat posledne platne hodnoty. Dalsich 6 bitov z 56. byte bude NEPOUZITYCH.
+!!! 16. WPF podporuje sadu bitmap, ktore umoznuju rozlicne operacie nad bitmapami.
+   A. CroppedBitmap - umoznuje robit VYSEK z bitmapy.
+   B. FormatConvertedBitmap - umoznuje konverovat bitmapu.
+   C. TransformedBitmap - umoznuje transformovat bitmapu.
+17. Trieda DrawingImage je zakladnou triedou pre rednerovanie VEKTOROVYCH obrazkov. Avsak umoznuje kreslit i KOMBINACIU VEKTOROVEJ a RESTEROVEJ grafiky.
+18. DrawingImage ma KLUCOVU PROPETY Drawing, ktora je typu Drawing. Drawing je BASE CLASS z ktorej dedia nasledujuce zdedene triedy.
+   A. DrawingGroup - umoznuje kombinovat viacero Drawing objektov do jedneho Drawing objektu.
+   B. GeometryDrawing - umoznuje vykreslovat objekty typu Geometry, teda objekty ako Rectangle, Ellipse, ci Path. Je ZAKLADNOU TRIEDOU pre VEKTOROVU GRAFIKU.
+   C. GlyphRunDrawing - umoznuje vykreslovat text.
+   D. ImageDrawing - umoznuje vykreslovat BITMAPU a teda je reprezentantom RESTEROVEJ GRAFIKY. Obsahuje property Rect, ktora udava umiestnenie a velkost bitmapy.
+   E. VideoDrawing - umoznuje vykreslovat video sekvenciu.
+19. Trieda GeometryDrawing obsahuje properties Geometry na zadefinovanie ANALYTICKEJ GEOMETRIE (Rectangle, Ellipse, ci Path), ktora sa bude vykreslovat, property  Pen a Brush, ktory udavaju AKO FARBOU (Brush) sa bude vykreslovat OKRAJ a VNUTRO geometrie.
+!!! 20. Cize trieda GeometryDrawing obsahuje dve typy dat.
+   A. Geometry - obsahuje BODY SURADNICOVEJ SUSTAVY, ktore sa budu renderovat.
+   B. Pen a Brush - obsahuju FARBU (BRUSH), ktora sa pouzije na renderovanie geometrie.
+!!!!! 21. VSEOBECNA POZNAMKA. Objekty typu Geometry su VZDY IBA reprezentaciou BODOV OBJEKTU, ktory sa ma vykresli. NEOBSAHUJU vsak NIKDY FARBU a to ani farbu okrajov, ani farbu vyplne. Az ICH CONTAINER, ako napriklad trieda Path OBSAHUJE farbu okraju a vyplne.
+22. Pri vykreslovani DrawingImage sa najcastejcie pouzivaju DrawingGroup do ktorej vkladam GeometryDrawing pre bitmapy a ImageDrawing pre vektorove obrazky.
+23. DrawingGroup ma viacero properties, ktorymi mozem ovplyvnovat renderovanie celej skupiny objektov Drawing.
+   A. ClipGeometry - umoznuje specifikovat geometriu, ktora OREZE obsah DrawingGroup.
+   B. Opacity - umoznuje definovat priehladnost geometrie.
+   C. OpacityMask - definuje Brush, ktoreho ALPHA ZLOZKA sa vyuzije na urcenie miery priehladnosti v danom bode.
+   D. BitmapEffect - umoznuje definovat rozlicne efekty, ako napriklad BLUR, alebo SHADOW.
+   E. Transform - umoznuje vykonat transformaciu nad DrawingGroup.
+24. Trieda DrawingContext je ZAKLADNOU RENDEROVACOU TRIEDOU. Obsahuje sadu metod z ktorych su mnohe i vo verzii, ktora vyzaduje prenos parametra AnimationClock, na realizaciu animacie.
+   A. DrawLine() - kresli usecku.
+   B. DrawRectangle() - kresli obdlznik.
+   C. DrawRoundedRectangle() - kresli zaobleny obdlznik.
+   D. DrawEllipse() - kresli elipsu.
+   E. DrawText() - kresli text.
+   F. DrawGlyphRun() - kresli GLYPH, co su znaky s presnymi poziciami, kde sa maju renderovat.
+   G. DrawVideo() - kresli video pomocou triedy MediaPlayer.
+   H. DrawGeometry() - kresli objekt Geometry. Kedze Geometry NEOBSAHUJE FARBU, metoda ma ako parameter (podobne ako vacsina ostatnych metod) parametre Brush a Pen.
+   I. DrawImage() - kresli objekt typu ImageSource. Zvycajne sa pouziva na kreslenie RASTEROVEHO obrazku (i ked vlozenim DrawingImage s GeometryDrawing je mozne renderovat i VEKTOROVY obrazok).
+   J. DrawDrawing() - kresli objekt typu ImageSource. Zvycajne sa pouziva na kreslenie VEKTOROVEHO obrazku (i ked vlozenim BitmapSource, alebo DrawingImage s ImageDrawing je mozne renderovat i RASTEROVY obrazok).
+!!! 25. Pomocou DrawingContext je mozne naplnit objekt DrawingContext grafikou, ktora sa ma renderovat a pomocou property DrawingGroup ziskat objekt typu DrawingGroup ziskat objekt typu DrawingGroup, obsahujuci tuto grafiku. Ta sa potom da vyuzit v objekt DrawingImage.
+!!! 26. WPF implementuje abstraktnu triedu TileBrush pomocou ktore je mozne z OBRAZKA (ci uz vektoroveho, alebo rastroveho, dokonca i VIDEA) mozne vytvorit objekt typu Brush, ktory je potom mozne pouzit napriklad ako BACKGROUND pre nejaky ELEMENT.
+27. Z triedy TileBrush su zdedene naseldujuce triedy.
+   A. DrawingBrush - obahuje property Drawing do ktorej je mozne umiestit lubovolny objekt zdedeny z Drawing. Moze to byt napriklad i VideoDrawing na vytvorenie BRUSH z VIDEA.
+   B. ImageBrush - obsahuje property ImageSource do ktorej je mozne ulozit bud DrawingImage, alebo ImageDrawing.
+   C. VisualBrush - obsahuje property Visual do ktorej je mozne ulozit lubovolny objekt typu Visual, teda aj ELEMENT.
+28. BASE trieda TileBrush obsahuje viacero dolezitych properties, ktorymi je mozne ovplyvnit renderovanie Brush.
+   A. Stretch - urcuje ako sa bude roztahovat Brush na polochu na ktoru je aplikovany. Default hodnota je Fill, ktora znamena, ze pri roztahovani je IGNOROVANE ASPECT RATIO a obrazok moze byt teda ZDEFORMOVANY.
+   B. AlignmentX a AlignmentY - urcuje zarovnanie Brush. Ak Stretch=Uniform a obrazok napriklad je roztiahnuty na celu VYSKU, potom AlignmentX urci ci bude obrazok na LAVEJ, alebo PRAVEJ strane. Podobne to plati pre SIRKU a AlignmentY. V pripade, ze Stretch=UniformFill, tak AlignmentX a AlignmentY urcuje ktora CAST OBRAZKU sa OREZE. A v pripade, ze Stretch=None, tak AlignmentX a AlignmentY urcuju kde sa obrazok MENSI ako plocha na ktoru sa aplikuje Brush ZAROVNA.
+   C. TileMode - urcuje ci sa obrazok bude opakovat. Hodnota None znamena, ze sa obrazok NEOPAKUJE a existuje iba 1 TILE velkosti CELEHO BRUSH. Hodnota Tile znamena, ze sa robi operacia TILE, kde sa TILES skladaju vedla seba. FlipX, FlipY a FlipXY znamena vytovrenie TILES s rotovanim TILE podla osy X, Y alebo oboch X aj Y.
+   D. ViewportUnits - urcuje typ jednotiek pouzitych v property Viewport.
+   E. Viewport - urcuje VELKOST JEDNEHO TILE.
+   D. ViewBoxUnits - urcuje typ jednotiek pouzitych v property ViewBox.
+   E. ViewBox - urcuje VELKOST VYREZU z obrazku, ktora sa pouzije ako TILE.
+!!! 29. Ak chcem urcit velkos jednheo TILE musim sa rozhodnut ci jeho velkost definujem v ABSOLUTNYCH CISLACH (ViewportUnits=Absolute), alebo RELATIVNYCH CISLACH (ViewportUnits=RelativeToBoundingBox).
+!!! 30. Pomocou Viewport urcujem VELKOST JEDNEHO TILE a to v zavislosti od nastavenia ViewportUnits.
+   A. ViewportUnits=RelativeToBoundingBox - Viewport nastavujem na STVORICU CISEL pricom PRVE DVE sa IGNORUJU a dalsie dve urcuju v intervale <0,1> VELKOST JEDNEHO TILE v osi X a Y. Ak nastavim obe hodnoty na 0.5, tak v SMERE X aj Y budu po 2 TILES, teda dohromady 2*2=4 TILES.
+   B. ViewportUnits=RelativeToBoundingBox - Viewport nastavujem na STVORICU CISEL pricom PRVE DVE urcuju ZACIATOCNY BOD TILE v ABSOLUTNYCH CISLACH (PIEXELOCH) a dalsie dve urcuju VELKOST TILE v ABSOLUTNYCH CISLACH, teda PIXELOCH.
+31. Pomocou properties ViewBoxUnits a ViewBox mozem definovat VYREZ z obrazku, ktory sa pouzije ako TILE.
+32. Hodnota ViewBoxUnits urcuje ci sa na definovanie vyrezu pouziju ABSOLUTNE hodnot (pixely), alebo RELATIVNE (hodnota z intervalu <0,1>).
+33. Property ViewBox naplnam na STVORICU CISEL pricom PRVE DVE urcuju ZACIATOK VYSEKU (v pixeloch, alebo intervale <0,1>) a posledne dve VELKOST VYSEKU (v pixeloch, alebo intervale <0,1>).
+//-------------------------------------------------------------------------------------------------------
