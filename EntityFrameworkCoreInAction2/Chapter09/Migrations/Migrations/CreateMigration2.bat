@@ -1,0 +1,2 @@
+rem !!!!! Do CLASS implementujucej INTERFACE [IDesignTimeDbContextFactory<TDbContext] zasle PARAMETER 'USE_MIGRATION_VERSION_2', ktory sposobi, ze MIGRATION BUDE obsahovat ENTITY 'CEntityPrincipal' a ENTITY 'CEntityDependent'.
+dotnet ef migrations add MIGRATION_2 --context CDBContext -- "USE_MIGRATION_VERSION_2"

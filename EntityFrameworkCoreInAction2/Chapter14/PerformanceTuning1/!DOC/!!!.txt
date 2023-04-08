@@ -1,0 +1,65 @@
+//----------------------------------------------------------------------------------------------------------------------
+1. Solution demonstruje PERFORMANCE TUNING v ENTITY FRAMEWORK CORE.
+2. PERFORMANCE TUNING je odporucane robit iba vtedy, ak existujuca PERFORMANCE nestaci.
+3. Pri zvazovani PERFORMANCE je treba brat do uvahy nasledujuce PARAMETERS.
+   A. PROGRAM SPEED urcuje rychlost odozvy PROGRAMU.
+   B. PROGRAM THROUGHPUT urcuje pocet operacii, ktore PROGRAM dokaze za 1 sekundu vykonat.
+4. ENTITY FRAMEWORK CORE generuje LOGS pri vykonavani operacii nad DATABASE. LOGS obsahuju nasledujuce informacie.
+   A. SQL COMMAND, ktory sa vykonal nad DATABASE.
+   B. Cas, ktory vykonanie SQL COMMAND.
+   C. Pripadne WARNINGS, ak LINQ QUERY nebolo mozne transformovat na SQL COMMAND a doslo ku CLIENT SIDE EXECUTION casti LINQ QUERY.
+!!! 5. Ak je MINIMUM LOGGING LEVEL nastaveny na VALUE [LogLevel.Information], alebo nizsie, LOGGER zapisuje aj SQL COMMANDS, ktore boli nad DATABASE vykonane vratane casu, ktore vykonanie SQL COMMANDS trvalo.
+6. ENTITY FRAMEWORK CORE umoznuje vykonavat LOGGING nasledujucimi sposobmi.
+   A. Pouzitim INTERFACE [LoggerFactory], ktore implementuje INTERFACE [ILoggerFactory].
+   B. Pouzitim METHOD [DbContextOptionsBuilder DbContextOptionsBuilder.LogTo(Func<EventId,LogLevel,bool> Filter, Action<EventData> Logger)].
+   C. Pouzitim LINQ OPERATOR [ToQueryString], ktory vracia QUERY, ktora bude vykonana voci DATABASE.
+7. ENTITY FRAMEWORK CORE vykonava LOGGING pomocou INTERFACE [ILoggerFactory] z ktoreho vytvara instanciu LOGGER, ktory vykonava zapis LOG RECORDS. Instanciu INTERFACE [ILoggerFactory] je mozne ziskat nasledujucimi sposobmi.
+   A. Ziskat existujucu instanciu z DB CONTEXT volanim METHOD [TService IInfrastructure<IServiceProvider>.GetService<TService>()], ktora vracia tuto instanciu zaregistrovanu ako ENTITY FRAMEWORK CORE SERVICE.
+   B. Vytvorit novu instanciu INTERFACE [ILoggerFactory] vytvorenim instacnie CLASS [LoggerFactory].
+8. Pre ziskanie INTERFACE [ILoggerFactory] volanim METHOD [TService IInfrastructure<IServiceProvider>.GetService<TService>()] platia nasledujuce fakty.
+   A. Instancia INTERFACE [ILoggerFactory] je zaregistrovana ako ENTITY FRAMEWORK CORE SERVICE a preto je ju mozne ziskat volanim METHOD [TService IInfrastructure<IServiceProvider>.GetService<TService>()].
+   !!! B. [TService IInfrastructure<IServiceProvider>.GetService<TService>()] je pristupna ako EXTENSION METHOD DB CONTEXT.
+   !!! C. METHOD [TService IInfrastructure<IServiceProvider>.GetService<TService>()] NIE JE mozne volat pri konfiguracii DB CONTEXT, pretoze pri pokuse o jej volanie dojde k hodeniu EXCEPTION.
+   D. Do instancie INTERFACE [ILoggerFactory] je mozne pridat novy LOGGER PROVIDER volanim METHOD [void ILoggerFactory.AddProvider(ILoggerProvider Provider)].
+   !!!!! E. Nepodarilo sa mi zistit ako je mozne zmenit MINIMUM LOGGING LEVEL. Ten sa nastavuje v CONSTRUCTOR CLASS [LoggerFactory], a inak nie je pristupny cez INTERFACE [ILoggerFactory].
+9. Pre ziskanie INTERFACE [ILoggerFactory] vytvorenim instancie CLASS [LoggerFactory] platia nasledujuce fakty.
+   A. Pri vytvarani instancie CLASS [LoggerFactory] je mozne definovat MINIMUM LOGGING LEVEL.
+   B. Do instancie INTERFACE [ILoggerFactory] je mozne pridat novy LOGGER PROVIDER volanim METHOD [void ILoggerFactory.AddProvider(ILoggerProvider Provider)].
+   C. Pri konfiguracii DB CONTEXT je existujucu instanciu INTERFACE [ILoggerFactory] mozne nahradit novovytvorenou instanciu volanim METHOD [DbContextOptionsBuilder DbContextOptionsBuilder.UseLoggerFactory(ILoggerFactory LoggerFactory)].
+10. LOGGING pomocou METHOD [DbContextOptionsBuilder DbContextOptionsBuilder.LogTo(Func<EventId,LogLevel,bool> Filter, Action<EventData> Logger)] sa realizuje nasledujucim sposobom.
+   A. Definuje sa METHOD TYPE [Func<EventId,LogLevel,bool>], ktora sluzi ako LOG FILTER.
+   B. Definuje sa METHOD TYPE [Action<EventData>], ktora sluzi ako LOG WRITTER.
+   C. V DB CONTEXT sa zavola METHOD [DbContextOptionsBuilder DbContextOptionsBuilder.LogTo(Func<EventId,LogLevel,bool> Filter, Action<EventData> Logger)], ktora zaregistruje LOG FILTER METHOD a LOG WRITER METHOD, aby ich ENTITY FRAMEWORK mohol pouzit.
+   !!! D. CLASS [DbContextOptionsBuilder] obsahuje aj dalsie OVERLOADED verzie METHOD [DbContextOptionsBuilder LogTo(PARAMETERS)], ktore su vsak len variaciami METHOD [DbContextOptionsBuilder DbContextOptionsBuilder.LogTo(Func<EventId,LogLevel,bool> Filter, Action<EventData> Logger)].
+11. LOGGING pomocou LINQ OPERATOR [ToQueryString] umoznuje zobrazit SQL COMMAND, ktory sa zasle do DATABASE pri vykonani danej QUERY.
+12. QUERIES, ktore aplikuju LINQ OPERATOR [Select] na ziskanie COLUMN SUBSETS su vzdy rychlejsie ako QUERIES, ktore citaju cele ENTITIES.
+13. QUERIES by mali pouzivat FILTERING (LINQ OPERATOR [Where]) a PAGING (LINQ OPERATOR [Skip] a LINQ OPERATOR [Take]) na obmedzenie poctu ROWS, ktore su vratane z DATABASE, pretoze pri velkych DATABASES mozu QUERIES vracat velke mnozstvo RECORDS a tym padom su pomale.
+14. LAZY LOADING je POMALSI ako EAGER LOADING.
+!!! 15. Ak QUERY vracia instancie ENTITIES, ktore vsak nebudu modifikovane a zapisane do DATABASE, je VZDY vhodne pouzit LINQ OPERATOR [AsNoTracking]. OPERATOR zabranuje ENTITY FRAMEWORK CORE vytvorit TRACKING OBJECTS, ktorych vytvorenie znizuje QUERY PERFORMANCE. Ak vsak QUERY pouziva LINQ OPERATOR [Select], ktory nevracia instancie ENTITIES, tak pouzitie LINQ OPERATOR [AsNoTracking] NIE JE NUTNE, pretoze pre tieto OBJECT sa NEVYTVARAJU TRACKING RECORDS.
+16. Pouzitie ASYNCHRONOUS ENTITY FRAMEWORK CORE METHODS umoznuje efektivnejsie vyuzitie THREADS ako pouzitie SYNCHRONOUS ENTITY FRAMEWORK CORE METHODS cim sa zvysuje SCALABILITY.
+17. ENTITY FRAMEWORK CORE CODE by mal byt vzdy oddeleny od ostatneho BUSINESS CODE. To umoznuje jednoduchsie hladanie PERFORMANCE ISSUES.
+!!!!! 18. Pocet DATABASE ACCESS by mal byt vzdy minimalizovany. Ak sa nacitavaju PRINCIPAL ENTITIES a DEPENDENT ENTIIES, je najrychlejsie pouzit LINQ OPERATOR [Include], ktory nacita DEPENDENT ENTITIES spolu s PRINCIPAL ENTITIES v 1 DATABASE ACCESS. Vynimkou je iba situacia, ak TABLES maju vela RECORDS. V takom pripade pouzitie LINQ OPERATOR [Include] vedie ku CARTESIAN EXPLOSION. CARTESIAN EXPLOSION je situacia, kde DB SERVER musi spracovat obrovske mnozstvo RECORDS. Ak napriklad QUERY sa vykonava nad 3 TABLES, kde kazda ma 1000 RECORDS, tak pocas spracovanych RECORDS je [1000*1000*1000=1000000]. Riesenim je pouzitie LINQ OPERATOR [AsSplitQuery], ktory sice vykona viacero nezavislych QUERIES, ale nedochadza ku CARTESIAN EXPLOSION a vysledne QUERIES su RYCHLEJSIE ako 1 QUERY pri ktorej doslo ku CARTESIAN EXPLOSION.
+19. Ak QUERIES pouzivaju vyhladavanie podla NON PRIMARY KEY PROPERTIES, na tieto PROPERTIES by mali byt aplikovane INDEXES.
+20. LINQ OPERATOR [Single] a LINQ OPERATOR [SingleOrDefault] su o malo RYCHLEJSIE ako LINQ OPERATOR [First] a LINQ OPERATOR [SingleOrDefault]. Preto pri QUERIES, ktorych vysledkom je iba 1 RECORDS je vhodnejsie pouzit LINQ OPERATOR [Single] a LINQ OPERATOR [Single] a LINQ OPERATOR [SingleOrDefault].
+21. QUERIES by mali byt napisane tak, aby sa medzi DB SERVER a CLIENT SIDE prenasalo co najmenej dat.
+22. QUERIES by mali obsahovat vsetky mozne CALCULATIONS, ktore je mozne na DB SERVERI vykonat. Prikladom CALCULATIONS mozu byt AGGREGATE FUNCTIONS a USER DEFINED FUNCTIONS. Vyznamny PERFORMANCE IMPROVEMENT je mozne dosiahnut najma vtedy, ak sa robi FILTERING na zaklade tychto CALCULATIONS priamo na DB SERVERI a na CLIENT SIDE sa prenasa menej RECORDS.
+23. Ak RAW SQL CODE umoznuje vyrazny PERFORMANCE IMPROVEMENT, je ho potrebne pouzit volanim priamo z ENTITY FRAMEWORK CORE. ENTITY FRAMEWORK CORE poskytuje nasledujuce moznosti ako integrovat RAW SQL CODE s LINQ QUERIES v ENTITY FRAMEWORK CORE.
+   A. USER DEFINED FUNCTIONS je mozne volat z LINQ QUERIES.
+   B. VIEWS je mozne mapovat do ENTITIES a aplikovat na ne READ-ONLY LINQ QUERIES.
+   C. METHOD [IQueryable<TEntity> DbSet<TEntity>.FromSqlRaw<TEntity>(string Sql, params object[] Parameters)] a METHOD [IQueryable<TEntity> DbSet<TEntity>.FromSqlInterpolated<TEntity>(FormattableString Sql)] umoznuju vykonat PRVU CAST QUERY v RAW SQL CODE na ktoru je nasledne mozne aplikovat s istymi obmedzeniami LINQ QUERIES z ENTITY FRAMEWORK CORE.
+   D. COMPUTED COLUMNS je mozne namapovat do ENTITIES ako READ-ONLY PROPERTIES.
+24. ENTITY FRAMEWORK CORE vykonava COMPILATION a LOOKUP DATABASE QUERIES. Funguje to nasledujucim sposobom.
+   A. Pred vykonanim QUERY ENTITY FRAMEWORK CORE spravi LOOKUP overenim ci dana QUERY uz nebola COMPILED a nie je ulozena v CACHE.
+   B. Ak QUERY nie je ulozena v CACHE, ENTITY FRAMEWORK CORE vykona QUERY COMPILATION a vysledok QUERY COMPILATION je ulozeny do CACHE. Ak QUERY je ulozena v CACHE, tak sa pouzije a QUERY COMPILATION sa nevykonava.
+   C. Nasledne je vykonana COMPILED QUERY.
+25. ENTITY FRAMEWORK umoznuje QUERY PRECOMPILATION, kedy je QUERY PRECOMPILED, takze ENTITY FRAMEWORK uz nemusi robit LOOKUP ci je dana QUERY PRECOMPILED a ulozena v CACHE.
+26. QUERY PRECOMPILATION sa vykonava nasledujucim sposobom.
+   A. Zavola sa METHOD [Func<TContext,TParam1,TParam2,TResult> EF.CompileQuery<TContext,TParam1,TParam2,TResult>(Expression<Func<TContext,TParam1,TParam2,TResult>> QueryExpression)], ktora vykona QUERY PRECOMPILATION z QUERY vykonanej v CALLBACK METHOD, ktora je zadana ako PARAMETER METHOD [Func<TContext,TParam1,TParam2,TResult> EF.CompileQuery<TContext,TParam1,TParam2,TResult>(Expression<Func<TContext,TParam1,TParam2,TResult>> QueryExpression)].
+   B. METHOD [Func<TContext,TParam1,TParam2,TResult> EF.CompileQuery<TContext,TParam1,TParam2,TResult>(Expression<Func<TContext,TParam1,TParam2,TResult>> QueryExpression)] po vykonani COMPILATION vrati C# DELEGATE [Func<TContext,TParam1,TParam2,TResult>], ktory umoznuje vykonat PRECOMPILED QUERY.
+!!!!! 27. PRECOMPILED QUERIES NESMU mat pouzity LINQ OPERATOR, ktory spusti QUERY EXECUTION ako je napriklad LINQ OPERATOR [ToArray]. Taka QUERY nemoze byt PRECOMPILED.
+28. Ak je potrebne vykonat viacero INSERT, UPDATE a DELETE OPERATIONS je daleko efektivnejsie, ked su vykonane jednym volanim METHOD [int DbContext.SaveChanges()] ako opakovanym volanim tejto METHOD po kazdej OPERATION. Jedno volanie METHOD zabezpecuje, ze sa na vsetky OPERATIONS pouzije ta ista DB CONNECTION, a zaroven u DATABASES, ktore umoznuju BATCH OPERATIONS dokaze ENTITY FRAMEWORK CORE tieto OPERATIONS zlucit do jednej BATCH OPERATION.
+29. V pripade, ze pocet UPDATE OPERATIONS je velmi velky, moze METHOD [void ChangeTracker.DetectChanges()] bezat dost dlho. Jednym z rieseni je rozdelit UPDATE OPERATIONS, aby sa naraz nevykonaval velky pocet tychto OPERATIONS. Alternativou je pouzitie INTERFACE [INotifyPropertyChanging] a INTERFACE [INotifyPropertyChanged], ktore reportuju vsetky ENTITY UPDATES do DB CONTEXT a METHOD [void ChangeTracker.DetectChanges()] nepotrebuje robit zlozitu detekciu vsetkych ENTITY UPDATES.
+30. V pripade, ze je vykonavane QUERY nad PRINCIPAL ENTITY, ktora ma velke mnozstvo DEPENDENT ENTITIES, QUERY sa vykona rychlejsie, ak NAVIGATION PROPERTY v PRINCIPAL ENTITY je TYPE [HashSet<TType>] a nie TYPE [ICollection<TType>]. NEVYHODOU TYPE [HashSet<TType>] je vsak to, ze TYPE [HashSet<TType>] negarantuje poradie ITEMS v COLLECTION a teda ak je aplikovany SORTING na DEPENDENT ENTITIES, tak tento sa ignoruje a ENTIIES budu ulozene v RANDOM ORDER.
+31. Ak sa vykonava UPDATE iba niektorych PROPERTIES danej ENTITY, nemala by sa pouzivat METHOD [EntityEntry<TEntity> DbSet<TEntity>.Update(TEntity Entity)], pretoze jej pouzitie sposobi UPDATE vsetkych DATABASE COLUMNS, aj ked sa tie nezmenili. Vysledkom je nizsia PERFORMANCE. Tato METHOD by sa mala pouzivat iba vtedy ak sa zmenili vsetky PROPERTIES danej ENTITY.
+32. Pri prvom vytvarani instancie CLASS [DbContext] sa vytvara DATABASE MODEL, ktory je nasledne CACHED, aby ho dalsie instancie CLASS [DbContext] mohli pouzit. Ak ma CLASS [DbContext] vela ENTITIES, moze vytvaranie DATABASE MODEL trvat dlho. Standardne to nie je problem, pretoze DATABASE MODEL sa vytvara iba raz a je CACHED, ale pri PROGRAMOCH ako MICROSERVICES, ktore sa neustale spustaju a zastavuju to moze sposobit PERFORMANCE HIT. Riesenim je vytvorenie viacerych mensich CLASSES zdedenych z CLASS [DbContext], ktore nemaju tolko ENTITIES a pouzit ten, ktory v danom PROGRAME je nutne pouzit.
+//----------------------------------------------------------------------------------------------------------------------

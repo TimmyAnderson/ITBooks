@@ -1,0 +1,2 @@
+rem !!!!! Do CLASS implementujucej INTERFACE [IDesignTimeDbContextFactory<TDbContext] zasle PARAMETER 'USE_MIGRATION_VERSION_1', ktory sposobi, ze MIGRATION NEBUDE obsahovat ENTITY 'CEntityPrincipal' a ENTITY 'CEntityDependent'.
+dotnet ef migrations add MIGRATION_1 --context CDBContext -- "USE_MIGRATION_VERSION_1"

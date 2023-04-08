@@ -1,0 +1,1 @@
+dotnet test --filter "FullyQualifiedName=UnitTesting.Tests.CSimpleUnitTest.MySuccessUnitTest | FullyQualifiedName=UnitTesting.Tests.CSimpleUnitTest.MyFailureUnitTest"

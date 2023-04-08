@@ -1,0 +1,124 @@
+//----------------------------------------------------------------------------------------------------------------------
+1. Solution demonstruje pouzitie MIGRATIONS v ENTITY FRAMEWORK CORE.
+2. DATABASES maju definovanu SCHEMA, ktora popisuje strukturu TABLES, CONSTRAINTS, INDEXES, STORED PROCEDURES, USER DEFINED FUNCTIONS a mnoho ineho.
+3. Pri zmene struktury DATABASE je ENTITY FRAMEWORK CORE schopne vygenerovat CODE, ktory vykona MIGRATION z existujucej verzie DATABASE SCHEMA na novu verziu DATABASE SCHEMA. Tato operacia sa vola MIGRATION.
+4. ENTITY FRAMEWORK CORE si vytvara z ENTITY CLASSES a DB CONTEXT CLASS DATABASE MODEL. Pre DATABASE MODEL platia nasledujuce fakty.
+   A. DATABASE MODEL je vytvoreny pri vytvarani DB CONTEXT z FIELDS a PROPERTIES ENTITY CLASSES ako aj z DB CONTEXT CLASS.
+   B. DATABASE MODEL je pristupny pre CODE cez PROPERTY [IModel DbContext.Model].
+   !!!!! C. Na to, aby ENTITY FRAMEWORK CORE fungoval spravne, musi DATABASE MODEL zodpovedat realnej strukture DATABASE.
+5. To, aby DATABASE MODEL zodpovedal realnej strukture DATABASE je v ENTITY FRAMEWORK CORE mozne realizovat nasledujucimi sposobmi.
+   A. CODE FIRST. ENTITY FRAMEWORK CORE dokaze vygenerovat DATABASE na zaklade ENTITY CLASSES a DB CONTEXT CLASS.
+   B. SQL FIRST. ENTITY FRAMEWORK CORE dokaze vygenerovat SQL SCRIPT na zaklade zmien, ktore sa v ENTITY CLASSES a DB CONTEXT CLASS vykonali.
+   C. DATABASE FIRST. ENTITY FRAMEWORK CORE dokaze vygenerovat ENTITY CLASSES a DB CONTEXT CLASS z existujucej DATABASE.
+   D. Volanim METHOD [bool DatabaseFacade.EnsureCreated()]. Tato METHOD sa pouziva najma pri testovani.
+6. CODE FIRST vychadza z principu, ze ENTITY FRAMEWORK CORE dokaze vygenerovat DATABASE z ENTITY CLASSES a DB CONTEXT CLASS. CODE FIRST vyuziva mechanizmus MIGRATIONS, ktory sa pouziva v nasledujucich krokoch.
+   A. Vytvorenie MIGRATION. Pri vytvoreni ci kazdej modifikacii ENTITY CLASSES, alebo DB CONTEXT CLASS je vytvorena nova MIGRATION, ktora obsahuje CODE zabezpecujuci CREATE novej, alebo UPDATE existujucej DATABASE. MIGRATIONS sa vytvaraju pomocou COMMAND LINE TOOL [dotnet ef migrations].
+   B. Aplikacia vytvorenych MIGRATIONS. Pomocou COMMAND LINE TOOL [dotnet ef migrations], alebo pomocou C# CODE je mozne aplikovat vytvorene MIGRATIONS na existujuce DATABASES a zmenit tak ich strukturu.
+!!! 7. ENTITY FRAMEWORK CORE pri vytvarani MIGRATIONS postupuje nasledujucim sposobom.
+   A. ENTITY FRAMEWORK CORE prejde vsetky ENTITY CLASSES a DB CONTEXT CLASS a na zaklade nich vytvori DATABASE MODEL 1.
+   B. ENTITY FRAMEWORK CORE sa pokusi v DIRECTORY [Migrations] najst FILE [CONTEXTModelSnapshot.cs], kde VALUE 'CONTEXT' je nazov DB CONTEXT CLASS a nasledne z neho vytvori DATABASE MODEL 2. Ak tento FILE NEEXISTUJE, DATABASE MODEL 2 je prazdny. FILE [CONTEXTModelSnapshot.cs] obsahuje popis DATABASE MODEL po aplikovani poslednej MIGRATION.
+   C. ENTITY FRAMEWORK CORE vykona porovnanie DATABASE MODEL 1 a DATABASE MODEL 2 a na zaklade detekovanych rozdielov v DIRECTORY [Migrations] vytvori novy FILE [CONTEXTModelSnapshot.cs] a dalsie 2 FILES obsahujuce C# CODE, ktory dokaze DATABASE PROVIDER transformovat na seriu SQL COMMANDS, ktore vykonaju CREATE/UPDATE DATABASE.
+8. MIGRATION FILE [NUMBER_MIGRATION.cs], kde VALUE 'NUMBER' obsahuje cislo MIGRATION a VALUE 'MIGRATION' obsahuje nazov MIGRATION obsahuje C# CODE zabezpecujuci vykonanie SQL COMMANDS danej MIGRATION nad DATABASE. Pre FILE [NUMBER_MIGRATION.cs] platia nasledujuce fakty.
+   A. MIGRATION FILE [NUMBER_MIGRATION.cs] obsahuje CLASS [MIGRATION], kde VALUE 'MIGRATION' obsahuje nazov MIGRATION.
+   B. CLASS [MIGRATION] je DERIVED z CLASS [Migration].
+   C. CLASS [Migration] obsahuje METHOD [void Migration.Up(MigrationBuilder MigrationBuilder)], ktora vykonava UPGRADE DATABASE z predchadzajucej MIGRATION na novu MIGRATION. Do tejto METHOD je mozne pridat CUSTOM CODE.
+   D. CLASS [Migration] obsahuje METHOD [void Migration.Down(MigrationBuilder MigrationBuilder)], ktora vykonava DOWNGRADE DATABASE z aktualnej MIGRATION na predchadzajucu MIGRATION. Do tejto METHOD je mozne pridat CUSTOM CODE.
+9. MIGRATIONS je v ENTITY FRAMEWORK CORE moze vytvarat nasledujucimi sposobomi.
+   A. Pomocou COMMAND LINE INTERFACE.
+   B. Pomocou VISUAL STUDIO PACKAGE MANAGER CONSOLE.
+10. Na to aby MIGRATIONS fungovali musia pre PROJECT, ktory sa pouziva na generovanie MIGRATIONS platit nasledujuce fakty.
+   A. PROJECT musi mat definovany DB CONTEX CLASS, ktory je zdedeny z CLASS [DbContext].
+   B. Ak DB CONTEXT CLASS nema DEFAULT CONSTRUCTOR, je nutne definovat CLASS, ktora implementuje INTERFACE [IDesignTimeDbContextFactory<TContext>], ktorej ulohou je vytvorit instanciu DB CONTEXT CLASS.
+   C. Do PROJECT musi byt vlozeny NUGET PACKAGE [Microsoft.EntityFrameworkCore.Tools].
+   !!! D. Kedze MIGRATIONS su VZDY DB SPECIFIC, do PROJECT musi byt vlozeny NUGET PACKAGE pre dany DB PROVIDER. Pre SQLITE je to NUGET PACKAGE [Microsoft.EntityFrameworkCore.Sqlite].
+!!! 11. ENTITY FRAMEWORK CORE pri vytvarani MIGRATIONS vytvara instanciu daneho DB CONTEXT. Standardne sa DB CONTEXT vytvara volanim PARAMETER-LESS CONSTRUCTOR. V pripade, ze DB CONTEXT taky CONSTRUCTOR nema, je mozne definvat CLASS implementujucu INTERFACE [IDesignTimeDbContextFactory<TContext>]. Platia nasledujuce fakty.
+   A. Ak PROJECT z ktoreho je vytvarana MIGRATION ma CLASS, ktora implementuje INTERFACE [IDesignTimeDbContextFactory<TContext>], ENTITY FRAMEWORK CORE pouzije tuto CLASS na vytvorenie instancie DB CONTEXT CLASS.
+   B. ENTITY FRAMEWORK CORE pri vytvarani MIGRATIONS vytvori instanciu CLASS, ktora implementuje INTERFACE [IDesignTimeDbContextFactory<TContext>], kde TYPE 'TContext' je TYPE DB CONTEXT.
+   C. INTERFACE [IDesignTimeDbContextFactory<TContext>] definuje METHOD [TContext IDesignTimeDbContextFactory<TContext>.CreateDbContext(string[] Args)], ktoru vola ENTITY FRAMEWORK CORE pre vytvorenie DB CONTEXT.
+   !!! D. METHOD [TContext IDesignTimeDbContextFactory<TContext>.CreateDbContext(string[] Args)] ma PARAMETER TYPE [string[]], ktorym je mozne do METHOD zasielat COMMAND LINE ARGUMENTS zaslane v COMMAND LINE TOOL [dotnet ef migrations]. Tieto PARAMETERS sa zasielaju pomocou COMMAND LINE PARAMETER [-- "PARAMETER 1" "PARAMETER 2" ... "PARAMETER N"]. Priklad [dotnet ef migrations add MIGRATION --context CDBContext -- "MY_PARAMETER 1" "MY_PARAMETER 2"].
+12. MIGRATIONS je mozne vytvarat a odstranovat pomocou COMMAND LINE TOOL [dotnet ef migrations].
+   A. COMMAND [dotnet ef migrations add MIGRATION_NAME --context CONTEXT_NAME] vytvara novu MIGRATION 'MIGRATION_NAME' z DB CONTEXT CLASS 'CONTEXT_NAME'.
+   B. COMMAND [dotnet ef migrations remove --context CONTEXT_NAME] odstranuje poslednu pridanu MIGRATION vytvorenu z DB CONTEXT CLASS 'CONTEXT_NAME'.
+13. MIGRATIONS je mozne vytvarat a odstranovat pomocou VISUAL STUDIO PACKAGE MANAGER CONSOLE.
+   A. COMMAND [Add-Migration -Name MIGRATION_NAME -Context CONTEXT_NAME] vytvara novu MIGRATION 'MIGRATION_NAME' z DB CONTEXT CLASS 'CONTEXT_NAME'.
+   B. COMMAND [Remove-Migration -Context CONTEXT_NAME] odstranuje poslednu pridanu MIGRATION vytvorenu z DB CONTEXT CLASS 'CONTEXT_NAME'.
+14. ENTITY FRAMEWORK CORE umoznuje naplnit DB datami v procese nazvanom DATA SEEDING. Pre DATA SEEDING platia nasledujuce fakty.
+   A. DATA SEEDING sa realizuje pomocou METHOD [DataBuilder<TEntity> EntityTypeBuilder<TEntity>.HasData(params TEntityType[] Data)].
+   B. Pri DATA SEEDING MUSIA instancie ENTITY CLASSES ak maju RELATIONSHIPS, mat nastavene aj hodnoty PRIMARY KEYS a FOREIGN KEYS.
+   !!! C. Pri DATA SEEDING ENTITY CLASSES NESMU mat nastavene hodnoty NAVIGATION PROPERTIES. Identifikacia RELATIONSHIPS prebieha pomocou hodnot PRIMARY KEYS a FOREIGN KEYS.
+   D. DATA SEEDING sa realizuju pomocou MIGRATIONS.
+   E. DATA SEEDING je mozne aplikovat aj pomocou METHOD [bool DatabaseFacade.EnsureCreated()].
+   !!! F. DATA SEEDING sa aplikuje IBA ak DB NEEXISTUJE. Ak EXISTUJE, tak sa DATA SEEDING NEVYKONA.
+   !!!!! G. DATA SEEDING je vhodny iba na STATICKE DATA ako su napriklad staticke ciselniky krajin ci ZIP CODES. Nie su vhodne pre dynamicke data s vazbami, pretoze je explicitne nutne definovat hodnoty PRIMARY KEYS a FOREIGN KEYS.
+   H. DATA SEEDING dokaze vykonat okrem INSERT aj UPDATE existujucich RECORDS, ak maju rovnake PRIMARY KEYS a rozne DATA, a takisto aj DELETE, ak doslo k zmene PRIMARY KEY.
+15. ENTITY FRAMEWORK CORE pouziva na ukladanie ake MIGRATIONS boli aplikovane na DATABASE HISTORY TABLE. HISTORY TABLE ma DEFAULT NAME, ktory je mozne zmenit nasledujucim sposobom.
+   A. Zavola sa METHOD [DbContextOptionsBuilder DbContextOptionsBuilder.UseSqlite(string ConnectionString, Action<SqliteDbContextOptionsBuilder> SqliteOptionsAction)], ktora v PARAMETER 'SqliteOptionsAction' definuje CALLBACK METHOD, ktora konfiguruje HISTORY TABLE NAME.
+   B. V CALLBACK METHOD sa zavola METHOD [TBuilder RelationalDbContextOptionsBuilder<TBuilder,TExtension>.MigrationsHistoryTable(string TableName, string Schema)], ktora nastavi HISTORY TABLE NAME.
+16. ENTITY FRAMEWORK CORE umoznuje, aby dana ENTITY NEBOAL sucastou MIGRATIONS. Vynechanie ENTITY z MIGRATIONS sa robi nasledujucim sposobom.
+   A. Zavola sa METHOD [EntityTypeBuilder<TEntity> EntityTypeBuilder<TEntity>.ToTable<TEntity>(string Name, Action<TableBuilder<TEntity>> BuildAction)], ktora v PARAMETER 'BuildAction' definuje CALLBACK METHOD, ktora konfiguruje DATABASE TABLE PROPERTIES.
+   B. V CALLBACK METHOD sa zavola METHOD [TableBuilder<TEntity> TableBuilder<TEntity>.ExcludeFromMigrations(bool Excluded)], ktora vyradi ENTITY z MIGRATIONS.
+!!! 17. MIGRATIONS nie su schopne vykonat uplne vsetky UPDATES v DATABASE.
+   A. MIGRATIONS nie su schopne vykonat DATA LOSS CHANGES, ako napriklad premenovat ENTITY PROPERTY, pretoze to sposobi DROP EXISTING COLUMN a ADD NEW COLUMN.
+   B. MIGRATIONS nie su schopne pridat ELEMENTS pridavane pomocou RAW SQL ako STORED PROCEDURES, alebo USER DEFINED FUNCTIONS.
+   C. MIGRATIONS nie su schopne fungovat pre viacero roznych DB PROVIDERS. Kazdy DB PROVIDER musi mat vlastne MIGRATIONS.
+!!! 18. UPDATES, ktore MIGRATIONS nie su BY-DEFAULT schopne vykonat, je mozne realizovat tym, ze su MANUALNE modifikovane MIGRATION FILES MIGRATION FILE [NUMBER_MIGRATION.cs], ktore MIGRATIONS vygenenerovali.
+19. MIGRATIONS nie su schopne vykonat RENAME ENTITY PROPERTY. Pri RENAME ENTITY PROPERTY dojde vo vygenerovanom MIGRATION FILE [NUMBER_MIGRATION.cs] k DROP EXISTING COLUMN a ADD NEW COLUMN cim dochadza k strate dat. Riesenim je MANUALNA uprava MIGRATION FILE [NUMBER_MIGRATION.cs].
+   A. Z METHOD [void Migration.Up(MigrationBuilder MigrationBuilder)] sa odstrani volanie METHOD [OperationBuilder<DropColumnOperation> MigrationBuilder.DropColumn(string Name, string Table, string Schema)], ktora odstranuje existujuci COLUMN s NAME 'ORIGINAL_COLUMN_NAME'.
+   B. Z METHOD [void Migration.Up(MigrationBuilder MigrationBuilder)] sa odstrani volanie METHOD [OperationBuilder<AddColumnOperation> MigrationBuilder.AddColumn<T>(string Name, string Table, string Type, bool Unicode, int MaxLength, bool RowVersion, string Schema, bool Nullable, object DefaultValue, string DefaultValueSql, string ComputedColumnSql, bool FixedLength, string Comment, string Collation, int Precision, int Scale, bool Stored)], ktora pridava novy COLUMN s NAME 'NEW_COLUMN_NAME'.
+   C. Do METHOD [void Migration.Up(MigrationBuilder MigrationBuilder)] sa prida volanie METHOD [OperationBuilder<RenameColumnOperation> MigrationBuilder.RenameColumn(string Name, string Table, string NewName, string Schema)], ktora sposobi RENAME COLUMN s NAME 'ORIGINAL_COLUMN_NAME' na COLUMN s NAME 'NEW_COLUMN_NAME'.
+   D. Z METHOD [void Migration.Down(MigrationBuilder MigrationBuilder)] sa odstrani volanie METHOD [OperationBuilder<DropColumnOperation> MigrationBuilder.DropColumn(string Name, string Table, string Schema)], ktora odstranuje novy COLUMN s NAME 'NEW_COLUMN_NAME'.
+   E. Z METHOD [void Migration.Down(MigrationBuilder MigrationBuilder)] sa odstrani volanie METHOD [OperationBuilder<AddColumnOperation> MigrationBuilder.AddColumn<T>(string Name, string Table, string Type, bool Unicode, int MaxLength, bool RowVersion, string Schema, bool Nullable, object DefaultValue, string DefaultValueSql, string ComputedColumnSql, bool FixedLength, string Comment, string Collation, int Precision, int Scale, bool Stored)], ktora pridava existujuci COLUMN s NAME 'ORIGINAL_COLUMN_NAME'.
+   F. Do METHOD [void Migration.Down(MigrationBuilder MigrationBuilder)] sa prida volanie METHOD [OperationBuilder<RenameColumnOperation> MigrationBuilder.RenameColumn(string Name, string Table, string NewName, string Schema)], ktora sposobi RENAME COLUMN s NAME 'NEW_COLUMN_NAME' na COLUMN s NAME 'ORIGINAL_COLUMN_NAME'.
+20. Pomocou METHOD [OperationBuilder<SqlOperation> MigrationBuilder.Sql(string Sql, bool SuppressTransaction)] je mozne pridavat do MIGRATION FILE [NUMBER_MIGRATION.cs] CUSTOM SQL COMMANDS.
+!!! 21. MIGRATIONS su VZDY DATABASE PROVIDER SPECIFIC. Z toho vyplyvaju nasledujuce fakty.
+   A. MIGRATIONS vytvorene pre DATABASE PROVIDER 1 NIE JE mozne pouzit pre DATABASE PROVIDER 2.
+   B. V pripade ze je treba vytvorit DATABASE pre iny DATABASE PROVIDER, je nutne odznova vytvorit nove MIGRATIONS.
+   C. CLASS [MigrationBuilder] obsahuje PROPERTY [string MigrationBuilder.ActiveProvider] pomcou ktorej je mozne identifikovat pre ktory DATABASE PROVIDER je dana MIGRATION aplikovana. To je mozne vyuzit vtedy, ak MIGRATIONS pre rozlicne DATABASE PROVIDERS su zlucene do jednej MIGRATION.
+22. Transformaciu DATABASE z jednej verzie na inu je mozne realizovat aj napisanim rozdielovych SQL SCRIPTS. Rozdielove SCRIPTS je mozne realizovat nasledujucimi sposobmi.
+   A. Vygenerovat ich pomocou SQL TOOLS.
+   B. Napisat ich manualne.
+23. SQL TOOLS umoznuju porovnat 2 verzie DATABASE a vygenerovat rozdielove SCRIPTS, ktore vykonaju UPGRADE DATABASE z VERSION 1 na VERSION 2.
+24. VISUAL STUDIO [SQL Server Object Explorer] umoznuje vytvarat rozdielove SQL SCRIPTS medzi 2 DATABASES pre SQL SERVER, vdaka comu je mozne vytvorit SCRIPT obsahujuci SQL CODE modifikujuci DATABASE SCHEMA 1, aby sa zmenila na DATABASE SCHEMA 2. TOOL sa spusta pomocou VISUAL STUDIO COMMAND [Tools->SQL Server->New Schema Comparison].
+25. COMMAND LINE COMMAND [dotnet ef migrations script [Arguments] [Options]] umoznuje vytvorit SQL SCRIPT z MIGRATIONS.
+   A. ARGUMENT [FROM] umoznuje definovat pociatocnu MIGRATION od ktorej sa ma generovat SQL SCRIPT. VALUE '0' znamena pociatocnu MIGRATION.
+   B. ARGUMENT [TO] umoznuje definovat koncovu MIGRATION po ktoru sa ma generovat SQL SCRIPT. BY-DEFAULT je ARGUMENT nastaveny na poslednu MIGRATION.
+26. COMMAND LINE COMMAND [dotnet ef migrations script --context CONTEXT -o SCRIPT.sql] vytvara z DB CONTEXT 'CONTEXT' SQL SCRIPT, ktory zapise do FILE 'SCRIPT.sql'.
+27. VISUAL STUDIO PACKAGE MANAGER CONSOLE COMMAND [Script-Migration -From MIGRATION_NAME_1 -To MIGRATION_NAME_2 -Context CONTEXT_NAME -Output FILE_NAME] vytvara SQL SCRIPT FILE 'FILE_NAME' od MIGRATION 'MIGRATION_NAME_1' po MIGRATION 'MIGRATION_NAME_2' z DB CONTEXT CLASS 'CONTEXT_NAME'. COMMAND POUZIVA MIGRATIONS.
+28. VISUAL STUDIO PACKAGE MANAGER CONSOLE COMMAND [Script-DbContext -Context CONTEXT_NAME -Output FILE_NAME] vytvara SQL SCRIPT FILE 'FILE_NAME' z DB CONTEXT CLASS 'CONTEXT_NAME'. COMMAND NEPOUZIVA MIGRATIONS.
+29. DATABASE FIRST umoznuje vytvorit ENTITY CLASSES a DB CONTEXT CLASS z existujucej DATABASE. DATABASE FIRST funguje nasledujucim sposobom.
+   A. Pomocou COMMAND LINE COMMAND, alebo VISUAL STUDIO PACKAGE MANAGER CONSOLE COMMAND sa nad EXISTUJUCOU DATABASE spusti proces SCAFFOLDING.
+   B. ENTITY FRAMEWORK CORE vytvori z existujucej DATABASE vlastny DATABASE MODEL.
+   C. Z vytvoreneho DATABASE MODEL su vygenerovane ENTITY CLASSES a DB CONTEXT CLASS.
+30. COMMAND LINE COMMAND [dotnet ef dbcontext scaffold CONNECTION_STRING PROVIDER_NAME --output-dir OUTPUT_DIRECTORY] vytvara pre DATABASE na ktoru sa da napojit pomocou CONNECTION STRING 'CONNECTION_STRING' a PROVIDER 'PROVIDER_NAME' ENTITY CLASSES a DB CONTEXT CLASS, ktore ulozi do DIRECTORY 'OUTPUT_DIRECTORY'.
+31. VISUAL STUDIO PACKAGE MANAGER CONSOLE COMMAND [Scaffold-DbContext -Connection CONNECTION_STRING -Provider PROVIDER_NAME -OutputDir OUTPUT_DIRECTORY] vytvara pre DATABASE na ktoru sa da napojit pomocou CONNECTION STRING 'CONNECTION_STRING' a PROVIDER 'PROVIDER_NAME' ENTITY CLASSES a DB CONTEXT CLASS, ktore ulozi do DIRECTORY 'OUTPUT_DIRECTORY'.
+32. ENTITY FRAMEWORK CORE POWER TOOL je VISUAL STUDIO EXTENSION, ktore poskytuje UI na vykonanie DATABASE SCAFFOLDING.
+33. Vytvorene MIGRATIONS je mozne aplikovat nasledujucimi sposobmi.
+   A. Zavolanim METHOD [void DatabaseFacade.Migrate()], ktory vykona MIGRATION ako sucast C# PROGRAMU.
+   B. Vygenerovanim SQL SCRIPT z MIGRATIONS, ktory sa nasledne aplikuje na DATABASE.
+   C. Pouzitim COMMAND LINE TOOL [dotnet ef database].
+!!! 34. MIGRATIONS su vykonavane v poradi v akom boli generovane, pricom kazda MIGRATION je vykonana v SAMOSTATNEJ SQL TRANSACTION.
+35. Volanie METHOD [void DatabaseFacade.Migrate()] spusta vykonanie este neaplikovanych MIGRATIONS na DATABASE. METHOD ma nasledujuce obmedzenia.
+   A. Ak niektora MIGRATION zlyha, METHOD hodi EXCEPTION a dalsie MIGRATIONS neaplikuje.
+   B. METHOD nie je implementovana, aby paralalne bezala viackrat. Napriklad z viacerych PC voci tej istej DATABASE. Ak sa to stane, DATABASE ostane v nekonzistentnom stave.
+36. ENTITY FRAMEWORK CORE poskytuje nasledujuce METHODS, ktore umoznuju zistit definovane MIGRATIONS aj to ci boli aplikovane na DATABASE.
+   A. METHOD [IEnumerable<string> DatabaseFacade.GetMigrations()] vracia zoznam vsetkych MIGRATIONS.
+   B. METHOD [IEnumerable<string> DatabaseFacade.GetAppliedMigrations()] vracia zoznam vsetkych APPLIED MIGRATIONS.
+   C. METHOD [IEnumerable<string> DatabaseFacade.GetPendingMigrations()] vracia zoznam vsetkych PENDING MIGRATIONS.
+37. MIGRATIONS je mozne aplikovat na DATABASE pomocou COMMAND LINE COMMAND [dotnet ef database update MIGRATION_NAME --context CONTEXT_NAME], kde VALUE 'CONTEXT_NAME' je nazov DB CONTEXT a VALUE 'MIGRATION_NAME' je nazov MIGRATION, ktora sa ma aplikovat na DATABASE.
+38. COMMAND LINE COMMAND [dotnet ef database drop --context CONTEXT_NAME] umoznuje odstranit DATABASE, ktora vznikla z DB CONTEXT 'XXX'.
+!!! 39. PROPERTY [bool DbContextOptionsBuilder.IsConfigured] umoznuje zistit ci DB CONTEXT uz je, alebo nie je nakonfigurovany.
+   A. PROPERTY vracia TRUE, ak v DB CONTEXT CONSTRUCTOR sa volal BASE CONSTRUCTOR [DbContext.DbContext(DbContextOptions Options)].
+   B. PROPERTY vracia FALSE, ak v DB CONTEXT CONSTRUCTOR sa nevolal BASE CONSTRUCTOR [DbContext.DbContext(DbContextOptions Options)].
+40. Ak MIGRATIONS obsahuju BREAKING CHANGES, kedy povodny PROGRAM NEBUDE po zmene DATABASE FUNCTION, pricom DEPLOYMENT sa robi na CONTINOUSLY RUNNING PROGRAM, je DEPLOYMENT komplikovany. Ak napriklad novy PROGRAM ma pristupovat k datam namiesto TABLE 'TABLE_1' z TABLE 'TABLE_2', DEPLOYMENT je potrebne robit v nasledujucich krokoch.
+   A. PROGRAM 'PROGRAM_1' bezi voci ORIGINAL DATABASE, ktory pristupuje k TABLE 'TABLE_1'.
+   B. Pred DEPLOYMENT sa vytvori PROGRAM 'PROGRAM_2', ktory bude citat DATA z TABLE 'TABLE_1' aj TABLE 'TABLE_2' pomocou VIEW, ale zapisovat ich bude uz len do TABLE 'TABLE_2'.
+   C. Vykona sa MIGRATION DATABASE, ktora vytvori PRAZDNU TABLE 'TABLE_2' a VIEW, ktory umoznuje citat data z TABLE 'TABLE_1' aj TABLE 'TABLE_2'.
+   D. Vykona sa DEPLOY PROGRAM 'PROGRAM_2', ktory nahradi pouzivanie PROGRAM 'PROGRAM_1'. Beh PROGRAM 'PROGRAM_1' sa ZASTAVI.
+   !!! E. Aktualne bezi uz len PROGRAM 'PROGRAM_2', ktory cita DATA z TABLE 'TABLE_1' aj TABLE 'TABLE_2' pomocou VIEW, ale zapisuje ich uz len do TABLE 'TABLE_2'.
+   F. Vykona sa MOVE vsetkych DATA z TABLE 'TABLE_1' do TABLE 'TABLE_2'.
+   !!! G. Aktualne PROGRAM 'PROGRAM_2' uz nebude cistat DATA z TABLE 'TABLE_1', kedze ta je prazdna, ale pomocou VIEW cita DATA iba z TABLE 'TABLE_2'.
+   H. Vykona sa DEPLOY PROGRAM 'PROGRAM_3', ktory nahradi pouzivanie PROGRAM 'PROGRAM_2'. Beh PROGRAM 'PROGRAM_2' sa ZASTAVI.
+   !!!!! I. Aktualne bezi uz len PROGRAM 'PROGRAM_3', ktory cita aj zapisuje DATA do TABLE 'TABLE_2' a TABLE 'TABLE_1', ktora je uz prazdna sa NEPOUZIVA.
+   J. Vykona sa UPDATE DATABASE, kedy sa odstrani uz nepouzivana a prazdna TABLE 'TABLE_1' ako aj VIEW, ktory cital DATA z TABLE 'TABLE_1' aj TABLE 'TABLE_2'.
+   !!! K. Aktualne bezi uz len PROGRAM 'PROGRAM_3', ktory cita aj zapisuje DATA do TABLE 'TABLE_2' pricom TABLE 'TABLE_1' ani VIEW uz v DATABASE NEEXISTUJU a DATABASE je kompletne MIGRATED na novu VERSION.
+//----------------------------------------------------------------------------------------------------------------------

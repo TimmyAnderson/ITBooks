@@ -1,0 +1,224 @@
+//----------------------------------------------------------------------------------------------------------------------
+1. Solution demonstruje rozlicne funkcionality DB CONTEXT v ENTITY FRAMEWORK CORE.
+2. CLASS [DbContext] definuje nasledujuce PROPERTIES.
+   A. PROPERTY [ChangeTracker ChangeTracker] obsahuje OBJECT, ktory vykonava STATE TRACKING vsetkych ENTITY OBJECTS.
+   B. PROPERTY [DbContextId ContextId] vracia unikatne ID DB CONTEXT, ktore je mozne pouzit napriklad pri LOGGING.
+   C. PROPERTY [DatabaseFacade Database] obsahuje OBJECT umoznujuci realizaciu CUSTOM TRANSACTIONS, vykonanie DB MIGRATIONS a vykonanie RAW SQL COMMANDS.
+   D. PROPERTY [IModel Model] obsahuje OBJECT popisujuci strukturu DATABASE.
+!!! 3. ENTITY FRAMEWORK CORE si pre kazdy ENTITY OBJECT drzi jej STATE, ktory urcuje aka operacia sa stane po zavolani METHOD [int DbContext.SaveChanges()].
+!!!!! 4. STATE daneho ENTITY OBJECT je ulozeny v instancii CLASS [EntityEntry<TEntity>], ktoru je mozne ziskat volanim METHOD [EntityEntry<TEntity> DbContext.Entry<TEntity>(TEntity Entity)].
+5. STATE daneho ENTITY OBJECT je mozne ziskat pomocou PROPERTY [EntityState EntityEntry.State].
+!!! 6. STATE ENTITY OBJECT sa meni v nasledujucich pripadoch.
+   A. Ak je pre dany ENTITY OBJECT zavolana METHOD CLASS [DbContext], ako napriklad METHOD [EntityEntry<TEntity> DbContext.Attach<TEntity>(TEntity Entity)], METHOD [EntityEntry<TEntity> DbContext.Add<TEntity>(TEntity Entity)], METHOD [EntityEntry<TEntity> DbContext.Update<TEntity>(TEntity Entity)], alebo METHOD [EntityEntry<TEntity> DbContext.Remove<TEntity>(TEntity Entity)].
+   B. Ak je pre dany ENTITY OBJECT zavolana METHOD CLASS [DbSet<TEntity>], ako napriklad METHOD [EntityEntry<TEntity> DbSet<TEntity>.Attach(TEntity Entity)], METHOD [EntityEntry<TEntity> DbSet<TEntity>.Add(TEntity Entity)], METHOD [EntityEntry<TEntity> DbSet<TEntity>.Update(TEntity Entity)], alebo METHOD [EntityEntry<TEntity> DbSet<TEntity>.Remove(TEntity Entity)].
+   C. Ak je ENTITY OBJECT nacitany z DATABASE pomocou CLASS [DbContext] bez volania LINQ OPERATOR [AsNoTracking] a LINQ OPERATOR [AsNoTrackingWithIdentityResolution].
+!!! 7. ENUM [EntityState] moze nadobudat nasledujuce VALUES.
+   A. VALUE [Detached] znamena, ze ENTITY OBJECT NIE je TRACKED a pri volani METHOD [int DbContext.SaveChanges()] je tento ENTITY OBJECT IGNOROVANY.
+   B. VALUE [Unchanged] znamena, ze ENTITY OBJECT je TRACKED, ale nebola v nom vykonana ziadna zmena a pri volani METHOD [int DbContext.SaveChanges()] je tento ENTITY OBJECT IGNOROVANY.
+   C. VALUE [Added] znamena, ze ENTITY OBJECT bol pridany do DB CONTEXT a volanie METHOD [int DbContext.SaveChanges()] vykona INSERT nad DATABASE.
+   D. VALUE [Modified] znamena, ze ENTITY OBJECT bol zmeneny v DB CONTEXT a volanie METHOD [int DbContext.SaveChanges()] vykona UPDATE nad DATABASE.
+   E. VALUE [Deleted] znamena, ze ENTITY OBJECT bol vymazany z DB CONTEXT a volanie METHOD [int DbContext.SaveChanges()] vykona DELETE nad DATABASE.
+!!! 8. Ak je STATE ENTITY OBJECT nastaveny na VALUE [Modified], DB CONTEXT umoznuje zistit, ktore PROPERTIES boli modifikovane.
+   A. PROPERTY [PropertyEntry.IsModified] umoznuje zistit ci dana SCALAR PROPERTY bola modifikovana.
+   B. PROPERTY [NavigationEntry.IsModified] umoznuje zistit ci dana NAVIGATION PROPERTY bola modifikovana.
+9. Instanciu CLASS [PropertyEntry] je mozne ziskat nasledujucimi sposobmi.
+    A. Pomocou PROPERTY [IEnumerable<PropertyEntry> EntityEntry.Properties], ktora vracia vsetky SCALAR PROPERTIES danej ENTITY.
+    B. Pomocou METHOD [PropertyEntry<TEntity,TProperty> EntityEntry<TEntity>.Property<TProperty>(Expression<Func<TEntity,TProperty>> PropertyExpression)], ktora vracia konkretnu SCALAR PROPERTY danej ENTITY.
+10. Instanciu CLASS [NavigationEntry] je mozne ziskat nasledujucimi sposobmi.
+    A. Pomocou PROPERTY [IEnumerable<NavigationEntry> EntityEntry.Navigations], ktora vracia vsetky NAVIGATION PROPERTIES danej ENTITY.
+    B. Pomocou METHOD [NavigationEntry EntityEntry.Navigation(string PropertyName)], ktora vracia konkretnu NAVIGATIONAL PROPERTY danej ENTITY.
+11. Ak sa prida novy ENTITY OBJECT do DB CONTEXT volanim METHOD [EntityEntry<TEntity> DbSet<TEntity>.Add(TEntity Entity)], alebo METHOD [void DbSet<TEntity>.AddRange(params TEntity[] Entities)] ENTITY FRAMEWORK CORE vykonava nasledujuce kroky.
+   A. STATE PRINCIPAL ENTITY je nastaveny na VALUE [Added].
+   B. Rekurzivne sa prejdu vsetky DEPENDENT ENTITIES.
+   C. Ak DEPENDENT ENTITY NEBOLA ulozena v DB CONTEXT, jej STATE je nastaveny na VALUE [Added].
+   D. Ak DEPENDENT ENTITY BOLA ulozena v DB CONTEXT, jej STATE je STATE je NEZMENENY, pokial nedoslo k zmene FOREIGN KEY, kedy je STATE nastaveny na VALUE [Modified].
+12. Ak sa odstrani existujuci ENTITY OBJECT z DB CONTEXT volanim METHOD [EntityEntry<TEntity> DbSet<TEntity>.Remove(TEntity Entity)], alebo METHOD [void DbSet<TEntity>.RemoveRange(params TEntity[] Entities)] STATES PRINCIPAL ENTITY OBJECT a DEPENDENT ENTITY OBJECTS sa menia nasledujucim sposobom.
+   A. STATE PRINCIPAL ENTITY je nastaveny na VALUE [Deleted].
+   B. Rekurzivne sa prejdu vsetky DEPENDENT ENTITIES.
+   C. STATE DEPEDNENT ENTITY, ktora NEBUDE z DATABASE DELETED je nastaveny na VALUE [Modified]. Typickym prikladom su RELATIONSHIP 0/1:1 a RELATIONSHIP 0/1:N, kde aj po DELETE PRINCIPAL ENTITY ostavaju DEPENDENT ENTITIES v DABATASE, pricom VALUES ich FOREIGN KEY PROPERTIES a NAVIGATIONAL PROPERTIES su MODIFIED.
+   D. STATE DEPEDNENT ENTITY, ktora BUDE z DATABASE DELETED je nastaveny na VALUE [Deleted]. Typickym prikladom su RELATIONSHIP 1:1 a RELATIONSHIP 1:N, s nastavenym CASCADE DELETE, kde pri DELETE PRINCIPAL ENTITY su DELETED aj DEPENDENT ENTITIES.
+13. Ak dojde k modifikacii ENTITY OBJECT v DB CONTEXT modifikaciou jeho PROPERTIES, zmeni sa STATE ENTITY OBJECT na VALUE [Modified].
+!!! 14. ENTITY FRAMEWORK CORE CHANGES v ENTITY OBJECTS detekuje nasledujucim sposobom.
+   A. Ak su ENTITY OBJECTS nacitane do DB CONTEXT ci uz pomocou QUERY bez pouzitia LINQ OPERATOR [AsNoTracking], alebo volanim METHOD [EntityEntry<TEntity> DbContext.Add<TEntity>(TEntity Entity)], METHOD [EntityEntry<TEntity> DbSet<TEntity>.Update(TEntity Entity)] METHOD [EntityEntry<TEntity> DbContext.Remove<TEntity>(TEntity Entity)], alebo METHOD [EntityEntry<TEntity> DbSet<TEntity>.Attach(TEntity Entity)], ENTITY FRAMEWORK CORE si pre kazdy ENTITY OBJECT vytvori SNAPSHOT ENTITY OBJECT, ktory obsahuje VALUES vsetkych ENTITY PROPERTIES.
+   B. Ak je zavolana METHOD [int DbContext.SaveChanges()], ta interne vola METHOD [void ChangeTracker.DetectChanges()].
+   !!! C. METHOD [void ChangeTracker.DetectChanges()] prechadza vsetky ENTITY OBJECTS, ktore boli nacitane do DB CONTEXT a porovnava vsetkych ich PROPERTIES s PROPERTIES SNAPSHOT ENTITY OBJECTS. Ak na niektorej PROPERTY detekuje zmenu jej VALUE, zmeni jej STATE na VALUE [Modified] a STATE celeho ENTITY OBJECT je zmeneny na VALUE [Modified].
+   D. ENTITY OBJECTS, ktorych STATE ma VALUE [Modified] su UPDATED v DB.
+15. METHOD [EntityEntry<TEntity> DbSet<TEntity>.Update(TEntity Entity)] a METHOD [void DbSet<TEntity>.UpdateRange(params TEntity[] Entities)] sluzia na vykonanie kompletneho UPDATE VSETKYCH PROPERTIES deneho ENTITY OBJECT. Vyuzivaju sa napriklad vtedy, ak je potrebne vykonat UPDATE ENTITY OBJECTS, ktore neboli nacitane z DATABASE, ale z EXTERNAL SOURCE. Pri volani METHODS platia nasledujuce fakty.
+   A. ENTITY STATE daneho ENTITY OBJECT nastaveny na VALUE [Modified].
+   B. Vsetky SCALAR PROPERTIES a FOREING KEYS PROPERTIES maju nastavene PROPERTIES [PropertyEntry.IsModified] na TRUE.
+   C. ENTITY STATES DEPENDENT ENTITIES, ktorych VALUES PRIMARY KEYS SU NASTAVOVANE v DATABASE a zaroven maju PRIMARY KEY nastaveny na NON-DEFAULT VALUE su zmenene na VALUE [Modified], ak je potrebne zmenit FOREIGN KEY DEPENDENT ENTITY, alebo su zmenene na VALUE [Unchanged], ak NIE je potrebne zmenit FOREIGN KEY DEPENDENT ENTITY.
+   D. ENTITY STATES DEPENDENT ENTITIES, ktorych VALUES PRIMARY KEYS SU NASTAVOVANE MANUALNE, alebo maju PRIMARY KEY nastaveny na DEFAULT VALUE su zmenene na VALUE [Added].
+16. METHOD [EntityEntry<TEntity> DbSet<TEntity>.Attach(TEntity Entity)] a METHOD [void DbSet<TEntity>.AttachRange(params TEntity[] Entities)] sluzia na pridanie NON-TRACKED ENTITY OBJECTS do DB CONTEXT. Po pridani NON-TRACKED ENTITY OBJECT do DB CONTEXT sa DB OBJECT stava ENTITY OBJECT stava TRACKED OBJECT, pricom ENTITY FRAMEWORK CORE predpoklada, ze ENTITY OBJECT zodpoveda datam v DATABASE. Typicky sa tato METHOD vyuziva vtedy, ak je treba ENTITY OBJECT preniest z jedneho DB CONTEXT do ineho DB CONTEXT bez toho, aby v novom DB OBJECT bolo nutne znova nacitat ENTITY OBJECT z DATABASE. Pri volani METHODS platia nasledujuce fakty.
+   A. ENTITY STATE daneho ENTITY OBJECT je nastaveny na VALUE [Unchanged].
+   B. ENTITY STATES DEPENDENT ENTITIES, ktorych VALUES PRIMARY KEYS SU NASTAVOVANE v DATABASE a zaroven maju PRIMARY KEY nastaveny na NON-DEFAULT VALUE su zmenene na VALUE [Unchanged].
+   C. ENTITY STATES DEPENDENT ENTITIES, ktorych VALUES PRIMARY KEYS SU NASTAVOVANE MANUALNE, alebo maju PRIMARY KEY nastaveny na DEFAULT VALUE su zmenene na VALUE [Added].
+!!! 17. ENTITY STATE a ENTITY PROPERTY STATE je mozne nastavova aj MANUALNE.
+   A. Nastavenim PROPERTY [EntityState EntityEntry.State] je mozne zmenit STATE ENTITY OBJECT.
+   B. Nastavenim PROPERTY [bool PropertyEntry.IsModified] je mozne nastavit ci ENTITY OBJECT PROPERTY bola MODIFIED.
+18. ENTITY STATES PRINCIPAL a DEPENDENT ENTITIES je mozne menit volanim METHOD [void ChangeTracker.TrackGraph(object RootEntity, Action<EntityEntryGraphNode> Callback)]. Pre METHOD platia nasledujuce fakty.
+   A. METHOD prechadza PRINCIPAL ENTITY a rekurzivne prechadza vsetkymi DEPENDENT ENTITIES, ktore su pristupne pomocou NAVIGATIONAL PROPERTIES a pre kazdu ENTITY vola CALLBACK METHOD.
+   B. CALLBACK METHOD moze lubovolne modifikovat ENTITY STATE a FLAG [bool PropertyEntry.IsModified] pre kazdu PROPERTY na zaklade toho ci sa ENTITY STATE, alebo dana PROPERTY zmenila, alebo nie.
+   !!! C. To ako CALLBACK METHODS modifikuje ENTITY STATE a FLAG [bool PropertyEntry.IsModified] je cisto zalezitostou jej CODE a logiky, ktoru implementuje.
+   !!!!! D. METHOD [void ChangeTracker.TrackGraph(object RootEntity, Action<EntityEntryGraphNode> Callback)] ma najvacsie vyuzitie, ak je volana pre PRINCIPAL ENTITY, ktora NIE JE TRACKED a jej instancia je ziskana z EXTERNAL SOURCE. V taktom pripade vdaka tejto METHOD je mozne explicitne nastavit STATES PRINCIPAL a DEPENDENT PROPERTIES, ako aj FLAG [bool PropertyEntry.IsModified] pre jednotlive PROPERTIES bez nutnosti manualne prechadzat PRINCIPAL ENTITY a jej DEPENDENT ENTITIES.
+   E. METHOD [void ChangeTracker.TrackGraph(object RootEntity, Action<EntityEntryGraphNode> Callback)] NEVOLA CALLBACK pre TRACKED ENTITIES. Iba pre NON-TRACKED ENTITIES.
+   F. ENTITY OBJECTS, ktorych STATE je po prechode METHOD [void ChangeTracker.TrackGraph(object RootEntity, Action<EntityEntryGraphNode> Callback)] ponechany na VALUE [Detached] su ignorovane a nie su UPDATED v DB.
+!!! 19. ENTITY FRAMEWORK CORE BY-DEFAULT si pre kazdy nacitany ENTITY OBJECT ulozi jeho SNAPSHOT, ktory pri volani METHOD [int DbContext.SaveChanges()] pouzije na TRACKING CHANGES v ENTITY OBJECT. Problem tohto pristupu je to, ze takyto sposob TRACKING CHANGES ENTITY OBJECTS moze byt POMALY. ENTITY FRAMEWORK CORE preto umoznuje definovat aj ine typy TRACKING CHANGES. TRACKING CHANGES MODE sa nastavuje pomocou FLUENT API nasledujucimi METHODS.
+   A. METHOD [EntityTypeBuilder<TEntity> EntityTypeBuilder<TEntity>.HasChangeTrackingStrategy(ChangeTrackingStrategy ChangeTrackingStrategy)] nastavuje TRACKING CHANGES MODE na urovni danej ENTITY (TABLE).
+   B. METHOD [ModelBuilder ModelBuilder.HasChangeTrackingStrategy(ChangeTrackingStrategy ChangeTrackingStrategy)] nastavuje TRACKING CHANGES MODE na urovni celeho DB CONTEXT, teda vsetkych ENTITIES (TABLES).
+20. TRACKING CHANGES MODE je nastaveny pomocou ENUM [ChangeTrackingStrategy] a nadobuda nasledujuce VALUES.
+   A. VALUE [Snapshot] nastavuje TRACKING CHANGES MODE na SNAPSHOTS.
+   B. VALUE [ChangedNotifications] nastavuje TRACKING CHANGES MODE na CHANGED NOTIFICATIONS.
+   C. VALUE [ChangingAndChangedNotifications] nastavuje TRACKING CHANGES MODE na CHANGING AND CHANGED NOTIFICATIONS.
+   D. VALUE [ChangingAndChangedNotificationsWithOriginalValues] nastavuje TRACKING CHANGES MODE na CHANGING AND CHANGED NOTIFICATIONS WITH ORIGINAL VALUES.
+21. Pre TRACKING CHANGES MODE SNAPSHOTS platia nasledujuce fakty.
+   A. TRACKING CHANGES MODE SNAPSHOTS pri nacitani ENTITY OBJECTS z DATABASE si automaticky spravi SNAPSHOT ORIGINAL VALUES vsetkych PROPERTIES, ktore si ulozi.
+   B. TRACKING CHANGES MODE SNAPSHOTS pri zapise ENTITY OBJECTS do DATABASE vykonava porovnanie ulozenych ORIGINAL VALUES vsetkych PROPERTIES s CURRENT VALUES vsetkych PROPERTIES a na zaklade zistenych rozdielov zasiela seriu UPDATE COMMANDS do DATABASE.
+   C. TRACKING CHANGES MODE SNAPSHOTS je NAJPOMALSI, lebo pri volani METHOD [int DbContext.SaveChanges()] vyzaduje porovnanie VSETKYCH PROPERTIES VSETKYCH ENTITY OBJECTS co pri velkom pocet ENTITY OBJECTS moze byt pomale, najma ak doslo iba k malemu poctu zmien ENTITY OBJECTS.
+   !!! D. TRACKING CHANGES MODE SNAPSHOTS je DEFAULT TRACKING CHANGES MODE.
+   E. TRACKING CHANGES MODE SNAPSHOTS sa nastavuje pomocou VALUE [ChangeTrackingStrategy.Snapshot].
+22. Pre TRACKING CHANGES MODE CHANGED NOTIFICATIONS platia nasledujuce fakty.
+   !!! A. TRACKING CHANGES MODE CHANGED NOTIFICATIONS pri nacitani ENTITY OBJECTS z DATABASE si automaticky spravi SNAPSHOT ORIGINAL VALUES vsetkych PROPERTIES, ktore si ulozi.
+   !!!!! B. TRACKING CHANGES MODE CHANGED NOTIFICATIONS ulozene SHAPSHOT ORIGINAL VALUES na rozdiel od TRACKING CHANGES MODE SNAPSHOTS NIE su pouzivane na detekciu zmien PROPERTY VALUES ENTITY OBECTS, ale iba na ulozenie PROPERTY VALUES, ktore su potrebne napriklad na detekciu CONCURRENCY CONFLICTS (CONCURRENCY TOKENS a TIMESTAMPS). To znamena, ze pri volani METHOD [int DbContext.SaveChanges()], NEDOCHADZA k casovo narocnemu porovnavaniu ORIGINAL VALUES a CURRENT VALUES.
+   !!! C. Detekcia CHANGES je realizovana pomocou INTERFACE [INotifyPropertyChanged], ktoru musi kazda ENTITY CLASS implementovat. ENTITY CLASS musi PO kazdej zmene NON-COLLECTION PROPERTY VALUE zavolat EVENT [PropertyChangedEventHandler INotifyPropertyChanged.PropertyChanged], ktorym notifikuje DB CONTEXT o vykonanej zmene PROPERTY VALUE.
+   !!! D. DB CONTEXT si uklada zoznam vykonanych CHANGES na zaklade ktorych pri volani METHOD [int DbContext.SaveChanges()] zasiela do DATABASE UPDATE COMMANDS. Pre detekciu CONCURRENCY CHANGES sa pouzivaju ORIGINAL VALUES, ktore si DB CONTEXT ulozil pri vytvoreni SNAPSHOT po nacitani ENTITY OBJECTS z DATABASE.
+   !!! E. COLLECTION PROPERTIES pouzivane ako NAVIGATIONAL PROPERTIES v RELATIONSHIPS 0/1:N, alebo RELATIONSHIPS 1:N MUSIA byt TYPE OBSERVABLE COLLECTIONS. OBSERVABLE COLLECTIONS zasielaju notifikaciu o zmene poctu ITEMS v COLLECTION. Prikladmi OBSERVABLE COLLECTIONS su TYPE [ObservableCollection<TType>] ci TYPE [ObservableHashSet<TType>].
+   F. TRACKING CHANGES MODE CHANGED NOTIFICATIONS sa nastavuje pomocou VALUE [ChangeTrackingStrategy.ChangedNotifications].
+23. Pre TRACKING CHANGES MODE CHANGING AND CHANGED NOTIFICATIONS platia nasledujuce fakty.
+   !!! A. TRACKING CHANGES MODE CHANGING AND CHANGED NOTIFICATIONS pri nacitani ENTITY OBJECTS z DATABASE NEVYTVARA ziaden SNAPSHOT. To znamena, ze ORIGINAL VALUES NIE su ulozene ani ich nie je mozne nacitat. Pri pokuse o nacitanie ORIGINAL VALUES je generovana EXCEPTION.
+   !!!!! B. Kedze ORIGINAL VALUES niektorych PROPERTIES ako napriklad PROPERTIES pouzivanych pre detekciu CONCURRENCY CONFLICTS (CONCURRENCY TOKENS, TIMESTAMPS) je NUTNE v DB CONTEXT ukladat, TRACKING CHANGES MODE CHANGING AND CHANGED NOTIFICATIONS vyzaduje aby ENTITY CLASSES implementovali INTERFACE [INotifyPropertyChanging]. ENTITY CLASSES musia PRED zmenou PROPERTY VALUE volat EVENT [PropertyChangingEventHandler INotifyPropertyChanging.PropertyChanging] vdaka ktoremu si DB CONTEXT moze ulozit ORIGINAL VALUES tych PROPERTIES, ktore potrebuje napriklad pre detekciu CONCURRENCY CONFLICTS (CONCURRENCY TOKENS, TIMESTAMPS). VALUES ostatnych PROPERTIES NIE SU v DB CONTEXT UKLADANE.
+   !!! C. TRACKING CHANGES MODE CHANGING AND CHANGED NOTIFICATIONS zaroven vyzaduje, aby ENTITY CLASSES implementovali INTERFACE [INotifyPropertyChanged], pricom PO kazdej zmene PROPERTY VALUE bol volany EVENT [PropertyChangedEventHandler INotifyPropertyChanged.PropertyChanged]. Pomocou tohto EVENT si DB CONTEXT uklada CHANGES PROPERTY VALUES vsetkych ENTITY OBJECTS.
+   !!!!! D. Pri volani METHOD [int DbContext.SaveChanges()] sa nevykonava ziadna detekcia CHANGES, ale zoberu sa CHANGES, ktore si DB CONTEXT poznacil pri volani EVENT [PropertyChangedEventHandler INotifyPropertyChanged.PropertyChanged]. Na detekciu CONCURRENCY CONFLICTS sa pouzivaju ORIGINAL VALUES, ktore si DB CONTEXT poznacil pri volani EVENT [PropertyChangingEventHandler INotifyPropertyChanging.PropertyChanging].
+   !!! E. COLLECTION PROPERTIES pouzivane ako NAVIGATIONAL PROPERTIES v RELATIONSHIPS 0/1:N, alebo RELATIONSHIPS 1:N MUSIA byt TYPE OBSERVABLE COLLECTIONS. OBSERVABLE COLLECTIONS zasielaju notifikaciu o zmene poctu ITEMS v COLLECTION. Prikladmi OBSERVABLE COLLECTIONS su TYPE [ObservableCollection<TType>] ci TYPE [ObservableHashSet<TType>].
+   F. TRACKING CHANGES MODE CHANGING AND CHANGED NOTIFICATIONS sa nastavuje pomocou VALUE [ChangeTrackingStrategy.ChangingAndChangedNotifications].
+24. Pre TRACKING CHANGES MODE CHANGING AND CHANGED NOTIFICATIONS WITH ORIGINAL VALUES platia nasledujuce fakty.
+   !!!!! A. TRACKING CHANGES MODE CHANGING AND CHANGED NOTIFICATIONS WITH ORIGINAL VALUES pri nacitani ENTITY OBJECTS z DATABASE si automaticky spravi SNAPSHOT ORIGINAL VALUES vsetkych PROPERTIES, ktore si ulozi. VALUES vsetkych PROPERTIES sa ukladaju AJ NAPRIEK TOMU, za sa NEVYUZIVAJU na DETEKCIU CHANGES pri volani METHOD [int DbContext.SaveChanges()]. Ukladaju sa iba preto, aby ich CODE mohol vyuzit podla vlastnych potrieb. DB CONTEXT tieto ORIGINAL VALUES IGNORUJE.
+   !!!!! B. TRACKING CHANGES MODE CHANGING AND CHANGED NOTIFICATIONS WITH ORIGINAL VALUES vyzaduje, aby ENTITY CLASSES implementovali INTERFACE [INotifyPropertyChanging]. ENTITY CLASSES musia PRED zmenou PROPERTY VALUE volat EVENT [PropertyChangingEventHandler INotifyPropertyChanging.PropertyChanging] vdaka ktoremu si DB CONTEXT moze ulozit ORIGINAL VALUES tych PROPERTIES, ktore potrebuje napriklad pre detekciu CONCURRENCY CONFLICTS (CONCURRENCY TOKENS, TIMESTAMPS).
+   !!! C. TRACKING CHANGES MODE CHANGING AND CHANGED NOTIFICATIONS WITH ORIGINAL VALUES zaroven vyzaduje, aby ENTITY CLASSES implementovali INTERFACE [INotifyPropertyChanged], pricom PO kazdej zmene PROPERTY VALUE bol volany EVENT [PropertyChangedEventHandler INotifyPropertyChanged.PropertyChanged]. Pomocou tohto EVENT si DB CONTEXT uklada CHANGES PROPERTY VALUES vsetkych ENTITY OBJECTS.
+   !!!!! D. Pri volani METHOD [int DbContext.SaveChanges()] sa nevykonava ziadna detekcia CHANGES, ale zoberu sa CHANGES, ktore si DB CONTEXT poznacil pri volani EVENT [PropertyChangedEventHandler INotifyPropertyChanged.PropertyChanged]. Na detekciu CONCURRENCY CONFLICTS sa pouzivaju ORIGINAL VALUES, ktore si DB CONTEXT poznacil pri volani EVENT [PropertyChangingEventHandler INotifyPropertyChanging.PropertyChanging].
+   !!! E. COLLECTION PROPERTIES pouzivane ako NAVIGATIONAL PROPERTIES v RELATIONSHIPS 0/1:N, alebo RELATIONSHIPS 1:N MUSIA byt TYPE OBSERVABLE COLLECTIONS. OBSERVABLE COLLECTIONS zasielaju notifikaciu o zmene poctu ITEMS v COLLECTION. Prikladmi OBSERVABLE COLLECTIONS su TYPE [ObservableCollection<TType>] ci TYPE [ObservableHashSet<TType>].
+   F. TRACKING CHANGES MODE CHANGING AND CHANGED NOTIFICATIONS WITH ORIGINAL VALUES sa nastavuje pomocou VALUE [ChangeTrackingStrategy.ChangingAndChangedNotificationsWithOriginalValues].
+25. ENTITY FRAMEWORK CORE umoznuje na detekciu zmien v ENTITY OBJECTS pouzit TRACKING CHANGES PROXIES. Pre TRACKING CHANGES PROXIES platia nasledujuce fakty.
+   A. ENTITY CLASSES, ktore pouzivaju TRACKING CHANGES PROXIES MUSIA mat vsetky PROPERTIES definovane ako VIRTUAL.
+   B. COLLECTION PROPERTIES pouzivane ako NAVIGATIONAL PROPERTIES v RELATIONSHIPS 0/1:N, alebo RELATIONSHIPS 1:N MUSIA byt TYPE OBSERVABLE COLLECTIONS. OBSERVABLE COLLECTIONS zasielaju notifikaciu o zmene poctu ITEMS v COLLECTION. Prikladmi OBSERVABLE COLLECTIONS su TYPE [ObservableCollection<TType>] ci TYPE [ObservableHashSet<TType>].
+   C. Instancie ENTITY CLASSES sa musia vytvarat VZDY pomocou METHOD [TEntity DbContext.CreateProxy<TEntity>(params object[] ConstructorArguments)].
+   D. Do PROJECT MUSI byt vlozeny NUGET PACKAGE [Microsoft.EntityFrameworkCore.Proxies].
+   !!! E. Pre DB CONTEXT MUSI byt volana METHOD [DbContextOptionsBuilder DbContextOptionsBuilder.UseChangeTrackingProxies(bool UseChangeTrackingProxies, bool CheckEquality)], ktora povoli pouzivanie TRACKING CHANGES PROXIES.
+   !!!!! F. ENTITY FRAMEWORK CORE interne pre kazdu ENTITY PROXY OBJECT, pricom vykona OVERRIDING vsetkych PROPERTIES, aby pri zmene PROPERTY VALUES volali INTERFACE [INotifyPropertyChanging] a INTERFACE [INotifyPropertyChanged].
+!!! 26. Pomocou METHOD [IEnumerable<EntityEntry> ChangeTracker.Entries()] je mozne ziskat vsetky ENTITY ENTRIES, ktore su TRACKED pre dany DB CONTEXT.
+27. CLASS [ChangeTracker] podporuje EVENTS, ktore su volane ked dojde k zmene stavu ENTITY CLASS OBJECT. CLASS [ChangeTracker] podporuje podporuje nasledujuce typy EVENTS.
+   A. EVENT [EventHandler<EntityTrackedEventArgs> ChangeTracker.Tracked].
+   B. EVENT [EventHandler<EntityStateChangedEventArgs> ChangeTracker.StateChanged].
+28. Pre EVENT [EventHandler<EntityTrackedEventArgs> ChangeTracker.Tracked] platia nasledujuce fakty.
+   A. EVENT je volany, ak sa ENTITY OBJECT stal TRACKED. ENTITY OBJECT sa stane TRACKED, ak je ADDED, alebo ATTACHED do DB CONTEXT, alebo ak bol do DB CONTEXT nacitany pomocou QUERY.
+   B. PROPERTY [EntityEntry EntityTrackedEventArgs.Entry] obsahuje ENTRY ENTITY OBJECT, ktory sa stal TRACKED.
+   C. PROPERTY [bool EntityTrackedEventArgs.FromQuery] urcuje ci ENTITY OBJECT bol TRACKED, lebo bol nacitany do DB CONTEXT pomocou QUERY.
+29. Pre EVENT [EventHandler<EntityStateChangedEventArgs> ChangeTracker.StateChanged] platia nasledujuce fakty.
+   A. EVENT je volany ked ENTITY CLASS OBJECT zmeni svoj TRACKING STATE.
+   !!! B. EVENT vsak NIE JE VOLANY, ked ENTITY CLASS OBJECT je ADDED, alebo ATTACHED do DB CONTEXT. Na to je treba pouzit EVENT [ChangeTracker.Tracked].
+   C. PROPERTY [EntityEntry EntityStateChangedEventArgs.Entry] obsahuje ENTRY ENTITY OBJECT, ktoreho STATE bol zmeneny.
+   D. PROPERTY [EntityState EntityStateChangedEventArgs.OldState] obsahuje ENTITY OBJECT STATE pred zmenou STATE.
+   E. PROPERTY [EntityState EntityStateChangedEventArgs.NewState] obsahuje ENTITY OBJECT STATE po zmene STATE.
+30. CLASS [DbContext] podporuje EVENTS, ktore su volane ked dojde k zapisu ENTITIES do DB. CLASS [DbContext] podporuje podporuje nasledujuce typy EVENTS.
+   A. EVENT [EventHandler<SavingChangesEventArgs> DbContext.SavingChanges].
+   B. EVENT [EventHandler<SavedChangesEventArgs> DbContext.SavedChanges].
+   C. EVENT [EventHandler<SaveChangesFailedEventArgs> DbContext.SaveChangesFailed].
+31. Pre EVENT [EventHandler<SavingChangesEventArgs> DbContext.SavingChanges] platia nasledujuce fakty.
+   A. EVENT je volany po zavolani METHOD [int DbContext.SaveChanges()] predtym ako boli zmeny z DB CONTEXT zapisane do DB.
+   !!! B. EVENT je volany este PREDTYM ako je volana METHOD [void ChangeTracker.DetectChanges()].
+   !!! C. Prvy PARAMETER EVENT HANDLER (SENDER) obsahuje DB CONTEXT pre ktory bola METHOD [int DbContext.SaveChanges()] volana.
+   D. PROPERTY [bool SavingChangesEventArgs.AcceptAllChangesOnSuccess] vracia hodnotu PARAMETER [AcceptAllChangesOnSuccess] METHOD [int DbContext.SaveChanges(bool AcceptAllChangesOnSuccess)].
+32. Pre EVENT [EventHandler<SavedChangesEventArgs> DbContext.SavedChanges] platia nasledujuce fakty.
+   A. EVENT je volany po zavolani METHOD [int DbContext.SaveChanges()] potom ako boli zmeny z DB CONTEXT zapisane do DB.
+   !!! B. Prvy PARAMETER EVENT HANDLER (SENDER) obsahuje DB CONTEXT pre ktory bola METHOD [int DbContext.SaveChanges()] volana.
+   C. PROPERTY [bool SavedChangesEventArgs.AcceptAllChangesOnSuccess] vracia hodnotu PARAMETER [AcceptAllChangesOnSuccess] METHOD [int DbContext.SaveChanges(bool AcceptAllChangesOnSuccess)].
+   D. PROPERTY [int SavedChangesEventArgs.EntitiesSavedCount] vracia pocet ENTITIES, ktore boli zapisane do DB.
+33. Pre EVENT [EventHandler<SaveChangesFailedEventArgs> DbContext.SaveChangesFailed] platia nasledujuce fakty.
+   A. EVENT je volany po zavolani METHOD [int DbContext.SaveChanges()] ak doslo k chyba pri zapise DB CONTEXT do DB.
+   !!! B. Prvy PARAMETER EVENT HANDLER (SENDER) obsahuje DB CONTEXT pre ktory bola METHOD [int DbContext.SaveChanges()] volana.
+   C. PROPERTY [bool SaveChangesFailedEventArgs.AcceptAllChangesOnSuccess] vracia hodnotu PARAMETER [AcceptAllChangesOnSuccess] METHOD [int DbContext.SaveChanges(bool AcceptAllChangesOnSuccess)].
+   D. PROPERTY [Exception SaveChangesFailedEventArgs.Exception] vracia EXCEPTION, ktora vznikla pri neuspesnom zapise ENITIES do DB.
+34. ENTITY FRAMEWORK CORE podporuje koncept INTERCEPTORS. Pre INTERCEPTORS platia nasledujuce fakty.
+   A. INTERCEPTORS umoznuju modifikovat chovanie ENTITY FRAMEWORK CORE, vratane modifikacie COMMANDS zasielanych do DB, modifikacie TRANSACTIONS, CONNECTIONS a podobne.
+   B. INTERCEPTOR je CLASS, ktora implementuje INTERFACE [IInterceptor].
+   !!! C. ENTITY FRAMEWORK CORE definuje niekolko INTERCEPTOR INTERFACES pomocou ktorych je mozne modifikovat cinnost ENTITY FRAMEWORK CORE.
+   D. INTERCEPTORS sa pridavaju do DB CONTEXT volanim METHOD [DbContextOptionsBuilder DbContextOptionsBuilder.AddInterceptors(params IInterceptor[] Interceptors)].
+35. ENTITY FRAMEWORK CORE definuje nasledujuce INTERCEPTOR INTERFACES.
+   A. INTERFACE [IDbCommandInterceptor] umoznuje modifikovat sposob akym ENTITY FRAMEWORK CORE pracuje s QUERIES a COMMANDS.
+   B. INTERFACE [IDbConnectionInterceptor] umoznuje modifikovat sposob akym ENTITY FRAMEWORK CORE pracuje s CONNECTIONS.
+   C. INTERFACE [IDbTransactionInterceptor] umoznuje modifikovat sposob akym ENTITY FRAMEWORK CORE pracuje s TRANSACTIONS.
+   D. INTERFACE [ISaveChangesInterceptor] umoznuje modifikovat sposob akym ENTITY FRAMEWORK CORE vykonava SAVE CHANGES do DB.
+36. ENTITY FRAMEWORK CORE umoznuje vykonavat RAW SQL COMMANDS. Pre RAW SQL COMMANDS v ENTITY FRAMEWORK CORE platia nasledujuce fakty.
+   A. ENTITY FRAMEWORK CORE definuje 2 typy METHODS pre RAW SQL COMMANDS. METHODS s POSTFIX 'Raw' a METHODS s POSTFIX 'Interpolated'.
+   !!! B. Obe typy METHODS, ak su SPRAVNE POUZITE su schopne vykonat SQL INJECTION ATTACK CHECKS.
+   !!! C. METHODS s POSTFIX 'Raw' vykonavaju SQL INJECTION ATTACK CHECKS, ak su PARAMETERS RAW SQL COMMANDS zadane explicitne ako PARAMETERS tychto METHODS.
+   !!!!! D. METHODS s POSTFIX 'Interpolated' vykonavaju SQL INJECTION ATTACK CHECKS, pricom PARAMETERS RAW SQL COMMANDS su zadane pomocou instancie CLASS [FormattableString], ktora umoznuje pouzitie C# STRING INTERPOLATION.
+37. ENTITY FRAMEWORK CORE umoznuje vykonavat RAW SQL COMMANDS. Na pracu s RAW SQL COMMANDS sluzia nasledujuce METHODS.
+   A. METHOD [IQueryable<TEntity> DbSet<TEntity>.FromSqlRaw<TEntity>(string Sql, params object[] Parameters)] umoznuje vykonat RAW SQL QUERY, ktora vracia QUERY RESULT.
+   B. METHOD [IQueryable<TEntity> DbSet<TEntity>.FromSqlInterpolated<TEntity>(FormattableString Sql)] umoznuje vykonat RAW SQL QUERY, ktora vracia QUERY RESULT. SQL STRING je zadany pomocou CLASS [FormattableString], ktora umoznuje pouzitie C# STRING INTERPOLATION.
+   C. METHOD [int DatabaseFacade.ExecuteSqlRaw(string Sql, params object[] Parameters)] umoznuje vykonat RAW SQL NON-QUERY COMMAND ako je INSERT, UPDATE a DELETE.
+   D. METHOD [int DatabaseFacade.ExecuteSqlInterpolated(FormattableString Sql)] umoznuje vykonat RAW SQL NON-QUERY COMMAND ako je INSERT, UPDATE a DELETE. SQL STRING je zadany pomocou CLASS [FormattableString], ktora umoznuje pouzitie C# STRING INTERPOLATION.
+   E. METHOD [void EntityEntry.Reload()] umoznuje nacitat ENTITIES, ktore boli modifikovane vykonanim RAW SQL COMMANDS volanim METHOD [int DatabaseFacade.ExecuteSqlRaw(string Sql, params object[] Parameters)].
+   F. METHOD [DbConnection DatabaseFacade.GetDbConnection()] vrati instanciu CLASS [DbConnection], ktora umoznuje priamy RAW pristup k DATABASE.
+38. METHOD [IQueryable<TEntity> DbSet<TEntity>.FromSqlRaw<TEntity>(string Sql, params object[] Parameters)] umoznuje vykonat RAW SQL QUERY, ktora vracia QUERY RESULT. Platia pre nu nasledujuce fakty.
+   A. METHOD umoznuje vykonat RAW SQL QUERY, ktora vracia QUERY RESULT.
+   B. METHOD umoznuje zadat SQL STRING tak, ze SQL STRING obsahuje SQL PARAMETERS PLACEHOLDERS vo FORMATE [{0},{1}...{N}], ktore su nahradene za PARAMETERS. VALUES SQL PARAMETERS su zadavane ako PARAMETERS METHOD.
+   C. METHOD vykonava SQL INJECTION ATTACK CHECKS nad zadanym SQL STRING a VALUES SQL PARAMETERS.
+   D. RAW SQL COMMAND musi vracat COLUMN NAMES zhodne s PROPERTY NAMES danej ENTITY.
+   E. RAW SQL COMMAND musi vracat VLUES pre vsetky PROPERTIES danej ENTITY.
+   !!! F. RAW SQL COMMAND NEMOZE realizovat JOINS s inymi TABLES, ale QUERY pouzivajuci RAW SQL COMMAND moze nacitavat DEPENDENT ENTITIES pomocou LINQ OPERATOR [Include]. QUERY moze pouzivat aj dalsie LINQ OPERATORS ako napriklad LINQ OPERATOR [Where] ci LINQ OPERATOR [OrderBy].
+39. METHOD [IQueryable<TEntity> DbSet<TEntity>.FromSqlInterpolated<TEntity>(FormattableString Sql)] umoznuje vykonat RAW SQL QUERY, ktora vracia QUERY RESULT. Platia pre nu nasledujuce fakty.
+   A. METHOD umoznuje vykonat RAW SQL QUERY, ktora vracia QUERY RESULT. SQL STRING je zadany pomocou CLASS [FormattableString], ktora umoznuje pouzitie C# STRING INTERPOLATION.
+   B. METHOD umoznuje zadat SQL STRING ako instanciu CLASS [FormattableString], ktoru je mozne vytvorit pomocou C# STRING INTERPOLATION.
+   C. METHOD vykonava SQL INJECTION ATTACK CHECKS nad zadanym SQL STRING a VALUES SQL PARAMETERS.
+   D. RAW SQL COMMAND musi vracat COLUMN NAMES zhodne s PROPERTY NAMES danej ENTITY.
+   E. RAW SQL COMMAND musi vracat VLUES pre vsetky PROPERTIES danej ENTITY.
+   !!! F. RAW SQL COMMAND NEMOZE realizovat JOINS s inymi TABLES, ale QUERY pouzivajuci RAW SQL COMMAND moze nacitavat DEPENDENT ENTITIES pomocou LINQ OPERATOR [Include]. QUERY moze pouzivat aj dalsie LINQ OPERATORS ako napriklad LINQ OPERATOR [Where] ci LINQ OPERATOR [OrderBy].
+40. METHOD [int DatabaseFacade.ExecuteSqlRaw(string Sql, params object[] Parameters)] umoznuje vykonat RAW SQL NON-QUERY, ktora nevracia QUERY RESULT ako je INSERT, UPDATE a DELETE. Platia pre nu nasledujuce fakty.
+   A. METHOD umoznuje vykonat RAW SQL NON-QUERY COMMAND ako je INSERT, UPDATE a DELETE.
+   B. METHOD umoznuje zadat SQL STRING tak, ze SQL STRING obsahuje SQL PARAMETERS PLACEHOLDERS vo FORMATE [{0},{1}...{N}], ktore su nahradene za PARAMETERS. VALUES SQL PARAMETERS su zadavane ako PARAMETERS METHOD.
+   C. METHOD vracia pocet RECORDS, ktore boli RAW SQL NON-QUERY COMMAND zasiahnute (pridane, modifikovane, zmazane).
+   !!! D. Po volani RAW SQL NON-QUERY COMMAND modifikovane ENTITIES, ktore boli nacitane do DB CONTEXT neobsahuju aktualne DATA. Pomocou METHOD [void EntityEntry.Reload()] je mozne vykonat opatovne nacitanie modifikovanych ENTITIES.
+41. METHOD [int DatabaseFacade.ExecuteSqlInterpolated(FormattableString Sql)] umoznuje vykonat RAW SQL NON-QUERY, ktora nevracia QUERY RESULT ako je INSERT, UPDATE a DELETE. Platia pre nu nasledujuce fakty.
+   A. METHOD umoznuje vykonat RAW SQL NON-QUERY COMMAND ako je INSERT, UPDATE a DELETE. SQL STRING je zadany pomocou CLASS [FormattableString], ktora umoznuje pouzitie C# STRING INTERPOLATION.
+   B. METHOD umoznuje zadat SQL STRING ako instanciu CLASS [FormattableString], ktoru je mozne vytvorit pomocou C# STRING INTERPOLATION.
+   C. METHOD vykonava SQL INJECTION ATTACK CHECKS nad zadanym SQL STRING a VALUES SQL PARAMETERS.
+   D. METHOD vracia pocet RECORDS, ktore boli RAW SQL NON-QUERY COMMAND zasiahnute (pridane, modifikovane, zmazane).
+   !!! E. Po volani RAW SQL NON-QUERY COMMAND modifikovane ENTITIES, ktore boli nacitane do DB CONTEXT neobsahuju aktualne DATA. Pomocou METHOD [void EntityEntry.Reload()] je mozne vykonat opatovne nacitanie modifikovanych ENTITIES.
+42. METHOD [void EntityEntry.Reload()] umoznuje nacitat ENTITIES, ktore boli modifikovane vykonanim RAW SQL COMMANDS volanim METHOD [int DatabaseFacade.ExecuteSqlRaw(string Sql, params object[] Parameters)], alebo METHOD [int DatabaseFacade.ExecuteSqlInterpolated(FormattableString Sql)]. Pre METHOD nu nasledujuce fakty.
+   A. METHOD sa pouziva na UPDATE ENTITIY, ktora bola modifikovana volanim METHOD [[int DatabaseFacade.ExecuteSqlRaw(string Sql, params object[] Parameters)]].
+   B. Po zavolani METHOD je ENTITY znova nacitana z DATABASE, takze jej PROPERTIES zodpovedaju VALUES COLUMNS v danej DATABASE TABLE.
+43. ENTITY FRAMEWORK CORE umoznuje vytvorenie ENTITY z SQL QUERY. Pre vytvaranie ENTITIES z SQL QUERIES platia nasledujuce fakty.
+   A. ENTITY z SQL QUERY sa vytvara pomocou FLUENT API METHOD [EntityTypeBuilder<TEntity> EntityTypeBuilder<TEntity>.ToSqlQuery<TEntity>(string Query)].
+   !!! B. ENTITY z SQL QUERY je READ ONLY.
+44. METHOD [DbConnection DatabaseFacade.GetDbConnection()] vrati instanciu CLASS [DbConnection], ktora umoznuje priamy RAW pristup k DATABASE. Platia pre nu nasledujuce fakty.
+   A. METHOD vracia instanciu CLASS [DbConnection], ktora je sucastou ADO.NET.
+   B. CLASS [DbConnection] je ABSTRACT CLASS, pre ktoru kazdy DB PROVIDER implementuje vlastnu implementaciu.
+   C. METHOD umoznuje plny pristup k DATABASE pomocou ktoreho je mozne vykonat prakticky lubovolnu operaciu nad DATABASE.
+45. ENTITY FRAMEWORK CORE poskytuje METADATA pre jednotlive ENTITIES i DB CONTEXT.
+   A. INTERFACE [IEntityType] umoznuje pristup k METADATA danej ENTITY.
+   B. INTERFACE [IModel] poskytuje pristup k METADATA danej DATABASE.
+46. Pre INTERFACE [IEntityType] platia nasledujuce fakty.
+   A. INTERFACE umoznuje pristup k METADATA danej ENTITY.
+   B. Instanciu INTERFACE je mozne pre danu ENTITY ziskat volanim METHOD [EntityEntry<TEntity> DbContext.Entry<TEntity>(TEntity Entity)] a nasledne pristupom k PROPERTY [IEntityType EntityEntry.Metadata].
+   !!! C. INTERFACE [IEntityType] poskytuje informacie o PROPERTIES, NAVIGATION PROPERTIES, KEY, FOREIGN KEYS ci MAPPING do ENTITY do DB.
+   !!!!! D. INTERFACE [IEntityType] umoznuje aj READ a WRITE ENTITY PROPERTIES daneho ENTITY OBJECT.
+47. INTERFACE [IModel] poskytuje pristup k MODEL danej DATABASE. Instanciu INTERFACE [IModel] je mozne ziskat pomocou PROPERTY [DbContext.Model]. INTERFACE [IModel] ma nasledujuce MEMBERS.
+   A. METHOD [IEntityType IModel.FindEntityType(string Name)] vracia pre danu ENTITY NAME instanciu INTERFACE [IEntityType], ktory umoznuje pristup k MODEL DATA danej ENTITY.
+   B. METHOD [IEntityType IModel.FindEntityType(string Name, string DefiningNavigationName, IEntityType DefiningEntityType)] umoznuje pre danu ENTITY NAME, NAVIGATION NAME a ENTITY TYPE najst instanciu INTERFACE [IEntityType], ktory umoznuje pristup k MODEL DATA danej ENTITY.
+   C. METHOD [IEnumerable<IEntityType> GetEntityTypes()] vracia instancie INTERFACE [IEntityType] pre vsetky ENTITIES v DATABASE MODEL.
+!!! 48. ENTITY FRAMEWORK CORE umoznuje citat a dynamicky modifikovat CONNECTION STRING. CONNECTION STRING moze meneny kedykolvek pocas zivotnosti DB CONTEXT.
+   A. METHOD [string DatabaseFacade.GetConnectionString()] vracia CURRENT CONNECTION STRING, ktory sa pouziva pri DB OPERATIONS.
+   B. METHOD [void DatabaseFacade.SetConnectionString(string ConnectionString)] nastavuje CURRENT CONNECTION STRING, ktory sa pouzije pri DB OPERATIONS.
+49. EXECUTION STRATEGY je mechanizmus, ktory umoznuje zopakovat TRANSACTION v pripade, ze komunikacia medzi ENTITY FRAMEWORK CORE a DATABASE SERVER docasne spadne. Pre EXECUTION STRATEGY platia nasledujuce fakty.
+   A. EXECUTION STRATEGY je CLASS implementujuca INTERFACE [IExecutionStrategy], ktora implementuje zotavenie sa v pripade docasnych DATABASE CONNECTION ERRORS.
+   B. DEFAULT EXECUTION STRATEGY moze implementovat DB PROVIDER, alebo je mozne definovat CUSTOM EXECUTION STRATEGY.
+   !!!!! C. BY DEFAULT, ENTITY FRAMEWORK CORE vola kazdu DB OPERATION v OSOBITNEJ EXECUTION STRATEGY a teda kazdy, SELECT, INSERT, UPDATE a DELETE COMMAND je vykonany v SEPARATNEJ EXECUTION STRATEGY. To znamena, ze ak EXECUTION STRATEGY detekuje CONNECTION ERROR, tak vykona RETRY celej OPERATION podla poctu RETRIES, ktore definuje EXECUTION STRATEGY.
+   !!!!! D. DEFAULT chovanie ENTITY FRAMEWORK CORE kedy kazda DB OPERATION je vykonana v osobitnej EXECUTION STRATEGY sposobi ERROR, ak su pouzivane CUSTOM TRANSACTIONS. CODE pouzivajuci CUSTOM TRANSACTION je treba pouzit v EXPLICITNE VYTVORENEJ instancii EXECUTION STRATEGY.
+50. EXPLICITNE vytvaranie instancii EXECUTION STRATEGY sa realizuje v nasledujucich krokoch.
+   A. Pomocou METHOD [IExecutionStrategy DatabaseFacade.CreateExecutionStrategy()] sa vytvori instancia INTERFACE [IExecutionStrategy] reprezentujuceho EXECUTION STRATEGY.
+   B. Volanim METHOD [void IExecutionStrategy.Execute(Action Operation)] sa spusti CUSTOM CODE, ktory vykona modifikaciu DATABASE v ramci vytvorenej EXECUTION STRATEGY.
+51. Okrem DEFAULT EXECUTION STRATEGIES, ktore su implementovane DB PROVIDERS je mozne definovat CUSTOM EXECUTION STRATEGIES. CUSTOM EXECUTION STRATEGIES sa vytvaraju nasledujucim sposobom.
+   A. Definuje sa CUSTOM CLASS reprezentujuca CUSTOM EXECUTION STRATEGY, ktora implementuje INTERFACE [IExecutionStrategy].
+   B. CUSTOM EXECUTION STRATEGY sa aplikuje volanim METHOD [RelationalDbContextOptionsBuilder<TBuilder,TExtension> TBuilder ExecutionStrategy(Func<ExecutionStrategyDependencies,IExecutionStrategy> GetExecutionStrategy)] na cely DB CONTEXT.
+52. SQL SERVER ma definovanu DEFAULT EXECUTION STRATEGY, ktoru je mozne konfigurovat pomocou METHOD [SqlServerDbContextOptionsBuilder SqlServerDbContextOptionsBuilder.EnableRetryOnFailure(int MaxRetryCount, TimeSpan MaxRetryDelay, IEnumerable<int> ErrorNumbersToAdd)].
+//----------------------------------------------------------------------------------------------------------------------

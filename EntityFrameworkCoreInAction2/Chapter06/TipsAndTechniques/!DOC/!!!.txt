@@ -1,0 +1,71 @@
+//----------------------------------------------------------------------------------------------------------------------
+1. Solution demonstruje TIPS AND TECHNIQUES v ENTITY FRAMEWORK CORE.
+2. RELATIONAL FIXUP je mechanizmus, ktory umoznuje ENTITY FRAMEWORK CORE po vykonani QUERY nastavit hodnoty NAVIGATION PROPERTY, aby referovali na korektne ENTITIES. Pre RELATIONAL FIXUP platia nasledujuce fakty.
+   A. RELATIONAL FIXUP po kazdej QUERY modifikuje NAVIGATION PROPERTIES VSETKYCH ENTITIES, ktore su nacitane v DB CONTEXT.
+   !!! B. Ak sa vykona QUERY 1, ktora nacita IBA PRINCIPAL ENTITIES a QUERY 2, ktora nacita IBA DEPENDENT ENTITITES, tak po dokonceni QUERY 2 sa spravi RELATIONAL FIXUP na OBOCH PRINCIPAL ENTITIES aj DEPENDENT ENTITIES, kedze hoci v 2 nezavislych QUERIES, obe su nacitane do DB CONTEXT.
+   !!! C. FOREIGN KEY PROPERTIES su na DEPENDENT ENTITIES nastavene VZDY, bez ohladu na to ci je pouzity RELATIONAL FIXUP. Ten sa tyka IBA NAVIGATION PROPERTIES.
+   !!! D. Ak sa pouzije LINQ OPERATOR [AsNoTracking] na QUERY, ktora pomocou LINQ OPERATOR [Include] cita PRINCIPAL ENTITIES i DEPENDENT ENTITIES, tak sa RELATIONAL FIXUP vykona IBA pre tieto instancie ENTITY CLASSES, ktore boli nacitane touto QUERY. No RELATIONAL FIXUP sa NEVYKONA na tie instancie ENTITY CLASSES, ktore boli nacitane v inych QUERIES daneho DB CONTEXT.
+3. ENTITY FRAMEWORK CORE definuje LINQ OPERATOR [AsNoTracking], ktory umoznuje definovat READ ONLY QUERIES. Pre LINQ OPERATOR [AsNoTracking] platia nasledujuce fakty.
+   A. LINQ OPERATOR [AsNoTracking] ma PROTOTYPE [IQueryable<TEntity> AsNoTracking<TEntity>(this IQueryable<TEntity> Source)].
+   B. Ak sa LINQ OPERATOR [AsNoTracking] aplikuje na QUERY, tak ENTITY FRAMEWORK CORE NEVYTVORI TRACKING RECORDS pre vratene instancie ENTITY CLASSES a taketo ENTITY CLASSES NIE JE mozne zapisat do DB volanim METHOD [int SaveChanges()].
+   !!! C. Ak sa pouzije LINQ OPERATOR [AsNoTracking] na QUERY, ktora pomocou LINQ OPERATOR [Include] cita PRINCIPAL ENTITIES i DEPENDENT ENTITIES, tak sa RELATIONAL FIXUP vykona IBA pre tieto instancie ENTITY CLASSES, ktore boli nacitane touto QUERY. No RELATIONAL FIXUP sa NEVYKONA na tie instancie ENTITY CLASSES, ktore boli nacitane v inych QUERIES daneho DB CONTEXT.
+   !!!!! D. Ak sa LINQ OPERATOR [AsNoTracking] aplikuje na QUERY, tak ENTITY FRAMEWORK vytvara pre kazdy vrateny RECORD s DB novu instanciu ENTITY CLASS a to aj vtedy ak QUERY obsahuje viackrat ten isty RECORD. To znamena, ze ak napriklad v RELATIONSHIP M:N QUERY vrati viacero RECORDS odkazujucich v TABLE 'N' na ten isty RECORD, vytvoria sa NEZAVISLE instancie ENTITY CLASSES.
+4. ENTITY FRAMEWORK CORE definuje LINQ OPERATOR [AsNoTrackingWithIdentityResolution], ktory umoznuje definovat READ ONLY QUERIES. Pre LINQ OPERATOR [AsNoTracking] platia nasledujuce fakty.
+   A. LINQ OPERATOR [AsNoTrackingWithIdentityResolution] ma PROTOTYPE [IQueryable<TEntity> AsNoTrackingWithIdentityResolution<TEntity>(this IQueryable<TEntity> Source)].
+   B. Ak sa LINQ OPERATOR [AsNoTrackingWithIdentityResolution] aplikuje na QUERY, tak ENTITY FRAMEWORK CORE NEVYTVORI TRACKING RECORDS pre vratene instancie ENTITY CLASSES a taketo ENTITY CLASSES NIE JE mozne zapisat do DB volanim METHOD [int SaveChanges()].
+   !!! C. Ak sa pouzije LINQ OPERATOR [AsNoTrackingWithIdentityResolution] na QUERY, ktora pomocou LINQ OPERATOR [Include] cita PRINCIPAL ENTITIES i DEPENDENT ENTITIES, tak sa RELATIONAL FIXUP vykona IBA pre tieto instancie ENTITY CLASSES, ktore boli nacitane touto QUERY. No RELATIONAL FIXUP sa NEVYKONA na tie instancie ENTITY CLASSES, ktore boli nacitane v inych QUERIES daneho DB CONTEXT.
+   !!!!! D. Ak sa LINQ OPERATOR [AsNoTrackingWithIdentityResolution] aplikuje na QUERY, tak ENTITY FRAMEWORK kontroluje ci QUERY obsahuje viackrat ten isty RECORD. V pripade, ze ano, tak vytvori IBA 1 instanciu ENTITY CLASS, pre tento RECORD, a NIE VIACERO ako v pripade LINQ OPERATOR [AsNoTracking]. To znamena, ze ak napriklad v RELATIONSHIP M:N QUERY vrati viacero RECORDS odkazujucich v TABLE 'N' na ten isty RECORD, vytvoria sa IBA 1 instancia ENTITY CLASS.
+5. Pri citani HIERARCHICAL DATA platia nasledujuce pravidla.
+   A. Ak QUERY citajuca HIERARCHICAL DATA nacitava instancie ENTITY CLASSES pre konkretny LEVEL, tak je NUTNE pouzit LINQ OPERATOR [Include] a LINQ OPERATOR [ThenInclude] na nacitanie dalsich LEVELS v hierarchickom usporiadani ENTITIES.
+   B. Ak QUERY citajuca HIERARCHICAL DATA nacitava instancie ENTITY CLASSES pre VIACERE LEVELS, tak vdaka vykonaniu RELATIONAL FIXUP budu NAVIGATION PROPERTIES VSETKYCH nacitanych instancii ENTITY CLASSES BUDU hierarchicky nastavene.
+   C. Ak QUERY citajuca HIERARCHICAL DATA nacitava instancie ENTITY CLASSES pre VIACERE LEVELS a pouzije LINQ OPERATOR [AsNoTracking], tak sa RELATIONAL FIXUP NEAPLIKUJE a NAVIGATION PROPERTIES VSETKYCH nacitanych instancii ENTITY CLASSES ostanu NENASTAVENE.
+   D. Ak QUERY citajuca HIERARCHICAL DATA nacitava instancie ENTITY CLASSES pre VIACERE LEVELS a pouzije LINQ OPERATOR [AsNoTracking] aj LINQ OPERATOR [Include] a LINQ OPERATOR [ThenInclude], tak sa RELATIONAL FIXUP APLIKUJE v ramci danej QUERY a NAVIGATION PROPERTIES VSETKYCH nacitanych instancii ENTITY CLASSES BUDU hierarchicky nastavene.
+   E. Ak QUERY citajuca HIERARCHICAL DATA nacitava instancie ENTITY CLASSES pre VIACERE LEVELS a pouzije LINQ OPERATOR [AsNoTrackingWithIdentityResolution], tak sa RELATIONAL FIXUP APLIKUJE a NAVIGATION PROPERTIES VSETKYCH nacitanych instancii ENTITY CLASSES BUDU hierarchicky nastavene.
+!!!!! 6. LINQ OPERATOR [Include] funguje nasledujucim sposobom.
+   !!!!! A. Ak QUERY pre PRINCIPAL ENTITY nacitava pomocou LINQ OPERATOR [Include] dalsich 'N' DEPENDENT ENTITIES, ENTITY FRAMEWORK CORE standardne vytvara 1 VELKU QUERY, ktora pouziva 'N' JOIN CLAUSES. Problemom takejto QUERY je, ze ked pocet RECORDS pre jednotlive DEPENDENT ENTITY CLASSES je (R1,R2...RN), tak celkovy pocet nacitanych ROWS je rovny (ROWS=R1*R2*...*RN). To znamena, ze pri velkom pocte RECORDS je QUERY s pouzitim LINQ OPERATOR [Include] EXTREMNE POMALA. Tento problem sa nazyva CARTESIAN EXPLOSION.
+   !!!!! B. Riesenim problemu CARTESIAN EXPLOSION je pouzitie LINQ OPERATOR [AsSplitQuery], ktory sposobi QUERY SPLITTING. Pri QUERY SPLITTING ENTITY FRAMEWORK CORE NEVYKONA 1 VELKU QUERY s 'N' JOIN CLAUSES, ale vykona 'N' QUERIES. To znamena, ze kazdu ENTITY nacita v OSOBITNEJ QUERY a nasledne spoji vysledky. Tychto 'N' QUERIES vedie k tomu, ze celkovy pocet nacitanych RECORDS je (ROWS=R1+R2+...+RN).
+   !!! C. Umiestnenie LINQ OPERATOR [AsSplitQuery] v QUERY je KLUCOVE, lebo AZ od momentu jeho pouzitia dochadza ku QUERY SPLITTING.
+7. Pri AGGREGATION FUNCTIONS ako su LINQ OPERATOR [Min] ci LINQ OPERATOR [Max] je nutne davat pozor na to, ze tieto LINQ OPERATORS mozu vracat aj VALUE [NULL]. To sa moze stat napriklad vtedy, ak sa robi agregacia nad VALUES DEPENDENT ENTITIES, kde PRINCIPAL ENTITY nema ziadne DEPENDENT ENTITIES. V takom pripade tieto LINQ OPERATORS vratia VALUE [NULL].
+8. Pre LINQ OPERATOR [GroupBy] platia nasledujuce fakty.
+   A. LINQ OPERATOR [GroupBy] preklada ENTITY FRAMEWORK CORE na CLAUSE GROUP BY.
+   B. LINQ OPERATOR [GroupBy] moze mat ako KEY ak CUSTOM CLASS, ktora ma viacero PROPERTIES. ENTITY FRAMEWORK CORE potom vykona GROUP BY podla vsetkych PROPERTIES tejto CUSTOM CLASS.
+   !!! C. Za LINQ OPERATOR [GroupBy] je mozne aplikovat LINQ OPERATOR [Where] v ktorom je mozne pristupit k PROPERTIES CUSTOM CLASS reprezentujucej KEY, ako aj aplikovat AGGREGATION FUNCTIONS na VALUES v jednotlivych GROUPS, vratenych LINQ OPERATOR [GroupBy]. LINQ OPERATOR [Where] sa prelozi na HAVING CLAUSE.
+   D. Za LINQ OPERATOR [GroupBy] je mozne aplikovat LINQ OPERATOR [Select] v ktorom je mozne pristupit k PROPERTIES CUSTOM CLASS reprezentujucej KEY, ako aj aplikovat AGGREGATION FUNCTIONS na VALUES v jednotlivych GROUPS, vratenych LINQ OPERATOR [GroupBy].
+9. ENTITY FRAMEWORK CORE pri vytvarani instancii ENTITY CLASSES moze volat aj PARAMETRIZED CONSTRUCTORS. Platia pri tom nasledujuce pravidla.
+   A. ENTITY FRAMEWORK CORE dokaze volat CONSTRUCTOR bez ohladu na ACCESS RIGHTS.
+   B. Ak ma ENTITY CLASS definovany DEFAULT CONSTRUCTOR, tak sa VZDY vola TENTO CONSTRUCTOR a ostatne sa ignoruju. Po zavolani DEFAULT CONSTRUCTOR ENTITY FRAMEWORK CORE nastavuje PROPERTIES ENTITY CLASS volanim ich SETTERS. SETTER mozu byt aj NON-PUBLIC.
+   C. V pripade, ze ENTITY CLASS ma definovany CUSTOM CONSTRUCTOR, tak ENTITY FRAMEWORK CORE je ho schopny zavolat, ak PARAMETERS maju rovnake NAMES a TYPES ako PROPERTIES ENTITY CLASS. Ak CUSTOM CONSTRUCTOR NEMA PARAMETERS pre vsetky PROPERTIES, tak ostatne PROPERTIES su nastavene volanim ich SETTERS. SETTER mozu byt aj NON-PUBLIC.
+   !!! D. CUSTOM CONSTRUCTOR NESMIE obsahovat ako PARAMETER NAVIGATION PROPERTY, inak tento CUSTOM CONSTRUCTOR ENTITY FRAMEWORK CORE NEZAVOLA.
+   !!! E. Ak ma ENTITY CLASS viacero CUSTOM CONSTRUCTORS tak ENTITY FRAMEWORK CORE preferuje ten s NAJMENSIM POCTOM PARAMETERS. Ostatne CUSTOM CONSTRUCTORS su ignorovane.
+   F. CUSTOM CONSTRUCTORS mozu obsahovat aj PARAMETERS pre nastavenie FOREIGN KEYS. ENTITY FRAMEWORK CORE ich dokaze zavolat.
+   G. V pripade, ze ENTITY CLASS nevie najst vhodny CUSTOM CONSTRUCTOR a ENTITY CLASS nema DEFAULT CONSTRUCTOR, hodi EXCEPTION.
+   H. NAVIGATION PROPERTIES su nastavovane VYLUCNE cez SETTERS.
+10. ENTITY FRAMEWORK CORE umoznuje do CUSTOM CONSTRUCTORS ENTITY CLASS vkladat nasledujuce PARAMETERS.
+   A. INTERFACE [ILazyLoader] sluzi ENTITY CLASS na vykonanie LAZY LOADING DEPENDENT PROPERTIES.
+   B. INTERFACE [IEntityType] umoznuje ENTITY CLASS zistit podrobnosti o svojej CONFIGURATION ci STATE.
+   C. CLASS [DbContext] moze ENTITY CLASS vyuzit na DB ACCESS v ENTITY CLASS.
+11. ENTITY FRAMEWORK CORE pri INSERT NEW PRINCIPAL ENTITIES a NEW DEPENDENT ENTITIES vykonava nasledujuce kroky.
+   A. Vykona sa INSERT PRINCIPAL ENTITY.
+   B. Zisti sa PRIMARY KEY PRINCIPAL ENTITY.
+   C. Vykona sa INSERT DEPENDENT ENTITY pricom ta ma nastaveny FOREIGN KEY na PRIMARY KEY PRINCIPAL ENTITY.
+   D. Zisti sa PRIMARY KEY DEPENDENT ENTITY.
+   E. ENTITY FRAMEWORK CORE vykona v instancii PRINCIPAL ENTITY UPDATE PRIMARY KEY PRINCIPAL ENTITY na VALUE vratenu z DB.
+   F. ENTITY FRAMEWORK CORE vykona v instancii DEPENDENT ENTITY UPDATE PRIMARY KEY DEPENDENT ENTITY na VALUE vratenu z DB.
+   G. ENTITY FRAMEWORK CORE vykona v instancii DEPENDENT ENTITY UPDATE FOREIGN KEY DEPENDENT ENTITY na VALUE vratenu z DB.
+   !!!!! H. NAVIGATION PROPERTIES v PRINCIPAL ENTITY a DEPENDENT ENTITY su UPDATED este pri pridavani ENTITIES do DB CONTEXT volanim METHOD [(EntityEntry<TEntity> Add(TEntity Entity))].
+!!! 12. ENTITY FRAMEWORK CORE vykonava rozsiahle zmeny v instanciach ENTITY CLASSES po zavolani METHOD [(EntityEntry<TEntity> Add(TEntity Entity))]. Ak sa tato METHOD zavola na NEW ENTITY 'M', ktora je v RELATIONSHIP cez EXISTING ENTITY 'N' prostrednictvom NEW ENTITY 'MN', ENTITY FRAMEWORK CORE vykonava nasledujuce zmeny v instanciach ENTITY CLASSES..
+   A. Zmeni sa STATE NEW ENTITY 'M' na STATE [Added].
+   B. Zmeni sa STATE NEW ENTITY 'MN' na STATE [Added].
+   !!! C. Nastavia sa este VSETKY NENASTAVENE NAVIGATION PROPERTIES v NEW ENTITY 'M', NEW ENTITY 'MN' a EXISTING ENTITY 'N'.
+   !!!!! D. Nastavi sa FOREIGN KEY NEW ENTITY 'MN' na PRIMARY KEY EXISTING ENTITY 'N'.
+13. PRINCIPAL ENTITIES, ktore maju DEPENDENT ENTITIES je mozne kopirovat v ramci tej iste DB TABLE nasledujucim sposobom.
+   A. Pomocou QUERY na ktoru je aplikovany LINQ OPERATOR [AsNoTracking] sa nacita PRINCIPAL ENTITY a jeho DEPENDENT ENTITIES, ktore maju byt COPIED.
+   !!! B. V PRINCIPAL ENTITY sa vykona RESET PRIMARY KEY a v kazdej DEPENDENT ENTITY sa vykona RESET PRIMARY KEY a FOREIGN KEY. Hodnoty NAVIGATION PROPERTIES sa NESMU MENIT.
+   C. PRINCIPAL ENTITY sa prida do DB CONTEXT.
+   D. Po zavolani METHOD [int SaveChanges()] su v DB TABLE pre PRINCIPAL ENTITY a DB TABLE pre DEPENDENT ENTITIES vytvorene ich KOPIE, ktore maju vlastne PRIMARY KEYS a FOREIGN KEYS.
+14. DELETE ENTITY pre ktore je znama jej PRIMARY KEYS je mozne vykonat aj bez zbytocnej QUERY do DB, ktora by tuto ENTITY nacitala z DB.
+   A. Vytvori sa instancia ENTITY CLASS, ktora ma nastaveny PRIMARY KEY na PRIMARY KEY RECORD, ktory sa ma odstranit.
+   B. Zavola sa METHOD [], ktora oznaci danu ENTITY ako ENTITY na odstranenie.
+   C. Po zavolani METHOD [int SaveChanges()] je ENTITY z DB odstranena.
+   !!! D. V pripade, ze ENTITY ma DEPENDENT ENTITIES, to ako OPERATION dopadne zavisi od toho ci bol nastaveny CASADE DELETE. Ak ano, tak DEPENDENT ENTITIES su odstranene tiez. Ak CASADE DELETE nebol nastaveny, dojde k vzniku EXCEPTION.
+//----------------------------------------------------------------------------------------------------------------------

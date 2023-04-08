@@ -1,0 +1,74 @@
+//----------------------------------------------------------------------------------------------------------------------
+1. Solution demonstruje UNIT TESTING v ENTITY FRAMEWORK CORE.
+2. Kazdy UNIT TEST pozostava z nasledujucich faz.
+   A. SETUP. Pripravi sa ENVIRONMENT pre vykonanie UNIT TEST ako je vytvorenie DATABASE ci napojenie sa na existujucu DATABASE.
+   B. ATTEMPT. Vykona sa METHOD, ktora ma byt testovana.
+   C. VERIFY. Vykona sa kontrola ci RESULTS vykonane danou METHOD su korektne.
+3. UNIT TESTING sa da robit vo viacerych UNIT TESTING FRAMEWORKS. Jednym z nich je [xUnit].
+4. Pre UNIT TESTING v [xUnit] platia nasledujuce fakty.
+   A. UNIT TESTS su ulozene v specifickom PROJECT TYPE [xUnit Test Project], ktory je treba na tento ucel vytvorit.
+   B. UNIT TEST je PUBLIC METHOD, ktora ma ako RETURN VALUE bud TYPE [void], alebo v pripade, ze sa jedna o ASYNCHRONOUS METHOD, tak ma ako RETURN VALUE TYPE [Task].
+   C. UNIT TEST METHOD musi byt oznacena ATTRIBUTE [FactAttribute].
+   D. V pripade, ze UNIT TEST METHOD skonci BEZ hodenia EXCEPTION, tak je UNIT TEST povazovany za uspesne vykonany. V pripade, ze UNIT TEST METHOD hodi EXCEPTION, tak UNIT TEST zlyhal.
+   !!! E. UNIT TESTS v [xUnit], ktore su definovane v ROZNYCH CLASSES bezia BY-DEFAULT PARALELNE. UNIT TESTS v [xUnit], ktore su definovane v TEJ ISTEJ CLASS bezia SEKVENCNE.
+5. UNIT TESTS je mozne spustat priamo z VISUAL STUDIO pomocou COMMAND [Test->Run All Tests]. COMMAND [Test->Debug All Tests] umoznuje vykonat DEBUGGING UNIT TESTS.
+6. UNIT TESTS v UNIT TEST PROJECT je mozne spustat aj pomocou COMMAND LINE nasledujucim sposobom.
+   A. CURRENT DIRECTORY musi byt nastavene na DIRECTORY, kde sa nachadza UNIT TEST PROJECT.
+   B. Spusti sa COMMAND LINE COMMAND [dotnet test], ktory vykona vsetky UNIT TESTS.
+   C. COMMAND LINE COMMAND [dotnet test --filter "CONDITION"] umoznuje spustat jeden ci viacero UNIT TEST urcenych CONDITION 'CONDITION'.
+7. UNIT TESTING DATABASE je optimalne robit nasledujucimi sposobmi.
+   A. Pouzitie IN MEMORY [Sqlite] DATABASE. Vyhodou je rychle vytvorenie IN MEMORY DATABASE. Nevyhodou je, ze IN MEMORY [Sqlite] DATABASE ma vlastnu SQL SYNTAX a nepodporuje vsetky FEATURES standardnych DATABASES.
+   B. Pouzit DATABASE rovnakeho TYPE aka sa bude pouzivat pri DEPLOYMENT. Vyhodou tohto postupu je, ze DATABASE rovnakeho TYPE ma identicke FEATURES a teda testy su identicke ako CODE, ktory bude realne bezat. Nevyhodou je, ze pri pouziti DATABASE rovnakeho TYPE je treba pre kazdy TEST vytvorit nezavislu DATABASE co je casovo narocne.
+   C. Pouzit STUBBING a MOCKING DATABASE kedy sa netestuje DATABASE ani DATABASE CODE, ale iba BUSINESS LOGIC. DATABASE sa iba emuluje pomocou C# CODE, ktore vracia data, ktore by normalne vratila DATABASE.
+!!! 8. Ak sa UNIT TESTS vykonavaju nad realnou DATABASE je treba riesit problem, ze UNIT TESTS bezia paralelne. Riesenie je nasledujuce.
+   A. Pre kazdy UNIT TEST sa vytvori nezavisla DATABASE nad realnym DB SERVER.
+   B. UNIT TEST sa vykona na nezavislej instancii DATABASE.
+9. Pri UNIT TESTING je odporucany proces vytvarania DATABASE, ktora bude mat aktualne SCHEMA nasledujuci.
+   A. Zavola sa METHOD [bool DatabaseFacade.EnsureDeleted()], ktora vymaze DATABASE, ak existuje.
+   B. Zavola sa METHOD [bool DatabaseFacade.EnsureCreated()], ktora vytvori novu DATABASE a zaroven vytvori TABLES podla aktualne DB SCHEMA.
+10. IN MEMORY [Sqlite] DATABASE sa vytvara v nasledujucich krokoch.
+   A. Pomocou CLASS [SqliteConnectionStringBuilder] sa vytvori CONNECTION STRING, ktory musi mat PROPERTY [string SqliteConnectionStringBuilder.DataSource] nastaveny na VALUE [:memory:].
+   !!! B. Vytvori sa instancia CLASS [SqliteConnection], ktora sluzi ako CONNECTION na IN MEMORY [Sqlite] DATABASE.
+   !!!!! C. Zavola sa METHOD [void SqliteConnection.Open()], ktora otvori CONNECTION na IN MEMORY DATABASE. Plati, ze kym je CONNECTION OTVORENA, dovtedy IN MEMORY [Sqlite] DATABASE existuje.
+   !!!!! D. Zavola sa METHOD [bool DatabaseFacade.EnsureCreated()], ktora vytvori DATABASE z existujucich ENTITY CLASSES a DB CONTEXT CLASS. Tato METHOD NEVYUZIVA MIGRATIONS a typicky sa pouziva pri UNIT TESTING.
+   !!! E. Nad jednou instanciou IN MEMORY [Sqlite] DATABASE je mozne vytvorit aj viacero DB CONTEXTS, ak zdielaju tu istu instanciu CLASS [SqliteConnection].
+11. STUBBING DATABASE je CODE, ktory emuluje cinnost DATABASE tym, ze implementuje CUSTOM INTERFACES DATA ACCESS LAYER. Pre STUBBING DATABASE platia nasledujuce fakty.
+   A. STUBBING DATABASE je mozne aplikovat vtedy, ak sa k DATABASE nepristupuje priamo cez DATABASE PROVIDER CLASSES, ale pomocou CUSTOM INTERFACES, kde az implementacia tychto CUSTOM INTERFACES vykonava pristup k DATABASE PROVIDER CLASSES.
+   B. Pri STUBBING DATABASE su CUSTOM INTERFACES implementovane tak, ze realne NEPRISTUPUJU k DATABASE, ale iba emuluju jej cinnost vratenim tych OBJECTS, ktore by normalne vratila DATABASE. Takto implementovane CUSTOM INTERFACES su pouzite namiesto CLASSES implementujucich CUSTOM INTERFACES, ktore pristupuju k DATABASE PROVIDER CLASSES.
+   C. STUBBING DATABASE umoznuje lahku simulaciu rozlicnych DATABASE ERRORS, pretoze sa jedna o CUSTOM C# CODE, ktory realne nepristupuje k DATABASE a moze vykonavat lubovolnu cinnost.
+12. MOCKING DATABASE je vlastna implementacia DATABASE CLASSES pomocou MOCKING LIBRARIES ako LIBRARY [Moq]. Pre MOCKING DATABASE platia nasledujuce fakty.
+   A. Pri MOCKING DATABASE sa implementuju klucove DATABASE CLASSES, ktore emuluju cinnost skutocnych DATABASE CLASSES.
+   B. V pripade ENTITY FRAMEWORK CORE MOCKING znamena spravit CUSTOM implementaciu CLASS [DbContext], co by bolo velmi narocne. 
+   C. Alternativou je pouzitie ENTITY FRAMEWORK CORE INTERNAL IN-MEMORY DATABASE PROVIDER, ktory pouzivat ENTITY FRAMEWORK CORE DEVELOPMENT TEAM na testovanie ENTITY FRAMEWORK CORE.
+13. COSMOS DB je mozne testovat pomocou AZURE COSMOS DB EMULATOR, ktory je mozne stiahnut. Testovanie pomocou AZURE COSMOS DB EMULATOR sa vykonava v nasledujucich krokoch.
+   A. Stiahne a nainstaluje sa AZURE COSMOS DB EMULATOR. AZURE COSMOS DB EMULATOR funguje ako WEB SERVER, ktory poskytuje WEB PAGE pomocou ktore je mozne ziskat CONNECTION STRING na AZURE COSMOS DB EMULATOR ako ja prezerat ulozene data.
+   B. Z AZURE COSMOS DB EMULATOR WEB PAGE je potrebne ziskat CONNECTION STRING. CONNECTION STRING obsahuje URL a PRIMARY KEY.
+   C. V DB CONTEXT CLASS zdedenej z CLASS [DbContext] je treba zavolat METHOD [DbContextOptionsBuilder<TContext> DbContextOptionsBuilder<TContext>.UseCosmos<TContext>(string ConnectionString, string DatabaseName, Action<CosmosDbContextOptionsBuilder> CosmosOptionsAction)], kde PARAMETER 'ConnectionString' je CONNECTION STRING ziskany z AZURE COSMOS DB EMULATOR, PARAMETER 'DatabaseName' je LUBOVOLNY NAZOV DATABASE a PARAMETER 'CosmosOptionsAction' sa ponecha na NULL VALUE.
+   !!! D. Kedze AZURE COSMOS DB EMULATOR lubovolny pocet nazavislych DATABASES, paralelny beh testov pomocou LIBRARY [xUnit] nesposobuje problemy, kedze vsetky testy mozu bezat na nezavislej DATABASE.
+   !!! E. Pre vykonanim TEST je nutne zavolat METHOD [bool DatabaseFacade.EnsureDeleted()] na odstranenie existujucej DATABASE s danym menom a nasledne volat METHOD [bool DatabaseFacade.EnsureCreated()] na vytvorenie novej DATABASE.
+   !!! F. Kedze COSMOS DB nepouzivaje SCHEMAS, tak DATABASE SCHEMA sa nevytvara a ani MIGRATIONS pre COSMOS DB nie su podporovane.
+!!! 14. Pri UNIT TESTING, ked sa vytvara a naplna TESTING DATABASE cez DB CONTEXT a ten isty DB CONTEXT sa nasledne pouzije na vykonanie UNIT TESTS, dojde k NEKOREKTNEMU CHOVANIU. Problem je v tom, ze DB CONTEXT cez ktory sa ukladali ENTITY OBJECTS si ulozi tieto ENTITY OBJECTS do DB CONTEXT a pri nacitavani tieto ENTITY OBJECTS NIE SU NACITANE z DATABASE, ale su vratene z DB CONTEXT. Tento problem sa da riesit nasledujucimi sposobom.
+   A. Pre vytvorenie a naplnenie DATABASE sa pouzije JEDEN DB CONTEXT a na UNIT TESTING sa pouzije DRUHY DB CONTEXT. DRUHY DB CONTEXT uz nema ulozene ENTITY OBJECTS, ktore boli zapisane v PRVOM DB CONTEXT do DATABASE a tak TESTING prebehne korektne.
+   B. Po naplneni DATABASE pouzit METHOD [void ChangeTracker.Clear()], ktora vymaze z DB CONTEXT vsetky ENTITY OBJECTS, ktore tam boli ulozene.
+15. UNIT TEST LIBRARY [xUnit] umoznuje zapis LOGS pocas vykonavania UNIT TESTING pomocou INTERFACE [ITestOutputHelper]. INTERFACE [ITestOutputHelper] sa pouziva nasledujucim sposobom.
+   A. Do CONSTRUCTOR CLASS obsahujuce UNIT TESTS sa prida PARAMETER TYPE [ITestOutputHelper], ktory UNIT TEST LIBRARY [xUnit] naplni pomocou DEPENDENCY INJECTION.
+   B. V UNIT TEST METHODS sa bud pomocou METHOD [void ITestOutputHelper.WriteLine(string Message)], alebo METHOD [void ITestOutputHelper.WriteLine(string Format, params object[] Args)] zapisu LOGS.
+16. LOGS vygenerovane pomocou UNIT TEST LIBRARY [xUnit] sa prezeraju nasledujucim sposobom.
+   A. Pomocou COMMAND [Test->Test Explorer] otvori TEST EXPLORER.
+   B. V TEST EXPLORER sa z CONTEXT MENU prislusneho TEST sa vyberie COMMAND [Open test log], ktory zobrazi LOGS.
+17. ENTITY FRAMEWORK CORE umoznuje vykonavat LOGGING nasledujucimi sposobmi.
+   A. Pouzitim CLASS [LoggerFactory], ktore implementuje INTERFACE [ILoggerFactory].
+   B. Pouzitim METHOD [DbContextOptionsBuilder DbContextOptionsBuilder.LogTo(Func<EventId,LogLevel,bool> Filter, Action<EventData> Logger)].
+   C. Pouzitim LINQ OPERATOR [ToQueryString], ktory vracia QUERY, ktora bude vykonana voci DATABASE.
+18. LOGGING pomocou CLASS [LoggerFactory] sa vykonava nasledujucim sposobom.
+   A. V DB CONTEXT sa vytvori instancia CLASS implementujuca INTERFACE [ILoggerProvider] do ktorej sa budu LOGS zapisovat. Prikladom moze byt CLASS [ConsoleLoggerProvider], ktora zapisuje LOGS do CONSOLE.
+   B. V DB CONTEXT sa vytvori instancia CLASS [LoggerFilterOptions] pomocou, ktore je mozne konfigurovat LOG OPTIONS.
+   !!! C. V DB CONTEXT sa vytvori instancia CLASS [LoggerFactory] implementujuca INTERFACE [ILoggerFactory], ktora ako PARAMETERS potrebuje PARAMETER TYPE [ILoggerProvider[]] a PARAMETER TYPE [LoggerFilterOptions] vytvorene v predchadzajucich krokoch.
+   D. V DB CONTEXT pomocou METHOD [DbContextOptionsBuilder DbContextOptionsBuilder.UseLoggerFactory(ILoggerFactory LoggerFactory)] sa nastavi CLASS implementujuca INTERFACE [ILoggerFactory]. Tym sa vytvori LOGGER do ktoreho sa budu zapisovat LOGS z ENTITY FRAMEWORK CORE.
+19. LOGGING pomocou METHOD [DbContextOptionsBuilder DbContextOptionsBuilder.LogTo(Func<EventId,LogLevel,bool> Filter, Action<EventData> Logger)] sa realizuje nasledujucim sposobom.
+   A. Definuje sa METHOD TYPE [Func<EventId,LogLevel,bool>], ktora sluzi ako LOG FILTER.
+   B. Definuje sa METHOD TYPE [Action<EventData>], ktora sluzi ako LOG WRITTER.
+   C. V DB CONTEXT sa zavola METHOD [DbContextOptionsBuilder DbContextOptionsBuilder.LogTo(Func<EventId,LogLevel,bool> Filter, Action<EventData> Logger)], ktora zaregistruje LOG FILTER METHOD a LOG WRITER METHOD, aby ich ENTITY FRAMEWORK mohol pouzit.
+   !!! D. CLASS [DbContextOptionsBuilder] obsahuje aj dalsie OVERLOADED verzie METHOD [DbContextOptionsBuilder LogTo(PARAMETERS)], ktore su vsak len variaciami METHOD [DbContextOptionsBuilder DbContextOptionsBuilder.LogTo(Func<EventId,LogLevel,bool> Filter, Action<EventData> Logger)].
+20. LOGGING pomocou LINQ OPERATOR [ToQueryString] umoznuje zobrazit SQL COMMAND, ktory sa zasle do DATABASE pri vykonani danej QUERY.
+//----------------------------------------------------------------------------------------------------------------------

@@ -1,0 +1,55 @@
+//----------------------------------------------------------------------------------------------------------------------
+1. Solution demonstruje pouzitie NO SQL DATABASES v ENTITY FRAMEWORK CORE.
+2. NO SQL DATABASES su DATABASES orientovane na vysoku PERFORMANCE, SCALABILITY a AVAILABILITY. Pre NO SQL DATABASES platia nasledujuce fakty.
+   A. NO SQL DATABASES su NON RELATIONAL DATABASES, ktore nepodporuju RELATIONSHIPS ako RELATIONAL DATABASES.
+   B. NO SQL DATABASES nepouzivaju SQL ako LANGUAGE urceny na pracu s DATABASES.
+   !!! C. Mnoho NO SQL DATABASES umoznuje PARALELNY BEH VIACERYCH DATABASES, aby sa zabezpecila vysoka SCALABILITY a AVAILABILITY.
+   !!!!! D. Kedze NO SQL DATABASES umoznuje PARALELNY BEH VIACERYCH DATABASES, NO SQL DATABASES negarantuju tak ako SQL DATABASES, ze pri nacitavani dat z DATABASES budu vzdy konzistentne nacitane najnovsie data. Nacitavanie dat sa moze uskutocnit s inej verzie NO SQL DATABASE, ktora moze byt synchronizovana neskor a tym padom sa neda zabezpecit uplna konzistentnost dat ako v pripade SQL DATABASES. Je to TRADEOFF, aby sa zabezpecila maximalna SCALABILITY a AVAILABILITY NO SQL DATABASES.
+3. COSMOS DB je prikladom NO SQL DATABASE, ktora je podporovana v ENTITY FRAMEWORK CORE.
+4. COMMAND AND QUERY RESPONSIBILITY SEGREGATION (CQRS) je PATTERN, ktory hovori, ze je treba oddelovat READ DB OPERATIONS (QUERIES) od READ DB OPERATIONS (INSERTS, UPDATES, DELETES), pretoze sa jedna o odlisne operacie a ich oddelenim je mozne dosiahnut vyssiu PERFORMANCE.
+5. PLOYGOT DATABASE STRUCTURE je PATTERN, kde PROGRAM pouziva naraz viacero roznych DATABASES na zlepsenie PERFORMANCE. Casto sa kombinuju SQL DATABASES a NO SQL DATABASES na dosiahnutie maximalnej PERFORMANCE.
+!!!!! 6. Jednym zo zakladnych pouziti NO SQL DATABASES je funkcionalita CACHE. Pri tomto PATTERNE sa kombinuje pouzitie SQL DATABASE a NO SQL DATABASE a COMMAND AND QUERY RESPONSIBILITY SEGREGATION a PLOYGOT DATABASE STRUCTURE na dosiahnutie maximalnej PERFORMANCE. Pouzitie pri implementacie internetoveho obchodu vyzera nasledovne.
+   A. PROGRAM pre internetovy obchod uklada zoznam tovaru, ktory ponuka do SQL DATABASE. Je to preto, lebo SQL DATABASE je RELATIONAL DATABASE, ktora umoznuje vyjadrit RELATIONSHIPS, je ju mozne lahko modifikovat a vzdy vracia konzistentne (najnovsie data).
+   !!! B. PROGRAM pri zobrazovani ponuky tovaru zakaznikom vsak NEPOUZIVA SQL DATABASE. Je to preto, lebo QUERIES nad SQL DATABASE, ktora ma vela RELATIONSHIPS je DALEKO POMALSIE a ak pocet QUERIES ma to negativny vplyv na PERFORMANCE.
+   !!!!! C. Riesenim problemy pomalych QUERIES do SQL DATABASES je, ze PROGRAM pri kazdom INSERT, UPDATE a DELETE o zmene tovaru do SQL DATABASES zaroven vykona zapis do NO SQL DATABASE. Do NO SQL DATABASE su uz ulozene data v podobe v akej sa budu zobrazovat danemu zakaznikovi. To znamena, ze tam nie su RELATIONAL DATA, ale jednoduche RECORDS BEZ RELATIONSHIPS, ktore su pripravene tak, aby mohli byt pri QUERY hned zaslane pouzivatelovi na zobrazenie.
+   !!! D. Vyhodou pouzitia NO SQL DATABASES na realizaciu najbeznejsej operacie - citanie tovaru, ktory obcho poinuka je v tom, ze  je v tom, ze nie je pouzivana SQL DATABASE, ktorej TABLES maju vela RELATIONSHIPS, ktore musi SQL DATABASE riesit, co sposobuje PERFORMANCE HIT, ale pouziva sa daleko rychlejsia NO SQL DATABASE, ktora ma navyse data ulozene tak, aby ich nebolo treba zlozito spracovat a su v tvare, ze ich mozno po nacitani hned zobrazit zakaznikovi.
+   !!!!! E. Nevyhodou pouzitia NO SQL DATABASES je to, ze pri INSERT, UPDATE a DELETE je potrebne vykonat danu operaciu nad SQL DATABASE i NO SQL DATABASE. Navyse pre NO SQL DATABASE je nutne pripravit data tak aby neobsahovali RELATIONSHIPS a bolo ich hned mozne zobrazit zakaznikovi.
+   !!!!! F. Tento PATTERN ma vyznam pouzit, ak je pocet QUERIES DALEKO VYSSI, ako pocet INSERTS, UPDATES a DELETES. To je typicka situacia pre internetove obchody, kde INSERTS, UPDATES a DELETES robia iba pri pridani ci vyradeni tovaru, ale QUERIES robi kazdy zakaznik. Pocet QUERIES tak nasobne presahuje pocet INSERTS, UPDATES a DELETES, a preto pouzitie NO SQL DATABASE ako CACHE dava velky vyznam a vyrazne zvysuje PERFORMANCE daneho PROGRAMU.
+7. Pre COSMOS DB platia nasledujuce fakty.
+   A. ENTITY FRAMEWORK CORE uklada data v COSMOS DB vo FORMATE JSON. COSMOS DB podporuje aj ine FORMATY ako napriklad KEY VALUE PAIRS, ci GRAPHS.
+   B. COSMOS DB NEPODPORUJE RELATIONSHIPS. No kazda ENTITY moze obsahovat ARRAY inych ENTITIES a tym je mozne simulovat RELATIONSHIPS.
+   !!! C. COSMOS DB je primarne urcena na ukladanie DENORMALIZED DATA. To znamena, ze DATA nie su postavene na RELATIONSHIPS, ale kazdy RECORD by mal obsahovat vsetky potrebne data, aby v jednom QUERY bolo mozne nacitat vsetky potrebne data.
+   !!! D. COSMOS DB uklada data ako JSON DATA a teda nepodporuje SCHEMA ani verzionovanie dat a tym padom ani MIGRATIONS.
+8. COSMOS DB NEPODPORUJE RELATIONSHIPS. RELATIONSHIPS je vsak mozne v COSMOS DB emulovat nasledujucimi sposobmi.
+   A. PRINCIPAL ENTITY a DEPENDENT ENTITIES su ulozene ako NEZAVISLE ENTITIES, pricom PRINCIPAL ENTITY, alebo DEPENDENT ENTITY obsahuje nejaky identifikator, ktory tieto ENTITIES prepoji. Tento pristup je vhodny, ak PRINCIPAL ENTITY obsahuje vela DEPENDENT ENTITIES, kde DEPENDENT ENTITIES je potrebne vycitavat nie vzdy pri kazdom QUERY.
+   !!! B. PRINCIPAL ENTITY moze obsahovat ARRAY DEPENDENT ENTITIES, ktore su definovane ako OWNED TYPES. Tym padom RECORD PRINCIPAL ENTITY moze obsahovat N RECORDS DEPENDENT ENTITIES. Tento pristup je vhodny ako PRINCIPAL ENTITY nema prilis vela DEPENDENT ENTITIES.
+9. ENTITY FRAMEWORK CORE pre COSMOS DB v pripade vzniku EXCEPTION hadze EXCEPTION [CosmosException]. EXCEPTION [CosmosException] ma PROPERTY [HttpStatusCode CosmosException.StatusCode], ktora obsahuje vysledok DB OPERATION vo forme HTTP RESPONSE CODE.
+10. COSMOS DB ma nasledujucu strukturu.
+   A. AZURE COSMOS DB ACCOUNT moze obsahovat <1,M> COSMOS DB DATABASES.
+   B. Kazda COSMOS DB DATABASE moze obsahovat <1,N> COSMOS DB CONTAINERS.
+   C. COSMOS DB CONTAINER je miesto, kde su ukladane DATA.
+!!! 11. ENTITY FRAMEWORK CORE umoznuje existenciu iba JEDNEHO COSMOS DB CONTAINER, ktory ma rovnaky nazov ako DB CONTEXT CLASS.
+12. ENTITY FRAMEWORK CORE pre KAZDY RECORD okrem samotnych ENTITY PROPERTIES uklada aj nasledujuce PROPERTIES.
+   A. PROPERTY [Discriminator] obsahuje nazov ENTITY CLASS. Vdaka tejto PROPERTY ENTITY FRAMEWORK CORE dokaze identifikovat do akej ENTITY ma dany RECORD mapovat. Prikladom je VALUE 'CTestEntity'.
+   B. PROPERTY [id] obsahuje unikatny identifikator RECORD. Je tvoreny PRIMARY KEY VALUE a VALUE PROPERTY 'Discriminator'. Prikladom je VALUE 'CTestEntity|1'.
+   C. PROPERTY [_etag] obsahuje CONCURRENCY TOKEN. Prikladom je VALUE '"00000000-0000-0000-0825-6b5c30a801d9"'.
+   D. PROPERTY [_ts] obsahuje UNIX FORMAT TIME kedy bol RECORD ADDED, alebo UPDATED. Prikladom je VALUE '1670188479'.
+   E. PROPERTY [_self] je unikatny IDENTIFIER pouzivany pre NAVIGATION a pristup k RESOURCES. Prikladom je VALUE 'dbs/xs4XAA==/colls/xs4XAOi3g-A=/docs/xs4XAOi3g-ABAAAAAAAAAA==/'.
+   F. PROPERTY [_rid] je unikatny IDENTIFIER pouzivany pre NAVIGATION a pristup k RESOURCES. Prikladom je VALUE 'xs4XAOi3g-ABAAAAAAAAAA=='.
+!!! 13. ENTITIES v COSMOS DB MUSIA mat priradenu UNIKATNU VALUE PRIMARY KEYS. COSMOS DB NEGENERUJE automaticky VALUES PRIMARY KEYS a je ich treba nastavit EXPLICITNE.
+14. COSMOS DB DATABASE sa vytvara nasledujucim sposobom.
+   A. Ak COSMOS DB DATABASE uz EXISTUJE, je ju mozne odstranit volanim METHOD [bool DatabaseFacade.EnsureDeleted()].
+   !!! B. Kedze COSMOS DB PROVIDER NEPODPORUJE MIGRATIONS, COSMOS DB DATABASE sa vytvara volanim METHOD [bool DatabaseFacade.EnsureCreated()].
+15. Pomocou METHOD [CosmosClient DatabaseFacade.GetCosmosClient()] je mozne pristupit k instancii CLASS [CosmosClient], ktora umoznuje priamy pristup ku COSMOS DB.
+16. COSMOS DB vykonava BY DEFAULT indexovanie VSETKYCH ENTITY PROPERTIES, vratane DEPENDENT (NESTED) ENTITY PROPERTIES.
+17. QUERIES v COSMOS DB NEPOTREBUJU pouzivat LINQ OPERATOR [Include], pretoze COSMOS DB NEPOZNA koncept RELATIONSHIPS. Ak PRINCIPAL ENTITY obsahuje DEPENDENT ENTITIES, tieto su ulozene v ramci RECORD PRINCIPAL ENTITY a su AUTOMATICKY nacitane pri nacitavanie PRINCIPAL ENTITY.
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+Na to aby CODE fungoval, je potrebne vykonat nasledujuce kroky.
+
+1. Stiahnut a nainstalovat AZURE COSMOS DB EMULATOR.
+2. Z AZURE COSMOS DB EMULATOR ziskat CONNECTION STRING. CONNECTION STRING obsahuje URL a PRIMARY KEY.
+3. Do PROJECT vlozit NUGET PACKAGE [Microsoft.EntityFrameworkCore.Cosmos].
+4. V DB CONTEXT CLASS zdedenej z CLASS [DbContext] je treba zavolat METHOD [DbContextOptionsBuilder<TContext> DbContextOptionsBuilder<TContext>.UseCosmos<TContext>(string ConnectionString, string DatabaseName, Action<CosmosDbContextOptionsBuilder> CosmosOptionsAction)], kde PARAMETER 'ConnectionString' je CONNECTION STRING ziskany z AZURE COSMOS DB EMULATOR, PARAMETER 'DatabaseName' je LUBOVOLNY NAZOV DATABASE a PARAMETER 'CosmosOptionsAction' sa ponecha na NULL VALUE.
+//----------------------------------------------------------------------------------------------------------------------

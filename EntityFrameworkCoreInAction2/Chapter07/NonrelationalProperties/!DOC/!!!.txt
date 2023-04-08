@@ -1,0 +1,189 @@
+//----------------------------------------------------------------------------------------------------------------------
+1. Solution demonstruje pouzitie NON-RELATIONAL PROPERTIES v ENTITY FRAMEWORK CORE.
+2. PROPERTIES ENTITY CLASSES, ktore reprezentuju NON-RELATIONAL COLUMNS v DB sa oznacuju ako NON-RELATIONAL PROPERTIES, alebo aj SCALAR PROPERTIES.
+3. Konfigfuraciu DATABASE v ENTITY FRAMEWORK CORE je mozne vykonat nasledujucimi sposobmi.
+   A. Pouzitim CONVENTIONS.
+   B. Pouzitim DATA ANNOTATIONS.
+   C. Pouzitim FLUENT API.
+4. Pre pouzitie CONVENTIONS platia nasledujuce fakty.
+   A. ENTITY FRAMEWORK CORE definuje CONVENTIONS pre TABLES ci ENTITY CLASS PROPERTIES na zaklade ktorych je ENTITY FRAMEWORK CORE schopny urcit, ktora PROPERTY reprezentuje PRIMARY KEY, FOREIGN KEY ci predstavuje NAVIGATIONAL PROPERTIES.
+   B. CONVENTIONS urcuju nazov a TYPE ENTITY CLASS PROPERTIES, z ktorych je ENTITY FRAMEWORK CORE schopny urcit ich vyznam.
+   C. CONVENTIONS neumoznuju konfigurovat kazdy aspekt DATABASE.
+   !!! D. Konfiguracia pomocou CONVENTIONS je prepisana konfiguraciou nastavenou pomocou DATA ANNOTATIONS a ta je prepisana konfiguraciou pomocou FLUENT API.
+5. ENTITY FRAMEWORK CORE definuje pre ENTITY CLASSES nasledujuce CONVENTIONS.
+   A. ENTITY CLASS musi byt PUBLIC CLASS.
+   B. ENTITY CLASS musi byt NON-STATIC CLASS.
+   C. ENTITY CLASS musi mat CONSTRUCTOR, ktory ENTITY FRAMEWORK CORE dokaze pouzit. Moze to byt DEFAULT CONSTRUCTOR, alebo CUSTOM CONSTRUCTOR.
+6. ENTITY FRAMEWORK CORE pre PROPERTIES ENTITY CLASSES aplikuje nasledujuce CONVENTIONS.
+   A. Pre PROPERTY, ktora ma GETTER aj SETTER je v DB TABLE vytvoreny DB COLUMN, ktory ma rovnaky NAME ako PROPERTY NAME.
+   B. PROPERTY GETTER MUSI byt PUBLIC, kym PROPERTY SETTER moze mat lubovolne ACCESS RIGHTS.
+   C. PROPERTY TYPE je mapovany na COLUMN TYPE. Plati, ze .NET PRIMITIVE TYPES ako aj niektore specialne TYPES (String, Guid, DateTime) maju MAPPINGS na DB TYPES.
+   D. Ak je PROPERTY TYPE PRIMITIVE TYPE, alebo STRUCT TYPE, COLUMN je NON-NULL.
+   E. Ak je PROPERTY TYPE NULLABLE PRIMITIVE TYPE, alebo NULLABLE STRUCT TYPE, COLUMN je NULL.
+   F. Ak je PROPERTY TYPE [String], COLUMN je BY DEFAULT NULL. COLUMN je mozne zmenit na NON-NULL pomocou DATA ANNOTATIONS, alebo pomocou FLUENT API.
+7. ENTITY FRAMEWORK CORE pre PRIMARY KEYS ENTITY CLASSES aplikuje nasledujuce CONVENTIONS.
+   A. Pomocou CONVENTIONS je mozne definovat IBA PRIMARY KEY tvoreny 1 COLUMN.
+   B. Pomocou CONVENTIONS je za PRIMARY KEY povazovana ta PROPERTY, ktorej NAME je bud 'Id', alebo 'CLASS_NAMEId', kde VALUE 'CLASS_NAME' je NAME ENTITY CLASS.
+   C. TYPE PRIMARY KEY je MAPPED na DB TYPE a je nan aplikovany UNIQUE CONSTRAINT.
+8. Pre pouzitie DATA ANNOTATIONS platia nasledujuce fakty.
+   A. DATA ANNOTATIONS sa aplikuju pomocou ATTRIBUTES na ENTITY CLASSES, ich FIELDS a PROPERTIES.
+   B. DATA ANNOTATIONS umoznuju nastavit nazvy DB TABLES, DB COLUMNS, definovat PRIMARY a FOREIGN KEYS, NAVIGATIONAL PROPERTIES ci DATA CONSTRAINTS pre jednotlive DB COLUMNS.
+   C. DATA ANNOTATIONS neumoznuju konfigurovat kazdy aspekt DATABASE.
+   !!! D. Konfiguracia pomocou DATA ANNOTATIONS prepisuje konfiguraciu pomocou CONVENTIONS a je prepisana konfiguraciou pomocou FLUENT API.
+   E. DATA ANNOTATION ATTRIBUTES sa nachadzaju v NAMESPACE [System.ComponentModel.DataAnnotations] a NAMESPACE [System.ComponentModel.DataAnnotations.Schema].
+9. ENTITY FRAMEWORK CORE definuje nasledujuce DATA ANNOTATION ATTRIBUTES.
+   A. ATTRIBUTE [Column] umoznuje urcit NAME a SQL TYPE DB COLUMN.
+   B. ATTRIBUTE [Required] urcuje ze DB COLUMN bude NON-NULL.
+   C. ATTRIBUTE [MaxLength] umoznuje urcit maximalnu dlzku variabilnych DB COLUMNS ako su DB COLUMNS TYPE [String] ci DB COLUMNS TYPE [byte[]].
+   D. ATTRIBUTE [Key] umoznuje oznacit DB COLUMN ako PRIMARY KEY.
+   E. ATTRIBUTE [ForeignKey] umoznuje oznacit DB COLUMN ako FOREIGN KEY.
+   F. ATTRIBUTE [Table] umoznuje urcit nazov DB TABLE a nazov jej SCHEMA.
+   G. ATTRIBUTE [NotMappedAttribute] urcuje, ze PROPERTY nebude MAPPED na DB COLUMN.
+10. Pre pouzitie FLUENT API platia nasledujuce fakty.
+   A. FLUENT API je reprezentovana CLASS [ModelBuilder], ktora ma sadu METHODS umoznujucich konfiguraciu DATABASE.
+   B. FLUENT API je nutne pouzit v METHOD [void DbContext.OnModelCreating(ModelBuilder ModelBuilder)].
+   C. FLUENT API umoznuju konfigurovat kazdy aspekt DATABASE.
+   !!! D. Konfiguracia pomocou FLUENT API prepisuje konfiguraciu pomocou CONVENTIONS a konfiguraciu pomocou DATA ANNOTATIONS.
+11. FLUENT API umoznuje presunut konfiguraciu ENTITY CLASS do separatnej CLASS.
+   A. Definuje sa konfiguracna CLASS, ktora implementuje INTERFACE [IEntityTypeConfiguration<TEntity>], kde TYPE 'TEntity' je TYPE ENTITY CLASS.
+   B. Konfiguracna CLASS musi definovat METHOD [void Configure(EntityTypeBuilder<TEntity> Builder)] v ktorej pouzije FLUENT API na nakonfigurovanie ENTITY CLASS.
+   C. V METHOD [void DbContext.OnModelCreating(ModelBuilder ModelBuilder)] sa vola METHOD [ModelBuilder ModelBuilder.ApplyConfiguration<TEntity>(IEntityTypeConfiguration<TEntity> Configuration)], ktorej PARAMETER je instancia konfiguracnej CLASS.
+   D. V METHOD [void DbContext.OnModelCreating(ModelBuilder ModelBuilder)] sa vola METHOD [ModelBuilder ApplyConfigurationsFromAssembly(Assembly Assembly, Func<Type,bool> Predicate)], ktorej PARAMETER je ASSEMBLY v ktorej su konfiguracne CLASSES.
+12. ENTITY CLASS PROPERTIES, ktore nemaju byt ulozene v DB je mozne oznacit ako tie, ktore nemaju byt ulozene do DB nasledujucimi sposobmi.
+   A. Aplikovanim ATTRIBUTE [NotMappedAttribute].
+   B. Pouzitim FLUENT API.
+13. ATTRIBUTE [NotMappedAttribute] umoznuje vylucit ENTITY CLASS PROPERTIES, alebo CLASSES, aby neboli mapovane do DB TABLES.
+   A. Ak je ATTRIBUTE [NotMappedAttribute] aplikovany na ENTITY CLASS PROPERTY, tak tato PROPERTY NEBUDE mapovana do DB TABLE.
+   B. Ak je ATTRIBUTE [NotMappedAttribute] aplikovany na TYPE 'TYPE', tak v pripade, ze ENTITY CLASS obsahuje PROPERTY TYPE 'TYPE', tak tato PROPERTY NEBUDE mapovana do DB TABLE.
+14. Pouzitim FLUENT API je mozne vylucit ENTITY CLASS PROPERTIES, alebo CLASSES, aby neboli mapovane do DB TABLES.
+   A. Volanim METHOD [EntityTypeBuilder<TEntity> EntityTypeBuilder<TEntity>.Ignore(Expression<Func<TEntity,object>> PropertyExpression)] je mozne urcit ENTITY CLASS PROPERTY, ktora NEBUDE mapovana do DB TABLE.
+   B. Volanim METHOD [ModelBuilder ModelBuilder.Ignore<TEntity>()] je mozne urcit TYPE 'TYPE', ktory v pripade, ze ENTITY CLASS obsahuje PROPERTY TYPE 'TYPE', tak tato PROPERTY NEBUDE mapovana do DB TABLE.
+15. DB COLUMNS vygenerovane pre ENTITY CLASS PROPERTIES je mozne menit aplikovanim ATTRIBUTES na ENTITY CLASS PROPERTIES.
+   A. ATTRIBUTE [ColumnAttribute] urcuje DB NAME a DB TYPE DB COLUMN.
+   B. ATTRIBUTE [RequiredAttribute] oznaci DB COLUMN ako NOT NULL.
+   C. ATTRIBUTE [MaxLengthAttribute] urcuje maximalnu dlzku DB COLUMN. Nastavenie sa aplikuje iba na ARRAY TYPES ako je STRING ci BYTE[].
+16. DB COLUMNS vygenerovane pre ENTITY CLASS PROPERTIES je mozne menit pomocou FLUENT API.
+   A. METHOD [PropertyBuilder<TProperty> PropertyBuilder<TProperty>.HasColumnName<TProperty>(string Name)] urcuje DB NAME DB COLUMN.
+   B. METHOD [PropertyBuilder<TProperty> PropertyBuilder<TProperty>.HasColumnType<TProperty>(string TypeName)] urcuje DB TYPE DB COLUMN.
+   C. METHOD [PropertyBuilder<TProperty> PropertyBuilder<TProperty>.IsRequired(bool Required)] oznaci DB COLUMN ako NOT NULL.
+   D. METHOD [PropertyBuilder<TProperty> PropertyBuilder<TProperty>.HasMaxLength(int MaxLength)] urcuje maximalnu dlzku DB COLUMN. Nastavenie sa aplikuje iba na ARRAY TYPES ako je STRING.
+   E. METHOD [PropertyBuilder<TProperty> PropertyBuilder<TProperty>.IsUnicode(bool Unicode)] nastavuje STRING DB COLUMN ci ma pouzivat UNICODE CHARACTERS.
+   F. METHOD [PropertyBuilder<TProperty> PropertyBuilder<TProperty>.HasPrecision(int Precision, int Scale)] urcuje PRECISION a SCALE DB COLUMN.
+   G. METHOD [PropertyBuilder<TProperty> PropertyBuilder<TProperty>.UseCollation<TProperty>(string? Collation)] urcuje COLLATION DB COLUMN.
+17. ENTITY FRAMEWORK CORE podporuje VALUE CONVERSIONS CLR TYPES na SQL TYPES. VALUE CONVERSIONS umoznuju vykonat napriklad ENCRYPTION-DECRYPTION vybranych COLUMNS ci mapovanie medzi ENUM TYPES a STRINGS. VALUE CONVERSIONS sa vykonavaju nasledujucim sposobom.
+   A. VALUE CONVERTERS su definovane ako instancie TYPE [ValueConverter<TModel,TProvider>], kde TYPE 'TModel' je CLR TYPE a TYPE 'TProvider' je DATABASE PROVIDER TYPE.
+   !!! B. VALUE CONVERTERS je mozne implementovat vytvorenim CUSTOM CLASS, ktora je zdedena z CLASS [ValueConverter<TModel,TProvider>].
+   C. VALUE CONVERTERS sa definuju pomocou FLUENT API.
+   !!! D. NULL VALUES nie su zasielane do VALUE CONVERTERS.
+   !!! E. VALUE CONVERTERS umoznuje mapovat 1 PROPERTY do 1 DB COLUMN.
+   !!!!! F. Po aplikovani VALUE CONVERTERS su VALUES v DB SORTED podla VALUE DB COLUMN.
+   !!! G. Pri definovani VALUE CONVERTERS je mozne definovat VALUE COMPARERS, ktore sa pouzivaju na COMPARISION VALUES pred CONVERSION.
+   H. VALUE CONVERTERS sa definuju pomocou METHOD [PropertyBuilder<TProperty> HasConversion<TProvider>(Expression<Func<TProperty,TProvider>> ConvertToProviderExpression, Expression<Func<TProvider,TProperty>> ConvertFromProviderExpression, ValueComparer ValueComparer)], kde PARAMETER 'ConvertToProviderExpression' definuje CONVERSION z CLR TYPE na SQL TYPE a PARAMETER 'ConvertFromProviderExpression' CONVERSION z SQL TYPE na CLR TYPE. OPTIONAL PARAMETER 'ValueComparer' umoznuje definovat VALUE COMPARER.
+   I. VALUE CONVERTERS sa definuju pomocou METHOD [PropertyBuilder<TProperty> HasConversion<TProvider>(ValueConverter<TProperty,TProvider> Converter, ValueComparer ValueComparer)], kde PARAMETER 'Converter' definuje CLASS vykonavajucu CONVERSION z CLR TYPE na SQL TYPE a CONVERSION z SQL TYPE na CLR TYPE a OPTIONAL PARAMETER 'ValueComparer' umoznuje definovat VALUE COMPARER.
+   !!! J. ENTITY FRAMEWORK CORE definuje viacero DEFAULT VALUE CONVERSIONS, ktore su zdedene z CLASS [ValueConverter<TProperty,TProvider>].
+18. PRIMARY KEYS v ENTITY CLASSES je mozne definovat nasledujucimi sposobmi.
+   A. Pouzitim CONVENTIONS.
+   B. Pouzitim DATA ANNOTATIONS.
+   C. Pouzitim FLUENT API.
+19. PRIMARY KEYS v ENTITY CLASSES je pomocou CONVENTIONS mozne definovat nasledujucimi sposobmi.
+   A. Ak ma ENTITY CLASS PROPERTY NAME 'Id', je automaticky povazovana za PRIMARY KEY.
+   B. Ak ma ENTITY CLASS PROPERTY NAME 'CLASS_NAMEId', kde VALUE 'CLASS_NAME' je nazov ENTITY CLASS, je automaticky povazovana za PRIMARY KEY.
+20. PRIMARY KEYS v ENTITY CLASSES je pomocou DATA ANNOTATIONS mozne definovat nasledujucimi sposobmi.
+   A. Na ENTITY CLASS PROPERTY sa aplikuje ATTRIBUTE [KeyAttribute]. Takato PROPERTY bude predstavovat PRIMARY KEY.
+   !!! B. Pomocou ATTRIBUTE [KeyAttribute] je mozne oznacit iba 1 PROPERTY ENTITY CLASS. To znamena, ze ATTRIBUTE NIE JE mozne pouzit na vytvaranie COMPOSITE PRIMARY KEYS.
+21. PRIMARY KEYS v ENTITY CLASSES je pomocou FLUENT API mozne definovat nasledujucimi sposobmi.
+   A. Volanim METHOD [KeyBuilder EntityTypeBuilder<TEntity>.HasKey(Expression<Func<TEntity,object>> KeyExpression)] je mozne definovat PROPERTY ENTITY CLASS, ktora bude vystupovat ako PRIMARY KEY PROPERTY.
+   !!! B. Volanim METHOD [KeyBuilder<TEntity> EntityTypeBuilder<TEntity>.HasKey(params string[] PropertyNames)] je mozne definovat nazvy PROPERTIES ENTITY CLASS, ktore budu vystupovat ako COMPOSITE PRIMARY KEY PROPERTIES v COMPOSITE PRIMARY KEY.
+22. ENTITY FRAMEWORK CORE podporuje KEYLESS ENTITY TYPES. Pre KEYLESS ENTITY TYPES platia nasledujuce vlastnosti.
+   A. KEYLESS ENTITY TYPES podobne ako ENTITY CLASSES mozu byt mapovane na RECORDS v DB.
+   !!! B. KEYLESS ENTITY TYPES na rozdiel od ENTITY CLASSES mozu byt IBA CITANE z DB. KEYLESS ENTITY TYPES NIKDY NEMOZU byt do DB ZAPISOVANE. To znaci, ze mozu figurovat IBA v QUERIES, a nikdy nie v INSERTS, UPDATES a DELETES.
+   C. KEYLESS ENTITY TYPES mozu byt mapovane aj na TABLES, ktore NEMAJU PRIMARY KEY.
+   !!! D. KEYLESS ENTITY TYPES NEMOZU figurovat ako PRINCIPAL END danej RELATIONSHIP.
+   E. KEYLESS ENTITY TYPES mozu mat NAVIGATION PROPERTIES, ktore su ENTITY CLASSES, ale NEMOZU mat NAVIGATION PROPERTIES, ktore su KEYLESS ENTITY TYPES.
+   !!! F. KEYLESS ENTITY TYPES je mozne mapovat na VIEWS.
+   !!! G. V DB CONTEXT CLASS sa k KEYLESS ENTITY TYPES pristupuje pomocou PROPERTY TYPE [DbSet<TEntity>].
+23. KEYLESS ENTITY CLASSES je mozne definovat nasledujucimi sposobmi.
+   A. BY DATA ANNOTATIONS oznacenim ENTITY CLASS ATTRIBUTE [KeylessAttribute].
+   B. BY FLUENT API volanim METHOD [EntityTypeBuilder<TEntity> EntityTypeBuilder<TEntity>.HasNoKey()].
+24. ENTITY FRAMEWORK CORE umoznuje vytvarat INDEXES nad DB TABLES. Pre vytvaranie INDEXES platia nasledujuce fakty.
+   A. INDEXES je mozne vytvarat pomocou DATA ANNOTATIONS a FLUENT API.
+   B. INDEXES je mozne vytvarat na 1 i viacerymi COLUMNS.
+   C. INDEXES mozu mat CUSTOM NAMES.
+   D. INDEXES mozu byt UNIQUE.
+   E. INDEXES mozu mat FILTERS. FILTER aplikovany na INDEX znamena, ze INDEX sa vytvori iba pre FILTERED RECORDS.
+   !!!!! F. INDEXES mozu byt aplikovane iba na STRING COLUMNS s FIXNOU DLZKOU. Na STRING DB COLUMN s NEOBMEDZENOU DLZKOU INDEXES NEMOZU byt APLIKOVANE.
+25. INDEXES sa pomocou DATA ANNOTATIONS vytvaraju nasledujucim sposobom.
+   A. DATA ANNOTATION ATTRIBUTE [IndexAttribute] sa aplikuje na ENTITY CLASS. V ATTRIBUTE sa definuje 1-N PROPERTIES, ktore budu tvorit INDEX.
+   B. DATA ANNOTATION ATTRIBUTE [IndexAttribute] umoznuje definovat INDEX NAME ako aj to ci je INDEX UNIQUE. INDEX NAME je zaroven aj DATABASE INDEX NAME.
+26. INDEXES sa pomocou FLUENT API vytvaraju nasledujucim sposobom.
+   A. Ak INDEX tvori 1 DB COLUMN, vytvara sa pomocou FLUENT API volanim METHOD [IndexBuilder<TEntity> EntityTypeBuilder<TEntity>.HasIndex(Expression<Func<TEntity,object>> IndexExpression, string Name)].
+   B. Ak INDEX tvori VIACERO DB COLUMNS, vytvara sa pomocou FLUENT API volanim METHOD [IndexBuilder<TEntity> EntityTypeBuilder<TEntity>.HasIndex(string[] PropertyNames, string Name)].
+   C. Pre INDEX je mozne pomocou FLUENT API nastavit DATABASE NAME volanim METHOD [IndexBuilder<TEntity> IndexBuilder<TEntity>.HasDatabaseName<TEntity>(string Name)].
+   !!! D. Okrem DATABASE NAME je mozne nastavit aj NAME pomocou METHOD [IndexBuilder<TEntity> EntityTypeBuilder<TEntity>.HasIndex(Expression<Func<TEntity,object>> IndexExpression, string Name)] a METHOD [IndexBuilder<TEntity> EntityTypeBuilder<TEntity>.HasIndex(string[] PropertyNames, string Name)]. NAME a DATABASE NAME su ROZDIELNE HODNOTY. NAME je ENTITY FRAMEWORK CORE NAME, kym DATABASE NAME je INDEX NAME ulozeny v DATABASE.
+   E. INDEX je mozne pomocou FLUENT API nastavit ako UNIQUE volanim METHOD [IndexBuilder<T> IndexBuilder<T>.IsUnique(bool Unique)].
+   F. Pre INDEX je mozne pomocou FLUENT API nastavit FILTER volanim METHOD [IndexBuilder<TEntity> IndexBuilder<TEntity>.HasFilter<TEntity>(string Sql)].
+27. ENTITY FRAMEWORK CORE umoznuje nastavit TABLE NAMES nasledujucimi sposobmi.
+   A. Pouzitim CONVENTIONS. Ak DB CONTEXT ma PROPERTY TYPE [DbSet<TEntity>], tak nazov TABLE je rovny nazvu PROPERTY. Ak DB CONTEXT nema PROPERTY TYPE [DbSet<TEntity>], nazov TABLE je rovny nazvu ENTITY CLASS.
+   B. Pouzitim DATA ANNOTATIONS. Na ENTITY CLASS sa aplikuje ATTRIBUTE [TableAttribute], ktory umoznuje nastavit nazov TABLE.
+   C. Pouzitim FLUENT API. Volanim METHOD [EntityTypeBuilder<TEntity> EntityTypeBuilder<TEntity>.ToTable<TEntity>(string Name)] sa nastavuje nazov TABLE.
+28. ENTITY FRAMEWORK CORE umoznuje nastavit TABLE SCHEMA NAMES nasledujucimi sposobmi.
+   A. Pouzitim CONVENTIONS. SCHEMA je ponechana na DB PROVIDER, aby ju nastavil. Je to preto, lebo niektore DB PROVIDERS NEPODPORUJU SCHEMAS.
+   B. Pouzitim DATA ANNOTATIONS. Na ENTITY CLASS sa aplikuje ATTRIBUTE [TableAttribute], ktory umoznuje nastavit nazov TABLE aj nazov SCHEMA.
+   C. Pouzitim FLUENT API. Volanim METHOD [EntityTypeBuilder<TEntity> EntityTypeBuilder<TEntity>.ToTable<TEntity>(string Name, string Schema)] sa nastavuje nazov SCHEMA.
+29. DEFAULT SCHEMA je mozne nastavit pomocou FLUENT API volanim METHOD [ModelBuilder ModelBuilder.HasDefaultSchema(string Schema)].
+30. ENTITY FRAMEWORK CORE umoznuje nastavit COLUMN NAMES nasledujucimi sposobmi.
+   A. Pouzitim CONVENTIONS. COLUMN NAME je rovny nazvu PROPERTY.
+   B. Pouzitim DATA ANNOTATIONS. Na PROPERTY ENTITY CLASS sa aplikuje ATTRIBUTE [ColumnAttribute], ktory umoznuje nastavit nazov COLUMN.
+   C. Pouzitim FLUENT API. Volanim METHOD [PropertyBuilder<TProperty> PropertyBuilder<TProperty>.HasColumnName<TProperty>(string Name)] sa nastavuje nazov COLUMN.
+!!! 31. ENTITY FRAMEWORK CORE umoznuje vytvorit nad ENTITY SETS QUERY FILTERS. Pre QUERY FILTERS platia nasledujuce fakty.
+   A. QUERY FILTERS su FILTERS, ktore su aplikovane na KAZDU QUERY, ktora je vykonavana voci danemu ENTITY SET.
+   B. QUERY FILTERS sa aplikuju volanim METHOD [EntityTypeBuilder<TEntity> HasQueryFilter(Expression<Func<TEntity,bool>> Filter)] na ENTITY SET pri jej vytvarani.
+   !!! C. QUERY FILTERS je mozne v QUERIES vypnut volanim METHOD [IQueryable<TEntity> IQueryable<TEntity>.IgnoreQueryFilters<TEntity>()].
+   !!! D. Typickym prikladom vyuzitia QUERY FILTERS je odfiltrovanie ITEMS, ktore maju nastaveny priznak, ze su DELETED. Pouzitie QUERY FILTERS zabezpeci, ze kazda QUERY nad tymto ENTITY SET bude ignorovat RECORDS, ktore maju nastaveny priznak, ze su DELETED.
+32. CLASS [DatabaseFacade] definuje pre kazdy DB PROVIDER EXTENSION METHODS [bool IsPROVIDER()], kde VALUE 'PROVIDER' je nazov DB PROVIDER. METHOD vracia informaciu ci sa dany DB PROVIDER aktualne pouziva.
+33. CLASS [DatabaseFacade] definuje pre kazdy DB PROVIDER EXTENSION METHODS [bool IsRelational()], ktora vracia informaciu ci DB PROVIDER je PROVIDER k RELATIONAL DB.
+34. ENTITY FRAMEWORK CORE umoznuje definovat SHADOW PROPERTIES. Pre SHADOW PROPERTIES platia nasledujuce fakty.
+   A. SHADOW PROPERTY je PROPERTY, ktora je sucastou ENTITY a ma COLUMN v DB, ale nema definovanu C# PROPERTY v ENTITY CLASS, ktora reprezentuje danu ENTITY.
+   !!! B. SHADOW PROPERTY sa definuje pouzitim FLUENT API. METHOD [PropertyBuilder<TProperty> EntityTypeBuilder.Property<TProperty>(string PropertyName)] umoznuje definovat SHADOW PROPERTY. Ak nazov PROPERTY sa NENACHADZA v ENTITY CLASS, potom ENTITY FRAMEWORK CORE definuje SHADOW PROPERTY a DB COLUMN v DB. Ak naopak sa tato PROPERTY nachadza v ENTITY CLASS, tak sa NEDEFINUJE SHADOW PROPERTY a pouzije sa tato PROPERTY na mapovanie do DB COLUMN.
+   !!!!! C. VALUES SHADOW PROPERTIES su ukladane v TRACKED ENTITY DATA, ktore su asociovane s kazdou instanciu ENTITY CLASS. Tato asociacia je vsak vykonana iba vtedy, pokial v QUERY NIE JE POUZITY LINQ OPERATOR [AsNoTracking]. V pripade, ze sa v QUERY LINQ OPERATOR [AsNoTracking] pouzije, VALUES SHADOW PROPERTIES su NEDOSTUPNE.
+   !!! D. Kedze SHADOW PROPERTIES NEMAJU v ENTITY CLASS definovane C# PROPERTIES, pristupovat k nim je mozne pomocou METHOD [PropertyEntry EntityEntry.Property(string PropertyName)]. CLASS [PropertyEntry] ma PROPERTY [PropertyEntry.CurrentValue] pomocou ktorej je mozne citat a zapisovat VALUES SHADOW PROPERTIES.
+   !!! E. V LINQ QUERIES je k SHADOW PROPERTIES mozne pristupovat pomocou METHOD [TProperty EF.Property<TProperty>(object Entity, string PropertyName)].
+   F. Nazov DB COLUMN na ktory je namapovana SHADOW PROPERTY je BY DEFAULT rovny nazvu SHADOW PROPERTY. To je mozne zmenit volanim METHOD [PropertyBuilder PropertyBuilder.HasColumnName(string Name)].
+35. BACKING FIELD je PRIVATE FIELD ENTITY CLASS, ktory je MAPPED ako COLUMN do DB TABLE.
+36. BACKING FIELDS je mozne definovat nasledujucimi sposobmi.
+   A. Pouzitim CONVENTIONS.
+   B. Pouzitim DATA ANNOTATIONS.
+   C. Pouzitim FLUENT API.
+37. BACKING FIELDS je mozne mapovat na ENTITY CLASS PROPERTIES BY CONVENTIONS ak ma BACKING FIELD spravne pomenovanu PROPERTY. ENTITY FRAMEWORK CORE aplikuje nasledujuce CONVENTIONS.
+   A. BACKING FIELD musi mat nazov '_PROPERTY_NAME', kde VALUE 'PROPERTY_NAME' je nazov PROPERTY.
+   B. BACKING FIELD musi mat nazov '_PROPERTY_NAME', kde VALUE 'PROPERTY_NAME' je nazov PROPERTY v CAMEL CASE.
+   C. BACKING FIELD musi mat nazov 'm_PROPERTY_NAME', kde VALUE 'PROPERTY_NAME' je nazov PROPERTY.
+   D. BACKING FIELD musi mat nazov 'm_PROPERTY_NAME', kde VALUE 'PROPERTY_NAME' je nazov PROPERTY v CAMEL CASE.
+38. BACKING FIELDS je mozne definovat pomocou DATA ANNOTATIONS.
+   A. Na PROPERTY, ktora je asociovana s BACKING FIELD sa aplikuje ATTRIBUTE [BackingFieldAttribute]. V ATTRIBUTE [BackingFieldAttribute] sa definuje nazov BACKING FIELD.
+   B. K BACKING FIELD je mozne pristupovat pomocou PROPERTIES ci METHODS, pricom PROPERTIES nemusia splnat NAMING CONVENTIONS pre BACKING FIELDS definovane pomocou CONVENTIONS.
+39. BACKING FIELDS je mozne mapovat na ENTITY PROPERTIES pouzitim FLUENT API. Definovanie BACKING FIELDS je mozne nasledujucimi sposobmi.
+   A. Mapovanim ENTITY PROPERTY na C# PROPERTY ENTITY CLASS, ktora pouziva BACKING FIELD.
+   B. Mapovanim ENTITY PROPERTY na C# FIELD ENTITY CLASS.
+40. Mapovanie ENTITY PROPERTY na C# PROPERTY ENTITY CLASS, ktora pouziva BACKING FIELD sa vykonava v nasledujucich krokoch.
+   A. Volanim METHOD [PropertyBuilder<TProperty> EntityTypeBuilder<TEntity>.Property<TProperty>(Expression<Func<TEntity,TProperty>> PropertyExpression) sa namapuje C# PROPERTY na ENTITY PROPERTY. Vdaka mapovaniu vytvori ENTITY FRAMEWORK CORE novy COLUMN v DB TABLE.
+   B. Volanim METHOD [PropertyBuilder<TProperty> EntityTypeBuilder<TEntity>.HasField(string FieldName)] sa danej ENTITY PROPERTY priradi BACKING FIELD. BACKING FIELD je C# FIELD ENTITY CLASS.
+   C. Volanim METHOD [PropertyBuilder<TProperty> PropertyBuilder<TProperty>.HasColumnName<TProperty>(string Name)] je mozne nastavit nazov DB COLUMN do ktoreho bude BACKING FIELD ukladana.
+41. Mapovanie ENTITY PROPERTY na C# FIELD ENTITY CLASS sa vykonava v nasledujucich krokoch.
+   A. Volanim METHOD [PropertyBuilder EntityTypeBuilder.Property(string PropertyName)], ktora ako PARAMETER ma nazov C# FIELD v ENTITY CLASS. Z C# FIELD sa tak stava BACKING FIELD.
+   B. Volanim METHOD [PropertyBuilder<TProperty> PropertyBuilder<TProperty>.HasColumnName<TProperty>(string Name)] je mozne nastavit nazov DB COLUMN do ktoreho bude BACKING FIELD ukladana.
+42. Ak ENTITY CLASS ma definovanu C# PROPERTY, ktora NEMA definovany SETTER, potom BY-DEFAULT tato C# PROPERTY NIE je mapovana na ENTITY PROPERTY a tym padom ani nie je ulozena do DB TABLE. Toto obmedzenie je mozne obist pouzitim BACKING FIELDS.
+   A. Volanim METHOD [PropertyBuilder<TProperty> EntityTypeBuilder<TEntity>.Property<TProperty>(Expression<Func<TEntity,TProperty>> PropertyExpression) sa namapuje C# PROPERTY na ENTITY PROPERTY.
+   B. Volanim METHOD [PropertyBuilder<TProperty> EntityTypeBuilder<TEntity>.HasField(string FieldName)] sa danej ENTITY PROPERTY priradi BACKING FIELD.
+   !!! C. ENTITY FRAMEWORK CORE pri zapise do VALUES do ENTITY PROPERTY pouzije PRIAMY ZAPIS do FIELD, kedze SETTER C# PROPERTY NIE je definovany.
+43. ENTITY FRAMEWORK CORE umoznuje pre ENTITY PROPERTIES pomocou METHOD [PropertyBuilder<TProperty> PropertyBuilder<TProperty>.UsePropertyAccessMode(PropertyAccessMode PropertyAccessMode)] definovat akym sposobom ma ENTITY FRAMEWORK CORE pristupovat k ENTITY PROPERTIES, ktore maju definovane BACKING FIELDS.
+   A. VALUE [PropertyAccessMode.Field] znamena, ze ENTITY FRAMEWORK CORE pri pristupe k ENTITY PROPERTY nikdy nevyuzije C# PROPERTY GETTERS a SETTERS, ale priamo pristupuje k BACKING FIELDS.
+   B. VALUE [PropertyAccessMode.FieldDuringConstruction] znamena, ze ENTITY FRAMEWORK CORE pri vytvarani novej instancie ENTITY CLASS pri pristupe k ENTITY PROPERTY nevyuziju C# PROPERTY GETTERS a SETTERS, ale priamo pristupuje k C# FIELD. Pri ostatnych pristupoch sa vyuzivaju C# PROPERTY GETTERS a SETTERS.
+   C. VALUE [PropertyAccessMode.Property] znamena, ze ENTITY FRAMEWORK CORE pri pristupe k ENTITY PROPERTY vzdy vyuzije C# PROPERTY GETTERS a SETTERS.
+   D. VALUE [PropertyAccessMode.PreferField] znamena, ze ENTITY FRAMEWORK CORE pri pristupe k ENTITY PROPERTY nikdy nevyuzije C# PROPERTY GETTERS a SETTERS, ale priamo pristupuje k C# FIELD. Vynimkou je situacia ak BACKING FIELD NIE je znamy, kedy sa vyuzivaju C# PROPERTY GETTERS a SETTERS.
+   E. VALUE [PropertyAccessMode.PreferFieldDuringConstruction] znamena, ze ENTITY FRAMEWORK CORE pri vytvarani novej instancie ENTITY CLASS pri pristupe k ENTITY PROPERTY nevyuziju C# PROPERTY GETTERS a SETTERS, ale priamo pristupuje k C# FIELD. Pri ostatnych pristupoch sa vyuzivaju C# PROPERTY GETTERS a SETTERS. Vynimkou je situacia ak BACKING FIELD NIE je znamy, kedy sa vyuzivaju C# PROPERTY GETTERS a SETTERS.
+   F. VALUE [PropertyAccessMode.PreferProperty] znamena, ze ENTITY FRAMEWORK CORE pri pristupe k ENTITY PROPERTY vzdy vyuzije C# PROPERTY GETTERS a SETTERS. Vynimkou je situacia ak BACKING FIELD NIE je znamy, kedy sa vyuzivaju C# PROPERTY GETTERS a SETTERS.
+!!! 44. ENTITY FRAMEWORK CORE umoznuje automatizovat modifikacie ENTITY MODEL pomocou FLUENT API. To umoznuje vytvorit si CUSTOM CONVENCTIONS, ktore ak ENTITY CLASSES dodrziavaju, tak sa na nich aplikuju prislusne casti FLUENT API. CUSTOM CONVENCTIONS sa vytvaraju nasledovnym sposobom.
+   A. V METHOD [void OnModelCreating(ModelBuilder ModelBuilder)] DB CONTEXT je mozne pomocou PROPERTY [ModelBuilder.Model] ziskat INTERFACE [IMutableModel].
+   B. INTERFACE [IMutableModel] umoznuje kompletnu kontrolu nad modifikaciou MODEL pomocou FLUENT API. Vdaka tomuto INTERFACE je mozne modifikovat MODEL na zaklade CUSTOM CONVENTIONS.
+//----------------------------------------------------------------------------------------------------------------------

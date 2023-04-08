@@ -1,0 +1,1 @@
+dotnet ef migrations script --context CDBContext -o Script.sql -- PARAMETER_1 PARAMETER_2 PARAMETER_3

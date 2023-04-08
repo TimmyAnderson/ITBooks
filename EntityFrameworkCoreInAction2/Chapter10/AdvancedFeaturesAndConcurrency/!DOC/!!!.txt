@@ -1,0 +1,117 @@
+//----------------------------------------------------------------------------------------------------------------------
+1. Solution demonstruje ADVANCED FEATURES a riesenie CONCURRENCY CONFLICTS v ENTITY FRAMEWORK CORE.
+2. ENTITY FRAMEWORK CORE podporuje pouzivanie USER DEFINED FUNCTIONS (UDF). Pre USER DEFINED FUNCTIONS platia nasledujuce fakty.
+   A. USER DEFINED FUNCTIONS obsahuju CODE, ktory sa vykonava na DB SERVER.
+   !!! B. Na rozdiel od STORED PROCEDURES, USER DEFINED FUNCTIONS nikdy NEMODIFIKUJU DB a obsahuju IBA QUERIES.
+   !!! C. USER DEFINED FUNCTIONS je mozne volat v QUERIES.
+3. ENTITY FRAMEWORK CORE podporuje nasledujuce typy USER DEFINED FUNCTIONS.
+   A. SCALAR VALUED FUNCTIONS vracaju SCALAR VALUES.
+   B. TABLE VALUED FUNCTIONS, ked vracaju RESULT SET obsahujuci DB RECORDS.
+4. SCALAR VALUED FUNCTIONS sa definuju nasledujucim sposobom.
+   A. Definuje sa DUMMY C# METHOD, ktora ma rovnaky NAME a PROTOTYPE ako USER DEFINED FUNCTION. Tato C# METHOD NEOBSAHUJE ZIADEN CODE, pretoze tento CODE sa aj tak nevola. Sluzi iba ako PLACEHOLDER na pouzitie v LINQ QUERIES.
+   !!!!! B. C# METHOD sa oznaci ako USER DEFINED FUNCTION bud pomocou DATA ANNOTATIONS ATTRIBUTE [DbFunctionAttribute], alebo pomocou FLUENT API METHOD [DbFunctionBuilder ModelBuilder.HasDbFunction<TResult>(Expression<Func<TResult>> Expression)]. Toto nastavenie znamena, ze ak sa METHOD objavi v QUERY ako PLACEHOLDER, ENTITY FRAMEWORK CORE tento PLACEHOLDER nahradi za volanie USER DEFINED FUNCTION na DB SERVERI.
+   C. V DATABASE je nutne vytvorit USER DEFINED FUNCTION, ktora ma rovnaky NAME a PROTOTYPE ako USER DEFINED FUNCTION definovana pomocou ENTITY FRAMEWORK CORE.
+   !!! D. USER DEFINED FUNCTION je nasledne mozne pouzit v LINQ QUERIES. Je ju mozne pouzit v LINQ OPERATORS ako napriklad LINQ OPERATOR [Where] ci LINQ OPERATOR [Select]. CODE USER DEFINED FUNCTION sa vykona na DB SERVERI.
+5. TABLED VALUED FUNCTIONS sa definuju nasledujucim sposobom.
+   A. V DB CONTEXT CLASS sa definuje C# METHODS, ktora rovnaky PROTOTYPE ako USER DEFINED FUNCTION. METHOD MUSI vracat instanciu INTERFACE [IQueryable<TEntity>], kde TYPE 'TEntity' reprezentuje ENTITY nad ktorou vykonava USER DEFINED FUNCTION QUERY.
+   !!!!! B. METHOD vo svojom CODE vola METHOD [IQueryable<TResult> DbContext.FromExpression<TResult>(Expression<Func<IQueryable<TResult>>> Expression)], pomocou ktore sa vola C# METHOD zadefinovana v predchadzajucom kroku. METHOD [IQueryable<TResult> DbContext.FromExpression<TResult>(Expression<Func<IQueryable<TResult>>> Expression)] vracia instanciu INTERFACE [IQueryable<TEntity>], kde TYPE 'TEntity' reprezentuje ENTITY nad ktorou vykonava USER DEFINED FUNCTION QUERY.
+   !!!!! C. C# METHOD sa oznaci ako USER DEFINED FUNCTION bud pomocou DATA ANNOTATIONS ATTRIBUTE [DbFunctionAttribute], alebo pomocou FLUENT API METHOD [DbFunctionBuilder ModelBuilder.HasDbFunction<TResult>(Expression<Func<TResult>> Expression)]. Toto nastavenie znamena, ze ak sa METHOD objavi v QUERY ako PLACEHOLDER, ENTITY FRAMEWORK CORE tento PLACEHOLDER nahradi za volanie USER DEFINED FUNCTION na DB SERVERI.
+   D. V DATABASE je nutne vytvorit USER DEFINED FUNCTION, ktora ma rovnaky NAME a PROTOTYPE ako USER DEFINED FUNCTION definovana pomocou ENTITY FRAMEWORK CORE.
+   !!! E. USER DEFINED FUNCTION je nasledne mozne pouzit v LINQ QUERIES. CODE USER DEFINED FUNCTION sa vykona na DB SERVERI.
+!!!!! 6. SQLITE podporuje SCALAR VALUED FUNCTIONS, ale NEPODPORUJE TABLE VALUED FUNCTION. SCALAR VALUED FUNCTIONS sa v SQLITE definuju nasledujucim sposobom.
+   A. V SQLITE sa USER DEFINED FUNCTIONS NEDEFINUJU na DB SERVERI, kedze SQLITE NEMA DB SERVER, ale bezi v HOSTING PROCESS. SQLITE PODPORUJE SCALAR VALUED FUNCTIONS, ale tie su vykonavane na CLIENT SIDE.
+   B. Kedze USER DEFINED FUNCTIONS FUNCTIONS NIE su ulozene v DB, ale iba v ramci beziacej DB CONNECTION, je ich treba pred kazdym pouzitim ZNOVA DEFINOVAT.
+   !!! C. USER DEFINED FUNCTIONS FUNCTIONS sa NEDEFINUJU pomocou SQL COMMANDS ako napriklad v SQL SERVER, ale pomocou METHOD [void SqliteConnection.CreateFunction<T1,T2,TResult>(string Name, Func<T1,T2,TResult> Function, bool IsDeterministic)]. CLASS [SqliteConnection] podporuje OVERLOADED METHODS pre rozlicny pocet PARAMETERS.
+7. ENTITY FRAMEWORK CORE podporuje COMPUTED COLUMNS. Pre COMPUTED COLUMNS platia nasledujuce fakty.
+   A. COMPUTED COLUMN je COLUMN, ktoreho VALUE je COMPUTED na DB SERVERI.
+   B. VALUE COMPUTED COLUMN moze byt trvalo ulozena v DB TABLE, alebo sa moze vypocitavat pre kazdu QUERY.
+   C. COMPUTED COLUMN je VZDY READ ONLY, pretoze je COMPUTED na DB SERVERI.
+   D. Nad COMPUTED COLUMNS je mozne pouzivat USER DEFINED FUNCTIONS.
+8. ENTITY FRAMEWORK CORE podporuje nasledujuce typy COMPUTED COLUMNS.
+   A. DYNAMIC COMPUTED COLUMNS su COLUMNS, ktorych VALUE NIE JE ulozena v DB TABLES, ale je vypocitavana pri kazdej QUERY.
+   B. PERSISTED COMPUTED COLUMNS su COLUMNS, ktorych VALUE je ulozena v DB TABLE a pri kazdom UPDATE daneho RECORD je VALUE opat prepocitana a ulozena do DB TABLE.
+9. ENTITY FRAMEWORK CORE definuje COMPUTED COLUMNS nasledujucich krokoch.
+   A. V ENTITY CLASS sa definuje READ ONLY C# PROPERTY, ktora reprezentuje COMPUTED COLUMN.
+   B. Pomocou FLUENT API sa volanim METHOD [PropertyBuilder<TProperty> EntityTypeBuilder.Property<TProperty>(string PropertyName)] ziska REFERENCE na PROPERTY reprezentujucu COMPUTED COLUMN.
+   !!! C. Pomocou FLUENT API METHOD [PropertyBuilder PropertyBuilder.HasComputedColumnSql(string Sql, bool Stored)] sa definuje SQL EXPRESSION, ktora sa ma pouzit pri vypocte COMPUTED COLUMN. PARAMETER 'Stored' urcuje ci sa jedna o DYNAMIC COMPUTED COLUMN, alebo o PERSISTED COMPUTED COLUMN.
+   !!! D. ENTITY FRAMEWORK CORE pri kazdom QUERY vycitava VALUES DYNAMIC COMPUTED COLUMNS.
+   !!! E. ENTITY FRAMEWORK CORE pri kazdom INSERT, alebo UPDATE vycitava VALUES PERSISTED COMPUTED COLUMNS, pretoze sa mohli zmenit.
+10. ENTITY FRAMEWORK CORE umoznuje definovat pre ENTITY PROPERTIES definovat DEFAULT VALUES. Pre DEFAULT VALUES platia nasledujuce fakty.
+   A. DEFAULT VALUES sa aplikuju iba vtedy ak je vytvarana nova ENTITY, nie ked je robeny UPDATE existujucej ENTITY.
+   B. DEFAULT VALUES sa mozu aplikovat na ENTITY PROPERTIES, ENTITY FIELDS i ENTITY BACKING FIELDS.
+   C. DEFAULT VALUES sa aplikuju IBA na SCALAR PROPERTIES, nie na NAVIGATIONAL PROPERTIES.
+   !!! D. DEFAULT VALUES sa nastavuju az po zapise ENTITY do DATABASE. To znamena, ze su nastavene AZ po volani METHOD [int DbContext.SaveChanges()].
+   !!! E. DEFAULT VALUES su aplikovane iba ak dana PROPERTY je nastavena na svoju DEFAULT CLR VALUE.
+11. DEFAULT VALUES sa v ENTITY FRAMEWORK CORE nastavuju nasledujucimi sposobmi.
+   A. DEFAULT VALUE je sucastou COLUMN DEFINITION, ktora sa aplikuje pri pridavani noveho RECORD do DATABASE.
+   B. DEFAULT VALUE je vo forme SQL COMMAND sucastou COLUMN DEFINITION, ktora sa aplikuje pri pridavani noveho RECORD do DATABASE.
+   C. DEFAULT VALUE je dynamicky generovana na CLIENT SIDE predtym ako je nova ENTITY zapisana do DATABASE pomocou CLASS, ktora je DERIVED z CLASS [ValueGenerator<TType>].
+12. Pre generovanie DEFAULT VALUES kde DEFAULT VALUE je sucastou COLUMN DEFINITION platia nasledujuce fakty.
+   A. DEFAULT VALUE je generovana pri INSERT na SERVER SIDE.
+   B. DEFAULT VALUE pre danu PROPERTY sa nastavuje volanim FLUENT API METHOD [PropertyBuilder<TProperty> PropertyBuilder<TProperty>.HasDefaultValue<TProperty>(object Value)].
+   !!! C. ENTITY FRAMEWORK CORE prelozi VALUE, ktora bola definovana pomocou METHOD [PropertyBuilder<TProperty> PropertyBuilder<TProperty>.HasDefaultValue<TProperty>(object Value)] na SQL COLUMN CONSTRAINT, ktory je sucastou TABLE DEFINITION.
+13. Pre generovanie DEFAULT VALUES kde DEFAULT VALUE je vo forme SQL COMMAND sucastou COLUMN DEFINITION platia nasledujuce fakty.
+   A. DEFAULT VALUE je generovana pri INSERT na SERVER SIDE.
+   B. DEFAULT VALUE pre danu PROPERTY sa nastavuje volanim FLUENT API METHOD [PropertyBuilder<TProperty> PropertyBuilder<TProperty>.HasDefaultValueSql<TProperty>(string Sql)].
+   !!! C. ENTITY FRAMEWORK CORE SQL COMMAND, ktory bol definovany pomocou METHOD [PropertyBuilder<TProperty> PropertyBuilder<TProperty>.HasDefaultValueSql<TProperty>(string Sql)] ulozi ako SQL COLUMN CONSTRAINT, ktory je sucastou TABLE DEFINITION.
+14. Pre generovanie DEFAULT VALUES pomocou CLASS, ktora je DERIVED z CLASS [ValueGenerator<TType>] platia nasledujuce fakty.
+   A. DEFAULT VALUE je generovana pri INSERT na CLIENT SIDE.
+   B. DEFAULT VALUE je generovana pomocou CLASS, ktora je DERIVED z CLASS [ValueGenerator<TType>]. Tuto CLASS je nutne explicitne definovat.
+   C. VALUE GENERATOR pre danu PROPERTY sa nastavuje volanim FLUENT API METHOD [PropertyBuilder<TProperty> PropertyBuilder<TProperty>.HasValueGenerator(Type ValueGeneratorType)].
+15. ENTITY FRAMEWORK CORE umoznuje vytvarat SEQUENCE PROPERTIES. SEQUENCE PROPERTY je PROPERTY, ktorej VALUE je AUTOMATICKY inkrementovana pri INSERT novej ENTITY. SEQUENCES su asociovane s DATABASE SCHEMA, a nie konkretnym COLUMN ci DATABASE. SEQUENCE PROPERTIES je mozne vytvarat pomocou FLUENT API nasledujucim sposobom.
+   !!! A. METHOD [SequenceBuilder ModelBuilder.HasSequence(string Name, string Schema)] vytvara v SCHEMA novu SEQUENCE.
+   B. METHOD [SequenceBuilder SequenceBuilder.StartsAt(long StartValue)] umoznuje nastavit pociatocnu VALUE danej SEQUENCE.
+   C. METHOD [SequenceBuilder SequenceBuilder.IncrementsBy(int Increment)] umoznuje nastavit INCREMENT danej SEQUENCE.
+   D. Na PROPERTY je NUTNE nastavit SQL SPECIFIC DEFAULT VALUE, ktora pouziva SEQUENCE vytvorenu v danej SCHEMA.
+!!! 16. SEQUENCES NIE su podporovane SQLITE.
+!!! 17. ENTITY FRAMEWORK CORE umoznuje explicitne nastavovat ci PROPERTIES danej ENTITY su generovane v DATABASE. DATABASE moze generovat VALUES pri INSERT ci UPDATE napriklad pomocou DEFAULT VALUE, COMPUTED VALUE ci IDENTITY. EXPLICITNE nastavenie ci dana PROPERTY je generovana v DATABASE NIE JE NUTNE, ak je DATABASE vytvarana pomocou MIGRATIONS, pretoze v takom pripade ENTITY FRAMEWORK CORE explicitne vie ktore PROPERTIES danej ENTITY su generovane priamo v DATABASE.
+18. Explicitne nastavovanie ci PROPERTIES danej ENTITY su generovane v DATABASE je mozne vykonat nasledujucimi sposobmi.
+   A. Pomocou DATA ANNOTATIONS.
+   B. Pomocou FLUENT API.
+19. Explicitne nastavovanie ci PROPERTIES danej ENTITY su generovane v DATABASE pomocou DATA ANNOTATIONS je realizovane prostrednictvom ATTRIBUTE [DatabaseGeneratedAttribute], ktory je aplikovany na C# PROPERTY reprezentujucu danu ENTITY PROPERTY. Pomocou ATTRIBUTE [DatabaseGeneratedAttribute] sa nastavuje VALUE TYPE [DatabaseGeneratedOption], ktory moze nadobudat nasledujuce VALUES.
+   A. VALUE [None] znamena, ze COLUMN VALUE nie je generovany v DATABASE.
+   B. VALUE [Identity] znamena, ze COLUMN VALUE je generovany v DATABASE pri INSERT daneho RECORD.
+   C. VALUE [Computed] znamena, ze COLUMN VALUE je generovany v DATABASE pri INSERT a UPDATE daneho RECORD.
+20. Explicitne nastavovanie ci PROPERTIES danej ENTITY su generovane v DATABASE pomocou FLUENT API sa realizuje volanim nasledujucich METHODS.
+   A. METHOD [PropertyBuilder<TProperty> PropertyBuilder<TProperty>.ValueGeneratedNever()] oznaci PROPERTY ako PROPERTY, ktorej VALUE nie je NIKDY generovane v DATABASE.
+   B. METHOD [PropertyBuilder<TProperty> PropertyBuilder<TProperty>.ValueGeneratedOnAdd()] oznaci PROPERTY ako PROPERTY, ktorej VALUE je generovana pri INSERT.
+   C. METHOD [PropertyBuilder<TProperty> PropertyBuilder<TProperty>.ValueGeneratedOnAddOrUpdate()] oznaci PROPERTY ako PROPERTY, ktorej VALUE je generovana pri INSERT, alebo UPDATE.
+   D. METHOD [PropertyBuilder<TProperty> PropertyBuilder<TProperty>.ValueGeneratedOnUpdate()] oznaci PROPERTY ako PROPERTY, ktorej VALUE je generovana pri UPDATE.
+21. ENTITY FRAMEWORK CORE BY DEFAULT implementuje OPTIMISTIC CONCURRENCY. To znamena, ze pri vzniku CONCURRENCY CONDITION plati, ze LAST WRITE WINS.
+22. CONCURRENCY CONFLITS je mozne riesit v ENTITY FRAMEWORK nasledujucimi sposobmi.
+   A. Pomocou CONCURRENCY TOKENS.
+   B. Pomocou TIMESTAMPS.
+23. Riesenie CONCURRENCY CONFLICTS pomocou CONCURRENCY TOKENS sa realizuje pomocou nasledujucich krokov.
+   A. Jeden, alebo viacero PROPERTIES danej ENTITY sa oznaci ako CONCURRENCY TOKENS.
+   B. Pri nacitani ENTITY z DATABASE, ENTITY FRAMEWORK CORE si ulozi ORIGINAL VALUES vsetkych CONCURRENCY TOKEN PROPERTIES.
+   !!! C. Pri vykonani UPDATE je NEVYHNUTNE, aby bola VZDY zmenena aj VALUE aspon jednej CONCURRENCY TOKEN PROPERTY, inak ENTITY FRAMEWORK CORE NEBUDE schopny detekovat CONCURRENCY CONFLICT.
+   D. Pri vykonavani UPDATE danej ENTITY, ENTITY FRAMEWORK CORE generuje UPDATE COMMAND, ktory vo WHERE CLAUSE porovnava ORIGINAL VALUES CONCURRENCY TOKEN PROPERTIES s CURRENT VALUES CONCURRENCY TOKEN PROPERTIES.
+   E. V pripade, ze UPDATE COMMAND modifikuje 1 RECORD, znamena to, ze VALUES CONCURRENCY TOKEN PROPERTIES neboli modifikovane inym UPDATE a teda NEDOSLO k vzniku CONCURRENCY CONFLICT. UPDATE je tym padom uspesne vykonany.
+   !!! F. V pripade, ze UPDATE COMMAND nemodifikuje ziaden RECORD, znamena to, ze VALUES CONCURRENCY TOKEN PROPERTIES boli modifikovane inym UPDATE a v takom pripade ENTITY FRAMEWORK CORE hodi EXCEPTION [DbUpdateConcurrencyException].
+24. Nastavenie ENTITY PROPERTIES ako CONCURRENCY TOKENS je mozne realizovat nasledujucimi sposobmi.
+   A. BY DATA ANNOTATIONS. Na kazdu PROPERTY, ktora reprezentuje CONCURRENCY TOKEN sa aplikuje ATTRIBUTE [ConcurrencyCheckAttribute].
+   B. BY FLUENT API. Pre kazdu PROPERTY sa zavola METHOD [PropertyBuilder<TProperty> PropertyBuilder<TProperty>.IsConcurrencyToken(bool ConcurrencyToken)], ktora oznaci PROPERTY za CONCURRENCY TOKEN.
+25. Riesenie CONCURRENCY CONFLICTS pomocou TIMESTAMPS sa realizuje pomocou nasledujucich krokov.
+   A. Do ENTITY sa prida PROPERTY, ktora sa oznaci ako TIMESTAMP. TYPE tejto PROPERTY je DATABASE PROVIDER SPECIFIC. V SQL SERVER je to TYPE [byte[]].
+   B. Pri nacitanii ENTITY z DATABASE, ENTITY FRAMEWORK CORE si ulozi ORIGINAL VALUE TIMESTAMP PROPERTY.
+   !!! C. Pri vykonani UPDATE je AUTOMATICKY v DATABASE modifikovana VALUE TIMESTAMP PROPERTY.
+   D. Pri vykonavani UPDATE danej ENTITY, ENTITY FRAMEWORK CORE generuje UPDATE COMMAND, ktory vo WHERE CLAUSE porovnava ORIGINAL VALUE TIMESTAMP PROPERTY s CURRENT VALUE TIMESTAMP PROPERTY.
+   E. V pripade, ze UPDATE COMMAND modifikuje 1 RECORD, znamena to, ze VALUE TIMESTAMP PROPERTY nebola modifikovana inym UPDATE a teda NEDOSLO k vzniku CONCURRENCY CONFLICT. UPDATE je tym padom uspesne vykonany.
+   !!! F. V pripade, ze UPDATE COMMAND nemodifikuje ziaden RECORD, znamena to, ze VALUE TIMESTAMP PROPERTY bola modifikovana inym UPDATE a v takom pripade ENTITY FRAMEWORK CORE hodi EXCEPTION [DbUpdateConcurrencyException].
+26. Nastavenie ENTITY PROPERTY ako TIMESTAMP je mozne realizovat nasledujucimi sposobmi.
+   A. BY DATA ANNOTATIONS. Na TIMESTAMP PROPERTY sa aplikuje ATTRIBUTE [TimestampAttribute].
+   B. BY FLUENT API. Pre TIMESTAMP PROPERTY sa zavola METHOD [PropertyBuilder<TProperty> PropertyBuilder<TProperty>.IsRowVersion()], ktora oznaci PROPERTY za TIMESTAMP PROPERTY.
+!!!!! 27. SQLITE NEPODPORUJE TIMESTAMPS. Pre testovanie TIMESTAMPS je NUTNE pouzit SQL SERVER.
+!!! 28. Vyhoda CONCURRENCY TOKENS oproti TIMESTAMPS spociva v tom, ze CONCURRENCY TOKENS nevyzaduju ziadnu specialnu podporu zo strany DATABASES, pretoze vyuzivaju iba WHERE CLAUSE UPDATE COMMAND. Naopak, TIMESTAMPS vyzaduju specialnu podporu zo strany DATABASES.
+!!! 29. Nevyhoda CONCURRENCY TOKENS oproti TIMESTAMPS spociva v tom, ze CONCURRENCY TOKENS funguju iba ak sa MANUALNE pri kazdej zmene lubovolneho COLUMN zmeni zaroven aj VALUE aspon jednej CONCURRENCY TOKEN PROPERTY. Ak k tomu nedojde, ENTITY FRAMEWORK CORE NIE JE schopna zachytit vznik CONCURRENCY CONFLICTS, pretoze sa ziadna z VALUES CONCURRENCY TOKEN PROPERTIES nezmenila. Pri TIMESTAMPS su ich VALUES AUTOMATICKY menene DATABASE pri zmene VALUE lubovolneho COLUMN. Tym padom je kazda zmena kazdeho COLUMN detekovana.
+!!!!! 30. ENTITY FRAMEWORK CORE vykonava detekciu CONCURRENCY CONFLICTS aj pri DELETE. To znamena, ze ak sa CODE pokusi vykonat UPDATE, alebo DELETE ENTITY, ktora bola v inom THREAD uz DELETED, tak dojde k vzniku EXCEPTION [DbUpdateConcurrencyException].
+31. EXCEPTION CLASS [DbUpdateConcurrencyException] obsahuje PROPERTY [IReadOnlyList<EntityEntry> Entries], ktora obsahuje vsetky ENTITIES, ktore sposobili CONCURRENCY CONFLICTS. Tieto ENTITIES je mozne pouzit na opravu CONCURRENCY CONFLICTS.
+32. LONG TERM CONCURRENCY CONFLICTS, ktore vznikaju vtedy ako sa ENTITY je READ v jednom DB CONTEXT a UPDATE je vykonany v inom DB CONTEXT. Riesenie LONG TERM CONCURRENCY CONFLICTS sa realizuje v nasledujucich krokoch.
+   A. ENTITY sa nacita v 1. DB CONTEXT a zobrazi sa USER.
+   B. USER vykona modifikaciu ENTITY a vyziada si jej UPDATE.
+   C. V 2. DB CONTEXT sa nacita ENTITY z DATABASE.
+   !!!!! D. Pred vykonanim samotneho UPDATE je NUTNE nastavit ORIGINAL VALUES vsetkych CONCURRENCY TOKEN PROPERTIES (TIMESTAMP PROPERTY) na VALUES, ktore boli nacitane pocas citania ENTITY z 1. DB CONTEXT.
+   !!! E. Pri UPDATE ENTITY FRAMEWORK CORE zasle UPDATE COMMAND, ktory ma WHERE CLAUSE, ktora testuje ci RECORD v DATABASE obsahuje tie iste VALUES vsetkych CONCURRENCY TOKEN PROPERTIES (TIMESTAMP PROPERTY) ako boli nacitane pocas citania ENTITY z 1. DB CONTEXT.
+   !!!!! F. V pripade, ze dojde k modifikacii RECORD v DATABASE, znamena to, ze nedoslo k vzniku CONCURRENCY CONFLICT a tym padom UPDATE prebehne uspesne.
+   !!!!! G. V pripade, ze NEDOJDE k modifikacii RECORD v DATABASE, znamena to, ze doslo k vzniku CONCURRENCY CONFLICT a ENTITY FRAMEWORK CORE generuje EXCEPTION [DbUpdateConcurrencyException].
+//----------------------------------------------------------------------------------------------------------------------

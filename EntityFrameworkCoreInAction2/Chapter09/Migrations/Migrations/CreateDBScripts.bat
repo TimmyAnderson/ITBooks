@@ -1,0 +1,1 @@
+dotnet ef migrations script --context CDBContext -o Script.sql

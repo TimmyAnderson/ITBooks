@@ -1,0 +1,50 @@
+//----------------------------------------------------------------------------------------------------------------------
+1. Solution popisuje zakladne vlastnosti ENTITY FRAMEWORK.
+2. ENTITY FRAMEWORK CORE je OBJECT RELATION MAPPER LIBRARY, ktora umoznuje mapovanie C# OBJECTS na DB RECORDS. ENTITY FRAMEWORK CORE umoznuje citat data z DB a transformovat ich na C# OBJECTS a opacne zapisovat C# OBJECTS do DB.
+!!! 3. ENTITY FRAMEWORK CORE umoznuje pracovat nad RELATIONAL DB, aj NON-RELATIONAL DB.
+4. ENTITY FRAMEWORK CORE je postavena nad .NET CORE co znamena, ze LIBRARY moze bezat nielen nad WINDOWS, ale aj nad LINUX ci APPLE OS.
+5. ENTITY FRAMEWORK CORE vyzaduje nasledujuce NUGET PACKAGES.
+   A. PACKAGE [Microsoft.EntityFrameworkCore] obsahuje zakladnu ENTITY FRAMEWORK CORE LIBRARY.
+   B. PACKAGE [Microsoft.EntityFrameworkCore.Sqlite] obsahuje DATABASE PROVIDER pre SQLite. Namiesto SQLite je mozne pouzit aj ine DATABASE PROVIDERS.
+   C. PACKAGE [Microsoft.EntityFrameworkCore.Tools] obsahuje ENTITY FRAMEWORK CORE TOOLS.
+6. ENTITY FRAMEWORK CORE moze DB ku ktorej ma pristupit vytvorit nasledujucimi sposobmi.
+   A. DATABASE FIRST APPROACH je sposob ked sa DB vytvori pomocou 3RD PARTY TOOL a ENTITY FRAMEWORK CORE sa k nej pripoji, pricom sa vygeneruju ENTITY CLASSES a DB CONTEXT CLASS.
+   B. CODE FIRST APPROACH je sposob ked ENTITY FRAMEWORK CORE vytvori DB pri spusteni PROGRAMU z manualne vytvorenych ENTITY CLASSES a DB CONTEXT CLASS.
+!!! 7. ENTITY FRAMEWORK CORE NEPODPORUJE EDMX EDITOR. DB NIE JE mozne modelovat pomocou EDMX EDITOR a podpora EDMX EDITOR sa ani NEPLANUJE.
+8. ENTITY FRAMEWORK CORE vyzaduje implementaciu nasledujucich typov CLASSES.
+   A. ENTITY CLASSES predstavuju CLASSES, ktore su MAPPED na TABLES v DB.
+   B. DB CONTEXT CLASS je CLASS, ktora je DERIVED z CLASS [DbContext] a reprezentuje DB CONTEXT pomocou ktoreho mozu PROGRAMS pristupovat k DB.
+9. Pre ENTITY CLASSES platia nasledujuce fakty.
+   A. ENTITY CLASSES reprezentuju TABLES v DB.
+   B. ENTITY CLASSES su POCO CLASSES, ktore NIE SU DERIVED zo ZIADNYCH CLASSES ani neimplementuju ziadne INTERFACES.
+   C. ENTITY CLASSES a ich PROPERTIES mozu byt oznacene pomocou ATTRIBUTES pomocou, ktorych je mozne definovat ako sa ma dana CLASS/PROPERTY mapovat do DB.
+10. Pre DB CONTEXT CLASSES platia nasledujuce fakty.
+   A. DB CONTEXT CLASSES reprezentuju CLASSES, ktore umoznuju pristup k DB.
+   B. DB CONTEXT CLASSES su CLASSES, ktore MUSIA byt DERIVED z CLASS [DbContext].
+   C. DB CONTEXT CLASSES pouzivaju CONNECTION STRINGS na urcenie DB ku ktorym maju DB CONTEXT CLASSES pristupovat.
+11. ENTITY FRAMEWORK CORE si pri PRVEJ INICIALIZACII DB CONTEXT CLASS vytvara MEMORY MODEL DB s ktorou ma pracovat. Pre vytvaranie MEMORY MODEL platia nasledujuce pravidla.
+   !!! A. MEMORY MODEL je vytvoreny IBA na zaklade obsahu DB CONTEXT CLASS a ENTITY CLASSES. To znaci, ze MEMORY MODEL NEBERIE do uvahy skutocnu strukturu DB. K verifikacii ci DB ma rovnaky tvar ako MEMORY MODEL prichadza az pri vykonavani CRUD OPERACII nad DB.
+   B. MEMORY MODEL je vytvoreny VZDY pri PRVEJ INICIALIZACII DB CONTEXT CLASS. Vysledky MEMORY MODEL su ulozene do CACHE a pri nasledujucich DB OPERATIONS je pouzivany uz vytvoreny MEMORY MODEL.
+   !!! C. Ak sa MEMORY MODEL vytvara pre EXISTUJUCU DB, dochadza k riziku, ze ENTITY CLASSES nebudu identicke s DB TABLES. Pri vytvarani DB z ENTITY CLASSES a DB CONTEXT CLASS toto riziko nehrozi.
+12. ENTITY FRAMEWORK CORE vytvara MEMORY MODEL vykonanim nasledujucich krokov.
+   A. Pri vytvoreni instancie DB CONTEXT CLASS ENTITY FRAMEWORK CORE prejde vsetky PROPERTIES DB CONTEXT CLASS TYPE [DbSet<TType>] z ktorych ziska zoznam TYPES reprezentujucich ENTITY CLASSES, ktore ma dalej analyzovat.
+   B. ENTITY FRAMEWORK CORE prechadza vsetky ENTITY CLASSES a analyzuje ich PROPERTIES. Z kazdej ENTITY CLASS vznika DB TABLE a z jednotlivych PROPERTIES vznikaju DB TABLE COLUMNS. PROPERTIES mozu byt oznacene pomocou ATTRIBUTES, ktore dalej definuju ako maju DB TABLES a DB TABLE COLUMNS vyzerat.
+   C. Pre vsetky ENTITY CLASSES su analyzovane REFERENCE PROPERTIES, ktore referuju na dalsie ENTITY CLASSES. Tie su nasledne rekurzivne analyzovane, definujuc nove DB TABLES.
+   D. Po analyze vsetkych ENTITY CLASSES ENTITY FRAMEWORK CORE vola METHOD [void DbContext.OnModelCreating(ModelBuilder ModelBuilder)], ktora moze MEMORY MODEL lubovolne modifikovat.
+   !!!!! E. METHOD [void DbContext.OnModelCreating(ModelBuilder ModelBuilder)] NENAHRADZUJE MODEL, ktory bol vytvoreny v predchadzajucich krokoch, iba umoznuje MODIFIKOVAT MODEL, ktory bol v predchadzajucich krokoch UZ VYTVORENY.
+13. Pri vykonavani QUERIES definovanych pomocou LINQ ENTITY FRAMEWORK CORE vykonava nasledujuce kroky.
+   A. ENTITY FRAMEWORK CORE pomocou DB PROVIDER transformuje LINQ QUERY na SQL COMMAND.
+   B. ENTITY FRAMEWORK CORE ulozi SQL COMMAND do internej CACHE, aby mohol byt znova pouzity.
+   C. ENTITY FRAMEWORK CORE nasledne vytvori instancie ENTITY CLASSES pre jednotlive RECORDS z DB. Pocas vytvarania ENTITY CLASSES su naplnene jednotlive PROPERTIES ako aj NAVIGATION PROPERTIES.
+   !!! D. V pripade, ze RECORD sa vyskytuje v QUERY viackrat, napriklad viacero DEPENDENT ENTITIES odkazuju na tu istu PRINCIPAL ENTITY, vytvara sa IBA 1 instancia ENTITY CLASS PRINCIPAL ENTITY na ktoru refereuju insancie ENTITY CLASSES DEPENDENT ENTITIES.
+   !!! E. V pripade, ze QUERY umoznuje zapis dat, ENTITY FRAMEWORK CORE vytvori pre kazdu instanciu ENTITY CLASS TRACKING RECORD, ktory monitoruje zmeny ich PROPERTIES, aby mohli byt nasledne zapisane do DB.
+   !!! F. V pripade, ze DB NIE JE MODIFIKOVANA, je mozne pouzit METHOD [IQueryable<TEntity> AsNoTracking<TEntity>(this IQueryable<TEntity> Source)], ktora NEVYTVARA ENTITY CLASS TRACKING RECORD a tym padom je vytvorenie ENTITY CLASSES rychlejsie.
+14. Pri vykonavani UPDATES ENTITY FRAMEWORK CORE vykonava nasledujuce kroky.
+   A. Instancia ENTITY CLASS, ktora ma byt UPDATED je nacitana pomocou LINQ QUERY do instancie DB CONTEXT.
+   !!! B. Instancia ENTITY CLASS MUSI mat zapnuty TRACKING CHANGES, kedy ENTITY FRAMEWORK CORE z instancie ENTITY CLASS vytvori KOPIU, ktora reprezentuje data ulozene v DB.
+   C. Po vykonani modifikacie instancie ENTITY CLASS a zavolani METHOD [int DbContext.SaveChanges()] vykona ENTITY FRAMEWORK CORE kontrolu, ktore PROPERTIES instancie ENTITY CLASS boli modifikovane. Na urcenie zmenenych PROPERTIES pouziva KOPIU instancie ENTITY CLASS vytvorenu pri jej vycitavani z DB.
+   D. ENTITY FRAMEWORK CORE pomocou PROVIDER vytvori SQL COMMAND, ktory sa ma nad DB vykonat.
+   E. ENTITY FRAMEWORK CORE vytvori novu TRANSACTION v ktorej vykona vytvoreny SQL COMMAND.
+   F. ENTITY FRAMEWORK CORE ukonci TRANSACTION a DB vykona pozadovane zmeny. V pripade, ze zmeny prebeli uspesne, METHOD [int DbContext.SaveChanges()] skonci normalne. V pripade vzniku ERROR METHOD [int DbContext.SaveChanges()] generuje EXCEPTION.
+   G. Po vykonani UPDATE DB je vykonany UPDATE KOPIE modifikovanej instancie ENTITY CLASS v DB CONTEXT.
+//----------------------------------------------------------------------------------------------------------------------
