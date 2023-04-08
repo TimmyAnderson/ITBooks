@@ -1,0 +1,3 @@
+del SimpleSampleCodeDirectives.exe
+del SimpleSampleCodeDirectives.pdb
+del Errors.txt

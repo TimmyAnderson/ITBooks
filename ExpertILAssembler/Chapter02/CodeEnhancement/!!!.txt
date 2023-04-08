@@ -1,0 +1,42 @@
+//-------------------------------------------------------------------------------------------------------
+1. Solution demonstruje rozsirujuce vlastnosti MSIL ASSEMBLER.
+!!! 2. MSIL definuje pre mnozstvo INSTRUCTIONS specialne SHORT VERSIONS tychto INSTRUCTIONS. SHORT VERSIONS maju spravidla kratsie PARAMETERS cim ich v JIT COMPILATION mozu byt COMPILED do OPTIMALNEJSICH CPU INSTRUCTIONS.
+!!!!! 3. MSIL COMPILER NEVYKONAVA ZIADNE OPTIMALIZATIONS. To znaci, ze INSTRUCTIONS su COMPILED PRESNE TAK ako su ZAPISANE v .IL FILE. To znamena napriklad aj to, ze MSIL NEVYKONAVA OPTIMALIZATION z LONG INSTRUCTIONS do SHORT INSTRUCTIONS, aj keby to dlzka PARAMETERS umoznovala. Je iba cisto na programatorovi, aby napisal optimalny MSIL CODE.
+4. MSIL definuje pre pracu s LOCAL VARIABLES SHORT INSTRUCTIONS, ktorych PARAMETERS maju 0, alebo 1 BYTES. SHORT INSTRUCTIONS nahradzuju LONG INSTRUCTIONS [ldloc X] a [stloc X], ktorych PARAMETERS 'X' maju 2 BYTES.
+   A. SHORT INSTRUCTION [ldloc.0] nacita do STACK hodnotu z 1. LOCAL VARIABLE.
+   B. SHORT INSTRUCTION [ldloc.1] nacita do STACK hodnotu z 2. LOCAL VARIABLE.
+   C. SHORT INSTRUCTION [ldloc.2] nacita do STACK hodnotu z 3. LOCAL VARIABLE.
+   D. SHORT INSTRUCTION [ldloc.3] nacita do STACK hodnotu z 4. LOCAL VARIABLE.
+   !!! E. SHORT INSTRUCTION [ldloc.s N] nacita do STACK hodnotu z (N+1). LOCAL VARIABLE. Hodnota 'N' moze byt v INTERVALE <0,255>.
+   F. SHORT INSTRUCTION [stloc.0] vyberie hodnotu zo STACKU a ulozi ju do 1. LOCAL VARIABLE.
+   G. SHORT INSTRUCTION [stloc.1] vyberie hodnotu zo STACKU a ulozi ju do 2. LOCAL VARIABLE.
+   H. SHORT INSTRUCTION [stloc.2] vyberie hodnotu zo STACKU a ulozi ju do 3. LOCAL VARIABLE.
+   I. SHORT INSTRUCTION [stloc.3] vyberie hodnotu zo STACKU a ulozi ju do 4. LOCAL VARIABLE.
+   !!! J. SHORT INSTRUCTION [stloc.s N] vyberie hodnotu zo STACKU a ulozi ju do (N+1). LOCAL VARIABLE. Hodnota 'N' moze byt v INTERVALE <0,255>.
+5. MSIL definuje pre nacitavanie CONSTANTS do STACK SHORT INSTRUCTIONS, ktorych PARAMETERS maju 0, alebo 1 BYTES. SHORT INSTRUCTIONS nahradzuju LONG INSTRUCTION [ldc.i4 X], ktorej PARAMETER 'X' ma 4 BYTES.
+   A. SHORT INSTRUCTION [ldc.i4.0] nacita do STACK hodnotu 0.
+   B. SHORT INSTRUCTION [ldc.i4.1] nacita do STACK hodnotu 1.
+   C. SHORT INSTRUCTION [ldc.i4.2] nacita do STACK hodnotu 2.
+   D. SHORT INSTRUCTION [ldc.i4.3] nacita do STACK hodnotu 3.
+   E. SHORT INSTRUCTION [ldc.i4.4] nacita do STACK hodnotu 4.
+   F. SHORT INSTRUCTION [ldc.i4.5] nacita do STACK hodnotu 5.
+   G. SHORT INSTRUCTION [ldc.i4.6] nacita do STACK hodnotu 6.
+   H. SHORT INSTRUCTION [ldc.i4.7] nacita do STACK hodnotu 7.
+   I. SHORT INSTRUCTION [ldc.i4.8] nacita do STACK hodnotu 8.
+   J. SHORT INSTRUCTION [ldc.i4.m1] nacita do STACK hodnotu -1.
+   !!! K. SHORT INSTRUCTION [ldc.i4.s N] nacita do STACK hodnotu 'N'. Hodnota 'N' moze byt v INTERVALE <-128,127>.
+6. MSIL definuje pre JUMPS SHORT INSTRUCTIONS, ktorych PARAMETERS maju BYTES. SHORT INSTRUCTIONS nahradzuju LONG INSTRUCTIONS [br.s X], [br.true X], [brfalse.s X], ktorych PARAMETERS 'X' maju 4 BYTES.
+   A. SHORT INSTRUCTION [br.s X] vykona UNCONDITIONAL JUMP na ADDRESS s OFFSET 'X', ktory moze byt v INTERVALE <-128,127>.
+   B. SHORT INSTRUCTION [brtrue.s X] vykona CONDITIONAL JUMP aj je na STACK hodnota TRUE na ADDRESS s OFFSET 'X', ktory moze byt v INTERVALE <-128,127>.
+   C. SHORT INSTRUCTION [brfalse.s X] vykona CONDITIONAL JUMP aj je na STACK hodnota FALSE na ADDRESS s OFFSET 'X', ktory moze byt v INTERVALE <-128,127>.
+!!! 7. MSIL podporuje EXCEPTIONS. Pre MSIL EXCEPTIONS platia nasledujuce zasady.
+   A. TRY BLOCK sa zacina pouzitim KEYWORD [.try].
+   !!!!! B. Na konci TRY BLOCK je NUTNE pouzit LONG INSTRUCTION [leave LABEL], alebo SHORT INSTRUCTION [leave.s LABEL]. Tieto INSTRUCTIONS spustia STACK UNWIND a VYPRAZDNIA METHOD STACK, tak ze METHOD STACK bude PRAZDNY. To znamena, ze VSETKY STACK ITEMS, ktore sa ulozili v TRY BLOCK budu UVOLNENE. Zaroven INSTRUCTIONS vykonaju JUMP na LABEL 'LABEL'.
+   C. CATCH BLOCK sa zacina pouzitim KEYWORD [.catch EXCEPTION_TYPE], kde 'EXCEPTION_TYPE' je TYPE zdedeny z TYPE Exception.
+   !!!!! D. Na konci CATCH BLOCK je NUTNE pouzit LONG INSTRUCTION [leave LABEL], alebo SHORT INSTRUCTION [leave.s LABEL]. Tieto INSTRUCTIONS spustia STACK UNWIND a VYPRAZDNIA METHOD STACK, tak ze METHOD STACK bude PRAZDNY. To znamena, ze VSETKY STACK ITEMS, ktore sa ulozili v CATCH BLOCK budu UVOLNENE. Zaroven INSTRUCTIONS vykonaju JUMP na LABEL 'LABEL'.
+   !!! E. Za jednym TRY BLOCK moze nasledovat VIACERO CATCH BLOCKS.
+   !!!!! F. EXTREMNE DOLEZITE. TRY BLOCK moze zacinat v METHOD iba na miestach, kde je METHOD STACK PRAZDNY. To znamena, ze NIE JE MOZNE, aby pre KEYWORD [.try] boli v METHOD STACK ulozene nejake data okrem LOCAL VARIABLES. Toto obmedzenie je dodrziavane VSETKYMI HIGH-LEVEL LANGUAGES, pretoze LANGUAGES ako C++ KAZDY STATEMENT vykonavaju ako STACK NEUTRAL. To znaci, ze po vykonani KAZDEHO C++ STATEMENT je METHOD STACK PRAZDNY.
+   !!! G. Ak sa CATCH BLOCKS PREHODIA tak, ze CATCH BLOCK pre BASE EXCEPTION je SKOR ako CATCH BLOCK pre DERIVED EXCEPTION, tak MSIL COMPILER to bez problemov AKCEPTUJE a pri hodeni EXCEPTION CATCH BLOCKS pre DERIVED EXCEPTIONS sa NIKDY NEVYVOLAJU.
+   !!!!! H. TRY BLOCKS MOZU byt NESTED.
+   I. Aj MSIL INSTRUCTIONS mozu generovat EXCEPTIONS.
+//-------------------------------------------------------------------------------------------------------

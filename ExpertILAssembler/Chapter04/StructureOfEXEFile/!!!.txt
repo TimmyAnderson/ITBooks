@@ -1,0 +1,457 @@
+﻿//-------------------------------------------------------------------------------------------------------
+1. Solution popisuje strukturu MANAGED EXECUTABLE FILES.
+2. Pri popise struktury MANAGED EXECUTABLE FILES sa pouzivaju nasledujuce pojmy.
+   A. FILE POINTER je pozicia ITEM v MANAGED EXECUTABLE FILE v BYTES. Je to OFFSET od zaciatku MANAGED EXECUTABLE FILE na DISKU.
+   B. RELATIVE VIRTUAL ADDRES (RVA) je ADDRESS daneho ITEM potom ako bol MANAGED EXECUTABLE FILE nacitany do MEMORY. ADDRESS je RELATIVNA voci BASE ADDRESS na ktoru bol MANAGED EXECUTABLE FILE MAPPED v MEMORY.
+   C. VIRTUAL ADDRES (VA) je ADDRESS daneho ITEM potom ako bol MANAGED EXECUTABLE FILE nacitany do MEMORY. ADDRESS je ABSOLUTNA a teda zavisla na BASE ADDRESS na ktoru bol MANAGED EXECUTABLE FILE MAPPED v MEMORY.
+   D. SECTION je CODE, alebo DATA BLOCK v MANAGED EXECUTABLE FILE.
+3. MANAGED EXECUTABLE FILE je STANDARDNY PE FILE, ktory je rozsireny o .NET SPECIFIC informacie, ktore umoznuju WINDOWS zaviest CLR, ktory interpretuje obsah MANAGED EXECUTABLE FILE.
+4. MANAGED EXECUTABLE FILE je tvoreny nasledujucimi castami.
+   A. PE FILE HEADER. Obsahuje informacie pre WINDOWS na zaklade ktorych zavedie MANAGED EXECUTABLE FILE do MEMORY ako EXECUTABLE FILE.
+   B. CLR HEADER. Obsahuje informacie pre CLR ako je informacia o verzii CLR pre ktoru bol MANAGED EXECUTABLE FILE COMPILED.
+   C. CLR DATA. Obsahuje CLR METADATA, MSIL CODE a MANAGED RESOURCES.
+   D. NATIVE DATA a NATIVE CODE.
+5. PE FILE HEADER sa sklada z nasledujucich casti.
+   A. MS DOS HEADER (64 BYTES). Obsahuje HEADER spustatelneho MS DOS FILE. Na FILE OFFSET 0x3C obsahuje FILE OFFSET odkazujuci na PE SIGNATURE.
+   B. MS DOS STUB (64 BYTES). Obsahuje CODE, ktory je spusteny ak program bezi v MS DOS. Tento CODE vypise na konzolu MESSAGE 'This program cannot be run in DOS mode.'
+   C. PE SINGATURE (4 BYTES). Spravidla sa nachadza hned za MS DOS STUB a obsahuje pismena 'PE' nasledovane dvoma NULL BYTES.
+   D. COFF HEADER (20 BYTES). Obsahuje vseobecne charakteristiky PE/COFF FILE.
+   E. PE HEADER (IMAGE_FILE_HEADER.SizeOfOptionalHeader BYTES). Obsahuje informacie pre OS LOADER. Nasleduje okamzite za COFF HEADER a jeho dlzka je sizeof(IMAGE_OPTIONAL_HEADER32)==224 BYTES pre X86 a sizeof(IMAGE_OPTIONAL_HEADER64)==240 BYTES pre X64.
+!!! 6. Za PE FILE HEADER sa nachadza 'N' SECTION HEADERS. Ich pocet je urceny v COFF HEADER vo FIELD IMAGE_FILE_HEADER.NumberOfSections.
+7. COFF HEADER je definovany v STRUCTURE IMAGE_FILE_HEADER.
+   A. FIELD [WORD Machine] obsahuje cislo, ktory identifikuje PLATFORM voci ktorej moze byt PROGRAM spusteny. Moze nadobudat hodnoty IMAGE_FILE_MACHINE_I386, IMAGE_FILE_MACHINE_IA64 a IMAGE_FILE_MACHINE_AMD64.
+   B. FIELD [WORD NumberOfSections] udava pocet SECTIONS v bloku SECTION HEADERS.
+   C. FIELD [DWORD TimeDateStamp] obsahuje datum a cas vytvorenia FILE. Cas je v sekundach od 1.1.1970..
+   D. FIELD [DWORD PointerToSymbolTable] obsahuje POINTER na COFF SYMBOL TABLE. V MANAGED PROGRAMS je tato hodnota VZDY 0.
+   E. FIELD [DWORD NumberOfSymbols] obsahuje pocet COFF SYMBOL TABLES. V MANAGED PROGRAMS je tato hodnota VZDY 0.
+   !!! F. FIELD [WORD SizeOfOptionalHeader] obsahuje dlzku OPTIONAL HEADER (PE HEADER) v BYTES, ktory nasleduje za COFF HEADER.
+   G. FIELD [WORD Characteristics] obsahuje charakteristiky PE FILE.
+8. PE HEADER je (pre X64) definovany v STRUCTURE IMAGE_OPTIONAL_HEADER64.
+   1. FIELD [WORD Magic] obsahuje stav IMAGE FILE. Pre X64 obsahuje hodnotu IMAGE_NT_OPTIONAL_HDR64_MAGIC (0x020B).
+   2. FIELD [BYTE MajorLinkerVersion] obsahuje LINKER MAJOR VERSION.
+   3. FIELD [BYTE MinorLinkerVersion] obsahuje LINKER MINOR VERSION.
+   4. FIELD [DWORD SizeOfCode] obsahuje velkost VSETKYCH CODE SECTIONS v BYTES po nacitani PE FILE do MEMORY. V MANAGED PROGRAMS existuje iba 1 CODE SECTION.
+   5. FIELD [DWORD SizeOfInitializedData] obsahuje velkost VSETKYCH INITIALIZED DATA SECTIONS v BYTES po nacitani PE FILE do MEMORY.
+   6. FIELD [DWORD SizeOfUninitializedData] obsahuje velkost VSETKYCH UNINITIALIZED DATA SECTIONS v BYTES po nacitani PE FILE do MEMORY.
+   7. FIELD [DWORD AddressOfEntryPoint] obsahuje RELATIVE VIRTUAL ADDRESS na ktorej sa po nacitani PE FILE do MEMORY bude nachadzat START ROUTINE. V pripade MANAGED PROGRAMS je to CLR STUB ROUTINE.
+   8. FIELD [DWORD BaseOfCode] obsahuje RELATIVE VIRTUAL ADDRESS na ktorej sa po nacitani PE FILE do MEMORY bude nachadzat zaciatok CODE.
+   9. FIELD [ULONGLONG ImageBase] obsahuje PREFERRED ADDRESS na ktoru ma byt PE FILE do MEMORY nacitany.
+   10. FIELD [DWORD SectionAlignment] obsahuje zarovnanie SECTIONS v BYTES v PE FILE po nacitani do MEMORY.
+   11. FIELD [DWORD FileAlignment] obsahuje zarovnanie SECTIONS v BYTES v PE FILE na DISKU.
+   12. FIELD [WORD MajorOperatingSystemVersion] obsahuje MAJOR VERSION WINDOWS, ktora je potrebna na spustenie PROGRAMU.
+   13. FIELD [WORD MinorOperatingSystemVersion] obsahuje MINOR VERSION WINDOWS, ktora je potrebna na spustenie PROGRAMU.
+   14. FIELD [WORD MajorImageVersion] obsahuje MAJOR VERSION PROGRAMU.
+   15. FIELD [WORD MinorImageVersion] obsahuje MINOR VERSION PROGRAMU.
+   16. FIELD [WORD MajorSubsystemVersion] obsahuje MAJOR VERSION GUI SUBSYSTEM potrebneho pre spustenie PROGRAMU.
+   17. FIELD [WORD MinorSubsystemVersion] obsahuje MINOR VERSION GUI SUBSYSTEM potrebneho pre spustenie PROGRAMU.
+   18. FIELD [DWORD Win32VersionValue] je RESERVED hodnota.
+   19. FIELD [DWORD SizeOfImage] obsahuje dlzku PE FILE v BYTES potom ako bude nacitany do MEMORY. Hodnota mus byt nasobkom hodnoty IMAGE_OPTIONAL_HEADER64.SectionAlignment.
+   20. FIELD [DWORD SizeOfHeaders] obsahuje dlzku vsetkych HEADERS (MS DOS, COFF, PE SIGNATURE, SECTION) zarovnane na nasobok hodnoty IMAGE_OPTIONAL_HEADER64.FileAlignment.
+   21. FIELD [DWORD CheckSum] obsahuje CHECKSUM PE FILE.
+   22. FIELD [WORD Subsystem] obsahuje TYPE USER INTERFACE. Pre CONSOLE PROGRAMS je to hodnota IMAGE_SUBSYSTEM_WINDOWS_CUI. Pre GUI PROGRAMS je to hodnota IMAGE_SUBSYSTEM_WINDOWS_GUI. Pre NON-INTERFACTIVE PROGRAMS (napriklad DRIVERS) je to hodnota IMAGE_SUBSYSTEM_NATIVE.
+   23. FIELD [WORD DllCharacteristics] obsahuje charakteristiky PE FILE.
+   24. FIELD [ULONGLONG SizeOfStackReserve] obsahuje pocet BYTES VIRTUAL MEMORY, ktore budu pri starte PROCESSU RESERVED pre STACK.
+   25. FIELD [ULONGLONG SizeOfStackCommit] obsahuje pocet BYTES VIRTUAL MEMORY, ktore budu pri starte PROCESSU COMMITED pre STACK.
+   26. FIELD [ULONGLONG SizeOfHeapReserve] obsahuje pocet BYTES VIRTUAL MEMORY, ktore budu pri starte PROCESSU RESERVED na LOCAL HEAP.
+   27. FIELD [ULONGLONG SizeOfHeapCommit] obsahuje pocet BYTES VIRTUAL MEMORY, ktore budu pri starte PROCESSU COMMITED na LOCAL HEAP.
+   28. FIELD [DWORD LoaderFlags] je OBSOLETE a je nastavena na 0.
+   29. FIELD [DWORD NumberOfRvaAndSizes] obsahuje pocet ENTRIES v DATA DIRECTORY TABLE. Standardne obsahuje hondotu 16.
+   30. FIELD [IMAGE_DATA_DIRECTORY DataDirectory[IMAGE_NUMBEROF_DIRECTORY_ENTRIES]] obsahuje ENTRIES DATA DIRECTORY TABLE.
+9. Na konci PE HEADER sa nachadza ARRAY IMAGE_DATA_DIRECTORY ITEMS. Kazdy IMAGE_DATA_DIRECTORY ITEM obsahuje nasledujuce FIELDS.
+   A. FIELD [DWORD VirtualAddress] obsahuje RVA na DATA DIRECTORY TABLE.
+   B. FIELD [DWORD Size] obsahuje dlzku DATA DIRECTORY TABLE v BYTES.
+10. PE HEADER obsahuje nasledujucich 16 DATA DIRECTORY TABLES.
+   A. EXPORT TABLE ADDRESS AND SIZE. Obsahuje informacie o dalsich 4 TABLES obsahujucich informacie o EXPORTED UNMANAGED FUNCTIONS z PE FILE.
+   B. IMPORT TABLE ADDRESS AND SIZE. Obsahuje informacie o INPORTED UNMANAGED FUNCTIONS z PE FILE. Okrem C++ ostatne LINKERS importuju iba jedinu CLR ENTRY FUNCTION.
+   C. RESOURCE TABLE ADDRESS AND SIZE. Obsahuje UNMANAGED RESOURCES, ktore su EMBEDDED do PE FILE.
+   D. EXCEPTION TABLE ADDRESS AND SIZE. Obsahuje informacie o UNMANAGED EXCEPTIONS.
+   E. CERTIFICATE TABLE ADDRESS AND SIZE. Obsahuje FILE POINTER (a NIE RVA) s ATTRIBUTE CERTIFICATES, ktore nie su nacitane do MEMORY ako sucast PE FILE.
+   F. BASE RELOCATION TABLE ADDRESS AND SIZE. Obsahuje informacie o REALOCATIONS.
+   G. DEBUGGING INFORMATION STARTING ADDRESS AND SIZE. Obsahuje bud vsetky BYTES na hodnotu 0, alebo odkazuje na 30 BYTES dlhy DEBUG DIRECTORY ENTRY typu 2 (IMAGE_DEBUG_TYPE_CODEVIEW).
+   H. ARCHITECTURE-SPECIFIC DATA ADDRESS AND SIZE. Obsahuje data specificke pre danu PLATFORM. Zvycajne vsetky BYTES su nastavene na hodnotu 0.
+   I. GLOBAL POINTER REGISTER RELATIVE VIRTUAL ADDRESS. Obsahuje RVA na hodnotu, ktoru ma obsahovat GLOBAL POINTER REGISTER. Pre X86 ci X64 su vsetky BYTES nastavene na hodnotu 0.
+   J. THREAD LOCAL STORAGE (TLS) TABLE ADDRESS AND SIZE. Obsahuje THREAD LOCAL STORAGE DATA.
+   K. LOAD CONFIGURATION TABLE ADDRESS AND SIZE. Obsahuje data specificke pre WINDOWS.
+   L. BOUND IMPORT TABLE ADDRESS AND SIZE. Obsahuje ARRAY BOUND IMPORT DESCRIPTORS, kde kazdy DESCRIPTOR popisuje DLL ku ktorej bol PE FILE BOUND pri vytvoreni PE FILE.
+   M. IMPORT ADDRESS TABLE ADDRESS AND SIZE. Obsahuje IMPORT ADDRESS TABLE. Je referovana z [IMPORT TABLE ADDRESS AND SIZE].
+   N. DELAY IMPORT DESCRIPTOR ADDRESS AND SIZE. Obsahuje STRUCTURES, ktore obsahuju zoznam DLL, ktore sa nacitavaju v RUNTIME ON-DEMAND sposobom pomocou WIN32 API FUNCTION LoadLibrary(). Ostatne DLL su nacitane EAGERLY pri vytvarani PROCESSU.
+   O. THE CLR HEADER ADDRESS AND SIZE. Obsahuje CLR HEADER STRUCTURE.
+   P. RESERVED. Vsetkych 8 BYTES je nastavenych na 0.
+11. Ihned za PE HEADER nasleduje SECTION HEADERS TABLE. Jeho pozicia je dana dlzkou VSETKYCH FILE HEADERS + 1. SECTION HEADERS TABLE je reprezentovana STRUCTURE IMAGE_SECTION_HEADER.
+!!! 12. Pocet SECTION HEADERS je dany v COFF HEADER vo FIELD IMAGE_FILE_HEADER.NumberOfSections, pricom jednotlive SECTION HEADERS nasleduju za sebou.
+!!! 13. Velkost KAZDEJ SECTION (po nacitani PE FILE do MEMORY) je ALIGNED na hodnotu IMAGE_OPTIONAL_HEADER64.SectionAlignment.
+14. STRUCTURE IMAGE_SECTION_HEADER ma nasledujuce FIELDS.
+   A. FIELD [BYTE Name[IMAGE_SIZEOF_SHORT_NAME]] obsahuje nazov SECTION HEADER. Nazov NEMUSI byt NULL-TERMINATED.
+   B. FIELD [DWORD PhysicalAddressOrVirtualSize] obsahuje velkost CODE, alebo DATA v danej SECTION v BYTES.
+   C. FIELD [DWORD VirtualAddress] obsahuje RVA na zaciatok SECTION po nacitani PE FILE do MEMORY.
+   D. FIELD [DWORD SizeOfRawData] obsahuje velkost INITIALIZED DATA zarovnanu na nasobok hodnoty IMAGE_OPTIONAL_HEADER64.FileAlignment.
+   E. FIELD [DWORD PointerToRawData] obsahuje FILE POINTER (pozicia v PE FILE fyzicky na DISKU) na PRVU PAGE danej SECTION zarovnanu na nasobok hodnoty IMAGE_OPTIONAL_HEADER64.FileAlignment.
+   F. FIELD [DWORD PointerToRelocations] obsahuje FILE POINTER (pozicia v PE FILE fyzicky na DISKU) na zaciatok REALOCATION ENTRIES danej SECTION. Hodnota je VZDY 0.
+   G. FIELD [DWORD PointerToLinenumbers] obsahuje FILE POINTER (pozicia v PE FILE fyzicky na DISKU) na zaciatok LINE NUMBERS danej SECTION. Hodnota je VZDY 0.
+   H. FIELD [WORD NumberOfRelocations] obsahuje pocet REALOCATION ENTRIES danej SECTION. Hodnota je VZDY 0.
+   I. FIELD [WORD NumberOfLinenumbers] obsahuje pocet LINE NUMBERS danej SECTION. Hodnota je VZDY 0.
+   J. FIELD [DWORD Characteristics] obsahuje charakteristiky PE FILE.
+!!! 15. V MANAGED PROGRAMS IBA SECTION '.text' obsahuje EXECUTABLE CODE.
+16. MSIL COMPILER generuje PE FILES s nasledujucimi tympi SECTIONS.
+   A. SECTION '.text' obsahuje READ-ONLY CLR HEADER, METADATA, IL CODE, MANAGED EXCEPTION HANDLING INFORMATION a MANAGED RESOURCES.
+   B. SECTION '.sdata' obsahuje READ/WRITE DATA.
+   C. SECTION '.reloc' obsahuje READ-ONLY RELOCATION INFORMATION.
+   D. SECTION '.rsrc' obsahuje READ-ONLY UNMANAGED RESOURCES.
+   E. SECTION '.tls' obsahuje READ/WRITE THREAD LOCAL STORAGE DATA.
+17. CLR HEADER je obsiahnuty v SECTION '.text' v PE FILE. Po nacitani PE FILE do MEMORY RVA a SIZE na CLR HEADER je obsiahnuty v 15. IMAGE_DATA_DIRECTORY ITEM [THE CLR HEADER ADDRESS AND SIZE].
+18. CLR HEADER pre .NET 4.5. je reprezentovany STRUCTURE IMAGE_COR20_HEADER, ktora ma nasledujuce FIELDS.
+   A. FIELD [DWORD CB] obsahuje velkost STRUCTURE IMAGE_COR20_HEADER==0x48 BYTES.
+   B. FIELD [WORD MajorRuntimeVersion] obsahuje MINIMUM MAJOR CLR VERSION pod ktorou moze byt PE FILE spusteny.
+   C. FIELD [WORD MinorRuntimeVersion] obsahuje MINIMUM MINOR CLR VERSION pod ktorou moze byt PE FILE spusteny.
+   D. FIELD [IMAGE_DATA_DIRECTORY MetaData] obsahuje RVA a SIZE kde sa nachadzaju METADATA.
+   E. FIELD [DWORD Flags] obsahuje FLAGS pre CLR.
+   F. FIELD [DWORD EntryPointTokenOrEntryPointRVA] obsahuje METADATA TOKEN, alebo RVA kde sa nachadza ENTRY POINT EXECUTABLE PE FILE. Pre .DLL FILES je nastaveny na 0.
+   G. FIELD [IMAGE_DATA_DIRECTORY Resources] obsahuje RVA a SIZE kde sa nachadzaju RESOURCES.
+   H. FIELD [IMAGE_DATA_DIRECTORY StrongNameSignature] obsahuje RVA a SIZE kde sa nachadza STRONG SIGNATURE. Obsahuje HASH VALUE vypocitany z celej ASSEMBLY (ak sa jedna o MULTI-MODULE ASSEMBLY, tak zo vsetkych ASSEMBLY FILES), ktory je SIGNED definovanym PRIVATE KEY a ulozeny prave do FIELD IMAGE_COR20_HEADER.StrongNameSignature. CLR pouziva tento FIELD na overenie autenticity ASSEMBLY aj zabraneniu jej zmenam.
+   I. FIELD [IMAGE_DATA_DIRECTORY CodeManagerTable] obsahuje RVA a SIZE kde sa nachadza CODE MANAGER TABLE. Je RESERVED a MUSI byt nastaveny na 0.
+   J. FIELD [IMAGE_DATA_DIRECTORY VTableFixups] obsahuje RVA a SIZE kde sa nachadza VIRTUAL TABLE FIXUP. Tato TABLE je nutna, ak MANAGED METHOD ma byt volana z UNMANAGED CODE, aby doslo k vykonaniu konverzii PARAMETERS a RETURN VALUES v THUNKS FUNCTIONS, ktore su umiestnovane do VIRTUAL TABLE FIXUP.
+   K. FIELD [IMAGE_DATA_DIRECTORY ExportAddressTableJumps] je OBSOLETE a MUSI byt nastaveny na 0.
+   L. FIELD [IMAGE_DATA_DIRECTORY ManagedNativeHeader] je RESERVED VALUE a MUSI byt nastaveny na 0.
+19. ENTRY POINT ASSEMBLY je METHOD, ktora je spustena po zavedeni EXECUTABLE PROCESS do MEMORY. Pre ENTRY POINT platia nasledujuce fakty.
+   A. Ak je ASSEMBLY .EXE FILE, tak MUSI obsahovat ENTRY POINT.
+   B. V CLR HEADER je ENTRY POINT obsiahnuty vo FIELD IMAGE_COR20_HEADER.EntryPointTokenOrEntryPointRVA.
+   C. FIELD IMAGE_COR20_HEADER.EntryPointTokenOrEntryPointRVA obsahuje METADATA TOKEN referujuci bud do TABLE MethodDef, alebo TABLE File.
+   D. Ak FIELD IMAGE_COR20_HEADER.EntryPointTokenOrEntryPointRVA obsahuje METADATA TOKEN referujuci do TABLE MethodDef, tak METHOD reprezentovana tymto TOKEN je ENTRY POINT.
+   !!! E. Ak FIELD IMAGE_COR20_HEADER.EntryPointTokenOrEntryPointRVA obsahuje METADATA TOKEN referujuci do TABLE File, tak .EXE FILE je MANIFEST FILE MULTI-MODULE ASSEMBLY. Token odkazuje na FILE, ktory obsahuje ENTRY POINT. Tento FILE musi obsahovat CLR HEADER, ktoreho FIELD IMAGE_COR20_HEADER.EntryPointTokenOrEntryPointRVA musi obsahovat METADATA TOKEN referujuci na TABLE MethodDef. Tento METADATA TOKEN reprezentuje ENTRY POINT.
+   F. ENTRY POINT musi mat 1 PARAMETER typu String, alebo String[] a RETURN VALUE typu VOID, alebo Int32.
+   G. Pre .DLL FILES obsahuje FIELD IMAGE_COR20_HEADER.EntryPointTokenOrEntryPointRVA hodnotu 0, pretoze .DLL FILES NEMAJU ENTRY POINT.
+20. SECTION '.reloc' obsahuje FIXUP TABLE, ktora obsahuje ENTRIES pre vsetky FIXUP, ktore je treba v PE FILE po nacitani do MEMORY spravit. Pre SECTION '.reloc' platia nasledujuce fakty.
+   A. RVA a SIZE pre SECTION '.reloc' je definovana v DATA DIRECTORY TABLE [BASE RELOCATION TABLE ADDRESS AND SIZE].
+   B. FIXUP TABLE obsahuje FIXUP BLOCKS, kde kazdy BLOCK obsahuje FIXUPS pre 4KB PAGES zarovnane na 4 BYTES.
+   !!! C. Kazdy FIXUP BLOCK obsahuje FIXUP za ktorym nasleduje 1-N FIXUP ENTRIES.
+   D. FIXUP ma 8 BYTES, kde BYTES 0-3 obsahuju RVA PAGE, ktorej ADDRESSES maju byt FIXED a BYTES 4-7 obsahuje SIZE daneho FIXUP BLOCK.
+   E. Kazda FIXUP ENTRY ma dlzku 16 BITS, kde prve 4 BITS urcuju REALOCATION TYPE a ostatnych 12 BITS obsahuje REALOCATION ADDRESS OFFSET v danej PAGE.
+   !!! F. PURE MSIL PROGRAM ma iba 1 FIXUP ENTRY pre ENTRY POINT a aj tu nevyuziva. Naopak MIXED PROGRAMS mozu mat viacero FIXUP ENTRIES v '.reloc' SECTION.
+21. SECTION '.text' ma nasledujucu STRUCTURE.
+   A. IMPORT ADDRESS TABLE.
+   B. CLR HEADER.
+   C. STRONG NAME SIGNATURE HASH (OPTIONAL).
+   D. MSIL CODE a MANAGED STRUCTURED EXCEPTION HANDLING TABLES (OPTIONAL).
+   E. DEBUG DIRECTORY (OPTIONAL).
+   F. METADATA.
+   G. MANAGED RESOURCES (OPTIONAL).
+   H. UNMANAGED EXPORT STUBS (OPTIONAL).
+   I. VIRTUAL TABLE FIXUP TABLE (OPTIONAL).
+   J. CLR STARTUP STUB.
+22. SECTION '.sdata' obsahuje DATA CONSTANTS, V-TABLE, UNMANAGED EXPORT TABLE a THREAD LOCAL STORAGE DIRECTORY STRUCTURE.
+23. DATA CONSTANTS v SECTION '.sdata' su MEMORY BLOCKS na ktore su MAPPED FIELDS MAPPED. MAPPED FIELDS su STATIC FIELDS, ktorych MEMORY je MAPPED na DATA CONSTANTS. Kedze hodnota DATA CONSTANTS moze byt zmenena, tak to nie su skutocne CONSTANTS.
+!!! 24. DATA CONSTANTS NEPODLIEHAJU GARBAGE COLLECTION. Su to RAW MEMORY BLOCKS, na ktorymi NEMA CLR ZIADNU KONTROLU.
+25. V-TABLE obsahuje informacie umoznujuce MANAGED METHODS byt volanymi z UNMANAGED CODE.
+26. V SECTION '.sdata' sa nechadzaju nasledujuce TABLES, ktore obsahuju informacie o UMANAGED METHODS, ktore mozu byt volane EXTERNYMI PE FILES.
+   A. EXPORT DIRECTORY TABLE. Obsahuje informacie o ostatnych TABLES. Je reprezentovana STRUCTURE IMAGE_EXPORT_DIRECTORY.
+   B. EXPORT ADDRESS TABLE. Obsahuje RVA kazdej EXPORTED METHOD, kde ENTRY POINT je na 0-tej pozicii.
+   C. NAME POINTER TABLE. Obsahuje RVA na MENA EXPORTED METHODS, ktore su ulozene v EXPORT NAME TABLE.
+   D. ORDINAL TABLE. Obsahuje 2 BYTES INDEXES do EXPORT ADDRESS TABLE. ORDINAL NUMBERS sa pouzivaju, ako alternativna moznost exportovat METHODS nie pomocou METHOD NAME, ale pomocou ORDINAL NUMBER.
+   E. EXPORT NAME TABLE. Obsahuje zoznam NULL-TERMINATED EXPORTED METHODS NAMES.
+27. STRUCTURE IMAGE_EXPORT_DIRECTORY popisuje EXPORT DIRECTORY TABLE. Ma nasledujuce MEMBERS.
+   A. FIELD [DWORD Characteristics] sa nepouziva a je nastaveny na 0.
+   B. FIELD [DWORD TimeDateStamp] obsahuje cas ked boli EXPORTED DATA GENERATED.
+   C. FIELD [WORD MajorVersion] obsahuje MAJOR VERSION EXPORT DIRECTORY TABLE.
+   D. FIELD [WORD MinorVersion] obsahuje MINOR VERSION EXPORT DIRECTORY TABLE. 
+   E. FIELD [DWORD Name] obsahuje RVA, alebo NAME EXPORTING MODULE.
+   F. FIELD [DWORD Base] obsahuje BASE ORDINAL NUMBER.
+   G. FIELD [DWORD NumberOfFunctions] obsahuje pocet ENTRIES v EXPORT ADDRESS TABLE.
+   H. FIELD [DWORD NumberOfNames]  obsahuje pocet ENTRIES v EXPORT NAME TABLE.
+   I. FIELD [DWORD AddressOfFunctions] obsahuje RVA EXPORT ADDRESS TABLE.
+   J. FIELD [DWORD AddressOfNames] obsahuje RVA EXPORT NAME TABLE.
+   K. FIELD [DWORD AddressOfNameOrdinals] obsahuje RVA NAME POINTER TABLE.
+28. THREAD LOCAL STORAGE TEMPLATE obsahuje vsetky VARIABLES, ktore su THREAD RELATIVE. To znaci, ze KAZDY THREAD ma vlastnu kopiu tychto dat. THREAD LOCAL STORAGE TEMPLATE je ulozena v SECTION '.tls'.
+29. SECTION '.sdata' obsahuje STRUCTURE IMAGE_TLS_DIRECTORY64, ktora obsahuje informacie o pozicii a velkosti THREAD LOCAL STORAGE TEMPLATE tvoriacej TEMPLATE na zaklade ktorej je vytvoreny THREAD LOCAL STORAGE kazdeho vytvoreneho THREADU. Ma nasledujuce MEMBERS.
+   A. FIELD [ULONGLONG StartAddressOfRawData] obsahuje VA na zaciatok THREAD LOCAL STORAGE TEMPLATE.
+   B. FIELD [ULONGLONG EndAddressOfRawData] obsahuje VA na koniec THREAD LOCAL STORAGE TEMPLATE.
+   C. FIELD [ULONGLONG AddressOfIndex] obsahuje VA na TLS INDEX.
+   D. FIELD [ULONGLONG AddressOfCallBacks] obsahuje VA na NULL-TERMINATED ARRAY obsahujuci TLS CALLBACK POINTERS.
+   E. FIELD [DWORD SizeOfZeroFill] velkost UNINITIALIZED DATA v THREAD LOCAL STORAGE TEMPLATE. V MANAGED PROGRAMS je tento FIELD nastaveny na 0.
+   F. FIELD [DWORD Characteristics] sa nepouziva a musi byt nastaveny na 0.
+30. PE FILE MANAGED PROGRAM moze obsahovat 2 typy RESOURCES.
+   A. MANAGED RESOURCES.
+   B. UNMANAGED RESOURCES.
+31. UNMANAGED RESOURCES su ukladane do SECTION '.rsrc' a su INDEXED podla TYPE, NAME a LANGUAGE. SECTION '.rsrc' je tvorena nasledujucimi castami.
+   A. RESOURCE DIRECTORY TABLE. Zakladna TABLE UNMANAGED RESOURCES.
+   B. RESOURCE DIRECTORY ENTRIES. Kazda ENTRY obsahuje ID, alebo NAME a OFFSET na DATA daneho RESOURCE.
+   C. RESOURCE DIRECTORY STRINGS. Obsahuje STRING DATA.
+   D. RESOURCE DATA DESCRIPTION. Obsahuje SIZE a LOCATION RESOURCE DATA.
+   E. RESOURCE DATA. Obsahuje samotne RESOURCE DATA v RAW podobe.
+32. RESOURCE DIRECTORY TABLE je reprezentovana STRUCTURE IMAGE_RESOURCE_DIRECTORY. Ma nasledujuce MEMBERS.
+   A. FIELD [DWORD Characteristics] je rezervovany FIELD a musi byt nastaveny na hodnotu 0.
+   B. FIELD [DWORD TimeDateStamp] obsahuje cas vytvorenia IMAGE_RESOURCE_DIRECTORY.
+   C. FIELD [WORD MajorVersion] obsahuje MAJOR VERSION IMAGE_RESOURCE_DIRECTORY.
+   D. FIELD [WORD MinorVersion] obsahuje MINOR VERSION IMAGE_RESOURCE_DIRECTORY. 
+   E. FIELD [WORD NumberOfNamedEntries] pocet IMAGE_RESOURCE_DIRECTORY_ENTRY OBJECTS obsahujucich ID danych RESOURCES.
+   F. FIELD [WORD NumberOfIdEntries] pocet IMAGE_RESOURCE_DIRECTORY_ENTRY OBJECTS obsahujucich ID danych RESOURCES.
+33. Za RESOURCE DIRECTORY TABLE nasleduje ARRAY IMAGE_RESOURCE_DIRECTORY_ENTRY STRUCTURES. IMAGE_RESOURCE_DIRECTORY_ENTRY ma nasledujuce MEMBERS.
+   A. FIELD [DWORD NameOrID] obsahuje NAME, alebo ID RESOURCE.
+   B. FIELD [DWORD OffsetToData] obsahuje OFFSET RESOURCE DIRECTORY TABLE nasledujucej urovne.
+34. STRUCTURE IMAGE_RESOURCE_DATA_ENTRY obsahuje OFFSET na RAW RESOURCE DATA ako aj LANGUAGE RESOURCE DATA a ma nasledujuce MEMBERS.
+   A. FIELD [DWORD OffsetToData] obsahuje OFFSET (relativny voci RESOURCE DIRECTORY TABLE) na RAW RESOURCE DATA.
+   B. FIELD [DWORD Size] obsahuje velkost RAW RESOURCE DATA.
+   C. FIELD [DWORD CodePage] obsahuje CODE PAGE RAW RESOURCE DATA.
+   D. FIELD [DWORD Reserved] je RESERVED a musi obsahovat 0.
+35. EMBEDDED MANAGED RESOURCES su ulozene v SECTION '.text'.
+!!!!! 36. Strukturu PE FILE je mozne prezerat pomocou [ILDASM.EXE] pomocou MENU [VIEW->HEADERS].
+37. MSIL COMPILER [MSIL.EXE] pri generovani PE FILE vykonava nasledujuce kroky.
+   A. Inicializuje INTERNAL BUFFER.
+   B. Vytvori v MEMORY EMPTY TEMPLATE pre PE FILE HEADER (MS DOS HEADER, MS DOS STUB, PE SIGNATURE, COFF HEADER a PE HEADER).
+   C. Alokuje IMPORT ADDRESS TABLE a CLR HEADER v SECTION '.text'.
+   D. Zozbiera METADATA a ulozi ich do INTERNAL BUFFERS.
+   E. Zozbiera METHOD BODIES a ulozi ich do INTERNAL BUFFERS. Zaroven vytvori aj IL CODE TABLES a EXCEPTION HANDLING TABLES.
+   F. Emituje DATA CONSTANTS (pre THREAD LOCAL STORAGE) do SECTIONS '.sdata' a '.tls'.
+   G. Rezervuje priestor pre STRONG NAME SIGNATURE v SECTION '.text'.
+   H. Analyzuje a preusporiada METADATA.
+   I. Vykona RESOLVING internych (v ramci MODULE) REFERENCES IL CODE (volania METHODS).
+   J. Emituje METHODS BODIES do SECTION '.text'.
+   K. Emituje TLS DIRECTORY TABLE do SECTION '.sdata'.
+   L. Emituje DEBUG DIRECTORY do SECTION '.text'.
+   M. Rezervuje priestor pre METADATA v SECTION '.text'.
+   N. Rezervuje priestor pre EMBEDDED MANAGED RESOURCES v SECTION '.text'.
+   O. Emituje UNMANAGED EXPORT STUBS do SECTION '.text'.
+   P. Emituje VIRTUAL TABLE FIXUP TABLE do SECTION '.text'.
+   Q. Emituje VIRTUAL TABLE do SECTION '.sdata'.
+   R. Emituje UNMANAGED EXPORT TABLES do SECTION '.sdata'.
+   S. Vypocita RVA FIXUP pre MAPPED FIELDS.
+   T. Emituje METADATA do SECTION '.text', ktore bola PREALLOCATED.
+   U. Emituje EMBEDDED MANAGED RESOURCES do SECTION '.text', ktore bola PREALLOCATED.
+   V. Emituje RUNTIME STARTUP STUB do SECTION '.text'.
+   W. Nacita UNMANAGED RESOURCES z .RES FILE a emituje ich do SECTION '.rsrc'.
+   X. Vykona potrebne BASE REALLOCATIONS a emituje ich do SECTION '.reloc'.
+   Y. Zapise obsah PE IMAGE FILE na DISK.
+   Z. Vypocita STRONG NAME SIGNATURE (pomocou [SN.EXE]) a zapise jej obsah do PREALLOCATED SPACE v PE FILE.
+//-------------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------------
+Priklad MANAGED PROGRAM HEADER.
+
+1. Zaciatok MS DOS HEADER.
+0000000000: 4D 5A 90 00 03 00 00 00 │ 04 00 00 00 FF FF 00 00  MZђ ♥   ♦   яя
+0000000010: B8 00 00 00 00 00 00 00 │ 40 00 00 00 00 00 00 00  ё       @
+0000000020: 00 00 00 00 00 00 00 00 │ 00 00 00 00 00 00 00 00
+2. Na FILE POINTER 0x0000003C sa nachadza FILE POINTER odkazujuci na PE SIGNATURE. To je to 0x00000080, kde sa PE SIGNATURE nachadza.
+0000000030: 00 00 00 00 00 00 00 00 │ 00 00 00 00 80 00 00 00              Ђ
+3. Zaciatok MS DOS STUB.
+0000000040: 0E 1F BA 0E 00 B4 09 CD │ 21 B8 01 4C CD 21 54 68  ♫▼є♫ ґ○Н!ё☺LН!Th
+0000000050: 69 73 20 70 72 6F 67 72 │ 61 6D 20 63 61 6E 6E 6F  is program canno
+0000000060: 74 20 62 65 20 72 75 6E │ 20 69 6E 20 44 4F 53 20  t be run in DOS
+0000000070: 6D 6F 64 65 2E 0D 0D 0A │ 24 00 00 00 00 00 00 00  mode.♪♪◙$
+4. Na FILE POINTER 0x00000080 sa nachadza PE SIGNATURE, ktora ma 4 BYTES a obsahuje 'PE' a 2 NULL BYTES.
+5. Na FILE POINTER 0x00000084 sa nachadza IMAGE_FILE_HEADER.Machine. Hodnota 0x8664 znamena hodnotu IMAGE_FILE_MACHINE_AMD64.
+6. Na FILE POINTER 0x00000086 sa nachadza IMAGE_FILE_HEADER.NumberOfSections. Hodnota 0x0002 znamena, ze PE FILE ma 2 SECTIONS.
+7. Na FILE POINTER 0x00000088 sa nachadza IMAGE_FILE_HEADER.TimeDateStamp. Cas je v sekundach od 1.1.1970..
+8. Na FILE POINTER 0x0000008A sa nachadza IMAGE_FILE_HEADER.PointerToSymbolTable. V MANAGED PROGRAMS je tato hodnota VZDY 0.
+0000000080: 50 45 00 00 64 86 02 00 │ E8 E8 47 52 00 00 00 00  PE  d†☻ ииGR
+9. Na FILE POINTER 0x00000090 sa nachadza IMAGE_FILE_HEADER.NumberOfSymbols. V MANAGED PROGRAMS je tato hodnota VZDY 0.
+10. Na FILE POINTER 0x00000094 sa nachadza IMAGE_FILE_HEADER.SizeOfOptionalHeader. Obsahuje dlzku PE HEADER. Hodnota 0x00F0 znamena ze (OPTIONAL) PE HEADER ma 240 BYTES.
+11. Na FILE POINTER 0x00000096 sa nachadza IMAGE_FILE_HEADER.Characteristics. Hodnota 0x0022 znamena kombinaciu FLAGS (IMAGE_FILE_EXECUTABLE_IMAGE | IMAGE_FILE_LARGE_ADDRESS_AWARE) co znaci, ze FILE je EXECUTABLE a zaroven dokaze adresovat adresy aj na 2GB.
+12. Na FILE POINTER 0x00000098 sa zacina PE HEADER (STRUCTURE IMAGE_OPTIONAL_HEADER64), ktory ma dlzku 240 BYTES (sizeof(IMAGE_OPTIONAL_HEADER64)), az po FILE POINTER 0x00000188.
+13. Na FILE POINTER 0x00000098 sa nachadza IMAGE_OPTIONAL_HEADER64.Magic. Obsahuje hodnotu 0x020B, ktora reprezentuje hodnotu IMAGE_NT_OPTIONAL_HDR64_MAGIC.
+14. Na FILE POINTER 0x0000009A sa nachadza IMAGE_OPTIONAL_HEADER64.MajorLinkerVersion. Obsahuje hodnotu 0x0B.
+15. Na FILE POINTER 0x0000009B sa nachadza IMAGE_OPTIONAL_HEADER64.MinorLinkerVersion. Obsahuje hodnotu 0x00.
+16. Na FILE POINTER 0x0000009C sa nachadza IMAGE_OPTIONAL_HEADER64.SizeOfCode. Obsahuje hodnotu 0x00000400, ktora znaci, ze PE FILE po nacitani do MEMORY OBSAHUJE CODE SECTIONS o dlzke 1024 BYTES.
+0000000090: 00 00 00 00 F0 00 22 00 │ 0B 02 0B 00 00 04 00 00      р " ♂☻♂  ♦
+17. Na FILE POINTER 0x000000A0 sa nachadza IMAGE_OPTIONAL_HEADER64.SizeOfInitializedData. Obsahuje hodnotu 0x00000200, ktora znaci, ze PE FILE po nacitani do MEMORY OBSAHUJE INITIALIZED DATA SECTIONS o dlzke 512 BYTES.
+18. Na FILE POINTER 0x000000A4 sa nachadza IMAGE_OPTIONAL_HEADER64.SizeOfUninitializedData. Obsahuje hodnotu 0x00000000, ktora znaci, ze PE FILE po nacitani do MEMORY NEOBSAHUJE ziadne UNINITIALIZED DATA SECTIONS.
+19. Na FILE POINTER 0x000000A8 sa nachadza IMAGE_OPTIONAL_HEADER64.AddressOfEntryPoint. Obsahuje hodnotu 0x0000234E, ktora znaci RELATIVE VIRTUAL ADDRESS, kde bude zacinat START ROUTINE po nacitani PE FILE do MEMORY.
+20. Na FILE POINTER 0x000000AC sa nachadza IMAGE_OPTIONAL_HEADER64.BaseOfCode. Obsahuje hodnotu 0x00002000, ktora znaci RELATIVE VIRTUAL ADDRESS, kde bude zacinat CODE po nacitani PE FILE do MEMORY.
+00000000A0: 00 02 00 00 00 00 00 00 │ 4E 23 00 00 00 20 00 00   ☻      N#
+21. Na FILE POINTER 0x000000B0 sa nachadza IMAGE_OPTIONAL_HEADER64.ImageBase. Obsahuje hodnotu 0x0000000140000000, ktora znaci PREFERRED IMAGE BASE ADDRESS do ktorej bude PE FILE do MEMORY nacitany.
+22. Na FILE POINTER 0x000000B8 sa nachadza IMAGE_OPTIONAL_HEADER64.SectionAlignment. Obsahuje hodnotu 0x00002000, co znaci, ze SECTIONS su v PE FILE nacitanom do MEMORY ALIGNED na 8192 BYTES co je velkost MEMORY PAGE v X64.
+23. Na FILE POINTER 0x000000BC sa nachadza IMAGE_OPTIONAL_HEADER64.FileAlignment. Obsahuje hodnotu 0x00000200, co znaci, ze SECTIONS su v PE FILE ALIGNED na 512 BYTES.
+00000000B0: 00 00 00 40 01 00 00 00 │ 00 20 00 00 00 02 00 00     @☺        ☻
+24. Na FILE POINTER 0x000000C0 sa nachadza IMAGE_OPTIONAL_HEADER64.MajorOperatingSystemVersion. Obsahuje hodnotu 0x0004.
+25. Na FILE POINTER 0x000000C2 sa nachadza IMAGE_OPTIONAL_HEADER64.MinorOperatingSystemVersion. Obsahuje hodnotu 0x0000.
+26. Na FILE POINTER 0x000000C4 sa nachadza IMAGE_OPTIONAL_HEADER64.MajorImageVersion. Obsahuje hodnotu 0x0000.
+27. Na FILE POINTER 0x000000C6 sa nachadza IMAGE_OPTIONAL_HEADER64.MinorImageVersion. Obsahuje hodnotu 0x0000.
+28. Na FILE POINTER 0x000000C8 sa nachadza IMAGE_OPTIONAL_HEADER64.MajorSubsystemVersion. Obsahuje hodnotu 0x0004.
+29. Na FILE POINTER 0x000000CA sa nachadza IMAGE_OPTIONAL_HEADER64.MinorSubsystemVersion. Obsahuje hodnotu 0x0000.
+30. Na FILE POINTER 0x000000CC sa nachadza IMAGE_OPTIONAL_HEADER64.Win32VersionValue. Hodnota 0x00000000 je RESERVED VALUE.
+00000000C0: 04 00 00 00 00 00 00 00 │ 04 00 00 00 00 00 00 00  ♦       ♦
+31. Na FILE POINTER 0x000000D0 sa nachadza IMAGE_OPTIONAL_HEADER64.SizeOfImage. Hodnota 0x00006000 znamena, ze dlzka PE FILE po NACITANI do MEMORY bude 24576 BYTES.
+32. Na FILE POINTER 0x000000D4 sa nachadza IMAGE_OPTIONAL_HEADER64.SizeOfHeaders. Hodnota 0x00000200 znamena, ze dlzka vsetkych HEADER je 512 BYTES.
+33. Na FILE POINTER 0x000000D8 sa nachadza IMAGE_OPTIONAL_HEADER64.CheckSum. Hodnota 0x00000000 znamena, ze sa CHECKSUM NEKONTROLUJE.
+34. Na FILE POINTER 0x000000DC sa nachadza IMAGE_OPTIONAL_HEADER64.Subsystem. Hodnota 0x0003==IMAGE_SUBSYSTEM_WINDOWS_CUI, co znaci, ze sa jedna o CONSOLE PROGRAM.
+35. Na FILE POINTER 0x000000DE sa nachadza IMAGE_OPTIONAL_HEADER64.DllCharacteristics. Hodnota 0x8540 znamena kombinaciu FLAGS (IMAGE_DLLCHARACTERISTICS_TERMINAL_SERVER_AWARE | IMAGE_DLLCHARACTERISTICS_NO_SEH | IMAGE_DLLCHARACTERISTICS_NX_COMPAT | IMAGE_DLLCHARACTERISTICS_DYNAMIC_BASE).
+00000000D0: 00 60 00 00 00 02 00 00 │ 00 00 00 00 03 00 40 85   `   ☻      ♥ @…
+36. Na FILE POINTER 0x000000E0 sa nachadza IMAGE_OPTIONAL_HEADER64.SizeOfStackReserves. Hodnota 0x0000000000004000 znamena, ze STACK bude mat RESERVED 1 MB MEMORY.
+37. Na FILE POINTER 0x000000E8 sa nachadza IMAGE_OPTIONAL_HEADER64.SizeOfStackCommit. Hodnota 0x0000000000002000 znamena, ze STACK bude mat COMMITED 16 KB MEMORY.
+00000000E0: 00 00 40 00 00 00 00 00 │ 00 40 00 00 00 00 00 00    @      @
+38. Na FILE POINTER 0x000000F0 sa nachadza IMAGE_OPTIONAL_HEADER64.SizeOfHeapReserves. Hodnota 0x0000000000100000 znamena, ze LOCAL HEAP bude mat RESERVED 1 MB MEMORY.
+39. Na FILE POINTER 0x000000F8 sa nachadza IMAGE_OPTIONAL_HEADER64.SizeOfHeapCommit. Hodnota 0x0000000000002000 znamena, ze LOCAL HEAP bude mat COMMITED 8 KB MEMORY.
+00000000F0: 00 00 10 00 00 00 00 00 │ 00 20 00 00 00 00 00 00    ►
+40. Na FILE POINTER 0x00000100 sa nachadza IMAGE_OPTIONAL_HEADER64.LoaderFlags. Je to OBSOLETE FIELD, obsahujuci hodnotu 0x0000.
+41. Na FILE POINTER 0x00000104 sa nachadza IMAGE_OPTIONAL_HEADER64.NumberOfRvaAndSizes. Hodnota 0x0010 znamena, ze IMAGE_OPTIONAL_HEADER64.DataDirectory ma 16 ENTRIES.
+42. Na FILE POINTER 0x00000108 sa nachadza IMAGE_OPTIONAL_HEADER64.DataDirectory obsahujuci IMAGE_DATA_DIRECTORY ARRAY.
+43. Na FILE POINTER 0x00000108 sa nachadza DATA DIRECTORY TABLE [EXPORT TABLE ADDRESS AND SIZE].
+0000000100: 00 00 00 00 10 00 00 00 │ 00 00 00 00 00 00 00 00      ►
+44. Na FILE POINTER 0x00000110 sa nachadza DATA DIRECTORY TABLE [IMPORT TABLE ADDRESS AND SIZE]. Hodnota 0x000022F8 udava RVA, kde tato DATA DIRECTORY TABLE bude zacinat. Hodnota 0x00000053 udava dlzku tejto DATA DIRECTORY TABLE.
+45. Na FILE POINTER 0x00000118 sa nachadza DATA DIRECTORY TABLE [RESOURCE TABLE ADDRESS AND SIZE].
+0000000110: F8 22 00 00 53 00 00 00 │ 00 00 00 00 00 00 00 00  ш"  S
+46. Na FILE POINTER 0x00000120 sa nachadza DATA DIRECTORY TABLE [EXCEPTION TABLE ADDRESS AND SIZE].
+47. Na FILE POINTER 0x00000128 sa nachadza DATA DIRECTORY TABLE [CERTIFICATE TABLE ADDRESS AND SIZE].
+0000000120: 00 00 00 00 00 00 00 00 │ 00 00 00 00 00 00 00 00
+48. Na FILE POINTER 0x00000130 sa nachadza DATA DIRECTORY TABLE [BASE RELOCATION TABLE ADDRESS AND SIZE]. Obsahuje RVA s hodnotou 0x00004000 a SIZE 0x0000000C.
+49. Na FILE POINTER 0x00000138 sa nachadza DATA DIRECTORY TABLE [DEBUGGING INFORMATION STARTING ADDRESS AND SIZE].
+0000000130: 00 40 00 00 0C 00 00 00 │ 00 00 00 00 00 00 00 00   @  ♀
+50. Na FILE POINTER 0x00000140 sa nachadza DATA DIRECTORY TABLE [ARCHITECTURE-SPECIFIC DATA ADDRESS AND SIZE].
+51. Na FILE POINTER 0x00000148 sa nachadza DATA DIRECTORY TABLE [GLOBAL POINTER REGISTER RELATIVE VIRTUAL ADDRESS].
+0000000140: 00 00 00 00 00 00 00 00 │ 00 00 00 00 00 00 00 00
+52. Na FILE POINTER 0x00000150 sa nachadza DATA DIRECTORY TABLE [THREAD LOCAL STORAGE (TLS) TABLE ADDRESS AND SIZE].
+53. Na FILE POINTER 0x00000158 sa nachadza DATA DIRECTORY TABLE [LOAD CONFIGURATION TABLE ADDRESS AND SIZE].
+0000000150: 00 00 00 00 00 00 00 00 │ 00 00 00 00 00 00 00 00
+54. Na FILE POINTER 0x00000160 sa nachadza DATA DIRECTORY TABLE [BOUND IMPORT TABLE ADDRESS AND SIZE].
+55. Na FILE POINTER 0x00000168 sa nachadza DATA DIRECTORY TABLE [IMPORT ADDRESS TABLE ADDRESS AND SIZE]. Obsahuje RVA s hodnotou 0x00002000 a SIZE 0x00000010.
+0000000160: 00 00 00 00 00 00 00 00 │ 00 20 00 00 10 00 00 00              ►
+56. Na FILE POINTER 0x00000170 sa nachadza DATA DIRECTORY TABLE [DELAY IMPORT DESCRIPTOR ADDRESS AND SIZE].
+57. Na FILE POINTER 0x00000178 sa nachadza DATA DIRECTORY TABLE [THE CLR HEADER ADDRESS AND SIZE]. Obsahuje RVA s hodnotou 0x00002010 a SIZE 0x00000048==sizeof(IMAGE_COR20_HEADER).
+0000000170: 00 00 00 00 00 00 00 00 │ 10 20 00 00 48 00 00 00          ►   H
+58. Na FILE POINTER 0x00000180 sa nachadza DATA DIRECTORY TABLE [RESERVED].
+59. Na FILE POINTER 0x00000188 sa zacina PRVA SECTION HEADER.
+60. Na FILE POINTER 0x00000188 sa nachadza IMAGE_SECTION_HEADER.Name. Hodnota '.text\0\0\0' obsahuje nazov SECTION.
+0000000180: 00 00 00 00 00 00 00 00 │ 2E 74 65 78 74 00 00 00          .text
+!!! 61. Na FILE POINTER 0x00000190 sa nachadza IMAGE_SECTION_HEADER.PhysicalAddressOrVirtualSize. Hodnota 0x0000035A==858 reprezentuje dlzku CODE, alebo DATA v SECTION '.text' v BYTES. SECTION je ALIGNED na hodnotu IMAGE_OPTIONAL_HEADER64.SectionAlignment==0x00002000.
+62. Na FILE POINTER 0x00000194 sa nachadza IMAGE_SECTION_HEADER.VirtualAddress. Hodnota 0x00002000 reprezentuje RVA na zaciatok SECTION '.text' po nacitani PE FILE do MEMORY.
+63. Na FILE POINTER 0x00000198 sa nachadza IMAGE_SECTION_HEADER.SizeOfRawData. Hodnota 0x00000400 reprezentuje velkost INITIALIZED DATA pre SECTION '.text' zarovnanu na nasobok hodnoty IMAGE_OPTIONAL_HEADER64.FileAlignment. IMAGE_OPTIONAL_HEADER64.FileAlignment==0x00000200.
+64. Na FILE POINTER 0x0000019C sa nachadza IMAGE_SECTION_HEADER.PointerToRawData. Hodnota 0x00000200 reprezentuje FILE POINTER (pozicia v PE FILE fyzicky na DISKU) na PRVU PAGE SECTION '.text' zarovnanu na nasobok hodnoty IMAGE_OPTIONAL_HEADER64.FileAlignment.obsahuje FILE POINTER na PRVU PAGE danej SECTION zarovnanu na nasobok hodnoty IMAGE_OPTIONAL_HEADER64.FileAlignment. IMAGE_OPTIONAL_HEADER64.FileAlignment==0x00000200.
+0000000190: 5A 03 00 00 00 20 00 00 │ 00 04 00 00 00 02 00 00  Z♥       ♦   ☻
+65. Na FILE POINTER 0x000001A0 sa nachadza IMAGE_SECTION_HEADER.NumberOfRelocations. Hodnota 0x00000000 znamena, ze sa SECTION '.text' NEMA REALOCATION ENTRIES.
+66. Na FILE POINTER 0x000001A4 sa nachadza IMAGE_SECTION_HEADER.PointerToLinenumbers. Hodnota 0x00000000 znamena, ze sa SECTION '.text' NEMA LINE NUMBERS.
+67. Na FILE POINTER 0x000001A8 sa nachadza IMAGE_SECTION_HEADER.NumberOfRelocations. Hodnota 0x0000 znamena, ze sa SECTION '.text' NEMA REALOCATION ENTRIES.
+68. Na FILE POINTER 0x000001AA sa nachadza IMAGE_SECTION_HEADER.NumberOfLinenumbers. Hodnota 0x0000 znamena, ze sa SECTION '.text' NEMA LINE NUMBERS.
+!!! 69. Na FILE POINTER 0x000001AC sa nachadza IMAGE_SECTION_HEADER.Characteristics. Hodnota 0x60000020 znamena, ze sa SECTION '.text' ma CHARACTERISTICS (IMAGE_SCN_MEM_READ | IMAGE_SCN_MEM_EXECUTE | IMAGE_SCN_CNT_CODE). To znaci, ze SECTION '.text' obsahuje EXECUTABLE CODE.
+00000001A0: 00 00 00 00 00 00 00 00 │ 00 00 00 00 20 00 00 60                 `
+70. Na FILE POINTER 0x000001B0 sa nachadza IMAGE_SECTION_HEADER.Name. Hodnota '.reloc\0\0' obsahuje nazov SECTION HEADER.
+71. Na FILE POINTER 0x000001B8 sa nachadza IMAGE_SECTION_HEADER.PhysicalAddressOrVirtualSize. Hodnota 0x0000000C==12 reprezentuje dlzku CODE, alebo DATA v SECTION '.reloc' v BYTES.
+!!! 72. Na FILE POINTER 0x000001BC sa nachadza IMAGE_SECTION_HEADER.VirtualAddress. Hodnota 0x00004000 reprezentuje RVA na zaciatok SECTION '.reloc' po nacitani PE FILE do MEMORY. Hodnota 0x00004000 reprezentuje sucet (0x00002000+0x00002000), ktory je suctom IMAGE_SECTION_HEADER.VirtualAddress SECTION '.text' a IMAGE_OPTIONAL_HEADER64.SectionAlignment co je ALINGNMENT na ktoru je zarovnana KAZDA SECTION.
+00000001B0: 2E 72 65 6C 6F 63 00 00 │ 0C 00 00 00 00 40 00 00  .reloc  ♀    @
+73. Na FILE POINTER 0x000001C0 sa nachadza IMAGE_SECTION_HEADER.SizeOfRawData. Hodnota 0x00000200 reprezentuje velkost INITIALIZED DATA pre SECTION '.reloc' zarovnanu na nasobok hodnoty IMAGE_OPTIONAL_HEADER64.FileAlignment. IMAGE_OPTIONAL_HEADER64.FileAlignment==0x00000200.
+!!! 74. Na FILE POINTER 0x000001C4 sa nachadza IMAGE_SECTION_HEADER.PointerToRawData. Hodnota 0x00000600 reprezentuje FILE POINTER (pozicia v PE FILE fyzicky na DISKU) na PRVU PAGE SECTION '.reloc' zarovnanu na nasobok hodnoty IMAGE_OPTIONAL_HEADER64.FileAlignment.obsahuje FILE POINTER na PRVU PAGE danej SECTION zarovnanu na nasobok hodnoty IMAGE_OPTIONAL_HEADER64.FileAlignment. IMAGE_OPTIONAL_HEADER64.FileAlignment==0x00000200. Hodnota 0x00006000==(IMAGE_SECTION_HEADER.PointerToRawData+IMAGE_SECTION_HEADER.SizeOfRawData) pre '.text' SECTION co je rovne (0x00000200+0x00000400).
+75. Na FILE POINTER 0x000001C8 sa nachadza IMAGE_SECTION_HEADER.NumberOfRelocations. Hodnota 0x00000000 znamena, ze sa SECTION '.reloc' NEMA REALOCATION ENTRIES.
+76. Na FILE POINTER 0x000001CC sa nachadza IMAGE_SECTION_HEADER.PointerToLinenumbers. Hodnota 0x00000000 znamena, ze sa SECTION '.reloc' NEMA LINE NUMBERS.
+00000001C0: 00 02 00 00 00 06 00 00 │ 00 00 00 00 00 00 00 00   ☻   ♠
+77. Na FILE POINTER 0x000001D0 sa nachadza IMAGE_SECTION_HEADER.NumberOfRelocations. Hodnota 0x0000 znamena, ze sa SECTION '.text' NEMA REALOCATION ENTRIES.
+78. Na FILE POINTER 0x000001D2 sa nachadza IMAGE_SECTION_HEADER.NumberOfLinenumbers. Hodnota 0x0000 znamena, ze sa SECTION '.text' NEMA LINE NUMBERS.
+!!! 79. Na FILE POINTER 0x000001D4 sa nachadza IMAGE_SECTION_HEADER.Characteristics. Hodnota 0x42000040 znamena, ze sa SECTION '.reloc' ma CHARACTERISTICS (IMAGE_SCN_MEM_READ | IMAGE_SCN_MEM_DISCARDABLE | IMAGE_SCN_CNT_INITIALIZED_DATA). To znaci, ze SECTION '.reloc' obsahuje DISCARDABLE READ-ONLY DATA.
+00000001D0: 00 00 00 00 40 00 00 42 │ 00 00 00 00 00 00 00 00      @  B
+00000001E0: 00 00 00 00 00 00 00 00 │ 00 00 00 00 00 00 00 00
+00000001F0: 00 00 00 00 00 00 00 00 │ 00 00 00 00 00 00 00 00
+!!! 80. Na FILE POINTER 0x00000200 sa nachadza zaciatok SECTION '.text', ktory obsahuje CLR HEADER, METADATA a EXECUTABLE CODE.
+!!! 81. Na FILE POINTER 0x00000200 sa nachadza zaciatok IMPORT ADDRESS TABLE.
+0000000200: 30 23 00 00 00 00 00 00 │ 00 00 00 00 00 00 00 00  0#
+!!! 82. Na FILE POINTER 0x00000210 sa nachadza zaciatok IMAGE_COR20_HEADER. Poziciu je mozne odvodit ako [[THE CLR HEADER ADDRESS AND SIZE]-IMAGE_OPTIONAL_HEADER64.BaseOfCode+IMAGE_SECTION_HEADER.PointerToRawData (pre SECTION '.text')] (0x00002010-0x00002000+0x00000200)==0x0x00000210.
+83. Na FILE POINTER 0x00000210 sa nachadza IMAGE_COR20_HEADER.CB. Hodnota 0x00000048 obsahuje sizeof(IMAGE_COR20_HEADER)==0x48 BYTES.
+84. Na FILE POINTER 0x00000214 sa nachadza IMAGE_COR20_HEADER.MajorRuntimeVersion. Hodnota 0x0002 obsahuje MINIMUM MAJOR CLR VERSION pod ktorou moze byt PE FILE spusteny.
+85. Na FILE POINTER 0x00000216 sa nachadza IMAGE_COR20_HEADER.MinorRuntimeVersion. Hodnota 0x0005 obsahuje MINIMUM MINOR CLR VERSION pod ktorou moze byt PE FILE spusteny.
+86. Na FILE POINTER 0x00000218 sa nachadza IMAGE_COR20_HEADER.MetaData. Obsahuje RVA s hodnotou 0x00002084 a SIZE 0x00000270, ktore ukazuju kde sa nachadzaju METADATA a ake su dlhe.
+0000000210: 48 00 00 00 02 00 05 00 │ 84 20 00 00 70 02 00 00  H   ☻ ♣ „   p☻
+87. Na FILE POINTER 0x00000220 sa nachadza IMAGE_COR20_HEADER.Flags. Hodnota 0x00000001 znamena nastavenie FLAG (COMIMAGE_FLAGS_ILONLY) co znaci, ze PE FILE obsahuje IBA MANAGED CODE.
+88. Na FILE POINTER 0x00000224 sa nachadza IMAGE_COR20_HEADER.EntryPointTokenOrEntryPointRVA. Hodnota 0x06000002 obsahuje METADATA TOKEN, alebo RVA kde sa nachadza ENTRY POINT EXECUTABLE PE FILE.
+89. Na FILE POINTER 0x00000228 sa nachadza IMAGE_COR20_HEADER.Resources. Obsahuje RVA s hodnotou 0x00000000 a SIZE 0x00000000, pretoze PE FILE NEOBSAHUJE RESOURCES.
+0000000220: 01 00 00 00 02 00 00 06 │ 00 00 00 00 00 00 00 00  ☺   ☻  ♠
+90. Na FILE POINTER 0x00000230 sa nachadza IMAGE_COR20_HEADER.StrongNameSignature. Obsahuje RVA s hodnotou 0x00000000 a SIZE 0x00000000, pretoze PE FILE NEOBSAHUJE STRONG SIGNATURE.
+91. Na FILE POINTER 0x00000238 sa nachadza IMAGE_COR20_HEADER.CodeManagerTable. Obsahuje RVA s hodnotou 0x00000000 a SIZE 0x00000000, pretoze PE FILE NEOBSAHUJE CODE MANAGER TABLE.
+0000000230: 00 00 00 00 00 00 00 00 │ 00 00 00 00 00 00 00 00
+92. Na FILE POINTER 0x00000240 sa nachadza IMAGE_COR20_HEADER.VTableFixups. Obsahuje RVA s hodnotou 0x00000000 a SIZE 0x00000000, pretoze PE FILE NEOBSAHUJE VIRTUAL TABLE FIXUPS.
+93. Na FILE POINTER 0x00000248 sa nachadza IMAGE_COR20_HEADER.ExportAddressTableJumps. Obsahuje RVA s hodnotou 0x00000000 a SIZE 0x00000000, pretoze tento FIELD je OBSOLETE a MUSI byt nastaveny na 0.
+0000000240: 00 00 00 00 00 00 00 00 │ 00 00 00 00 00 00 00 00
+94. Na FILE POINTER 0x00000250 sa nachadza IMAGE_COR20_HEADER.ManagedNativeHeader. Obsahuje RVA s hodnotou 0x00000000 a SIZE 0x00000000, pretoze je to RESERVED VALUE, ktora MUSI byt nastavena na 0.
+0000000250: 00 00 00 00 00 00 00 00 │ 00 00 00 00 00 00 00 00
+0000000260: 56 72 01 00 00 70 02 6F │ 01 00 00 0A 28 02 00 00  Vr☺  p☻o☺  ◙(☻
+0000000270: 0A 28 03 00 00 0A 2E 72 │ 25 00 00 70 28 03 00 00  ◙(♥  ◙.r%  p(♥
+!!! 95. Na FILE POINTER 0x00000284 sa nachadza zaciatok CLR METADATA. Poziciu je mozne odvodit z (IMAGE_COR20_HEADER.MetaData-IMAGE_OPTIONAL_HEADER64.BaseOfCode+IMAGE_SECTION_HEADER.PointerToRawData (pre SECTION '.text')] (0x00002084-0x00002000+0x00000200)==0x0x00000284.
+0000000280: 0A 2A 00 00 42 53 4A 42 │ 01 00 01 00 00 00 00 00  ◙*  BSJB☺ ☺
+0000000290: 0C 00 00 00 76 34 2E 30 │ 2E 33 30 33 31 39 00 00  ♀   v4.0.30319
+00000002A0: 00 00 05 00 6C 00 00 00 │ E4 00 00 00 23 7E 00 00    ♣ l   ä   #~
+00000002B0: 50 01 00 00 A8 00 00 00 │ 23 53 74 72 69 6E 67 73  P☺  ¨   #Strings
+00000002C0: 00 00 00 00 F8 01 00 00 │ 44 00 00 00 23 55 53 00      ø☺  D   #US
+00000002D0: 3C 02 00 00 10 00 00 00 │ 23 47 55 49 44 00 00 00  <☻  ►   #GUID
+00000002E0: 4C 02 00 00 24 00 00 00 │ 23 42 6C 6F 62 00 00 00  L☻  $   #Blob
+00000002F0: 00 00 00 00 02 00 00 01 │ 47 05 00 00 09 00 00 00      ☻  ☺G♣  ○
+0000000300: 00 FA 25 33 00 16 00 00 │ 01 00 00 00 04 00 00 00   ú%3 ▬  ☺   ♦
+0000000310: 03 00 00 00 02 00 00 00 │ 01 00 00 00 03 00 00 00  ♥   ☻   ☺   ♥
+0000000320: 01 00 00 00 01 00 00 00 │ 00 00 4B 00 01 00 00 00  ☺   ☺     K ☺
+0000000330: 00 00 06 00 11 00 0A 00 │ 06 00 18 00 0A 00 06 00    ♠ ◄ ◙ ♠ ↑ ◙ ♠
+0000000340: 2B 00 0A 00 06 00 39 00 │ 0A 00 00 00 00 00 01 00  + ◙ ♠ 9 ◙     ☺
+0000000350: 00 00 00 00 01 00 01 00 │ 01 00 00 00 65 00 6E 00      ☺ ☺ ☺   e n
+0000000360: 05 00 01 00 01 00 01 00 │ 00 00 76 00 84 00 05 00  ♣ ☺ ☺ ☺   v „ ♣
+0000000370: 01 00 02 00 60 20 00 00 │ 00 00 16 00 91 00 19 00  ☺ ☻ `     ▬ ‘ ↓
+0000000380: 01 00 76 20 00 00 00 00 │ 16 00 A0 00 1F 00 02 00  ☺ v     ▬   ▼ ☻
+0000000390: 00 00 01 00 18 00 09 00 │ 22 00 01 00 19 00 32 00    ☺ ↑ ○ " ☺ ↓ 2
+00000003A0: 05 00 21 00 41 00 0B 00 │ 00 00 00 00 00 00 00 00  ♣ ! A ♂
+00000003B0: 00 00 00 00 00 00 00 00 │ 00 00 84 00 00 00 04 00            „   ♦
+00000003C0: 00 00 00 00 00 00 00 00 │ 00 00 10 00 5C 00 00 00            ► \
+00000003D0: 00 00 00 00 00 3C 4D 6F │ 64 75 6C 65 3E 00 53 79       <Module> Sy
+00000003E0: 73 74 65 6D 00 4F 62 6A │ 65 63 74 00 45 78 63 65  stem Object Exce
+00000003F0: 70 74 69 6F 6E 00 54 6F │ 53 74 72 69 6E 67 00 53  ption ToString S
+0000000400: 74 72 69 6E 67 00 46 6F │ 72 6D 61 74 00 43 6F 6E  tring Format Con
+0000000410: 73 6F 6C 65 00 57 72 69 │ 74 65 4C 69 6E 65 00 53  sole WriteLine S
+0000000420: 69 6D 70 6C 65 53 61 6D │ 70 6C 65 2E 65 78 65 00  impleSample.exe
+0000000430: 6D 73 63 6F 72 6C 69 62 │ 00 43 48 65 6C 70 65 72  mscorlib CHelper
+0000000440: 73 00 48 65 6C 70 65 72 │ 73 00 43 53 69 6D 70 6C  s Helpers CSimpl
+0000000450: 65 53 61 6D 70 6C 65 00 │ 53 69 6D 70 6C 65 53 61  eSample SimpleSa
+0000000460: 6D 70 6C 65 00 50 72 69 │ 6E 74 45 78 63 65 70 74  mple PrintExcept
+0000000470: 69 6F 6E 00 45 78 65 63 │ 75 74 65 00 00 23 45 00  ion Execute  #E
+0000000480: 58 00 43 00 45 00 50 00 │ 54 00 49 00 4F 00 4E 00  X C E P T I O N
+0000000490: 20 00 5B 00 7B 00 30 00 │ 7D 00 5D 00 20 00 21 00    [ { 0 } ]   !
+00000004A0: 00 1B 48 00 65 00 6C 00 │ 6C 00 6F 00 20 00 57 00   ←H e l l o   W
+00000004B0: 4F 00 52 00 4C 00 44 00 │ 20 00 21 00 00 00 00 00  O R L D   !
+00000004C0: 67 09 58 7A 0B 14 E6 43 │ AE 34 42 25 DF C2 72 AC  g○Xz♂¶æC®4B%ßÂr¬
+00000004D0: 00 03 20 00 0E 05 00 02 │ 0E 0E 1C 04 00 01 01 0E   ♥  ♫♣ ☻♫♫∟♦ ☺☺♫
+00000004E0: 08 B7 7A 5C 56 19 34 E0 │ 89 05 00 01 01 12 09 03  ◘·z\V↓4à‰♣ ☺☺↕○♥
+00000004F0: 00 00 01 00 00 00 00 00 │ 20 23 00 00 00 00 00 00    ☺      #
+0000000500: 00 00 00 00 3E 23 00 00 │ 00 20 00 00 00 00 00 00      >#
+0000000510: 00 00 00 00 00 00 00 00 │ 00 00 00 00 00 00 00 00
+0000000520: 30 23 00 00 00 00 00 00 │ 00 00 00 00 00 00 00 00  0#
+0000000530: 00 00 5F 43 6F 72 45 78 │ 65 4D 61 69 6E 00 6D 73    _CorExeMain ms
+0000000540: 63 6F 72 65 65 2E 64 6C │ 6C 00 00 00 00 00 48 A1  coree.dll     H¡
+0000000550: 00 20 00 40 01 00 00 00 │ FF E0 00 00 00 00 00 00     @☺   ÿà
+0000000560: 00 00 00 00 00 00 00 00 │ 00 00 00 00 00 00 00 00
+0000000570: 00 00 00 00 00 00 00 00 │ 00 00 00 00 00 00 00 00
+0000000580: 00 00 00 00 00 00 00 00 │ 00 00 00 00 00 00 00 00
+0000000590: 00 00 00 00 00 00 00 00 │ 00 00 00 00 00 00 00 00
+00000005A0: 00 00 00 00 00 00 00 00 │ 00 00 00 00 00 00 00 00
+00000005B0: 00 00 00 00 00 00 00 00 │ 00 00 00 00 00 00 00 00
+00000005C0: 00 00 00 00 00 00 00 00 │ 00 00 00 00 00 00 00 00
+00000005D0: 00 00 00 00 00 00 00 00 │ 00 00 00 00 00 00 00 00
+00000005E0: 00 00 00 00 00 00 00 00 │ 00 00 00 00 00 00 00 00
+00000005F0: 00 00 00 00 00 00 00 00 │ 00 00 00 00 00 00 00 00
+96. Na FILE POINTER 0x00000600 sa nachadza zaciatok SECTION '.reloc'.
+97. Na FILE POINTER 0x00000600 sa nachadza PRVY (a zaroven aj posledny) FIXUP BLOCK.
+98. Na FILE POINTER 0x00000600 sa nachadza ADDRESS PAGE, ktora ma byt FIXED. Hodnota 0x00002000 znamena, ze FIXED bude PAGE na ADDRESS 0x00002000.
+99. Na FILE POINTER 0x00000604 sa nachadza FIXUP BLOCK SIZE v BYTES. Hodnota 0x0000000C znamena, ze dlzka FIXUP BLOCK je 12 BYTES.
+100. Na FILE POINTER 0x00000608 sa nachadza REALOCATION TYPE a REALOCATION ADDRESS OFFSET. Hodnota 0xA350 znamena, ze REALOCATION TYPE==0x0A a REALOCATION ADDRESS OFFSET==0x350.
+0000000600: 00 20 00 00 0C 00 00 00 │ 50 A3 00 00 00 00 00 00      ♀   P£
+0000000610: 00 00 00 00 00 00 00 00 │ 00 00 00 00 00 00 00 00
+0000000620: 00 00 00 00 00 00 00 00 │ 00 00 00 00 00 00 00 00
+0000000630: 00 00 00 00 00 00 00 00 │ 00 00 00 00 00 00 00 00
+0000000640: 00 00 00 00 00 00 00 00 │ 00 00 00 00 00 00 00 00
+0000000650: 00 00 00 00 00 00 00 00 │ 00 00 00 00 00 00 00 00
+0000000660: 00 00 00 00 00 00 00 00 │ 00 00 00 00 00 00 00 00
+0000000670: 00 00 00 00 00 00 00 00 │ 00 00 00 00 00 00 00 00
+0000000680: 00 00 00 00 00 00 00 00 │ 00 00 00 00 00 00 00 00
+0000000690: 00 00 00 00 00 00 00 00 │ 00 00 00 00 00 00 00 00
+00000006A0: 00 00 00 00 00 00 00 00 │ 00 00 00 00 00 00 00 00
+00000006B0: 00 00 00 00 00 00 00 00 │ 00 00 00 00 00 00 00 00
+00000006C0: 00 00 00 00 00 00 00 00 │ 00 00 00 00 00 00 00 00
+00000006D0: 00 00 00 00 00 00 00 00 │ 00 00 00 00 00 00 00 00
+00000006E0: 00 00 00 00 00 00 00 00 │ 00 00 00 00 00 00 00 00
+00000006F0: 00 00 00 00 00 00 00 00 │ 00 00 00 00 00 00 00 00
+0000000700: 00 00 00 00 00 00 00 00 │ 00 00 00 00 00 00 00 00
+0000000710: 00 00 00 00 00 00 00 00 │ 00 00 00 00 00 00 00 00
+0000000720: 00 00 00 00 00 00 00 00 │ 00 00 00 00 00 00 00 00
+0000000730: 00 00 00 00 00 00 00 00 │ 00 00 00 00 00 00 00 00
+0000000740: 00 00 00 00 00 00 00 00 │ 00 00 00 00 00 00 00 00
+0000000750: 00 00 00 00 00 00 00 00 │ 00 00 00 00 00 00 00 00
+0000000760: 00 00 00 00 00 00 00 00 │ 00 00 00 00 00 00 00 00
+0000000770: 00 00 00 00 00 00 00 00 │ 00 00 00 00 00 00 00 00
+0000000780: 00 00 00 00 00 00 00 00 │ 00 00 00 00 00 00 00 00
+0000000790: 00 00 00 00 00 00 00 00 │ 00 00 00 00 00 00 00 00
+00000007A0: 00 00 00 00 00 00 00 00 │ 00 00 00 00 00 00 00 00
+00000007B0: 00 00 00 00 00 00 00 00 │ 00 00 00 00 00 00 00 00
+00000007C0: 00 00 00 00 00 00 00 00 │ 00 00 00 00 00 00 00 00
+00000007D0: 00 00 00 00 00 00 00 00 │ 00 00 00 00 00 00 00 00
+00000007E0: 00 00 00 00 00 00 00 00 │ 00 00 00 00 00 00 00 00
+00000007F0: 00 00 00 00 00 00 00 00 │ 00 00 00 00 00 00 00 00
+//-------------------------------------------------------------------------------------------------------

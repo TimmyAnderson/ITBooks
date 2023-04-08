@@ -1,0 +1,176 @@
+//-------------------------------------------------------------------------------------------------------
+1. Solution demonstruje zakladne principy MSIL ASSEMBLER.
+2. COMMON LANGUAGE RUNTIME je RUNTIME postaveny na WINDOWS, ktory riadi beh MANAGED PROGRAMS.
+3. HIGH LEVEL LANGUAGES ako su C+, C# ci VB generuju ASSEMBLIES, ktore su reprezentovane v ABSTRACT FORM. ABSTRACT FORM je tvorena 2 COMPONENTS.
+   A. METADATA popisuju vsetkych STRUCTURAL ITEMS ASSEMBLY. Patria sem informacie o CLASSES, MEMBERS, ATTRIBUTES ci GLOBALS ITEMS.
+   B. MSIL CODE reprezentuje CODE, nad ktorym JIT COMPILER vykonava COMPILATION do NATIVE CPU INSTRUCTIONS, ktore su nasledne spustene.
+!!! 4. ZASADNOU VYHODOU pouzitia ABSTRACT FORM do ktorej generuje ASSEMBLIES HIGH LEVEL LANGUAGES je, ze generovane ASSEMBLIES MOZU byt COMPATIBLE.
+!!!!! 5. To, ze rozlicne HIGH LEVEL LANGUAGES generuju ASSEMBLIES v ABSTRACT FORMS este NEZNAMENA, ze KAZDY COMPONENT z KAZDEHO LANGUAGES je mozne vzajomne prepajat. Platia nasledujuce zasady.
+   A. CLR definuje mnozinu RULES (obmedzenia NAMING CONVENTION, DATA TYPES, FUNCTION TYPES a dalsie RULES) nazyvanu aj COMMON LANGUAGE SPECIFICATION (CLS), ktore MUSI ABSTRACT FORM generovanych ASSEMBLIES splnat, aby taketo ASSEMBLIES boli PRENOSITELNE medzi ROZLICNYMI HIGH LEVEL LANGUAGES.
+   B. COMMON LANGUAGE SPECIFICATION (CLS) teda reprezentuje SUBSET zo vsetkych moznosti CLR, ktore ak generovana ASSEMBLIES splni, tak je PRENOSITELNA medzi ROZLICNYMI HIGH LEVEL LANGUAGES.
+   !!! C. Ak HIGH LEVEL LANGUAGES generuju ASSEMBLIES, ktore NESPLNAJU CLS, tak ich ASSEMBLIES NEBUDU prenositelne medzi ROZLICNYMI HIGH LEVEL LANGUAGES.
+   D. V C# je mozne prinutit C# COMPILER, aby skontroloval ci je ASSEMBLY CLS COMPATIBLE. Robi sa to aplikovanim ATTRIBUTE [assembly: CLSCompliant(true)] na ASSEMBLY.
+6. CLR poskytuje PROGRAMS, ktore spusta 3 zakladne cinnosti.
+   A. TYPE CONTROL, kde sa kontroluju TYPES a TYPE CONVERSIONS.
+   B. MANAGED EXCEPTION HANDLING, kde EXCEPTIONS su realizovane priamo CLR bez vyuzitia WINDOWS EXCEPTION HANDLING (ako je to v C++).
+   C. GARBAGE COLLECTION, ktora je zodpovedna za uvolnovanie MEMORY.
+7. Vysledok COMPILATION z HIGH LEVEL LANGUAGE, alebo MSIL COMPILER je MODULE, alebo ASSEMBLY. Pre MODULES a ASSEMBLIES platia nasledujuce zasady.
+   A. MODULE je MINIMALNA ENTITA, ktoru mozu CLR COMPATIBLE LANGUAGES generovat.
+   B. MODULE ma METADATA a CODE.
+   !!! C. MODULE NIE JE SAMOSTATNE SPUSTATELNY, pretoze NEOBSAHUJE MANIFEST.
+   D. ASSEMBLY je tvorena 1-N MODULES, kde PRESNE 1 MODULE MUSI byt PRIMARY MODULE.
+   E. PRIMARY MODULE obsahue ASSEMBLY MANIFEST. ASSEMBLY MANIFEST obsahuje ASSEMBLY IDENTITY.
+   !!! F. ASSEMBLY je MINIMALNA ENTITA, ktora moze byt SAMOSTATNE SPUSTATELNA.
+8. CLR je tvoreny 2 zakladnymi COMPONENTS.
+   A. LOADER je zodpovedny za nacitanie ASSEMBLY do MEMORY, analyzovanie je METADATA, vytvarat LAYOUT pre CLASSES ci nacitavat ine ASSEMBLIES ON DEMAND.
+   B. JIT COMPILER je zodpovedny za COMPILATION MSIL CODE do NATIVE CODE, ktory bude spustatelny CPU. COMPILATION sa vykonava pri PRVOM SPUSTENI daneho CODE a uklada do CACHE. Ak ma SYSTEM malo MEMORY, moze sa CACHE vypraznit, takze ak sa ten isty CODE ma znova spustit, ZNOVA musi JIT COMPILATOR vykonat COMPILATION.
+!!! 9. Pomocou TOOL [NGEN.EXE] je mozne vykonat COMPILATION MSIL CODE do NATIVE CODE a vysledok ulozit na DISK cim NIE JE POTREBNE v RUNTIME vykonavat JIT COMPILATION. Povodna ASSEMBLY vsak kvoli METADATA a SECURITY MUSI BYT na DISKU, inak sa ASSEMBLY NEZAVEDIE do MEMORY.
+10. MSIL CODE je COMPILED a spustany v nasledujucich krokoch.
+   A. Pomocou MSIL COMPILER [ILASM.EXE] su .IL FILES COMPILED do MODULES, alebo ASSEMBLIES.
+   B. CLR LOADER zavedie ASSEMBLY a jej MODULES.
+   C. JIT COMPILER vykonava COMPILATION do NATIVE CPU INSTRUCTIONS, ktore CPU dokaze vykonat.
+!!! 11. Definicie TYPES v MSIL mozu byt ROZDELENE do VIACERYCH CASTI, kde kazda cast moze definovat CAST TYPE (niektore MEMBERS). V jednom .IL FILE moze byt dany TYPE byt definovany VIACKRAT (pomocou KEYWORD [.class]), pricom [ILASM.EXE] vsetky tieto definicie spoji do definicie JEDNEHO TYPE.
+12. MSIL CODE moze obsahovat 3 typy ITEMS.
+   A. DIRECTIVES. DIRECTIVES su KEYWORDS, ktore sluzi na definicie ASSEMBLIES, MODULES, NAMESPACES, TYPES, METHOD DECLARATIONS, FIELDS DECLARATIONS ci FLAGS pre jednotlive .NET STRUCTURES (FieldDef, MethodDef, TypeDef a podobne).
+   B. LABELS. LABELS je mozne aplikovat IBA na INSTRUCTIONS (nikdy NIE na DIRECTIVES). Oznacuju v METHOD BODIES pozicie INSTRUCTIONS na ktore sa budu BRANCH a JUMP INSTRUCTIONS referovat.
+   C. INSTRUCTIONS. INSTRUCTIONS je mozne vkladat IBA do METHOD BODIES a reprezentuju spustatelny CODE.
+!!!!! 13. MSIL je STACK-BASED LANGUAGE, ktory PARAMETERS VSETKYCH INSTRUCTIONS (okrem tych, ktore STACK naplnaju a citaju) su ulozene na STACK. Platia pri tom nasledujuce zasady.
+   A. VSETKY INSTRUCTIONS (okrem LOAD a STORE) musia mat INPUT PARAMETERS ulozene na STACKU.
+   B. VSETKY INSTRUCTIONS (okrem LOAD a STORE) ukladaju OUTPUT PARAMETERS na STACK.
+   C. Jedine INSTRUCTIONS typu LOAD a STORE dokazu pracovat priamo s VARIABLES v MEMORY a ich ADDRESSES.
+   !!!!! D. STACK je tvoreny STACK SLOTS. STACK SLOT ma VARIABILNU DLZU zavisiacu na type informacie, ktora je v STACK SLOT ulozena. STACK SLOT si drzi TYPE daneho SLOTU. Pri vybere PARAMETERS zo STACKU MSIL robi VALIDATION ci TYPE v danom SLOTE zodpoveda TYPE, ktory ocakava INSTRUCTION. Ak TYPE sa NEZHODUJE, generuje sa EXCEPTION InvalidProgramException.
+!!! 14. V MSIL VSETKY MEMBER REFERENCES (na CLASSES, FIELDS, METHODS) musia byt FULLY QUALIFIED. FULLY QUALIFIED NAME musi obsahovat nasledujuce casti.
+   A. ASSEMBLY REFERENCE v ktorom je CLASS/MEMBER definovany.
+   B. NAMESPACE.
+   C. CLASS NAME.
+   D. MEMBER NAME s celou SIGNATURE.
+!!! 15. INSTRUCTION 'ret' kontroluje ci hodnota na STACK zodpoveda typu RETURN VALUE danej METHOD. Ak nezodpoveda, hodi EXCEPTION InvalidProgramException.
+!!! 16. MSIL na rozdiel od C# podporuje GLOBAL ITEMS (VARIABLES, METHODS). Pre GLOBAL ITEMS platia nasledujuce fakty.
+   A. Vsetky GLOBALS ITEMS su ulozene do VIRTUALNEHO TYPE '<Module>', ktory ma zaznam v METADATA TABLE 'TypeDef'.
+   B. GLOBALS ITEMS su viditelne IBA v ramci MODULE (.IL FILE) v ktorom su definovane.
+   C. Vsetky GLOBALS ITEMS MUSIA byt STATIC.
+   D. GLOBALS ITEMS mozu mat ACCESSIBILITY nastavene IBA na 'public', 'private' a 'privatescope'.
+!!! 17. MSIL umoznuje definovat MAPPED FIELDS. MAPPED FIELDS su FIELDS, ktore su MAPPED na DATA SEGMENT v MEMORY. Pre MAPPED FIELDS platia nasledujuce fakty.
+   A. MAPPEDS FIELDS sa deklaruju pomocou SYTNAXE [.field public static TYPE XXX at YYY], kde 'XXX' je meno MAPPED FIELD a 'YYY' je meno DATA SEGMENT na ktory bude FIELD MAPPED.
+   !!! B. MAPPED FIELDS MUSIA byt STATIC FIELDS.
+   !!! C. MAPPED FIELDS su MAPPED do DATA SEGMENTS, ktore musia mat dostatocnu dlzku na ulozenie daneho MAPPED FIELD.
+   !!!!! D. Kedze MAPPED FIELDS su MAPPED na DATA SEGMENT co je STATICKY MEMORY BLOCK, tak ak VIACERO FIELDS je MAPPED na ten isty DATA SEGMENT, tak zmenou hodnoty v DATA SEGMENT budu zmenene VSETKY FIELDS, ktore su nanho MAPPED.
+   !!! E. MAPPED FIELDS mozu byt MAPPED IBA typu VALUE TYPES, pricom PUBLIC FIELDS tychto VALUE TYPES MUSIA byt tiez VALUE TYPES.
+   !!!!! F. DATA SEGMENTS NIKDY nie su predmetom GARBAGE COLLECTION, co je aj dovod, preco MAPPED FIELDS mozu byt IBA typu VALUE TYPES.
+   G. Ak MAPPED TYPE je nespravneho TYPE, CLR hodi EXCEPTION TypeLoadException.
+18. MSIL umoznuje definovat DATA SEGMENTS. DATA SEGMENTS su MEMORY BLOCKS pre ktore platia nasledujuce vlastnosti.
+   !!! A. DATA SEGMENTS NIKDY NIE SU GARBAGE COLLECTED. Su to STATIC MEMORY BLOCKS, ktore su READ-WRITE.
+   B. DATA SEGMENTS maju definovany TYPE.
+   C. Najcastejsim TYPE pre DATA SEGMENT je 'bytearray', co je BYTE ARRAY.
+   D. Na DATA SEGMENTS mozu byt MAPPED MAPPED FIELDS.
+19. MSIL umoznuje definovat VALUE TYPES, ktore NEMAJU STRUKTURU, iba DLZKU. Ta sa definuje pomocou KEYWORD [.size XXX], kde XXX je dlzka VALUE TYPE v BYTES.
+!!! 20. Pri pouzivani UMANAGED FUNCTIONS je NUTNE deklarovat MANAGED WRAPER FUNCTIONS, ktore vykonavaju MARSHALLING vsetkych PARAMETERS a RETUN VALUE. Pre MANAGED WRAPER FUNCTIONS platia nasledujuce fakty.
+   A. WRAPPER FUNCTIONS su oznacene FLAGS 'pinvokeimpl', 'cil', 'managed' a 'preservesig'.
+   !!!!! B. EXTREMNE DOLEZITE je nastavit FLAG 'preservesig', inak by WRAPPER FUNCTION nevracala korektne RETURN VALUE.
+   C. WRAPPER FUNCTIONS su zodpovedne za MARSHALLING (PARAMETER a RETURN VALUE CONVERSIONS).
+//-------------------------------------------------------------------------------------------------------
+MSIL DIRECTIVES.
+
+1. ASSEMBLY sa definuje pomocou KEYWORD [.assembly XXX {}].
+   A. Zaznam o ASSEMBLY je ulozeny v METADATA TABLE 'Assembly'.
+   B. VALUE 'XXX' je meno ASSEMBLY.
+   C. Nazov ASSEMBLY musi byt BEZ EXTENSION.
+   !!!!! D. Ak sa nachadza v .IL FILE, znamena to, ze [ILASM.EXE] bude vykonavat COMPILATION daneho .IL FILE do PRIMARY MODULE. Ak ASSEMBLY je SINGLE-MODULE ASSEMBLY, tak PRIMARY MODULE je zaroven aj ASSEMBLY.
+2. ASSEMBLY REFERENCE sa definuje pomocou KEYWORD [.assembly extern XXX {auto}].
+   A. Zaznam o ASSEMBLY REFERENCE je ulozeny v METADATA TABLE 'AssemblyRef'.
+   B. VALUE 'XXX' je meno referovanej ASSEMBLY.
+   C. VALUE 'auto' znamena, ze CLR sa pokusi najst NAJNOVSIU verziu ASSEMBLY.
+   D. ASSEMBLY NAME 'XXX' MUSI byt BEZ EXTENSION.
+3. MODULE sa definuje pomocou KEYWORD [.module XXX.EXT].
+   A. Zaznam o MODULE je ulozeny v METADATA TABLE 'Module'.
+   B. VALUE 'XXX' je meno MODULE.
+   C. Nazov MODULE MUSI byt s EXTENSION.
+   !!! D. Ak ASSEMBLY je SINGLE-MODULE ASSEMBLY, tak nazov MODULE bude zaroven aj nazvom ASSEMBLY.
+4. NAMESPACE sa definuje pomocou KEYWORD [.namespace XXX].
+    !!! A. NAMESPACE NEDEFINUJE ITEM v ziadnej METADATA TABLE.
+	B. NAMESPACE reprezentuje PREFIX pred menom CLASS.
+5. TYPE sa definuje pomocou KEYWORD [.class FLAGS XXX extends YYY].
+   A. Zaznam o TYPE je ulozeny v METADATA TABLE 'TypeDef'.
+   B. VALUE 'XXX' je meno TYPE.
+   C. VALUE 'YYY' je meno BASE TYPE z ktoreho definovany TYPE dedi.
+   D. VALUE 'YYY' je referenciou do METADATA TABLE 'TypeRef'.
+   !!! E. Ak 'YYY' je rovny hodnote [System.ValueType], dany TYPE reprezentuje STRUCTURE.
+   !!! F. Ak 'YYY' je rovny hodnote [System.Enum], dany TYPE reprezentuje ENUM.
+   !!! G. Ak 'YYY' ma inu hodnotu ako [System.ValueType] a [System.Enum], dany TYPE reprezentuje CLASS.
+   H. Ak FLAGS obsahuje hodnotu [public], TYPE bude PUBLIC.
+   I. Ak FLAGS obsahuje hodnotu [private], TYPE bude INTERNAL.
+   J. Ak FLAGS obsahuje hodnotu [auto], CLR bude AUTOMATICKY urcovat poziciu FIELDS v danom TYPE.
+   K. Ak FLAGS obsahuje hodnotu [sequential], pozicia FIELDS v danom TYPE bude urcena poziciou FIELDS v TYPE DEFINITION.
+   L. Ak FLAGS obsahuje hodnotu [explicit], pozicia FIELDS v danom TYPE bude urcena explicitnym stanovenim BYTE OFFSET kazdeho FIELD.
+   M. Ak FLAGS obsahuje hodnotu [ansi], TYPE bude pri konverzii STRINGS do UNMANAGED STRINGS pouzivat ANSI NULL-TERMINATED STRINGS.
+   N. Ak FLAGS obsahuje hodnotu [unicode], TYPE bude pri konverzii STRINGS do UNMANAGED STRINGS pouzivat UNICODE NULL-TERMINATED STRINGS.
+6. FIELD sa definuje pomocou KEYWORD [.field FLAGS TYPE XXX].
+   A. Zaznam o FIELD je ulozeny v METADATA TABLE 'FieldDef'.
+   B. VALUE 'XXX' je meno FIELD.
+   C. VALUE 'TYPE' je typ FIELD.
+   !!!!! D. FIELD moze byt definovany v CLASS a potom sa stava MEMBER danej CLASS, alebo MIMO CLASS a potom sa stava GLOBALNYM FIELD.
+   E. Ak FLAGS obsahuje hodnotu [private], FIELD bude PRIVATE.
+   F. Ak FLAGS obsahuje hodnotu [public], FIELD bude PUBLIC.
+   G. Ak FLAGS obsahuje hodnotu [assembly], FIELD bude INTERNAL.
+   H. Ak FLAGS obsahuje hodnotu [family], FIELD bude PROTECTED.
+   I. Ak FLAGS obsahuje hodnotu [famandassem], FIELD bude pristupny IBA pre DERIVED CLASSES a INTERNAL CLASSES.
+   J. Ak FLAGS obsahuje hodnotu [famorassem], FIELD bude pristupny pre DERIVED CLASSES AJ INTERNAL CLASSES.
+   K. Ak FLAGS obsahuje hodnotu [privatescope], FIELD bude pristupny z lubovolnej METHOD v CURRENT MODULE.
+   L. Ak FLAGS obsahuje hodnotu [static], FIELD bude STATIC.
+   M. Ak FLAGS obsahuje hodnotu [valuetype], FIELD bude VALUETYPE.
+   !!! N. Ak za 'XXX' nasleduje [at YYY], tak FIELD je MAPPED FIELD, ktory je MAPPED na MEMORY definovanej DATA SEGMENT 'YYY'.
+7. METHOD sa definuje pomocou KEYWORD [.method FLAGS1 RETURN_VALUE XXX(PARAMETER1,...PARAMETERN) FLAGS2].
+   A. Zaznam o MMETHOD je ulozeny v METADATA TABLE 'MethodDef'.
+   B. VALUE 'XXX' je meno METHOD.
+   C. VALUE 'RETURN_VALUE' je RETURN VALUE METHOD. Moze nadobudat hodnotu 'void'.
+   D. VALUES 'PARAMETER1,...PARAMETERN' su PARAMETERS METHOD. NESMIE nadobudat hodnotu 'void'.
+   !!!!! E. METHOD moze byt definovana v CLASS a potom sa stava MEMBER danej CLASS, alebo MIMO CLASS a potom sa stava GLOBALNOU METHOD.
+   F. Ak FLAGS1 obsahuje hodnotu [private], METHOD bude PRIVATE.
+   G. Ak FLAGS1 obsahuje hodnotu [public], METHOD bude PUBLIC.
+   H. Ak FLAGS1 obsahuje hodnotu [assembly], METHOD bude INTERNAL.
+   I. Ak FLAGS1 obsahuje hodnotu [family], METHOD bude PROTECTED.
+   J. Ak FLAGS1 obsahuje hodnotu [famandassem], METHOD bude pristupna IBA pre DERIVED CLASSES a INTERNAL CLASSES.
+   K. Ak FLAGS1 obsahuje hodnotu [famorassem], METHOD bude pristupna pre DERIVED CLASSES AJ INTERNAL CLASSES.
+   L. Ak FLAGS1 obsahuje hodnotu [privatescope], METHOD bude pristupna z lubovolnej METHOD v CURRENT MODULE.
+   M. Ak FLAGS1 obsahuje hodnotu [static], METHOD bude STATIC.
+   !!! N. Ak FLAGS2 obsahuje hodnotu [cil], METHOD MSIL obsahuje INSTRUCTIONS.
+   !!! O. Ak FLAGS2 obsahuje hodnotu [native], METHOD obsahuje NATIVE CPU INSTRUCTIONS.
+   !!! P. Ak FLAGS2 obsahuje hodnotu [managed], METHOD je MANAGED METHOD
+   !!! Q. Ak FLAGS2 obsahuje hodnotu [unmanaged], METHOD je UNMANAGED METHOD
+8. ENTRY METHOD (METHOD, ktora je spustena pri spustani PROGRAM) sa oznacuje KEYWORD [.entrypoint].
+   A. KEYWORD [.entrypoint] sa definuje na ZACIATKU METHOD BODY.
+   B. V PROGRAME (.EXE FILE) moze byt IBA 1 METHOD oznacena ako ENTRY METHOD.
+   C. CLASS LIBRARIES (.DLL FILES) NEMUSIA mat definovanu ENTRY METHOD.
+9. LOCAL VARIABLES sa definuju pomocou KEYWORD [.locals FLAGS (PARAMETER1,...PARAMETERN)].
+   A. Kazdy PARAMETER musi obsahovat TYPE a VARIABLE NAME.
+   !!! B. Ak FLAGS obsahuje hodnotu [init], VARIABLES budu INICIALIZOVANE PRED vykonanim METHOD. Tento krok je dolezity pre to, aby korektne zbehla DATA VALIDATION. Preto aj KAZDA LOCAL VARIABLE by mala mat tento FLAG nastaveny.
+10. DATA SEGMENTS sa definuju pomocou KEYWORD [.data XXX=TYPE(DATA)].
+   A. VALUE 'XXX' je meno DATA SEGMENT.
+   B. VALUE 'TYPE' je TYPE DATA SEGMENT. Je mozne pouzit VALUE TYPES ako 'int32' ci 'int64', alebo 'bytearray', na definovanie BYTE ARRAY.
+   C. VALUE 'DATA' je inicializacna hodnota DATA SEGMENT. Ak je DATA SEGMENT TYPE 'bytearray', obsahuje medzerou oddelene HEXA VALUES.
+   !!! D. DATA SEGMENTS NIKDY NIE SU GARBAGE COLLECTED. Su to STATIC MEMORY BLOCKS, ktore su READ-WRITE.
+//-------------------------------------------------------------------------------------------------------
+Postup pri vytvarani MULTIMODULE ASSEMBLIES v MSIL.
+
+1. MULTI-MODULES ASSEMBLY musi obsahovat nasledujuce FILES.
+   A. 1-N .IL FILES obsahujuce MSIL CODE pre MODULES.
+   B. 1 .IL FILE obsahujuci MSIL CODE pre PRIMARY MODULE (MODULE s ASSEMBLY MANIFEST).
+2. .IL FILE reprezentujuci NON-PRIMARY MODULE NESMIE obsahovat KEYWORD [.assembly ASSEMBLY_NAME { }]. Ak by ho obsahoval, [ILASM.EXE] by namiesto MODULE generoval PRIMARY MODULE.
+3. .IL FILE reprezentujuci NON-PRIMARY MODULE MUSI obsahovat KEYWORD [.module MODULE_NAME.MOD], ktory urci nazov MODULE.
+!!!!! 4. .IL FILE reprezentujuci PRIMARY MODULE MUSI obsahovat KEYWORD [.assembly ASSEMBLY_NAME { }], aby [ILASM.EXE] z daneho .IL FILE generoval PRIMARY MODULE s ASSEMBLY MANIFEST.
+!!!!! 5. Ak sa medzi MODULES jednotlive TYPES navzajom odkazuju, je pred meno TYPE NUTNE napisat v [] meno MODULE (napriklad call void [.module Module1.mod]CModule1::SimpleTest()).
+!!! 6. PRIMARY MODULE MUSI obsahovat deklaracie referovanych MODULES pomocou KEYWORD [.file], napriklad [.file Module1.mod].
+!!! 7. Pri kompilacii NON-PRIMARY MODULES MUSI COMMAND LINE obsahovat OPTION [/OUTPUT:XXX.MOD], aby [ILASM.EXE] generoval NON-PRIMARY MODULES.
+!!! 8. Pri kompilacii NON-PRIMARY MODULES MUSI COMMAND LINE obsahovat OPTION [/DLL], aby [ILASM.EXE] generoval NON-PRIMARY MODULES.
+!!! 9. Pri kompilacii NON-PRIMARY MODULES MUSI COMMAND LINE obsahovat VSETKY MODULE FILES (.MOD FILES), ktore tvoria danu ASSEMBLY, vratane PRIMARY MODULE.
+//-------------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------------
+DEBUGGING .IL FILES.
+
+!!! 1. Do COMMAND LINE prikazu [ILASM.EXE] je NUTNE doplnit OPTION [/DEBUG].
+2. Pri kompilacii sa vytvori .PDB FILE, ktory obsahuje referencie na .IL FILES z ktorych bol program vytvoreny.
+!!!!! 3. Teraz uz je mozne postupovat standardne. Napriklad pri vzniku EXCEPTION je mozne nechat vyvolat VISUAL STUDIO a to nacita KOREKTNY .IL FILE a kurzor hodi na poziciu kde sa nachadza CODE. Takisto je mozne pouzit CALL STACK ci WATCH.
+!!! 4. BREAKPOINT v CODE je mozne vyvolat volamim METHOD Debugger.Break(), pomocou CODE [call void [mscorlib]System.Diagnostics.Debugger::Break()].
+!!!!!! 5. BREAKPOINT je v CODE moze vyvolat aj vlozenim INSTRUCTION [break] do CODE.
+//-------------------------------------------------------------------------------------------------------

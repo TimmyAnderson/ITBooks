@@ -1,0 +1,361 @@
+//-------------------------------------------------------------------------------------------------------
+1. Solution popisuje GENERIC TYPES.
+2. GENERIC TYPES su TYPE TEMPLATES z ktorych sa vytvaraju CONSTRUCTED TYPES dosadenim konkretnych TYPES za TYPE PARAMETERS. GENERIC TYPES maju nasledujuce vlastnosti.
+   A. GENERIC TYPES maju 1-N TYPE PARAMETERS.
+   B. TYPE PARAMETERS sa v GENERIC TYPES pouzivaju na subsituciu FIELD TYPES, PROPERTY TYPES, EVENT TYPES ci METHOD PARAMETER TYPES.
+   C. Pri vytvarani instancii GENERIC TYPES su TYPE PARAMETERS substituovane za realne TYPES.
+   D. GENERIC TYPES mozu pre kazdy TYPE PARAMETER definovat CONSTRAINS, ktore urcuju ako mozu TYPES TYPE PARAMETERS substituovat.
+   E. Pri referencovani GENERIC TYPES je nutne definovat vsetky TYPE PARAMETERS.
+   !!! F. GENERIC TYPES su ulozene v METADATA TABLE [TypeDef], tak ako NON-GENERIC TYPES. V tomto sa GENERIC a NON-GENERIC TYPES NIJAKO NEODLISUJU. Avsak GENERIC TYPES maju ulozene informacie o TYPE PARAMETERS v METADATA TABLES [TypeSpec], [GenericParam] a [GenericParamConstraint].
+   !!!!! G. CLR ani MSIL NEUMOZNUJU v jednom MODULE definovat GENERIC a NON-GENERIC TYPES s ROVNAKYMI NAMES. CLR teda napriklad NEUMOZNUJE definovat v 1 MODULE CLASSES CClass, CClass<TType> ci CClass<TType1,TType2>.
+!!!!! 3. Aj ked CLR NEUMOZNUJE v jednom MODULE definovat GENERIC a NON-GENERIC TYPES s ROVNAKYMI NAMES, tak HIGH-LEVEL LANUGAGES toto umoznuju tak, ze vykonaju TYPE NAME MANGLING. C# vykonava TYPE NAME MANGLING tak, ze na koniec GENERIC TYPE NAME prida znak '`' a ARITY. Takze napriklad TYPE CClass<TType1,TType2> sa zmeni na NAME [CClass`2].
+4. Informacie o TYPE PARAMETERS GENERIC TYPES su ulozene v METADATA TABLE [GenericParam]. Vdaka RECORDS v METADATA TABLE [GenericParam] je mozne urcit vsetky TYPES (i METHODS), ktore su GENERIC TYPES (METHODS) ako aj definovat CONTRAINTS na jednotlive TYPE PARAMETERS. METADATA TABLE [GenericParam] ma nasledujuce COLUMNS.
+   A. COLUMN [Number]. Ma 2 BYTES a obsahuje ORDINAL NUMBER TYPE PARAMETER v GENERIC TYPE (METHOD) do ktoreho patri.
+   B. COLUMN [Flags]. Ma 2 BYTES a obsahuje FLAGS urcujuce typ CONSTRAINT asociovaneho s danym TYPE PARAMETER.
+   C. COLUMN [Owner]. Obsahuje TOKEN typu METADATA TABLE [TypeOrMethodDef] urcujuci OWNER TYPE (alebo METHOD) daneho TYPE PARAMETER.
+   D. COLUMN [Name]. Referuje do METADATA STREAM [#Strings] a obsahuje TYPE PARAMETER NAME.
+5. Informacie o CONSTRAINTS pre jednotlive TYPE PARAMETERS GENERIC TYPES (i METHODS) su ulozene v METADATA TABLE [GenericParamConstraint]. METADATA TABLE [GenericParamConstraint] obsahuje nasledujuce COLUMNS.
+   A. COLUMN [Owner]. Obsahuje RID do METADATA TABLE [GenericParam] obsahujuci INDEX na RECORD reprezentujuci TYPE PARAMETER, ktoreho CONSTRAINT sa tyka.
+   B. COLUMN [Constraint]. Obsahuje TOKEN do METADATA TABLES [TypeDef], [TypeRef], alebo [TypeSpec] (pre METHODS [MethodSpec]). RECORD urcuje CONSTRAINT, ktory sa aplikuje na dany TYPE PARAMETER. CONSTRAINT moze urcovat CLASS, z ktoreho ma TYPE dedit, alebo INTERFACE, ktory ma TYPE implementovat. Moze urcovat aj to ci TYPE TYPE PARAMETER ma byt CLASS, STRUCT a ci ma mat DEFAULT CONSTRUCTOR.
+6. Informacie o CONSTRUCTED TYPES su ulozene v METADATA TABLE [TypeSpec]. METADATA TABLE [TypeSpec] ma jediny COLUMN [Signature], ktory obsahuje SIGNATURE daneho CONSTRUCTED TYPE.
+7. CLR umoznuje definovat nasledujuce typy CONSTRAINTS.
+   A. CONSTRAINT urcujuci, z ktorej BASE CLASS musi TYPE PARAMETER dedit.
+   B. CONSTRAINT urcujuci, ktore INTERFACES musi TYPE PARAMETER implementovat.
+   C. CONSTRAINT urcujuci ze TYPE PARAMETER musi byt VALUE TYPE.
+   D. CONSTRAINT urcujuci ze TYPE PARAMETER musi byt REFERENCE TYPE.
+   E. CONSTRAINT urcujuci ze TYPE PARAMETER musi mat DEFAULT CONSTRUCTOR.
+8. GENERIC TYPES mozu dedit z inych GENERIC TYPES a implementovat GENERIC INTERFACES.
+!!! 9. TYPE PARAMETERS daneho TYPE mozu zaroven vystupovat aj ako CONSTRAINTS pre ine TYPE PARAMETERS.
+!!!!! 10. Standardne .NET GENERIC INTERFACES maju MANGLED NAMES, kde do NAME je pridana ARITY. Napriklad System.IComparable<T> sa v skutocnosti vola System.IComparable'1<T>. PROGRAMMING LANGUAGES ako C# POSTFIX ['ARITY] umelo odstranuju, takze je mozne pouzit NAME System.IComparable<T>, avsak v skutocnosti sa tento TYPE vola System.IComparable'1<T>.
+!!! 11. GENERIC TYPES NESMU mat METHODS s VARIABLE PARAMETERS, inak je generovana EXCEPTION [TypeLoadException].
+!!! 12. Pri referovani na TYPE PARAMETERS GENERIC TYPES je VZDY nutne pouzit GENERIC TYPE INSTANTION (nazov TYPE aj so vsetkymi GENERIC PARAMETERS) a to aj ked je MEMBER referovany v ramci samotneho GENERIC TYPE. Ak pri GENERIC TYPE INSTANTION nie su zname TYPE PARAMETERS je nutne za TYPE PARAMETERS pouzit naseldujucu SYNTAX.
+   A. SYNTAX [!TYPE_PARAMETER_NAME] sa pouziva v RAMCI samotneho GENERIC TYPE, kde je meno TYPE PARAMETER zname.
+   B. SYNTAX [!PARAMETER_ORDINAL_NUMBER] sa pouziva v MIMO GENERIC TYPE, kde je meno TYPE PARAMETER nezname. Tuto SYNTAX je mozne pouzit aj v ramci GENERIC TYPE.
+13. GENERIC TYPES plne podporuju INPLICIT aj EXPLICIT INHERITANCE. Podporuju aj SHORT a LONG verzie EXPLICIT INHERITANCE. Pri definovani METHODS, ktore budu OVERRIDEN je nutne vykonat GENERIC TYPE INSTANTIATION (nazov TYPE aj so vsetkymi GENERIC PARAMETERS).
+!!! 14. NESTED TYPES, ktore su NESTED v GENERIC TYPES NEMOZU pouzivat TYPE PARAMETERS svojho ENCLOSING TYPE, kedze v CLR pri vytvarani ENCLOSING TYPE NIE JE automaticky vytvorena instancia NESTED TYPE. V CLR su NESTED a ENCLOSING TYPES NEZAVISLE a jedine previazanie je v tom, ze NESTED TYPE moze pristupovat aj ku PRIVATE MEMBERS ENCLOSING TYPE.
+!!!!! 15. V C# (na rozdiel od MSIL) ak sa do GENERIC ENCLOSING TYPE vlozi NESTED TYPE, C# AUTOMATICKY prida do NESTED TYPE VSETKY TYPE PARAMETERS NESTED TYPE. Ak teda v C# bol deklarovany NESTED TYPE ako NON-GENERIC, C# z neho spravi GENERIC TYPE zo vsetkymi TYPE PARAMETERS, ktore ma ENCLOSING TYPE. Ak NESTED TYPE v C# je tiez GENERIC TYPE, tak C# z neho spravi GENERIC TYPE, ktory bude obsahovat VSETKY TYPE PARAMETERS ENCLOSING TYPE ako i VSETKY TYPE PARAMETERS NESTED TYPE.
+//-------------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------------
+MSIL KEYWORDS.
+
+!!!!! 1. V MSIL je zodpovednostou PROGRAMATORA, aby KOREKTNE naplnil METADATA TABLES aplikovanim spravnych KEYWORDS na ASSEMBLY ci ine ENTITIES.
+!!!!! 2. Ak v MSIL CODE NEDEFINUJE korektne vsetky METADATA TABLES, MSIL COMPILER moze pre dany CODE vygenerovat PE FILE, avsak pri pokuse o spustenie tohto PE FILE hodi CLR EXCEPTION oznamujuci, ze PE FILE nema vsetky potrebne METADATA. Napriklad, pri MULTI-FILE ASSEMBLY, ak som v PRIMARY MODULE nemal pouzity KEYWORD [.file] s odkazom na ostatne FILES, tak MSIL COMPILER CODE korektne skompiloval, no pri spusteni CLR hodilo EXCEPTION BadImageFormatException. Az po doplneni KEYWORDS [.file], ktore doplnili zaznamy do METADATA TABLES sa PROGRAM korektne spustil.
+//-------------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------------
+KEYWORD [.assembly] pre definiciu ASSEMBLY.
+
+1. ASSEMBLY sa DEFINUJE pomocou KEYWORD [.assembly].
+!!! 2. ASSEMBLY DEFINITION sa uklada v METADATA TABLE [Assembly].
+3. SYNTAX KEYWORD [.assembly] pre definiciu ASSEMBLY je nasledovna.
+   A. RULE [<ASSEMBLIES> ::= <ASSEMBLY>].
+   B. RULE [<ASSEMBLY> ::= .assembly <FLAGS> <NAME> { <ASSEMBLY_DECLARATION>* }]. NAME je meno ASSEMBLY.
+   C. RULE [<FLAGS> ::=	<NONE>]. ASSEMBLY NEMOZE byt RETARGETED.
+   D. RULE [<FLAGS> ::=	retargetable]. ASSEMBLY MOZE byt RETARGETED.
+   E. RULE [<ASSEMBLY_DECLARATION> ::= .hash algorithm <int32>]. Nastavuje ASSEMBLY HASH ALGORITHM pre vypocet HASH CODES ASSEMBLY FILES.
+   F. RULE [<ASSEMBLY_DECLARATION> ::= .ver <int32>:<int32>:<int32>:<int32>]. Nastavuje ASSEMBLY VERSION.
+   G. RULE [<ASSEMBLY_DECLARATION> ::= .publickey = ( <bytes> )]. Nastavuje ASSEMBLY ENCRYPTION PUBLIC KEY.
+   H. RULE [<ASSEMBLY_DECLARATION> ::= .locale <LOCALE_STRING>]. Nastavuje ASSEMBLY CULTURE.
+   I. RULE [<ASSEMBLY_DECLARATION> ::= <SECURITY_DECLARATION>]. Nastavuje ASSEMBLY SECURITY PERMISSIONS.
+   J. RULE [<ASSEMBLY_DECLARATION> ::= <CUSTOM_ATTRIBUTE_DECLARATION>]. Definuje ASSEMBLY CUSTOM ATTRIBUTES.
+//-------------------------------------------------------------------------------------------------------
+KEYWORD [.assembly extern] pre definiciu ASSEMBLY REFERENCE.
+
+1. ASSEMBLY REFERENCE sa DEFINUJE pomocou KEYWORD [.assembly extern].
+!!! 2. ASSEMBLY REFERENCE sa uklada v METADATA TABLE [AssemblyRef].
+3. SYNTAX KEYWORD [.assembly extern] pre definiciu ASSEMBLY REFERENCE je nasledovna.
+   A. RULE [<ASSEMBLY_REFERENCES> ::= <ASSEMBLY_REFERENCE>].
+   B. RULE [<ASSEMBLY_REFERENCE> ::= .assembly extern <NAME> [as ALIAS] { <ASSEMBLY_REFERENCE_DECLARATION>* }]. NAME je meno REFERRED ASSEMBLY.
+   C. RULE [<ASSEMBLY_DECLARATION> ::= .ver <int32>:<int32>:<int32>:<int32>]. Nastavuje ASSEMBLY REFERENCE VERSION.
+   D. RULE [<ASSEMBLY_DECLARATION> ::= .publickey = ( <bytes> )]. Nastavuje ASSEMBLY REFERENCE ENCRYPTION PUBLIC KEY.
+   E. RULE [<ASSEMBLY_DECLARATION> ::= .publickeytoken = ( <bytes> )]. Nastavuje ASSEMBLY REFERENCE ENCRYPTION PUBLIC KEY TOKEN.
+   F. RULE [<ASSEMBLY_DECLARATION> ::= .locale <LOCALE_STRING>]. Nastavuje ASSEMBLY REFERENCE CULTURE.
+   G. RULE [<ASSEMBLY_DECLARATION> ::= .hash = ( <bytes> )]. Nastavuje ASSEMBLY REFERENCE HASH VALUE.
+   H. RULE [<ASSEMBLY_DECLARATION> ::= <CUSTOM_ATTRIBUTE_DECLARATION>]. Definuje ASSEMBLY REFERENCE CUSTOM ATTRIBUTES.
+   !!! I. RULE [<ASSEMBLY_DECLARATION> ::= auto]. Umoznuje definovat ASSEMBLY REFERENCE na ASSEMBLY v GAC (IBA na ASSEMBLIES v GAC), ktorej VERSION nie je presne definovana. LOADER pri pouziti 'auto' prechadza GAC a AUTOMATICKY najde vhodnu verziu ASSEMBLY.
+!!! 4. ASSEMBLY REFERENCES mozu mat priradene ALIASES vdaka ktorym sa je mozne referovat na dane ASSEMBLIES, ktora maju napriklad rovnake meno, ale lisia sa vo verzii. Napriklad [call void [MyAlias] CSomeClass::SomeMethod()], kde 'MyAlias' je ALIAS na REFERRED ASSEMBLY.
+//-------------------------------------------------------------------------------------------------------
+KEYWORD [.module] pre definiciu MODULE.
+
+1. MODULE sa DEFINUJE pomocou KEYWORD [.module].
+!!! 2. MODULE sa uklada v METADATA TABLE [Module].
+3. SYNTAX KEYWORD [.module] pre definiciu MODULE je nasledovna.
+   A. RULE [<MODULES> ::= <MODULE>].
+   B. RULE [<MODULE> ::= .module <NAME>].
+//-------------------------------------------------------------------------------------------------------
+KEYWORD [.module extern] pre definiciu MODULE REFERENCE.
+
+1. MODULE REFERENCE sa DEFINUJE pomocou KEYWORD [.module extern].
+!!! 2. MODULE REFERENCE sa uklada v METADATA TABLE [ModuleRef].
+3. SYNTAX KEYWORD [.module extern] pre definiciu MODULE REFERENCE je nasledovna.
+   A. RULE [<MODULE_REFERENCES> ::= <MODULE_REFERENCE>].
+   B. RULE [<MODULE_REFERENCE> ::= .module extern <NAME>].
+!!!!! 4. Kazdy RECORD v [.module extern] MUSI byt sparovany s RECORD v METADATA TABLE [File] pomocou KEYWORD [.file].
+!!! 5. Okrem MANAGED MODULES je mozne pomocou KEYWORD [.module extern] pridat aj UNMANAGED MODULES (UNMANAGED .DLL FILES). UNMANAGED MODULES je NUTNE explicitne pridat do MSIL CODE IBA ak maju byt DEPOLYED spolu s ASSEMBLIES. Pri pouziti P/INVOKE to vsak NIE JE TREBA, pretoze P/INVOKE vsak AUTOMATICKY pridava vsetky MODULE REFERENCES na UNMANAGED MODULES.
+//-------------------------------------------------------------------------------------------------------
+KEYWORD [.file] pre definiciu FILE.
+
+1. FILE sa DEFINUJE pomocou KEYWORD [.file].
+!!! 2. FILE sa uklada v METADATA TABLE [File].
+3. SYNTAX KEYWORD [.file] pre definiciu FILE je nasledovny.
+   A. RULE [<FILES> ::= <FILE>].
+   A. RULE [<FILE> ::= .file <FLAG> <NAME> [.hash = ( <bytes> )] [.entrypoint]]. NAME je meno FILE. HASH VALUE je NEPOVINNA, pretoze MSIL COMPILER je schopny si ju vypocitat ak FILE je pristupny v COMPILE TIME. VALUE [.entrypoint] sa pouziva IBA na NON-PRIMARY MODULE, ak obsahuje ENTRY POINT.
+   B. RULE [<FLAG> ::= <NONE>]. FILE reprezentuje MANAGED MODULE.
+   C. RULE [<FLAG> ::= nometadata]. FILE reprezentuje UNMANAGED MODULE, alebo RESOURCE FILE.
+!!!!! 4. Kazdy RECORD v [.module extern] MUSI byt sparovany s RECORD v METADATA TABLE [File] pomocou KEYWORD [.file].
+!!! 5. Ak RECORD v METADATA TABLE [File] NEOBSAHUJE HASH VALUE, tak MSIL COMPILER ju dokaze, ak je FILE v COMPILE TIME vypocitat a nastavit. Ak FILE v COMPILE TIME NIE JE PRISTUPNY, tak sa hodnota [HashValue] nastavi na 0.
+//-------------------------------------------------------------------------------------------------------
+KEYWORD [.mresource] pre definiciu MANAGED RESOURCE.
+
+1. MANAGED RESOURCE sa DEFINUJE pomocou KEYWORD [.mresource].
+!!! 2. MANAGED RESOURCE sa uklada v METADATA TABLE [ManifestResource].
+3. SYNTAX KEYWORD [.mresource] pre definiciu MANAGED RESOURCE je nasledovny.
+   A. RULE [<MANAGED_RESOURCES> ::= <MANAGED_RESOURCE>].
+   B. RULE [<MANAGED_RESOURCE> ::= .mresource <FLAG> <NAME> [as <FILENAME>] { <MANAGED_RESOURCE_DECLARATION>* }]. Hodnota 'FILENAME' obsahuje FILENAME MANAGED RESOURCE a pouziva sa iba ak 'NAME' obsahuje znaky, ktore nie je mozne pouzit v PATH a FILENAME.
+   C. RULE [<FLAG> ::= public | private]. DEFAULT hodnota je 'private'.
+   D. RULE [<MANAGED_RESOURCE_DECLARATION> ::= .assembly extern <ALIAS>]. Ak je MANAGED RESOURCE importovany z INEJ ASSEMBLY.
+   E. RULE [<MANAGED_RESOURCE_DECLARATION> ::= .file <NAME> at <int32>]. Ak je MANAGED RESOURCE v INOM FILE CURRENT ASSEMBLY. Hodnota <int32> udava OFFSET MANAGED RESOURCE.
+   F. RULE [<MANAGED_RESOURCE_DECLARATION> ::= <CUSTOM_ATTRIBUTE_DECLARATION>]. Umoznuje definovat CUSTOM ATTRIBUTE pre tento MANAGED RESOURCE.
+//-------------------------------------------------------------------------------------------------------
+KEYWORD [.class extern] pre definiciu EXPORTED TYPE.
+
+1. EXPORTED TYPE sa DEFINUJE pomocou KEYWORD [.class extern].
+!!! 2. EXPORTED TYPE sa uklada v METADATA TABLE [ExportedType].
+3. SYNTAX KEYWORD [.mresource] pre definiciu MANAGED RESOURCE je nasledovny.
+   A. RULE [<EXPORTED_TYPES> ::= <EXPORTED_TYPE>].
+   B. RULE [<EXPORTED_TYPE> ::= .class extern <FLAG> <NAMESPACE>.<NAME> { <EXPORTED_TYPE_DECLARATION> * }].
+   C. RULE [<FLAG> ::= public]. TYPE je v INOM MODULE CURRENT ASSEMBLY.
+   D. RULE [<FLAG> ::= nested public]. TYPE je v INOM MODULE CURRENT ASSEMBLY ako NESTED TYPE.
+   E. RULE [<FLAG> ::= forwarder]. RECORD reprezentuje FORWARDER REFERENCE.
+   F. RULE [<EXPORTED_TYPE_DECLARATION> ::= .file <NAME>]. Hodnota NAME obsahuje FILE v ktorom je EXPORTED TYPE definovany. Moze sa pouzit IBA s FLAG 'public'.
+   G. RULE [<EXPORTED_TYPE_DECLARATION> ::= .class extern <NAMESPACE>.<NAME>]. Hodnoty NAMESPACE a NAME urcuju ENCLOSING TYPE v ktorom je dany EXPORETED TYPE definovany. Moze sa pouzit IBA s FLAG 'public nested'.
+   H. RULE [<EXPORTED_TYPE_DECLARATION> ::= .assembly extern <NAME>]. RECORD reprezentuje FORWARDER REFERENCE. Hodnota NAME obsahuje ASSEMBLY v ktorom je EXPORTED TYPE definovany. Moze sa pouzit IBA s FLAG 'forwarder'.
+   I. RULE [<EXPORTED_TYPE_DECLARATION> ::= .class <int32>]. Nastavuje hodnotu COLUMN [TypeDefId].
+   J. RULE [<EXPORTED_TYPE_DECLARATION> ::= <CUSTOM_ATTRIBUTE_DECLARATION>]. Umoznuje definovat CUSTOM ATTRIBUTE pre tento EXPORTED TYPE.
+!!! 4. Pre RECORDS v METADATA TABLE [ExportedType] platia nasledujuce fakty.
+   A. METADATA TABLE [ExportedType] sa moze nachadzat IBA v PRIMARY MODULE.
+   B. METADATA TABLE [ExportedType] moze obsahovat IBA PUBLIC TYPES, ktore su definovane v INYCH MODULES CURRENT ASSEMBLY.
+   !!! C. METADATA TABLE [ExportedType] NESMIE obsahovat PUBLIC TYPES, ktore su definovane v CURRENT (PRIMARY) MODULE.
+   D. METADATA TABLE [ExportedType] moze obsahovat aj FORWARDER REFERENCES, ktore umoznuju vytvorit odkaz na CLASS, ak sa CLASS medzi verziami ASSEMBLY presunula do inej ASSEMBLY. Vdaka tomu ASSEMBLIES, ktore zmenenu ASSEMBLY pouzivaju NEMUSIA byt RECOMPILED.
+//-------------------------------------------------------------------------------------------------------
+KEYWORD [.class] pre definiciu CLASS.
+
+1. CLASS sa DEFINUJE pomocou KEYWORD [.class].
+!!! 2. CLASS sa uklada v METADATA TABLE [TypeDef].
+3. SYNTAX KEYWORD [.class] pre definiciu CLASS je nasledovny.
+   A. RULE [<CLASSES> ::= <CLASS>].
+   B. RULE [<CLASS> ::= .class <FLAGS> <CLASS_NAME> [extends <CLASS_REF>] [implements <CLASS_REFS>] {}]. Za KEYWORD [extends] MUSI nasledovat CLASS NAME z ktoreho CLASS dedi. KAZDA CLASS v .NET (okrem INTERFACES a CLASS System.Object) dedi z nejakej inej CLASS. Za KEYWORD [implements] nasleduje 1-N INTERFACES, ktore CLASS implementuje.
+   C. RULE [<CLASS_NAME> ::= <DOTTED_NAME>]. CLASS NAME musi byt DOTTED NAME.
+   D. RULE [<CLASS_REFS> ::= <CLASS_REF> [,<CLASS_REF>*]]. CLASS NAME musi byt DOTTED NAME.
+   E. RULE [<CLASS_REF> ::= [<RESOLUTION_SCOPE>] <FULL_TYPE_NAME>]. ZLOZENE ZATVORKY [] oznacuju OPTIONAL BLOCK, pretoze ak je CLASS definovany v CURRENT MODULE, tak [RESOLUTION_SCOPE] NIE JE POTREBNY a [FULL_TYPE_NAME] referuje do METADATA TABLE [TableRef]. Ak [RESOLUTION_SCOPE] je definovany, tak [FULL_TYPE_NAME] referuje do METADATA TABLE [TypeRef].
+   F. RULE [<RESOLUTION_SCOPE> ::= [<ASSEMBLY_REF_ALIAS>]]. ZLOZENE ZATVORKY [] su SUCASTOU SYNTAXE. Ak RESOLUTION_SCOPE odkazuje na EXTERNAL ASSEMBLY, tak sa referuje do METADATA TABLE [AssemblyRef].
+   G. RULE [<RESOLUTION_SCOPE> ::= [.module <MODULE_REF_NAME>]]. ZLOZENE ZATVORKY [] su SUCASTOU SYNTAXE. Ak RESOLUTION_SCOPE odkazuje na EXTERNAL ASSEMBLY, tak sa referuje do METADATA TABLE [ModuleRef].
+4. Kaluzula [extends <CLASS_REF>] je OPTIONAL.
+   A. V INTERFACES sa NESMIE pouzit, pretoze INTERFACES NEMAJU BASE CLASS. Ak INTERFACE dedi z ineho INTERFACE, tak je nutne pouzit klauzulu [implements <CLASS_REFS>]].
+   B. V CLASSES sa ako DEFAULT pouzije CLASS System.Object.
+   C. Vo VALUE TYPES sa ako DEFAULT pouzije CLASS System.ValueType.
+   D. Vo ENUMERATIONS sa ako DEFAULT pouzije CLASS System.Enum.
+!!! 5. Ak CLASS ma nastaveny FLAG [sequential], alebo FLAG [explicit], tak BASE CLASS MUSI mat nastaveny ROVNAKY FLAG, alebo BASE CLASS musi byt typu System.Object, System.ValueType, alebo System.Enum.
+6. Pre kazdy INTERFACE urceny v klauzule [implements <CLASS_REFS>] sa vytvori RECORD v METADATA TABLE [InterfaceImpl].
+7. CLASSES mozu mat nasledujuce kategorie FLAGS.
+   A. VISIBILITY FLAGS.
+   B. LAYOUT FLAGS.
+   C. TYPE SEMANTICS FLAGS.
+   D. TYPE IMPLEMENTATION FLAGS.
+   E. STRING FORMATTING FLAGS.
+   F. RESERVED FLAGS.
+   G. SEMANTICS PSEUDOFLAGS.
+8. CLASSES mozu mat nasledujuce VISIBILITY FLAGS.
+   A. FLAG [private]. CLASS je viditelna iba v ramci CURRENT ASSEMBLY.
+   B. FLAG [public]. CLASS je viditelna z lubovolnej ASSEMBLY.
+   C. FLAG [nested public]. NESTED CLASS je viditelna z lubovolnej ASSEMBLY.
+   D. FLAG [nested private]. NESTED CLASS je viditelna iba v ENCLOSING CLASS.
+   E. FLAG [nested family]. NESTED CLASS je viditelna iba v CLASSES, ktore su DERIVED z ENCLOSING CLASS.
+   F. FLAG [nested assembly]. NESTED CLASS je viditelna iba v CURRENT ASSEMBLY.
+   G. FLAG [nested famandassem]. NESTED CLASS je viditelna iba v CLASSES, ktore su DERIVED z ENCLOSING CLASS a zaroven su v CURRENT ASSEMBLY.
+   H. FLAG [nested famorassem]. NESTED CLASS je viditelna iba v CLASSES, ktore su DERIVED z ENCLOSING CLASS, ktore mozu byt v LUBOVOLNEJ ASSEMBLY.
+9. CLASSES mozu mat nasledujuce LAYOUT FLAGS.
+   A. FLAG [auto]. CLASS LAYOUT nie je explicitne urceny a je na LOADER ako nacita danu CLASS.
+   B. FLAG [sequential]. CLASS LAYOUT je dany sekvencnym usporiadanim FIELDS v CLASS.
+   C. FLAG [explicit]. CLASS LAYOUT je dany explicitnym stanovenim FIELDS v CLASS.
+10. CLASSES mozu mat nasledujuce TYPE SEMANTICS FLAGS.
+   A. FLAG [interface]. CLASS reprezentuje INTERFACE. V tomto pripade CLASS NEMA BASE CLASS.
+   B. FLAG [abstract]. CLASS reprezentuje ABSTRACT CLASS, z ktorej nemozu byt vytvarane instancie.
+   C. FLAG [sealed]. CLASS reprezentuje SEALED CLASS, ktora nemoze byt DERIVED.
+   D. FLAG [specialname]. CLASS ma specialne meno, ktore CLR specialne interpretuje.
+11. CLASSES mozu mat nasledujuce TYPE IMPLEMENTATION FLAGS.
+   A. FLAG [import]. CLASS reprezentuje CLASS importovany z COM TYPE LIBRARY.
+   B. FLAG [serializable]. CLASS je SERIALIZABLE.
+   C. FLAG [beforefieldinit]. CLASS moze byt INITIALIZED (zavolany jej STATIC CONSTRUCTOR) aj skor ako pred prvym pristupom ku CLASS.
+12. CLASSES mozu mat nasledujuce STRING FORMATTING FLAGS.
+   A. FLAG [ansi]. CLASS ak vo svojich METHODS pouziva UNMANAGED CODE, ktore vyzaduju MARSHALLING STRINGS, tak DEFAULT MARSHALLING bude nastaveny na ANSI STRING. Ak vsak je typ STRING MARSHALLING explicitne urceny, tak sa pouzije tento typ.
+   B. FLAG [unicode]. CLASS ak vo svojich METHODS pouziva UNMANAGED CODE, ktore vyzaduju MARSHALLING STRINGS, tak DEFAULT MARSHALLING bude nastaveny na UNICODE STRING. Ak vsak je typ STRING MARSHALLING explicitne urceny, tak sa pouzije tento typ.
+   C. FLAG [autochar]. CLASS ak vo svojich METHODS pouziva UNMANAGED CODE, ktore vyzaduju MARSHALLING STRINGS, tak DEFAULT MARSHALLING bude nastaveny na DEFAULT MARSHALLING danej PLATFORM. Ak vsak je typ STRING MARSHALLING explicitne urceny, tak sa pouzije tento typ.
+13. CLASSES mozu mat nasledujuce RESERVED FLAGS.
+   A. FLAG [rtspecialname]. Pouziva sa v spojitosti s FLAG [specialname], ak ma CLASS rezervovane NAME.
+   B. FLAG [<no keyword>]. CLASS ma asociovane DECLARATIVE SECURITY METADATA. FLAG je nastavovany METADATA EMISSION API, ak su DECLARATIVE SECURITY METADATA emitovane spolu s CLASS.
+14. CLASSES mozu mat nasledujuce SEMANTICS PSEUDOFLAGS.
+   A. FLAG [value]. CLASS je VALUE TYPE, ktory je DERIVED z CLASS System.ValueType.
+   B. FLAG [enum]. CLASS je ENUM TYPE, ktory je DERIVED z CLASS System.Enum.
+!!! 15. Ak CLASS obsahuje FLAG [sequential], alebo FLAG [explicit], tak je pre dany CLASS vytvoreny RECORD v METADATA TABLE [ClassLayout]. Zaroven v deklaracii CLASS je mozne pouzit nasledujuce KEYWORD.
+   A. KEYWORD [.pack VALUE] nastavuje hodnotu COLUMN [ClassLayout].[PackingSize] v MEDADATA TABLE [ClassLayout].
+   A. KEYWORD [.size VALUE] nastavuje hodnotu COLUMN [ClassLayout].[ClassSize] v MEDADATA TABLE [ClassLayout].
+//-------------------------------------------------------------------------------------------------------
+KEYWORD [.class] pre definiciu GENERIC CLASS.
+
+1. GENERIC CLASS sa DEFINUJE pomocou KEYWORD [.class].
+!!! 2. GENERIC CLASS sa uklada v METADATA TABLE [TypeDef], ale informacie o TYPE PARAMETERS sa ukladaju v METADATA TABLE [GenericParam] a informacie o TYPE PARAMETER CONSTRAINTS sa ukladaju do METADATA TABLE [GenericParamConstraint].
+3. SYNTAX KEYWORD [.class] pre definiciu CLASS je nasledovny.
+   A. RULE [<GENERIC_CLASSES> ::= <GENERIC_CLASS>].
+   B. RULE [<CLASS> ::= .class <FLAGS> <CLASS_NAME><<GENERIC_PARAMS>> [extends <CLASS_REF>] [implements <CLASS_REFS>] {}]. Zlozene zatvorky okolo [GENERIC_PARAMS] su POVINNE.
+   C. RULE [<CLASS_NAME> ::= <DOTTED_NAME>]. Hodnota [CLASS_NAME] musi byt DOTTED NAME.
+   D. RULE [<GENERIC_PARAMS> ::= <GENERIC_PARAM> [, <GENERIC_PARAM>]*]. GENERIC TYPE moze mat 1-N TYPE PARAMETERS.
+   E. RULE [<GENERIC_PARAM> ::= [<CONSTRAINT_FLAGS>] [( <CONSTRAINTS> )] <GENERIC_PARAM_NAME>]. Kazdy TYPE PARAMETER obsahuje v ZATVORKACH () vsetky CONSTRAINTS.
+   F. RULE [<CONSTRAINT_FLAGS> ::= +].
+   G. RULE [<CONSTRAINT_FLAGS> ::= -].
+   H. RULE [<CONSTRAINT_FLAGS> ::= class]. Urcuje, ze TYPE PARAMETER MUSI byt REFERENCE TYPE.
+   I. RULE [<CONSTRAINT_FLAGS> ::= valuetype]. Urcuje, ze TYPE PARAMETER MUSI byt VALUE TYPE.
+   J. RULE [<CONSTRAINT_FLAGS> ::= .ctor]. Urcuje, ze TYPE PARAMETER MUSI mat DEFAULT CONSTRUCTOR.
+   K. RULE [<CONSTRAINTS> ::= <CLASS_REF>,[CLASS_REF]*]. Obsahuje zoznam CLASSES, ktore reprezentuju CONSTRAINTS aplikovanych na TYPE PARAMETERS.
+   L. RULE [<GENERIC_PARAM_NAME> ::= <SIMPLE_NAME>]. SIMPLE NAME je obycajny TYPE PARAMETER NAME.
+   M. RULE [<CLASS_REFS> ::= <CLASS_REF> [,<CLASS_REF>*]]. CLASS NAME musi byt DOTTED NAME.
+   N. RULE [<CLASS_REF> ::= [<RESOLUTION_SCOPE>] <FULL_TYPE_NAME>]. ZLOZENE ZATVORKY [] oznacuju OPTIONAL BLOCK, pretoze ak je CLASS definovany v CURRENT MODULE, tak [RESOLUTION_SCOPE] NIE JE POTREBNY a [FULL_TYPE_NAME] referuje do METADATA TABLE [TableRef]. Ak [RESOLUTION_SCOPE] je definovany, tak [FULL_TYPE_NAME] referuje do METADATA TABLE [TypeRef].
+   O. RULE [<RESOLUTION_SCOPE> ::= [<ASSEMBLY_REF_ALIAS>]]. ZLOZENE ZATVORKY [] su SUCASTOU SYNTAXE. Ak RESOLUTION_SCOPE odkazuje na EXTERNAL ASSEMBLY, tak sa referuje do METADATA TABLE [AssemblyRef].
+   P. RULE [<RESOLUTION_SCOPE> ::= [.module <MODULE_REF_NAME>]]. ZLOZENE ZATVORKY [] su SUCASTOU SYNTAXE. Ak RESOLUTION_SCOPE odkazuje na EXTERNAL ASSEMBLY, tak sa referuje do METADATA TABLE [ModuleRef].
+//-------------------------------------------------------------------------------------------------------
+KEYWORD [.typelist] pre definovanie poradia CLASSES v ASSEMBLY.
+
+1. Poradie v akom bude MSIL generovat CLASSES do ASSEMBLY sa DEFINUJE pomocou KEYWORD [.typelist].
+2. SYNTAX KEYWORD [.typelist] pre definiciu poriada CLASSES je nasledovny.
+   A. RULE [<TYPE_LISTS> ::= <TYPE_LIST>].
+   B. RULE [<TYPE_LIST> ::= .typelist {<TYPE>[,<TYPE>*]}].
+//-------------------------------------------------------------------------------------------------------
+KEYWORD [.field] pre definiciu FIELD.
+
+1. FIELD sa DEFINUJE pomocou KEYWORD [.field].
+!!! 2. FIELD sa uklada v METADATA TABLE [Field].
+3. SYNTAX KEYWORD [.field] pre definiciu FIELD je nasledovny.
+   A. RULE [<FIELDS> ::= <FIELD>].
+   B. RULE [<FIELD> ::= .field <FLAGS> <TYPE> <NAME>].
+   C. RULE [<FIELD> ::= .field <FLAGS> <TYPE> <NAME>=CONST]. Ak FIELD ma definovanu DEFAULT VALUE. MSIL bohuzial NENASTAVUJE hodnotu FIELD na DEFAULT VALUE, iba DEFAULT VALUE zapise do METADATA TABLE [Constants].
+   D. RULE [<FIELD> ::= .field <FLAGS> <TYPE> <NAME> at <DATA_LABEL>]. Ak FIELD reprezentuje MAPPED FIELD. Iba STATIC FIELDS mozu byt MAPPED FIELDS. Hodnota [DATA_LABEL] je MEMORY BLOCK na ktory ma byt MAPPED FIELD MAPPED. Ak [DATA_LABEL] ma SYNTAX [@NUMBER], tak [NUMBER] reprezentuje RVA MEMORY BLOCK na ktory ma byt FIELD MAPPED.
+   E. RULE [<CONST> ::= <CONST_TYPE>(VALUE)].
+   F. RULE [<CONST> ::= nullref]. Ak REFERENCE TYPE ma byt nastaveny na NULL.
+   G. RULE [<CONST> ::= "XXX"]. Pre STRINGS.
+   H. RULE [<CONST> ::= bytearray(00 01 02 03 04 05)]. Pre lubovolne typy CONSTANTS, vratane STRINGS.
+//-------------------------------------------------------------------------------------------------------
+KEYWORD [.data] pre definiciu DATA SEGMENTS.
+
+1. DATA SEGMENTS sa DEFINUJU pomocou KEYWORD [.data].
+!!! 2. DATA SEGMENTS sa uklada do PE FILE.
+   A. Ak v definicii DATA SEGMENT NIE JE pouzity KEYWORD [tls], tak DATA SEGMENT je ulozeny v PE FILE SEGMENT [.sdata].
+   B. Ak v definicii DATA SEGMENT JE pouzity KEYWORD [tls], tak DATA SEGMENT je ulozeny v PE FILE SEGMENT [.tls].
+3. SYNTAX KEYWORD [.data] pre definiciu DATA SEGMENT je nasledovny.
+   A. RULE [<DATA_SEGMENTS> ::= <DATA_SEGMENT>].
+   B. RULE [<DATA_SEGMENT> ::= .data [tls] [<DATA_LABEL>=]<DATA_ITEMS>. KEYWORD [tls] znamena, ze DATA SEGMENT bude ulozeny v PE FILE SEGMENT [.tls]. Ak sa nepouzije, tak DATA SEGMENT bude ulozeny v PE FILE SEGMENT [.sdata].
+   C. RULE [<DATA_ITEMS> ::= {<DATA_ITEM>[,<DATA_ITEM>*]}].
+   D. RULE [<DATA_ITEMS> ::= <DATA_ITEM>].
+   E. RULE [<DATA_ITEM> ::= <DATA_TYPE>[(<VALUE>)][[<COUNT>]]. Hodnota [<VALUE>] reprezentuje inicializacnu hodnotu. Hodnota [<COUNT>] reprezentuje pocet ITEMS daneho datoveho TYPE.
+!!! 4. DATA SEGMENTS mozu byt aj BEZ MENA. Vtedy sa na ne neda referovat a sluzia ako PADDING.
+5. Ak [<DATA_TYPE>] je [bytearray()], tak hodnota [<VALUE>] MUSI byt definovana a hodnota [<COUNT>] NESMIE byt definovana.
+6. Ak [<DATA_TYPE>] je [char*()], tak hodnota [<VALUE>] MUSI byt definovana a hodnota [<COUNT>] NESMIE byt definovana. Hodnota [<VALUE>] bude konvertovana na UNICODE STRING.
+7. Ak [<DATA_TYPE>] je [&()], tak hodnota [<VALUE>] MUSI byt definovana a hodnota [<COUNT>] NESMIE byt definovana. Hodnota [<VALUE>] musi odkazovat na INY DATA SEGMENT na ktory sa dany DATA SEGMENT bude referovat.
+//-------------------------------------------------------------------------------------------------------
+KEYWORD [.method] pre definiciu METHOD.
+
+1. METHOD sa DEFINUJE pomocou KEYWORD [.method].
+!!! 2. METHOD sa uklada v METADATA TABLE [Method].
+3. SYNTAX KEYWORD [.method] pre definiciu METHOD je nasledovny.
+   A. RULE [<METHODS> ::= <METHOD>].
+   B. RULE [<METHOD> ::= .method <FLAGS> <CALLING_CONVENTION> <RETURN_TYPE> <NAME>(<PARAMETER_LIST>) <IMPLEMENTATION_FLAGS> {<BODY>}].
+   C. RULE [<RETURN_TYPE> ::= <TYPE> [marshal(<NATIVE_TYPE>)]].
+   D. RULE [<PARAMETER_LIST> ::= [<PARAMETER>[,<PARAMETER>*]]].
+   E. RULE [<PARAMETER> ::= [[<PARAMETER_FLAGS>]*] <TYPE> [marshal(<NATIVE_TYPE>)] [<PARAMETER_NAME>]].
+   E. RULE [<PARAMETER_FLAGS> ::= in].
+   F. RULE [<PARAMETER_FLAGS> ::= out].
+   G. RULE [<PARAMETER_FLAGS> ::= opt].
+!!! 4. CONSTANTS sa definuju v METHOD BODY pomocou nasledujucej SYNTAXE.
+   A. RULE [<PARAMETER_CONSTANT_DEFINITIONS> ::= <PARAMETER_CONSTANT_DEFINITION>].
+   B. RULE [<PARAMETER_CONSTANT_DEFINITION> ::= .param[<SEQUENCE>]=<CONSTANT_TYPE>[(VALUE)]]. Zlozene zatvorky okolo hodnoty [<SEQUENCE>] su POVINNE. Hodnota [<SEQUENCE>] udava poradove cislo PARAMETER, ktoreho CONSTANT VALUE ma byt definovana.
+5. Na RETURN VALUES nie je mozne aplikovat NAMES, FLAGS ani DEFAULT VALUES.
+//-------------------------------------------------------------------------------------------------------
+KEYWORD [.override] pre definiciu EXPLICIT METHOD OVERRIDING.
+
+1. EXPLICIT METHOD OVERRIDING sa DEFINUJE pomocou KEYWORD [.override].
+!!! 2. Informacia o EXPLICIT METHOD OVERRIDING kazdej METHOD je ulozena v METADATA TABLE [MethodImpl].
+3. SYNTAX KEYWORD [.override] pre definiciu EXPLICIT METHOD OVERRIDING je nasledovny.
+   A. RULE [<EXPLICIT_METHOD_OVERRIDINGS> ::= <EXPLICIT_METHOD_OVERRIDING>].
+   B. RULE [<EXPLICIT_METHOD_OVERRIDING> ::= <CLASS_REFERENCE>::<METHOD_NAME>]. Tato SYNTAX MUSI byt pouzita v METHOD BODY tej METHOD v DERIVED CLASS, ktora vykonala EXPLICIT METHOD OVERRIDING BASE METHOD.
+   C. RULE [<EXPLICIT_METHOD_OVERRIDING> ::= <CLASS_REFERENCE>::<METHOD_NAME> with <METHOD_REFERENCE>]. Tato SYNTAX MUSI byt pouzita v CLASS BODY DERIVED CLASS, ma EXPLICIT OVERRIDDEN METHODS.
+!!!!! 4. Jedna METHOD moze vykonat EXPLICIT METHOD OVERRIDING VIACERYCH METHODS BASE CLASS (INTERFACES).
+//-------------------------------------------------------------------------------------------------------
+KEYWORD [.locals] pre definiciu LOCAL VARIABLES.
+
+1. LOCAL VARIABLES sa DEFINUJU pomocou KEYWORD [.locals].
+!!! 2. VSETKY LOCAL VARIABLES definovane v 1 METHOD tvoria 1 SIGNATURE, ktora sa uklada do METADATA TABLE [StandAloneSig].
+3. SYNTAX KEYWORD [.locals] pre definiciu LOCAL VARIABLES je nasledovny.
+   A. RULE [<LOCAL_VARIABLES_DEFINITIONS> ::= <LOCAL_VARIABLES_DEFINITIONS>].
+   B. RULE [<LOCAL_VARIABLES_DEFINITION> ::= .locals [FLAGS] (<VARIABLE>[,VARIABLE]*)]. Za FLAGS sa zvycajne dava hodnota [init], ktora znaci, ze vsetky VARIABLES budu INICIALIZOVANE pred zavolanim METHOD. Ak sa FLAG [init] NEPOUZIJE, tak CODE danej METHOD NIE JE VERIFIABLE.
+   C. RULE [<VARIABLE> ::= [[<ORDINAL NUMBER>]] TYPE NAME], kde ORDINAL NUMBER je OPTIONAL a urcuje INDEX LOCAL VARIABLE. Ak je zadany, MUSI byt v ZLOZENYCH ZATVORKACH. ORDINAL NUMBERS sa MOZU aj PREKRYVAT, co sa da vyuzit, ak su VARIABLES definovane v rozlicnych SCOPES a nie su naraz potrebne.
+!!! D. LOCAL VARIABLES mozu byt pouzite aj vo VNORENYCH SCOPES.
+//-------------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------------
+TYPE REFERENCES.
+
+1. SYNTAX pre TYPE REFERENCES je nasledovna.
+   A. RULE [<TYPE_REF> ::= [<RESOLUTION_SCOPE>] <FULL_TYPE_NAME>]. ZLOZENE ZATVORKY [] oznacuju OPTIONAL BLOCK, pretoze ak je TYPE definovany v CURRENT MODULE, tak [RESOLUTION_SCOPE] NIE JE POTREBNY a [FULL_TYPE_NAME] referuje do METADATA TABLE [TableRef]. Ak [RESOLUTION_SCOPE] je definovany, tak [FULL_TYPE_NAME] referuje do METADATA TABLE [TypeRef].
+   B. RULE [<RESOLUTION_SCOPE> ::= [<ASSEMBLY_REF_ALIAS>]]. ZLOZENE ZATVORKY [] su SUCASTOU SYNTAXE. Ak RESOLUTION_SCOPE odkazuje na EXTERNAL ASSEMBLY, tak sa referuje do METADATA TABLE [AssemblyRef].
+   C. RULE [<RESOLUTION_SCOPE> ::= [.module <MODULE_REF_NAME>]]. ZLOZENE ZATVORKY [] su SUCASTOU SYNTAXE. Ak RESOLUTION_SCOPE odkazuje na EXTERNAL ASSEMBLY, tak sa referuje do METADATA TABLE [ModuleRef].
+2. TYPE REFERENCES sa pouzivaju vzdy tam, kde je potrebne referovat na CLASSES, INTERFACES, STRUCTURES a ENUMERATIONS.
+3. Hodnota [RESOLUTION_SCOPE] je OPTIONAL. Ak sa nedefinuje, tak TYPE musi byt v CURRENT MODULE.
+4. SYNTAX pre NESTED TYPE REFERENCES je nasledovna.
+   A. RULE [<NESTED_TYPE_REF> ::= <ENCLOSING_TYPE_REF>/<FULL_TYPE_NAME>].
+   B. RULE [<ENCLOSING_TYPE_REF> ::= <NESTED_TYPE_REF>].
+   C. RULE [<ENCLOSING_TYPE_REF> ::= <TYPE_REF>].
+   D. RULE [<TYPE_REF> ::= [<RESOLUTION_SCOPE>] <FULL_TYPE_NAME>]. ZLOZENE ZATVORKY [] oznacuju OPTIONAL BLOCK, pretoze ak je TYPE definovany v CURRENT MODULE, tak [RESOLUTION_SCOPE] NIE JE POTREBNY a [FULL_TYPE_NAME] referuje do METADATA TABLE [TableRef]. Ak [RESOLUTION_SCOPE] je definovany, tak [FULL_TYPE_NAME] referuje do METADATA TABLE [TypeRef].
+   E. RULE [<RESOLUTION_SCOPE> ::= [<ASSEMBLY_REF_ALIAS>]]. ZLOZENE ZATVORKY [] su SUCASTOU SYNTAXE. Ak RESOLUTION_SCOPE odkazuje na EXTERNAL ASSEMBLY, tak sa referuje do METADATA TABLE [AssemblyRef].
+   F. RULE [<RESOLUTION_SCOPE> ::= [.module <MODULE_REF_NAME>]]. ZLOZENE ZATVORKY [] su SUCASTOU SYNTAXE. Ak RESOLUTION_SCOPE odkazuje na EXTERNAL ASSEMBLY, tak sa referuje do METADATA TABLE [ModuleRef].
+//-------------------------------------------------------------------------------------------------------
+FIELD REFERENCES.
+
+1. SYNTAX pre FIELD REFERENCES je nasledovna.
+   A. RULE [<FIELD_REF> ::= [field] <TYPE>[<TYPE_REF>::]<NAME>. FIELD REFERENCES su ulozene v METADATA TABLE [FieldRef].
+   B. RULE [<TYPE_REF> ::= [<RESOLUTION_SCOPE>] <FULL_TYPE_NAME>]. ZLOZENE ZATVORKY [] oznacuju OPTIONAL BLOCK, pretoze ak je TYPE definovany v CURRENT MODULE, tak [RESOLUTION_SCOPE] NIE JE POTREBNY a [FULL_TYPE_NAME] referuje do METADATA TABLE [TableRef]. Ak [RESOLUTION_SCOPE] je definovany, tak [FULL_TYPE_NAME] referuje do METADATA TABLE [TypeRef].
+   C. RULE [<RESOLUTION_SCOPE> ::= [<ASSEMBLY_REF_ALIAS>]]. ZLOZENE ZATVORKY [] su SUCASTOU SYNTAXE. Ak RESOLUTION_SCOPE odkazuje na EXTERNAL ASSEMBLY, tak sa referuje do METADATA TABLE [AssemblyRef].
+   D. RULE [<RESOLUTION_SCOPE> ::= [.module <MODULE_REF_NAME>]]. ZLOZENE ZATVORKY [] su SUCASTOU SYNTAXE. Ak RESOLUTION_SCOPE odkazuje na EXTERNAL ASSEMBLY, tak sa referuje do METADATA TABLE [ModuleRef].
+!!! 2. Ak z CONTEXT NIE JE JASNE, ci sa REFERENCE odkazuje na FIELD, alebo METHOD, je mozne pouzit KEYWORD [field] v tvare napriklad [ldtoken field int32 [.module Another.dll]CClass::MField]].
+//-------------------------------------------------------------------------------------------------------
+GLOBAL FIELD REFERENCES.
+
+1. SYNTAX pre GLOBAL FIELD REFERENCES je nasledovna.
+   A. RULE [<GLOBAL_FIELD_REF> ::= [field] <FIELD_TYPE> <NAME>.
+   B. RULE [<FIELD_TYPE> ::= <TYPE>].
+   C. RULE [<FIELD_TYPE> ::= [.module <MODULE_REF_NAME>]<TYPE>]. ZLOZENE ZATVORKY [] su SUCASTOU SYNTAXE. Ak RESOLUTION_SCOPE odkazuje na EXTERNAL ASSEMBLY, tak sa referuje do METADATA TABLE [ModuleRef].
+!!! 2. Ak z CONTEXT NIE JE JASNE, ci sa REFERENCE odkazuje na FIELD, alebo METHOD, je mozne pouzit KEYWORD [field] v tvare napriklad [ldtoken field int32 [.module Another.dll]MField]].
+//-------------------------------------------------------------------------------------------------------
+METHOD REFERENCES.
+
+1. SYNTAX pre METHOD REFERENCES je nasledovna.
+   A. RULE [<METHOD_REFS> ::= <METHOD_REF>]
+   B. RULE [<METHOD_REF> ::= [method] <CALLING_CONVENTION> <RETURN_TYPE> <CLASS_REF>::<NAME>(<PARAMETER_LIST>)].
+!!! 2. Ak z CONTEXT NIE JE JASNE, ci sa REFERENCE odkazuje na FIELD, alebo METHOD, je mozne pouzit KEYWORD [method] v tvare napriklad [ldtoken field int32 [.module Another.dll]CClass::MField]]. KEYWORD [method] sa vyuziva v nasledujucich pripadoch.
+   A. Ak je METHOD REFERENCED v INSTRUCTION [ldtoken].
+   B. Ak je METHOD REFERENCED v EXPLICIT SPECIFICATION v CUSTOM ATTRIBUTES.
+3. METHOD REFERENCES sa pouzivaju aj ked CODE ziskava REFERENCE na METHOD pre DELEGATES. Vtedy pomocou INSTRUCTION [ldftn] specifikovanim plnej SIGNATURE je mozne ziskat METHOD REFERENCE, ktory sa zasle ako PARAMETER do CONSTRUCTOR DELEGATE.
+//-------------------------------------------------------------------------------------------------------
+TYPE PARAMETER REFERENCES.
+
+1. TYPE PARAMETER REFERENCES sa pouzivaju v GENERIC TYPES a GENERIC METHODS pri referovani na TYPE PARAMETERS. TYPE PARAMETERS sa pouzivaju pri definovani FIELDS, PROPERTIES, EVENTS, METHOD PARAMETERS, METHOD RETURN VALUES, alebo LOCAL VARIABLES v METHODS.
+2. SYNTAX pre TYPE PARAMETER REFERENCES je nasledovna.
+   A. RULE [<TYPE_PARAMETER_REFERENCE> ::= !<ORDINAL_NUMBER>]. Hodnota [ORDINAL_NUMBER] je poradove cislo TYPE PARAMETER zacinajuce od 0.
+   B. RULE [<TYPE_PARAMETER_REFERENCE> ::= !<TYPE_PARAMETER_NAME>]. Hodnota [TYPE_PARAMETER_NAME] je NAME, ktore bolo priradene TYPE PARAMETER.
+//-------------------------------------------------------------------------------------------------------
+GENERIC TYPE INSTANTIATION.
+
+1. Pri GENERIC TYPE INSTANTIATION sa vytvaraju NOVE TYPES (METHODS) substituovanim TYPE PARAMETERS za realne TYPES.
+2. SYNTAX pre TYPE PARAMETER REFERENCES je nasledovna.
+   A. RULE [<GENERIC_TYPE_INSTANTIATION> ::= class <TYPE_NAME> <<TYPE>[,<TYPE>]*>]. Pouziva sa ak GENERIC TYPE je REFERENCE TYPE.
+   B. RULE [<GENERIC_TYPE_INSTANTIATION> ::= valuetype <TYPE_NAME> <<TYPE>[,<TYPE>]*>]. Pouziva sa ak GENERIC TYPE je VALUE TYPE.
+//-------------------------------------------------------------------------------------------------------

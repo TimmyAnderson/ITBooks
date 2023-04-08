@@ -1,0 +1,142 @@
+//-------------------------------------------------------------------------------------------------------
+1. Solution popisuje PRIMITIVE TYPES a SIGNATURES.
+2. SIGNATURE reprezentuje deklaraciu VARIABLE, METHOD, PROPERTY v CODE.
+3. PRIMITIVE DATA TYPES su TYPES, ktore maju v MSIL specificke mena a CLR ich nativne podporuje.
+4. PRIMITIVE DATA TYPES existuju kvoli PERFORMANCE, aby jednoduche TYPES ako INT ci FLOAT nebolo nutne reprezentovat cez CLASSES.
+5. CLR podporuje nasledujuce PRIMITIVE DATA TYPES.
+   A. TYPE [void]. Reprezentuje prazdny DATA TYPE. Pouziva sa v METHODS, ak dana METHOD nevracia ziadnu RETURN VALUE.
+   B. TYPE [bool]. Reprezentuje 1 BYTE VALUE, kde 1==TRUE a 0==FALSE.
+   C. TYPE [char]. Reprezentuje 2 BYTES UNSIGNED INTEGER v ktorom je ulozeny UNICODE CHARACTER.
+   D. TYPE [int8]. Reprezentuje 1 BYTE SIGNED INTEGER.
+   E. TYPE [unsigned int8]. Reprezentuje 1 BYTE UNSIGNED INTEGER.
+   F. TYPE [int16]. Reprezentuje 2 BYTES SIGNED INTEGER.
+   G. TYPE [unsigned int16]. Reprezentuje 2 BYTES UNSIGNED INTEGER.
+   H. TYPE [int32]. Reprezentuje 4 BYTES SIGNED INTEGER.
+   I. TYPE [unsigned int32]. Reprezentuje 4 BYTES UNSIGNED INTEGER.
+   J. TYPE [int64]. Reprezentuje 8 BYTES SIGNED INTEGER.
+   K. TYPE [unsigned int64]. Reprezentuje 8 BYTES UNSIGNED INTEGER.
+   L. TYPE [float32]. Reprezentuje 4 BYTES FLOATING POINT VALUE.
+   M. TYPE [float64]. Reprezentuje 8 BYTES FLOATING POINT VALUE.
+   N. TYPE [typedref]. Reprezentuje TYPED REFERENCE, ktora obsahuje REFERENCE na TYPE a informaciu identifikujucu dany TYPE.
+   O. TYPE [native int]. Reprezentuje POINTER SIZE SIGNED INTEGER, ktoreho dlzka je zavisla na TARGET PLATFORM.
+   P. TYPE [native unsigned int]. Reprezentuje POINTER SIZE UNSIGNED INTEGER, ktoreho dlzka je zavisla na TARGET PLATFORM.
+6. MSIL definuje 2 typy DATA POINTERS.
+   A. MANAGED DATA POINTER. Definuje sa pomocou [TYPE&] a reprezentuje MANAGED POINTER. MANAGED POINTER je POINTER, ktory spravuje CLR. Ak GARBAGE COLLECTOR presunie MEMORY, tak sa MANAGED POINTER sa takisto presunie, takze bude referovat na ten isty OBJECT.
+   B. UNMANAGED DATA POINTER. Definuje sa pomocou [TYPE*] a reprezentuje UNMANAGED POINTER. MANAGED POINTER je POINTER, ktory NESPRAVUJE CLR a teda OBJECTS na ktore referuje MUSIA byt PINNED v MEMORY, aby ho GARBAGE COLLECTOR nemohol presunut a nesposobil neplatnost UNMANAGED POINTER.
+!!! 7. MSIL definuje aj OBJECT REFERENCES (klasice C# REFERENCES na OBJECT TYPES). Medzi MANAGED POINTERS a OBJECT REFERENCES su nasledujuce rozdiely.
+   A. OBJECT REFERENCES referuju na zaciatok OBJECT. Zaciatok OBJECT je tvoreny METHOD TABLE na zaciatok, ktoreho MANAGED POINTERS referuju.
+   !!! B. MANAGED POINTERS referuju na DATA vo vnutri OBJECT a NIE na samotny OBJECT.
+!!! 8. MSIL definuje aj FUNCTION POINTERS. Platia pre ne nasledujuce fakty.
+   A. FUNCTION POINTERS sa deklaruju pomocou SYNTAXE [method <CALLING_CONVENTION> <RETURN_VALUE> * (<PARAM>[,<PARAM>*]) VARIABLE_NAME].
+   B. FUNCTION ADDRESSES je mozne ziskat pomocou INSTRUCTION [ldftn], napriklad [ldftn void PrimitiveTypes.CPrimitiveTypes::CallbackMethod(string)].
+!!! 9. Na MANAGED aj UNMANAGED DATA POINTERS je mozne aplikovat POINTER ARITHMETIC. Na rozdiel od POINTER ARITHMETIC v C++ su vsetky dlzky v MSIL vyjadrene v BYTES a nie v SIZEOF(TYPE).
+!!! 10. Pouzitie MANAGED POINTERS v MSIL je SAFE. Avsak pouzitie UNMANAGED POINTERS v MSIL je podobne ako v C# UNSAFE OPERATION, ktora moze byt vykonana iba programami, ktore su spustane lokalne.
+11. MANAGED POINTERS maju nasledujuce vlastnosti.
+   A. MANAGED POINTERS VZDY odkazuju na EXISTUJUCI ITEM ako napriklad FIELD, ARRAY ELEMENT, LOCAL VARIABLE, alebo METHOD ARGUMENT.
+   !!! B. ARRAY ITEMS NEMOZU byt typu MANAGED POINTERS.
+   !!! C. FIELDS NEMOZU byt typu MANAGED POINTERS NEMOZU, ale MANAGED POINTERS mozu sa odkazovat FIELDS.
+   D. MANAGED POINTERS mozu byt pouzite ako METHOD ATTRIBUTES, LOCAL VARIABLES, PARAMETERS, alebo RETURN VALUES.
+   E. MANAGED POINTERS, ktore referuju na MANAGED MEMORY (HEAP), NEMOZU byt konvertovane na UNMANAGED POINTERS.
+   F. MANAGED POINTERS, ktore nereferuju na MANAGED MEMORY (HEAP), MOZU byt konvertovane na UNMANAGED POINTERS. Takyto CODE je vsak UNSAFE.
+   G. MANAGED POINTERS NEMOZU referovat na ine POINTERS, ale MOZU referovat na OBJECT REFERENCES.
+   !!!!! H. MANAGED POINTERS reprezentuju THIS PARAMETER pri volani METHODS VALUE TYPES.
+12. MSIL podporuje 3 typy ARRAYS.
+   A. TYPE[]. Reprezentuju to 1 DIMENSION ARRAYS (VECTORS).
+   B. TYPE[A1...Ax,B1...By,...,Z1...Zz]. Reprezentuju to MULTI DIMENSIONS ARRAYS.
+   C. TYPE[][][]...[]. Reprezentuju to JAGGED MULTI DIMENSIONS ARRAYS.
+!!! 13. ARRAYS v CLR su dedene z CLASS System.Array.
+14. Pre VECTORS platia nasledujuce fakty.
+   A. VECTORS sa definuju pomocou SYNTAXE [TYPE[]], napriklad [int32[]].
+   B. VECTORS sa vytvaraju pomocou INSTRUCTION [newarr].
+   C. Zapis VECTOR ITEMS sa robi pomocou INSTRUCTION [stelem].
+   D. Citanie VECTOR ITEMS sa robi pomocou INSTRUCTION [ldelem].
+15. Pre MULTI DIMENSIONS ARRAYS platia nasledujuce fakty.
+   A. MULTI DIMENSIONS ARRAYS sa definuju pomocou SYNTAXE [TYPE[A1...Ax,B1...By,...,Z1...Zz]], napriklad [int32[0...3,0...4].
+   !!! B. Kazda DIMENSION v MULTI DIMENSIONS ARRAYS moze mat INY START INDEX a INU DLZKU [int32[START_INDEX_11...START_INDEX_1X][START_INDEX_M1...START_INDEX_MY]].
+   !!! C. MULTI DIMENSIONS ARRAYS sa vytvaraju volanim CONSTRUCTOR, napriklad [void int32[0...3,0...4]::.ctor(int32,int32)].
+   D. Zapis VECTOR ITEMS sa robi pomocou METHOD Array.Set(), napriklad [void int32[0...3,0...4]::Set(int32,int32,int32)].
+   D. Citanie VECTOR ITEMS sa robi pomocou METHOD Array.Get(), napriklad [void int32[0...3,0...4]::Get(int32,int32)].
+16. Pre JAGGED MULTI DIMENSIONS ARRAYS platia nasledujuce fakty.
+   A. JAGGED MULTI DIMENSIONS ARRAYS sa definuju pomocou SYNTAXE [TYPE[][][]...[]], napriklad [int32[][][]].
+   B. Kazda DIMENSION JAGGED MULTI DIMENSIONS ARRAYS reprezentuje VECTOR, ktory ma ako TYPE iny VECTOR, alebo ak sa jedna o najnizsiu DIMENSION, tak TYPE (napriklad int32).
+   !!! C. Kazda DIMENSION JAGGED MULTI DIMENSIONS ARRAYS je vytvarana jednym volanim INSTRUCTION [newarr].
+   !!! D. Pocet ITEMS v danej DIMENSION je DYNAMICKY, kde XXX[1][] moze mat 10 ITEMS na na 2. DIMENSION a XXX[2] moze mat 20 ITEMS na 2. DIMENSION.
+17. MSIL definuje nasledujuce MODIFIERS, ktore mozu byt aplikovane na jednotlive CODE ELEMENTS (PARAMETERS, RETURN VALUES, METHODS, METHOD SIGNATURES) modifikujuc ich vyznam.
+   A. MODIFIER [modreq<CLASS_REF>]. Definuje REQUIRED CUSTOM MODIFIER a je ho mozne aplikovat ma PARAMETERS ci RETURN VALUES.
+   B. MODIFIER [modopt<CLASS_REF>]. Definuje OPTIONAL CUSTOM MODIFIER a je ho mozne aplikovat ma PARAMETERS ci RETURN VALUES.
+   C. MODIFIER [...]. Pouziva sa IBA pri VOLANI METHODS, ktore maju VARIABLE PARAMETERS (KEYWORD [vararg]). Pri DEFINICII METHODS sa MODIFIER [...] NESMIE pouzit, podobne ako sa NESMIE pouzit, ak METHOD s VARIABLE PARAMETERS je volana BEZ zaslania VARIABLE PARAMETERS.
+   D. MODIFIER [pinned]. Pouziva sa IBA pre LOCAL VARIABLES a urcuje, ze LOCAL VARIABLE je PINNED co znaci, ze GARBAGE COLLECTOR ho NEMOZE premiestnit v MEMORY a ziskanie POINTER na takuto VARIABLE je SAFE.
+!!!!! 18. MODIFIERS [modreq<CLASS_REF>] a [modopt<CLASS_REF>] aplikovane na METHOD PARAMETERS a RETURN VALUES MODIFIKUJU METHOD SIGNATURE. Ak teda existuju 2 METHODS, ktore sa lisia iba v tychto MODIFIERS, tak CLR generuje 2 NEZAVISLE METHODS.
+!!! 19. MSIL MODIFIERS [modreq<CLASS_REF>] a [modopt<CLASS_REF>] NIJAKO NEINTERPRETUJE ani NEVYUZIVA a iba ich uklada do METADATA, aby ich CLR interpretoval.
+!!!!! 20. MODIFIER [...] NIE JE PODPOROVANY z C#. C# 'PARAMS' METHODS NEPOUZIVAJU MODIFIER [...], ale priamo COMPILER vytvara zo zoznamu VARIABLE PARAMETERS ARRAY Object[].
+!!!!! 21. V MSIL ziskanie VARIABLE PARAMETERS definovanych cez MODIFIER [...] sa realizuje pomocou STRUCTURE System.ArgIterator a MSIL INSTRUCTION [arglist].
+22. MSIL definuje NATIVE TYPES (zoznam je v ENUMERATION System.Runtime.InteropServices.UnmanagedType), pre ktore dokaze vykonat INTEROPERABILITY s UNMANAGED CODE.
+23. MSIL definuje VARIANT TYPES, pre ktore dokaze vykonat INTEROPERABILITY s COM CODE.
+!!!!! 24. MSIL specifikuje specialnu SYNTAX pre SIGNATURES. Tuto SYNTAX je nutne pouzit ako v METHODS SIGNATURES, tak aj pri METHOD CALLS.
+   A. SYNTAX pre CLASSES je [class TYPE_NAME VARIABLE_NAME].
+   B. SYNTAX pre VALUE TYPES je [valuetype TYPE_NAME VARIABLE_NAME].
+   C. SYNTAX pre STRING je [string VARIABLE_NAME].
+   D. SYNTAX pre OBJECT je [object VARIABLE_NAME].
+!!!!! 25. SIGNATURES v CLR su METADATA ITEMS ulozene v METADATA STREAM [#Blob], ktore popisuju ake TYPES obsahuju CLR CONSTRUCTS (FIELDS, METHODS, PROPERTIES ci LOCAL VARIABLES). Niektore CLR CONSTRUCTS obsahuju vo svojej SIGNATURE iba 1 TYPE (FIELD) a niektore CLR CONSTRUCTS obsahuju vo svojej SIGNATURE 'N' TYPES (napriklad PROPERTIES a METHODS obsahuju vo svojej SIGNATURE TYPES vsetkych PARAMETERS i RETURN VALUE). TYPES su v SIGNATURES ulozene v ENCODED podobe.
+!!!!! 26. Pre SIGNATURES platia nasledujuce fakty.
+   A. SIGNATURES su ulozene v METADATA STREAM [#Blob] a TYPES maju ulozene v ENCODED podobe.
+   !!! B. SIGNATURES obsahuju 1-N TYPES v zavislosti od typu CLR CONSTRUCT, ktory popisuju. Napriklad FIELDS obsahuju iba 1 TYPE, kedze FIELDS maju iba TYPE daneho FIELDS. Naopak PROPERTIES ci METHODS maju vo svojich SIGNATURES TYPES VSETKYCH PARAMETERS a TYPE RETURN VALUE.
+   C. TYPES v SIGNATURES referuju na METADATA TABLES, kde su TYPES (PRIMITIVE TYPES, CLASSES, VALUE TYPES) kompletne popisane.
+   !!!!! D. Jednotlive TYPES maju v SIGNATURES asociovane dodatocne PROPERTIES. Napriklad MULTI-DIMENSIONS ARRAYS maju pre KAZDU DIMENSION v SIGNATURE zapisanu jej VELKOST a LOWER BOUND. TYPES moze mat v SIGNATURES mozu obsahovat aj MODIFIERS ci informaciu ci dany TYPE je pouzity ako MANAGED, alebo UNMANAGED POINTER.
+27. SIGNATURES obsahuju referencie na nasledujuce METADATA TABLES.
+   A. TABLE [Field]. Obsahuje FIELD DECLARATION SIGNATURES.
+   B. TABLE [Method]. Obsahuje METHOD DECLARATION SIGNATURES.
+   C. TABLE [Property]. Obsahuje PROPERTY SIGNATURES.
+   D. TABLE [MemberRef]. Obsahuje FIELD, alebo METHOD REFERENCING SIGNATURES.
+   E. TABLE [StandAloneSig]. Obsahuje LOCAL VARIABLES, alebo INDIRECT CALL SIGNATURES.
+   F. TABLE [TypeSpec]. Obsahuje TYPE SPECIFICATION SIGNATURES.
+!!! 28. SIGNATURES su MULTI-BYTE ARRAYS, kde 1. BYTE VZDY obsahuje 'CALLING CONVENTION' danej SIGNATURE. CALLING CONVENTION je historicky nazov, no v skutocnosti aj FIELDS ci PROPERTIES maju v 1. BYTE svojej SIGNATURE definovanu CALLING CONVENTION. CLR definuje nasledujuce CALLING CONVENTIONS.
+   A. CALLING CONVENTION [IMAGE_CEE_CS_CALLCONV_DEFAULT] (0x0). Definuje STANDARDNU METHOD s fixnym poctom PARAMETERS.
+   B. CALLING CONVENTION [IMAGE_CEE_CS_CALLCONV_VARARG] (0x5). Definuje METHOD s VARAIBLE poctom PARAMETERS. MSIL definuje KEYWORD [vararg] pre definiciu tychto typov METHODS.
+   C. CALLING CONVENTION [IMAGE_CEE_CS_CALLCONV_FIELD] (0x6). Definuje FIELD.
+   D. CALLING CONVENTION [IMAGE_CEE_CS_CALLCONV_LOCAL_SIG] (0x7). Definuje LOCAL VARIABLES.
+   E. CALLING CONVENTION [IMAGE_CEE_CS_CALLCONV_PROPERTY] (0x8). Definuje PROPERTY.
+   F. CALLING CONVENTION [IMAGE_CEE_CS_CALLCONV_UNMGD] (0x9). NOT USED. Definuje UNMANAGED CALLING CONVENTION.
+   G. CALLING CONVENTION [IMAGE_CEE_CS_CALLCONV_HASTHIS] (0x20). Definuje INSTANCE METHOD, ktora ma THIS PARAMETER definovany IMPLICITNE (skryty). MSIL definuje KEYWORD [instance] pre definiciu tychto typov METHODS.
+   H. CALLING CONVENTION [IMAGE_CEE_CS_CALLCONV_EXPLICITTHIS] (0x40). Definuje INSTANCE METHOD, ktora ma THIS PARAMETER definovany EXPLICITNE. MSIL definuje KEYWORD [explicit] pre definiciu tychto typov METHODS.
+   I. CALLING CONVENTION [IMAGE_CEE_UNMANAGED_CALLCONV_C] (0x1). Definuje UNMANAGED STATIC METHOD s C++ CALLING CONVENTION, kde CALLER musi po skonceni volania METHOD vycistit STACK. MSIL definuje KEYWORD [unmanaged cdecl] pre definiciu tychto typov METHODS.
+   J. CALLING CONVENTION [IMAGE_CEE_UNMANAGED_CALLCONV_STDCALL] (0x2). Definuje UNMANAGED STATIC METHOD s WIN32 API CALLING CONVENTION, kde CALLEE musi pred skoncenim METHOD vycistit STACK. MSIL definuje KEYWORD [unmanaged stdcall] pre definiciu tychto typov METHODS.
+   K. CALLING CONVENTION [IMAGE_CEE_UNMANAGED_CALLCONV_THISCALL] (0x3). Definuje UNMANAGED NON-STATIC METHOD, kde CALLEE musi pred skoncenim METHOD vymazat STACK a THIS PARAMETER je prenasany cez REGISTER ECX. MSIL definuje KEYWORD [thiscall] pre definiciu tychto typov METHODS.
+   L. CALLING CONVENTION [IMAGE_CEE_UNMANAGED_CALLCONV_FASTCALL] (0x4). Definuje UNMANAGED NON-STATIC METHOD, kde je MAXIMUM PARAMETERS prenesenych cez REGISTERS. MSIL definuje KEYWORD [fastcall] pre definiciu tychto typov METHODS.
+   M. CALLING CONVENTION [IMAGE_CEE_CALLCONV_GENERIC] (0x10). Definuje GENERIC METHOD.
+   M. CALLING CONVENTION [IMAGE_CEE_CS_CALLCONV_GENERICINST] (0x0A). Definuje GENERIC METHOD INSTANTIATION.
+29. FIELD SIGNATURES maju nasledujuci tvar.
+   A. CALLING CONVENTION. Je obsiahnuty v 1. BYTE. Musi VZDY obsahovat hodnotu [IMAGE_CEE_CS_CALLCONV_FIELD].
+   !!! B. FIELD TYPE. Obsahuje iba 1 ENCODED TYPE, kedze FIELDS moze mat iba 1 TYPE. Pri MULTI-DIMENSIONS ARRAYS vsak dany TYPE musi obsahovat POCET DIMENSIONS, resp. LOWER BOUND kadzej DIMENSION a preto moze byt znacne dlhy. TYPE NEMOZE byt MANAGED POINTER, PINNED ani SENTINEL (SENTINEL [...] sa pouziva iba v METHODS s VARIABILNYM poctom PARAMETERS) a TYPE NEMOZE byt VOID.
+30. METHOD SIGNATURES maju nasledujuci tvar.
+   A. CALLING CONVENTION. Je obsiahnuty v 1. BYTE. Musi VZDY obsahovat niektoru z hodnot [IMAGE_CEE_CS_CALLCONV_DEFAULT] (METHOD je STATIC), [IMAGE_CEE_CS_CALLCONV_VARARG] (METHOD ma VARIABLNY pocet PARAMETERS), [IMAGE_CEE_CS_CALLCONV_HASTHIS] (METHOD je NON-STATIC), alebo [IMAGE_CEE_CS_CALLCONV_HASTHIS | IMAGE_CEE_CS_CALLCONV_VARARG] (METHOD je NON-STATIC a ma VARIABLNY pocet PARAMETERS).
+   B. Pocet METHOD PARAMETERS bez THIS PARAMETER. Pocet je ulozeny v COMPRESSED podobe.
+   C. RETURN TYPE. Obsahuje ENCODED TYPE METHOD RETURN VALUE. Pri MULTI-DIMENSIONS ARRAYS dany TYPE musi obsahovat aj POCET DIMENSIONS, resp. LOWER BOUND kadzej DIMENSION, a preto moze byt znacne dlhy. RETURN TYPES MOZU byt MANAGED POINTERS a mozu mat TYPE VOID.
+   !!! D. PARAMETERS TYPES. Obsahuje 1 ENCODED TYPE pre KAZDY PARAMETER (okrem THIS) danej METHOD. Pri MULTI-DIMENSIONS ARRAYS dany TYPE musi obsahovat aj POCET DIMENSIONS, resp. LOWER BOUND kadzej DIMENSION, a preto moze byt znacne dlhy. PARAMETER TYPES MOZU byt MANAGED POINTERS.
+31. PROPERTY SIGNATURES je kombinaciou SIGNATURES vsetkych ACCESS METHODS danej PROPERTY, kde SIGNATURE kazdej ACCESS METHOD ma nasledujuci tvar.
+   A. CALLING CONVENTION. Je obsiahnuty v 1. BYTE. Musi VZDY obsahovat hodnotu [IMAGE_CEE_CS_CALLCONV_PROPERTY].
+   B. Pocet PROPERTY PARAMETERS bez THIS PARAMETER. Pocet je ulozeny v COMPRESSED podobe.
+   C. RETURN TYPE. Obsahuje ENCODED TYPE PROPERTY RETURN VALUE. Pri MULTI-DIMENSIONS ARRAYS dany TYPE musi obsahovat aj POCET DIMENSIONS, resp. LOWER BOUND kadzej DIMENSION, a preto moze byt znacne dlhy. RETURN TYPES MOZU byt MANAGED POINTERS.
+   !!! D. PARAMETERS TYPES. Obsahuje 1 ENCODED TYPE pre KAZDY PARAMETER (okrem THIS) danej PROPERTY. Pri MULTI-DIMENSIONS ARRAYS dany TYPE musi obsahovat aj POCET DIMENSIONS, resp. LOWER BOUND kadzej DIMENSION, a preto moze byt znacne dlhy. PARAMETER TYPES MOZU byt MANAGED POINTERS.
+32. MEMBER SIGNATURES obsahuju SIGNATURES pre FIELDS a METHODS definovanych v INYCH MODULES.
+   A. MEMBER SIGNATURES typu FIELD maju IDENTICKY tvar ako FIELD SIGNATURES.
+   B. MEMBER SIGNATURES typu METHOD maju podobny tvar ako METHOD SIGNATURES. Kedze MEMBER SIGNATURES pre METHODS de-facto reprezentuju VOLANIE METHODS, tak MEMBER SIGNATURES pre METHODS s VARIABILNYM POCTOM PARAMETERS mozu obsahova SENTINEL [...] po ktorom nasleduju 'N' TYPES vsetkych VARIABLE PARAMETERS, ktore su pri volani zaslane do METHOD.
+!!!!! 33. INDIRECT CALLS su volania METHODS pomocou INSTRUCTION [calli], kde POINTER na FUNCTION musi byt pred volanim INSTRUCTION [calli] na VRCHOLE STACK. INDIRECT CALLS sa vykonavaju nasledujucim sposobom.
+   A. Na STACK sa ulozia vsetky PARAMETERS.
+   B. Na STACK sa ulozi POINTER na FUNCTION, ktory je mozne ziskat pomocou INSTRUCTION [ldftn].
+   C. Pomocou INSTRUCTION [calli] sa zavola METHOD.
+   D. Ak METHOD vracia RETURN VALUE, tak RETURN VALUE bude po skonceni METHOD na vrchole STACKU.
+34. INDIRECT CALL SIGNATURES su podobne METHOD SIGNATURES s tym rozdielom, ze CALLING CONVENTION moze obsahovat aj hodnotu [IMAGE_CEE_CS_CALLCONV_EXPLICITTHIS], ako aj hodnoty pre UNAMANGED FUNCTIONS [IMAGE_CEE_UNMANAGED_CALLCONV_C], [IMAGE_CEE_UNMANAGED_CALLCONV_STDCALL], [IMAGE_CEE_UNMANAGED_CALLCONV_THISCALL] a [IMAGE_CEE_UNMANAGED_CALLCONV_FASTCALL].
+35. LOCAL VARIABLE SIGNATURES obsahuju SIGNATURES pre VSETKY LOCAL VARIABLES v danej METHOD. Jedna LOCAL VARIABLE SIGNATURE obsahuje TYPES VSETKYCH LOCAL VARIABLES v danej METHOD. LOCAL VARIABLE SIGNATURES maju nasledujuci tvar.
+   A. CALLING CONVENTION. Je obsiahnuty v 1. BYTE. Musi VZDY obsahovat hodnotu [IMAGE_CEE_CS_CALLCONV_LOCAL_SIG].
+   B. Pocet LOCAL VARIABLES, ktore METHOD obsahuje.
+   !!! C. PARAMETERS TYPES. Obsahuje 1 TYPE pre KAZDU LOCAL VARIABLE. TYPES NEMOZU byt 'VOID'. TYPES mozu byt PINNED.
+36. TYPE SPECIFICATIONS su specialne METADATA ITEMS v METADATA TABLE [TypeSpec], ktore popisuju CONSTRUCTED TYPES. CONSTRUCTED TYPES su vytvarane v RUNTIME a patria medzi ne tieto types.
+   A. GENERIC TYPES.
+   B. ARRAYS.
+   C. POINTERS.
+   D. FUNCTION TYPES.
+37. TYPE SPECIFICATION SIGNATURES maju nasledujuci tvar.
+   A. Na rozdiel od ostatnych SIGNATURES NEOBSAHUJU CALLING CONVENTION.
+   B. Obsahuju 1 TYPE popisujuci CONSTURCTED TYPE. TYPE moze byt znacne dlhy, ak sa napriklad jedna o MULTI-DIMENSIONS ARRAYS napriklad TYPU FUNCTION POINTER.
+//-------------------------------------------------------------------------------------------------------

@@ -1,0 +1,406 @@
+//-------------------------------------------------------------------------------------------------------
+1. Solution popisuje MSIL INSTRUCTIONS.
+2. CLR definuju nasledujuce typy MEMORY CATEGORIES ku ktorym mozu METHODS pristupovat.
+   A. FIELDS a METHODS ACCESSES. Obsahuje FIELDS a DATA BLOCKS ku ktorym mozu METHODS pristupovat.
+   B. ARGUMENT TABLE. ARGUMENTS ku ktorym mozu METHODS pristupovat.
+   C. LOCAL VARIABLE TABLE. LOCAL VARIABLES, ktore METHODS definuju.
+   D. EVALUATION STACK. Je to STACK nad ktorom pracuju MSIL INSTRUCTIONS. Substituuje CPU REGISTERS, ktore MSIL nepozna a namiesto nich vsekty MSIL INSTRUCTION PARAMETERS sa ukladaju na EVALUATION STACK.
+!!!!! 3. Jednotlive typy MEMORIES NEPOUZIVAJU BYTE adresaciu. Namiesto toho kazda MEMORY pracuje s MEMORY SLOTS. Velkost kazdeho MEMORY SLOT zavisi od TYPU DAT, ktore su v danom MEMORY SLOT ulozene.
+!!!!! 4. MSIL je STACK BASE LANGUAGE. Z toho vyplyvaju nasledujuce faky.
+   A. VSETKY PARAMETERS do MSIL INSTRUCTIONS sa ukladaju na EVALUATION STACK.
+   B. VSETKY RETURN VALUES z MSIL INSTRUCTIONS sa ukladaju na EVALUATION STACK.
+   !!!!! C. Jednotlive MEMORY SLOTS v EVALUATION STACK maju ROZDIELNU a v RUNTIME urctenu velkost, podla toho aky typ dat je do nich ulozeny.
+   !!! D. MSIL NEPOTREBUJE ani NEMA ziadne CPU REGISTERS a namiesto nich sa vsetky udaje ukladaju do EVALUATION STACK.
+   !!! E. Velkost EVALUATION STACK pre kazdu METHOD sa definuje pomocou KEYWORD [.maxstack] v tele METHOD. Ak sa KEYWORD [.maxstack] nepouzije, tak velkost EVALUATION STACK je 8 BYTES.
+   !!!!! F. CLR pri ukoncovani METHODS VZDY VYCISTI EVALUATION STACK, takze hodnoty ulozene v EVALUATION STACK sa nedaju predavat medzi volanim METHODS.
+   !!!!! G. HIGH LEVEL LANGUAGES ako C# generuju VZDY MSIL CODE tak, ze po skonceni KAZDEHO C# STATEMENT sa EVALUATION STACK VYCISTI. To znamena, ze C# STATEMENTS su NEUTRALNE voci EVALUATION STACK a data si neprenasaju cez EVALUATION STACK.
+   G. MSIL definuje INSTRUCTIONS, ktore umoznuju presun MEMORY SLOTS medzi LOCAL VARIABLES, ARGUMENT TABLE a LOCAL VARIABLES TABLE a EVALUATION STACK. Vdaka tymto INSTRUCTIONS sa mozu do a z EVALUATION STACK presuvat PARAMETERS a RETURN VALUES MSIL INSTRUCTIONS.
+5. Pre ARGUMENT TABLE platia nasledujuce zasady.
+   !!! A. Pocet MEMORY SLOTS v ARGUMENT TABLE su urcene SIGNATURE v case VOLANIE METHOD a NIE v case DEKLARACIE METHOD. Je to preto, lebo METHODS s VARIABLE PARAMETERS maju variabilny pocet PARAMETERS, ktorych pocet je znamy AZ v CASE VOLANIA.
+   B. TYPE jednodtlivych MEMORY SLOTS v ARGUMENT TABLE je dany typom prislusneho ARGUMENT, ktory je definovany v COMPILE TIME urcenim SIGNATURE v mieste VOLANIA danej METHOD.
+6. Pre LOCAL VARIABLE TABLE platia nasledujuce zasady.
+   A. Pocet MEMORY SLOTS v LOCAL VARIABLE TABLE je dany poctom VARIABLES deklarovanych pomocou KEYWORD [.local].
+   B. MEMORY SLOTS v ARGUMENT TABLE su dane typom LOCAL VARIABLE, ktory je definovany v COMPILE TIME pomocou KEYWORD [.local].
+7. MSIL definuje iba obmedzeny rozsah TYPES, ktore podporuje. Zoznam podporovanych TYPES je nasledujuci.
+   A. TYPE [int32] reprezentuje 32 BITS INTEGER VALUES.
+   B. TYPE [int64] reprezentuje 64 BITS INTEGER VALUES.
+   C. TYPE [Float] reprezentuje FLOATING POINT VALUES. Obsahuje obe 32 BITS [float32] ale 64 BITS [float64] FLOATING POINT VALUES.
+   D. TYPE [native int] reprezentuje 32, alebo 64 BITS INTEGER VALUES podla TYPU CPU PLAFTORM na ktorej CODE bezi. Na x86 PLATFORMS sa [native int] transformuje na 32 BITS INTERGER VALUES. Na x64 PLATFORMS sa [native int] transformuje na 64 BITS INTERGER VALUES.
+   E. TYPE [&] reprezentuje MANAGED POINTER, ktoreho velkost v BITS zavisi od CPU PLATFORM.
+   F. TYPE [ObjectRef] reprezentuje instanciu REFERENCE TYPE.
+   G. TYPE [ValueTypeRef] reprezentuje instanciu VALUE TYPE.
+8. MSIL CODE moze generovat CODE, ktory ma ziadnu, jednu, alebo obe z nasledujucich ATTRIBUTES.
+   A. VALID CODE. VALID CODE je taky MSIL CODE, ktory JIT COMPILER akceptuje ako validny spustatelny CODE. Ak CODE nie je VALID CODE, tak JIT generuje EXCEPTION a CODE odmietne spustit.
+   B. VERIFIABLE CODE. VERIFIABLE CODE je CODE, u ktoreho je GARANTOVANE, ze pristupuje iba k MEMORY ku ktorej ma opravnenie. VERIFIABLE CODE teda nemoze pristupovat k MEMORY, ku ktorej nema ACCESS a teda ani sposobit SECURITY PROBLEMS. CODE, ktory NIE JE VERIFIABLE CODE MOZE BYT SPUSTATELNY (ak je to VALID CODE), ale CLR zabezpecuje, ze takyto CODE moze byt spusteny IBA ak je ULOZENY na DISKU. Ak dojde k pokusu spustit takyto CODE z INTERNETU je generovana EXCEPTION a CODE sa nespusti.
+9. TOOL [PEVerify.exe] umoznuje skontrolovat ci generovany CODE je VALID a VERIFIABLE. Vykonava nasledujuce kontroly.
+   A. Analyzuje MSIL CODE vratane vsetkych BRANCHES, kde zistuje ci kapacita STACKU nebola prekrocena.
+   B. Kontroluje ci kazda MSIL INSTRUCTION ma ocakavany pocet PARAMETERS na STACKU.
+   C. Kontroluje ci kazda MSIL INSTRUCTION ma ocakavany TYPE PARAMETERS na STACKU.
+   D. Kontroluje ci MSIL CODE obsahuje NATIVE CODE, alebo UNMANAGED POINTERS.
+   E. Kontroluje ci niektore METHODS nevracaju MANAGED POINTERS. Aj tento CODE je povazovany za UNVERIFIABLE, pretoze MANAGED POINTER by mohol odkazovat na LOCAL VARIABLE, ktra je pri ukonceni METHOD zlikvidovana.
+   F. Kontroluje ci kazdy CONSTRUCTOR vola CONSTRUCTOR BASE CLASS.
+   G. Kontroluje ci vytvoreniu DELEGATE OBJECT pomocou INSTRUCTION [newobj] OKAMZITE PREDCHADZALA INSTRUCTION [ldfnt], alebo INSTRUCTION [ldvirtfnt]. Ak medzi INSTRUCTION [ldfnt], alebo INSTURCTION [ldvirtfnt] a INSTRUCTION [newobj] vytvarajucu DELEGATE OBJECT sa nachadza AKAKOLVEK INA INSTRUCTION, CODE je povazovany za UNVERIFIABLE.
+!!! 10. C# ak NIE JE POVOLENY UNSAFE CODE, tak VZDY generuje VALID a VERIFIABLE CODE.
+11. MSIL INSTRUCTIONS maju dlzku 1, alebo 2 BYTES. INSTRUCTIONS s 2 BYTES maju 1. BYTE vzdy na hodnote 0xFE.
+12. MSIL podla toho ake TYPY PARAMETERS mozu MSIL INSTRUCTIONS prijimat definuje 2 TYPY MSIL INSTRUCTIONS.
+   A. SHORT INSTRUCTIONS. Prijimaju PARAMETERS s dlzkou 1 BYTE. Su alternativou k LONG INSTRUCTIONS, ked ich PARAMETERS su v intervale <0,255>, resp. <-128,127>. MSIL definuje SHORT verzie LONG INSTRUCTIONS napriklad pre aritmeticke INSTRUCTIONS ci BRANCH INSTRUCTIONS.
+   B. LONG INSTRUCTIONS. Prijimaju PARAMETERS s dlzkou 1 BYTES.
+13. MSIL pouziva LITTLE ENDIAN na ukladanie BYTES vo WORDS ci DOUBLE WORDS.
+14. MSIL podporuje viacero BRANCH INSTRUCTIONS, ktore mozu vykonavat CONDITIONAL ci UNCONDITIONAL JUMPS na LABELS. Pre LABELS a JUMPS platia nasledujuce fakty.
+   A. MSIL vypocitava v COMPILE TIME OFFSET, ktory sa vypocitava v BYTES a udava rozdiel medzi adresou NASLEDUJUCEJ INSTRUCTION a miestom na ktorej ukazuje LABEL.
+   B. Ak je OFFEST v rozpati <-128,127>, tak MSIL poskytuje pre viacero MSIL INSTRUCTION jej SHORT VERSIONS.
+   C. OFFSET sa VZDY pocita od ZACIATKU NASLEDUJUCEJ INSTRUCTION.
+   D. Hodnota OFFSETU musi byt taka, aby VZDY odkazovala na ZACIATOK INSTRUCTION. Nesmie ukazovat do stredu INSTRUCTION.
+   E. Hodnota OFFSETU musi byt taka, aby VZDY odkazovala do CURRENT METHOD. Skoky mimo CURRENT METHOD NIE SU POVOLENE.
+   !!! F. MSIL umoznuje pri BRANCH INSTRUCTIONS definovat OFFEST aj PRIAMO v BYTES, ale vzhladom na zlozitost vypoctu velkosti OFFEST sa odporuca pouzit LABELS a nechat na MSIL COMPILER, aby vypocital korektny OFFSET.
+15. LABELS sa v MSIL definuju pomocou SYNTAXE [XXX:], kde XXX je meno LABEL.
+16. CLR umoznuje volat METHODS cez POINTERS na METHODS. CLR umoznuje volat METHODS cez POINTERS na METHODS VIRTUALNE aj NEVIRTUALNE.
+!!! 17. Pri INDIRECT METHOD CALLING, ak sa ma NEVRITUALNE volat NON-STATIC METHOD je nutne vykonat nasledujuce kroky.
+   !!! A. Na ziskanie POINTER na METHOD je potrebne zavolat INTRUCTION [ldftn], ktora na STACK ulozi POINTER na METHOD.
+   B. Pri volani sa na STACK musi ulozit OBJECT, ktoremu METHOD patri.
+   C. Na STACK sa musia ulozit vsetky PARAMETERS s ktorymi METHOD bude volana.
+   D. Na STACK sa musi ulozit POINTER na METHOD ziskany v bode A.
+   !!! E. Pomocou INSTRUCTION [calli] sa zavola METHOD urcena pomocou jej SIGNATURE. SIGNATURE je zadanava v tvare [<CALLING_CONVENTION> <RETURN_TYPE>(<ARGUMENT_LIST>)]. Hodnota <CALLING_CONVENTION> musi pre NON-STATIC METHODS obsahovat hodnot [instance].
+   F. Ak METHOD vracia RETURN VALUE, jej hodnota bude po vykonani INSTRUCTION [calli] ulozena na STACKU.
+!!! 18. Pri INDIRECT METHOD CALLING, ak sa ma VIRTUALNE volat NON-STATIC METHOD je nutne vykonat nasledujuce kroky.
+   !!!!! A. Na ziskanie POINTER na METHOD je potrebne NAJPRV ulozit na STACK OBJECT, ktoremu METHOD patri a nasledne zavolat INTRUCTION [ldvirtftn], ktora na STACK ulozi POINTER na METHOD.
+   B. Pri volani sa na STACK musi ulozit OBJECT, ktoremu METHOD patri.
+   C. Na STACK sa musia ulozit vsetky PARAMETERS s ktorymi METHOD bude volana.
+   D. Na STACK sa musi ulozit POINTER na METHOD ziskany v bode A.
+   !!! E. Pomocou INSTRUCTION [calli] sa zavola METHOD urcena pomocou jej SIGNATURE. SIGNATURE je zadanava v tvare [<CALLING_CONVENTION> <RETURN_TYPE>(<ARGUMENT_LIST>)]. Hodnota <CALLING_CONVENTION> musi pre NON-STATIC METHODS obsahovat hodnot [instance].
+   F. Ak METHOD vracia RETURN VALUE, jej hodnota bude po vykonani INSTRUCTION [calli] ulozena na STACKU.
+!!! 19. Pri INDIRECT METHOD CALLING, ak sa ma volat STATIC METHOD je nutne vykonat nasledujuce kroky.
+   !!! A. Na ziskanie POINTER na METHOD je potrebne zavolat INTRUCTION [ldftn], ktora na STACK ulozi POINTER na METHOD.
+   B. Pri volani sa na STACK musia ulozit vsetky PARAMETERS s ktorymi METHOD bude volana.
+   C. Na STACK sa musi ulozit POINTER na METHOD ziskany v bode A.
+   !!! D. Pomocou INSTRUCTION [calli] sa zavola METHOD urcena pomocou jej SIGNATURE. SIGNATURE je zadanava v tvare [<CALLING_CONVENTION> <RETURN_TYPE>(<ARGUMENT_LIST>)].
+   E. Ak METHOD vracia RETURN VALUE, jej hodnota bude po vykonani INSTRUCTION [calli] ulozena na STACKU.
+20. CLR podporuje 2 typy ARRAYS.
+   A. VECTORS su ARRAYS, ktore maju iba 1 DIMENSION a zacinaju s INDEX 0.
+   B. ARRAYS su tie ARRAYS, ktore mozu mat 1-N DIMENSIONS a mozu zacinat aj inym INDEXOM ako 0.
+21. VECTORS maju specializovane MSIL INSTRUCTIONS s ktorymi sa s VECTORS pracuje.
+!!! 22. ARRAYS (nie VECTORS) NEMAJU specializovane INSTRUCTIONS a pristup k ARRAY ITEMS sa robi pomocou SPECIALIZOVANYCH METHODS, ktore implementuje priamo CLR a nie su dokonca ani sucastou TYPE Array. Su to INTRINSIC METHODS, ktore CLR doplni do kazdeho ARRAY TYPE. CLR podporuje nasledujuce INTRINSIC METHODS.
+   A. METHOD ARRAY::Get() (napriklad instance int32 int32[0...3,0...4]::Get(int32,int32)) ma 'N' PARAMETERS, kde 'N' je pocet DIMENSIONS. PARAMETERS obsahuju INDEXES jednotlivych DIMENSIONS. RETURN VALUE obsahuje VALUE daneho ARRAY ITEM.
+   B. METHOD ARRAY::Set() (napriklad instance void int32[0...3,0...4]::Set(int32,int32,int32)) ma 'N'+1 PARAMETERS, kde 'N' je pocet DIMENSIONS. Prvych 'N' PARAMETERS obsahe INDEXES jednotlivych DIMENSIONS a posledny PARAMETER obsahuje VALUE, ktora ma byt pre dany ARRAY ITEM nastavena. METHOD nema ziadnu RETURN VALUE.
+   C. METHOD ARRAY::Address() ma 'N' PARAMETERS, kde 'N' je pocet DIMENSIONS. PARAMETERS obsahuju INDEXES jednotlivych DIMENSIONS. RETURN VALUE obsahuje ADDRESS na dany ARRAY ITEM.
+//-------------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------------
+MSIL INSTRUCTIONS.
+
+1. MSIL INSTRUCTIONS maju dlzku 1, alebo 2 BYTES. INSTRUCTIONS s 2 BYTES maju 1. BYTE vzdy na hodnote 0xFE.
+2. MSIL podla toho ake TYPY PARAMETERS mozu MSIL INSTRUCTIONS prijimat definuje 2 TYPY MSIL INSTRUCTIONS.
+   A. SHORT INSTRUCTIONS. Prijimaju PARAMETERS s dlzkou 1 BYTE. Su alternativou k LONG INSTRUCTIONS, ked ich PARAMETERS su v intervale <0,255>, resp. <-128,127>. MSIL definuje SHORT verzie LONG INSTRUCTIONS napriklad pre aritmeticke INSTRUCTIONS ci BRANCH INSTRUCTIONS.
+   B. LONG INSTRUCTIONS. Prijimaju PARAMETERS s dlzkou 1 BYTES.
+//-------------------------------------------------------------------------------------------------------
+BRANCH a CONTROL FLOW INSTRUCTIONS.
+
+1. BRANCH INSTRUCTIONS umoznuju CONDITIONAL a UNCONDITIONAL JUMPS.
+2. MSIL COMPILER standardne NEVYKONAVA konverziu medzi SHORT a LONG BRANCH INSTRUCTIONS a je na programatorovi, aby ak chce a JUMPS su v OFFSET <-128,127> pouzil SHORT verziu MSIL INSTRUCTION. COMPILATION FLAG [/OPT] vsak umoznuje nastavit MSIL COMPILER tak, aby AUTOMATICKY konvertoval SHORT BRANCH INSTRUCTION na LONG BRANCH INSTRUCTIONS, ak je OFFSET mimo intervalu <-128,127>.
+3. MSIL podporuje nasledujuce UNCONDITIONAL BRANCH INSTRUCTIONS.
+   A. INSTRUCTION [br <int32>] vykonava UNCONDITIONAL BRANCH na 4 BYTES dlhy OFFSET, ktory moze byt zadany bud ako NUMBERIC VALUE, alebo ako LABEL.
+   B. INSTRUCTION [br <int8>] vykonava UNCONDITIONAL BRANCH na 1 BYTE dlhy OFFSET, ktory moze byt zadany bud ako NUMBERIC VALUE, alebo ako LABEL.
+4. MSIL podporuje nasledujuce CONDITIONAL BRANCH INSTRUCTIONS.
+   A. INSTRUCTION [brfalse <int32>] (alternativy [brnull] a [brzero]) vykonava CONDITIONAL BRANCH ak VALUE==0.
+   B. INSTRUCTION [brfalse.s <int8>] (alternativy [brnull.s] a [brzero.s]) je SHORT verzia INSTRUCTION [brfalse].
+   C. INSTRUCTION [brtrue <int32>] (alternativa [brinst]) vykonava CONDITIONAL BRANCH ak VALUE!=0.
+   D. INSTRUCTION [brtrue.s <int8>] (alternativa [brinst.s]) je SHORT verzia INSTRUCTION [brtrue].
+5. MSIL podporuje nasledujuce COMPARATIVE BRANCH INSTRUCTIONS.
+   A. INSTRUCTION [beq <int32>] vykonava CONDITIONAL BRANCH ak VALUE1==VALUE2.
+   B. INSTRUCTION [beq.s <int8>] je SHORT verzia INSTRUCTION [beq].
+   C. INSTRUCTION [bne.un <int32>] vykonava CONDITIONAL BRANCH ak VALUE1!=VALUE2. Pracuje s UNSIGNED VALUES.
+   D. INSTRUCTION [bne.un.s <int8>] je SHORT verzia INSTRUCTION [bne.un].
+   E. INSTRUCTION [bge <int32>] vykonava CONDITIONAL BRANCH ak VALUE1>=VALUE2.
+   F. INSTRUCTION [bge.s <int8>] je SHORT verzia INSTRUCTION [bge].
+   G. INSTRUCTION [bge.un <int32>] je verzia INSTRUCTION [bge] pracujuca s UNSIGNED VALUES.
+   H. INSTRUCTION [bge.un.s <int8>] je SHORT verzia INSTRUCTION [bge.un].
+   I. INSTRUCTION [bgt <int32>] vykonava CONDITIONAL BRANCH ak VALUE1>VALUE2.
+   J. INSTRUCTION [bgt.s <int8>] je SHORT verzia INSTRUCTION [bgt].
+   K. INSTRUCTION [bgt.un <int32>] je verzia INSTRUCTION [bgt] pracujuca s UNSIGNED VALUES.
+   L. INSTRUCTION [bgt.un.s <int8>] je SHORT verzia INSTRUCTION [bgt.un].
+   M. INSTRUCTION [ble <int32>] vykonava CONDITIONAL BRANCH ak VALUE1<=VALUE2.
+   N. INSTRUCTION [ble.s <int8>] je SHORT verzia INSTRUCTION [ble].
+   O. INSTRUCTION [ble.un <int32>] je verzia INSTRUCTION [ble] pracujuca s UNSIGNED VALUES.
+   P. INSTRUCTION [ble.un.s <int8>] je SHORT verzia INSTRUCTION [ble.un].
+   Q. INSTRUCTION [blt <int32>] vykonava CONDITIONAL BRANCH ak VALUE1<VALUE2.
+   R. INSTRUCTION [blt.s <int8>] je SHORT verzia INSTRUCTION [blt].
+   S. INSTRUCTION [blt.un <int32>] je verzia INSTRUCTION [blt] pracujuca s UNSIGNED VALUES.
+   T. INSTRUCTION [blt.un.s <int8>] je SHORT verzia INSTRUCTION [blt.un].
+6. MSIL podporuje SWITCH INSTRUCTION pre ktoru platia nasledujuce fakty.
+   A. SWITCH INSTRUCTION ma nasledujuce PARAMETERS [switch <unsigned int32> <int32> ... <int32>].
+   B. SYNTAX SWITCH INSTRUCTION je nasledujuca [switch (LABEL_1, ..., LABEL_N)]. 1. PARAMETER obsahujuci SWITCH VALUE sa prenasa cez STACK.
+   C. 1. PARAMETER urcuje SWITCH VALUE podla, ktorej sa vykona SWITCH.
+   D. PARAMETERS <2,N+1> obsahuju LABELS (alebo ciselne OFFSETS) urcujuce miesta, kde ma SWITCH INSTRUCTION skoncit, ak 1. PARAMETER nadobuda prislusnu hodnotu.
+   !!! E. Ak 1. PARAMETER ma hodnotu z intervalu <0,N-1>, tak sa vykona skok na prislusny LABEL (OFFSET). Ak Ak 1. PARAMETER ma hodnotu >=N, tak sa vykona 'DEFAULT BLOCK', tvoreny CODE ktory OKAMZITE nasleduje za SWITCH INSTRUCTION.
+   !!!!! F. SWITCH INSTRUCTION implementuje JUMP TABLE, ktora funguje ako HASH TABLE, umoznujuc okamzite skocit na dany LABEL, bez nutnosti porovnavat kazdu CASE CONDITION.
+   !!! G. SWITCH INSTRUCTION je generovana zo C# KEYWORD [switch].
+!!! 7. INSTRUCTION [break] umoznuje vlozit BREAKPOINT do CODE. Platia pri tom nasledujuce fakty.
+   !!! A. Ak vo WINDOWS existuje DEBUGGER, tak vyskoci okno, pomocou ktoreho ho je mozne spustit. Ak sa vyberie OPTION NO, tak sa PROGRAM OKAMZITE UKONCI. Ak sa vyberie OPTION YES, tak sa vyvola DEBUGGER a CODE je mozne NORMALNE DEBUGGOVAT.
+   B. Ak vo WINDOWS neexistuje DEBUGGER, tak sa INSTRUCTION [break] IGNORUJE.
+!!!!! 8. TRY a CATCH BLOCKS v EXCEPTION HANDLING MUSIA mat SPECIALNE INSTRUCTIONS, ktorymi je mozne tieto BLOCKS OPUSTIT. SPECIALNE INSTRUCTIONS su NUTNE preto, lebo sa MUSI vycistit EVALUATION STACK a ODSTRANIT informacie potrebne pre EXCEPTION HANDLING. Pre SPECIALNE INSTRUCTIONS na ukoncenie TRY a CATCH BLOCKS platia nasledujuce fakty.
+   A. INSTRUCTION [leave <int32>] ukoncuje TRY a CATCH BLOCKS skokom na LABEL (OFFSET) zadany ako PARAMETER tejto INSTRUCTION.
+   B. INSTRUCTION [leave.s <int8>] je SHORT verzia INSTRUCTION [leave].
+   !!! C. INSTRUCTIONS [leave <int32>] a [leave.s <int32>] pred vykonanim skoku na LABEL (OFFSET) vycistia EVALUATION STACK.
+   !!! D. Tieto INSTRUCTIONS NIE JE MOZNE pouzit na opustenie FILTER, FINALLY, alebo FAULT BLOCKS.
+   !!!!! E. TRY a CATCH BLOCKS MUSIA VZDY koncit INSTRUCTION [leave], inak by doslo k CHYBE PROGRAMU.
+   !!!!! F. Kedze INSTRUCTIONS [leave <int32>] a [leave.s <int32>] urcuju LOGICKY a NIE LEXIKALNY koniec TRY a CATCH BLOCKS, tak sa mozu nachadzat aj v TELE TRY a CATCH BLOCKS.
+!!!!! 9. FILTER a FINALLY a FAULT BLOCKS v EXCEPTION HANDLING MUSIA mat SPECIALNE INSTRUCTIONS, ktorymi je mozne tieto BLOCKS OPUSTIT. Tieto SPECIALNE INSTRUCTIONS urcuju koniec LEXIKALNEHO SCOPE. Su teda VZDY ako POSLEDNE INSTRUCTIONS v FILTER a FINALLY a FAULT BLOCKS. Pre SPECIALNE INSTRUCTIONS na ukoncenie FILTER a FINALLY a FAULT BLOCKS platia nasledujuce fakty.
+   !!!!! A. INSTRUCTION [endfilter <int32>] ukoncuje FILTER BLOCKS. Ak PARAMETER na STACK obsahuje hodnotu 1, tak sa prislusny EXCEPTION HANDLER VYKONA. Ak PARAMETER na STACK obsahuje hodnotu INU AKO 1, tak sa prislusny EXCEPTION HANDLER NEVYKONA a ma sa pokracovat v prehladavani ostatnych FILTER BLOCKS.
+   B. INSTRUCTION [endfinally] (endfault) ukoncuje FINALLY a FAULT BLOCKS. INSTRUCTION vycisti EVALUATION STACK.
+   !!!!! C. Obe INSTRUCTIONS oznacuju koniec LEXIKALNYCH BLOCKS a preto MUSIA byt VZDY fyzicky umiestnene AKO POSLEDNE INSTRUCTIONS v LEXICAL SCOPE daneho BLOCK.
+10. INSTRUCTION [ret] sluzi na ukoncenie METHOD. Po jej zavolani je METHOD OKAMZITE UKONCENA. Pre INSTRUCTION [ret] platia nasledujuce zasady.
+   !!! A. Ak METHOD NEMA RETURN VALUE, tak EVALUATION STACK MUSI BYT PRAZDNY pred volanim INSTRUCTION [ret], ktora OKAMZITE ukonci METHOD.
+   !!! B. Ak METHOD MA RETURN VALUE, tak EVALUATION STACK MUSI obsahovat 1 ITEM reprezentujuci RETURN VALUE. INSTRUCTION [ret] si RETURN VALUE vytiahne z EVALUATION STACK a po ukonceni METHOD ho nakopiruje na EVALUATION STACK CALLER METHOD.
+//-------------------------------------------------------------------------------------------------------
+ARITHMETICAL INSTRUCTIONS.
+
+1. ARITHMETICAL INSTRUCTIONS su tvorene aritmetickymi INSTRUCTIONS, INSTRUCTIONS na pracu s EVALUATION STACK, INSTRUCTIONS na prenos hodnot medzi LOCAL VARIABLES a FIELDS a EVALUATION STACK ci CONVERSION INSTRUCTIONS.
+2. MSIL podporuje nasledujuce STACK MANIPULATION INSTRUCTIONS.
+   A. INSTRUCTION [dup] duplikuje hodnotu, ktora je na vrchole EVALUATION STACK. Ak je STACK EMPTY, MSIL COMPILER generuje chybu.
+   B. INSTRUCTION [pop] odstrani hodnotu z vrcholu EVALUATION STACK. Ak je STACK EMPTY, JIT COMPILER generuje chybu v RUNTIME.
+   C. INSTRUCTION [nop] je prazdna INSTRUCTION, ktora nerobi nic.
+3. MSIL podporuje CONSTANTS LOADING INSTRUCTIONS, ktore mozu ukladat DECIMAL a HEXADECIMAL INTEGER VALUES, ako aj FLOATING POINT VALUES na STACK. FLOATING POINT VALUES mozu byt nacitavane aj ako INTEGER VALUES, ktore sa interpretuju ako FLOATING POINT VALUES, co sa da pouzit na nacitanie INFINITE ci NAN VALUES. MSIL podporuje nasledujuce CONSTANTS LOADING INSTRUCTIONS.
+   A. INSTRUCTION [ldc.i4 <int32>] uklada INT32 VALUE na STACK.
+   B. INSTRUCTION [ldc.i4.s <int8>] je SHORT verzia INSTRUCTION [ldc.i4].
+   C. INSTRUCTION [ldc.i4.m1] (alternativa [ldc.i4.M1]) uklada hodnotu -1 na STACK.
+   D. INSTRUCTION [ldc.i4.0] uklada hodnotu 0 na STACK.
+   E. INSTRUCTION [ldc.i4.1] uklada hodnotu 1 na STACK.
+   F. INSTRUCTION [ldc.i4.2] uklada hodnotu 2 na STACK.
+   G. INSTRUCTION [ldc.i4.3] uklada hodnotu 3 na STACK.
+   H. INSTRUCTION [ldc.i4.4] uklada hodnotu 4 na STACK.
+   I. INSTRUCTION [ldc.i4.5] uklada hodnotu 5 na STACK.
+   J. INSTRUCTION [ldc.i4.6] uklada hodnotu 6 na STACK.
+   K. INSTRUCTION [ldc.i4.7] uklada hodnotu 7 na STACK.
+   L. INSTRUCTION [ldc.i4.8] uklada hodnotu 8 na STACK.
+   M. INSTRUCTION [ldc.i8 <int64>] uklada INT64 VALUE na STACK.
+   N. INSTRUCTION [ldc.r4 <float32>] uklada FLOAT32 VALUE na STACK.
+   O. INSTRUCTION [ldc.r8 <float64>] uklada FLOAT64 VALUE na STACK.
+4. MSIL podporuje INDIRECT LOADING INSTRUCTIONS. INDIRECT LOADING INSTRUCTIONS zoberu zo STACK POINTER, z ktoreho adresy vyberu hodnotu a ulozia ju na STACK. MSIL podporuje nasledujuce INDIRECT LOADING INSTRUCTIONS.
+   A. INSTRUCTION [ldind.i1] nacitava VALUE typu INT8 nacitanu z ADDRESS na ktoru odkazuje POINTER do STACK.
+   B. INSTRUCTION [ldind.u1] nacitava VALUE typu UINT8 nacitanu z ADDRESS na ktoru odkazuje POINTER do STACK.
+   C. INSTRUCTION [ldind.i2] nacitava VALUE typu INT16 nacitanu z ADDRESS na ktoru odkazuje POINTER do STACK.
+   D. INSTRUCTION [ldind.u2] nacitava VALUE typu UINT16 nacitanu z ADDRESS na ktoru odkazuje POINTER do STACK.
+   E. INSTRUCTION [ldind.i4] nacitava VALUE typu INT32 nacitanu z ADDRESS na ktoru odkazuje POINTER do STACK.
+   F. INSTRUCTION [ldind.u4] nacitava VALUE typu UINT32 nacitanu z ADDRESS na ktoru odkazuje POINTER do STACK.
+   G. INSTRUCTION [ldind.i8] (alternaiva [ldind.u8]) nacitava VALUE typu INT64 nacitanu z ADDRESS na ktoru odkazuje POINTER do STACK.
+   H. INSTRUCTION [ldind.i] nacitava VALUE typu NATIVE INTEGER (ma velkost POINTER) nacitanu z ADDRESS na ktoru odkazuje POINTER do STACK.
+   I. INSTRUCTION [ldind.r4] nacitava VALUE typu FLOAT32 nacitanu z ADDRESS na ktoru odkazuje POINTER do STACK.
+   J. INSTRUCTION [ldind.r8] nacitava VALUE typu FLOAT64 nacitanu z ADDRESS na ktoru odkazuje POINTER do STACK.
+   K. INSTRUCTION [ldind.ref] nacitava VALUE typu OBJECT REFERENCE nacitanu z ADDRESS na ktoru odkazuje POINTER do STACK.
+5. MSIL podporuje INDIRECT STORING INSTRUCTIONS. INDIRECT STORING INSTRUCTIONS zoberu zo STACK POINTER, na ktoreho adresu ulozia hodnotu vytiahnutu zo STACK. MSIL podporuje nasledujuce INDIRECT STORING INSTRUCTIONS.
+   A. INSTRUCTION [stind.ref] uklada VALUE typu OBJECT REFERENCE do ADDRESS na ktoru odkazuje POINTER.
+   B. INSTRUCTION [stind.i] uklada VALUE typu NATIVE INTEGER (ma velkost POINTER) do ADDRESS na ktoru odkazuje POINTER.
+   C. INSTRUCTION [stind.i1] uklada VALUE typu INT8 do ADDRESS na ktoru odkazuje POINTER.
+   D. INSTRUCTION [stind.i2] uklada VALUE typu INT16 do ADDRESS na ktoru odkazuje POINTER.
+   E. INSTRUCTION [stind.i4] uklada VALUE typu INT32 do ADDRESS na ktoru odkazuje POINTER.
+   F. INSTRUCTION [stind.i8] uklada VALUE typu INT64 do ADDRESS na ktoru odkazuje POINTER.
+   G. INSTRUCTION [stind.r4] uklada VALUE typu FLOAT32 do ADDRESS na ktoru odkazuje POINTER.
+   H. INSTRUCTION [stind.r8] uklada VALUE typu FLOAT64 do ADDRESS na ktoru odkazuje POINTER.
+6. MSIL podporuje ARITHMETICAL OPERATIONS nad INT32, INT64, FLOAT32, FLOAT64 a NATIVE INT PARAMETERS a to ako nad SIGNED aj UNSIGNED VALUES. Ak pri matematickej operacii dojde k OVERFLOW a vysledok je orezany. MSIL podporuje nasledujuce ARITHMETICAL OPERATIONS.
+   A. INSTRUCTION [add] vykonava sucet 2 PARAMETERS ulozenych na STACK. Vysledok ulozi na STACK.
+   B. INSTRUCTION [sub] vykonava rozdiel 2 PARAMETERS ulozenych na STACK. Vysledok ulozi na STACK.
+   C. INSTRUCTION [mul] vykonava sucin 2 PARAMETERS ulozenych na STACK. Vysledok ulozi na STACK.
+   D. INSTRUCTION [div] vykonava delenie 2 PARAMETERS ulozenych na STACK. Vysledok ulozi na STACK.
+   E. INSTRUCTION [div.un] vykonava delenie 2 UNSIGNED PARAMETERS ulozenych na STACK. Vysledok ulozi na STACK.
+   F. INSTRUCTION [rem] vykonava module 2 PARAMETERS ulozenych na STACK. Vysledok ulozi na STACK.
+   G. INSTRUCTION [rem.un] vykonava module 2 UNSIGNED PARAMETERS ulozenych na STACK. Vysledok ulozi na STACK.
+   H. INSTRUCTION [neg] vykonava negaciu 1 PARAMETER ulozeneho na STACK. Vysledok ulozi na STACK.
+7. MSIL podporuje OVERFLOW ARITHMETICAL OPERATIONS nad INT32, INT64, FLOAT32, FLOAT64 a NATIVE INT PARAMETERS a to ako nad SIGNED aj UNSIGNED VALUES. Ak pri matematickej operacii dojde ku generovaniu EXCEPTION OverflowException. MSIL podporuje nasledujuce ARITHMETICAL OPERATIONS.
+   A. INSTRUCTION [add.ovf] vykonava sucet 2 PARAMETERS ulozenych na STACK. Vysledok ulozi na STACK.
+   B. INSTRUCTION [add.ovf.un] vykonava sucet 2 UNSIGNED PARAMETERS ulozenych na STACK. Vysledok ulozi na STACK.
+   C. INSTRUCTION [sub.ovf] vykonava rozdiel 2 PARAMETERS ulozenych na STACK. Vysledok ulozi na STACK.
+   D. INSTRUCTION [sub.ovf.un] vykonava rozdiel 2 UNSIGNED PARAMETERS ulozenych na STACK. Vysledok ulozi na STACK.
+   E. INSTRUCTION [mul.ovf] vykonava sucin 2 PARAMETERS ulozenych na STACK. Vysledok ulozi na STACK.
+   F. INSTRUCTION [mul.ovf.un] vykonava sucin 2 UNSIGNED PARAMETERS ulozenych na STACK. Vysledok ulozi na STACK.
+8. MSIL podporuje BITWISE OPERATIONS nad INT32, INT64 a NATIVE INT PARAMETERS. MSIL podporuje nasledujuce BITWISE OPERATIONS.
+   A. INSTRUCTION [and] vykonava BITWISE sucet 2 PARAMETERS ulozenych na STACK. Vysledok ulozi na STACK.
+   B. INSTRUCTION [or] vykonava BITWISE sucin 2 PARAMETERS ulozenych na STACK. Vysledok ulozi na STACK.
+   C. INSTRUCTION [xor] vykonava BITWISE EXCLUSIVE sucin 2 PARAMETERS ulozenych na STACK. Vysledok ulozi na STACK.
+   D. INSTRUCTION [not] vykonava BITWISE negaciu 1 PARAMETER ulozeneho na STACK. Vysledok ulozi na STACK.
+9. MSIL podporuje BITWISE SHIFT OPERATIONS nad INT32 a NATIVE INT PARAMETERS. MSIL podporuje nasledujuce BITWISE SHIFT OPERATIONS.
+   A. INSTRUCTION [shl] vykonava BITWISE LEFT SHIFT 2 PARAMETERS ulozenych na STACK. 1. PARAMETER hodnotu, ktora ma bit SHIFTED a 2. PARAMETER urcuje hodnotu, ktora ma byt SHIFTED. Vysledok ulozi na STACK.
+   B. INSTRUCTION [shr] vykonava BITWISE RIGHT SHIFT 2 PARAMETERS ulozenych na STACK. 1. PARAMETER hodnotu, ktora ma bit SHIFTED a 2. PARAMETER urcuje hodnotu, ktora ma byt SHIFTED. Vysledok ulozi na STACK.
+   C. INSTRUCTION [shr.un] vykonava BITWISE RIGHT SHIFT 2 UNSIGNED PARAMETERS ulozenych na STACK. 1. PARAMETER hodnotu, ktora ma bit SHIFTED a 2. PARAMETER urcuje hodnotu, ktora ma byt SHIFTED. Vysledok ulozi na STACK.
+10. MSIL podporuje CONVERSION OPERATIONS, ktore vykonavaju konverzie medzi rozlicnymi typmi PARAMETERS. Pri konverziach z dlhsich TYPES na kratsie TYPES dochadza k TRUNCATION, zatial co pri konerziach kratsich TYPES na dlhsie TYPES sa hodnoty konvertuje bez straty presnosti. Pri konverziach MANAGED POINTERS na INT64 a NATIVE UNMANAGED INT su MANAGED POINTERS VYRADENE z spravy GC a hodnoty ani NEBUDU UPDATED ak GC presunie MANAGED POINTERS. Pri konverziach z FLOAT na INTEGER VALUES je odseknuta desatinna cast. OBJECT REFERENCES nemoze byt konvertovane. MSIL podporuje nasledujuce CONVERSION OPERATIONS.
+   A. INSTRUCTION [conv.i1] konvertuje hodnotu ulozenu na STACK na INT8. Vysledok ulozi na STACK.
+   B. INSTRUCTION [conv.u1] konvertuje hodnotu ulozenu na STACK na UNSIGNED INT8. Vysledok ulozi na STACK.
+   C. INSTRUCTION [conv.i2] konvertuje hodnotu ulozenu na STACK na INT16. Vysledok ulozi na STACK.
+   D. INSTRUCTION [conv.u2] konvertuje hodnotu ulozenu na STACK na UNSIGNED INT16. Vysledok ulozi na STACK.
+   E. INSTRUCTION [conv.i4] konvertuje hodnotu ulozenu na STACK na INT32. Vysledok ulozi na STACK.
+   F. INSTRUCTION [conv.u4] konvertuje hodnotu ulozenu na STACK na UNSIGNED INT32. Vysledok ulozi na STACK.
+   G. INSTRUCTION [conv.i8] konvertuje hodnotu ulozenu na STACK na INT64. Vysledok ulozi na STACK.
+   H. INSTRUCTION [conv.u8] konvertuje hodnotu ulozenu na STACK na UNSIGNED INT64. Vysledok ulozi na STACK. Operacia moze byt aplikovana aj na POINTERS.
+   I. INSTRUCTION [conv.i] konvertuje hodnotu ulozenu na STACK na NATIVE INT. Vysledok ulozi na STACK.
+   J. INSTRUCTION [conv.u] konvertuje hodnotu ulozenu na STACK na NATIVE UNSIGNED INT. Vysledok ulozi na STACK. Operacia moze byt aplikovana aj na POINTERS.
+   K. INSTRUCTION [conv.r4] konvertuje hodnotu ulozenu na STACK na FLOAT32. Vysledok ulozi na STACK.
+   L. INSTRUCTION [conv.r8] konvertuje hodnotu ulozenu na STACK na FLOAT64. Vysledok ulozi na STACK.
+   M. INSTRUCTION [conv.r.un] konvertuje hodnotu typu UNSINGNED INT ulozenu na STACK na hodnotu typu FLOATING POINT. Vysledok ulozi na STACK.
+11. MSIL podporuje OVERFLOW CONVERSION OPERATIONS, ktore vykonavaju konverzie medzi PARAMETERS, ktore su typu INTEGER, pricom v pripade, ze konverzia vyrazduje TRUNCATION je hodena EXCEPTION OverflowException. MSIL podporuje nasledujuce OVERFLOW CONVERSION OPERATIONS.
+   A. INSTRUCTION [conv.ovf.i1] konvertuje hodnotu ulozenu na STACK na INT8. Vysledok ulozi na STACK.
+   B. INSTRUCTION [conv.ovf.u1] konvertuje hodnotu ulozenu na STACK na UNSIGNED INT8. Vysledok ulozi na STACK.
+   C. INSTRUCTION [conv.ovf.i1.un] konvertuje hodnotu typu UNSIGNED INTEGER ulozenu na STACK na INT8. Vysledok ulozi na STACK.
+   D. INSTRUCTION [conv.ovf.u1.un] konvertuje hodnotu typu UNSIGNED INTEGER ulozenu na STACK na UNSIGNED INT8. Vysledok ulozi na STACK.
+   E. INSTRUCTION [conv.ovf.i2] konvertuje hodnotu ulozenu na STACK na INT16. Vysledok ulozi na STACK.
+   F. INSTRUCTION [conv.ovf.u2] konvertuje hodnotu ulozenu na STACK na UNSIGNED INT16. Vysledok ulozi na STACK.
+   G. INSTRUCTION [conv.ovf.i2.un] konvertuje hodnotu typu UNSIGNED INTEGER ulozenu na STACK na INT16. Vysledok ulozi na STACK.
+   H. INSTRUCTION [conv.ovf.u2.un] konvertuje hodnotu typu UNSIGNED INTEGER ulozenu na STACK na UNSIGNED INT16. Vysledok ulozi na STACK.
+   I. INSTRUCTION [conv.ovf.i4] konvertuje hodnotu ulozenu na STACK na INT32. Vysledok ulozi na STACK.
+   J. INSTRUCTION [conv.ovf.u4] konvertuje hodnotu ulozenu na STACK na UNSIGNED INT32. Vysledok ulozi na STACK.
+   K. INSTRUCTION [conv.ovf.i4.un] konvertuje hodnotu typu UNSIGNED INTEGER ulozenu na STACK na INT32. Vysledok ulozi na STACK.
+   L. INSTRUCTION [conv.ovf.u4.un] konvertuje hodnotu typu UNSIGNED INTEGER ulozenu na STACK na UNSIGNED INT32. Vysledok ulozi na STACK.
+   M. INSTRUCTION [conv.ovf.i8] konvertuje hodnotu ulozenu na STACK na INT64. Vysledok ulozi na STACK.
+   N. INSTRUCTION [conv.ovf.u8] konvertuje hodnotu ulozenu na STACK na UNSIGNED INT64. Vysledok ulozi na STACK.
+   O. INSTRUCTION [conv.ovf.i8.un] konvertuje hodnotu typu UNSIGNED INTEGER ulozenu na STACK na INT64. Vysledok ulozi na STACK.
+   P. INSTRUCTION [conv.ovf.u8.un] konvertuje hodnotu typu UNSIGNED INTEGER ulozenu na STACK na UNSIGNED INT64. Vysledok ulozi na STACK.
+   Q. INSTRUCTION [conv.ovf.i] konvertuje hodnotu ulozenu na STACK na NATIVE INT. Vysledok ulozi na STACK.
+   R. INSTRUCTION [conv.ovf.u] konvertuje hodnotu ulozenu na STACK na UNSIGNED NATIVE INT. Vysledok ulozi na STACK.
+   S. INSTRUCTION [conv.ovf.i.un] konvertuje hodnotu typu UNSIGNED INTEGER ulozenu na STACK na NATIVE INT. Vysledok ulozi na STACK.
+   T. INSTRUCTION [conv.ovf.u.un] konvertuje hodnotu typu UNSIGNED INTEGER ulozenu na STACK na UNSIGNED NATIVE INT. Vysledok ulozi na STACK.
+12. MSIL podporuje LOGICAL CONDITION CHECK INSTRUCTIONS, ktore porovnavaju 1, alebo 2 PARAMETERS (INTEGER aj FLOATING POINT) ulozenych na STACK a vysledok porovnania ulozia na STACK. Vyuzivaju sa namiesto BRANCHING INSTRUCTIONS, ked je treba vysledok porovnania pouzit viac ako raz. MSIL podporuje nasledujuce LOGICAL CONDITION CHECK INSTRUCTIONS.
+   A. INSTRUCTION [ceq] porovnava 2 PARAMETERS na STACK a ak su rovnake ulozi na STACK hodnotu 1. Ak su rozne, ulozi na STACK hodnotu 0.
+   B. INSTRUCTION [cgt] porovnava 2 PARAMETERS na STACK ci je 1. PARAMETER VACSI ako 2. PARAMETER. Ak ano, na STACK ulozi hodnotu 1. Ak nie, na STACK ulozi hodnotu 0.
+   C. INSTRUCTION [cgt.un] porovnava 2 UNSIGNED PARAMETERS na STACK ci je 1. PARAMETER VACSI ako 2. PARAMETER. Ak ano, na STACK ulozi hodnotu 1. Ak nie, na STACK ulozi hodnotu 0.
+   D. INSTRUCTION [clt] porovnava 2 PARAMETERS na STACK ci je 1. PARAMETER MENSI ako 2. PARAMETER. Ak ano, na STACK ulozi hodnotu 1. Ak nie, na STACK ulozi hodnotu 0.
+   E. INSTRUCTION [clt.un] porovnava 2 UNSIGNED PARAMETERS na STACK ci je 1. PARAMETER MENSI ako 2. PARAMETER. Ak ano, na STACK ulozi hodnotu 1. Ak nie, na STACK ulozi hodnotu 0.
+   F. INSTRUCTION [ckfinite] porovnava ci PARAMETER na STACK ci je INFINITE, -INFINITE, alebo NAN VALUE. Ak ano, generuje EXCEPTION OverflowException. Ak nie, na STACK ulozi nezmeneho hodnotu PARAMETRA.
+13. MSIL podporuje BLOCK OPERATIONS, ktore umoznuju pracovat s RAW MEMORY (MUSI byt ALIGNED ma POINTER SIZE) ako BYTE ARRAY. INSTRUCTIONS su povazovane za UNVERIFIABLE. MSIL podporuje nasledujuce BLOCK OPERATIONS.
+   A. INSTRUCTION [cpblk] kopiruje MEMORY BLOCK, ktoreho adresa je urcena 1. PARAMETER na adresu urcenu 2. PARAMETER o dlzke urcenej 3. PARAMETER.
+   B. INSTRUCTION [initblk] inicializuje MEMORY BLOCK, ktoreho adresa je urcena 1. PARAMETER hodnotou urcenou 2. PARAMETER (hodnota je INT8 a ulozi sa do vsetkych BYTES inicializovaneho MEMORY BLOCK) o dlzke urcenej 3. PARAMETER.
+//-------------------------------------------------------------------------------------------------------
+ADDRESSING ARGUMENTS AND LOCAL VARIABLE INSTRUCTIONS.
+
+1. ADDRESSING ARGUMENTS AND LOCAL VARIABLE INSTRUCTIONS umoznuju presun VALUES z a do LOCAL VARIABLES a METHOD ARGUMENTS.
+2. ADDRESSING ARGUMENTS AND LOCAL VARIABLE INSTRUCTIONS umoznuju pristup k LOCAL VARIABLES a METHOD ARGUMENTS pomocou INDEXU zacinajuceho od 0, alebo MENA LOCAL VARIABLE ci METHOD ARGUMENT.
+!!! 3. V NON-STATIC METHODS je 0. ARGUMENT VZDY THIS PARAMETER.
+4. MSIL podporuje nasledujuce METHOD ARGUMENT LOADING INSTRUCTIONS.
+   A. INSTRUCTION [ldarg <UNSIGNED INT16>] nacitava ARGUMENT zadany INDEXOM, alebo ARGUMENT NAME a ulozi ho do STACK.
+   B. INSTRUCTION [ldarg.s <INT8>] je SHORT verzia INSTRUCTION [ldarg].
+   C. INSTRUCTION [ldarg.0] nacitava 0. ARGUMENT a ulozi ho do STACK.
+   D. INSTRUCTION [ldarg.1] nacitava 1. ARGUMENT a ulozi ho do STACK.
+   E. INSTRUCTION [ldarg.2] nacitava 2. ARGUMENT a ulozi ho do STACK.
+   F. INSTRUCTION [ldarg.3] nacitava 3. ARGUMENT a ulozi ho do STACK.
+5. MSIL podporuje nasledujuce METHOD ARGUMENT ADDRESS LOADING INSTRUCTIONS.
+   A. INSTRUCTION [ldarga <UNSIGNED INT16>] nacitava POINTER na ARGUMENT zadany INDEXOM, alebo ARGUMENT NAME a ulozi ho do STACK.
+   B. INSTRUCTION [ldarga.s] je SHORT verzia INSTRUCTION [ldarga].
+6. MSIL podporuje nasledujuce METHOD ARGUMENT STORING INSTRUCTIONS.
+   A. INSTRUCTION [starg <UNSIGNED INT16>] uklada hodnotu zo STACK do ARGUMENTU zadaneho INDEXOM, alebo ARGUMENT NAME.
+   B. INSTRUCTION [starg.s] je SHORT verzia INSTRUCTION [starg].
+!!! 7. MSIL podporuje METHOD ARGUMENT LIST INSTRUCTION [arglist], ktora sa pouziva na iterovanie OPTIONAL ARGUMENTS v METHODS s VARIABLE PARAMETERS. Tato INSTRUCTION nema ziadne vstupne PARAMETERS na STACK, zato na STACK uklada instanciu VALUE TYPE [RuntimeArgumentHandle]. VALUE TYPE [RuntimeArgumentHandle] obsahuje LIST vsetkych OPTIONAL PARAMETERS METHOD s VARIABLE PARAMETERS, cez ktory VALUE TYPE [ArgIterator] ITERUJE.
+8. MSIL podporuje nasledujuce LOCAL VARIABLE LOADING INSTRUCTIONS.
+   A. INSTRUCTION [ldloc <UNSIGNED INT16>] nacitava LOCAL VARIABLE zadanu INDEXOM, alebo LOCAL VARIABLE NAME a ulozi ju do STACK.
+   B. INSTRUCTION [ldloc.s <INT8>] je SHORT verzia INSTRUCTION [ldloc].
+   C. INSTRUCTION [ldloc.0] nacitava 0. LOCAL VARIABLE a ulozi ju do STACK.
+   D. INSTRUCTION [ldloc.1] nacitava 1. LOCAL VARIABLE a ulozi ju do STACK.
+   E. INSTRUCTION [ldloc.2] nacitava 2. LOCAL VARIABLE a ulozi ju do STACK.
+   F. INSTRUCTION [ldloc.3] nacitava 3. LOCAL VARIABLE a ulozi ju do STACK.
+9. MSIL podporuje nasledujuce LOCAL VARIABLE REFERENCE LOADING INSTRUCTIONS.
+   A. INSTRUCTION [ldloca <UNSIGNED INT16>] nacitava POINTER na LOCAL VARIABLE zadanu INDEXOM, alebo LOCAL VARIABLE NAME a ulozi ju do STACK.
+   B. INSTRUCTION [ldloca.s] je SHORT verzia INSTRUCTION [ldloca].
+10. MSIL podporuje nasledujuce LOCAL VARIABLE STORING INSTRUCTIONS.
+   A. INSTRUCTION [stloc <UNSIGNED INT16>] uklada hodnotu zo STACK do LOCAL VARIABLE zadanej INDEXOM, alebo LOCAL VARIABLE NAME.
+   B. INSTRUCTION [stloc.s] je SHORT verzia INSTRUCTION [stloc].
+   C. INSTRUCTION [stloc.0] uklada hodnotu zo STACK do 0. LOCAL VARIABLE.
+   D. INSTRUCTION [stloc.1] uklada hodnotu zo STACK do 1. LOCAL VARIABLE.
+   E. INSTRUCTION [stloc.2] uklada hodnotu zo STACK do 2. LOCAL VARIABLE.
+   F. INSTRUCTION [stloc.3] uklada hodnotu zo STACK do 3. LOCAL VARIABLE.
+11. MSIL podporuje LOCAL BLOCK ALLOCATION INSTRUCTION [localloc], ktora alokuje na STACKU pocet BYTES urceny hodnotou ulozenou na STACK. Na STACK instruction uklada POINTER na alokovany BLOCK. INSTRUCTION generuje UNVERIFIABLE CODE.
+12. MSIL definuje PREFIX INSTRUCTIONS, ktore sa pouzivaju na modifikaciu typu POINTER v INSTRUCTIONS, ktore pracuju s POINTERS (napriklad ldind ci stind). Platnost PREFIX INSTRUCTIONS je iba pre INSTRUCTION, ktora nasleduje za PREFIX INSTRUCTION. MSIL definuje nasledujuce PREFIX INSTRUCTIONS.
+   A. PREFIX INSTRUCTION [unaligned. <int8>] urcuje, ze POINTER bude UNALIGNED POINTER. UNALIGNED POINTER nema ALIGNMENT na POINTER SIZE, ale na nizsiu hodnotu, ktoru urcuje PARAMETER INSTRUCTION [unaligned].
+   B. PREFIX INSTRUCTION [volatile.] urcuje, ze POINTER bude VOLATILE POINTER. Pre VOLATILE POINTERS CLR vypina vsetky optimalizacie, kedze MEMORY na ktoru ukazuje takyto POINTER moze byt modifikovana z inych THREADS.
+//-------------------------------------------------------------------------------------------------------
+ADDRESSING FIELDS INSTRUCTIONS.
+
+1. ADDRESSING FIELDS INSTRUCTIONS umoznuju citat a zapisovat hodnoty NON-STATIC a STATIC FIELDS.
+2. Pri pristupe k STATIC FIELDS MUSI byt VZDY na STACKU ulozeny THIS PARAMETER. V pripade CLASSES je to INSTANCE POINTER a v pripade VALUE TYPES je to MANAGED POINTER.
+3. MSIL definuje nasledujuce ADDRESSING FIELDS INSTRUCTIONS.
+   A. INSTRUCTION [ldfld <token>] nacitava hodnotu NON-STATIC FIELD identifikovaneho pomocou TOKEN a uklada ho na STACK.
+   B. INSTRUCTION [ldsfld <token>] nacitava hodnotu STATIC FIELD identifikovaneho pomocou TOKEN a uklada ho na STACK.
+   C. INSTRUCTION [ldflda <token>] nacitava ADDRESS na NON-STATIC FIELD identifikovaneho pomocou TOKEN a uklada ho na STACK.
+   D. INSTRUCTION [ldsflda <token>] nacitava ADDRESS na STATIC FIELD identifikovaneho pomocou TOKEN a uklada ho na STACK.
+   E. INSTRUCTION [stfld <token>] nacitava hodnotu zo STACK a uklada ju do NON-STATIC FIELD identifikovaneho pomocou TOKEN.
+   F. INSTRUCTION [stsfld <token>] nacitava hodnotu zo STACK a uklada ju do STATIC FIELD identifikovaneho pomocou TOKEN.
+//-------------------------------------------------------------------------------------------------------
+CALLING METHODS INSTRUCTIONS.
+
+1. CALLING METHODS INSTRUCTIONS vyvolavaju STATIC a NON-STATIC METHODS. NON-STATIC METHODS mozu byt vyvolavane ako VIRTUAL, alebo NON-VIRTUAL METHODS.
+2. Pri volani METHODS je NUTNE do STACK ulozit VSETKY VARIABLES a to v takom poradi v akom su definovane v METHOD SIGNATURE.
+3. Ak METHOD vracia RETURN VALUE, tak hodnota na vrchole STACKU prenesie INSTRUCTION [ret] do CALLING METHOD na vrchol STACKU, takze ho CALLING METHOD moze spracovat. Ak CALLING METHOD RETURN VALUE nechce pouzit, mala by ho zo STACKU odstranit volanim INSTRUCTION [pop].
+!!! 4. NON-STATIC METHODS MUSIA na STACK ako 1. PARAMETER (pred realnymi PARAMETERS) ulozit THIS POINTER toho OBJECT pre ktory ma byt METHOD volana.
+5. METHODS v CALLING METHODS INSTRUCTIONS su zadavane vo forme TOKEN, ktory musi specifikovat ASSEMBLY a METHOD FULL NAME.
+!!!!! 6. Pri volani METHODS sa v METHOD SIGNATURE MUSI URCIT ci volana METHOD je STATIC, alebo NON-STATIC. Ak je METHOD NON-STATIC, tak jej TOKEN MUSI predchadzat PREFIX [instance].
+!!!!! 7. CLR UMOZNUJE volat VIRTUAL METHODS VIRTUALNE aj NEVIRTUALNE v zavislosti od toho ci sa pouzije INSTRUCTION [call], alebo INSTRUCTION [callvirt].
+8. MSIL definuje nasledujuce DIRECT CALLS INSTRUCTIONS.
+   !!! A. INSTRUCTION [jmp <token>] ukonci CURRENT METHOD a okamzite zavola METHOD urcenu danym TOKEN. Volana METHOD MUSI mat TU ISTU SIGNATURE ako CURRENT METHOD. ARGUMENTS su v STACKU ponechane, ale LOCAL VARIABLES a MEMORY BLOCKS alokovane pocas volania CURRENT METHOD su ODSTRANENE.
+   B. INSTRUCTION [call <token>] zavola METHOD NEVIRTUALNE. INSTRUCTION [call] je mozne pouzit na volanie VIRTUAL aj NON-VIRTUAL METHODS.
+   C. INSTRUCTION [callvirt <token>] zavola METHOD VIRTUALNE. INSTRUCTION [callvirt] je mozne pouzit na volanie VIRTUAL aj NON-VIRTUAL METHODS.
+9. MSIL definuje INDIRECT CALLS INSTRUCTIONS, ktore umoznuju volat METHODS cez POINTERS na METHODS.
+   A. INSTRUCTION [ldftn <TOKEN>] nacita POINTER na METHOD urcenu TOKEN a ulozi ju so STACK.
+   B. INSTRUCTION [ldvirtftn <TOKEN>] POINTER na METHOD urcenu TOKEN a ulozi ju so STACK. INSTRUCTION [ldvirtftn] umoznuje volat METHODS VIRTUALNE, preto na STACK musi byt pred volanim INSTRUCTION [ldvirtftn] musi byt ulozeny OBJECT nad ktorym sa ma VIRTUALNE volat METHOD cez POINTER na METHOD.
+   !!!!! C. INSTRUCTION [calli <SIGNATURE>] zavola METHOD cez POINTER na METHOD. METHOD je urcena pomocou jej SIGNATURE v tvare [<CALLING_CONVENTION> <RETURN_TYPE>(<ARGUMENT_LIST>)]. Na STACK musia byt ulozeny OBJECT, ktoremu METHOD plati (ak je METHOD NON-STATIC), vsetky PARAMETERS a POINTER na METHOD ziskany INSTRUCTION [ldftn], alebo INSTRUCTION [ldvirtftn]. Ak ma METHOD RETURN VALUE, tak po vykonani INSTRUCTION [calli] bude RETURN VALUE ulozena na STACK.
+!!!!! 10. MSIL definuje INSTRUCTION PREFIX [tail.]. Tento PREFIX je mozne pouzit na INSTRUCTIONS [call], [callvirt] a [calli]. Pred pouzitim INSTRUCTION PREFIX [tail.] je NUTNE na STACK ulozit VSETKY PARAMETERS CALLED METHOD. INSTRUCTION PREFIX [tail.] sposobi (podobne ako INSTRUCTION [jmp]) OKAMZITE UKONCENIE CURRENT METHOD a zavolanie CALLED METHOD. CALLED METHOD NEMUSI mat ROVNAKU SIGNATURE, ale CURRENT METHOD, ale MUSI mat ROVNAKU RETURN VALUE, pretoze RETURN VALUE CALLED METHOD sa stane RETURN VALUE CURRENT METHOD. V CODE CURRENT METHOD MUSI OKAMZITE za INTRUCTION [tail. XXX] (XXX je [call], [callvirt], alebo [calli]) nasledovat INSTRUCTION [ret], inak dojde k EXCEPTION.
+!!! 11. MSIL definuje INSTRUCTION PREFIX [constrained. <TOKEN>]. Tento PREFIX je mozne pouzit na INSTRUCTIONS [callvirt] a [ldvirtftn]. Pouziva sa v situaciach ked GENERIC METHOD potrebuje volat VIRTUAL METHOD nad svojim GENERIC PARAMETER. Kedze sa jedna o VIRTUAL METHOD, tak je tuto METHOD VZDY nutne volat cez THIS POINTER. Problem je v tom, ze zatial co pre VALUE TYPES je THIS POINTER ziskavany ako MANAGED POINTER (ziskavany napriklad INSTRUCTION [ldarga]), tak v pripade REFERENCE TYPES je THIS POINTER OBJECT REFERENCE (ziskavany INSTRUCTION [ldarg]). Prave tuto DISPROPORCIU riesi INSTRUCTION PREFIX [constrained.] a to tak, ze vyzaduje VZDY zadanie MANAGED POINTER (ziskavany pomocou INSTRUCTION [ldarga]) a CLR AUTOMATICKY bud ponecha ako MANAGED POINTER (pre VALUE TYPES), alebo ho DEREFERENCUJE a spravi z neho OBJECT REFERENCE (pre REFERENCE TYPES). V pripade, ze GENERIC PARAMETER je VALUE TYPE, ktory volanu METHOD NEIMPLEMENTUJE, je NUTNE vykona DEREFERENCOVANIE MANAGED POINTER (ziskany INSTRUCTION [ldarag]) a vykonat BOXING VALUE TYPE na MANAGED TYPE.
+//-------------------------------------------------------------------------------------------------------
+CALLING METHODS INSTRUCTIONS.
+
+1. CLR podporuje 2 typy ARRAYS.
+   A. VECTORS su ARRAYS, ktore maju iba 1 DIMENSION a zacinaju s INDEX 0.
+   B. ARRAYS su tie ARRAYS, ktore mozu mat 1-N DIMENSIONS a mozu zacinat aj inym INDEXOM ako 0.
+2. VECTORS maju specializovane MSIL INSTRUCTIONS s ktorymi sa s VECTORS pracuje.
+!!! 3. ARRAYS (nie VECTORS) NEMAJU specializovane INSTRUCTIONS a pristup k ARRAY ITEMS sa robi pomocou SPECIALIZOVANYCH METHODS, ktore implementuje priamo CLR a nie su dokonca ani sucastou TYPE Array. Su to INTRINSIC METHODS, ktore CLR doplni do kazdeho ARRAY TYPE. CLR podporuje nasledujuce INTRINSIC METHODS.
+   A. METHOD ARRAY::Get() (napriklad instance int32 int32[0...3,0...4]::Get(int32,int32)) ma 'N' PARAMETERS, kde 'N' je pocet DIMENSIONS. PARAMETERS obsahuju INDEXES jednotlivych DIMENSIONS. RETURN VALUE obsahuje VALUE daneho ARRAY ITEM.
+   B. METHOD ARRAY::Set() (napriklad instance void int32[0...3,0...4]::Set(int32,int32,int32)) ma 'N'+1 PARAMETERS, kde 'N' je pocet DIMENSIONS. Prvych 'N' PARAMETERS obsahe INDEXES jednotlivych DIMENSIONS a posledny PARAMETER obsahuje VALUE, ktora ma byt pre dany ARRAY ITEM nastavena. METHOD nema ziadnu RETURN VALUE.
+   C. METHOD ARRAY::Address() ma 'N' PARAMETERS, kde 'N' je pocet DIMENSIONS. PARAMETERS obsahuju INDEXES jednotlivych DIMENSIONS. RETURN VALUE obsahuje ADDRESS na dany ARRAY ITEM.
+4. MSIL definuje nasledujuce VECTOR CREATION INSTRUCTIONS.
+   A. INSTRUCTION [newarray <token>] vytvara novy VECTOR s urcenym hodnotou TOKEN. Na STACK musi byt umiestneny pocet ITEMS, ktore bude obsahovat ARRAY. INSTRUCTION [newarray] uklada na STACK novovytvoreny VECTOR.
+   B. INSTRUCTION [ldlen] uklada na STACK velkost ARRAY, ktory bol ulozeny na STACK pred volanim INSTRUCTION [ldlen].
+5. MSIL definuje nasledujuce VECTOR ADDRESS LOADING INSTRUCTIONS.
+   A. INSTRUCTION [ldelema <token>] uklada na STACK MANAGED POINTER typu urceneho hodnotou TOKEN. Na STACK musi byt ulozeny VECTOR a INDEX urcujuci ITEM, ktoreho POINTER ma INSTRUCTION [ldelema] vratit.
+   B. PREFIX INSTRUCTION [readonly] sa pouziva ako PREFIX INSTRUCTION [ldelema], aby POINTER, ktory INSTRUCTION [ldelema] vracia bol READ-ONLY.
+6. MSIL definuje nasledujuce ELEMENT LOADING INSTRUCTIONS.
+   A. INSTRUCTION [ldelem.i1] uklada na STACK VALUE typu INT8 z daneho ARRAY ITEM. Na STACK musi byt ulozeny VECTOR a INDEX urcujuci ITEM, ktoreho VALUE ma INSTRUCTION [ldelem.i1] vratit.
+   B. INSTRUCTION [ldelem.u1] uklada na STACK VALUE typu UNSINGNED INT8 z daneho ARRAY ITEM. Na STACK musi byt ulozeny VECTOR a INDEX urcujuci ITEM, ktoreho VALUE ma INSTRUCTION [ldelem.u1] vratit.
+   C. INSTRUCTION [ldelem.i2] uklada na STACK VALUE typu INT16 z daneho ARRAY ITEM. Na STACK musi byt ulozeny VECTOR a INDEX urcujuci ITEM, ktoreho VALUE ma INSTRUCTION [ldelem.i2] vratit.
+   D. INSTRUCTION [ldelem.u2] uklada na STACK VALUE typu UNSINGED INT16 z daneho ARRAY ITEM. Na STACK musi byt ulozeny VECTOR a INDEX urcujuci ITEM, ktoreho VALUE ma INSTRUCTION [ldelem.u2] vratit.
+   E. INSTRUCTION [ldelem.i4] uklada na STACK VALUE typu INT32 z daneho ARRAY ITEM. Na STACK musi byt ulozeny VECTOR a INDEX urcujuci ITEM, ktoreho VALUE ma INSTRUCTION [ldelem.i4] vratit.
+   F. INSTRUCTION [ldelem.u4] uklada na STACK VALUE typu UNSINGED INT32 z daneho ARRAY ITEM. Na STACK musi byt ulozeny VECTOR a INDEX urcujuci ITEM, ktoreho VALUE ma INSTRUCTION [ldelem.u4] vratit.
+   G. INSTRUCTION [ldelem.i8] (alternativa [ldelem.u8]) uklada na STACK VALUE typu INT64 z daneho ARRAY ITEM. Na STACK musi byt ulozeny VECTOR a INDEX urcujuci ITEM, ktoreho VALUE ma INSTRUCTION [ldelem.i8] vratit.
+   H. INSTRUCTION [ldelem.i] uklada na STACK VALUE typu NATIVE INT z daneho ARRAY ITEM. Na STACK musi byt ulozeny VECTOR a INDEX urcujuci ITEM, ktoreho VALUE ma INSTRUCTION [ldelem.i] vratit.
+   I. INSTRUCTION [ldelem.r4] uklada na STACK VALUE typu FLOAT32 z daneho ARRAY ITEM. Na STACK musi byt ulozeny VECTOR a INDEX urcujuci ITEM, ktoreho VALUE ma INSTRUCTION [ldelem.r4] vratit.
+   J. INSTRUCTION [ldelem.r8] uklada na STACK VALUE typu FLOAT64 z daneho ARRAY ITEM. Na STACK musi byt ulozeny VECTOR a INDEX urcujuci ITEM, ktoreho VALUE ma INSTRUCTION [ldelem.r8] vratit.
+   K. INSTRUCTION [ldelem.ref] uklada na STACK VALUE typu REFERENCE TYPE z daneho ARRAY ITEM. Na STACK musi byt ulozeny VECTOR a INDEX urcujuci ITEM, ktoreho VALUE ma INSTRUCTION [ldelem.ref] vratit.
+   L. INSTRUCTION [ldelem <token>] (alternativa [ldelem.any]) uklada na STACK VALUE typu urceneho hodnotou TOKEN z daneho ARRAY ITEM. Na STACK musi byt ulozeny VECTOR a INDEX urcujuci ITEM, ktoreho VALUE ma INSTRUCTION [ldelem] vratit. INSTRUCTION sa pouziva pre GENERIC TYPES.
+7. MSIL definuje nasledujuce ELEMENT STORING INSTRUCTIONS.
+   A. INSTRUCTION [stelem.i] uklada do ARRAY ITEM VALUE typu NATIVE INT. Na STACK musi byt ulozeny VECTOR, INDEX urcujuci ITEM do ktoreho sa ma VALUE zapisat a samotna VALUE.
+   B. INSTRUCTION [stelem.i1] uklada do ARRAY ITEM VALUE typu INT8. Na STACK musi byt ulozeny VECTOR, INDEX urcujuci ITEM do ktoreho sa ma VALUE zapisat a samotna VALUE.
+   C. INSTRUCTION [stelem.i2] uklada do ARRAY ITEM VALUE typu INT16. Na STACK musi byt ulozeny VECTOR, INDEX urcujuci ITEM do ktoreho sa ma VALUE zapisat a samotna VALUE.
+   D. INSTRUCTION [stelem.i4] uklada do ARRAY ITEM VALUE typu INT32. Na STACK musi byt ulozeny VECTOR, INDEX urcujuci ITEM do ktoreho sa ma VALUE zapisat a samotna VALUE.
+   E. INSTRUCTION [stelem.i8] uklada do ARRAY ITEM VALUE typu INT64. Na STACK musi byt ulozeny VECTOR, INDEX urcujuci ITEM do ktoreho sa ma VALUE zapisat a samotna VALUE.
+   F. INSTRUCTION [stelem.r4] uklada do ARRAY ITEM VALUE typu FLOAT32. Na STACK musi byt ulozeny VECTOR, INDEX urcujuci ITEM do ktoreho sa ma VALUE zapisat a samotna VALUE.
+   G. INSTRUCTION [stelem.r8] uklada do ARRAY ITEM VALUE typu FLOAT64. Na STACK musi byt ulozeny VECTOR, INDEX urcujuci ITEM do ktoreho sa ma VALUE zapisat a samotna VALUE.
+   H. INSTRUCTION [stelem.ref] uklada do ARRAY ITEM VALUE typu REFERENCE TYPE. Na STACK musi byt ulozeny VECTOR, INDEX urcujuci ITEM do ktoreho sa ma VALUE zapisat a samotna VALUE. INSTRUCTION vykonava pretypovanie TYPE na ARRAY TYPE. Ak ITEM TYPE a ARRAY TYPE nesedia, generuje sa EXCEPTION InvalidCastException.
+   I. INSTRUCTION [stelem <token>] (alternativa [stelem.any]) uklada do ARRAY ITEM zadanu VALUE typu TOKEN. Na STACK musi byt ulozeny VECTOR, INDEX urcujuci ITEM do ktoreho sa ma VALUE zapisat a samotna VALUE. INSTRUCTION sa pouziva pre GENERIC TYPES.
+//-------------------------------------------------------------------------------------------------------
+ADDRESSNING CLASSES AND VALUE TYPES INSTRUCTIONS.
+
+1. ADDRESSNING CLASSES AND VALUE TYPES INSTRUCTIONS reprezentuju INSTRUCTIONS na vytvaranie a pracu s CLASSES a VALUE TYPES.
+2. MSIL definuje nasledujuce ADDRESSNING CLASSES AND VALUE TYPES INSTRUCTIONS.
+   A. INSTRUCTION [ldnull] nacitava NULL VALUE na STACK.
+   B. INSTRUCTION [ldobj <token>] nacitava instanciu VALUE TYPE typu TOKEN na STACK z POINTER na VALUE TYPE. Na STACKU musi byt ulozeny POINTER na VALUE TYPE. INSTRUCTION vrati na STACK VALUE VALUE TYPE.
+   C. INSTRUCTION [stobj <token>] uklada VALUE VALUE TYPE typu TOKEN na STACK cez POINTER na VALUE TYPE. Na STACKU musi byt ulozeny POINTER na VALUE TYPE a VALUE VALUE TYPE, ktora sa ma do POINTER na VALUE TYPE ulozit.
+   D. INSTRUCTION [cpobj <token>] kopiruje VALUE VALUE TYPE (urceny cez POINTER na VALUE TYPE) typu TOKEN do ineho VALUE TYPE (tiez urceny cez POINTER na VALUE TYPE). Na STACKU musi byt ulozeny ako 1. PARAMETER POINTER na VALUE TYPE do ktoreho sa ma hodnota VALUE TYPE ukladat a ako 2. PARAMETER musi byt na STACKU ulozeny POINTER na VALUE TYPE z ktoreho sa ma VALUE VALUE TYPE kopirovat.
+   E. INSTRUCTION [initobj <token>] inicializuje VALUE TYPE (urceny cez POINTER na VALUE TYPE) typu TOKEN. Na STACKU musi byt ulozeny ako POINTER na VALUE TYPE, ktory ma byt inicializovany.
+   F. INSTRUCTION [ldstr <token>] nacitava STRING VALUE typu TOKEN na STACK. TOKEN je OPTIONAL VALUE, ktora ak sa nezada, tak sa za STRING povazuje CLASS String. TOKEN umoznuje definovat CUSTOM STRING TYPE. Na STACKU musi byt ulozena STRING CONSTANT, ktora moze byt v tvare "XXX", alebo v tvare (XX XX XX), kde 'XX' je HEXADECIMALNE CISLO.
+   G. INSTRUCTION [newobj <token>] vytvara instanciu REFERENCE TYPE. TOKEN urcuje CONSTRUCTOR, ktory ma INSTRUCTION vyvolat. Na STACK je nutne ulozit vsetky CONSTRUCTOR PARAMETERS, ktore CONSTRUTOR prijima. INSTRUCTION ulozi na STACK vytvarenu instanciu REFERENCE TYPE.
+   H. INSTRUCTION [castclass <token>] konvertuje instanciu REFERENCE TYPE na TYPE zadany pomocou TOKEN. Na STACK musi byt ulozena instancia povodneho TYPE a INSTRUCTION uklada na STACK konvertovanu instanciu REFERENCE TYPU. Ak konverzia nie je mozne, generuje sa EXCEPTION InvalidCastException.
+   I. INSTRUCTION [isinst <token>] zistuje ci REFERENCE je kompatibilneho typu s TOKEN. Kompatibilny typ je vtedy ak TOKEN je rovny REFERENCE, alebo TOKEN je BASE CLASS ci BASE INTERFACE daneho OBJECT. Takist kompatibilny typ je vtedy ak sa OBJECT je BOXED VALUE TYPE rovnakeho typu ako TOKEN. INSTRUCTION bezie zo STACK PARAMETER obsahujuci OBJECT a na STACK uklada bud OBJECT konvertovany na TOKEN TYPE, alebo ak konverzia nie je mozne, ulozi sa na STACK NULL VALUE.
+   J. INSTRUCTION [box <token>] vykonava BOXING INSTANCIE VALUE TYPE na REFERENCE TYPE. Na STACKU musi byt ulozena INSTANCIA VALUE TYPE pricom INSTRUCTION vracia na STACK novu instanciu REFERENCE TYPE, ktory reprezentuje BOXED VALUE TYPE.
+   K. INSTRUCTION [unbox <token>] vykonava UNBOXING OBJECT REFERENCE obsahujuci BOXED VALUE TYPE na MANAGED POINTER odkazujuci na UNBOXED VALUE TYPE. Na STACKU musi byt ulozeny BOXEX VALUE TYPE (OBJECT REFERENCE) pricom INSTRUCTION vracia na STACK MANAGED POINTER na UNBOXED VALUE TYPE.
+   L. INSTRUCTION [unbox.any <token>] vykonava UNBOXING OBJECT REFERENCE obsahujuci BOXED VALUE TYPE na UNBOXED VALUE TYPE. Na STACKU musi byt ulozeny BOXEX VALUE TYPE (OBJECT REFERENCE) pricom INSTRUCTION vracia na STACK UNBOXED VALUE TYPE.
+   M. INSTRUCTION [mkrefany <token>] vytvara TYPED REFERENCE. TYPED REFERENCE je OPAQUE HANDLE obsahujuci TYPE INFORMATION a INSTANCE POINTER. INSTRUCTION potrebuje, aby na STACK bol ulozeny POINTER, ktory INSTRUCTION konvertuje na TYPE urceny hodnotou TOKEN a ulozit TYPED REFERENCE na STACK.
+   N. INSTRUCTION [refanytype] vracia TYPE (instanciu System.RuntimeTypeHandle) ulozeny v danej TYPED REFERENCE. Na STACKU musi byt umiestnena TYPED REFERENCE, pricom INSTRUCTION na STACK uklada instanciu TYPU System.RuntimeTypeHandle zodpovedajucu TYPE danej TYPED REFERENCE.
+   O. INSTRUCTION [refanyval <token>] vracia VALUE (INSTANCE POINTER, alebo NATIVE INT) ulozenu v TYPED REFERENCE. Na STACKU musi byt umiestnena TYPED REFERENCE, pricom INSTRUCTION na STACK uklada INSTANCE POINTER, alebo NATIVE INT. TYPE (INSTANCE POINTER, alebo NATIVE INT MUSI byt KOMPATIBILNY s TYPE ulozenym v TOKEN.
+   P. INSTRUCTION [ldtoken <token>] konvertuje TOKEN na INTERNAL HANDLE, ktory moze byt pouzity v REFLECTION. Na STACK musi byt ulozeny TOKEN TYPU MethodDef, MemberRef, TypeDef, TypeRef, alebo FieldDef. INSTRUCTION uklada na STACK instanciu na RuntimeMethodHandle, RuntimeFieldHandle, alebo RuntimeTypeHandle.
+   Q. INSTRUCTION [sizeof <token>] uklada na STACK dlzku REFERENCE TYPES, alebo VALUE TYPES v BYTES.
+   R. INSTRUCTION [throw] hodi EXCEPTION, ktora je ulozena na STACK. INSTRUCTION vyzaduje, aby na STACKU bola ulozena instancia dediaca z CLASS Exception.
+   S. INSTRUCTION [rethrow] vyhadzuje zachytenu EXCEPTION. Neprijma ZIADNE PARAMETERS zo STACK a moze byt pouziva IBA v CATCH BLOCK, kde hodi EXCEPTION, ktory CATCH BLOCK zachytil.
+//-------------------------------------------------------------------------------------------------------

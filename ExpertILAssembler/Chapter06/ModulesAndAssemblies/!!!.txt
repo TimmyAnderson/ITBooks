@@ -1,0 +1,239 @@
+//-------------------------------------------------------------------------------------------------------
+1. Solution popisuje deklaracie MODULES a ASSEMBLIES v MSIL.
+2. ASSEMBLY je zakladny BUILDING BLOCK a UNIT OF DEPLOYMENT.
+3. ASSEMBLY je tvorena 1-M MODULES a 0-N RESOURCE FILES. ASSEMBLIES sa podla poctu FILES rozdeluju na 2 typy.
+   A. SINGLE-FILE ASSEMBLY su ASSEMBLIES, ktore su tvorene iba 1 FILE.
+   B. MULTI-FILES ASSEMBLY su ASSEMBLIES, ktore su tvorene iba 'X' FILES. MULTI-FILES ASSEMBLY obsahuje 1-M MODULES a 0-N RESOURCE FILES.
+!!!!! 4. V ASSEMBLIES ma KAZDY MODULE MANIFEST. Jeden z MODULES je PRIMARY MODULE. PRIMARY MODULE ma na rozdiel od ostatnych MODULES vo svojom MANIFEST ASSEMBLY IDENTITY, ktora ASSEMBLY jednoznacne identifikuje.
+5. ASSEMBLIES podla sposobu DEPLOYMENT je mozne rozdelit na 2 typy.
+   A. PRIVATE ASSEMBLIES.
+   B. SHARED ASSEMBLIES.
+6. Pre PRIVATE ASSEMBLIES platia nasledujuce fakty.
+   A. PRIVATE ASSEMBLIES su DEPLOYED v tom istom DIRECTORY (SUBDIRECTORY) ako APPLICATION.
+   B. PRIVATE ASSEMBLIES MUSIA mat unikatne meno IBA v ramci APPLICATION, ale nie v ramci SYSTEMU.
+   C. PRIVATE ASSEMBLIES NEMUSIA (aj ked mozu) mat STRONG NAME.
+   !!!!! D. Ak ASSEMBLIES maju STRONG NAME, ale su DEPLOYED v tom istom DIRECTORY (SUBDIRECTORY) ako APPLICATION, tak su PRIVATE ASSEMBLIES a NIE SHARED ASSEMBLIES.
+7. Pre SHARED ASSEMBLIES platia nasledujuce fakty.
+   A. SHARED ASSEMBLIES su DEPLOYED v GAC (GLOBAL ASSEMBLY CACHE), ktora je pristupna pre VSETKY APPLICATIONS.
+   B. SHARED ASSEMBLIES MUSIA mat STRONG NAME obsahujuci STRONG NAME SIGNATURE, ktorym mozu pouzivatelia SHARED ASSEMBLIES jednoznacne identifikovat vyrobcu danych ASSEMBLIES aj to ci ASSEMBLIES neboli modifikovane.
+   !!!!! C. Ak ASSEMBLIES maju STRONG NAME, ale su DEPLOYED v tom istom DIRECTORY (SUBDIRECTORY) ako APPLICATION, tak su PRIVATE ASSEMBLIES a NIE SHARED ASSEMBLIES.
+8. MANAGED PROCESSES mozu vytvaraju 1-N APPLICATION DOMAINS. APPLICATION DOMAINS su analogiou PROCESSES na urovni 1 PROCESSU. Pre APPLICATION DOMAINS platia nasledujuce fakty.
+   A. Kazda APPLICATION DOMAIN moze bezat v separatnom SECURITY CONTEXT.
+   B. CODE beziaci v jednotlivych APPLICATION DOMAINS je IZOLOVANY. To znaci, ze CODE z jednej APPLICATION DOMAIN nemoze priamo pristupovat k OBJECTS vytvorenym inou APPLICATION DOMAIN.
+   C. FAULTS z jednej APPLICATION DOMAIN nemozu ovplyvnit CODE v inych APPLICATION DOMAINS.
+   D. Kazda APPLICATION DOMAIN moze nacitat a pouzivat VLASTNE VERZIE ASSEMBLIES nezavisle na ASSEMBLIES nacitanych do inych APPLICATION DOMAINS. Jedinou vynimkou je ASSEMBLY MSCORLIB.DLL, ktora je SHARED medzi VSETKYMI APPLICATION DOMAINS.
+9. Standardne OBJECTS vytvorene v rozlicnych APPLICATION DOMAINS NIE SU PRIAMO PRISTUPNE. Nepriamo je vsak mozne prenasat OBJECTS medzi APPLICATION DOMAINS a to nasledujucimi sposobmi.
+   A. UNBOUND OBJECTS. Su to OBJECTS, ktore su medzi APPLICATION DOMAINS MARSHALED-BY-VALUE.
+   B. APPLICATION DOMAIN BOUND OBJECTS. Su to OBJECTS, ktore su medzi APPLICATION DOMAINS MARSHALED-BY-REFERENCE. Ak ma byt OBJECT pristupny z inej APPLICATION DOMAIN, tak je v REMOTE APPLICATION DOMAIN sa vytvori PROXY na REMOTE OBJECT a k REMOTE OBJECT sa pristupuje z REMOTE APPLICATION DOMAIN pomocou tohto PROXY.
+   C. CONTEXT BOUND OBJECTS. Su analogiou APPLICATION DOMAIN BOUND OBJECTS s tym rozdielom, ze OBJECTS su MARSHALED-BY-REFERENCE nielen medzi rozlicnymi APPLICATION DOMAINS, ale aj medzi rozlicnymi CONTEXTS.
+10. MANIFEST je METADATA ENTITY, ktoru obsahuje KAZDY MODULE. PRIMARY MODULE obsahuje dodatocne informacie vo svojom MANIFEST.
+   A. ASSEMBLY IDENTITY. Obsahuje ju IBA MANIFEST pre PRIMARY MODULE. Obsahuje meno, verziu ASSEMBLY, CULTURE a PUBLIC KEY. ASSEMBLY IDENTITY je ulozena v [Assembly] a [Module] METADATA TABLES.
+   B. EXPORTED TYPES a RESOURCES. Obsahuje zoznam vsetkych TYPES a RESOURCES, ktore su EXPORTED z danej ASSEMBLY. EXPORTED TYPES su ulozene v METADATA TABLE [ExportedType] a EXPORTED RESOURCES su ulozene v METADATA TABLE [ManifestResource].
+   C. EXTERNAL DEPENDENCIES. Obsahuje zoznam vsetkych EXTRENAL ASSEMBLIES a INTERNAL MODULES (pri MULTI-FILE ASSEMBLIES s viacerymi MODULES) na ktorych je dana ASSEMBLY zavisla. EXTERNAL ASSEMBLIES su ulozene v METADATA TABLE [AssemblyRef]. INTERNAL MODULES su ulozene v METADATA TABLE [ModuleRef]. FILES (EXTRERNAL ASSEMBLIES, INTERNAL MODULES, RESOURCES) su ulozene v METADATA TABLE [File].
+   D. REQUESTED PERMISSIONS. Obsahuje zoznam PERMISSIONS, ktore dana ASSEMBLY potrebuje. REQUESTED PERMISSIONS su ulozene v METADATA TABLE [DeclSecurity].
+   E. CUSTOM ATTRIBUTES. Obsahuje zoznam CUSTOM ATTRIBUTES, ktore su aplikovane na danu ASSEMBLY. CUSTOM ATTRIBUTES su ulozene v METADATA TABLE [CustomAttribute].
+!!!!! 10. EXTREMNE DOLEZITE. V MSIL je zodpovednostou PROGRAMATORA, aby KOREKTNE naplnil METADATA TABLES aplikovanim spravnych KEYWORDS na ASSEMBLY ci ine ENTITIES.
+!!!!! 11. EXTREMNE DOLEZITE. Ak v MSIL CODE NEDEFINUJE korektne vsetky METADATA TABLES, MSIL COMPILER moze pre dany CODE vygenerovat PE FILE, avsak pri pokuse o spustenie tohto PE FILE hodi CLR EXCEPTION oznamujuci, ze PE FILE nema vsetky potrebne METADATA. Napriklad, pri MULTI-FILE ASSEMBLY, ak som v PRIMARY MODULE nemal pouzity KEYWORD [.file] s odkazom na ostatne FILES, tak MSIL COMPILER CODE korektne skompiloval, no pri spusteni CLR hodilo EXCEPTION BadImageFormatException. Az po doplneni KEYWORDS [.file], ktore doplnili zaznamy do METADATA TABLES sa PROGRAM korektne spustil.
+12. METADATA TABLE [Assembly] obsahuje iba 1 RECORD pre celu ASSEMBLY a ma nasledujuce COLUMNS.
+   A. COLUMN [HashAlgId]. Ma 4 BYTES a obsahuje identifikator HASH ALGORITHM, ktory sa pouziva na vypocet HASH CODES z ASSEMBLY FILES.
+   B. COLUMN [MajorVersion]. Ma 2 BYTES a obsahuje ASSEMBLY MAJOR VERSION.
+   C. COLUMN [MinorVersion]. Ma 2 BYTES a obsahuje ASSEMBLY MINOR VERSION.
+   D. COLUMN [BuildVersion]. Ma 2 BYTES a obsahuje ASSEMBLY BUILD VERSION.
+   E. COLUMN [RevisionVersion]. Ma 2 BYTES a obsahuje ASSEMBLY REVISION VERSION.
+   F. COLUMN [Flags]. Ma 4 BYTES a obsahuje ASSEMBLY FLAGS. ASSEMBLY FLAGS indikuju ci ASSEMBLY ma STRONG NAME, ci je JIT OPTIMALIZATION ENABLED, alebo ci ASSEMBLY je RETARGETABLE na inu verziu danej ASSEMBLY.
+   G. COLUMN [PublicKey]. Referuje do METADATA STREAM [#Blob] a obsahuje ASSEMBLY PUBLIC KEY.
+   H. COLUMN [Name]. Referuje do METADATA STREAM [#Strings] a obsahuje ASSEMBLY NAME.
+   I. COLUMN [Locale]. Referuje do METADATA STREAM [#Strings] a obsahuje ASSEMBLY CULTURE.
+13. METADATA TABLE [AssemblyRef] obsahuje pre KAZDU ASSEMBLY, ktora je REFERRED z CURRENT ASSEMBLY jeden RECORD. METADATA TABLE [AssemblyRef] ma nasledujuce COLUMNS.
+   A. COLUMN [MajorVersion]. Ma 2 BYTES a obsahuje REFERRED ASSEMBLY MAJOR VERSION.
+   B. COLUMN [MinorVersion]. Ma 2 BYTES a obsahuje REFERRED ASSEMBLY MINOR VERSION.
+   C. COLUMN [BuildVersion]. Ma 2 BYTES a obsahuje REFERRED ASSEMBLY BUILD VERSION.
+   D. COLUMN [RevisionVersion]. Ma 2 BYTES a obsahuje REFERRED ASSEMBLY REVISION VERSION.
+   E. COLUMN [Flags]. Ma 4 BYTES a obsahuje REFERRED ASSEMBLY FLAGS. REFERRED ASSEMBLY FLAGS indikuju ci ASSEMBLY REFERENCE ma UNHASHED PUBLIC KEY, alebo SURROGATE PUBLIC KEY.
+   F. COLUMN [PublicKeyOrToken]. Referuje do METADATA STREAM [#Blob] a obsahuje REFERRED ASSEMBLY PUBLIC KEY, alebo REFERRED ASSEMBLY PUBLIC KEY TOKEN o dlzke 8 BYTES.
+   G. COLUMN [Name]. Referuje do METADATA STREAM [#Strings] a obsahuje REFERRED ASSEMBLY NAME.
+   H. COLUMN [Locale]. Referuje do METADATA STREAM [#Strings] a obsahuje REFERRED ASSEMBLY CULTURE.
+   I. COLUMN [HashValue]. Referuje do METADATA STREAM [#Blob] a obsahuje REFERRED ASSEMBLY HASH CODE. LOADER tuto hodnotu IGNORUJE.
+14. CLR LOADER nacitava REFERRED ASSEMBLIES v nasledujucich krokoch.
+   A. CLR LOADER zisti ci ASSEMBLY ma STORNG NAME. Ak ano, pokusi sa vyhladat ASSEMBLY v GAC.
+   B. Ak ASSEMBLY nie je najdena, CLR LOADER zisti ci ASSEMBLY ma definovanu CODE BASE LOCATIONS. Ak ano, pokusi sa najst ASSEMBLY v CODE BASE LOCATIONS.
+   C. Ak ASSEMBLY nie je najdena, CLR LOADER zacne prehladavat APPLICATION BASE LOCATIONS (DIRECTORY v ktorom je PROGRAM nainstalovany). Vyhladavanie zahrna CULTURE, CPU PLATFORM a FILE EXTENSTION.
+   D. Ak ASSEMBLY nie je najdena, CLR LOADER generuje EXCEPTION a proces vyhladavania REFERRED ASSEMBLIES konci.
+15. Od verzie .NET 2.0. ASSEMBLIES maju ako sucast svojho STRONG NAME aj CPU PLATFORM voci ktorej boli COMPILED. .NET podporuje nasledujuce CPU PLATFORMS.
+   A. PLATORM AGNOSTIC ASSEMBLIES su spustene v NATIVE UNEMULATED MODE na X86 aj X64 PLATFORMS.
+   B. 32 BIT ASSEMBLIES mozu byt spustene na X86 aj X64 PLATFORMS, pricom vsak na X64 PLATFORMS bezia v EMULATED X86 PLATFORM.
+   C. 64 BIT ASSEMBLIES mozu byt spustene IBA na X64 PLATFORMS.
+   D. ITANUIUM ASSEMBLIES mozu byt spustene IBA na ITANIUM PLATFORMS.
+16. METADATA TABLE [Module] obsahuje iba 1 RECORD pre MODULE a ma nasledujuce COLUMNS.
+   A. COLUMN [Generation]. Ma 2 BYTES a pouziva sa iba v EDIT AND CONTINUE MODE.
+   B. COLUMN [Name]. Referuje do METADATA STREAM [#Strings] a obsahuje MODULE NAME.
+   C. COLUMN [Mvid]. Referuje do METADATA STREAM [#GUID] a obsahuje MODULE ID.
+   D. COLUMN [EncId]. Referuje do METADATA STREAM [#GUID] a pouziva sa iba v EDIT AND CONTINUE MODE.
+   E. COLUMN [EncBaseId]. Referuje do METADATA STREAM [#GUID] a pouziva sa iba v EDIT AND CONTINUE MODE.
+17. METADATA TABLE [ModuleRef] obsahuje 1 RECORD pre KAZDY REFERRED MODULE v MULTI-FILE ASSEMBLY. Obsahuje JEDINY COLUMN COLUMN [Name]. Referuje do METADATA STREAM [#Strings] a obsahuje REFERRED MODULE NAME.
+!!! 18. METADATA TABLE [ModuleRef] moze obsahovat 2 typy REFERRED MODULES.
+   A. MANAGED MODULES. Jedna sa o MODULES (.MOD FILES) v MULTI-FILE ASSEMBLY.
+   B. UNMANAGED MODULES. Jedna sa o UNMANAGED DLL. UNMANAGED MODULES je NUTNE explicitne pridat do MSIL CODE IBA ak maju byt DEPOLYED spolu s ASSEMBLIES. Pri pouziti P/INVOKE to vsak NIE JE TREBA, pretoze P/INVOKE vsak AUTOMATICKY pridava vsetky MODULE REFERENCES na UNMANAGED MODULES.
+!!!!! 19. Kazdy RECORD v [.module extern] MUSI byt sparovany s RECORD v METADATA TABLE [File] pomocou KEYWORD [.file].
+20. METADATA TABLE [File] obsahuje iba RECORDS pre vsetky FILES tvoriace ASSEMBLY. Medzi FILES tvoriace ASSEMBLY patria nasledujuce typy FILES.
+   A. PRIMARY MANAGED MODULE.
+   B. NON-PRIMARY MANAGED MODULES (.MOD FILES).
+   C. UNMANAGED MODULES (UNMANAGED .DLL FILES).
+   D. RESOURCE FILES.
+21. METADATA TABLE [File] ma nasledujuce COLUMNS.
+   A. COLUMN [Name]. Referuje do METADATA STREAM [#Strings] a obsahuje FILE NAME.
+   B. COLUMN [Flags]. Ma 2 BYTES a obsahuje FLAGS daneho FILE. FLAG 'ContainsNoMetadata' oznacuje RESOURCE FILE, ktory NEMA METADATA, alebo UNMANAGED MODULE.
+   C. COLUMN [HashValue]. Referuje do METADATA STREAM [#Blob] a obsahuje HASH VALUE daneho FILE.
+!!! 22. Ak RECORD v METADATA TABLE [File] NEOBSAHUJE HASH VALUE, tak MSIL COMPILER ju dokaze, ak je FILE v COMPILE TIME vypocitat a nastavit. Ak FILE v COMPILE TIME NIE JE PRISTUPNY, tak sa hodnota [HashValue] nastavi na 0.
+23. RESOURCES v MANAGED PROGRAMS mozu byt 2 typov.
+   A. MANAGED RESOURCES.
+   B. UNMANAGED RESOURCES.
+24. RESOURCES mozu byt umiestnene na nasledujucich miestach.
+   A. V separatnych RESOURCE FILES, kde kazdy RESOURCE FILE moze obsahovat 1-N RESOURCES. Tieto FILES MUSIA byt oznacene pomocou FLAG 'nometadata'.
+   B. EMBEDDED v MANAGED MODULES. RESOURCES sa v MANAGED MODULES nachadzaju v SECTION '.text', kde su ulozene ako kontinualny blok dat. RESOURCE DATA DIRECTORY v CLR HEADER obsahuje RVA a SIZE kazdeho EMBEDDED RESOURCE vlozeneho do SECTION '.text'.
+   C. V EXTERNYCH ASSEMBLIES.
+25. METADATA TABLE [ManifestResouce] obsahuje RECORD pre KAZDY MANAGED RESOURCE pouzity v ASSEMBLY (priamo z ASSEMBLY, alebo v inej ASSEMBLY ci MODULE). Ma nasledujuce COLUMNS.
+   A. COLUMN [Offset]. Ma 4 BYTES a obsahuje poziciu RESOURCE od zaciatku RESOURCE BLOCK v SECTION '.text'.
+   B. COLUMN [Flags]. Ma 4 BYTES a obsahuje indikaciu ci MANAGED RESOURCE bude PUBLIC (viditelny z inych ASSEMBLIES), alebo PRIVATE (neviditelny z inych ASSEMBLIES).
+   C. COLUMN [Name]. Referuje do METADATA STREAM [#Strings] a obsahuje RESOURCE NAME.
+   !!! D. COLUMN [Implementation]. Obsahuje TOKEN na RECORD v METADATA TABLE [AssemblyRef], ak je RESOURCE umiestneny v INEJ ASSEMBLY. Obsahuje TOKEN na RECORD v METADATA TABLE [File], ak je RESOURCE umiestneny v INOM MODULE CURRENT ASSEMBLY. Obsahuje hodnotu 0, ake je RESOURCE EMBEDDED RESOURCE v CURRENT MODULE.
+!!!!! 26. MANAGED RESOURCES su VZDY FILES typu [.RESOURCES], ktore sa pridavaju v MSIL do ASSEMBLY nasledujucim sposobom.
+   A. Vytvori sa .RESX FILE do ktoreho sa vlozia vsetky RESOURCES (STRINGS, IMAGES, FILES).
+   B. Pomocou TOOL [RESGEN.EXE] sa vytvori z .RESX FILE .RESOURCES FILE.
+   !!! C. Pomocou KEYWORD [.mresource] sa prida do ASSEMBLY RESOURCE obsahujuci .RESOURCES FILE.
+   D. V MSIL CODE sa vytvori instancia CLASS ResourceManager.
+   !!! E. Volanim METHODS CLASS ResourceManager je mozne ziskat MANAGED RESOURCES.
+!!! 27. Pre RECORDS v METADATA TABLE [ExportedType] platia nasledujuce fakty.
+   A. METADATA TABLE [ExportedType] sa moze nachadzat IBA v PRIMARY MODULE.
+   B. METADATA TABLE [ExportedType] moze obsahovat IBA PUBLIC TYPES, ktore su definovane v INYCH MODULES CURRENT ASSEMBLY.
+   !!! C. METADATA TABLE [ExportedType] NESMIE obsahovat PUBLIC TYPES, ktore su definovane v CURRENT (PRIMARY) MODULE.
+   D. METADATA TABLE [ExportedType] moze obsahovat aj FORWARDER REFERENCES, ktore umoznuju vytvorit odkaz na CLASS, ak sa CLASS medzi verziami ASSEMBLY presunula do inej ASSEMBLY. Vdaka tomu ASSEMBLIES, ktore zmenenu ASSEMBLY pouzivaju NEMUSIA byt RECOMPILED.
+28. METADATA TABLE [ExportedType] ma nasledujuce COLUMNS.
+   A. COLUMN [Flags]. Ma 4 BYTES a obsahuje informaciu o tom ci EXPORTED TYPE je PUBLIC, PUBLIC NESTED, alebo RECORD reprezentuje FORWARDER REFERENCE.
+   B. COLUMN [TypeDefId]. Ma 4 BYTES obsahuje TOKEN do METADATA TABLE [TypeDef] toho MODULE, kde je TYPE definovana. Je to OPTIONAL COLUMN, ktory sluzi na zvysenie rychlosti vyhladania EXPORTED TYPE.
+   C. COLUMN [TypeName]. Referuje do METADATA STREAM [#Strings] a obsahuje EXPORTED TYPE NAME.
+   D. COLUMN [TypeNamespace]. Referuje do METADATA STREAM [#Strings] a obsahuje EXPORTED TYPE NAMESPACE.
+   !!! E. COLUMN [Implementation]. Obsahuje TOKEN na RECORD v METADATA TABLE [File], ak RECORD reprezentuje EXPORTED TYPE umiestneny v INOM MODULE. (RECORDS v METADATA TABLE [ExportedType] NESMU obsahovat TYPES z CURRENT MODULE.) Obsahuje TOKEN na RECORD v METADATA TABLE [ExportedType], ak RECORD reprezentuje NESTED EXPORTED TYPE. Obsahuje TOKEN na RECORD v METADATA TABLE [AssemblyRef], ak RECORD reprezentuje FORWARDER REFERENCE.
+29. MANIFEST RECORDS by mali byt v MODULES (PRIMARY, aleno NON-PRIMARY) musia byt deklarovane v nasledujucom poradi.
+   A. RECORDS v METADATA TABLE [AssemblyRef] definovane pomocou KEYWORD [.assembly extern]. Tieto RECORDS sa definuju v PRIMARY aj NON-PRIMARY MODULES.
+   B. RECORDS v METADATA TABLE [ModuleRef] definovane pomocou KEYWORD [.module extern]. Tieto RECORDS sa definuju v PRIMARY aj NON-PRIMARY MODULES.
+   C. RECORDS v METADATA TABLE [Assembly] definovane pomocou KEYWORD [.assembly]. Tieto RECORDS sa definuju IBA v PRIMARY MODULES.
+   D. RECORDS v METADATA TABLE [File] definovane pomocou KEYWORD [.file]. Tieto RECORDS sa definuju v PRIMARY aj NON-PRIMARY MODULES.
+   E. RECORDS v METADATA TABLE [ExportedType] definovane pomocou KEYWORD [.class extern]. Tieto RECORDS sa definuju IBA v PRIMARY MODULES.
+   F. RECORDS v METADATA TABLE [ManifestResource] definovane pomocou KEYWORD [.mresource]. Tieto RECORDS sa definuju v PRIMARY aj NON-PRIMARY MODULES.
+!!! 30. Ak ASSEMBLY ma iba 1 MODULE, jedna sa o SINGLE MODULE ASSEMBLY. Pre SINGLE MODULE ASSEMBLIES platia nasledujuce fakty.
+   A. SINGLE MODULE ASSEMBLIES mozu mat iba 1 PRIMARY MODULE a ZIADNE NON-PRIMARY MODULES. RECORDS v METADATA TABLES [ExportedType] a [File] NEOBSAHUJU RECORDS odkazujuce sa na INE MODULES.
+   B. SINGLE MODULE ASSEMBLIES mozu mat 0-N FILES (RECORDS v METADATA TABLE [File]), ale tieto FILES NIE SU MODULES, ale iba UNMANAGED RESOURCES.
+   C. SINGLE MODULE ASSEMBLIES mozu mat 0-N EXPORTED TYPES (RECORDS v METADATA TABLE [ExportedType]), ale tieto RECORDS musia obsahovat FORWARDER REFERENCES.
+!!! 31. Ak ASSEMBLY ma iba 'N' MODULES, jedna sa o MULTI MODULE ASSEMBLY. Pre MULTI MODULE ASSEMBLIES platia nasledujuce fakty.
+   A. MULTI MODULE ASSEMBLIES maju 1 PRIMARY MODULE a 'N' NON-PRIMARY MODULES. RECORDS v METADATA TABLES [ExportedType] a [File] pre PRIMARY MODULE obsahuju RECORDS pre EXPORTED TYPES a ostatne FILES (NON-PRIMARY MODULES a RESOURCES).
+   B. MULTI MODULE ASSEMBLIES mozu mat 0-N FILES (RECORDS v METADATA TABLE [File]), ktore reprezentuju NON-PRIMARY MODULES ASSEMBLY, alebo RESOURCES.
+   C. MULTI MODULE ASSEMBLIES mozu mat v PRIMARY MODULE 0-N EXPORTED TYPES (RECORDS v METADATA TABLE [ExportedType]). Tieto RECORDS obsahuju EXPORTED TYPES z OSTATNYCH MODULES ASSEMBLY (TYPES z PRIMARY MODULE NESMU mat RECORD v METADATA TABLE [ExportedType]).
+!!!!! 32. MSIL COMPILER UMOZNUJE generovat NEKOREKTNE METADATA. METADATA je mozne verifikovat nasledujucimi sposobmi.
+   A. TOOL [ILDASM.EXE] umoznuje vykonat METADATA VERIFICATION pomocou [VIEW->METAINFO->VALIDATE].
+   B. TOOL [PEVERIFY.EXE] umoznuje vykonat METADATA VERIFICATION pomocou COMMAND LINE OPTION '/MD'.
+//-------------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------------
+MSIL KEYWORDS.
+
+!!!!! 1. V MSIL je zodpovednostou PROGRAMATORA, aby KOREKTNE naplnil METADATA TABLES aplikovanim spravnych KEYWORDS na ASSEMBLY ci ine ENTITIES.
+!!!!! 2. Ak v MSIL CODE NEDEFINUJE korektne vsetky METADATA TABLES, MSIL COMPILER moze pre dany CODE vygenerovat PE FILE, avsak pri pokuse o spustenie tohto PE FILE hodi CLR EXCEPTION oznamujuci, ze PE FILE nema vsetky potrebne METADATA. Napriklad, pri MULTI-FILE ASSEMBLY, ak som v PRIMARY MODULE nemal pouzity KEYWORD [.file] s odkazom na ostatne FILES, tak MSIL COMPILER CODE korektne skompiloval, no pri spusteni CLR hodilo EXCEPTION BadImageFormatException. Az po doplneni KEYWORDS [.file], ktore doplnili zaznamy do METADATA TABLES sa PROGRAM korektne spustil.
+//-------------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------------
+KEYWORD [.assembly] pre definiciu ASSEMBLY.
+
+1. ASSEMBLY sa DEFINUJE pomocou KEYWORD [.assembly].
+!!! 2. ASSEMBLY DEFINITION sa uklada v METADATA TABLE [Assembly].
+3. SYNTAX KEYWORD [.assembly] pre definiciu ASSEMBLY je nasledovna.
+   A. RULE [<ASSEMBLIES> ::= <ASSEMBLY>].
+   B. RULE [<ASSEMBLY> ::= .assembly <FLAGS> <NAME> { <ASSEMBLY_DECLARATION>* }]. NAME je meno ASSEMBLY.
+   C. RULE [<FLAGS> ::=	<NONE>]. ASSEMBLY NEMOZE byt RETARGETED.
+   D. RULE [<FLAGS> ::=	retargetable]. ASSEMBLY MOZE byt RETARGETED.
+   E. RULE [<ASSEMBLY_DECLARATION> ::= .hash algorithm <int32>]. Nastavuje ASSEMBLY HASH ALGORITHM pre vypocet HASH CODES ASSEMBLY FILES.
+   F. RULE [<ASSEMBLY_DECLARATION> ::= .ver <int32>:<int32>:<int32>:<int32>]. Nastavuje ASSEMBLY VERSION.
+   G. RULE [<ASSEMBLY_DECLARATION> ::= .publickey = ( <bytes> )]. Nastavuje ASSEMBLY ENCRYPTION PUBLIC KEY.
+   H. RULE [<ASSEMBLY_DECLARATION> ::= .locale <LOCALE_STRING>]. Nastavuje ASSEMBLY CULTURE.
+   I. RULE [<ASSEMBLY_DECLARATION> ::= <SECURITY_DECLARATION>]. Nastavuje ASSEMBLY SECURITY PERMISSIONS.
+   J. RULE [<ASSEMBLY_DECLARATION> ::= <CUSTOM_ATTRIBUTE_DECLARATION>]. Definuje ASSEMBLY CUSTOM ATTRIBUTES.
+//-------------------------------------------------------------------------------------------------------
+KEYWORD [.assembly extern] pre definiciu ASSEMBLY REFERENCE.
+
+1. ASSEMBLY REFERENCE sa DEFINUJE pomocou KEYWORD [.assembly extern].
+!!! 2. ASSEMBLY REFERENCE sa uklada v METADATA TABLE [AssemblyRef].
+3. SYNTAX KEYWORD [.assembly extern] pre definiciu ASSEMBLY REFERENCE je nasledovna.
+   A. RULE [<ASSEMBLY_REFERENCES> ::= <ASSEMBLY_REFERENCE>].
+   B. RULE [<ASSEMBLY_REFERENCE> ::= .assembly extern <NAME> [as ALIAS] { <ASSEMBLY_REFERENCE_DECLARATION>* }]. NAME je meno REFERRED ASSEMBLY.
+   C. RULE [<ASSEMBLY_DECLARATION> ::= .ver <int32>:<int32>:<int32>:<int32>]. Nastavuje ASSEMBLY REFERENCE VERSION.
+   D. RULE [<ASSEMBLY_DECLARATION> ::= .publickey = ( <bytes> )]. Nastavuje ASSEMBLY REFERENCE ENCRYPTION PUBLIC KEY.
+   E. RULE [<ASSEMBLY_DECLARATION> ::= .publickeytoken = ( <bytes> )]. Nastavuje ASSEMBLY REFERENCE ENCRYPTION PUBLIC KEY TOKEN.
+   F. RULE [<ASSEMBLY_DECLARATION> ::= .locale <LOCALE_STRING>]. Nastavuje ASSEMBLY REFERENCE CULTURE.
+   G. RULE [<ASSEMBLY_DECLARATION> ::= .hash = ( <bytes> )]. Nastavuje ASSEMBLY REFERENCE HASH VALUE.
+   H. RULE [<ASSEMBLY_DECLARATION> ::= <CUSTOM_ATTRIBUTE_DECLARATION>]. Definuje ASSEMBLY REFERENCE CUSTOM ATTRIBUTES.
+   !!! I. RULE [<ASSEMBLY_DECLARATION> ::= auto]. Umoznuje definovat ASSEMBLY REFERENCE na ASSEMBLY v GAC (IBA na ASSEMBLIES v GAC), ktorej VERSION nie je presne definovana. LOADER pri pouziti 'auto' prechadza GAC a AUTOMATICKY najde vhodnu verziu ASSEMBLY.
+!!! 4. ASSEMBLY REFERENCES mozu mat priradene ALIASES vdaka ktorym sa je mozne referovat na dane ASSEMBLIES, ktora maju napriklad rovnake meno, ale lisia sa vo verzii. Napriklad [call void [MyAlias] CSomeClass::SomeMethod()], kde 'MyAlias' je ALIAS na REFERRED ASSEMBLY.
+//-------------------------------------------------------------------------------------------------------
+KEYWORD [.module] pre definiciu MODULE.
+
+1. MODULE sa DEFINUJE pomocou KEYWORD [.module].
+!!! 2. MODULE sa uklada v METADATA TABLE [Module].
+3. SYNTAX KEYWORD [.module] pre definiciu MODULE je nasledovna.
+   A. RULE [<MODULES> ::= <MODULE>].
+   B. RULE [<MODULE> ::= .module <NAME>].
+//-------------------------------------------------------------------------------------------------------
+KEYWORD [.module extern] pre definiciu MODULE REFERENCE.
+
+1. MODULE REFERENCE sa DEFINUJE pomocou KEYWORD [.module extern].
+!!! 2. MODULE REFERENCE sa uklada v METADATA TABLE [ModuleRef].
+3. SYNTAX KEYWORD [.module extern] pre definiciu MODULE REFERENCE je nasledovna.
+   A. RULE [<MODULE_REFERENCES> ::= <MODULE_REFERENCE>].
+   B. RULE [<MODULE_REFERENCE> ::= .module extern <NAME>].
+!!!!! 4. Kazdy RECORD v [.module extern] MUSI byt sparovany s RECORD v METADATA TABLE [File] pomocou KEYWORD [.file].
+!!! 5. Okrem MANAGED MODULES je mozne pomocou KEYWORD [.module extern] pridat aj UNMANAGED MODULES (UNMANAGED .DLL FILES). UNMANAGED MODULES je NUTNE explicitne pridat do MSIL CODE IBA ak maju byt DEPOLYED spolu s ASSEMBLIES. Pri pouziti P/INVOKE to vsak NIE JE TREBA, pretoze P/INVOKE vsak AUTOMATICKY pridava vsetky MODULE REFERENCES na UNMANAGED MODULES.
+//-------------------------------------------------------------------------------------------------------
+KEYWORD [.file] pre definiciu FILE.
+
+1. FILE sa DEFINUJE pomocou KEYWORD [.file].
+!!! 2. FILE sa uklada v METADATA TABLE [File].
+3. SYNTAX KEYWORD [.file] pre definiciu FILE je nasledovny.
+   A. RULE [<FILES> ::= <FILE>].
+   A. RULE [<FILE> ::= .file <FLAG> <NAME> [.hash = ( <bytes> )] [.entrypoint]]. NAME je meno FILE. HASH VALUE je NEPOVINNA, pretoze MSIL COMPILER je schopny si ju vypocitat ak FILE je pristupny v COMPILE TIME. VALUE [.entrypoint] sa pouziva IBA na NON-PRIMARY MODULE, ak obsahuje ENTRY POINT.
+   B. RULE [<FLAG> ::= <NONE>]. FILE reprezentuje MANAGED MODULE.
+   C. RULE [<FLAG> ::= nometadata]. FILE reprezentuje UNMANAGED MODULE, alebo RESOURCE FILE.
+!!!!! 4. Kazdy RECORD v [.module extern] MUSI byt sparovany s RECORD v METADATA TABLE [File] pomocou KEYWORD [.file].
+!!! 5. Ak RECORD v METADATA TABLE [File] NEOBSAHUJE HASH VALUE, tak MSIL COMPILER ju dokaze, ak je FILE v COMPILE TIME vypocitat a nastavit. Ak FILE v COMPILE TIME NIE JE PRISTUPNY, tak sa hodnota [HashValue] nastavi na 0.
+//-------------------------------------------------------------------------------------------------------
+KEYWORD [.mresource] pre definiciu MANAGED RESOURCE.
+
+1. MANAGED RESOURCE sa DEFINUJE pomocou KEYWORD [.mresource].
+!!! 2. MANAGED RESOURCE sa uklada v METADATA TABLE [ManifestResource].
+3. SYNTAX KEYWORD [.mresource] pre definiciu MANAGED RESOURCE je nasledovny.
+   A. RULE [<MANAGED_RESOURCES> ::= <MANAGED_RESOURCE>].
+   B. RULE [<MANAGED_RESOURCE> ::= .mresource <FLAG> <NAME> [as <FILENAME>] { <MANAGED_RESOURCE_DECLARATION>* }]. Hodnota 'FILENAME' obsahuje FILENAME MANAGED RESOURCE a pouziva sa iba ak 'NAME' obsahuje znaky, ktore nie je mozne pouzit v PATH a FILENAME.
+   C. RULE [<FLAG> ::= public | private]. DEFAULT hodnota je 'private'.
+   D. RULE [<MANAGED_RESOURCE_DECLARATION> ::= .assembly extern <ALIAS>]. Ak je MANAGED RESOURCE importovany z INEJ ASSEMBLY.
+   E. RULE [<MANAGED_RESOURCE_DECLARATION> ::= .file <NAME> at <int32>]. Ak je MANAGED RESOURCE v INOM FILE CURRENT ASSEMBLY. Hodnota <int32> udava OFFSET MANAGED RESOURCE.
+   F. RULE [<MANAGED_RESOURCE_DECLARATION> ::= <CUSTOM_ATTRIBUTE_DECLARATION>]. Umoznuje definovat CUSTOM ATTRIBUTE pre tento MANAGED RESOURCE.
+//-------------------------------------------------------------------------------------------------------
+KEYWORD [.class extern] pre definiciu EXPORTED TYPE.
+
+1. EXPORTED TYPE sa DEFINUJE pomocou KEYWORD [.class extern].
+!!! 2. EXPORTED TYPE sa uklada v METADATA TABLE [ExportedType].
+3. SYNTAX KEYWORD [.mresource] pre definiciu MANAGED RESOURCE je nasledovny.
+   A. RULE [<EXPORTED_TYPES> ::= <EXPORTED_TYPE>].
+   B. RULE [<EXPORTED_TYPE> ::= .class extern <FLAG> <NAMESPACE>.<NAME> { <EXPORTED_TYPE_DECLARATION> * }].
+   C. RULE [<FLAG> ::= public]. TYPE je v INOM MODULE CURRENT ASSEMBLY.
+   D. RULE [<FLAG> ::= nested public]. TYPE je v INOM MODULE CURRENT ASSEMBLY ako NESTED TYPE.
+   E. RULE [<FLAG> ::= forwarder]. RECORD reprezentuje FORWARDER REFERENCE.
+   F. RULE [<EXPORTED_TYPE_DECLARATION> ::= .file <NAME>]. Hodnota NAME obsahuje FILE v ktorom je EXPORTED TYPE definovany. Moze sa pouzit IBA s FLAG 'public'.
+   G. RULE [<EXPORTED_TYPE_DECLARATION> ::= .class extern <NAMESPACE>.<NAME>]. Hodnoty NAMESPACE a NAME urcuju ENCLOSING TYPE v ktorom je dany EXPORETED TYPE definovany. Moze sa pouzit IBA s FLAG 'public nested'.
+   H. RULE [<EXPORTED_TYPE_DECLARATION> ::= .assembly extern <NAME>]. RECORD reprezentuje FORWARDER REFERENCE. Hodnota NAME obsahuje ASSEMBLY v ktorom je EXPORTED TYPE definovany. Moze sa pouzit IBA s FLAG 'forwarder'.
+   I. RULE [<EXPORTED_TYPE_DECLARATION> ::= .class <int32>]. Nastavuje hodnotu COLUMN [TypeDefId].
+   J. RULE [<EXPORTED_TYPE_DECLARATION> ::= <CUSTOM_ATTRIBUTE_DECLARATION>]. Umoznuje definovat CUSTOM ATTRIBUTE pre tento EXPORTED TYPE.
+!!! 4. Pre RECORDS v METADATA TABLE [ExportedType] platia nasledujuce fakty.
+   A. METADATA TABLE [ExportedType] sa moze nachadzat IBA v PRIMARY MODULE.
+   B. METADATA TABLE [ExportedType] moze obsahovat IBA PUBLIC TYPES, ktore su definovane v INYCH MODULES CURRENT ASSEMBLY.
+   !!! C. METADATA TABLE [ExportedType] NESMIE obsahovat PUBLIC TYPES, ktore su definovane v CURRENT (PRIMARY) MODULE.
+   D. METADATA TABLE [ExportedType] moze obsahovat aj FORWARDER REFERENCES, ktore umoznuju vytvorit odkaz na CLASS, ak sa CLASS medzi verziami ASSEMBLY presunula do inej ASSEMBLY. Vdaka tomu ASSEMBLIES, ktore zmenenu ASSEMBLY pouzivaju NEMUSIA byt RECOMPILED.
+//-------------------------------------------------------------------------------------------------------
