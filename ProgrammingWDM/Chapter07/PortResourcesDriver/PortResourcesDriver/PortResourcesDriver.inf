@@ -1,0 +1,73 @@
+;-----------------------------------------------------------------------------------------------------------------------
+[Version]
+Signature="$WINDOWS NT$"
+Class=MySamples
+ClassGuid={7388405C-54FB-4122-A5C9-B5562FA47F20}
+Provider=%ManufacturerName%
+DriverVer=04/07/2015
+CatalogFile=MyCatalog.cat
+;-----------------------------------------------------------------------------------------------------------------------
+;-----------------------------------------------------------------------------------------------------------------------
+;-----------------------------------------------------------------------------------------------------------------------
+[ClassInstall32]
+Addreg=MySamplesClassReg
+
+[MySamplesClassReg]
+HKR,,,0,%ClassName%
+HKR,,Icon,,-5
+
+[SourceDisksNames]
+1=%DiskName%,,,""
+
+[SourceDisksFiles]
+PortResourcesDriver.sys=1,,
+;-----------------------------------------------------------------------------------------------------------------------
+;-----------------------------------------------------------------------------------------------------------------------
+;-----------------------------------------------------------------------------------------------------------------------
+[DestinationDirs]
+DefaultDestDir=12
+
+[Manufacturer]
+%ManufacturerName%=Standard,NT$ARCH$
+
+[Standard.NT$ARCH$]
+%PortResourcesDriver.DeviceDesc%=PortResourcesDriver_Device, Root\PortResourcesDriver
+
+[PortResourcesDriver_Device.NT]
+CopyFiles=Drivers_Dir
+LogConfig=Driver_Config
+
+[Drivers_Dir]
+PortResourcesDriver.sys
+
+; Nasledujuca konfiguracia umoznuje DRIVER priradit IO PORT a IRQ.
+[Driver_Config]
+ConfigPriority=NORMAL
+; !!!!! IRQ 0 sposobil, ze sa INTERRUPT nielen korektne zaregistroval, ale sa aj vyvolaval cca KAZDYCH 55 ms. Je to vdaka tomu, ze IRQ 0 je PIP TIMER, ktory vyvolava PERIODICKY INTERRUPTS. WINDOWS bezal pekne aj po REBOOTE ci DISABLE-ENABLE DRIVER.
+IRQConfig=0
+; !!!!! Konfiguracia IO PORT.
+; !!!!! WINDOWS 10 dokazal uspesne priradit IO PORT tomuto DRIVER.
+IOConfig=2F8-2FF
+;-----------------------------------------------------------------------------------------------------------------------
+;-----------------------------------------------------------------------------------------------------------------------
+;-----------------------------------------------------------------------------------------------------------------------
+[PortResourcesDriver_Device.NT.Services]
+AddService=PortResourcesDriver,0x00000002,PortResourcesDriver_Service_Inst
+
+[PortResourcesDriver_Service_Inst]
+DisplayName=%ServiceDescription%
+ServiceType=1
+StartType=3
+ErrorControl=1
+ServiceBinary=%12%\PortResourcesDriver.sys
+LoadOrderGroup=Extended Base
+;-----------------------------------------------------------------------------------------------------------------------
+;-----------------------------------------------------------------------------------------------------------------------
+;-----------------------------------------------------------------------------------------------------------------------
+[Strings]
+ManufacturerName="Timmy Anderson"
+ClassName="MySamples"
+DiskName="PortResourcesDriver Source Disk"
+PortResourcesDriver.DeviceDesc="PortResourcesDriver Device"
+ServiceDescription="Service for PortResourcesDriver"
+;-----------------------------------------------------------------------------------------------------------------------

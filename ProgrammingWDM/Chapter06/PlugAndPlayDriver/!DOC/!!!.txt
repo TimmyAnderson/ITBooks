@@ -1,0 +1,421 @@
+//-------------------------------------------------------------------------------------------------------
+1. Solution demonstruje implementaciu technologie PLUG AND PLAY vo WDM.
+2. PLUG AND PLAY MANAGER je WINDOWS komponenta, ktora je zodpovedna sa pridavanie, odstranovanie DRIVERS ako aj za pridelovanie SYSTEM RESOURCES jednotlivym DRIVERS.
+3. PLUG AND PLAY MANAGER komunikuje s DRIVERS pomocou IRP typu [IRP_MJ_PNP].
+4. DRIVERS musia pri obsluhe IRP typu [IRP_MJ_PNP] zasielaneho PLUG AND PLAY MANAGER vykonavat 2 zakladne cinnosti.
+   A. DRIVERS ako reakciu na IRP typu [IRP_MJ_PNP] v zavislosti na hodnote MINOR FUNCTION tohto IRP MUSIA spustat, zastavovat ci konfigurovat HW DEVICES.
+   B. DRIVERS ako reakciu na IRP typu [IRP_MJ_PNP] v zavislosti na hodnote MINOR FUNCTION tohto IRP MUSIA menit svoj INTERNY PNP STATE, ktory ovplyvnuje ich cinnost. Napriklad DRIVER na zaklade PNP STATE moze POVOLIT, alebo ZAKAZAT svojim IRP QUEUES zasielat IRP do obsluhovanych HW DEVICES.
+5. IRP typu [IRP_MJ_PNP] definuje nasledujuce MINOR FUNCTIONS.
+   A. MINOR FUNCTION [IRP_MN_START_DEVICE]. PNP MANAGER poziada DRIVER o nakonfigurovanie a spustenie HW DEVICE.
+   B. MINOR FUNCTION [IRP_MN_QUERY_STOP_DEVICE]. PNP MANAGER sa opyta DRIVER ci HW DEVICE moze byt zastavene BEZ odstranenia DEVICE OBJECT z MEMORY.
+   C. MINOR FUNCTION [IRP_MN_CANCEL_STOP_DEVICE]. PNP MANAGER prikaze DRIVER, aby ignoroval predchadzajuce IRP s MINOR FUNCTION [IRP_MN_QUERY_STOP_DEVICE]. DRIVER musi umoznit HW DEVICE, aby mohol dalej pokracovat vo svojej cinnosti.
+   D. MINOR FUNCTION [IRP_MN_STOP_DEVICE]. PNP MANAGER prikaze DRIVER, aby vykonal zastavil HW DEVICE, avsak BEZ TOHO, aby DRIVER odstranil DEVICE OBJECT z MEMORY.
+   E. MINOR FUNCTION [IRP_MN_QUERY_REMOVE_DEVICE]. PNP MANAGER sa opyta DRIVER ci HW DEVICE moze byt zastaveny a ZAROVEN ci zodpovedajuci DEVICE OBJECT moze byt odstraneni z MEMORY.
+   F. MINOR FUNCTION [IRP_MN_CANCEL_REMOVE_DEVICE]. PNP MANAGER prikaze DRIVER, aby ignoroval predchadzajuce IRP s MINOR FUNCTION [IRP_MN_QUERY_REMOVE_DEVICE]. DRIVER musi umoznit HW DEVICE, aby mohol dalej pokracovat vo svojej cinnosti.
+   G. MINOR FUNCTION [IRP_MN_REMOVE_DEVICE]. PNP MANAGER prikaze DRIVER, aby zastavil HW DEVICE a ZAROVEN odstranil DEVICE OBJECT z MEMORY.
+   H. MINOR FUNCTION [IRP_MN_SURPRISE_REMOVAL]. PNP MANAGER notifikuje DRIVER o nahlom FYZICKOM odstraneni HW DEVICE zo SYSTEMU. DRIVER by mal zastavit svoju komunikaciu s HW DEVICE.
+   I. MINOR FUNCTION [IRP_MN_QUERY_DEVICE_RELATIONS]. PNP MANAGER poziada DRIVER o naplnenie zoznamu vzajomne kooperujucich HW DEVICES s HW DEVICE, ktory je ovladanym danym DEVICE OBJECT. PNP MANAGER tak zistuje, ktore hW DEVICES sa vypnu, ci budu EJECTED, ak bude HW DEVICE, ktore tento DEVICE OBJECT ovlada vypnute (EJECTED).
+   !!! J. MINOR FUNCTION [IRP_MN_QUERY_INTERFACE]. PNP MANAGER poziada DRIVER o vratenie o tabulky adries FUNCTIONS, ktore tvoria dane DEVICE INTERFACE. DEVICE INTERFACE definuje SW rozhranie, ktoremu dany DRIVER rozumie a pouzivaju ho ostatne DRIVERS pri komunikacii s danym DRIVER.
+   K. MINOR FUNCTION [IRP_MN_QUERY_CAPABILITIES]. PNP MANAGER poziada DRIVER o vratenie CAPABILITIES, ktore ma dany HW DEVICE. Medzi CAPABILITIES patria napriklad schopnost aby HW DEVICE bolo LOCKED, alebo EJECTED. IRP moze zaslat aj FDO do BUS DRIVER, aby zistil jeho CAPABILITIES a podla toho prisposobil svoje chovanie. IRP je zasielane do kazdeho DEVICE OBJECT 2 krat (pred a po spusteni FDO).
+   L. MINOR FUNCTION [IRP_MN_QUERY_RESOURCES]. PNP MANAGER poziada DRIVER o vratenie BOOT CONFIGURATION potrebnej pre dany HW DEVICE. Tato MINOR FUNCTION je implementovana IBA v BUS DRIVERS.
+   M. MINOR FUNCTION [IRP_MN_QUERY_RESOURCE_REQUIREMENTS]. PNP MANAGER poziada DRIVER o vratenie SYSTEM REQUIREMENTS, ktore dany HW DEVICE pozaduje. Tato MINOR FUNCTION je implementovana IBA v BUS DRIVERS.
+   N. MINOR FUNCTION [IRP_MN_QUERY_DEVICE_TEXT]. PNP MANAGER poziada DRIVER o vratenie retazca s popisom, alebo poziciou daneho HW DEVICE. Tato MINOR FUNCTION je implementovana IBA v BUS DRIVERS.
+   O. MINOR FUNCTION [IRP_MN_FILTER_RESOURCE_REQUIREMENTS]. PNP MANAGER zasiela toto IRP do DRIVER, aby DRIVER pre dany DEVICE OBJECT mohol modifikovat svoje poziadavky na IO RESOURCES, oproti tym, ktore boli urcene v .INF FILE.
+   P. MINOR FUNCTION [IRP_MN_READ_CONFIG]. PNP MANAGER poziada DRIVER o nacitanie dat z CONFIGURATION SPACE (ukladaju sa tam nastavenie HW DEVICE) HW DEVICE, ktory DRIVER ovlada. Tato MINOR FUNCTION je implementovana IBA v BUS DRIVERS.
+   Q. MINOR FUNCTION [IRP_MN_WRITE_CONFIG]. PNP MANAGER poziada DRIVER o zapis dat do CONFIGURATION SPACE (ukladaju sa tam nastavenie HW DEVICE) HW DEVICE, ktory DRIVER ovlada. Tato MINOR FUNCTION je implementovana IBA v BUS DRIVERS.
+   R. MINOR FUNCTION [IRP_MN_EJECT]. PNP MANAGER poziada DRIVER o EJECT daneho HW DEVICE. Tato MINOR FUNCTION je implementovana IBA v BUS DRIVERS.
+   S. MINOR FUNCTION [IRP_MN_SET_LOCK]. PNP MANAGER poziada DRIVER o vykonanie LOCK, alebo UNLOCK voci EJECTION daneho HW DEVICE. Tato MINOR FUNCTION je implementovana IBA v BUS DRIVERS.
+   T. MINOR FUNCTION [IRP_MN_QUERY_ID]. PNP MANAGER poziada DRIVER o vratenie HW ID daneho HW DEVICE. Tato MINOR FUNCTION je implementovana IBA v BUS DRIVERS.
+   !!! U. MINOR FUNCTION [IRP_MN_QUERY_PNP_DEVICE_STATE]. PNP MANAGER poziada DRIVER o vratenie STATE daneho HW DEVICE. STATE obsahuje skupinu FLAGS, ktorym DRIVER moze informovat PNP MANAGER ci HW DEVICE je DISABLED, ci HW DEVICE moze byt DISABLED, ci doslo k zmene poziadaviek na IO RESOURCES, alebo ci HW DEVICE je FAILED. Zaslanie tohto IRP si DRIVER po detekcii zmeny stavu HW DEVICE moze vynutit zavolanim FUNCTION IoInvalidateDeviceState().
+   V. MINOR FUNCTION [IRP_MN_QUERY_BUS_INFORMATION]. PNP MANAGER poziada DRIVER o vratenie PARENT BUS TYPE a PARENT BUS INSTANCE NUMBER. Tato MINOR FUNCTION je implementovana IBA v BUS DRIVERS.
+   !!! W. MINOR FUNCTION [IRP_MN_DEVICE_USAGE_NOTIFICATION]. PNP MANAGER zasiela do DRIVER notifikaciu ci HW DEVICE, ktore DRIVER obsluhuje je pouzivane ako miesto kde sa ukladaju PAGING, DUMP, alebo HIBERNATE FILES. PNP MANAGER zasiela toto IRP pri zaciatku aj konci pouzivania DEVICE OBJECT ako miesta pre ukladanie PAGING, DUMP a HIBERNATE FILES. DRIVER by NEMAL umoznit odstranenie DEVICE OBJECT (aj ked o to PNP MANAGER poziadal), kym je DEVICE OBJECT na ukladanie PAGING, DUMP a HIBERNATE FILES pouzivany. DRIVER musi s uvolnenim DEVICE OBJECT pockat, az kym PNP MANAGER nezasle spravu o ukonceni pouzivania DEVICE OBJECT na ulozenie PAGING, DUMP a HIBERNATE FILES a potom moze DEVICE OBJECT uvolnit.
+!!! 6. VACSINA DRIVERS implementuje iba OBMEDZENU sadu MINOR FUNCTIONS a ostatne MINOR FUNCTIONS preposiela DRIVERS NIZSIE v DEVICE OBJECT STACK na spracovanie. Mnohe z MINOR FUNCTIONS su spracovavane az v BUS DRIVERS.
+7. V reakcii na IRP typu [IRP_MJ_PNP], ktore PNP MANAGER zasiela DRIVERS by DRIVERS mali zmenit STATE DEVICE OBJECT, aby DRIVER prisposobil svoju cinnost aktualnemu STATE DEVICE OBJECT. DRIVER by mal podporovat nasledujuce logicke STATES v ktorych sa DEVICE OBJECT moze nachadzat.
+   A. STATE [REMOVED].
+   B. STATE [STOPPED].
+   C. STATE [WORKING].
+   D. STATE [PENDINGSTOP].
+   E. STATE [PENDINGREMOVE].
+   F. STATE [SURPRISEREMOVAL].
+8. Pre STATE [REMOVED] platia nasledujuce fakty.
+   A. DEVICE OBJECT v tomto STATE pre dany HW DEVICE NEEXISTUJE.
+   B. Je to pociatocny STATE v ktorom je DRIVER.
+   C. Po odstraneni DEVICE OBJECT zo SYSTEMU (napriklad pri SHUTDOWN ci HIBERNATE) sa DRIVER vrati spat do tohto STATE.
+   D. Do STATE [REMOVED] sa DEVICE OBJECT moze dostat zo STATE [WORKING] v reakcii na IRP s MINOR FUNCTION [IRP_MN_REMOVE_DEVICE].
+   E. Do STATE [REMOVED] sa DEVICE OBJECT moze dostat zo STATE [PENDINGWORKING] v reakcii na IRP s MINOR FUNCTION [IRP_MN_REMOVE_DEVICE].
+   F. Do STATE [REMOVED] sa DEVICE OBJECT moze dostat zo STATE [SURPRISEREMOVAL] v reakcii na IRP s MINOR FUNCTION [IRP_MN_REMOVE_DEVICE].
+9. Pre STATE [STOPPED] platia nasledujuce fakty.
+   A. DEVICE OBJECT sa dostane do tohto STATE po svojom vytvoreni v CUSTOM FUNCTION AddDevice().
+   B. Na rozdiel od STATE [REMOVED] DEVICE OBJECT ostava vytvoreny v MEMORY.
+   C. DEVICE OBJECT v tomto STATE NEZASIELA zo svojich IRP QUEUES ZIADNE IRP do HW DEVICE.
+   D. HW DEVICE v tomto STATE MUSI byt ZASTAVENE. To znaci, ze NESMIE vykonavat ZIADNU CINNOST.
+   E. Do STATE [STOPPED] sa DEVICE OBJECT moze dostat zo STATE [PENDINGSTOP] v reakcii na IRP s MINOR FUNCTION [IRP_MN_STOP_DEVICE].
+10. Pre STATE [WORKING] platia nasledujuce fakty.
+   A. Je to STATE kedy HW DEVICE je v beziacom stave a normalne vykonava IO OPERATIONS. To znaci, ze IRP QUEUES zasielaju IRP reprezentujuce IO OPERATIONS do HW DEVICE. 
+   B. Do STATE [WORKING] sa DEVICE OBJECT moze dostat zo STATE [STOPPED] v reakcii na IRP s MINOR FUNCTION [IRP_MN_START_DEVICE].
+   C. Do STATE [WORKING] sa DEVICE OBJECT moze dostat zo STATE [PENDINGSTOPPED] v reakcii na IRP s MINOR FUNCTION [IRP_MN_CANCEL_STOP_DEVICE].
+   D. Do STATE [WORKING] sa DEVICE OBJECT moze dostat zo STATE [PENDINGREMOVE] v reakcii na IRP s MINOR FUNCTION [IRP_MN_CANCEL_REMOVE_DEVICE].
+11. Pre STATE [PENDINGSTOP] platia nasledujuce fakty.
+   A. Je to STATE kedy kedy DEVICE OBJECT uz ZASTAVIL cinnost HW DEVICE a caka na dalsie IRP typu [IRP_MJ_PNP], aby urcil ci DEVICE OBJECT ma prejst do STATE [STOPPED], alebo sa vratit do STATE [WORKING].
+   B. Do STATE [PENDINGSTOP] sa DEVICE OBJECT moze dostat zo STATE [WORKING] v reakcii na IRP s MINOR FUNCTION [IRP_MN_QUERY_STOP_DEVICE].
+   !!! C. STATE [PENDINGSTOP] nastava vtedy ked PNP MANAGER zistuje (napriklad pri SYSTEM SHUTDOWN) pre vsetky DEVICE OBJECTS ci nimi obsluhovane HW DEVICES mozu byt zastavene. DEVICE OBJECTS, ktore POZITIVNE odpovedali na IRP s MINOR FUNCTION [IRP_MN_QUERY_STOP_DEVICE] sa dostanu do STATE [PENDINGSTOP] a cakaju na to, ci sa PNP MANAGER rozhodne HW DEVICES zastavit, alebo ich opatovne spusti. K opatovnemu spusteniu dochadza napriklad vtedy, ked niektory z DRIVERS potrebuje pre svoje HW DEVICE viac casu na ukoncenie svojej cinnosti a na IRP s MINOR FUNCTION [IRP_MN_QUERY_STOP_DEVICE] vrati ERROR.
+   !!!!! D. V STATE [PENDINGSTOP] (ak DEVICE OBJECT POZITIVNE odpovedal na IRP s MINOR FUNCTION [IRP_MN_QUERY_STOP_DEVICE]) uz HW DEVICE MUSI byt ZASTAVENE. To znaci, ze IRP QUEUES uz NESMU zasielat ZIADNE IRP do HW DEVICE, vsetky IRP uz zaslane do HW DEVICE su uz spracovane a HW DEVICE nevykonava ziadnu cinnost.
+12. Pre STATE [PENDINGREMOVE] platia nasledujuce fakty.
+   A. Je to STATE kedy kedy DEVICE OBJECT uz ZASTAVIL cinnost HW DEVICE a caka na dalsie IRP typu [IRP_MJ_PNP], aby urcil ci DEVICE OBJECT ma prejst do STATE [REMOVED], alebo sa vratit do STATE [WORKING].
+   B. Do STATE [PENDINGREMOVE] sa DEVICE OBJECT moze dostat zo STATE [WORKING] v reakcii na IRP s MINOR FUNCTION [IRP_MN_QUERY_REMOVE_DEVICE].
+   !!! C. STATE [PENDINGREMOVE] nastava vtedy ked PNP MANAGER zistuje (napriklad pri SYSTEM SHUTDOWN) pre vsetky DEVICE OBJECTS ci nimi obsluhovane HW DEVICES mozu byt zastavene a ZAROVEN aj ODSTRANENE z MEMORY. DEVICE OBJECTS, ktore POZITIVNE odpovedali na IRP s MINOR FUNCTION [IRP_MN_QUERY_REMOVE_DEVICE] sa dostanu do STATE [PENDINGREMOVE] a cakaju na to, ci sa PNP MANAGER rozhodne HW DEVICES zastavit a DEVICE OBJECT ODSTRANIT z MEMORY, alebo HW DEVICES opatovne spusti. K opatovnemu spusteniu dochadza napriklad vtedy, ked niektory z DRIVERS potrebuje pre svoje HW DEVICE viac casu na ukoncenie svojej cinnosti a na IRP s MINOR FUNCTION [IRP_MN_QUERY_REMOVE_DEVICE] vrati ERROR.
+   !!!!! D. V STATE [PENDINGREMOVE] (ak DEVICE OBJECT POZITIVNE odpovedal na IRP s MINOR FUNCTION [IRP_MN_QUERY_REMOVE_DEVICE]) uz HW DEVICE MUSI byt ZASTAVENE. To znaci, ze IRP QUEUES uz NESMU zasielat ZIADNE IRP do HW DEVICE, vsetky IRP uz zaslane do HW DEVICE su uz spracovane a HW DEVICE nevykonava ziadnu cinnost. DEVICE OBJECT vsak v STATE [PENDINGREMOVE] este ostava v MEMORY.
+13. Pre STATE [SURPRISEREMOVAL] platia nasledujuce fakty.
+   A. Je to STATE, ktory vznikne, ak PLUG AND PLAY MANAGER detekoval NEOCAKAVANE FYZICKE ODPOJENIE HW DEVICE od PC.
+   !!! B. DEVICE OBJECT musi v reakcii na tento STATE prestat komunikovat s HW DEVICE, ktore uz NIE JE FYZICKY PRITOMNE v SYSTEME.
+   C. Do STATE [SURPRISEREMOVAL] sa DEVICE OBJECT moze dostat zo STATE [WORKING] v reakcii na IRP s MINOR FUNCTION [IRP_MN_SURPRISE_REMOVAL].
+   D. Do STATE [SURPRISEREMOVAL] sa DEVICE OBJECT moze dostat zo STATE [PENDINGSTOP] v reakcii na IRP s MINOR FUNCTION [IRP_MN_SURPRISE_REMOVAL].
+   E. Do STATE [SURPRISEREMOVAL] sa DEVICE OBJECT moze dostat zo STATE [PENDINGREMOVE] v reakcii na IRP s MINOR FUNCTION [IRP_MN_SURPRISE_REMOVAL].
+   F. Do STATE [SURPRISEREMOVAL] sa DEVICE OBJECT moze dostat zo STATE [STOPPED] v reakcii na IRP s MINOR FUNCTION [IRP_MN_SURPRISE_REMOVAL].
+!!!!! 14. DEVICE OBJECT STATES su cisto LOGICKYMI STATES, ktore NIE SU DEFINOVANE na urovni WDM. Su to iba LOGICKE STATES, podla ktorych by mal DRIVER prisposobit svoju cinnost.
+15. PNP MANAGER poskytuje mechanizmus PNP NOTIFICATION vdaka ktoremu sa DRIVERS, ale USER MODE PROGRAMS mozu dozvediet od PNP EVENTS ako je napriklad pridanie ci odobratie HW DEVICES.
+16. DISPATCH ROUTINE spracujuca IRP typu [IRP_MJ_PNP] standardne vykonava nasledujuce cinnost.
+   A. Volanim FUNCTION IoGetCurrentIrpStackLocation() ziska POINTER na STRUCTURE [IO_STACK_LOCATION] pre CURRENT DEVICE OBJECT. FIELD [IO_STACK_LOCATION.MinorFunction] obsahuje MINOR FUNCTION IRP typu [IRP_MJ_PNP].
+   B. DISPATCH ROUTINE pre MINOR FUNCTION hlada POINTER na HANDLER ROUTINE, ktora spracovava danu MINOR FUNCTION.
+   C. Ak DISPATCH ROUTINE nasla HANDLER ROUTINE pre danu MINOR FUNCTION, zavola ju a jej RETURN VALUE typu [NTSTATUS] vrati ako RETURN VALUE DISPATCH FUNCTION.
+   !!! D. V pripade, ze DRIVER danu MINOR FUNCTION nespracovava, MUSI ju zaslat do DRIVER NIZSIE v DEVICE OBJECT STACK. To sa vykonava zavolanim FUNCTION IoSkipCurrentIrpStackLocation() a naslednym volanim FUNCTION IoCallDriver(), ktorej RETURN VALUE sa pouzije ako RETURN VALUE DISPATCH ROUTINE.
+17. Jednou z KLUCOVYCH ULOH, ktore PNP MANAGER vykonava je pridelovanie IO RESOURCES jednotlivym DRIVERS. PNP MANAGER umoznuje pridelovat nasledujuce IO RESOURCES.
+   A. IO PORTS.
+   B. MEMORY REGISTERS.
+   C. DIRECT MEMORY ACCESS CHANNELS.
+   D. INTERRUPT REQUESTS.
+18. PNP MANAGER pridelovanie IO RESOURCES vykonava v nasledujucich krokoch.
+   A. PNP MANAGER vykona detekciu HW DEVICES.
+   B. PNP MANAGER prehlada REGISTRY odkial zisti ktore DRIVERS (FILTER a FUNCTION DRIVERS) detekovane HW DEVICE vyzaduju.
+   C. PNP MANAGER nasledne zavedie najdene DRIVERS (FILTER a FUNCTION DRIVERS) do MEMORY (ak ich uz tam nezaviedol pre ine HW DEVICE) a zavola pre ne CUSTOM ROUTINE AddDevice().
+   !!! D. CUSTOM ROUTINE AddDevice() daneho DRIVER vytvori vo svojom CODE instanciu DEVICE OBJECT a zaradi DEVICE OBJECT do DEVICE OBJECT STACK.
+   E. PNP MANAGER vytvori LIST RESOURCE REQUIREMENTS, ktore maju detekovane HW DEVICES.
+   F. PNP MANAGER umozni DRIVERS vykonat filtraciu RESOURCE REQUIREMENTS LIST.
+   !!! G. PNP MANAGER vykona RESOLVING RESOURCE REQUIREMENTS, ktore su vo vzajomnom konflikte a po vyrieseni vsetkych konfliktov prideli IO RESOURCES jednotlivymi HW DEVICES (resp. ich DRIVERS).
+!!! 19. DRIVERS, ktore pouzivaju IRP QUEUES MUSIA prisposobit cinnost IRP QUEUES aktualnemu PNP STATE.
+!!!!! 20. Spravanie sa IRP QUEUES je mozne vyjadrit STATE MACHINE, ktore ma nasledujuce IRP QUEUE STATES.
+   A. IRP QUEUE STATE [READY]. V tomto STATE IRP QUEUE normalne spracovava IRP. To znaci, ze IRP sa bud ulozia do IRP QUEUE, alebo ak HW DEVICE prave nespracovava ziaden IRP, tak je IRP okamzite odoslany do HW DEVICE.
+   B. IRP QUEUE STATE [STALLED]. V tomto STATE IRP QUEUE uklada IRP do QUEUE, ale NEZASIELA ich na spracovanie do HW DEVICE a to ani ked HW DEVICE prave nevykonava ziaden IRP.
+   C. IRP QUEUE STATE [REJECTING]. V tomto STATE IRP QUEUE OKAMZITE ODMIETA vsetky IRP. To znaci, za kazdy IRP je OKAMZITE UKONCENY s nastavenym ERROR CODE.
+!!! 21. CUSTOM FUNCTIONS IRP QUEUE (v DRIVER CODE je to CUSTOM STRUCTURE [DEVQUEUE]) umoznuju nasledujuce prechody medzi jednotlivymi IRP QUEUE STATES.
+   A. Prechod zo IRP QUEUE STATE [READY] do IRP QUEUE STATE [STALLED] sa realizuje volanim CUSTOM FUNCTION StallRequests().
+   B. Prechod zo IRP QUEUE STATE [READY] do IRP QUEUE STATE [REJECTING] sa realizuje volanim CUSTOM FUNCTION AbortRequests().
+   C. Prechod zo IRP QUEUE STATE [STALLED] do IRP QUEUE STATE [READY] sa realizuje volanim CUSTOM FUNCTION RestartRequests().
+   D. Prechod zo IRP QUEUE STATE [STALLED] do IRP QUEUE STATE [REJECTING] sa realizuje volanim CUSTOM FUNCTION AbortRequests().
+   E. Prechod zo IRP QUEUE STATE [REJECTING] do IRP QUEUE STATE [READY] sa realizuje volanim CUSTOM FUNCTION AllowRequests().
+   F. Prechod zo IRP QUEUE STATE [REJECTING] do IRP QUEUE STATE [STALLED] sa realizuje volanim CUSTOM FUNCTION AllowRequests().
+!!! 22. DRIVER musi zabezpecit aby IRP QUEUES (CUSTOM STRUCTURE [DEVQUEUE]) boli po vytvoreni DEVICE OBJECT v CUSTOM ROUTINE AddDevice() nastavene do IRP QUEUE STATE [STALLED], kedy su IRP ukladane do IRP QUEUE, ale NIE SU ZASIELANE do HW DEVICE na spracovanie. Na to, aby sa IRP QUEUES bolis schopne spracovavat IRP (IRP QUEUE STATE [READY]) MUSI DRIVER pre KAZDU IRP QUEUE zavolat CUSTOM FUNCTION RestartRequests().
+!!!!! 23. Ak WINDOWS chce vykonat ZASTAVENIE HW DEVICE vykonava nasledujuci algoritmus.
+   A. WINDOWS zasle IRP s MINOR FUNCTION [IRP_MN_QUERY_STOP_DEVICE] do VSETKYCH DRIVERS, ktore v DEVICE OBJECT STACK obsluhuju dany HW DEVICE.
+   !!!!! B. DISPATCH ROUTINES spracujuce IRP s MINOR FUNCTION [IRP_MN_QUERY_STOP_DEVICE] MUSIA POZASTAVIT svoje IRP QUEUES, aby sa dostali do STATE [STALLED] kedy IRP QUEUES nebudu odosielat IRP do HW DEVICE.
+   !!! C. Ak VSETKY DRIVERS USPESNE SPRACUJU IRP s MINOR FUNCTION [IRP_MN_QUERY_STOP_DEVICE], tak WINDOWS zasle do DRIVERS IRP s [IRP_MN_STOP_DEVICE], na ktore DRIVERS musia zareagovat vykonanim CUSTOM IO OPERATIONS, ktore ZASTAVIA HW DEVICE.
+   !!!!! D. Ak NIEKTORY DRIVER NESPRACUJE IRP s MINOR FUNCTION [IRP_MN_QUERY_STOP_DEVICE], tak WINDOWS zasle do DRIVERS IRP s [IRP_MN_CANCEL_STOP_DEVICE], na ktore DRIVERS musia zareagovat ZNOVA SPUSTIT svoje IRP QUEUES, aby sa dostali do STATE [READY] kedy IRP QUEUES budu znova zasielat IRP do HW DEVICE.
+   !!!!! E. DISPATCH ROUTINES spracujuce IRP s MINOR FUNCTION [IRP_MN_CANCEL_STOP_DEVICE] NESMU znova SPUSTAT HW DEVICE, pretoze HW DEVICE NEBOLO VOBEC ZASTAVENE, kedze WINDOWS VOBEC NEZAVOLAL IRP s MINOR FUNCTION [IRP_MN_STOP_DEVICE].
+!!!!! 24. Ak WINDOWS chce vykonat UVOLNENIE HW DEVICE z MEMORY vykonava nasledujuci algoritmus.
+   A. WINDOWS zasle IRP s MINOR FUNCTION [IRP_MN_QUERY_REMOVE_DEVICE] do VSETKYCH DRIVERS, ktore v DEVICE OBJECT STACK obsluhuju dany HW DEVICE.
+   !!!!! B. DISPATCH ROUTINES spracujuce IRP s MINOR FUNCTION [IRP_MN_QUERY_REMOVE_DEVICE] MUSIA POZASTAVIT svoje IRP QUEUES, aby sa dostali do STATE [STALLED] kedy IRP QUEUES nebudu odosielat IRP do HW DEVICE.
+   !!!!! C. Ak VSETKY DRIVERS USPESNE SPRACUJU IRP s MINOR FUNCTION [IRP_MN_QUERY_REMOVE_DEVICE], tak WINDOWS zasle do DRIVERS IRP s [IRP_MN_REMOVE_DEVICE], na ktore DRIVERS musia zareagovat zmenou STATE IRP QUEUES na STATE [REJECTING], kedy sa VSETKY IRP v IRP QUEUES OKAMZITE UKONCIA volanim FUNCTION IoCompleteRequest() s ERROR CODE a zaroven sa vsetky NOVE IRP OKAMZITE UKONCIA volanim FUNCTION IoCompleteRequest() s ERROR CODE. DISPATCH ROUTINES spracujuce IRP s MINOR FUNCTION [IRP_MN_REMOVE_DEVICE] nasledne vykonaju CUSTOM IO OPERATIONS, ktore ZASTAVIA HW DEVICE a napokon odstrania DEVICE OBJECT z MEMORY.
+   !!!!! D. Ak NIEKTORY DRIVER NESPRACUJE IRP s MINOR FUNCTION [IRP_MN_QUERY_REMOVE_DEVICE], tak WINDOWS zasle do DRIVERS IRP s [IRP_MN_CANCEL_REMOVE_DEVICE], na ktore DRIVERS musia zareagovat ZNOVA SPUSTIT svoje IRP QUEUES, aby sa dostali do STATE [READY] kedy IRP QUEUES budu znova zasielat IRP do HW DEVICE.
+   !!!!! E. DISPATCH ROUTINES spracujuce IRP s MINOR FUNCTION [IRP_MN_CANCEL_REMOVE_DEVICE] NESMU vytvarat DEVICE OBJECT, ani znova SPUSTAT HW DEVICE, pretoze HW DEVICE NEBOLO VOBEC ZASTAVENE a DEVICE OBJECT NEBOL ODSTRANENY z MEMORY, kedze WINDOWS VOBEC NEZAVOLAL IRP s MINOR FUNCTION [IRP_MN_REMOVE_DEVICE].
+//-------------------------------------------------------------------------------------------------------
+25. Pre spracovanie IRP s MINOR FUNCTION [IRP_MN_START_DEVICE] platia nasledujuce fakty.
+   A. DRIVER musi ako reakciu na IRP s MINOR FUNCTION [IRP_MN_START_DEVICE] inicializovat HW DEVICE.
+   B. IRP s MINOR FUNCTION [IRP_MN_START_DEVICE] je zasielana hned potom ako WINDOWS zavolal CUSTOM ROUTINE AddDevice(), ktora vytvorila DEVICE OBJECT.
+   !!! C. IRP s MINOR FUNCTION [IRP_MN_START_DEVICE] MUSI byt NAJPRV zaslany na spracovanie do DRIVERS NIZSIE v DEVICE OBJECT STACK a AZ POTOM moze DISPATCH ROUTINE spracujuca IRP s MINOR FUNCTION [IRP_MN_START_DEVICE] inicializovat HW DEVICE.
+   D. FIELD [IO_STACK_LOCATION.Parameters] obsahuje UNION, ktory je pre IRP s MINOR FUNCTION [IRP_MN_START_DEVICE] nastaveny na STRUCTURE [StartDevice], ktora obsahuje zoznam IO RESOURCES, ktore boli danemu HW DEVICE priradene.
+26. Pri spracovavani IRP s MINOR FUNCTION [IRP_MN_START_DEVICE] obsahuje FIELD [IO_STACK_LOCATION.Parameters] STRUCTURE TYPU [StartDevice], ktora obsahuje nasledujuce FIELDS.
+   A. FIELD [StartDevice.AllocatedResources] obsahuje zoznam IO RESOURCES, ktore su cislovane ako BUS-RELATIVE.
+   B. FIELD [StartDevice.AllocatedResourcesTranslated] obsahuje zoznam IO RESOURCES, ktore su cislovane ako SYSTEM-RELATIVE.
+27. DISPATCH ROUTINE spracujuca IRP s MINOR FUNCTION [IRP_MN_START_DEVICE] vykonava nasledujuce kroky.
+   A. Nastavuje FIELD [IRP.IoStatus.Status] na VALUE [STATUS_SUCCESS]. Je to nutne vykonat ako prvy krok, pretoze IRP bude nasledne zaslane do DRIVERS NIZSIE v DEVICE OBJECT STACK a nastavenie FIELD [IRP.IoStatus.Status] na VALUE [STATUS_SUCCESS] indikuje DRIVERS NIZSIE v DEVICE OBJECT STACK, ze CURRENT DRIVER je pripraveny na spustenie HW DEVICE.
+   !!!!! B. DISPATCH ROUTINE musi SYNCHRONNE ODOSLAT IRP do DRIVERS NIZSIE v DEVICE OBJECT STACK. To znaci, ze DRIVER musi zaregistrovat COMPLETION ROUTINE v ktorej nastavi EVENT na ktory DISPATCH ROUTINE bude cakat a zaroven COMPLETION ROUTINE vrati RETURN VALUE [STATUS_MORE_PROCESSING_REQUIRED], aby zabranila volaniu COMPLETION ROUTINES DRIVERS VYSSIE v DEVICE OBJECT STACK. DISPATCH ROUTINE zavola FUNCTION IoCallDriver(), ktora zasle IRP na spracovanie do DRIVERS NIZSIE v DEVICE OBJECT STACK a hned potom vykona TRHEAD WAIT, ktory vykona BLOCKING DISPATCH ROUTINE, cakajuc na EVENT nastaveny v COMPLETION ROUTINE. Tym sa docieli, ze CODE DISPATCH ROUTINE bude BLOCKED, az kym DRIVERS NIZSIE v DEVICE OBJECT STACK IRP s MINOR FUNCTION [IRP_MN_START_DEVICE] nespracuju.
+   !!! C. Ak DRIVERS NIZSIE v DEVICE OBJECT STACK ZLYHALI pri spracovavani MINOR FUNCTION [IRP_MN_START_DEVICE] co je detekovane hodnotou FIELD [IRP.IoStatus.Status] po odblokovani DISPATCH ROUTINE, tak DISPATCH ROUTINE musi UKONCIT IRP volanim FUNCTION IoCompleteRequest(), ktora okrem ineho ZNOVA SPUSTI volanie COMPLETION ROUTINES pre DRIVERS VYSSIE v DEVICE OBJECT STACK.
+   D. Teraz moze DISPATCH ROUTINE prejst FIELD [IO_STACK_LOCATION.Parameters] obsahujci STRUCTURE TYPU [StartDevice] a zistit ake RESOURCES WINDOWS danemu DRIVER (DEVICE OBJECT) pridelil.
+   !!! E. DISPATCH ROUTINE vyvola CUSTOM ROUTINE StartDevice() v ktorej moze DRIVER vykonat CUSTOM OPERATIONS, ktore su potrebne na inicializovane HW DEVICE.
+   !!! F. DISPATCH ROUTINE povoli DEVICE INTERFACES, ktore boli zaregistrovane v CUSTOM ROUTINE AddDevice().
+   G. DISPATCH ROUTINE zmeni PNP STATE na STATE [WORKING].
+   !!! H. DISPATCH ROUTINE musi NASTARTOVAT VSETKY IRP QUEUES. V pripade, ze DRIVER pouziva DEVQUEUES, tak DISPATCH ROUTINE MUSI zavolat CUSTOM FUNCTION RestartAllRequests(), ktora zmeni IRP QUEUE STATE zo [STALLED] (pociatocny stav nastaveny v CUSTOM ROUTINE AddDevice()) na STATE [READY].
+   !!! I. DISPATCH ROUTINE musi zavolat FUNCTION IoCompleteRequest(), ktora zabezpeci POKRACOVANIE PRERUSENEHO vykonavania COMPLETION ROUTINES, ktore bolo pozastavene v COMPLETION ROUTINE CURRENT DRIVER vratenim RETURN VALUE [STATUS_MORE_PROCESSING_REQUIRED].
+   J. DISPATCH ROUTINE musi ako RETURN VALUE vratit RETURN VALUE FUNCTION IoCompleteRequest().
+//-------------------------------------------------------------------------------------------------------
+28. Pre spracovanie IRP s MINOR FUNCTION [IRP_MN_STOP_DEVICE] platia nasledujuce fakty.
+   !!! A. Zakladnou ulohou DISPATCH ROUTINE, ktora spracovava IRP s MINOR FUNCTION [IRP_MN_STOP_DEVICE] je vykonat CUSTOM OPERATIONS, ktore ZASTAVIA HW DEVICE.
+   !!!!! B. IRP s MINOR FUNCTION [IRP_MN_STOP_DEVICE] je zaslane WINDOWS AZ POTOM ako VSETKY DRIVERS USPESNE spracovali IRP s MINOR FUNCTION [IRP_MN_QUERY_STOP_DEVICE]. To znaci, ze WINDOWS sa najprv DRIVERS, ktorych sa zastavenie tyka pomocou IRP s MINOR FUNCTION [IRP_MN_QUERY_STOP_DEVICE] opyta ci suhlasia so zastavenim HW DEVICE a iba ak vsetky DRIVERS SUHLASIA je IRP s MINOR FUNCTION [IRP_MN_STOP_DEVICE] zaslane do DRIVER, ktory ma byt zastaveny.
+   !!!!! C. Ak niektory z DRIVERS NESPRACUJE IRP s MINOR FUNCTION [IRP_MN_QUERY_STOP_DEVICE], tak WINDOWS vykona jeho ROLLBACK zaslanim IRP s MINOR FUNCTION [IRP_MN_CANCEL_STOP_DEVICE]. DRIVER musi ako reakciu na IRP s MINOR FUNCTION [IRP_MN_CANCEL_STOP_DEVICE] ZNOVA SPUSTIT vsetky IRP QUEUES zmenou ich STATES na STATE [READY]. IRP s MINOR FUNCTION [IRP_MN_CANCEL_STOP_DEVICE] NESTARTUE HW DEVICE, pretoze HW DEVICE za zastavuje az v IRP s MINOR FUNCTION [IRP_MN_STOP_DEVICE] a to v pripade, ze niektory DRIVER ODMIETOL spracovat IRP s MINOR FUNCTION [IRP_MN_QUERY_STOP_DEVICE] WINDOWS VOBEC NEZASLAL.
+   !!!!! D. DRIVER pri spracovani IRP s MINOR FUNCTION [IRP_MN_STOP_DEVICE] uz NEPOZASTAVUJE IRP QUEUES (IRP QUEUES nebudu zasielat IRP do HW DEVICE aj ked HW DEVICE nespracovava ziadne IRP) zmenenim ich IRP QUEUE STATE na STATE [STALLED], pretoze to vykonala DISPATCH ROUTINE spracujuca IRP s MINOR FUNCTION [IRP_MN_QUERY_STOP_DEVICE].
+   !!! E. Po zastaveni HW DEVICE musi DISPATCH ROUTINE zaslat IRP s MINOR FUNCTION [IRP_MN_STOP_DEVICE] do DRIVERS NIZSIE v DEVICE OBJECT STACK.
+   !!!!! F. WIDNOWS moze pre 1 IRP s MINOR FUNCTION [IRP_MN_START_DEVICE] zaslat az 'N' IRP s MINOR FUNCTION [IRP_MN_STOP_DEVICE]. CODE danej DISPATCH ROUTINE musi byt napisany tak, aby mohla byt zavolana aj VIACKRAT BEZ predchadzajuceho nastartovania HW DEVICE.
+   !!! G. Ak je HW DEVICE STOPPED, tak DEVICE OBJECT NADALEJ ostava v MEMORY.
+29. DISPATCH ROUTINE spracujuca IRP s MINOR FUNCTION [IRP_MN_STOP_DEVICE] vykonava nasledujuce kroky.
+   A. Nastavi FIELD [IRP.IoStatus.Status] na VALUE [STATUS_SUCCESS] cim DRIVER indikuje, ze IRP bude uspesne spracovany.
+   !!!!! B. Zavola CUSTOM ROUTINE StopDevice(), ktorej ulohou je vykonat IO OPERATIONS, ktore zastavia HW DEVICE.
+   C. Zmeni PNP STATE na STATE [STOPPED].
+   !!! D. Zavola DRIVERS NIZSIE v DEVICE OBJECT STACK zavolanim FUNCTION IoCallDriver().
+   E. DISPATCH ROUTINE musi ako RETURN VALUE vratit RETURN VALUE FUNCTION IoCallDriver().
+//-------------------------------------------------------------------------------------------------------
+30. Pre spracovanie IRP s MINOR FUNCTION [IRP_MN_QUERY_STOP_DEVICE] platia nasledujuce fakty.
+   !!!!! A. Zakladnou ulohou DISPATCH ROUTINE, ktora spracovava IRP s MINOR FUNCTION [IRP_MN_STOP_DEVICE] je POZASTAVENIE VSETKYCH IRP QUEUES zmenou ich STATE na STATE [STALLED], tak aby po skonceni spracovania IRP s MINOR FUNCTION [IRP_MN_QUERY_STOP_DEVICE] uz IRP QUEUES NEZASIELALI IRP do HW DEVICE.
+   !!!!! B. DISPATCH ROUTINE takisto MUSI POCKAT na UKONCENIE SPRACOVANIE VSETKYCH IRP, ktore HW DEVICE aktualne spracovava. Iba vtedy je HW DEVICE pripravene byt zastavene.
+   C. IRP s MINOR FUNCTION [IRP_MN_QUERY_STOP_DEVICE] zasiela PNP MANAGER na zistenie ci DRIVER je pripraveny v kratkom case zastavit HW DEVICE.
+   D. DRIVER by mal IRP s MINOR FUNCTION [IRP_MN_QUERY_STOP_DEVICE] ukoncit USPESNE, ak HW DEVICE je mozne vo velmi kratkom case (radovo milisekundy) ukoncit.
+   E. DRIVER by mal IRP s MINOR FUNCTION [IRP_MN_QUERY_STOP_DEVICE] ukoncit vratenim ERROR, ak HW DEVICE vyzaduje viac casu na zastavenie HW DEVICE.
+   F. Ak ukoncenie cinnosti HW DEVICE trva PRILIS DLHO, pretoze spracovanie prave beziaceho IRP je pridlhe, moze skusit DRIVER zavolat FUNCTION IoCancelIrp(), ktorou skusi navrhnut DRIVERS NIZSIE v DEVICE STACK OBJECT, aby sa pokusili vykonat CANCELLATION IRP. CANCELLATION IRP je vsak VZDY iba NAVRHOM a DRIVERS NIZSIE v DEVICE OBJECT STACK mozu tento navrh IGNOROVAT.
+   !!! G. Aj ked IRP s MINOR FUNCTION [IRP_MN_QUERY_STOP_DEVICE] bolo UKONCENE USPESNE, PNP MANAGER moze vykonat CANCELLATION STOP operacie zaslanim IRP s MINOR FUNCTION [IRP_MN_CANCEL_STOP_DEVICE]. DRIVER by na prichod IRP s MINOR FUNCTION [IRP_MN_CANCEL_STOP_DEVICE] mal zareagovat OPATOVNYM SPUSTENIM IRP QUEUES zmenou ich STATE na STATE [READY].
+   !!!!! H. DISPATCH ROUTINE NESMIE ZASTAVOVAT HW DEVICE (zaslanim CUSTOM IO OPERATIONS do HW DEVICE), pretoze tuto cinnost robi az DISPATCH ROUTINE spracujuca IRP [IRP_MN_STOP_DEVICE].
+31. DISPATCH ROUTINE spracujuca IRP s MINOR FUNCTION [IRP_MN_QUERY_STOP_DEVICE] vykonava nasledujuce kroky.
+   A. Nastavi FIELD [IRP.IoStatus.Status] na VALUE [STATUS_SUCCESS] cim DRIVER indikuje, ze IRP bude uspesne spracovany. Ak IRP nebude uspesne spracovanie (pretoze HW DEVICE nie je mozne momentalne zastavit) DISPATCH ROUTINE zmeni hodnotu FIELD [IRP.IoStatus.Status].
+   !!! B. Vykona kontrolu ci DRIVER je v STATE [WORKING]. Ak nie je, znamena to, ze IRP s MINOR FUNCTION [IRP_MN_QUERY_STOP_DEVICE] bol zaslany BEZ TOHO, aby DRIVER bol VOBEC NASTARTOVANY. V tomto pripade je IRP zaslane do DRIVERS NIZSIE v DEVICE OBJECT STACK, bez toho DISPATCH ROUTINE zastavila IRP QUEUES, kedze tieto uz zastavene su. DISPATCH ROUTINE zasle IRP do DRIVERS NIZSIE v DEVICE OBJECT STACK a ako RETURN VALUE vrati RETURN VALUE FUNCTION IoCallDriver().
+   !!!!! C. Vykona kontrolu ci HW DEVICE je pripravene na zastavenie. Ake operacie bude kontrola obsahovat je ZAVISLE od HW DEVICE. Ak HW DEVICE NIE JE pripravene, aby mohlo byt zastavene, DISPATCH ROUTINE spracujuca MINOR FUNCTION [IRP_MN_QUERY_STOP_DEVICE] musi UKONCIT IRP volanim FUNCTION IoCompleteIrp() s [NTSTATUS] nastavenym na hodnotu [STATUS_UNSUCCESSFUL].
+   !!! D. Zavola DEVQUEUE FUNCTION StallRequests(), ktora zmeni STATE IRP QUEUES na STATE [STALLED]. V tomto STATE bude IRP QUEUE IRP iba UKLADAT do QUEUES, ale NEBUDE ich zasielat do HW DEVICE na spracovanie.
+   !!!!! E. Zavola sa DEVQUEUE FUNCTION WaitForCurrentIrp(), ktora vykona BLOCKING DISPATCH ROUTINE, az kym spracovanie IRP, ktore HW DEVICE prave spracovava nebude dokoncene.
+   F. PNP STATE daneho DRIVER sa zmeni na STATE [PENDINGSTOP].
+   !!! G. IRP s MINOR FUNCTION [IRP_MN_QUERY_STOP_DEVICE] sa posle na spracovanie do DRIVERS NIZSIE v DEVICE OBJECT STACK.
+   H. DISPATCH ROUTINE musi ako RETURN VALUE vratit RETURN VALUE FUNCTION IoCallDriver().
+//-------------------------------------------------------------------------------------------------------
+32. Pre spracovanie IRP s MINOR FUNCTION [IRP_MN_CANCEL_STOP_DEVICE] platia nasledujuce fakty.
+   !!!!! A. Zakladnou ulohou DISPATCH ROUTINE, ktora spracovava IRP s MINOR FUNCTION [IRP_MN_CANCEL_STOP_DEVICE] je znova SPUSTIT IRP QUEUES zmenou ich IRP QUEUE STATE na STATE [READY], ktore boli zastavene pri spracovani IRP s MINOR FUNCTION [IRP_MN_QUERY_STOP_DEVICE]. Je to ROLLBACK operacie v DISPATCH ROUTINE IRP s MINOR FUNCTION [IRP_MN_QUERY_STOP_DEVICE], ktore zmenila STATE svojich IRP QUEUES na STATE [STALLED].
+   B. IRP s MINOR FUNCTION [IRP_MN_CANCEL_STOP_DEVICE] zasiela PNP MANAGER na zrusenie platnosti IRP s MINOR FUNCTION [IRP_MN_CANCEL_STOP_DEVICE], ktoru PNP MANAGER predtym zaslal do DRIVER.
+   !!! C. DRIVER NESMIE zaslat IO OPERATIONS do HW DEVICE, ktore by ho spustali, pretoze HW DEVICE NEBOLO ZASTAVENE. To sa robi az pri spracovani IRP s MINOR FUNCTION [IRP_MN_STOP_DEVICE], ktory sa vsak do DRIVER NEZASLAL, a namiesto toho WINDOWS zaslal do DRIVER IRP s MINOR FUNCTION [IRP_MN_CANCEL_STOP_DEVICE].
+33. DISPATCH ROUTINE spracujuca IRP s MINOR FUNCTION [IRP_MN_CANCEL_STOP_DEVICE] vykonava nasledujuce kroky.
+   A. Nastavi FIELD [IRP.IoStatus.Status] na VALUE [STATUS_SUCCESS] cim DRIVER indikuje, ze IRP bude uspesne spracovany. Ak IRP nebude uspesne spracovanie (pre nejaky ERROR) DISPATCH ROUTINE zmeni hodnotu FIELD [IRP.IoStatus.Status].
+   !!! B. Vykona sa kontrola ci DRIVER je v STATE [PENDINGSTOP]. Ak nie je, znamena to, ze IRP s MINOR FUNCTION [IRP_MN_QUERY_STOP_DEVICE], ktore predtym PNP MANAGER zaslal NEDORAZILO do CURRENT DRIVER (napriklad preto, ze DRIVER VYSSIE v DEVICE OBJECT STACK toto IRP NESPRACOVAL USPESNE a NEZASLAL do DRIVERS NIZSIE v DEVICE OBJECT STACK). DRIVER musi na takyto stav zareagovat zaslanim IRP do DRIVERS NIZSIE v DEVICE OBJECT STACK a nasledne ukoncit DISPATCH ROUTINE vratenie ERROR ako RETURN VALUE. Tento ERROR sa ulozi aj do FIELD [IRP.IoStatus.Status].
+   !!!!! C. DISPATCH ROUTINE zasle IPR s MINOR FUNCTION [IRP_MN_CANCEL_STOP_DEVICE] do DRIVER NIZSIE v DEVICE OBJECT STACK a SYNCHRONNE pomocou THREAD BLOCKING caka na ukocenie spracovanie daneho IRP.
+   D. PNP STATE daneho DRIVER sa zmeni na STATE [WORKING].
+   !!!!! E. Zavola sa DEVICE QUEUE FUNCTION RestartRequests(), ktora ZNOVA SPUSTI vsetky DEVQUEUES. DEVQUEUES od tejto chvile mozu znova zasielat svoje IRP do HW DEVICE.
+   !!! F. Kedze SYCHRONNE CAKANIE na spracovanie IPR s MINOR FUNCTION [IRP_MN_CANCEL_STOP_DEVICE] v DRIVER NIZSIE v DEVICE OBJECT STACK znamenelo ZASTAVNIE volania COMPLETION ROUTINES (COMPLETION ROUTINE pre CURRENT DRIVER vratila RETURN VALUE [STATUS_MORE_PROCESSING_REQUIRED]), tak volanim FUNCTION IoCompleteRequest() sa znova rozbehne volanie COMPLETION ROUTINES v DRIVERS VYSSIE v DEVICE OBJECT STACK a nasledne dojde k ukoceniu spracovania IRP.
+   G. DISPATCH ROUTINE ako RETURN VALUE vracia VALUE [STATUS_SUCCESS].
+//-------------------------------------------------------------------------------------------------------
+34. Pre spracovanie IRP s MINOR FUNCTION [IRP_MN_REMOVE_DEVICE] platia nasledujuce fakty.
+   !!! A. Zakladnou ulohou DISPATCH ROUTINE, ktora spracovava IRP s MINOR FUNCTION [IRP_MN_REMOVE_DEVICE] je VYPRAZDNIT DEVQUEUES, vykonat CUSTOM OPERATIONS, ktore ZASTAVIA HW DEVICE a nasledne ODSTRANIT DEVICE OBJECT z MEMORY.
+   !!!!! B. IRP s MINOR FUNCTION [IRP_MN_REMOVE_DEVICE] je zaslane WINDOWS AZ POTOM ako VSETKY DRIVERS USPESNE spracovali IRP s MINOR FUNCTION [IRP_MN_QUERY_REMOVE_DEVICE]. To znaci, ze WINDOWS sa najprv DRIVERS, ktorych sa odstramemoe tyka pomocou IRP s MINOR FUNCTION [IRP_MN_QUERY_REMOVE_DEVICE] opyta ci suhlasia so odstranenim HW DEVICE a iba ak vsetky DRIVERS SUHLASIA je IRP s MINOR FUNCTION [IRP_MN_REMOVE_DEVICE] zaslane do DRIVER, ktory ma byt odstraneny zo SYSTEMU.
+   !!!!! C. Ak niektory z DRIVERS NESPRACUJE IRP s MINOR FUNCTION [IRP_MN_QUERY_REMOVE_DEVICE], tak WINDOWS vykona jeho ROLLBACK zaslanim IRP s MINOR FUNCTION [IRP_MN_CANCEL_REMOVE_DEVICE]. DRIVER musi ako reakciu na IRP s MINOR FUNCTION [IRP_MN_CANCEL_REMOVE_DEVICE] ZNOVA SPUSTIT vsetky IRP QUEUES zmenou ich STATES na STATE [READY]. IRP s MINOR FUNCTION [IRP_MN_CANCEL_REMOVE_DEVICE] NESTARTUE HW DEVICE ani NEVYTVARA DEVICE OBJECT, pretoze HW DEVICE za zastavuje a DEVICE OBJECT odstranuje z MEMORY az v IRP s MINOR FUNCTION [IRP_MN_REMOVE_DEVICE] a to v pripade, ze niektory DRIVER ODMIETOL spracovat IRP s MINOR FUNCTION [IRP_MN_QUERY_REMOVE_DEVICE] WINDOWS VOBEC NEZASLAL.
+   !!!!! D. DRIVER pri spracovani IRP s MINOR FUNCTION [IRP_MN_REMOVE_DEVICE] uz NEPOZASTAVUJE IRP QUEUES (IRP QUEUES nebudu zasielat IRP do HW DEVICE aj ked HW DEVICE nespracovava ziadne IRP) pretoze to urobila DISPATCH ROUTINE spracujuca IRP s MINOR FUNCTION [IRP_MN_QUERY_REMOVE_DEVICE].
+   !!!!! E. DRIVER pri spracovani IRP s MINOR FUNCTION [IRP_MN_REMOVE_DEVICE] vsak VYPRAZDUJE UZ ZASTAVENE IRP QUEUES zmenou ich IRP QUEUE STATE na STATE [REJECTING]. V tomto STATE IRP QUEUES OKAMZITE UKONCIA VSETKY IRP vo svojich QUEUES volanim FUNCTION IoCompleteRequest() s ERROR CODE a zaroven kazda NOVA IRP je OKAMZITE UKONCENA vratenim ERROR CODE pomocou FUNCTION IoCompleteRequest().
+   F. DRIVER pri spracovani IRP s MINOR FUNCTION [IRP_MN_REMOVE_DEVICE] zastavuje vsetky zaregistrovane DEVICE INTERFACES.
+   !!! G. Po zastaveni HW DEVICE NO ESTE PRED ODSTRANENIM DEVICE OBJECT z MEMORY musi DISPATCH ROUTINE zaslat IRP s MINOR FUNCTION [IRP_MN_REMOVE_DEVICE] do DRIVERS NIZSIE v DEVICE OBJECT STACK.
+   !!!!! H. DEVICE OBJECT sa odstranuje z MEMORY AZ POTOM ako DRIVERS NIZSIE v DEVICE OBJECT STACK spracovali IRP s MINOR FUNCTION [IRP_MN_REMOVE_DEVICE] a to BEZ OHLADU na to ci toto IRP bolo spracovane uspesne, ale neuspesne.
+   !!!!! I. WIDNOWS moze pre 1 IRP s MINOR FUNCTION [IRP_MN_START_DEVICE] zaslat az 'N' IRP s MINOR FUNCTION [IRP_MN_REMOVE_DEVICE]. CODE danej DISPATCH ROUTINE musi byt napisany tak, aby mohla byt zavolana aj VIACKRAT BEZ predchadzajuceho nastartovania HW DEVICE.
+   !!! J. Ak je HW DEVICE REMOVE, tak DEVICE OBJECT je ODSTRANENY z MEMORY.
+   !!! K. Ak WINDOWS zasle do DRIVER IRP s MINOR FUNCTION [IRP_MN_REMOVE_DEVICE] tak uz do DRIVER NEZASLE IRP s MINOR FUNCTION [IRP_MN_STOP_DEVICE], kedze HW DEVICE je zastavene a DEVICE OBJECT je ODSTRANENY z MEMORY.
+35. DISPATCH ROUTINE spracujuca IRP s MINOR FUNCTION [IRP_MN_REMOVE_DEVICE] vykonava nasledujuce kroky.
+   A. Nastavi FIELD [IRP.IoStatus.Status] na VALUE [STATUS_SUCCESS] cim DRIVER indikuje, ze uspesne spracoval IRP.
+   !!!!! B. Zavola DEVQUEUE FUNCTION AbortAllRequests(), ktora zmeni STATE DEVQUEUES zo STATE [STALLED] (don ho zmenila DISPATCH ROUTINE spracujuce IRP MINOR FUNCTION [IRP_MN_QUERY_REMOVE_DEVICE]) do STATE [REJECTING]. FUNCTION OKAMZITE odstrani VSETKY IRP zo svojich DEVQUEUES volanim FUNCTION IoCompleteRequest() s ERROR CODE a zaroven sposobi, ze VSETKY IRP, ktore do DEVQUEUES pridu budu OKAMZITE UKONCENE volanim FUNCTION IoCompleteRequest() s ERROR CODE.
+   C. Odregistruje vsetky zaregistrovane DEVICE INTERFACES a vymaze ich SYMBOLIC LINKS z MEMORY.
+   !!! C. Zavola CUSTOM ROUTINE StopDevice(), ktorej ulohou je vykonat IO OPERATIONS, ktore zastavia HW DEVICE.
+   D. PNP STATE daneho DRIVER sa zmeni na STATE [REMOVED].
+   !!! E. Zavola DRIVERS NIZSIE v DEVICE OBJECT STACK zavolanim FUNCTION IoCallDriver().
+   !!!!! F. Zavola CUSTOM ROUTINE RemoveDevice(), ktora volanim FUNCTION IoDetachDevice() odpoji DEVICE OBJECT od DEVICE OBJECT STACK a volanim FUNCTION IoDeleteDevice() uvolni DEVICE OBJECT z MEMORY.
+   G. Ako RETURN VALUE DISPAT ROUTINE vrati RETURN VALUE FUNCTION IoCallDriver().
+//-------------------------------------------------------------------------------------------------------
+36. Pre spracovanie IRP s MINOR FUNCTION [IRP_MN_QUERY_REMOVE_DEVICE] platia nasledujuce fakty.
+   !!!!! A. Zakladnou ulohou DISPATCH ROUTINE, ktora spracovava IRP s MINOR FUNCTION [IRP_MN_REMOVE_DEVICE] je POZASTAVENIE VSETKYCH IRP QUEUES zmenou ich STATE na STATE [STALLED], tak aby po skonceni spracovania IRP s MINOR FUNCTION [IRP_MN_QUERY_REMOVE_DEVICE] uz IRP QUEUES NEZASIELALI IRP do HW DEVICE.
+   !!!!! B. DISPATCH ROUTINE takisto MUSI POCKAT na UKONCENIE SPRACOVANIE VSETKYCH IRP, ktore HW DEVICE aktualne spracovava. Iba vtedy je HW DEVICE pripravene byt zastavene po ktorom moze byt DEVICE OBJECT odstraneny z MEMORY.
+   C. IRP s MINOR FUNCTION [IRP_MN_QUERY_REMOVE_DEVICE] zasiela PNP MANAGER na zistenie ci DRIVER je pripraveny v kratkom case zastavit HW DEVICE a uvolnit DEVICE OBJECT z MEMORY.
+   D. DRIVER by mal IRP s MINOR FUNCTION [IRP_MN_QUERY_REMOVE_DEVICE] ukoncit USPESNE, ak HW DEVICE je mozne vo velmi kratkom case (radovo milisekundy) ukoncit.
+   E. DRIVER by mal IRP s MINOR FUNCTION [IRP_MN_QUERY_REMOVE_DEVICE] ukoncit vratenim ERROR, ak HW DEVICE vyzaduje viac casu na zastavenie HW DEVICE.
+   F. Ak ukoncenie cinnosti HW DEVICE trva PRILIS DLHO, pretoze spracovanie prave beziaceho IRP je pridlhe, moze skusit DRIVER zavolat FUNCTION IoCancelIrp(), ktorou skusi navrhnut DRIVERS NIZSIE v DEVICE STACK OBJECT, aby sa pokusili vykonat CANCELLATION IRP. CANCELLATION IRP je vsak VZDY iba NAVRHOM a DRIVERS NIZSIE v DEVICE OBJECT STACK mozu tento navrh IGNOROVAT.
+   !!! G. Aj ked IRP s MINOR FUNCTION [IRP_MN_QUERY_REMOVE_DEVICE] bolo UKONCENE USPESNE, PNP MANAGER moze vykonat CANCELLATION STOP operacie zaslanim IRP s MINOR FUNCTION [IRP_MN_CANCEL_REMOVE_DEVICE]. DRIVER by na prichod IRP s MINOR FUNCTION [IRP_MN_CANCEL_REMOVE_DEVICE] mal zareagovat OPATOVNYM SPUSTENIM IRP QUEUES zmenou ich STATE na STATE [READY].
+   !!!!! H. DISPATCH ROUTINE NESMIE ZASTAVOVAT HW DEVICE (zaslanim CUSTOM IO OPERATIONS do HW DEVICE) ani odstranovat DEVICE OBJECT z MEMORY, pretoze tuto cinnost robi az DISPATCH ROUTINE spracujuca IRP [IRP_MN_REMOVE_DEVICE].
+37. DISPATCH ROUTINE spracujuca IRP s MINOR FUNCTION [IRP_MN_QUERY_REMOVE_DEVICE] vykonava nasledujuce kroky.
+   A. Nastavi FIELD [IRP.IoStatus.Status] na VALUE [STATUS_SUCCESS] cim DRIVER indikuje, ze uspesne spracoval IRP.
+   B. Vykona sa kontrola ci DRIVER je v STATE [WORKING]. Ak nie je, znamena to, ze IRP s MINOR FUNCTION [IRP_MN_QUERY_REMOVE_DEVICE] ako bolo HW DEVICE spustene. V tomto pripade je IRP poslane do DRIVERS NIZSIE v DEVICE OBJECT STACK, bez toho aby HW DEVICE bolo STOPPED (zastavi sa QUEUE a pocka sa na skoncenie rozpracovanych IRP), pretoze HW DEVICE uz zastavene je. DISPATCH ROUTINE je po spracovani IRP v DRIVERS NIZSIE v DEVICE OBJECT STACK okamzite UKONCENA a ako RETURN VALUE DISPATCH ROUTINE je vrateny ERROR CODE.
+   !!! C. Vykona sa kontrola ci HW DEVICE je pripravene byt REMOVED. Ake operacie bude kontrola obsahovat je ZAVISLE od HW DEVICE. Ak HW DEVICE NIE JE pripravene, aby mohlo byt REMOVED, DISPATCH ROUTINE spracujuca MINOR FUNCTION [IRP_MN_QUERY_REMOVE_DEVICE] musi UKONCIT IRP volanim FUNCTION IoCompleteIrp() s FIELD [IRP.IoStatus.Status] nastavenym na VALUE [STATUS_UNSUCCESSFUL]. VALUE [STATUS_UNSUCCESSFUL] je zaroven vratena aj ako RETURN VALUE DISPATCH ROUTINE.
+   !!! D. Zavola sa DEVICE QUEUE FUNCTION StallRequests(), ktora zmeni STATE CUSTOM IRP QUEUES na STATE [STALLED]. V tomto STATE DEVICE QUEUE bude IRP iba UKLADAT do QUEUE, ale NEBUDE ich posielat do HW DEVICE na spracovanie.
+   !!!!! E. Zavola sa DEVQUEUE FUNCTION WaitForCurrentIrp(), ktora vykona BLOCKING DISPATCH ROUTINE spracujucej MINOR FUNCTION [IRP_MN_QUERY_REMOVE_DEVICE], az kym IRP, ktore HW DEVICE prave spracovava nebude dokoncene.
+   !!!!! F. PNP STATE daneho DRIVER sa ULOZI to POMOCNEJ VARIABLE, ktora sa uchova pre pripade, ak by PNP MANAGER sa rozhodol vykonat CANCELLATION REMOVE DEVICE. Pri CANCELLATION REMOVE DEVICE sa DRIVER STATE vrati na POVODNY STATE, v ktorom bol DRIVER PRED zaslanim IRP s MINOR FUNCTION [IRP_MN_QUERY_REMOVE_DEVICE].
+   G. PNP STATE daneho DRIVER sa zmeni na STATE [PENDINGSTOP].
+   H. IRP s MINOR FUNCTION [IRP_MN_QUERY_REMOVE_DEVICE] sa posle na spracovanie do DRIVERS NIZSIE v DEVICE OBJECT STACK.
+   I. DISPATCH ROUTINE ako RETURN VALUE vrati RETURN VALUE FUNCTION IoCallDriver().
+//-------------------------------------------------------------------------------------------------------
+38. Pre spracovanie IRP s MINOR FUNCTION [IRP_MN_CANCEL_REMOVE_DEVICE] platia nasledujuce fakty.
+   !!!!! A. Zakladnou ulohou DISPATCH ROUTINE, spracujucou IRP s MINOR FUNCTION [IRP_MN_CANCEL_REMOVE_DEVICE] je znova SPUSTENIE IRP QUEUES zmenou ich IRP QUEUE STATE na STATE [READY], ktore boli zastavene pri spracovani IRP s MINOR FUNCTION [IRP_MN_QUERY_REMOVE_DEVICE]. Je to ROLLBACK operacie v DISPATCH ROUTINE IRP s MINOR FUNCTION [IRP_MN_QUERY_REMOVE_DEVICE], ktore zmenila STATE svojich IRP QUEUES na STATE [STALLED].
+   B. IRP s MINOR FUNCTION [IRP_MN_CANCEL_REMOVE_DEVICE] zasiela PNP MANAGER na zrusenie platnosti IRP s MINOR FUNCTION [IRP_MN_CANCEL_REMOVE_DEVICE], ktoru PNP MANAGER predtym zaslal do DRIVER.
+   !!! C. DRIVER NESMIE zaslat IO OPERATIONS do HW DEVICE, ktore by ho spustali ani vytvarat DEVICE OBJECT, pretoze HW DEVICE NEBOLO ZASTAVENE a DEVICE OBJECT NEBOL odstraneny. To sa robi az pri spracovani IRP s MINOR FUNCTION [IRP_MN_REMOVE_DEVICE], ktory sa vsak do DRIVER NEZASLAL, a namiesto toho WINDOWS zaslal do DRIVER IRP s MINOR FUNCTION [IRP_MN_CANCEL_REMOVE_DEVICE].
+39. DISPATCH ROUTINE spracujuca IRP s MINOR FUNCTION [IRP_MN_QUERY_REMOVE_DEVICE] vykonava nasledujuce kroky.
+   A. Nastavi FIELD [IRP.IoStatus.Status] na VALUE [STATUS_SUCCESS] cim DRIVER indikuje, ze uspesne spracoval IRP.
+   B. Vykona kontrolu ci DRIVER je v STATE [PENDINGREMOVE]. Ak nie je, znamena to, ze IRP s MINOR FUNCTION [IRP_MN_QUERY_REMOVE_DEVICE], ktory predtym PNP MANAGER zaslal NEDORAZIL do CURRENT DRIVER (napriklad preto, ze DRIVER VYSSIE v DEVICE OBJECT STACK toto IRP NESPRACOVAL USPESNE a NEZASLAL do DRIVERS NIZSIE v DEVICE OBJECT STACK). DRIVER musi na takyto stav zareagovat zaslanim IRP do DRIVERS NIZSIE v DEVICE OBJECT STACK a nasledne ukoncit DISPATCH ROUTINE vrateni ERROR CODE ako RETURN VALUE.
+   !!! C. DISPATCH ROUTINE zasle IPR s MINOR FUNCTION [IRP_MN_CANCEL_REMOVE_DEVICE] do DRIVER NIZSIE v DEVICE OBJECT STACK a SYNCHRONNE pomocou THREAD BLOCKING caka na ukocenie spracovanie daneho IRP.
+   !!!!! D. PNP STATE daneho DRIVER sa zmeni na STATE v ktorom bol DRIVER pred zaslatim IRP s MINOR FUNCTION [IRP_MN_QUERY_REMOVE_DEVICE]. Tento STATE ulozil DISPATCH ROUTINE IRP s MINOR FUNCTION [IRP_MN_QUERY_REMOVE_DEVICE] do POMOCNEJ VARIABLE.
+   !!! E. Zavola sa DEVICE QUEUE FUNCTION RestartRequests(), ktora ZNOVA SPUSTI IRP QUEUES zmenou ich IRP QUEUE STATE na STATE [READY] cim umozni IRP QUEUES zasielat IRP do HW DEVICE.
+   !!! F. Kedze SYCHRONNE CAKANIE na spracovanie IPR s MINOR FUNCTION [IRP_MN_CANCEL_REMOVE_DEVICE] v DRIVER NIZSIE v DEVICE OBJECT STACK znamenelo ZASTAVNIE volania COMPLETION ROUTINES (COMPLETION ROUTINE pre CURRENT DRIVER vratila RETURN VALUE [STATUS_MORE_PROCESSING_REQUIRED]), tak volanim FUNCTION IoCompleteRequest() sa znova rozbehne volanie COMPLETION ROUTINES v DRIVERS VYSSIE v DEVICE OBJECT STACK a nasledne dojde k ukoceniu spracovania IRP.
+   G. DISPATCH ROUTINE ako RETURN VALUE vracia VALUE [STATUS_SUCCESS].
+//-------------------------------------------------------------------------------------------------------
+40. Pre spracovanie IRP s MINOR FUNCTION [IRP_MN_SURPRISE_REMOVAL] platia nasledujuce fakty.
+   !!! A. IRP s MINOR FUNCTION [IRP_MN_SURPRISE_REMOVAL] sa vola vtedy ked WINDOWS detekuje, ze HW DEVICE bol neocakavane FYZICKY odstraneny zo SYSTEMU.
+   !!! B. Zakladnou ulohou DISPATCH ROUTINE, ktora spracovava IRP s MINOR FUNCTION [IRP_MN_SURPRISE_REMOVAL] je POZASTAVENIE VSETKYCH IRP QUEUES zmenou ich STATE na STATE [REJECTING] kedy IRP QUEUES budu vsetky prichadzajuce IRP OKAMZITE UKONCOVAT volanim FUNCTION IoCompleteRequest() s ERROR CODE. DISPATCH ROUTINE zaroven IRP uz ulozene IRP QUEUE ukonci volanim FUNCTION IoCompleteRequest() s ERROR CODE. Nasledne musi DISPATCH ROUTINE vykonat zmenit STATE DRIVER, aby DRIVER povazoval UZ ODPOJENE HW DEVICE za STOPPED.
+   !!!!! C. Kedze HW DEVICE bolo FYZICKY ODSTRANENE zo SYSTEMU, DISPATCH ROUTINE spracujuca IRP s MINOR FUNCTION [IRP_MN_SURPRISE_REMOVAL] NESMIE zasielat ziadne IRP na HW DEVICE.
+   !!! D. DISPATCH ROUTINE takisto NEODSTRANUJE DEVICE OBJECT z MEMORY. To sa robi az pri spracovani IRP s MINOR FUNCTION [IRP_MN_REMOVE_DEVICE], ktore je zaslane po IRP s MINOR FUNCTION [IRP_MN_SURPRISE_REMOVAL].
+   !!!!! E. Pri SURPRISE REMOVAL FLAG [DEVICE_CAPABILITIES.SurpriseRemovalOK] (nastavuje sa pri spracovani IRP s MINOR CODE [IRP_MN_QUERY_CAPABILITIES]) urcuje ci DRIVER je pripraveny na SURPRISE REMOVAL, aj BEZ predchadzajuceho zaslania IRP s MINOR FUNCTION [IRP_MN_QUERY_REMOVE_DEVICE].
+   !!!!! F. Po zaslani IRP s MINOR FUNCTION [IRP_MN_SURPRISE_REMOVAL] WINDOWS VZDY zasiela IRP s MINOR FUNCTION [IRP_MN_REMOVE_DEVICE], kedy sa DEVICE OBJECT UVOLNI z MEMORY.
+41. DISPATCH ROUTINE spracujuca IRP s MINOR FUNCTION [IRP_MN_SURPRISE_REMOVAL] vykonava nasledujuce kroky.
+   A. Nastavi FIELD [IRP.IoStatus.Status] na VALUE [STATUS_SUCCESS] cim DRIVER indikuje, ze uspesne spracoval IRP.
+   !!!!! B. Zavola DEVQUEUE FUNCTION AbortAllRequests(), ktora zmeni STATE DEVQUEUES zo STATE [READY] do STATE [REJECTING]. FUNCTION OKAMZITE odstrani VSETKY IRP zo svojich DEVQUEUES volanim FUNCTION IoCompleteRequest() s ERROR CODE a zaroven sposobi, ze VSETKY IRP, ktore do DEVQUEUES pridu budu OKAMZITE UKONCENE volanim FUNCTION IoCompleteRequest() s ERROR CODE.
+   C. PNP STATE daneho DRIVER sa zmeni na STATE [SURPRISEREMOVED].
+   D. Vykona DISABLE vsetkych DEVICE INTERFACES, ktore boli zaregistrovane v CUSTOM ROUTINE AddDevice(), avsak NEVYMAZE ich z MEMORY.
+   !!! E. Zavola CUSTOM ROUTINE StopDevice(), ktorej ulohou je vykonat CODE, ktory nastavi DRIVER do STATE, kedy povazuje HW DEVICE za STOPPED. CUSTOM ROUTINE StopDevice() NESMIE zasielat ZIADNE IO OPERATIONS na HW DEVICE, kedze to bolo FYZICKY odstranene zo SYSTEMU.
+   !!! F. Zavola DRIVERS NIZSIE v DEVICE OBJECT STACK zavolanim FUNCTION IoCallDriver().
+   G. DISPATCH ROUTINE ako RETURN VALUE vrati RETURN VALUE FUNCTION IoCallDriver().
+!!! 42. Ak DRIVER detekoval pri komunikacii s HW DEVICE SURPRISE REMOVAL, moze to oznamit SYSTEMU volanim FUNCTION IoInvalidateDeviceState(). WINDOWS nasledne zasle IRP s MINOR FUNCTION [IRP_MN_QUERY_PNP_DEVICE_STATE] v ktorej moze DRIVER oznamit zmeneny stav HW DEVICE, ktory detekoval.
+//-------------------------------------------------------------------------------------------------------
+!!! 43. Ak BUS DRIVER moze zavolat FUNCTION IoInvalidateDeviceRelations(), prinuti WINDOWS vykonat reenumeraciu HW DEVICES, ktore su pripojene k BUS a zistit pripadne odpojenie HW DEVICES.
+!!!!! 44. WINDOWS moze v LUBOVOLNOM OKAMZIKU poziadat o ODSTRANENIE DEVICE OBJECT zaslanim IRP typu [IRP_MJ_PNP] do DRIVER. IRP typu [IRP_MJ_PNP] moze teda WINDOWS zaslat aj ked DRIVER PRAVE SPRACOVAVA IO IRP. Je ulohou DRIVER, aby pouzitim STRUCTURE [IO_REMOVE_LOCK] ZABRANIL PREDCASNEMU UVOLNENIU DEVICE OBJECT co by viedlo k BUG CHECK.
+45. DRIVER by mal synchronizaciu, ktora zabranuje PREDCASNEMU UVOLNENIU DEVICE OBJECT vykonat nasledujucim sposobom.
+   A. V CUSTOM ROUTINE AddDevice() by mal pomocou FUNCTION IoInitializeRemoveLock() inicializovat STRUCTURE [IO_REMOVE_LOCK].
+   !!! B. Pred spracovanim KAZDEHO IRP, ktory JE ZASIELANY do DRIVERS NIZSIE v DEVICE OBJECT STACK, vratane IRP typu [IRP_MJ_PNP] (tie su VZDY zasielane do DRIVER NIZSIE v DEVICE OBJECT STACK) by CURRENT DRIVER mal ziskat LOCK volanim FUNCTION IoAcquireRemoveLock().
+   C. Ak FUNCTION IoAcquireRemoveLock() vratila RETURN VALUE [STATUS_SUCCESS], znamena to, ze REMOVE LOCK bol IRP HANDLER ROUTINE USPESNE PRIDELENY a IRP HANDLER ROUTINE moze pokracovat v spracovani IRP.
+   !!!!! D. Ak FUNCTION IoAcquireRemoveLock() vratila RETURN VALUE [STATUS_DELETE_PENDING], znamena to, ze WINDOWS CAKA na ODSTRANENIE DEVICE OBJECT. V tomto pripade IRP HANDLER ROUTINE MUSI OKAMZITE UKONCIT spracovanie IRP volanim FUNCTION IoCompleteRequest() s ERROR CODE.
+   !!! E. Po spracovani KAZDEHO IRP, ktory JE ZASIELANY do DRIVERS NIZSIE v DEVICE OBJECT STACK, vratane IRP typu [IRP_MJ_PNP] (tie su VZDY zasielane do DRIVER NIZSIE v DEVICE OBJECT STACK) by CURRENT DRIVER mal uvolnit LOCK volanim FUNCTION IoReleaseRemoveLock().
+   !!!!! F. HANDLER ROUTINE spracujuca IRP s MINOR FUNCTION [IRP_MN_REMOVE_DEVICE] MUSI zavolat PRED UVOLNENIM DEVICE OBJECT z MEMORY (volanim FUNCTION IoDeleteDevice()) zavolat FUNCTION IoReleaseRemoveLockAndWait(), ktora pri pokuse volat FUNCTION IoAcquireRemoveLock() niektorou z IRP HANDLER ROUTINES vrati RETURN VALUE [STATUS_DELETE_PENDING], cim indikuje, ze DRIVER bol poziadany o ODSTRANENIE DEVICE OBJECT a teda, ze IRP by malo byt IGNOROVANE.
+   !!! G. DRIVER by mal zavolat FUNCTION IoAcquireRemoveLock() vzdy ked zasiela referenciu na svoj CODE. Napriklad ak DRIVER pouziva TIMER pricom ako TIMER CALLBACK pouziva CUSTOM DRIVER FUNCTION, mal by pred spustenim TIMER zavolat FUNCTION IoAcquireRemoveLock().
+   !!! H. DRIVER by mal zavolat FUNCTION IoReleaseRemoveLock() vzdy ked uvolnuje referenciu na svoj CODE. Napriklad ak DRIVER pouziva TIMER pricom ako TIMER CALLBACK pouziva CUSTOM DRIVER FUNCTION, tak v momente ked sa TIMER ukoncil by mal zavolat FUNCTION IoReleaseRemoveLock().
+!!! 46. Ak IRP je KOMPLETNE SPRACOVANE v CURRENT DRIVER BEZ TOHO, aby bolo IRP zasielane do DRIVERS NIZSIE v DEVICE OBJECT STACK, tak LOCKING REMOVE LOCK NIE JE POTREBNE, pretoze je zalezitostou DRIVER, ktory ZASLAT IRP do CURRENT DRIVER, aby udrzal CURRENT DRIVER v MEMORY po celu dobu spracovania IRP.
+!!! 47. Primarnou ulohou REMOVE LOCK je udrzat DEVICE OBJECTS DRIVERS NIZSIE v DEVICE OBJECT STACK v MEMORY, pokym tieto nepspracuju vsetky IRP, ktore do nich boli zaslane.
+!!! 48. WINDOWS pre KAZDY KERNEL OBJECT, vratane DEVICE OBJECTS udrzuje REFERENCE COUNTER. WINDOWS pracuje s REFERENCE COUNTERS nasledujucim sposobom.
+   A. Pri vytvoreni KERNEL OBJECT WINDOWS nastavi REFERENCE COUNTER na hodnotu 1.
+   B. Pri zavolani FUNCTION ObReferenceObject() INKREMENTUJE hodnotu REFERENCE COUNTER.
+   C. Pri zavolani FUNCTION ObDereferenceObject() DEKREMENTUJE hodnotu REFERENCE COUNTER.
+   !!! D. Volanie FUNCTION, ktora odstranuje KERNEL OBJECT z MEMORY (napriklad IoDeleteDevice()) DEKREMENTUJE COUNTER a ak tento klesne na hodnotu 0, tak WINDOWS OBJECT ODSTRANI z MEMORY.
+!!! 49. WINDOWS vykonava REFERENCE COUNTING pre DEVICE OBJECTS nasledujucim sposobom.
+   A. Pri vytvoreni DEVICE OBJECT volanim FUNCTION IoCreateDevice() sa REFERENCE COUNTER vytvoreneho DEVICE OBJECT nastavi na hodnotu 1.
+   !!! B. Pri pridani DEVICE OBJECT do DEVICE OBJECT STACK pomocou FUNCTION IoAttachDevice() INKREMENTUJE REFERENCE COUNTER DEVICE OBJECT NIZSIE v DEVICE OBJECT STACK na ktory sa CURRENT DEVICE OBJECT volanim FUNCTION IoAttachDevice() pripojil. Zaroven FUNCTION IoAttachDevice() nastavuje FIELD [DEVICE_OBJECT.AttachedDevice] CURRENT DEVICE OBJECT na DEVICE OBJECT ku ktoremu sa CURRENT DEVICE OBJECT pripojil.
+   !!! C. Pri odobrati DEVICE OBJECT z DEVICE OBJECT STACK pomocou FUNCTION IoDetachDevice() DEKREMENTUJE REFERENCE COUNTER DEVICE OBJECT NIZSIE v DEVICE OBJECT STACK z ktoreho sa CURRENT DEVICE OBJECT volanim FUNCTION DetachDevice() odpojil. Zaroven FUNCTION IoDetachDevice() nastavuje FIELD [DEVICE_OBJECT.AttachedDevice] CURRENT DEVICE OBJECT na NULL.
+   !!!!! D. Volanie FUNCTION IoDeleteObject() vykona kontrolu ci REFERENCE COUNTER je ROZNY od 0. Ak NIE JE, tak NASTAVI 'PENDING DELETE FLAG' na DEVICE OBJECT. FUNCTION IoDetachDevice() kontroluje nastavenie 'PENDING DELETE FLAG' a ak REFERENCE COUNTER je rovny 0 a zaroven 'PENDING DELETE FLAG' je nastaveny, tak DEVICE OBJECT je odstraneny z MEMORY.
+!!!!! 50. WINDOWS pri odstranovani DEVICE OBJECTS z MEMORY postupuje nasledujucim sposobom.
+   !!! A. Pred zaslanim IRP s MINOR FUNCTION [IRP_MN_REMOVE_DEVICE] WINDOWS INKREMENTUJE REFERENCE COUNTER o hodnotu 1 pre VSETKY DEVICE OBJECTS v DEVICE OBJECT STACK.
+   B. DISPATCH ROUTINES vsetkych DRIVERS v DEVICE OBJECT STACK zaslu IRP s MINOR FUNCTION [IRP_MN_REMOVE_DEVICE] do DRIVERS NIZSIE v DEVICE OBJECT STACK az kym nie je zavolana DISPATCH ROUTINE pre LOWEST DRIVER v DEVICE OBJECT STACK.
+   !!! C. DISPATCH ROUTINE LOWEST DRIVER v DEVICE OBJECT STACK zavola FUNCTION IoDeleteDevice(). Kedze vsak DEVICE OBJECT je STALE REFEROVANY v (LOWEST-1) DRIVER v DEVICE OBJECT STACK, tak DEVICE OBJECT LOWEST DRIVER v DEVICE OBJECT STACK sa NEUVOLNI, no FUNCTION IoDeleteDevice() nastavi 'PENDING DELETE FLAG' pre tento DEVICE OBJECT.
+   !!! D. DISPATCH ROUTINE v (LOWEST-1) DRIVER v DEVICE OBJECT STACK zavola FUNCTION IoDetachDevice() s PARAMETEROM odkazujucim na LOWEST DRIVER v DEVICE OBJECT STACK. Tato FUNCTION vykona DEKREMENTACIU REFERENCE COUNTER pre LOWEST DRIVER v DEVICE OBJECT STACK. DEVICE OBJECT pre LOWEST DRIVER v DEVICE OBJECT STACK vsak STALE NIE JE UVOLNENY, pretoze WINDOWS pred zaslanim IRP s MINOR FUNCTION [IRP_MN_REMOVE_DEVICE] INKREMENTOVAL REFERENCE COUNTER pre VSETKY DEVICE OBJECTS v DEVICE OBJECT STACK.
+   E. C. DISPATCH ROUTINE (LOWEST-1) DRIVER v DEVICE OBJECT STACK zavola FUNCTION IoDeleteDevice(). Kedze vsak DEVICE OBJECT je STALE REFEROVANY (LOWEST-2) DRIVER v DEVICE OBJECT STACK, tak DEVICE OBJECT (LOWEST-1) DRIVER v DEVICE OBJECT STACK sa NEUVOLNI, no FUNCTION IoDeleteDevice() nastavi 'PENDING DELETE FLAG' pre tento DEVICE OBJECT.
+   F. Cyklus volanie FUNCTIONS IoDetachDevice() a IoDeleteDevice() v DISPATCH ROUTINES sa opakuje, az kym nie su zavolane pre VSETKY DEVICE OBJECTS v DEVICE OBJECT STACK.
+   !!! G. WINDOWS po ukonceni spracovania IRP s MINOR FUNCTION [IRP_MN_REMOVE_DEVICE] INKREMENTUJE REFERENCE COUNTER o hodnotu 1 pre VSETKY DEVICE OBJECTS v DEVICE OBJECT STACK.
+   !!!!! H. Kedze REFERENCE COUNTER pre DEVICE OBJECTS v DEVICE OBJECT STACK je rovny 0 a ZAROVEN, DEVICE OBJECTS maju nastaveny 'PENDING DELETE FLAG' su DEVICE OBJECTS ODSTRANENE z MEMORY.
+!!!!! 51. OBROVSKYM PROBLEMOM WDM je NEMOZNOST napisat 100 PERCENTNY DRIVER, ktory by UPLNE ELIMINOVAL moznost PREDCASNEHO UVOLNENIE DRIVER z MEMORY. Rizikova situacia vznika z nasledujuceho dovodu.
+   A. DRIVER ci po spracovani IRP ci uz v DISPATCH ROUTINE, alebo v COMPLETION ROUTINE po spracovani IRP MUSI zavolat FUNCTION IoReleaseRemoveLock(), ktora UVOLNI REMOVE LOCK.
+   !!! B. PROBLEM je v tom, ze za volanim FUNCTION IoReleaseRemoveLock() sa este VYKONAVA CODE DISPATCH ROUTINE, alebo v COMPLETION ROUTINE, ktory v MINIMALNEJ VERZII obsahuje C++ CODE [return(STATUS)], ktory sa prelozi do CPU INSTRUCTION [ret].
+   !!!!! C. Ak by vsak WINDOWS uvolnil DRIVER SKOR ako za vykona CPU INSTRUCTION [ret], potom CPU INSTRUCTION [ret] sa vykona v MEMORY, ktora je uz NEPLATNA. Uvolnenie DRIVER je mozne, pretoze REMOVE LOCK uz BOL UVOLNENY.
+   !!!!! D. Voci tomuto problemu NEEXISTUJE vo WINDOWS (aspon to platilo vo WINDOWS XP) ZIADNA OCHRANA a ak k nemu dojde, dojde k BUG CHECK.
+52. WINDOWS detekuje IO RESOURCES na zaklade udajov v REGISTRY, .INF FILES a zisteni BUS ku ktoremu je HW DEVICE pripojeny. WINDOWS vsak moze zasielat do DRIVER IRP s MINOR FUNCTION [IRP_MN_FILTER_RESOURCE_REQUIREMENTS] pri spracovani ktoreho moze DRIVER modifikovat zoznam IO RESOURCES, ktore boli danemu DRIVER priradene. Spracovanie IRP s MINOR FUNCTION [IRP_MN_FILTER_RESOURCE_REQUIREMENTS] prebieha v nasledujucich krokoch.
+   A. Zoznam RESOURCES je ulozeny v STRUCTURE typu [IO_RESOURCE_REQUIREMENTS_LIST].
+   B. FIELD [IO_STACK_LOCATION.Parameters.FilterResourceRequirements.IoResourceRequirementList] obsahuje zoznam RESOURCES, ktore boli DRIVER priradene na zaklade informacii v REGISTRY, .INF FILES a zisteni BUS ku ktoremu je HW DEVICE pripojeny.
+   !!! C. Ak niektory z DRIVERS VYSSIE v DEVICE OBJECT STACK pri spracovani IRP s MINOR FUNCTION [IRP_MN_FILTER_RESOURCE_REQUIREMENTS] modifikuje zoznam RESOURCES, potom je tento zoznam ulozeny do FIELD [IRP.IoStatus.Information].
+   !!!!! D. Ak DRIVER chce pridat niektory z IO RESOURCES, musi pridat instanciu STRUCTURE [IO_RESOURCE_DESCRIPTOR] do STRUCTURE [IO_RESOURCE_REQUIREMENTS_LIST] ESTE PRED zaslanim IRP do DRIVERS NIZSIE v DEVICE OBJECT STACK.
+   E. Nasledne DRIVER MUSI SYNCHRONNE zaslat IRP do DRIVERS NIZSIE v DEVICE OBJECT STACK.
+   !!!!! E. Ak DRIVER chce MODIFIKOVAT, alebo ODSTRANIT IO RESOURCES musi tak vykonat az potom ako DRIVERS NIZSIE v DEVICE OBJECT STACK IRP spracuju.
+   !!!!! F. Ak DRIVER nejakym sposobom MODIFIKOVAL zoznam IO RESOURCES MUSI NOVU instanciu STRUCTURE [IO_RESOURCE_DESCRIPTOR] ulozit do FIELD [IRP.IoStatus.Information].
+53. Pre niektore typy DRIVERS (napriklad DRIVERS obsluhujuce HDD) moze WINDOWS zasielat do DRIVERS specialne NOTIFICATIONS, ktore urcuju specialne vyuzitie HW DEVICE, ktore DRIVER obsluhuje. Napriklad WINDOWS moze vykonat NOTIFICATION DRIVER, ze HW DEVICE, ktore spracuje bude pouzite na ulozene PAGE FILE. DRIVER musi na zaklade tychto NOTIFICATIONS upravit svoje spravanie.
+54. NOTIFICATION do DRIVERS WINDOWS vykonava zaslanim IRP s MINOR FUNCTION [IRP_MN_USAGE_NOTIFICATION]. Tato vo FIELD [IO_STACK_LOCATION.Parameters.UsageNotification] obsahuje nasledujuce FIELDS.
+   A. FIELD [Parameters.UsageNotification.Type] urcuje TYPE danej NOTIFICATION. Sem patri NOTIFICAION o tom, ze HW DEVICE spravovany DRIVER ma byt pouzity na ukladanie PAGE FILES, HYBERNATION FILES, ci CRASH DUMP FILES.
+   B. FIELD [Parameters.UsageNotification.InPath] zavisi od TYPE danej NOTIFICATION a urcuje napriklad spustenie a zastavenie ukladania PAGE FILES na HW DEVICE spracovany danym DRIVER.
+!!! 55. DRIVER by mal zaregistrovat na IRP s MINOR FUNCTION [IRP_MN_USAGE_NOTIFICATION] nasledovne.
+   A. Ak DRIVER rozpoznava dany NOTICATION TYPE mal by nastavit FIELD [IRP.IoStatus.Status] na hodnotu [STATUS_SUCCESS] a nasledne zaslat IRP do DRIVERS NIZSIE v DEVICE OBJECT STACK.
+   B. Ak DRIVER rozpoznava dany NOTICATION TYPE, avsak DRIVER NEPODPORUJE pozadovanu funkcnost (napriklad NEUMOZNUJE ulozit PAGE FILE na HW DEVICE) musi nastavit FIELD [IRP.IoStatus.Status] na hodnotu [STATUS_UNSUCCESSFUL] a nasledne zaslat IRP do DRIVERS NIZSIE v DEVICE OBJECT STACK.
+   C. Ak DRIVER NEROZPOZNAVA dany NOTICATION TYPE mal by iba zaslat IRP do DRIVERS NIZSIE v DEVICE OBJECT STACK BEZ TOHO, aby sa nastavil FIELD [IRP.IoStatus.Status]. BUS DRIVER ak detekuje, ze FIELD [IRP.IoStatus.Status] nebol nastaveny, povazuje DRIVER za neschopny podporovat cinnost vyzadovanu danym NOTICATION TYPE.
+56. WINDOWS pomocou IRP s MINOR FUNCTION [IRP_MN_USAGE_NOTIFICATION] zasiela nasledujuce NOTIFICATIONS.
+   A. NOTIFICATION [DeviceUsageTypePaging] znamena, ze HW DEVICE, ktore DRIVER obsluhuje sa pouzije na ulozenie PAGE FILE.
+   B. NOTIFICATION [DeviceUsageTypeHibernation] znamena, ze HW DEVICE, ktore DRIVER obsluhuje sa pouzije na ulozenie HIBERNATION FILE.
+   C. NOTIFICATION [DeviceUsageTypeDumpFile] znamena, ze HW DEVICE, ktore DRIVER obsluhuje sa pouzije na ulozenie DUMP FILE.
+   D. NOTIFICATION [DeviceUsageTypeBoot].
+   E. NOTIFICATION [DeviceUsageTypePostDisplay].
+57. DRIVER pri spracovanie NOTIFICATION TYPE [DeviceUsageTypePaging] by mal postupovat nasledovne.
+   A. Ak FIELD [Parameters.UsageNotification.InPath] obsahuje hodnotu TRUE, na HW DEVICE, ktore DRIVER obsluhuje bol otvoreny PAGE FILE.
+   B. Ak FIELD [Parameters.UsageNotification.InPath] obsahuje hodnotu FALSE, na HW DEVICE, ktore DRIVER obsluhuje bol uzatvoreny PAGE FILE.
+   C. DRIVER si musi udrziavat COUNTER obsahujuci pocet aktivnych otvrenych PAGE FILES.
+   !!! D. Ak DRIVER stale eviduje OTVORENE PAGE FILES, DRIVER MUSI ZABLOKOVAT ZASTAVENIE a UVOLNENIE HW DEVICE odmietnutim IRP s MINOR FUNCTIONS [IRP_MN_STOP_DEVICE] a [IRP_MN_REMOVE_DEVICE].
+   !!! E. Ak DRIVER stale eviduje OTVORENE PAGE FILES, musi zabezpecit, aby DISPATCH ROUTINES pre READ, WRITE, DEVICE_CONTROL, PNP a POWER IRP boli ulozene v NON-PAGED MEMORY.
+   F. Ak DRIVER stale eviduje OTVORENE PAGE FILES, musi vymazat FLAG [DO_POWER_PAGABLE] v DEVICE OBJECT, aby WINDOWS zasielal POWER IPR v [IRQL=DISPATCH_LEVEL].
+58. DRIVER pri spracovanie NOTIFICATION TYPE [DeviceUsageTypeHibernation] by mal postupovat nasledovne.
+   A. Ak FIELD [Parameters.UsageNotification.InPath] obsahuje hodnotu TRUE, HW DEVICE, ktore DRIVER bol vybrany ako miesto na ktore sa ulozi HIBERNATION FILE.
+   B. Ak FIELD [Parameters.UsageNotification.InPath] obsahuje hodnotu FALSE, HW DEVICE, ktore DRIVER bol ZRUSENY ako miesto na ktore sa ulozi HIBERNATION FILE.
+   C. DRIVER si musi udrziavat COUNTER rozdiel medzi poctom zaslanych TRUE a FALSE hodnot vo FIELD [Parameters.UsageNotification.InPath], ktory urcuje pocet aktivnych poziadaviek na ulozenie HIBERNATION FILE.
+   D. Ak COUNTER daneho DRIVER indikuje, ze existuje nejaka poziadavka na ulozenie HIBERNATION FILE, DRIVER musi pri spracovani POWER IRP urcujuceho stav [PowerSystemHibernate] zmenit svoju cinnost, aby respektoval ulozenie HIBERNATION FILE na HW DEVICE.
+59. DRIVER pri spracovanie NOTIFICATION TYPE [DeviceUsageTypeDumpFile] by mal postupovat nasledovne.
+   A. Ak FIELD [Parameters.UsageNotification.InPath] obsahuje hodnotu TRUE, HW DEVICE, ktore DRIVER bol vybrany ako miesto na ktore sa ulozi DUMP FILE.
+   B. Ak FIELD [Parameters.UsageNotification.InPath] obsahuje hodnotu FALSE, HW DEVICE, ktore DRIVER bol ZRUSENY ako miesto na ktore sa ulozi DUMP FILE.
+   C. DRIVER si musi udrziavat COUNTER rozdiel medzi poctom zaslanych TRUE a FALSE hodnot vo FIELD [Parameters.UsageNotification.InPath], ktory urcuje pocet aktivnych poziadaviek na ulozenie DUMP FILE.
+   D. Ak COUNTER daneho DRIVER indikuje, ze existuje nejaka poziadavka na ulozenie DUMP FILE, DRIVER musi zabranit, aby sa HW DEVICE dostalo mimo POWER D0 STATE, alebo z FULLY ON STATE.
+   E. Ak COUNTER daneho DRIVER indikuje, ze existuje nejaka poziadavka na ulozenie DUMP FILE, DRIVER musi zabranit aby HW DEVICE bolo zaregistrovane pre IDLE DETECTION a vynulovat cakajuce registracie.
+   F. Ak COUNTER daneho DRIVER indikuje, ze existuje nejaka poziadavka na ulozenie DUMP FILE, DRIVER MUSI ZABLOKOVAT ZASTAVENIE a UVOLNENIE HW DEVICE odmietnutim IRP s MINOR FUNCTIONS [IRP_MN_STOP_DEVICE] a [IRP_MN_REMOVE_DEVICE].
+60. WINDOWS umoznuje notifikovat USER MODE a KERNEL MODE PROGRAMS o tom, ze DRIVER DEVICE INTERFACE bol v ENABLED, alebo DISABLED v SYSTEME.
+61. Notifikacia o ENABLE a DISABLE DRIVER DEVICE INTERFACE na zaklade DRIVER DEVICE INTERFACE GUID v USER MODE PROGRAMS je vykonavany v nasledujucich krokoch.
+   A. Naplni sa instancia STRUCTURE [DEV_BROADCAST_DEVICEINTERFACE]. Do FIELD [DEV_BROADCAST_DEVICEINTERFACE.dbcc_devicetype] sa ulozi hodnota [DBT_DEVTYP_DEVICEINTERFACE]. Do FIELD [DEV_BROADCAST_DEVICEINTERFACE.dbcc_classguid] sa ulozi GUID DRIVER DEVICE INTERFACE, ktory ma byt monitorovany.
+   B. Zavola sa FUNCTION RegisterDeviceNotification(), ktora zaregistruje WINDOW do ktoreho sa NOTIFICATIONS budu zasielat. Ako 1. PARAMETER sa zadava [HWND] na WINDOW do ktoreho maju byt notifikacie zasielane.
+   !!! C. WINDOWS bude pri kazdom ENABLE a DISABLE DRIVER DEVICE INTERFACE zasielat do zaregistrovaneho WINDOW MESSAGE [WM_DEVICECHANGE].
+   D. Zavola sa FUNCTION UnregisterDeviceNotification(), ktora odregistruje WINDOW do ktoreho WINDOWS zasielal NOTIFICATIONS.
+62. Notifikacia o ENABLE a DISABLE DRIVER DEVICE INTERFACE na zaklade DEVICE HANDLE v USER MODE PROGRAMS je vykonavany v nasledujucich krokoch.
+   A. Naplni sa instancia STRUCTURE [DEV_BROADCAST_HANDLE]. Do FIELD [DEV_BROADCAST_HANDLE.dbch_devicetype] sa ulozi hodnota [DBT_DEVTYP_HANDLE]. Do FIELD [DEV_BROADCAST_HANDLE.dbcc_handle] sa ulozi HANDLE na otvoreny DEVICE.
+   B. Zavola sa FUNCTION RegisterDeviceNotification(), ktora zaregistruje WINDOW do ktoreho sa NOTIFICATIONS budu zasielat. Ako 1. PARAMETER sa zadava [HWND] na WINDOW do ktoreho maju byt notifikacie zasielane.
+   !!! C. WINDOWS bude pri kazdom ENABLE a DISABLE DRIVER DEVICE INTERFACE zasielat do zaregistrovaneho WINDOW MESSAGE [WM_DEVICECHANGE].
+   D. Zavola sa FUNCTION UnregisterDeviceNotification(), ktora odregistruje WINDOW do ktoreho WINDOWS zasielal NOTIFICATIONS.
+!!! 63. Pomocou DRIVER DEVICE INTERFACE NOTIFICATION umoznuje WINDOWS USER MODE PROGRAMS ZABRANIT ODSTRANENIU DRIVER zo SYSTEMU nasledujucim sposobom.
+   A. Pri pokuse o ostranenie DRIVER zo SYSTEMU zasle WINDOWS WINDOW MESSAGE [WM_DEVICECHANGE], ktorej WPARAM obsahuje hodnotu [DBT_DEVICEQUERYREMOVE].
+   B. Ak USER MODE PROGRAM vrati ako RETURN VALUE WINDOWS PROCEDURE hodnotu [BROADCAST_QUERY_DENY], WINDOWS NEODSTRANI DRIVER zo SYSTEMU. Ak vrati hodnotu [TRUE], WINDOWS odstrani DRIVER zo SYSTEMU. Ak NOTIFICATION je zaregistrovana cez DRIVER HANDLE, tento MUSI BYT UZATVORENY, inak odstranenie DRIVER zo SYSTEMU bude vyzadovat REBOOT.
+   !!!!! C. WINDOW MESSAGE [WM_DEVICECHANGE], ktorej WPARAM obsahoval hodnotu [DBT_DEVICEQUERYREMOVE] sa zasielala IBA pri NOTIFICATIONS pomocou DRIVER HANDLE. Pri NOTIFICATIONS pomocou DRIVER DEVICE INTERFACE tato MESSAGE NEBOLA ZASLANA.
+!!! 64. WINDOWS umoznuje aj notifikaciu WINDOWS SERVICE o ENABLE a DISABLE DRIVER DEVICE INTERFACE. Ta sa vykonava nasledujucim sposobom.
+   A. Naplni sa instancia STRUCTURE [DEV_BROADCAST_DEVICEINTERFACE]. Do FIELD [DEV_BROADCAST_DEVICEINTERFACE.dbcc_devicetype] sa ulozi hodnota [DBT_DEVTYP_DEVICEINTERFACE]. Do FIELD [DEV_BROADCAST_DEVICEINTERFACE.dbcc_classguid] sa ulozi GUID DRIVER DEVICE INTERFACE, ktory ma byt monitorovany.
+   B. Pri spusteni SERVICE sa zavola FUNCTION RegisterDeviceNotification(), ktora zaregistruje WINDOW do ktoreho sa NOTIFICATIONS budu zasielat. Ako 1. PARAMETER sa zadava [SERVICE_STATUS_HANDLE] obsahujucu HANDLE na SERVICE CALLBACK ROUTINE, ktoru vratila FUNCTION RegisterServiceCtrlHandlerEx().
+   !!! C. WINDOWS bude pri kazdom ENABLE a DISABLE DRIVER DEVICE INTERFACE zasielat do SERVICE CALLBACK ROUTINE, ktoru SERVICE zaregistroval volanim FUNCTION RegisterServiceCtrlHandlerEx() MESSAGE [SERVICE_CONTROL_DEVICE_EVENT].
+   !!! D. Ak SERVICE chce ZABRANIT, aby WINDOWS odstranil DRIVER musi zo SERVICE CALLBACK ROUTINE vratit ERROR CODE ako RETURN VALUE. Ak sa naopak ma DRIVER ODSTRANIT, musi SERVICE CALLBACK ROUTINE vratit ako RETURN VALUE hodnotu [NO_ERROR].
+   E. Pri ukonceni SERVICE sa zavola FUNCTION UnregisterDeviceNotification(), ktora odregistruje SERVICE CALLBACK ROUTINE do ktorej SERVICE zasielal NOTIFICATIONS.
+65. WINDOWS umoznuje zasielat NOTIFICATIONS o PNP EVENTS aj do KERNEL MODE PROGRAMS (DRIVERS). WINDOWS umoznuje NOTIFICATIONS o PNP EVENTS pre vsetky DRIVERS, ktore vystavuju DRIVER DEVICE INTERFACE, alebo pre DRIVERS, ktore su identifikovane na zaklade FILE OBJECT.
+66. Ak DRIVER chce byt notifikovany o PNP EVENTS na zaklade DRIVER DEVICE INTERFACE, musi vykonat nasledujuce kroky.
+   A. Zavolat FUNCTION IoRegisterPlugPlayNotification(). Ako 3. PARAMETER sa zadava DRIVER DEVICE INTERFACE GUID, ktory ma byt monitorovany. CALLBACK ROUTINE je zadana v 5. PARAMETRI.
+   !!!!! B. FUNCTION IoRegisterPlugPlayNotification() zvysuje hodnotu INTERNAL COUNTER pre DRIVER OBJECT (pozor NIE DEVICE OBJECT). DRIVER OBJECT a tym padom ani DRIVER NEMOZE byt ODSTRANENY z MEMORY, az kym NIE JE ZAVOLANA FUNCTION IoUnregisterPlugPlayNotificationEx().
+   C. Po registracii WINDOWS bude zasielat do CALLBACK ROUTINE NOTIFICATIONS.
+   !!! D. Odregistrovanie NOTIFICATIONS sa robi pomocou FUNCTION IoUnregisterPlugPlayNotificationEx().
+   !!!!! E. FUNCTION IoUnregisterPlugPlayNotificationEx() NESMIE byt zavolana v momente ak je volana FUNCTION IoRegisterPlugPlayNotification(), inak moze dojst k BUG CHECK.
+   !!!!! F. DRIVER NEBUDE odstraneny z MEMORY, pokym sa pre KAZDE volanie FUNCTION IoRegisterPlugPlayNotification() NEZAVOLA FUNCTION IoUnregisterPlugPlayNotificationEx().
+   !!!!! G. Volanie FUNCTION IoUnregisterPlugPlayNotificationEx() NESMIE byt vykonavane v CUSTOM ROUTINE DriverUnload(), pretoze ta po uspesnom volanim FUNCTION IoRegisterPlugPlayNotification() sa NIKDY NEZAVOLA. Je to dosledok toho, ze volanie FUNCTION IoRegisterPlugPlayNotification() zvysilo INTERNAL COUNTER DRIVER OBJECT (pozor NIE DEVICE OBJECT) a ten je dekrementovany az volanim FUNCTION IoUnregisterPlugPlayNotificationEx(). To znaci, ze ak sa FUNCTION IoUnregisterPlugPlayNotificationEx() ma zavolat az v CUSTOM ROUTINE DriverUnload(), bude INTERNAL COUNTER DRIVER OBJECT vzdy >0, vdaka comu sa CUSTOM ROUTINE DriverUnload() NIKDY NEZAVOLA a teda ani FUNCTION IoUnregisterPlugPlayNotificationEx() v nej volana.
+   !!! H. Volanie FUNCTION IoUnregisterPlugPlayNotificationEx() je vsak mozne vykonat v CUSTOM ROUTINE StopDevice().
+67. Ak DRIVER chce byt notifikovany o PNP EVENTS na zaklade FILE OBJECT postup je podobny ako v pripade DRIVER DEVICE INTERFACE, akurat pri volani FUNCTION IoRegisterPlugPlayNotification() sa v 3. PARAMETERI uklada FILE OBJECT.
+68. CALLBCK ROUTINE, ktory WINDOWS vola pri notifikacii DRIVERS o PNP EVENTS prijima PARAMETER typu [PPLUGPLAY_NOTIFICATION_HEADER]. FIELD [PPLUGPLAY_NOTIFICATION_HEADER.Event] urcuje na aku STRUCTURE moze byt [PPLUGPLAY_NOTIFICATION_HEADER] pretypovana, aby mohla ziskat dodatocne informacie o PNP EVENT.
+   A. Ak [PPLUGPLAY_NOTIFICATION_HEADER.Event]==[GUID_HWPROFILE_QUERY_CHANGE], tak WINDOWS sa pyta DRIVER ci je mozne pridat novy HW PROFILE. STRUCTURE [PPLUGPLAY_NOTIFICATION_HEADER] je mozne pretypovat na STRUCTURE [HWPROFILE_CHANGE_NOTIFICATION].
+   B. Ak [PPLUGPLAY_NOTIFICATION_HEADER.Event]==[GUID_HWPROFILE_CHANGE_CANCELLED], tak WINDOWS informuje DRIVER, ze predchadzajuca notifikacia o zmene HW PROFILE bola zrusena. STRUCTURE [PPLUGPLAY_NOTIFICATION_HEADER] je mozne pretypovat na STRUCTURE [HWPROFILE_CHANGE_NOTIFICATION].
+   C. Ak [PPLUGPLAY_NOTIFICATION_HEADER.Event]==[GUID_HWPROFILE_CHANGE_COMPLETE], tak WINDOWS informuje DRIVER, ze predchadzajuca notifikacia o zmene HW PROFILE bola uspesne dokoncana. STRUCTURE [PPLUGPLAY_NOTIFICATION_HEADER] je mozne pretypovat na STRUCTURE [HWPROFILE_CHANGE_NOTIFICATION].
+   D. Ak [PPLUGPLAY_NOTIFICATION_HEADER.Event]==[GUID_DEVICE_INTERFACE_ARRIVAL], tak WINDOWS notifikuje DRIVER o tom, ze monitorovany DRIVER DEVICE INTERFACE bol ENABLED. STRUCTURE [PPLUGPLAY_NOTIFICATION_HEADER] je mozne pretypovat na STRUCTURE [DEVICE_INTERFACE_CHANGE_NOTIFICATION].
+   E. Ak [PPLUGPLAY_NOTIFICATION_HEADER.Event]==[GUID_DEVICE_INTERFACE_REMOVAL], tak WINDOWS notifikuje DRIVER o tom, ze monitorovany DRIVER DEVICE INTERFACE bol DISABLED. STRUCTURE [PPLUGPLAY_NOTIFICATION_HEADER] je mozne pretypovat na STRUCTURE [DEVICE_INTERFACE_CHANGE_NOTIFICATION].
+   F. Ak [PPLUGPLAY_NOTIFICATION_HEADER.Event]==[GUID_TARGET_DEVICE_QUERY_REMOVE], tak WINDOWS sa pyta DRIVER ci je mozne odstranit DEVICE OBJECT. STRUCTURE [PPLUGPLAY_NOTIFICATION_HEADER] je mozne pretypovat na STRUCTURE [TARGET_DEVICE_CUSTOM_NOTIFICATION].
+   G. Ak [PPLUGPLAY_NOTIFICATION_HEADER.Event]==[GUID_TARGET_DEVICE_REMOVE_CANCELLED], tak WINDOWS informuje DRIVER, ze predchadzajuce odstranenie DEVICE OBJECT bola zrusene. STRUCTURE [PPLUGPLAY_NOTIFICATION_HEADER] je mozne pretypovat na STRUCTURE [TARGET_DEVICE_CUSTOM_NOTIFICATION].
+   H. Ak [PPLUGPLAY_NOTIFICATION_HEADER.Event]==[GUID_TARGET_DEVICE_REMOVE_COMPLETE], tak WINDOWS informuje DRIVER, ze predchadzajuce odstranenie DEVICE OBJECT bola uspesne dokoncane. STRUCTURE [PPLUGPLAY_NOTIFICATION_HEADER] je mozne pretypovat na STRUCTURE [TARGET_DEVICE_CUSTOM_NOTIFICATION].
+69. WINDOWS umoznuje DRIVERS zasielat NOTIFICATIONS o CUSTOM PNP EVENTS. CUSTOM NOTIFICATIONS o CUSTOM PNP EVENTS sa realizuju nasledujucim sposobom.
+   A. Definuje sa CUSTOM STRUCTURE, ktora je DERIVED zo STRUCTURE [TARGET_DEVICE_CUSTOM_NOTIFICATION]. CUSTOM STRUCTURE moze obsahovat dodatocne FIELDS do ktorych sa ukladaju CUSTOM DATA asociovane s CUSTOM PNP EVENT.
+   B. Definuje sa CUSTOM GUID, ktory sa ulozi do FIELD [TARGET_DEVICE_CUSTOM_NOTIFICATION.Event]. Tento GUID identifikuje CUSTOM PNP EVENT.
+   !!! C. Kedze STRUCTURE [TARGET_DEVICE_CUSTOM_NOTIFICATION] moze obsahovat BINARNE aj STRING DATA, FIELD [TARGET_DEVICE_CUSTOM_NOTIFICATION.NameBufferOffset] urcuje OFFSET od ktoreho sa su vo FIELD [TARGET_DEVICE_CUSTOM_NOTIFICATION.CustomDataBuffer] ulozene STRING DATA. DATA pred tymto OFFSET su povazovane za BINARY DATA. Hodnota -1 znamena, ze CUSTOM PNP EVENT NEOBSAHUJE STRING DATA.
+   D. Zavola sa FUNCTION IoReportTargetDeviceChange(), alebo FUNCTION IoReportTargetDeviceChangeAsynchronous(). FUNCTION IoReportTargetDeviceChange() SYNCHRONNE caka na odoslanie NOTIFICATION, zatial co FUNCTION IoReportTargetDeviceChangeAsynchronous() ASYNCHRONNE odosle NOTIFICATION a okamzite skonci, necakajuc na ukoncenie distribucie NOTIFICATION. FUNCTION IoReportTargetDeviceChangeAsynchronous() umoznuje v 3. PARAMETERI definovat aj CALLBACK, ktory sa zavola po skonceni NOTIFICATION.
+!!! 70. CUSTOM PNP EVENT NOTIFICATIONS mozu byt zasielane do KERNEL MODE PROGRAMS (DRIVERS) aj USER MODE PROGRAMS.
+   A. CUSTOM PNP EVENT NOTIFICATIONS su zasielane do KERNEL MODE PROGRAMS, ak ten zaregistruje odber NOTIFICATIONS pomocou FUNCTION IoRegisterPlugPlayNotification() s 1. PARAMETER nastavenym na hodnotu [EventCategoryTargetDeviceChange]. Zaroven 3. PARAMETER MUSI obsahovat [FILE_OBJECT] na DRIVER, ktory je monitorovany.
+   B. CUSTOM PNP EVENT NOTIFICATIONS su zasielane do USER MODE PROGRAMS, ak ten zaregistruje odber NOTIFICATIONS pomocou FUNCTION RegisterDeviceNotification(), kde FIELD [DEV_BROADCAST_HANDLE.DriverHandle] obsahuje HANDLE na monitorovany DRIVER.
+71. PNP EVENT NOTIFICATIONS ovplyvnuju cinnost DRIVER, ktoreho PNP EVENT NOTIFICATIONS zachytavaju nasledujucim sposobom.
+   A. PNP EVENT NOTIFICATIONS typu [GUID_TARGET_DEVICE_QUERY_REMOVE] su zasielane do APPLICATIONS, ktore ocakavaju NOTIFICATIONS PREDTYM ako do DRIVER je zaslana a spracovana IRP s MINOR FUNCTION [IRP_MN_QUERY_REMOVE_DEVICE].
+   B. PNP EVENT NOTIFICATIONS typu [GUID_TARGET_DEVICE_REMOVE_CANCELLED] su zasielane do APPLICATIONS, ktore ocakavaju NOTIFICATIONS POTOM ako do DRIVER je zaslana a spracovana IRP s MINOR FUNCTION [IRP_MN_CANCEL_REMOVE_DEVICE].
+   C. PNP EVENT NOTIFICATIONS typu [GUID_TARGET_DEVICE_REMOVE_COMPLETE] su zasielane do APPLICATIONS, ktore ocakavaju NOTIFICATIONS POTOM ako do DRIVER je zaslana a spracovana IRP s MINOR FUNCTION [IRP_MN_REMOVE_DEVICE].
+//-------------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------------
+Zhrnutie cinnosti, ktore musia vykonat DISPATCH ROUTINES spracujuce IRP typu [IRP_MJ_PNP].
+
+1. DISPATCH ROUTINE spracujuca IRP s MINOR FUNCTION [IRP_MN_START_DEVICE] musi vykonat nasledujuce kroky.
+   A. Zaslat na HW DEVICE IO OPERATIONS, ktore spustia HW DEVICE.
+   B. Povolit DEVICE INTERFACES.
+   C. Spustit IRP QUEUES, aby mohli zasielat IRP na HW DEVICE.
+2. DISPATCH ROUTINE spracujuca IRP s MINOR FUNCTION [IRP_MN_QUERY_STOP_DEVICE] musi vykonat nasledujuce kroky.
+   A. Zistit, ci HW DEVICE je pripravene byt zastavene.
+   B. Zastavit IRP QUEUES, aby nezasielali IRP do HW DEVICE.
+   C. Pockat na skoncenie VSETKYCH IRP, ktore HW DEVICE prave spracovava.
+3. DISPATCH ROUTINE spracujuca IRP s MINOR FUNCTION [IRP_MN_CANCEL_STOP_DEVICE] musi znova spustit IRP QUEUES, aby zasielali IRP do HW DEVICE.
+4. DISPATCH ROUTINE spracujuca IRP s MINOR FUNCTION [IRP_MN_STOP_DEVICE] musi zaslat na HW DEVICE IO OPERATIONS, ktore zastavia HW DEVICE.
+5. DISPATCH ROUTINE spracujuca IRP s MINOR FUNCTION [IRP_MN_QUERY_REMOVE_DEVICE] musi vykonat nasledujuce kroky.
+   A. Zistit, ci HW DEVICE je pripravene byt zastavene.
+   B. Zastavit IRP QUEUES, aby nezasielali IRP do HW DEVICE.
+   C. Pockat na skoncenie VSETKYCH IRP, ktore HW DEVICE prave spracovava.
+6. DISPATCH ROUTINE spracujuca IRP s MINOR FUNCTION [IRP_MN_CANCEL_REMOVE_DEVICE] musi znova spustit IRP QUEUES, aby zasielali IRP do HW DEVICE.
+7. DISPATCH ROUTINE spracujuca IRP s MINOR FUNCTION [IRP_MN_REMOVE_DEVICE] musi vykonat nasledujuce kroky.
+   A. Ukoncit vsetky IRP v IRP QUEUES volanim FUNCTION IoCompleteRequest() s ERROR CODE.
+   B. Zastavit IRP QUEUES, aby nezasielali IRP do HW DEVICE a zaroven odmietali vsetky dalsie IRP ich ukoncenim volanim FUNCTION IoCompleteRequest() s ERROR CODE.
+   C. Odregistrovat DEVICE INTERFACES a uvolnit SYMBOLIC LINKS z MEMORY.
+   D. Odstranit DEVICE OBJECT z MEMORY.
+8. DISPATCH ROUTINE spracujuca IRP s MINOR FUNCTION [IRP_MN_SURPRISE_REMOVAL] musi vykonat nasledujuce kroky.
+   A. Ukoncit vsetky IRP v IRP QUEUES volanim FUNCTION IoCompleteRequest() s ERROR CODE.
+   B. Zastavit IRP QUEUES, aby nezasielali IRP do HW DEVICE a zaroven odmietali vsetky dalsie IRP ich ukoncenim volanim FUNCTION IoCompleteRequest() s ERROR CODE.
+   C. Vykona DISABLE vsetkych DEVICE INTERFACES, ale NEUVOLNI SYMBOLIC LINKS z MEMORY.
+   D. Zaslat na HW DEVICE IO OPERATIONS, ktore ho zastavia.
+//-------------------------------------------------------------------------------------------------------

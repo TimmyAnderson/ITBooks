@@ -1,0 +1,27 @@
+//-------------------------------------------------------------------------------------------------------
+1. Solution demonstruje implementaciu KOMPLETNEHO DRIVER s IRP QUEUEING.
+2. DRIVER demonstruje pouzitie CUSTOM STRUCTURE [DEVQUEUE] na implementaciu IRP QUEUEING.
+3. DRIVER ako reakciu na IOCTL vytvori IRP typu [IRP_MJ_READ], ktory zasle SAM DO SEBA cim sa emuluje zaslanie IRP z DRIVER VYSSIE v DEVICE OBJECT STACK.
+!!! 4. DISPATCH ROUTINE spracujuca IRP typu [IRP_MJ_READ] zaradi IRP do IRP QUEUE odkial je IRP vybrate a spracovane za pomoci DPC ROUTINE cim sa simuluje realne spracovanie IRP, ktore sa tiez spravidla ukoncuje v DPC ROUTINE, ktora je vsak vyvolavana z INTERRUPT HANDLER.
+5. Realizacia IRP QUEUEING vyzaduje nasledujuci CODE.
+   A. V DEVICE EXTENSION STRUCTURE sa definuje FIELD typu [DEVQUEUE], ktory reprezentuje CUSTOM IRP QUEUE.
+   B. Do FIELD [GENERIC_INIT_STRUCT.MQueues.MDeviceQueue] sa ulozia POINTERS na STRUCTURES [DEVQUEUE] ulozene v DEVICE EXTENSION STRUCTURE.
+   C. Do FIELD [GENERIC_INIT_STRUCT.MQueues.MStartIO] sa ulozia StartIO() CUSTOM FUNCTIONS.
+   D. Do FIELD [GENERIC_INIT_STRUCT.MNumberOfQueues] sa ulozi pocet STRUCTURES [DEVQUEUE].
+   E. Zavola sa FUNCTION InitializeGenericExtension(), ktora nainicializuje STRUCTURE [GENERIC_EXTENSION].
+   !!! F. Ak spracovanie IRP bude trvat dlhsiu dobu a je ho nutne zapisat do [DEVQUEUE] musi DISPATCH ROUTINE pre dany IRP NAJPRV zavolat FUNCTION IoMarkIrpPending(), pretoze IRP bude vykonane ASYNCHRONNE.
+   !!! G. Nasledne musi DISPATCH ROUTINE zavolat CUSTOM FUNCTION StartPacket(), ktorou IRP zapise do [DEVQUEUE].
+   !!! H. DISPATCH ROUTINE MUSI vratit ako RETURN VALUE hodnotu [STATUS_PENDING], pretoze IRP bude spracovane ASYNCHRONNE.
+   !!!!! I. Pocas volania CUSTOM FUNCTION StartPacket() tato FUNCTION vola CUSTOM FUNCTION StartIO(), ktora sa zaregistrovala pri inicializacii [GENERIC_EXTENSION].
+   !!! J. Ulohou CUSTOM FUNCTION StartIO() je zaslat do HW DEVICE prikazy, ktore spustia IO OPERATION, ktoru IRP reprezentuje. V tomto testovacom DRIVER CUSTOM FUNCTION StartIO() zavola FUNCTION KeInsertQueueDpc(), ktorou prinuti DPC SYSTEM vykonat DPC ROUTINE.
+   !!! K. DPC ROUTINE je standardne v INTERRUPT HANDLER. Tu je vyvolana z CUSTOM FUNCTION StartIO(). Jej ulohou je ukoncit IRP co realizuje volanim FUNCTION IoCompleteRequest().
+   !!!!! L. DPC ROUTINE musi zavolat CUSTOM FUNCTION StartNextPacket(), ktorym spusti vykonavanie IRP, ktore su ulozene v [DEVQUEUE]. Ak je [DEVQUEUE] tak CUSTOM FUNCTION StartNextPacket() nic nerobi.
+   !!! M. CANCELLATION ROUTINE, ktora bola zaslana ako PARAMETER do CUSTOM FUNCTION StartPacket() je volana v pripade, ze IRP bol CANCELLED. Jej CODE MUSI zavolat CUSTOM FUNCTION CancelRequest(), ktorou odstrani CANCELLED IRP.
+   !!!!! N. DRIVER pri pouzivani [DEVQUEUE] MUSI v DISPATCH ROUTINE spracujucej IRP typu [IRP_MJ_CLEANUP] zavolat CUSTOM FUNCTION CleanupRequests(), ktora odstrani VSETKY IRP pre dany [FILE_OBJECT] z [DEVQUEUE].
+6. DRIVER simuluje aj pouzitie CUSTOM DPC ROUTINE, ktora ukoncuje IRP. Pouzitie CUSTOM DPC ROUTINE sa realizuje v nasledujucich krokoch.
+   A. Definuje sa DPC ROUTINE, ktora bude vyvolavana DPC systemom.
+   B. V DEVICE EXTENSION STRUCTURE sa definuje FIELD typu [KDPC], ktory reprezentuje DPC STRUCTURE.
+   C. V CUSTOM ROUTINE AddDevice() sa zavola FUNCTION KeInitializeDpc(), ktora inicializuje FIELD typu [KDPC] v DEVICE EXTENSION STRUCTURE. FUNCTION KeInitializeDpc() prijima POINTER na DPC ROUTINE.
+   !!! D. Ak CODE potrebuje zaslat WORK ITEM do DPC, musi zavolat FUNCTION KeInsertQueueDpc(). DPC system nasledne vyvola zaregistrovanu DPC ROUTINE.
+!!!!! 7. Pri pouzivani DEVQUEUE sa v DISPATCH ROUTINES NESMIE volat FUNCTION IoAcquireRemoveLock(). Tuto FUNCTION je NUTNE zavolat AZ v CUSTOM FUNCTION StartIO(). Je to NEVYHNUTNE, pretoze ak som tu zavolal FUNCTION IoAcquireRemoveLock(), tak pri IRP CANCELLATION (ked som cez CTRL-C uzatvoril beziaci TEST PROGRAM) a v DEVQUEUE boli nejake IRP, tieto sa sice UVOLNILI (boli CANCELLED), ale LOCK NEBOL DEKREMENTOVANY. Vysledok bol taky, ze sice REBOOT VIRTUAL MACHINE isiel korektne, ale pri pokuse odstranit DRIVER doslo k LOCK a WINDOWS do nekonecna cakal na uvolnenie LOCK. Ak sa FUNCTION IoAcquireRemoveLock() zavola az vo FUNCTION StartIO() k tomuto problemu nedochadza, pretoze FUNCTION StartIO() sa vola pri SPUSTENI SPRACOVANI IRP a teda ak su este IRP v DEVQUEUE, tak sa FUNCTION IoAcquireRemoveLock() pre ne nezavolala. Tym padom je LOCK vzdy iba na maximalnej hodnote 1, ktora klesne na 0, ked sa prace spracovany IRP ukonci. Tym padom NEDOCHADZA k VIACNASOBNEMU zamknutiu REMOVE LOCK.
+//-------------------------------------------------------------------------------------------------------

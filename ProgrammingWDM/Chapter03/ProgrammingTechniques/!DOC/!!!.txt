@@ -1,0 +1,356 @@
+//-------------------------------------------------------------------------------------------------------
+1. Solution popisuje zakladne programatorske techniky pouzivane pri programovani WDM DRIVERS.
+2. V KERNEL MODE je mozne FUNCTIONS, ktore WDK poskytuje rozdelit do nasledujucich kategorii.
+   A. IO MANAGER FUNCTIONS. Maju PREFIX 'Io'. Zakladne FUNCTIONS pre pracu s DRIVERS. Patria sem napriklad FUNCTIONS na vytvaranie DEVICE_OBJECT.
+   B. PROCESS STRUCTURE FUNCTIONS. Maju PREFIX 'Ps'. FUNCTIONS pre pracu s THREADS v KERNEL MODE.
+   C. MEMORY MANAGER FUNCTIONS. Maju PREFIX 'Mm'. FUNCTIONS pre pracu MEMORY PAGES a mapovanim VIRTUAL ADDRESSES do PHYSICAL MEMORY.
+   D. EXECUTIVE SUPPORT FUNCTIONS. Maju PREFIX 'Ex'. FUNCTIONS pre pracu s HEAP a SYNCHRONIZATION SERVICES.
+   E. OBJECT MANAGER FUNCTIONS. Maju PREFIX 'Ob'. FUNCTIONS pre OBJECT MANAGEMENT. Obsahuje FUNCTIONS, ktore umoznuju REFERENCE COUNTING ako aj FUNCTIONS, ktore konvertuju HANDLES na OBJECTS, ktore HANDLES reprezentuju.
+   F. SECURITY REFERENCE MONITOR FUNCTIONS. Maju PREFIX 'Se'. FUNCTIONS pre vykonavanie SECURITY CHECKS.
+   G. RUNTIME LIBRARY FUNCTIONS. Maju PREFIX 'Rtl'. Podporne FUNCTIONS pre pracu napriklad s COLLECTIONS ci STRINGS.
+   H. REGISTRY a FILE SUPPORT FUNCTIONS. Maju PREFIX 'Zw'. Podporne FUNCTIONS pre pracu s REGISTRY a FILES.
+   I. KERNEL FUNCTIONS. Maju PREFIX 'Ke'. FUNCTIONS pre vykonavanie LOW LEVEL SYNCHRONIZATIONS medzi THREADS a CPUs.
+   !!! J. HAL FUNCTIONS. Maju PREFIX 'Hal'. FUNCTIONS pre pracu s HAL. HAL je zodpovedny za vytvorenie SW ABSTRAKCIE nad fyzickym HW. HAL zapuzdruje napriklad pracu s INTERUPTS ci MEMORY MAPPED DEVICES.
+!!!!! 3. Standardne C a C++ FUNCTIONS ci CLASSES je SILNE NEDOPORUCOVANE pouzivat v KERNEL MODE DRIVERS. Dokonca ani STRING FUNCTIONS NIE SU BEZPECNE. Namiesto nich je treba pouzivat NASLEDUJUCE LIBRARIES.
+   A. FUNCTIONS z LIBRARY [ntstrsafe.h] obsahuju pomocne FUNCTIONS pre pracu so STRINGS.
+   B. FUNCTIONS z LIBRARY [ntintsafe.h] obsahuju pomocne FUNCTIONS pre konverziu NUMBERS a POINTERS ci pre vykonavanie POINTER ARITHMETIC.
+!!! 4. Kedze mnohe SUPPORT 'FUNCTIONS' v KERNEL MODE su implementovane cez MACROS, tak je treba davat pozor, aby sa za MACRO PARAMETERS nedosadili EXPRESSIONS so SIDE EFFECTS (napriklad OPERATOR++), lebo ten moze MACRO ROZVINUT VIACKRAT (napriklad ak v [Min(X,Y) (((X)<(Y)) ? (X) : (Y))] zavolam Min(A++,B), tak sa A++ moze vykonat 2 KRAT) a dojde k nekorektnym vysledkom.
+!!!!! 5. Kedze NIE JE mozne JEDNOZNACNE a PLATFORM INDEPENDENT urcit ktora KERNEL MODE FUNCTION je realizovana ako FUNCTION a ktora ako MACRO, tak plati zasada, ze ARGUMENTS KERNEL MODE FUNCTIONS by NIKDY NEMALI OBSAHOVAT EXPRESSIONS so SIDE EFFECTS ako je napriklad OPERATOR++.
+6. V KERNEL MODE PROGRAMMING existuju 3 rozne sposoby akymi je mozne identifikovat ERRORS.
+   A. RETURN VALUE. Vacsina KERNEL FUNCTIONS vracia RETURN VALUE TYPE [NTSTATUS]. Ten ma vnutornu strukturu podobnu HRESULT a v pripade ERROR obsahuje ERROR CODE.
+   B. STRUCTURED EXCEPTION HANDLING (SEH). SEH je SUCASTOU WINDOWS a pouziva sa na detekciu rozlicnych ERRORS, ako pristup k NEEXISTUJUCEJ MEMORY ci DELENIE 0, ale aj k ocakavanym udalostiam ako pristup k MEMORY, ktorej PAGE ma nastaveny PROTECTION na GUARD.
+   C. BUG CHECK. V pripade FATAL KERNEL ERROR sa spusti BUG CHECK po ktorom nasleduje RESTART PC.
+!!!!! 7. Standardne C++ EXCEPTIONS by sa v KERNEL MODE PROGRAMMING NESMU POUZIVAT. MICROSOFT NEGARANTUJE, ze budu korektne bezat.
+8. NTSTATUS je TYPE, ktory sa pouziva na indikaciu uspesnosti, alebo neuspesnosti vykonania KERNEL, alebo CUSTOM FUNCTION. Jeho realny TYPE je [LONG] a jeho vnutorna struktura ma nasledujuci tvar.
+   A. CODE (BITS 0-15). Obsahuje SUCCESS CODE, alebo ERROR CODE, ktory SUCCESS, alebo ERROR STATE blizie popisuje.
+   B. FACILITY (BITS 16-27). Obsahuje zdroj (COMPONENT), ktory vratil NTSTATUS.
+   C. RESERVED FLAG (BIT 28). Rezervovany BIT.
+   D. CUSTOMER FLAG (BIT 29). Identifikuje ci NTSTATUS obsahuje CUSTOM hodnotu.
+   E. SEVERITY FLAGS (BITS 30-31). Obsahuje informaciu ci NTSTATUS obsahuje SUCCESS (31. BIT=0, 30. BIT=0), INFORMATIONAL (31. BIT=0, 30. BIT=1), WARNING (31. BIT=1, 30. BIT=0) a ERROR (31. BIT=1, 30. BIT=1).
+!!! 9. Na testovanie ci hodnota NTSTATUS obsahuje SUCCESS, alebo ERROR je treba pouzivat nasledujuce MACROS.
+   A. MACRO NT_SUCCESS() testuje ci SEVERITY obsahuje SUCCESS STATE.
+   B. MACRO NT_INFORMATION() testuje ci SEVERITY obsahuje INFORMATIONAL STATE.
+   C. MACRO NT_WARNING() testuje ci SEVERITY obsahuje WARNING STATE.
+   D. MACRO NT_ERROR() testuje ci SEVERITY obsahuje ERROR STATE.
+!!! 10. Ak IRP skonci vratenim ERROR CODE v NTSTATUS tento ERROR sa v ZAVISLOSTI ci je nastaveny CUSTOMER FLAG interpretuje nasledovne.
+   A. Ak CUSTOMER FLAG NIE JE NASTAVENY, tak sa CODE z NTSTATUS premapuje na STANDARDNU HRESULT ERROR CODE a ten je vrateny vo FUNCTION GetLastError(), ktora sa vola po skonceni USER MODE WIN32 API FUNCTION, ktora IRP sposobila.
+   B. Ak CUSTOMER FLAG JE NASTAVENY, tak sa CODE z NTSTATUS je vrateny vo FUNCTION GetLastError(), ktora sa vola po skonceni USER MODE WIN32 API FUNCTION, ktora IRP sposobila.
+!!! 11. SEH EXCEPTIONS su PLNE PODPOROVANE vo WDM, kedze su sucastou WINDOWS.
+12. Pomocou SEH je mozne zachytit iba NIEKTORE TYPY EXCEPTIONS.
+   A. Vsetky EXCEPTIONS signalizovane ExRaiseStatus() a inymi podobnymi FUNCTIONS.
+   B. Pokus o DEREFERENCING INVALID USER MODE POINTERS.
+   C. DEBUG, alebo BREAKPOINT EXCEPTIONS.
+   D. INTEGER OVERFLOW (ASSEMBLY INSTRUCTION 'INTO').
+   E. INVALID ASSEMBLY OPCODE.
+   F. DIVIDE by ZERO EXCEPTIONS ako pre INTEGER, tak i FLOATING-POINT VALUES.
+!!!!! 13. Niektore EXCEPTIONS NIE JE MOZNE cez SEH ZACHYTIT. Tieto sposobia BUG CHECK - PAD SYSTEMU.
+   A. Pokus o DEREFERENCING INVALID KERNEL MODE POINTERS.
+   B. BOUND INSTRUCTION EXCEPTIONS.
+!!!!! 14. SEH EXCEPTIONS su implementovane nasledujucim sposobom.
+   !!! A. WINDOWS uklada EXCEPTION FRAMES do ROVNAKEHO STACKU v ktorom su prenasane PARAMETERS a RETURN VALUE pri volani FUNCTIONS resp. LOCAL VARIABLES.
+   B. WINDOWS ma dedikovany REGISTER do ktoreho sa uklada POINTER na CURRENT EXCEPTION FRAME, pricom kazdy FRAME ma POINTER na PRECHADZAJUCI FRAME.
+   C. Pri vzniku EXCEPTION dochadza STACK UNWIND pricom okrem STACK UNWIND sa vykonava aj EXCEPTION FRAMES, az kym sa nenajde HANDLER, kde je vyvolana EXCEPTION HANDLED.
+   !!! D. Ak EXCEPTION JE NIE HANDLED, tak sa dostane az na VRCHOL STACKU, kde ma WINDOWS vlozeny specialne HANDLER pre UNHANDLED EXCEPTIONS.
+!!!!! 15. Standardne C++ EXCEPTIONS NIE su vo WDM PODPOROVANE, pretoze vo WDM nevykonava inicializaciu C++ RUNTIME a bez jej vykonania nie je mozne C++ EXCEPTIONS realizovat.
+16. Zachytavanie SEH EXCEPTIONS sa robim pomocou bloku '__except' pre ktory platia nesledujuce pravidla.
+   A. Za '__try' moze nasledovat BUD '__except', alebo '__finally', ALE NIE OBIDVE NARAZ.
+   B. Za '__try' moze nasledovat IBA JEDEN '__except' blok.
+   C. V '__except' je nutne vratit JEDNU z 3 HODNOT: EXCEPTION_EXECUTE_HANDLER, EXCEPTION_CONTINUE_SEARCH a EXCEPTION_CONTINUE_EXECUTION na zaklade ktoreho sa OS rozhoduje ci dany '__except' blok vykona.
+17. EXPRESSIONS v '__except' klauzule mozu nadobudat jednu z 3 hodnot na zaklade ktorej sa urcuje, ktora INSTRUKCIA PO VZNIKU EXCEPTION sa vykona.
+   A. VALUE [EXCEPTION_EXECUTE_HANDLER]. EXCEPTION je '__except' BLOCK ZACHYTENA a nasledne je vykonany CODE v '__except' BLOCK.
+   !!! B. VALUE [EXCEPTION_CONTINUE_EXECUTION]. Po vykonani EXCEPTION FILTER, ktory moze vykonat OPRAVU ERROR, ktora viedla k volaniu EXCEPTION dojde k POKRACOVANIU VYKONAVANIA CODE v tom mieste, kde doslo k vzniku EXCEPTION. Tato VALUE by sa v KERNEL MODE NEMALA POUZIVAT, kedze KERNEL MODE CODE nema ako vykonat opravu vzniknutej EXCEPTION.
+   C. VALUE [EXCEPTION_CONTINUE_SEARCH]. Dany '__except' BLOCK je IGNOROVANY a pokracuje sa vo hladani dalsieho '__except' BLOCKU.
+18. Postupnost krokov, ktore sa vykonaju ak '__except' vracia [EXCEPTION_EXECUTE_HANDLER] je nasledovna.
+   A. Vykona sa prehladavanie STACK, pricom sa hlada EXCEPTION FILER, ktory by vrati VALUE [EXCEPTION_EXECUTE_HANDLER].
+   B. Pri prehladavani STACK sa vykonavaju sa EXCEPTION FILTERS az kym sa nenajde taky, ktory vracia VALUE [EXCEPTION_EXECUTE_HANDLER].
+   C. Vykona sa GLOBAL UNWIND od vzniku EXCEPTION az po EXCEPTION FILTER, ktory vratil VALUE [EXCEPTION_EXECUTE_HANDLER].
+   D. Vykona sa CODE v '__except' BLOCK.
+   E. Program pokracuje vykonavanim CODE ZA '__except' BLOCK.
+19. Postupnost krokov, ktore sa vykonaju ak '__except' vracia [EXCEPTION_CONTINUE_EXECUTION] je nasledovna.
+   A. Vykona sa EXCEPTION FILTER vracajuci VALUE [EXCEPTION_CONTINUE_EXECUTION].
+   !!! B. CODE v EXCEPTION FILTER vykona NAPRAVU CHYBY, ktora SPOBILA EXCEPTION.
+   C. Kod pokracuje na PRESNE TEJ ISTEJ CPU INTRUCTION, ktora SPOSOBILA EXCEPTION. Kedze EXCEPTION FILTER vykonal NAPRAVU, tak k EXCEPTION uz teraz NEDOJDE.
+!!!!! 20. V KERNEL MODE by sa NIKDY nemala v EXCEPTION FILTER vracat VALUE [EXCEPTION_CONTINUE_EXECUTION], pretoze KERNEL MODE na rozdiel od USER MODE nedokaze vykonat napravu ERROR, ktora viedla k vzniku EXCEPTION. Pri pokusoch mi vratenie VALUE [EXCEPTION_CONTINUE_EXECUTION] sposobilo vytocenie CPU a DRIVER STUHOL.
+!!! 21. CODE v '__except' EXPRESSION moze obsahovat rozlicne typy EXPRESSIONS.
+   A. Vratenie niektorej z CONSTANTS [EXCEPTION_EXECUTE_HANDLER], [EXCEPTION_CONTINUE_EXECUTION], alebo [EXCEPTION_CONTINUE_SEARCH].
+   B. LUBOVOLNU EXPRESSION vratane CONDITIONAL OPERATOR [(Condition) ? TRUE_BRANCH : FALSE_BRANCH].
+   C. VIACERO EXPRESSIONS oddelenych OPERATOROM ','. V tomto pripade POSLEDNA EXPRESSION musi vratit niektoru z VALUES [EXCEPTION_EXECUTE_HANDLER], [EXCEPTION_CONTINUE_EXECUTION], alebo [EXCEPTION_CONTINUE_SEARCH] a ta sa pouzije na vyhodnotenie celej '__except' EXPRESSION.
+   !!! D. Volanie FUNCTION, ktora vrati niektoru z VALUES [EXCEPTION_EXECUTE_HANDLER], [EXCEPTION_CONTINUE_EXECUTION], alebo [EXCEPTION_CONTINUE_SEARCH].
+!!!!! 22. WINDOWS definuje 2 FUNCTIONS, ktore je mozne volat v '__except' EXPRESSION na ziskanie podrobnosti o EXCEPTION.
+   A. FUNCTION GetExceptionCode(). Tuto FUNCTION je mozne volat v '__except' EXPRESSION i v EXCEPTION BLOCK. Vracia hodnotu NTSTATUS obsahujucu ERROR CODE aktualnej EXCEPTION.
+   B. FUNCTION GetExceptionInformation(). Tuto FUNCTION je mozne volat IBA v '__except' EXPRESSION. Vracia STRUCTURE EXCEPTION_POINTERS, ktora obsahuje EXCEPTION CODE, EXCEPTION FLAGS a mnozstvo inych informacii.
+!!!!! 23. V '__except' EXPRESSION su VARIABLES deklarovane vo VNUTRI '__try' BLOKU STALE PLATNE. STACK UNWIND sa robi az po VYHODNOTENI '__except' EXPRESSIONS a najdeni tej '__except' EXPRESSION, ktora EXCEPTION SPRACUVAVA (VALUES [EXCEPTION_EXECUTE_HANDLER], alebo [EXCEPTION_CONTINUE_EXECUTION]).
+!!!!! 24. Ak FUNCTION1() ma TRY-EXCEPTION BLOCK, pricom v TRY BLOK vola FUNCTION2(), ktora ma TRY-FINALLY BLOCK, tak FINALLY BLOCK vo FUNCTION2() sa vykona AZ POTOM co sa vykona '__except' BLOCK vo FUNCTION1().
+25. SEH EXCEPTIONS je mozne vyhadzovat v CODE pomocou nasledujucich FUNCTIONS.
+   A. FUNCTION ExRaiseStatus() umoznuje hodit NTSTATUS hodnotu ako SEH EXCEPTION.
+   B. FUNCTION ExRaiseAccessViolation() hodi STATUS_ACCESS_VIOLATION ako SEH EXCEPTION.
+   C. FUNCTION ExRaiseDataTypeMisalignment() hodi STATUS_DATATYPE_MISALIGNMENT ako SEH EXCEPTION.
+!!!!! 26. SEH EXCEPTIONS su VYSOKO NEEFEKTIVNE a NEMALI by sa pouzivat na RIADENIE TOKU CODE.
+!!! 27. Pomocou FUNCTION KeBugCheckEx() je mozne vyvolat PAD SYSTEMU (BUG CHECK) (BLUE SCREEN OF DEAD). V PARAMETERS FUNCTION KeBugCheckEx() je mozne definovat 4 INTEGER VALUES, ktore sa zobrazia v BLUE SCREEN OF DEAD.
+!!!!! 28. FUNCTION KeBugCheckEx() sa NIKDY NEUKONCI. Vysledkom je RESTART SYSTEMU, alebo ina ACTION, ktoru je mozne nastavit v ADVANCED PROPERTIES PC. Tu je mozne napriklad nastavit vytvorenie KERNEL DUMP, alebo nastavit AUTOMATICKY RESTART SYSTEMU.
+29. WINDOWS deli ADDRESS SPACE podla viacerych kriterii.
+   A. USER MODE ADDRESS SPACE vs. KERNEL MODE ADDRESS SPACE.
+   B. ADDRESS SPACE odkazujuca na PAGED MEMORY vs. ADDRESS SPACE odkazujuca na NON-PAGED MEMORY.
+30. PAGED MEMORY je MEMORY, ktoru moze WINDOWS kedykolvek presunut z PHYSICAL MEMORY na DISK. USER MODE MEMORY je VZDY PAGED MEMORY.
+31. NON-PAGED MEMORY je MEMORY, ktora je VZDY ulozena v PHYSICAL MEMORY a NEMOZE BYT presunuta na DISK.
+!!!!! 32. NON-PAGED MEMORY je mozne ziskat 2 sposobmi.
+   A. KERNEL STACK je VZDY NON-PAGED MEMORY. Jeho dlzka je vsak limitovana priblizne na 3 PAGES (12-24 KB).
+   B. NON-PAGED POOL. Je to DYNAMICKA MEMORY, ktoru je mozne alokovat pomocou FUNCTION ExAllocateMemory().
+!!! 33. USER MODE ADDRESS SPACE je CELA referovana na PAGED MEMORY.
+!!! 34. KERNEL MODE ADDRESS SPACE je rozdelena, pricom cast ADDRESS SPACE referuje na PAGED MEMORY a cast ADDRESS SPACE referuje na NON-PAGED MEMORY.
+!!!!! 35. Zatial co KERNEL MODE ADDRESS SPACE je ZDIELANY VSETKYMI PROCESSES, tak KAZDY PROCESS ma vlastny a NEZAVISLY USER MODE ADDRESS SPACE.
+!!!!! 36. Medzi THREADS a ADDRESS SPACE platia nasledujuce vztahy.
+   A. THREAD ma vzdy asociovany ADDRESS SPACE s PROCESS pre ktory bol THREAD vytvoreny. Tato asociacia je dana hodnotou CPU REGISTERS. Pri CONTEXT SWITCH sa hodnota tychto CPU REGISTROV meni a preto sa meni aj ADDRESS SPACE, ktory je asociovany s danym THREADOM.
+   !!! B. To aky ADDRESS SPACE ma THREAD asociovany zavisi od PROCESSU, ktory ho vytvoril. Kazdy PROCESS ma VLASTNY USER MODE ADDRESS SPACE. Z toho vyplyva, ze THREADS, ktore bezia v TOM ISTOM PROCESSE maju namapovany TEN ISTY USER MODE ADDRESS SPACE.
+   C. KERNEL MODE ADDRESS SPACE je SPOLOCNY pre VSETKY PROCESSES a tym padom aj pre vsetky THREADS.
+   !!! D. KERNEL MODE a USER MODE NEMAJU OSOBITNE THREADS, ktore by pracovali iba v KERNEL MODE a iba USER MODE. CODE vykonavany v KERNEL MODE pouziva TIE ISTE THREADS, ktore boli vytvorene pre USER MODE PROCESSES. No takisto si KERNEL MODE CODE moze vytvorit aj vlastne THREADS, ktore nebudu pridelene ziadnemu z USER MODE PROCESSES.
+   E. CODE v KERNEL MODE moze byt vykonavany na LUBOVOLNOM THREADE, ktory je vytvoreny v SYSTEME. Ak USER MODE CODE spusti IO OPERATION, tak CODE v KERNEL MODE, ktory tuto IO OPERATION spracovava NEMUSI BEZAT na tom istom THREADE, ako ten z ktoreho USER MODE CODE tuto IO OPERATION spustil.
+   !!! F. Kedze KERNEL MODE spracujuci IO OPERATION z USER MODE NEMA ISTOTU, ze bezi na tom istom THREADE ako USER MODE z ktoreho bola IO OPERATION spustena, a preto NESMIE priamo pouzivat POINTERS na USER MODE ADDRESS SPACE ako napriklad BUFFERS zaslane USER MODE CODE, do ktorych sa ma vysledok OPERATION zapisat.
+!!! 37. Vo WINDOWS je MEMORY rozdelena do PAGES. PAGE je NAJMENSIA JEDNOTKA MEMORY, ktora moze byt presuvana medzi PHYSICAL MEMORY (RAM) a DISKOM.
+38. WDM definuje viacero MACROS, ktore je mozne pri praci s MEMORY PAGES pouzit.
+   A. PAGE_SIZE urcuje velkost PAGE. Zvycajne je 4 KB, alebo 8 KB.
+   B. PAGE_SHIFT urcuje pocet BITS, o ktore je nutne posunut hodnotu 1, aby som ziskal velkost PAGE_SIZE. Plati, ze [PAGE_SIZE=1<<PAGE_SHIFT].
+   C. BOUND_TO_PAGE(Address) vrati NAJBLIZSIU VYSSIU ADDRESU, ktora je zarovnana na PAGE_SIZE. Ak napriklad PAGE_SIZE je 4 KB, tak BOUND_TO_PAGE(10000)=12288.
+   D. PAGE_ALIGN(Address) vrati NAJBLIZSIU NIZSIU ADDRESU, ktora je zarovnana na PAGE_SIZE. Ak napriklad PAGE_SIZE je 4 KB, tak BOUND_TO_PAGE(10000)=8192.
+   E. BYTES_TO_PAGES(Size) vracia pocet PAGES, ktore su potrebne na ulozenie 'Size' BYTES, pricom sa pocita, ze 0. BYTE bude ulozeny na ZACIATKU PAGE. Ak napriklad PAGE_SIZE je 4 KB, tak BYTES_TO_PAGES(10000)=3.
+   F. BYTE_OFFSET(Address) vrati OFFSET od zaciatku NAJBLIZSEJ NIZSEJ PAGE. Ak napriklad PAGE_SIZE je 4 KB, tak BYTE_OFFSET(10000)=1808.
+   G. ADDRESS_AND_SIZE_TO_SPAN_PAGES(Address,Size) vracia pocet PAGES, ktore su potrebne na ulozenie 'Size' BYTES, pricom sa pocita, ze 0. BYTE bude ulozeny na ADDRESS 'Address'. Ak napriklad PAGE_SIZE je 4 KB, tak ADDRESS_AND_SIZE_TO_SPAN_PAGES(10000,3000)=2.
+39. V NON-PAGES MEMORY uklada WINDOWS KRITICKE CASTI KERNEL a DRIVERS, bez ktorych by nemohol WINDOWS korektne fungovat. Priklady komponent, ktore MUSIA byt v NON-PAGES MEMORY.
+   A. MEMORY MANAGER je zodpovedny za PAGING PAGES medzi PHYSICAL MEMORY a DISKOM preto MUSI byt VZDY v PHYSICAL MEMORY.
+   B. HW INTERUPT ROUTINES, ktore su zodpovedne za spracovanie INTERUPTS MUSIA byt v PHYSICAL MEMORY, pretoze INTERUPT sa moze vyskytnut aj pocas vykonavania PAGING (presunu PAGES medzi PHYSICAL MEMORY a DISKOM). Aby tieto INTERUPTS mohli byt obsluhovane aj pocas PAGING, tak su HW INTERUPT ROUTINES ulozene VZDY v PHYSICAL (NON-PAGED) MEMORY.
+!!!!! 40. KERNEL CODE, ktory bezi v IRQL>=DISPATCH_LEVEL NESMIE sposobit PAGING (pristupit k PAGE, ktora NIE JE v PHYSICAL MEMORY), inak dojde k BUG CHECK.
+!!! 41. MACRO PAGED_CODE() sa pouziva na detekciu ci FUNCTION bezi s takym IRQL (<=APC_LEVEL), ktory umoznuje vykonat vo FUNCTION CODE PAGING (pristupit k PAGE, ktora NIE JE v PHYSICAL MEMORY). Ak FUNCTION bezi v IRQL>=DISPATCH_LEVEL a zaroven je v PAGED MEMORY (aj ked v danej chvili moze byt aj v PHYSICAL MEMORY), tak MACRO sposobi v CHECKED BUILD BUG CHECK (BLUE SCREEN OF DEAD). To znaci, ze vdaka MACRO PAGED_CODE() je mozne odhalit chybne umiestnenie FUNCTION v PAGED MEMORY, aj v tom pripade, ze PAGED MEMORY je v danej chvili ulozena v PHYSICAL MEMORY co by bez pouzitia MACRO PAGED_CODE() NESPOSOBILO BUG CHECK avsak v momente ak by sa FUNCTION presunula na DISK a bola znova vyvolana IRQL>=DISPATCH_LEVEL doslo by k BUG CHECK.
+!!!!! 42. Ak sa MACRO PAGED_CODE() pouzije v FREE BUILD, tak vykona kontrolu IRQL a ak plati, ze IRQL>=DISPATCH_LEVEL, tak sposobi ASSERT. V praxi je vysledok taky, ze WINDOWS UPLNE STUHNE. Ak je pripojeny DEBUGGER, tak tento zobrazi ASSERT hlasku.
+!!!!! 43. V CODE, ktoreho ulozenie v PAGED, alebo NON-PAGED MEMORY sa DYNAMICKY MENI (pomocou FUNCTIONS MmLockPagableCodeSection() a MmUnlockPageableImageSection()) sa NESMIE pouzit MACRO PAGED_CODE(). Toto MACRO totizto iba jednoducho kontroluje ci IRQL<DISPATCH_LEVEL. Ak tato podmienka plati - AJ NAPRIEK TOMU, ze CODE je aktualne LOCKED v NON-PAGED MEMORY pomocou FUNCTION MmLockPagableCodeSection() - MACRO PAGED_CODE() generuje INTERRUPT 2C, ktore sposobi BUG CHECK. Preto sa MACRO PAGED_CODE() v takomto CODE NESMIE POUZIVAT.
+!!!!! 44. V CODE, ktoreho ulozenie v PAGED, alebo NON-PAGED MEMORY sa DYNAMICKY MENI (pomocou FUNCTIONS MmLockPagableCodeSection() a MmUnlockPageableImageSection()) sa namiesto MACRO PAGED_CODE() moze pouzit MACRO PAGE_CODE_LOCKED(), ktore NESPOSOBI generovanie BUG CHECK, pretoze DYNAMICKY KONTROLUJE okrem IRQL aj to ci je PAGE v DANEJ CHVILI LOCKED a ak je, tak BUG CHECK sa NEGENERUJE.
+45. Urcovat ci dana PAGE bude ulozena v NON-PAGED PAGE (v PHYSICAL MEMORY), alebo PAGED PAGE (moze byt bud v PHYSICAL MEMORY, alebo na DISKU) je mozne 2 sposobmi.
+   A. V COMPILE TIME pomocou PREPROCESSOR DIRECTIVES.
+   B. V RUN TIME pomocou specializovanych FUNCTIONS, ktore dokazu vykonat LOCK (presun do NON-PAGED MEMORY), alebo ULNOCK (presun do PAGED MEMORY) danej PAGE v PHYSICAL MEMORY.
+46. V COMPILE TIME je mozne nastavovat to ci PAGE bude v NON-PAGED PAGE (v PHYSICAL MEMORY), alebo PAGED PAGE (moze byt bud v PHYSICAL MEMORY, alebo na DISKU) je mozne pomocou nasledujucich PREPROCESSOR DIRECTIVES.
+   A. DIRECTIVE [#pragma alloc_text(PAGE,FunctionName)] urcuje, ze CODE FUNCTION 'FunctionName' sa ulozi PAGED MEMORY. FUNCTION MUSI pouzivat [extern "C"] LINKAGE a vyskyt tejto DIRECTIVE MUSI byt MEDZI DECLARATION a DEFINITION 'FunctionName' FUNCTION.
+   B. DIRECTIVE [#pragma data_seg("PAGEDATA")], urcuje, ze od vyskytu tejto DIRECTIVE v CODE budu VSETKY STATIC DATA VARIABLES ulozene v PAGED MEMORY.
+   C. DIRECTIVE [#pragma data_seg()], urcuje, ze od vyskytu tejto DIRECTIVE v CODE budu VSETKY STATIC DATA VARIABLES ulozene v NON-PAGED MEMORY.
+   !!! D. DIRECTIVE [#pragma code_seg("PAGE")] (moze byt aj [#pragma code_seg("PAGEXXX")], kde 'XXX' je lubovolny text, kedze WINDOWS staci, aby sa SECTION zacinala nazvom 'PAGE'), urcuje, ze od vyskytu tejto DIRECTIVE v CODE budu VSETKY FUNCTIONS ulozene v PAGED MEMORY.
+   !!! E. DIRECTIVE [#pragma code_seg()], urcuje, ze od vyskytu tejto DIRECTIVE v CODE budu VSETKY FUNCTIONS ulozene v NON-PAGED MEMORY.
+   F. DIRECTIVE [#pragma alloc_text(INIT,FunctionName)] urcuje, ze CODE FUNCTION 'FunctionName' moze byt po vykonani UVOLENY z MEMORY, pretoze FUNCTION sa pouziva iba na inicializaciu DRIVER. Tato DIRECTIVE sa velmi NEPOUZIVA. FUNCTION MUSI pouzivat [extern "C"] LINKAGE a vyskyt tejto DIRECTIVE MUSI byt MEDZI DECLARATION a DEFINITION 'FunctionName' FUNCTION.
+47. V RUN TIME je moze DYNAMICKY vykonat LOCKING a UNLOCKING MEMORY PAGES pomocou nasledujucich FUNCTIONS.
+   A. MmLockPagableCodeSection() vykona LOCK CODE SECTION do ktorej referuje POINTER.
+   B. MmLockPagableDataSection() vykona LOCK DATA SECTION do ktorej referuje POINTER.
+   C. MmLockPagableSectionByHandle() vykona LOCK CODE identifikovanej pomocou HANDLE, ktory vrati FUNCTION MmLockPagableCodeSection(), alebo FUNCTION MmLockPagableDataSection().
+   D. MmUnlockPageableImageSection() vykona ULOCK LOCKED CODE, alebo DATA SECTION.
+   !!! E. MmPageEntireDriver() vykona UNLOCK VSETKYCH PAGES, ktore su priradene danemu DRIVER. Tato FUNCTION sa zvycajne vola pri spracovavani IRP IRP_MJ_CLOSE, alebo na konci FUNCTION DriverEntry(). Je NUTNE zabezpecit, aby na DRIVER neboli otvorene ziadne HANDLES a takisto, aby pocas toho ako bude DRIVER v PAGED MEMORY nemohlo dojst k vzniku INTERRUPT, pretoze ten nemoze sposobit PAGE FAULT, kedze bezi v IRQL>=DISPATCH_LEVEL.
+   F. MmResetDriverPaging() obnovi COMPILE TIME nastavenie PAGED a NON-PAGED MEMORY. Tato FUNCTION sa zvycajne vola pri spracovavani IRP IRP_MJ_CREATE.
+!!! 48. Typicky sa UNLOCKING PAGES robi ak PC ma byt uvedene do LOW POWER MODE. Vtedy je vhodne uvolnit PHYSICAL MEMORY vykonanim UNLOCK.
+!!! 49. Pouzitie FUNCTIONS MmPageEntireDriver() a MmResetDriverPaging() je RISKANTNE, kedze sa aplikuju na CELY DRIVER, teda aj INTERUPT SERVICE ROUTINES (ISR), ktore mozu dokonca byt zdielane aj medzi VIACERMI DRIVERS. Ak sa pomocou tychto FUNCTION odstrani INTERUPT SERVICE ROUTINES (ISR) z PHYSICAL MEMORY a dojde k INTERUPT, tak tento INTERUPT nebude mat byt KYM OBSLUZENY a dojde k BUG CHECK - PADU SYSTEMU.
+!!! 50. TOOL [DUMPBIN.EXE], ktory je sucastou VS umoznuje ziskat informacie o jednotlivych SECTIONS i to, ktore SECTIONS su ulozene v PAGED a ktore v NON-PAGED MEMORY.
+!!!!! 51. Ak dojde k BUG CHECK vdaka tomu, ze PAGED CODE nie je v PHYSICAL MEMORY pricom IRQL>=DISPATCH_LEVEL, zistit FUNCTION kde doslo k BUG CHECK je mozne pomocou nasledujucich krokov.
+   A. Pri BUG CHECK je treba zistit ADDRESS, kde doslo k BUG CHECK a DRIVER BASE ADDRESS. Obe ADDRESSES su na BLUE SCREEN OF DEAD. Odcitanim tychto hodnot sa ziska OFFSET v DRIVER, kde doslo k BUG CHECK. To znaci, ze [OFFSET_BUG_CHECK=BUG_CHECK_ADDRESS-DRIVER_BASE_ADDRESS].
+   B. Na zaciatku MAP FILE je [Preferred load address], ktory udava BASE ADDRESS od ktorej su pocitane pozicie jednotlivych FUNCTIONS.
+   C. V MAP FILE sa nachadza tabulka symbolov v ktorej je stlpec [Rva+Base].
+   !!! D. Ak sa od [Rva+Base] odcita [Preferred load address] ziska sa ADDRESS FUNCTION v MEMORY. Porovnanim tejto ADDRESS s vypocitanou ADDRESS v bode A je mozne zistit, v ktorej FUNCTION doslo k BUG CHECK.
+   !!! E. V Stlpci [Start] sa zaroven nachadza informacia o tom v ktorej MEMORY SECTION sa dana FUNCTION nachadza. Napriklad hodnota [0005:00000020] znamena, ze FUNCTION je v SECTION 5 na ADDRESS 00000020. To ci dana SECTION je PAGED, alebo NON PAGED je mozne zistit pomocou TOOL [DUMPBIN.EXE], ktora je sucastou VS.
+52. FUNCTION ExAllocatePoolWithTag() alokuje MEMORY z HEAP. FUNCTION alokuje (SIZE+4), kde 4 BYTES alokovane NA ZACIATKU BLOKU obsahuju zadany TAG. POINTER vrateny FUNCTION odkazuje AZ ZA TYMITO 4 BYTES. FUNCTION ma nasledujuce PARAMETERS.
+   A. PARAMETER [PoolType] typu POOL_TYPE urcuje ci sa MEMORY alokuje z PAGE MEMORY, NON-PAGED MEMORY ci bude pouzivat CPU CACHE a podobne.
+   !!! B. PARAMETER [NumberOfBytes] urcuje POCET BYTES, ktore maju byt alokovane. V skutocnosti su alokovane este DALSIE 4 BYTES pre ulozenie TAG.
+   !!! C. PARAMETER [Tag] obsahuje 4 BYTES s lubovolnou hodnotou. Zvycajne reprezentuju 4 BYTES dlhy STRING otoceny NAOPAK. Napriklad TAG 'DCBA' je interpretovany ako 'ABCD'. TAG sa vyuziva pri DEBUGGINGU, kde je vdaka nemu mozne identifikovat o aku MEMORY sa jedna.
+53. FUNCTION ExFreePoolWithTag() uvolnuje MEMORY alokovanu FUNCTION ExAllocatePoolWithTag(). FUNCTION ma nasledujuce PARAMETERS.
+   A. PARAMETER [Pointer] obsahuje POINTER vrateny FUNCTION ExAllocatePoolWithTag().
+   B. PARAMETER [Tag] je TAG, ktory bol zaslany do FUNCTION ExAllocatePoolWithTag().
+!!! 54. Pre pouzivanie ExAllocatePoolWithTag() a ExFreePoolWithTag() platia nasledujuce pravidla.
+   A. To ci sa MEMORY ma alokovat ako PAGED, alebo NON-PAGED MEMORY zavisi od toho ako sa MEMORY bude pouzivat. Ak sa bude pouzivat pri obsluhe IRQL<DISPATCH_LEVEL, tak je mozne alokovat PAGED aj NON-PAGED MEMORY. Ak vsak IRQL>=DISPATCH_LEVEL, tak je NUTNE alokovat NON-PAGED MEMORY.
+   !!! B. Alokacia a uvolnovanie PAGED MEMORY sa moze robit pri IRQL<DISPATCH_LEVEL.
+   !!! C. Alokacia a uvolnovanie NON-PAGED MEMORY sa moze robit pri IRQL<=DISPATCH_LEVEL.
+   !!! D. Ak niektory z tychto RULES je PORUSENY, tak dojde k BUG CHECK.
+   E. FUNCTION ExAllocatePoolWithTag() NEPODPORUJE alokaciu 0 BYTES.
+55. MEMORY alokovana ExAllocatePoolWithTag() je zarovnana na 8 BYTES na X86 a 16 BYTES na X64 PLATFORMS.
+!!! 56. TOOLS [GFLAGS.EXE] a [POOLMON.EXE] umoznuju zobrazovat TAGS v MEMORY.
+!!! 57. FUNCTION ExAllocatePoolWithTag() v pripade NEDOSTATKU MEMORY sa chova na zaklade toho ako je nastaveny PARAMETER 'PoolType'.
+   A. Pri 'standardnych' hodnotach ako napriklad 'NonPagedPool' ci 'PagedPool' vracia FUNCTION ExAllocatePoolWithTag() hodnotu NULL.
+   B. Pri MUST SUCCEED hodnota ako napriklad 'NonPagedPoolMustSucceed', 'NonPagedPoolCacheAlignedMustS' ci 'NonPagedPoolBaseMustSucceed' je pri NEDOSTATKU MEMORY generovany BUG CHECK.
+   !!! C. Ak ma PARAMETER 'PagedPool' nastaveny FLAG POOL_RAISE_IF_ALLOCATION_FAILURE (ma hodnotu 0x10 a treba ho doplnit RUCNE, lebo CONSTANT POOL_RAISE_IF_ALLOCATION_FAILURE je v HEADER HTIFS.H), tak pri nedostatku MEMORY je generovane SEH EXCEPTION.
+!!! 58. V pripade NEDOSTATKU MEMORY je najvhodnejsou strategiou vykonat DETEKCIU, ze MEMORY nebola alokovana, vykonat potrebny CLEANUP a vratit ERROR STATUS CODE.
+!!!!! 59. DATA VERIFIER [VERIFIER.EXE] umoznuje SIMULOVAT chyby v SYSTEME ako je napriklad NEDOSTATOK MEMORY. Z pomocou DATA VERIFIER je mozne TESTOVAT vytvorene DRIVERS.
+!!!!! 60. DATA VERIFIER [VERIFIER.EXE] pri volani FUNCTION DriverUnload() dokaze identifikovat ci VSETKA MEMORY bola RELEASED a ci kazde volanie ExFreePoolWithTag() bolo KOREKTNE.
+61. FUNCTION ExAllocatePoolWithQuotaTag() alokuje MEMORY z HEAP a asociuje ju s CURRENT THREAD.
+62. FUNCTION ExAllocatePoolWithTagPriority() alokuje MEMORY z HEAP pricom je mozne stanovit aj PRIORITU alokacie MEMORY.
+63. WDM podporuje 2 typy LISTS.
+   A. SINGLY LINKED LISTS.
+   B. DOUBLY LINKED LISTS.
+   C. SPIN LOCK SINGLY LINKED LISTS.
+   D. SPIN LOCK DOUBLY LINKED LISTS.
+64. Pre pracu so SINGLY LINKED LISTS a SPIN LOCK SINGLY LINKED LISTS platia nasledujuce pravidla.
+   A. SINGLY LINKED LIST je STACK. V SINGLY LINKED LIST je mozne pridavat a odoberat ITEMS iba VRCHOLA.
+   B. SINGLY LINKED LIST je tvoreny HEAD a LIST ITEMS.
+   C. HEAD je reprezentovany STRUCTURE typu SINGLE_LIST_ENTRY.
+   D. STRUCTURE SINGLE_LIST_ENTRY obsahuje JEDINY FIELD 'Next' odkazujuci sa na nasledujuci LIST ITEM v SINGLY LINKED LIST.
+   E. LIST ITEM je tvoreny CUSTOM STRUCTURE, ktora moze mat LUBOVOLNE FIELDS.
+   !!! F. CUSTOM STRUCTURE reprezentujuca LIST ITEM MUSI mat FIELD typu SINGLE_LIST_ENTRY (ta ista STRUCTURE, ktora reprezentuje aj HEAD). Tento FIELD reprezentuje POINTER na NASLEDUJUCI ITEM v LISTE.
+   !!! G. FUNCTIONS pracujuce so SINGLE_LIST_ENTRY NEPRACUJU s CUSTOM STRUCTURE, ale s jej FIELD typu SINGLE_LIST_ENTRY. Pomocou MACRO CONTAINING_RECORD(ListItemPointer,CUSTOM_STRUCTUTE_TYPE,ListFieldName) je mozne ziskat POINTER na CUSTOM STRUCTURE.
+   H. LIST HEAD, ktory reprezentuje CELY LIST je potrebne INICIALIZOVAT nastavenim FIELD SINGLE_LIST_ENTRY.Next na NULL.
+   !!!!! I. HEAD NEREPREZENTUJE ZIADEN LIST ITEM. Je to iba ZARAZKA reprezentujuca LIST. Na HEAD NIE JE MOZNE aplikovat MACRO MACRO CONTAINING_RECORD(ListItemPointer,CUSTOM_STRUCTUTE_TYPE,ListFieldName).
+   J. Testovanie ci LIST je PRAZDY sa robi porovnani ci HEAD.Next je rovny NULL.
+   K. SPIN LOCK SINGLY LINKED LISTS musia pouzivat NAINICIALIZOVANY SPIN LOCK, ktory sluzi na SYCNHRONIZACIU modifikaciu SINGLY LINKED LISTS.
+   L. SPIN LOCK SINGLY LINKED LISTS musia byt alokovane v NON-PAGED MEMORY, pretoze pracuju v DISPATCH_LEVEL.
+65. S SINGLY LINKED LISTS a SPIN LOCK SINGLY LINKED LISTS je vo WDM mozne pracovat pomocou nasledujucich FUNCTIONS.
+   A. FUNCTION PushEntryList() prida ITEM na VRCHOL LIST.
+   B. FUNCTION PopEntryList() odstrani ITEM z VRCHOLU LIST.
+   C. FUNCTION ExInterlockedPushEntryList() prida ITEM na VRCHOL SPIN LOCK LIST.
+   D. FUNCTION ExInterlockedPopEntryList() odstrani ITEM z VRCHOLU SPIN LOCK LIST.
+66. Pre pracu so DOUBLY LINKED LISTS a SPIN LOCK DOUBLY LINKED LISTS platia nasledujuce pravidla.
+   !!!!! A. DOUBLY LINKED LIST je CYKLICKY LIST, kde posledny ITEM ukazuje na prvy a opacne. V DOUBLY LINKED LIST je mozne pridavat a odoberat ITEMS z LUBOVOLNEHO MIESTA.
+   B. DOUBLY LINKED LIST je tvoreny HEAD a LIST ITEMS.
+   C. HEAD je reprezentovany STRUCTURE typu LIST_ENTRY.
+   D. STRUCTURE LIST_ENTRY obsahuje FIELD 'Flink' odkazujuci sa na NASLEDUJUCI LIST ITEM v DOUBLY LINKED LIST a FIELD 'Blink' odkazujuci sa na PREDCHADZAJUCI LIST ITEM v DOUBLY LINKED LIST.
+   E. LIST ITEM je tvoreny CUSTOM STRUCTURE, ktora moze mat LUBOVOLNE FIELDS.
+   !!! F. CUSTOM STRUCTURE reprezentujuca LIST ITEM MUSI mat FIELD typu LIST_ENTRY (ta ista STRUCTURE, ktora reprezentuje aj HEAD). Tento FIELD reprezentuje POINTER na NASLEDUJUCI a PREDCHADZAJUCI ITEM v LISTE.
+   !!! G. LIST ITEMS DOUBLY LINKED LIST su pomocou FIELD 'Flink' prepojene nasledujucim sposobom: [HEAD.FLink->Item_1.FLink->Item_2.FLink->...Item_N.FLink->HEAD.FLink].
+   !!! H. LIST ITEMS DOUBLY LINKED LIST su pomocou FIELD 'Blink' prepojene nasledujucim sposobom: [HEAD.BLink->Item_N.BLink->Item_N-1.BLink->...Item_1.BLink->HEAD.BLink].
+   !!! I. FUNCTIONS pracujuce so LIST_ENTRY NEPRACUJU s CUSTOM STRUCTURE, ale s jej FIELD typu LIST_ENTRY. Pomocou MACRO CONTAINING_RECORD(ListItemPointer,CUSTOM_STRUCTUTE_TYPE,ListFieldName) je mozne ziskat POINTER na CUSTOM STRUCTURE.
+   J. LIST HEAD, ktory reprezentuje CELY LIST je potrebne INICIALIZOVAT volanim FUNCTION InitializeList(&HEAD).
+   !!!!! K. HEAD NEREPREZENTUJE ZIADEN LIST ITEM. Je to iba ZARAZKA reprezentujuca LIST. Na HEAD NIE JE MOZNE aplikovat MACRO MACRO CONTAINING_RECORD(ListItemPointer,CUSTOM_STRUCTUTE_TYPE,ListFieldName).
+   !!! L. Po INITIALIZACII je LIST PRAZDNY (NEMA ZIADEN ITEM) pricom HEAD.Blink a HEAD.Flink odkazuju sami na seba.
+   M. SPIN LOCK DOUBLY LINKED LISTS musia pouzivat NAINICIALIZOVANY SPIN LOCK, ktory sluzi na SYCNHRONIZACIU modifikaciu DOUBLY LINKED LISTS.
+   N. SPIN LOCK DOUBLY LINKED LISTS musia byt alokovane v NON-PAGED MEMORY, pretoze pracuju v DISPATCH_LEVEL.
+67. S DOUBLY LINKED LISTS a SPIN LOCK DOUBLY LINKED LISTS je vo WDM mozne pracovat pomocou nasledujucich FUNCTIONS.
+   A. FUNCTION InitializeListHead() incializuje HEAD daneho LIST, pricom LIST bude PRAZDNY (NEMA ZIADEN ITEM) a HEAD.Blink a HEAD.Flink sa budu odkazovat sami na seba.
+   B. FUNCTION InsertHeadList() vklada ITEM na ZACIATOK LIST.
+   C. FUNCTION InsertTailList() vklada ITEM na KONIEC LIST.
+   D. FUNCTION RemoveHeadList() odstranuje PRVY ITEM z LIST.
+   E. FUNCTION RemoveTailList() odstranuje POSLEDNY ITEM z LIST.
+   F. FUNCTION RemoveEntryList() odstranuje zadany ITEM z LIST. Ak JEDINA FUNCTION umoznuje odstranovat ITEM z LUBOVOLNEJ POZICIE v LIST.
+   G. FUNCTION IsListEmpty() vracia informaciu ci LIST je prazdny.
+   H. FUNCTION ExInterlockedInsertHeadList() vklada ITEM na ZACIATOK SPIN LOCK LIST.
+   I. FUNCTION ExInterlockedInsertTailList() vklada ITEM na KONIEC SPIN LOCK LIST.
+   J. FUNCTION ExInterlockedRemoveHeadList() odstranuje PRVY ITEM zo SPIN LOCK LIST.
+!!!!! 68. LOOKASIDE LISTS su analogiou MANAGED HEAP a maju nasledujuci vyznam.
+   A. LOOKASIDE LIST je MANAGED MEMORY POOL (LINKED LIST MEMORY BLOCKS), ktory umoznuje pridelovat MEMORY BLOCKS o KONSTANTNEJ VELKOSTI z MEMORY POOL interne spravovanej WINDOWS.
+   B. Pri vytvoreni LOOKASIDE LIST sa vytvori MEMORY POOL z ktore bude nasledne LOOKASIDE LIST pridelovat MEMORY BLOCKS.
+   C. Ak DRIVER poziada o pridelenie MEMORY z LOOKASIDE LIST, tak LOOKASIDE LIST vo svojej MEMORY POOL najde volny MEMORY BLOCK, ktory oznaci ako prideleny a vrati nanho POINTER.
+   !!!!! D. Velkost MEMORY POOL WINDOWS prisposobuje AUTOMATICKY podla toho aka cast je alokovana a ako casto sa MEMORY POOL pouziva.
+   !!!!! E. Ak pocet poziadaviek na pridelene MEMORY BLOCKS prekroci velkost MEMORY POOL (ktora sa DYNAMICKY moze menit), tak dalsi MEMORY BLOCK je uz alokovany z GLOBAL MEMORY POOL, ktory je MIMO MEMORY POOL vyhradenom pre LOOKASIDE LIST.
+   !!! F. Ak DRIVER poziada o uvolnenie MEMORY BLOCK, tak sa dany MEMORY BLOCK FYZICKY NEUVOLNI, iba sa oznaci, ze je volny. Ak sa vsak tento BLOCK nachadzal z GLOBAL MEMORY POOL (lebo LOOKASIDE LIST bol uz naplneny), MEMORY BLOCK sa fyzicky uvolni z MEMORY.
+   !!!!! G. Ak SYTEM ma NEDOSTATOK MEMORY, tak zacne DYNAMICKY ZMENSI VELKOST MEMORY POOL o MEMORY BLOCKS, ktore uz boli oznacene ako vymazane.
+!!! 69. Pre LOOKASIDE LISTS platia nasledujuce pravidla.
+   A. LOOKASIDE LIST je MEMORY POOL, v ktorom je mozne EFEKTIVNE alokovat KONSTANTNE VELKE BLOKY PAMATE.
+   !!!!! B. WINDOWS sa AUTOMATICKY stara o REALOKACIU (alokaciu, uvolnovanie) MEMORY POOL, ktory interne LOOKASIDE LIST pouzivaju. Pravidelne robi OPTIMALIZACIU nad existujucimi LOOKASIDE LISTS a robi v pripade nutnosti realokaciu.
+   !!!!! C. Pre kazdy LOOKASIDE LIST vsak existuje HRANICA jeho VELKOSTI, ktora ak je prekrocena, tak dalsie alokacie MEMORY BLOCKS uz nejdu z LOOKASIDE LIST, ale z GLOBAL MEMORY POOL.
+   !!! D. Pri vytvarani LOOKASIDE LIST je mozne definovat CUSTOM FUNCTION, ktora bude volana ak LOOKASIDE LIST je plny a MEMORY BLOCK ma byt alokovany v GLOBAL MEMORY POOL. CUSTOM FUNCTION moze alokovat MEMORY z CUSTOM POOL, alebo vyuzit GLOBAL HEAP.
+   !!! E. Pri vytvarani LOOKASIDE LIST je mozne definovat CUSTOM FUNCTION, ktora bude volana ak sa ma uvolnit MEMORY BLOCK, ktory bol alokovany po ZAPLNENI LOOKASIDE LIST a teda bol alokovany z GLOBAL MEMORY POOL (CUSTOM POOL, alebo GLOBAL HEAP). Tato FUNCTION ma za ulohu uvolnit MEMORY BLOCK z CUSTOM POOL, alebo GLOBAL HEAP z ktoreho alokacna FUNCTION MEMORY BLOCK alokovala.
+   F. LOOKASIDE LIST existuju v 2 verziach pre PAGED a NON-PAGED MEMORY.
+   G. LOOKASIDE LIST pre PAGED MEMORY je reprezentovany STRUCTURE PAGED_LOOKASIDE_LIST.
+   H. LOOKASIDE LIST pre NON-PAGED MEMORY je reprezentovany STRUCTURE NPAGED_LOOKASIDE_LIST.
+   !!! I. Instancie PAGED_LOOKASIDE_LIST aj NPAGED_LOOKASIDE_LIST, ktore reprezentuju LOOKASIDE LIST MUSIA BYT VZDY alokovane v NON-PAGED MEMORY, pretoze WINDOWS s nimi pracuje aj v IRQL>=DISPATCH_LEVEL.
+   !!!!! J. LOOKASIDE LISTS musia byt VZDY UVOLNENE z MEMORY volanim FUNCTIONS ExDeletePagedLookasideList(), alebo FUNCTION ExDeleteNPagedLookasideList(), pretoze inak ich WINDOWS bude povazovat za stale EXISTUJUCE a v pripade, ze spusti OPTIMALIZACIU tak by sa robila nad neexistujcou MEMORY a doslo by k BUG CHECK.
+   !!! K. Alokacia a uvolnovanie MEMORY z LOOKASIDE LISTS je THREAD SAFE, avsak samotne vytvorenie a uvolnenie LOOKASIDE LISTS NIE JE THREAD SAFE a MUSI byt SYNCHRONIZOVANE.
+70. S LOOKASIDE LISTS je mozne vo WDM pracovat pomocou nasledujucich FUNCTIONS.
+   A. FUNCTION ExInitializePagedLookasideList() inicializuje PAGED_LOOKASIDE_LIST pre ukladanie PAGED MEMORY BLOCKS do LOOKASIDE LIST. FUNCTION umoznuje definovat CUSTOM FUNCTIONS, ktore sa budu volat pri alokacii a uvolnovani MEMORY BLOCKS v GLOBAL MEMORY POOL, ak je LOOKASIDE LIST plny.
+   B. FUNCTION ExInitializeNPagedLookasideList() inicializuje NPAGED_LOOKASIDE_LIST pre ukladanie NON-PAGED MEMORY BLOCKS do LOOKASIDE LIST. FUNCTION umoznuje definovat CUSTOM FUNCTIONS, ktore sa budu volat pri alokacii a uvolnovani MEMORY BLOCKS v GLOBAL MEMORY POOL, ak je LOOKASIDE LIST plny.
+   C. FUNCTION ExAllocateFromPagedLookasideList() alokuje PAGED MEMORY BLOCK ROVNAKEJ DLZKY z LOOKASIDE LIST.
+   D. FUNCTION ExAllocateFromNPagedLookasideList() alokuje NON-PAGED MEMORY BLOCK ROVNAKEJ DLZKY z LOOKASIDE LIST.
+   E. FUNCTION ExFreeToPagedLookasideList() uvolni PAGED MEMORY BLOCK ROVNAKEJ DLZKY z LOOKASIDE LIST.
+   F. FUNCTION ExFreeToNPagedLookasideList() uvolni NON-PAGED MEMORY BLOCK ROVNAKEJ DLZKY z LOOKASIDE LIST.
+   G. FUNCTION ExDeletePagedLookasideList() uvolni PAGED_LOOKASIDE_LIST reprezentujuci PAGED MEMORY LOOKASIDE LIST.
+   H. FUNCTION ExDeleteNPagedLookasideList() uvolni NPAGED_LOOKASIDE_LIST reprezentujuci NON-PAGED MEMORY LOOKASIDE LIST.
+!!! 71. FUNCTION ExInitializePagedLookasideList() a FUNCTION ExInitializeNPagedLookasideList() ma PARAMETERS umoznujuce nastavit CUSTOM ALLOCATION FUNCTIONS.
+   A. PARAMETER [Allocate] umoznuje definovat CUSTOM ALLOCATION FUNCTION. Ak sa definuje hodnota NULL, tak sa pouzije FUNCTION ExAllocateFromPagedLookasideList(). Tato FUNCTION je volana ak LOOKASIDE LIST je plny a MEMORY BLOCK ma byt alokovany v GLOBAL MEMORY POOL. CUSTOM FUNCTION moze alokovat MEMORY z CUSTOM POOL, alebo vyuzit GLOBAL HEAP.
+   B. PARAMETER [Free] umoznuje definovat CUSTOM FREE FUNCTION. Ak sa definuje hodnota NULL, tak sa pouzije FUNCTION ExFreeToPagedLookasideList(). Tato FUNCTION je volana ak sa ma uvolnit MEMORY BLOCK, ktory bol alokovany po ZAPLNENI LOOKASIDE LIST a teda bol alokovany z GLOBAL MEMORY POOL (CUSTOM POOL, alebo GLOBAL HEAP). Tato FUNCTION ma za ulohu uvolnit MEMORY BLOCK z CUSTOM POOL, alebo GLOBAL HEAP z ktoreho alokacna FUNCTION MEMORY BLOCK alokovala.
+72. Vo WDM je mozne pracovat so STRINGS v nasledujucich 5 formatov.
+   A. UNICODE_STRING. Obsahuje UNICODE 16 BITS CHARS.
+   B. ANSI_STRING. Obsahuje 8 BITS CHARS, ktorych zobrazovanie NIE JE ZAVISLE na CODE PAGE.
+   C. OEM_STRING. Obsahuje 8 BITS CHARS, ktorych zobrazovanie JE ZAVISLE na CODE PAGE.
+   D. NULL TERMINATED CHAR STRINGS.
+   E. NULL TERMINATED WCHAR STRINGS.
+!!! 73. UNICODE_STRING, ANSI_STRING a OEM_STRING maju nasledujucu strukturu.
+   A. FIELD [Length] urcuje dlzku STRING v BYTES BEZ NULL TERMINATE CHAR.
+   B. FIELD [MaximumLength] urcuje MAXIMALNU dlzku STRING  v BYTES, ktore su alokovane v BUFFER pre dany UNICODE_STRING, ANSI_STRING a OEM_STRING
+   C. FIELD [Buffer] obsahuje POINTER na BUFFER, ktory ma alokovanu dlzku [MaximumLength].
+!!! 74. Pre pracu s NULL TERMINATED STRINGS by sa NEMALI POUZIVAT standardne C FUNCTIONS. Namiesto nich WDK definuje alternativne FUNCTIONS, ktore su SAFE.
+  A. FUNCTION RtlStringCbCat() spoji 2 STRINGS. Dlzky su urcene v BYTES.
+  B. FUNCTION RtlStringCbCatN() spoji 2 STRINGS, pricom sa urcuje kolko MAXIMALNE BYTES sa ma prekopirovat. Dlzky su urcene v BYTES.
+  C. FUNCTION RtlStringCbCopy() nakopiruje STRING do DESTINATION. Dlzky su urcene v BYTES.
+  D. FUNCTION RtlStringCbCopyN() nakopiruje STRING do DESTINATION, pricom sa urcuje kolko MAXIMALNE BYTES sa ma prekopirovat. Dlzky su urcene v BYTES.
+  E. FUNCTION RtlStringCbLength() vracia dlzku STRING. Dlzky su urcene v BYTES.
+  F. FUNCTION RtlStringCbPrintf() analogia sprintf(). Dlzky su urcene v BYTES.
+  G. FUNCTION RtlStringCbVPrintf() analogia vsprintf(). PARAMETERS su prenasane cez PARAMETER TYPE 'va_list'. Dlzky su urcene v BYTES.
+  H. FUNCTION RtlStringCchCat() spoji 2 STRINGS. Dlzky su urcene v CHARS.
+  I. FUNCTION RtlStringCchCatN() spoji 2 STRINGS, pricom sa urcuje kolko MAXIMALNE CHARS sa ma prekopirovat. Dlzky su urcene v CHARS.
+  J. FUNCTION RtlStringCchCopy() nakopiruje STRING do DESTINATION. Dlzky su urcene v CHARS.
+  K. FUNCTION RtlStringCchCopyN() nakopiruje STRING do DESTINATION, pricom sa urcuje kolko MAXIMALNE CHARS sa ma prekopirovat. Dlzky su urcene v CHARS.
+  L. FUNCTION RtlStringCchLength() vracia dlzku STRING. Dlzky su urcene v CHARS.
+  M. FUNCTION RtlStringCchPrintf() analogia sprintf(). Dlzky su urcene v CHARS.
+  N. FUNCTION RtlStringCchVPrintf() analogia vsprintf(). PARAMETERS su prenasane cez PARAMETER TYPE 'va_list'. Dlzky su urcene v CHARS.
+  O. FUNCTION RtlUnalignedStringCbLength() je analogiou pre UNICODE VERSION RtlStringCbLength(), ktora akceptuje aj UNALIGNED POINTERS na UNICODE STRINGS. Dlzky su urcene v BYTES.
+  P. FUNCTION RtlUnalignedStringCchLength() je analogiou pre UNICODE VERSION RtlStringCchLength(), ktora akceptuje aj UNALIGNED POINTERS na UNICODE STRINGS. Dlzky su urcene v CHARS.
+75. WDM definuje FUNCTIONS pre pracu s MEMORY.
+   A. FUNCTION RtlCopyMemory() skopiruje MEMORY z jedneho UNALIGNED BUFFERA do druheho.
+   B. FUNCTION RtlCopyBytes() skopiruje MEMORY z jedneho BUFFERA do druheho.
+   C. FUNCTION RtlZeroMemory() vymaze MEMORY nastavenim vsetkych BYTES na 0.
+76. Pre pracu s UNICODE_STRING, ANSI_STRING a OEM_STRING definuje WDM nasledujuce FUNCTIONS.
+   !!! A. FUNCTION RtlInitString() inicializuje ANSI_STRING, alebo OEM_STRING. NEVYKONAVA KOPIU STRING, iba na zadany STRING nastavi POINTER v ANSI_STRING, alebo OEM_STRING.
+   !!! B. FUNCTION RtlInitUnicodeString() inicializuje UNICODE_STRING. NEVYKONAVA KOPIU STRING, iba na zadany STRING nastavi POINTER v UNICODE_STRING.
+   !!! C. FUNCTION RtlFreeUnicodeString() uvolni UNICODE_STRING. Moze sa volat IBA po ak bol UNICODE_STRING alokovany niektorou z KONVERZNYCH FUNCTIONS NIZSIE, pricom tato konverzna FUNCTION ALOKOVALA MEMORY.
+   !!! D. FUNCTION RtlFreeAnsiString() uvolni ANSI_STRING. Moze sa volat IBA po ak bol ANSI_STRING alokovany niektorou z KONVERZNYCH FUNCTIONS NIZSIE, pricom tato konverzna FUNCTION ALOKOVALA MEMORY.
+   !!! E. FUNCTION RtlFreeOemString() uvolni OEM_STRING. Moze sa volat IBA po ak bol OEM_STRING alokovany niektorou z KONVERZNYCH FUNCTIONS NIZSIE, pricom tato konverzna FUNCTION ALOKOVALA MEMORY.
+   !!! F. FUNCTION RtlUnicodeStringToAnsiString() konvertuje UNICODE_STRING na ANSI_STRING. Ak POSLEDNY PARAMETER je nastaveny na TRUE, tak ANSI_STRING je NUTNE uvolnit volanim FUNCTION RtlFreeAnsiString().
+   !!! G. FUNCTION RtlUnicodeStringToOemString() konvertuje UNICODE_STRING na OEM_STRING. Ak POSLEDNY PARAMETER je nastaveny na TRUE, tak OEM_STRING je NUTNE uvolnit volanim FUNCTION RtlFreeOemString().
+   !!! H. FUNCTION RtlAnsiStringToUnicodeString() konvertuje ANSI STRING na UNICODE_STRING. Ak POSLEDNY PARAMETER je nastaveny na TRUE, tak UNICODE_STRING je NUTNE uvolnit volanim FUNCTION RtlFreeUnicodeString().
+   I. FUNCTION RtlUnicodeToMultiByteSize() konvertuje UNICODE_STRING na MULTI BYTE SIZE STRING.
+   J. FUNCTION RtlUnicodeToUTF8N() konvertuje UNICODE_STRING na UTF STRING.
+   K. FUNCTION RtlUTF8ToUnicodeN() konvertuje UTF STRING na UNICODE_STRING.
+77. WDM obsahuje sadu FUNCTIONS pre pracu s REGISTRY.
+   A. FUNCTION IoOpenDeviceRegistryKey() otvara REGISTRY KEY, ktory je asociovany s dany PHYSICAL DEVICE OBJECT (PDO).
+   B. FUNCTION IoOpenDeviceInterfaceRegistryKey() otvara REGISTRY KEY asociovany s zaregistrovanym DEVICE INTERFACE.
+   C. FUNCTION RtlDeleteRegistryValue() odstranuje REGISTRY VALUE z REGISTRY.
+   !!! D. FUNCTION RtlQueryRegistryValues() cita viacero REGISTRY VALUES z REGISTRY. FUNCTION je mozne pouzit aj na citanie VALUES typu REG_MULTI_SZ, kedy je CALLBACK FUNCTION, ktora sa zadava do RtlQueryRegistryValues() volana pre KAZDY STRING v REG_MULTI_SZ.
+   E. FUNCTION RtlWriteRegistryValue() zapisuje REGISTRY VALUE do REGISTRY.
+   !!! F. FUNCTION ZwClose() uzatvori HANDLE na REGISTRY KEY. FUNCTION je GENERICKA a dokaza uzatvorit LUBOVOLNY HANDLE.
+   G. FUNCTION ZwCreateKey() otvori HANDLE na novovytvoreny REGISTRY KEY.
+   !!! H. FUNCTION ZwDeleteKey() vymaze REGISTRY KEY reprezentovany danym HANDLE. KEY je fyzicky zmazany AZ KED je HANDLE nan UZATVORENY volanim ZwClose().
+   I. FUNCTION ZwDeleteValueKey() vymaze REGISTRY VALUE z REGISTRY KEY, ktory je reprezentovany danym HANDLE.
+   J. FUNCTION ZwEnumerateKey() enumeruje SUBKEYS REGISTRY KEY, ktory je reprezentovany danym HANDLE.
+   K. FUNCTION ZwEnumerateValueKey() enumeruje vsetkymi REGISTRY VALUES REGISTRY KEY, ktory je reprezentovany danym HANDLE.
+   L. FUNCTION ZwFlushKey() zapise zmeny v REGISTRY pre dany REGISTRY KEY reprezentovany HANDLE do REGISTRY.
+   M. FUNCTION ZwOpenKey() otvori HANDLE na REGISTRY KEY.
+   N. FUNCTION ZwQueryKey() vrati INFORMATION o REGISTRY KEY, ktory je reprezentovany danym HANDLE.
+   O. FUNCTION ZwQueryValueKey() vrati REGISTRY VALUE REGISTRY KEY, ktory je reprezentovany danym HANDLE.
+   P. FUNCTION ZwSetValueKey() nastavi REGISTRY VALUE REGISTRY KEY, ktory je reprezentovany danym HANDLE.
+   Q. FUNCTION InitializeObjectAttributes() initializuje STRUCTURE OBJECT_ATTRIBUTES, ktora sa pouziva vo FUNCTIONS ZwCreateKey() a ZwOpenKey().
+!!! 78. Pri praci s REGISTRY v KERNEL MODE sa REGISTRY PATH udava INAK ako v USER MODE. Napriklad ako chcem otvorit USER MODE PATH [HKEY_LOCAL_MACHINE\SOFTWARE], tak je v KERNEL MODE treba pouzit PATH [\Registry\Machine\Software].
+79. WDM podporuje pracu s FILES na DISKU. API FUNCTIONS pre pracu s FILES je vsak mozne volat iba ak su splnene nasledujuce podmienky.
+   A. FUNCTIONS musia byt volane z THREADS, ktore bezia v IRQL PASSIVE_LEVEL.
+   B. THREAD z ktoreho su FUNCTIONS volane MUSI byt SUSPENDABLE.
+80. S FILES sa vo WDM pracuje nasledujucim sposobom.
+   A. HANDLE na FILE sa otvara pomocou FUNCTION ZwCreateFile(), ktora je analogiou CreateFile() z USER MODE.
+   !!! B. ZwCreateFile() ocakava ako jeden z PARAMETERS POINTER na OBJECT_ATTRIBUTES, ktory obsahuje FILE PATH a inicializuje sa volanim MACRO InitializeObjectAttributes().
+   !!!!! C. V zavislosti od TYPU DRIVER NEMUSI byt pri starte daneho DRIVER pristupny cely FILESYSTEM. V pripade, ze sa jedna o DRIVER, ktory potrebuje pristupit k PATH, ktora este nebola inicializovana, tak je mozne zapisovat FILES do SYSTEM ROOT [\SystemRoot], zvycajne mapovany na [C:\\Windows], ktory je VZDY PRISTUPNY.
+   !!!!! D. FLAG FIELD OBJECT_ATTRIBUTES.Attributes by ma pri praci s FILES VZDY obsahovat nastaveny FLAG OBJ_KERNEL_HANDLE. Ak by sa nenastavil, tak by vytvoreny HANDLE na KERNEL OBJECT NEBOL ulozeny na urovni GLOBAL HANDLE TABLE, ale v PROCESS HANDLE TABLE toho PROCESSU, ktory poskytol THREAD v ktorom bola ZwCreateFile() volana. Pri pouziti tohto HANDLE v THREADE prisluchajucemu INEMU PROCESSU by doslo k BUG CHECK.
+   E. FUNCTION ZwQueryInfromationFile() umoznuje ziskat informacie o FILES ako je napriklad DLZKA FILE.
+   F. Pomocou FUNCTION ZwReadFile() je mozne citat obsah FILE. FUNCTION je analogicka s USER MODE FUNCTION ReadFile().
+   G. Pomocou FUNCTION ZwWriteFile() je mozne citat obsah FILE. FUNCTION je analogicka s USER MODE FUNCTION WriteFile().
+   !!! H. FUNCTIONS ZwReadFile() a ZwWriteFile() obsahuju PARAMETER IoStatusBlock typu IO_STATUS_BLOCK, ktoreho FIELD IO_STATUS_BLOCK.Information obsahuje pocet BYTES, ktore sa nacitali, alebo zapisali do FILE.
+   I. HANDLE vytvoreny FUNCTION ZwCreateFile() je potrebne uzatvorit pomocou FUNCTION ZwClose().
+   !!!!! J. ABSOLUTE FILE PATH, ktory obsahuje nazov DISKU musi obsahovat PREFIX [\??\DiskName:] napriklad [\??\C:\MyTest.txt]. Alternativne by sa dal pouzit nazov DISKU zisteny napriklad pomocou TOOL [WinObj.EXE] od SYS INTERNALS - napriklad [\Device\HarddiskVolume2\MyTest.txt].
+!!! 81. FLOATING POINT CALCULATIONS su v KERNEL MODE vypoctovo narocne a platia pre ne viacere obmedzenia.
+   A. V SYSTEM THREAD, ktory bezi s IRQL<DISPATCH_LEVEL moze FLOATING POINT CALCULATIONS pouzivat NEOBMEDZENE.
+   B. V SYSTEM THREAD, ktory bezi s IRQL<DISPATCH_LEVEL, alebo na OSTATNYCH THREADS (ARBITRARY, ktore poskytuju USER MODE PROCESSES) je NUTNE OBALIT pouzivanie FLOATING POINT CALCULATIONS do volani FUNCTIONS KeSaveFloatingPointState() a KeRestoreFloatingPointState().
+!!!!! 82. FLOATING POINT CALCULATIONS je SILNE DOPORUCOVANE VOBEC NEPOUZIVAT v KERNEL MODE.
+!!! 83. DRIVER moze byt kompilovany v 2 verziach.
+   A. DEBUG BUILD sa nazyva sa aj CHECKED BUILD. PREPROCESSOR ma definovane MACRO 'DBG'.
+   B. RELEASE BUILD sa nazyva sa aj FREE BUILD. PREPROCESSOR nema definovane MACRO 'DBG'.
+84. Pre vypisovanie DEBUG MESSAGES v KERNEL MODE platia nasledujuce pravidla.
+   A. Zakladna FUNCTION na zapis DEBUG MESSAGES je FUNCTION DbgPrint().
+   B. FUNCTION KdPrint() je v DEBUG BUILDS vola FUNCTION DbgPrint(). V RELEASE BUILDS NEROBI NIC.
+   C. FUNCTION DbgPrint() funguje ako C-FUNCTION printf().
+   !!! D. FORMAT STRING v DbgPrint() IGNORUJE FLOATING POINT ESCAPE SEQUENCES. Ostatne ESCAPE SEQUENCES funguju IDENTICKY ako v printf().
+   !!! E. Na zobrazovanie DEBUG MESSAGES sluzi bud KERNEL DEBUGGER, alebo SYS INTERNALS TOOL [DbgView.EXE].
+   !!!!! F. FUNCTION DbgPrint() je mozne volat IBA pre IRQL<=DIRQL. Ak sa vsak vypisuju UNICODE STRINGS, tak FUNCTION je mozne pouzit IBA v IRQL==PASSIVE_LEVEL.
+   G. FUNCTIONS DbgPrintEx() a KdPrint() umoznuju definovat aj COMPONENT, ktora DEBUG MESSAGE generovala a LEVEL danej DEBUG MESSAGE. Tieto informacie je mozne pouzit pri filtrovani DEBUG MESSAGES.
+!!! 85. ASSERT() MACRO umoznuje kontrolovat zadanu CONDITION. Ak je tato FALSE, tak MACRO v zavislosti od toho ci sa pouziva RELEASE, alebo DEBUG VERSION WINDOWS sposobi bud vypis do LOGU, spustenie KERNEL DEBUGGER, alebo BUG CHECK.
+!!!!! 86. TOOL DRIVER VERIFIER [Verifier.EXE] (je SUCAST WINDOWS) je TOOL, ktorym je mozne spustit rozlicne TESTY, ktore su vykonane na odskusanie stability testovaneho DRIVER. Patria sem napriklad nasledujuce testy.
+   A. Alokovanie MEMORY do SPECIAL POOL, ktora uklada MEMORY na zaciatok, alebo koniec MEMORY PAGE, aby vybehnutie mimo ramca alokovanej MEMORY okamzite sposobilo BUG CHECK.
+   B. Detekcia MEMORY LEAKS.
+   C. LOW RESOURCES TESTS. Vykona testovanie LOW RESOURCES STATE (napriklad neuspesna alokacia MEMORY) 7 minut od spustenia PC.
+   D. DEADLOCK DETECTION.
+   E. FLUSH PAGED MEMORY pre IRQL>=DISPATCH_LEVEL, aby pristup do PAGED MEMORY, ktory je v tychto IRQL ZAKAZANY sposobil BUG CHECK.
+   F. Zmena poradia nacitavania DRIVERS do MEMORY.
+//-------------------------------------------------------------------------------------------------------

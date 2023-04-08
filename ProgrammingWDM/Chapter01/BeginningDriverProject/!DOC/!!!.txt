@@ -1,0 +1,58 @@
+//-------------------------------------------------------------------------------------------------------
+1. Solution popisuje zakladne pojmy pouzivane pri DRIVER DEVELOPMENT.
+2. KLUCOVOU ulohou DRIVER je vykonavat IO operacie nad HW a ich vystup poskytovat OS, ktory ich nasledne poskytne programom, ktore poziadali o ich vykonanie.
+!!! 3. KLUCOVOU ulohou PLUG AND PLAY (PNP) technologie je schopnost pri BOOT ale aj CINNOSTI OS detekovat pritomny HW a MAPOVAT INTERUPT REQUESTS (IRQ) jednotlivym HW komponentam.
+4. WINDOWS DRIVER MODEL (WDM) je PORTABLE DRIVER PLATFORM, kde DRIVERS vyvinute pre WDM su s mensimi obmedzeniami PORTABLE medzi jednotlivymi verziami OS.
+5. BIOS vykonava v PC 2 cinnosti.
+   A. Je zodpovedny za BOOT. BOOT obsahuje vykonanie kontroly HW a zaroven spustenie OS zo zvoleneho MASS STORAGE.
+   !!! B. BIOS poskytuje SYSTEM SERVICES, ktore vytvaraju ABSTRACTION LAYER nad HW. Je to nieco ako HAL, kde OS moze vyuzivat SYSTEM SERVICES
+!!!!! 6. Moderne OS uz BIOS SYSTEM SERVICES NEPOUZIVAJU a PRIAMO pristupuju k HW. Resp. WINDOWS ma HARDWARE ABSTRACTION LAYER, ktory je nahradou za BIOS SYSTEM SERVICES.
+!!!!! 7. Avsak BIOS SYSTEM SERVICES sa STALE POUZIVAJU na obsluhu DISPLAY a KEYBOARD pre spustenim BOOT, na zobrazenie BIOS MENU ci na zachytavanie klaves, ktorym je mozne vyvolat BIOS MENU. Podobne sa BIOS SYSTEM SERVICES vyuzivaju pri zobrazeni MENU v ktorom si pouzivatel moze vybrat ktoru instanciu WINDOWS chce spustit ak ma PC v MULTIBOOT nainstalovanych viacero instancii WINDOWS.
+8. PROGRAMS, ktore bezia vo WINDOWS su rozdelene do 2 kategorii.
+   A. USER MODE PROGRAMS. Jedna sa o bezne APPLICATIONS, ktore volaju WIN32 API funkcie. Tieto bezia v PROTECTED rezime, kedy OS ZNEMOZNUJE USER MODE PROGRAMS PRIAMO pristupovat k HW. To je mozne iba cez WIN32 API, ktore TIEZ BEZI v USER MODE a ktore komunikuje s KERNEL MODE PROGRAMS.
+   B. KERNEL MODE PROGRAMS. Su to specialne programy, ktore MOZU PRIAMO PRISTUPOVAT k HW. Medzi KERNEL MODE PROGRAMS patria aj DRIVERS.
+!!! 9. USER a KERNEL MODES su podporovane v INTEL CPU na urovni samotneho CPU.
+   A. USER MODE PROGRAMS bezia v tzv. CPU RING 3. Ak je CPU v RING 3, moze pouzivat iba OBMEDZENU SADU CPU INSTRUCTIONS, ktore su dedikovane pre RING 3.
+   B. KERNEL MODE PROGRAMS bezia v tzv. CPU RING 0. Ak je CPU v RING 3, moze vyuzivat PLNU SADU CPU INSTRUCTIONS.
+!!! 10. WINDOWS ZABRANUJE USER MODE PROGRAMS pouzivat RING 0. To znaci, ze napriklad CPU INSTRUCTIONS z RING 0 [IN, OUT] je mozne pouzit IBA v KERNEL MODE, ale NIE v USER MODE.
+!!! 11. Prechod medzi USER a KERNEL MODES sa vykonava specializovanymi CPU INSTRUCTIONS, ktore WINDOWS vyuziva.
+   A. INSTRUCTION [SYSENTER] (v AMD je to INSTRUCTION [SYSCALL]) umoznuje prechod z USER MODE (RING 3) do KERNEL MODE (RING 0).
+   B. INSTRUCTION [SYSEXIT] (v AMD je to INSTRUCTION [SYSRET]) umoznuje prechod z KERNEL MODE (RING 0) do USER MODE (RING 3).
+!!! 12. Pri prechode medzi USER a KERNEL NEDOCHADZA ku CONTEXT-SWITCH. To znaci, ze CPU po pouziti INSTRUCTIONS (SYSENTER/SYSEXIT) pokracuje vo vykonavani CURRENT THREAD a nedochadza k prepnutiu THREADS.
+13. ARCHITEKTURA WINDOWS pozostava z nasledujucich casti.
+   A. APPLICATIONS. Tieto programu su beznymi APPLICATIONS, ktore spusta USER. Bezia v USER MODE a na pristup k HW vyuzivaju WIN32 API FUNCTIONS.
+   B. WIN32 API FUNCTIONS. Jedna sa o rozhranie beziace v USER MODE cez ktore APPLICATIONS mozu pristupovat ku KERNEL MODE PROGRAMS, vratane DRIVERS.
+   C. IO MANAGER. Je to zoznam VIACERYCH SERVICES, ktore bezia v KERNEL MODE a ich ulohou je zavadzat DRIVERS a zasielat im INTERUPT REQUEST PACKETS (IRP) na zaklade ktory HW DEVICES vykonaju IO OPERATIONS.
+   D. HARDWARE ABSTRACTION LAYER. Je abstraktny DRIVER, ktory vystavuje jednotny INTERFACE pre danu kategoriu HW DEVICES.
+   E. HW DEVICES. HW DEVICES rozlicneho typu pripojene k PC, ktore vykonavaju IO OPERATIONS.
+!!!!! 14. HAL je logicky DRIVER pre MOTHERBOARD. Umoznuje, aby WINDOWS KERNEL mohol byt PORTABLE na CPUs s rozlicnymi architekturami ci zbernicami. Vdaka tomu, ze ROZDIELY medzi ROZLICNYMI ARCHITEKTURAMI zaobaluje HAL, tak KERNEL, ktory bezi NAD HAL moze byt NEZAVISLY na danej ARCHITEKTURE. WINDOWS pri BOOT zisti, aku architekturu dana MOTHERBOARD potrebuje a podla toho zavedie prisluny HAL.
+!!! 15. V X64 architekture existuje iba 1 HAL (HAL.DLL), kedze MOTHERBOARS podporujuce X64 musia mat ROVANKU KONFIGURACIU MOTHERBOARD.
+!!!!! 16. PRIKLAD ako je vykonavana operacia READ FILE citania FILE z DISKU.
+   A. APPLICATION zavola WIN32 API FUNCTION ReadFile(). Tato je implementovana v KERNEL32.DLL a bezi v USER MODE.
+   B. WIN32 API FUNCTION ReadFile() zavola KERNEL MODE FUNCTION NtReadFile(). Tato bezi v KERNEL MODE a ako prve vykona VERIFIKACIU PARAMETERS.
+   !!! C. KERNEL MODE FUNCTION NtReadFile() vytvori STRUCTURE obsahujucu IRP PACKET s COMMAND IRP_MJ_READ a zasle ho do DRIVER DISKU.
+   !!! D. Kedze VACSINA IO OPERACII je realizovana ASYNCHRONNE, tak KERNEL MODE FUNCTION NtReadFile() NECAKA na OBSLUZENIE IRP PACKET, ale vrati do WIN32 API FUNCTION ReadFile() RETURN VALUE idikujuci, ze IO OPERACIA STALE PREBIEHA.
+   !!! E. DRIVER zacne NEZAVISLE spracovavat IRP PACKET citanim dat z DISKU. Tu moze vykonat but PRIAMYM PRISTUPOM na HW, alebo vyuzitim HARDWARE ABSTRACTION LAYER (HAL). V pripade HAL je zaslany COMMAND READ_PORT_UCHAR do HAL, ktory nasledne nacita 1 BYTE dat z IO PORTU CPU.
+   F. Ked DRIVER ukonci IO OPERATION, tak vyvola zaregistrovanu KERNEL MODE CALLBACK FUNCTION, ktora spracuje vysledky a moze notifikovat APPLICATION o ukonceni IO OPERATION.
+17. DRIVERS pre WINDOWS je mozne rozdelit do nasledujucich kategorii.
+   A. USER MODE DRIVERS. Bezia v USER MODE co znamena, ze PAD DRIVER NESPOSOBI PAD OS. Su vsak VYRAZNE POMALSIE ako KERNEL MODE DRIVERS.
+   B. KERNEL MODE DRIVERS. Bezia v KERNEL MODE co znamena, ze maju PLNU KONTROLU na HW a celou KERNEL MODE MEMORY. Ich PAD zvycajne znamena PAD CELEHO OS. Su vsak VYRAZNE RYCHLEJSIE ako USER MODE DRIVERS.
+18. USER MODE DRIVERS je mozne rozdelit do nasledujucich kategorii.
+   A. VIRTUAL DEVICE DRIVERS. Tieto DRIVERS sluzia na virtualizaciu HW, aby SW ktory s nimi pracuje mohol VIRTUALNE 'priamo' pracovat s HW. Vyuziva sa na emulaciu MS DOS DRIVERS pri spustani MS DOS APPLICATIONS.
+   B. USER MODE DRIVER FRAMEWORK (UMDF) DRIVERS. Su postavene na COM technologii a vyvijane v WINDOWS DRIVER FOUNDATION (WDF).
+19. KERNEL MODE DRIVERS je mozne rozdelit do nasledujucich kategorii.
+   A. FILE SYSTEM DRIVERS. Zabezpecuju pracu s FILE SYSTEM.
+   B. PNP DRIVERS. Sem patria WDM DRIVERS. Podporuju techonologiu PNP, kedy OS dokaze pocas BOOT zistit ako HW DEVICES su pripojene v pocitaci.
+   C. LEGACY DRIVERS. DRIVERS pre spatnu kompatibilitu s WINDOWS NT.
+20. WDM DRIVERS su PNP DRIVERS, ktore je mozne rozdelit do nasledujucich kategorii.
+   A. CLASS DRIVERS. Standardizovane DRIVERS pre PRESNE DEFINOVANY CLASS HW DEVICES. Sem patri napriklad KEYBOARD ci MOUSE.
+   B. MINIDRIVERS. Podporne DRIVERS, ktore implementuju CUSTOM funkcionalitu pre standardizovane CLASS DRIVERS.
+   C. MONOLITIC FUNCTION DRIVERS. CUSTOM DRIVERS, ktore obsahuju KOMPLETNU IMPLEMENTACIU DRIVER a nespadaju do kategorie CLASS DRIVERS. Su urcene pre SPECIALIZOVANE HW DEVICES.
+   D. FILTER DRIVERS. DRIVERS umoznuju vykonavat FILTERING a MODIFICATIONS IO OPERATIONS pre dany HW DEVICE, ktory je ovladany GENERIC MICROSOFT DRIVER. FILTER DRIVERS prisposobuje a upravuje cinnosti, ktore vykonava GENERIC MICROSOFT DRIVER, aby zohladnil specifika daneho HW DEVICE.
+!!! 21. Pre MINIDRIVERS platia nasledujuce zasady.
+   A. Je to KERNEL MODE DRIVER napisany vo WMD.
+   B. Sluzi ako EXTENSION k STANDARDIZOVANYM CLASS DRIVERS.
+   C. MINIDRIVER je zodpovedny za ovladanie HW DEVICE.
+   D. CLASS DRIVER daneho MINIDRIVER je zodpovedny za DRIVER MANAGEMENT pricom MINIDRIVER je volany na vykonavanie HW specifickych IO OPERATIONS.
+   E. Typickym prikladom MINIDRIVERS su DRIVERS pre KEYBOARD, JOYSTICK ci MOUSE.
+//-------------------------------------------------------------------------------------------------------

@@ -1,0 +1,107 @@
+Na testovanie projektov je potrebne vytvorit nasledujuce testovacie prostredie.
+
+VISUAL STUDIO 2015, WDK 10, WINDOWS 10.
+
+1. PC ma nainstalovany Windows 10 X64.
+!!! 2. PC MUSI mat v BIOS povoleny VIRTUAL MACHINE SUPPORT (Power->Virtualization Technology na ENABLED).
+3. VIRTUAL MACHINE, bezi pod Oracle VM VirtualBox.
+4. VIRTUAL MACHINE ma nainstalovany Windows 10 X64.
+5. PC aj VIRTUAL MACHINE musia mat nainstalovane Visual Studio 2015.
+6. PC aj VIRTUAL MACHINE musia mat nainstalovany Windows Driver Kit 10..
+!!! 7. Windows Driver Kit 10. je treba instalovat VZDY AZ PO NAINSTALOVANI Visual Studio 2015, aby Windows Driver Kit 10. mohol vykonat integraciu s Visual Studio 2015.
+8. VIRTUAL MACHINE musi mat nastaveny Network na 'Bridged Adapter' ([Machine->Settings->Network->Attached to]), kde je vybrata ta NIC, ktora je fyzicky v PC.
+9. VIRTUAL MACHINE musi mat nastavenu IP v tej istej LAN ako PC, tak aby sa PC aj VIRTUAL MACHINE videli a dokazali PINGovat.
+!!! 10. PC aj VIRTUAL MACHINE MUSIA byt v ROVNAKEJ DOMAIN, alebo WORKGROUP.
+!!! 11. VIRTUAL MACHINE MUSI mat pre 'Administrator' nastaveny nejaky PASSWORD. NESMIE byt BLANK.
+12. Vo VIRTUAL MACHINE je vhodne nastavit CRASH DUMP na COMPLETE MEMORY DUMP.
+!!!!! 13. V nastaveni [Control Panel->System and Security->System->Advanced system settings->System Protection->Configure] je treba zapnut OPTION [Turn on system protection].
+!!! 14. V konfiguracii VIRTUAL MACHINE je potrebne vytvorit VIRTUALNY COM PORT XXX ([Machine->Settings->Enable Serial Port]), ktory sa nastavi nasledujucim sposobom.
+   A. SETTINGS [Enable Serial Port] musi byt [CHECKED].
+   B. SETTINGS [Port Numer] je nutne nastavit na [COMXXX].
+   C. SETTINGS [Port Mode] je nutne nastavit na [Host Pipe].
+   D. SETTINGS [Connect to existing pipe/socket] musi byt [UNCHECKED].
+   E. SETTINGS [Path/Address] je nutne nastavit na [\\.\pipe\MyDebugPipe].
+15. Vo VIRTUAL MACHINE musia byt spustene nasledujuce prikazy.
+   A. Prikaz [bcdedit /debug on].
+   B. Prikaz [bcdedit /dbgsettings serial debugport:XXX baudrate:115200].
+   C. Prikaz [bcdedit /set {default} bootmenupolicy legacy].
+!!!!! 16. Pre WDK 10. vo VIRTUAL MACHINE MUSI byt nainstalovany WDK Test Target Setup MSI. Tento je standardne nainstalovany v DIRECTORY [C:\Program Files (x86)\Windows Kits\10\Remote\x64\]. Tento DIRECTORY musi byt KOMPLETNE stiahnuty na VIRTUAL MACHINE a spusteny INSTALLER [WDK Test Target Setup x64-x64_en-us.msi].
+!!! 17. Vo VISUAL STUDIO sa vytvori CONNECTION na VIRTUAL MACHINE. CONNECTION sa vykonava nasledujucim sposobom.
+   A. Pomocou [Driver->Test->Configure Computers] sa spusti konfiguracny WIZARD.
+   B. Stlaci sa tlacitko [Add New Computer].
+   C. V [Computer Name] sa zada nazov VIRTUAL MACHINE. VIRTUAL MACHINE MUSI byt v tej ISTEJ WORKGROUP, alebo DOMAIN ako PC.
+   !!! D. Vyberie sa OPTION [Provision device and choose debugger settings].
+   E. SETTINGS [Windows Debugger - User Mode->Connection Type] je treba nastavit na hodnotu [Automatic].
+   F. SETTINGS [Windows Debugger - Kernel Mode->Connection Type] je treba nastavit na hodnotu [Serial].
+   G. SETTINGS [Windows Debugger - Kernel Mode->Baud Rate] je treba nastavit na hodnotu [115200].
+   H. SETTINGS [Windows Debugger - Kernel Mode->Pipe] musi byt [CHECKED].
+   I. SETTINGS [Windows Debugger - Kernel Mode->Reconnect] musi byt [CHECKED].
+   J. SETTINGS [Windows Debugger - Kernel Mode->Pipe Name] je treba nastavit na hodnotu [\\.\pipe\MyDebugPipe].
+   K. SETTINGS [Windows Debugger - Kernel Mode->Target Port] je treba nastavit na hodnotu [COMXXX].
+   !!!!! F. WIZARD spusti instalaciu DEBUGGER a TESTING TOOLS na VIRTUAL MACHINE.
+!!!!! 18. Vo VISUAL STUDIO 2015 je potrebne zapnut zachytavanie VSETKYCH C++ a WIN32 EXCEPTIONS. Robi sa to v nastaveni [DEBUG->Windows->Exception Settings].
+
+
+DEBUGGING KERNELU.
+
+1. Spusti sa VIRTUAL MACHINE.
+2. Na PC sa spusti Visual Studio 2015.
+!!! 3. Na PC vo Visual Studion 2015 sa vyberie [Debug->Attach to Process], ktory sa nastavi nasledovne: [Transport=Windows Kernel Mode Debugger], [Qualifier=VIRTUAL MACHINE NAME] a [Available Processes=Kernel]. VIRTUAL MACHINE musi byt nakonfigurovana vid vyssie.
+!!! 4. Na PC sa stlaci tlacitko [Attach].
+!!!!! 5. Teraz (po stlaceni [Attach]) MUSI byt VIRTUAL MACHINE REBOOTED. Visual Studio bude CAKAT, kym VIRTUAL MACHINE nebude REBOOTED.
+!!!!! 6. Po REBOOT VIRTUAL MACHINE sa DEBUGGER PRIPOJI ku KERNEL PROCESS VIRTUAL MACHINE.
+!!!!! 7. Pomocou prikazu [Debug->Break All] sa vyvola BREAKPOINT v KERNEL PROCESS VIRTUAL MACHINE.
+!!! 8. Nasledne je v [Debugger Immediate Window] mozne zadavat DEBUG prikazy.
+
+
+Alternativna forma DEBUGGING KERNELU.
+
+1. Spusti sa VIRTUAL MACHINE.
+2. Na PC sa spusti Visual Studio 2015 do ktoreho sa nacita PROJECT.
+3. Spusti sa prikaz [Debug->Start Debugging] na PROJECT.
+4. Visual Studio 2015 nainstaluje DRIVER do VIRTUAL MACHINE.
+5. Po nainstalovani DRIVER Visual Studio 2015 ostane vo mode kedy caka na pripojenie VIRTUAL MACHINE. V [Debugger Immediate Window] sa zobrazuje hlaska [Debugge is running].
+!!!!! 6. Po REBOOT VIRTUAL MACHINE sa DEBUGGER PRIPOJI ku KERNEL PROCESS VIRTUAL MACHINE.
+!!!!! 7. Pomocou prikazu [Debug->Break All] sa vyvola BREAKPOINT v KERNEL PROCESS VIRTUAL MACHINE.
+!!! 8. Nasledne je v [Debugger Immediate Window] mozne zadavat DEBUG prikazy.
+
+
+Prezeranie CRASH MEMORY DUMPS.
+
+!!! 1. Pred prezeranim MEMORY DUMPS je NUTNE nakopirovat VSETKY FILES z DRIVER FILES do niektoreho DIRECTORY v GUEST OS. Napriklad do DIRECTORY [C:\DBG].
+2. MEMORY DUMP po BLUE SCREEN je ulozeny standardne vo FILE [C:\Windows\Memory.DMP].
+3. V TOOL [WinDbg.EXE] COMMAND [File->Open Crash Dump] je mozne nacitat MEMORY DUMP.
+4. Pomocou WINDBG COMMAND [.symfix] sa nacitaju DEFAULT PATHS pre SYMBOLS.
+!!!!! 4. Pomocou WINDBG COMMAND [.sympath+ PATH] sa prida 'PATH' medzi DIRECTORIES, kde WINDBG bude hladat .PDB FILES. V pripade, ze .PDB a .SYS FILES su nakopirovane v DIRECTORY [C:\DBG] je NUTNE zadat WINDBG COMMAND [.sympath+ PATH].
+!!! 5. Teraz je nutne spustit WINDBG COMMAND [.reload], ktory nacita vsetky SYMBOLS, vratane .PDB FILE DRIVER, ktory sposobil BUG CHECK.
+6. Nasledne pomocou WINDBG COMMAND [!analyze -v] je mozne spustit analyzu MEMORY DUMP, ktora bude obsahovat aj STACK TRACE.
+7. Po vykonani COMMAND [!analyze -v] je mozne spustit COMMAND [kb], ktory zobrazi CALL STACK PRED PADOM SYSTEMU.
+!!! 8. Vo vypise COMMAND [!analyze -v] je aj LINE v SOURCE FILE, kde vznikol BUGCHECK. Je oznaceny symbolom '@'. Napriklad [DMAScatterGatherListDriver!DPCForISR+735 [d:\programy\.net\csharp\programmingwdm\chapter07\dmascattergatherlistdriver\dmascattergatherlistdriver\driver.cpp @ 831]]. Tu vznikol BUGCHECK na riadku 831.
+!!!!! 9. CODE LINE na ktory ukazuje STACK je casto zadany ako ADDRESS (napriklad [MyFullDriver+0x1836]). Pozicia, kde sa sa v SOURCE CODE dana ADDRESS nachadza je mozne zistit ak vo VISUAL STUDIO mam natiahnuty SOURCE CODE daneho DRIVER a spusteny DEBUGGING pocas ktoreho vlozim COMMAND [bu MyFullDriver+0x1836]. VISUAL STUDIO OKAMZITE ZOBRAZI BREAKPOINT na tom mieste v SOURCE CODE, ktore zodpoveda danej ADDRESS.
+!!! 10. Zoznam VSETKYCH BREAKPOINTS je mozne zobrazit pomocou VISUAL STUDIO MENU [Debug->Windows->Breakpoints].
+!!! 11. V pripade, ze VERIFIER detekoval MEMORY LEAKS a hodil BUGCHECK, pomocou [!verifier 3 DRIVER_NAME.SYS] je mozne zistit ktora cast MEMORY ostala neuvolnena.
+
+
+Detekcia BUG CHECK.
+
+1. Pred ocakavanym vznikom BUG CHECK je nutne pripojit DEBUGGER k WINDOWS KERNEL.
+!!!!! 2. Po vyskyte BUG CHECK DEBUGGER AUTOMATICKY zastavi WINDOWS KERNEL a umozni analyzu BUG CHECK vratane prezerania CALL STACK.
+!!! 3. Ak vznikne BUG CHECK a pripoji sa DEBUGGER, tak na konci BUG CHECK sa AUTOMATICKY zobrazi miesto v CODE, ktore sposobilo BUG CHECK.
+
+
+Zistenie FUNCTION, kde doslo k BUG CHECK pomocou MAP FILES.
+
+A. Pri BUG CHECK je treba zistit ADDRESS, kde doslo k BUG CHECK a DRIVER BASE ADDRESS. Obe ADDRESSES su na BLUE SCREEN OF DEAD. Odcitanim tychto hodnot sa ziska OFFSET v DRIVER, kde doslo k BUG CHECK. To znaci, ze [OFFSET_BUG_CHECK=BUG_CHECK_ADDRESS-DRIVER_BASE_ADDRESS].
+B. Na zaciatku MAP FILE je [Preferred load address], ktory udava BASE ADDRESS od ktorej su pocitane pozicie jednotlivych FUNCTIONS.
+C. V MAP FILE sa nachadza tabulka symbolov v ktorej je stlpec [Rva+Base].
+!!! D. Ak sa od [Rva+Base] odcita [Preferred load address] ziska sa ADDRESS FUNCTION v MEMORY. Porovnanim tejto ADDRESS s vypocitanou ADDRESS v bode A je mozne zistit, v ktorej FUNCTION doslo k BUG CHECK.
+!!! E. V Stlpci [Start] sa zaroven nachadza informacia o tom v ktorej MEMORY SECTION sa dana FUNCTION nachadza. Napriklad hodnota [0005:00000020] znamena, ze FUNCTION je v SECTION 5 na ADDRESS 00000020. To ci dana SECTION je PAGED, alebo NON PAGED je mozne zistit pomocou TOOL [DUMPBIN.EXE], ktora je sucastou VS.
+
+
+Detekcia MEMORY LEAKS.
+
+1. Pred ladenim je treba nastvit VERIFIER.EXE, aby monitoroval vsetky OPTIONS.
+2. Vykonaju sa testy u ktorych je podozrenie na BUG CHECK.
+!!!!! 3. Po vykonani testov sa urobi v DEVICE MANAGE DISABLE daneho DRIVER. V tej chvili VERIFIER.EXE skontroluje ci DRIVER nenechal neuvolnenu MEMORY. Ak ju nechal, tak generuje BUG CHECK.
+!!!!! 4. Po testoch, ked je DRIVER znova ENABLED a spusteny VERIFIER.EXE sa vykona REBOOT systemu. Aj vtedy sa robi kontrola na MEMORY LEAKS a v pripade MEMORY LEAKS je generovany BUG CHECK.
+!!!!! 5. Po testoch, ked je DRIVER znova ENABLED a spusteny VERIFIER.EXE sa vykona DELETE DRIVER. Aj vtedy sa robi kontrola na MEMORY LEAKS a v pripade MEMORY LEAKS je generovany BUG CHECK.

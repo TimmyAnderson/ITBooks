@@ -1,0 +1,35 @@
+//-------------------------------------------------------------------------------------------------------
+1. Solution demonstruje sposob akym je mozne otvorit DEVICE (DRIVER) pomocou DEVICE INTERFACE.
+2. USER MODE PROGRAMS mozu pristupovat k DEVICE OBJECTS (DRIVERS) dvoma sposobmi.
+   A. Ak ma DEVICE OBJECT zaregistrovany NAME [XXX], tento NAME je formate [\\.\XXX] pouzit vo FUNCTION CreateFile() na ziskanie HANDLE na DEVICE OBJECT.
+   B. Ak ma DEVICE OBJECT zaregistrovanych 1-N DEVICE INTERFACES, ktore su identifikovane pomocou DEVICE INTERFACE CLASSES (GUID), je mozne pomocou SETUP API enumerovat vsetkymi DEVICE OBJECT, ktore maju zaregistrovany DEVICE INTERFACE pre dany DEVICE INTERFACE CLASS a ziskat SYMBOLIC LINK na DEVICE OBJECT, ktory je potom mozne pouzit vo FUNCTION CreateFile() na ziskanie HANDLE na DEVICE OBJECT.
+!!! 3. Enumerovanie zaregistrovanych DEVICE INTERFACES vyzaduje pouzitie SETUP API, a preto do PROJECT je nutne vlozit LIBRARY [SetupAPI.DLL].
+4. Ziskanie SYMBOLIC LINK na DEVICE OBJECT pomocou DEVICE INTERFACES sa realizuje v nasledujucich krokoch.
+   A. Pre zadany DEVICE INTERFACE CLASS (GUID) sa zavola FUNCTION SetupDiGetClassDevs(), ktora vrati HANDLE umoznujuci vykonat ENUMERATION DEVICE INTERFACES pre dany DEVICE INTERFACE CLASS.
+   B. Pomocou FUNCTION SetupDiEnumDeviceInterfaces() sa vykonava ENUMERATION DEVICE INTERFACES pre dany DEVICE INTERFACE CLASS, kde sa najde DEVICE OBJECT, ktoreho SYMBOLIC LINK na DEVICE OBJECT sa ma zistit.
+   C. Pomocou FUNCTION SetupDiGetDeviceInterfaceDetail() sa naplni STRUCTURE SP_DEVICE_INTERFACE_DETAIL_DATA, ktorej FIELD SP_DEVICE_INTERFACE_DETAIL_DATA.DevicePath obsahuje SYMBOLIC LINK na DEVICE OBJECT.
+   D. Po skonceni ENUMERATION je nutne zavolat FUNCTION SetupDiDestroyDeviceInfoList() na uvolnenie RESOURCES.
+   !!! D. SYMBOLIC LINK na DEVICE OBJECT je mozne pouzit ako PARAMETER FUNCTION CreateFile() na ziskanie HANDLE na DEVICE OBJECT.
+!!!!! 5. DRIVERS mozu vystavovat DEVICE INTERFACES. Pre DEVICE INTERFACES platia nasledujuce fakty.
+   A. DEVICE INTERFACE je subor FUNCTIONS, ktore DRIVER implementuje. Ak DRIVER dany DEVICE INTERFACE implementuje, MUSI implementovat VSETKY FUNCTIONS DEVICE INTERFACE.
+   B. DEVICE INTERFACE ma definovany GUID, ktory DEVICE INTERFACE jednoznacne identifikuje.
+   C. DRIVER moze implementovat 0-N DEVICE INTERFACES.
+   D. DEVICE INTERFACE GUID je registrovany FUNCTION IoRegisterDeviceInterface().
+   !!!!! E. DEVICE INTERFACE sa definuje ako CUSTOM STRUCTURE, ktora je DERIVED zo STRUCTURE [INTERFACE] a definuje CUSTOM FUNCTIONS, ktore tvoria dany DEVICE INTERFACE.
+   !!! F. STRUCTURE [INTERFACE] obsahuje aj POINTERS na FUNCTIONS InterfaceReference() a InterfaceDereference(). Tieto FUNCTIONS by mal KAZDY POUZIVATEL DEVICE INTERFACE pouzivat na REFERENCE COUNTING.
+   !!!!! G. Priamy pristup k FUNCTIONS, ktore definuje DEVICE INTERFACE je mozny IBA z KERNEL MODE.
+   !!! H. DRIVERS mozu ziskat referenciu na STRUCTURE DERIVED z STRUCTURE [INTERFACE] zaslanim IRP typu [IRP_MJ_PNP] s MINOR FUNCTION [IRP_MN_QUERY_INTERFACE].
+   !!!!! I. DRIVERS implementujuce DEVICE INTERFACES MUSIA na MINOR FUNCTION [IRP_MN_QUERY_INTERFACE] zareagovat tak, ze naplnia FIELD [IO_STACK_LOCATION.Parameters.QueryInterface.Interface] na alokovanu CUSTOM STRUCTURE DERIVED zo STRUCTURE [INTERFACE], ktora obsahuje POINTERS na INTERFACE FUNCTIONS. Zaroven by DRIVER mal zavolat FUNCTION [INTERFACE.InterfaceReference()], aby zvysil hodnotu REFERENCE COUNTER.
+   !!! J. USER MODE PROGRAMS mozu identifikovat ci DRIVER implementuje dany DEVICE INTERFACE pomocou FUNCTIONS SetupDiEnumDeviceInterfaces() a SetupDiGetDeviceInterfaceDetail().
+!!!!! 6. Ak DRIVER chce implementovat DEVICE INTERFACE musi vykonat nasledujuce kroky.
+   !!!!! A. DRIVER MUSI definovat CUSTOM STRUCTURE, ktora je DERIVED zo STRUCTURE [INTERFACE].
+   !!!!! B. CUSTOM STRUCTURE musi definovat INTERFACE FUNCTIONS, ktore dany DEVICE INTERFACE definuje.
+   !!! C. DRIVER MUSI implmenetovat VSETKY FUNCTIONS daneho DEVICE INTERFACE.
+   !!! D. DRIVER MUSI implmenetovat FUNCTIONS InterfaceReference() a InterfaceDereference() v ktorych vykona REFERENCE COUNTING daneho DEVICE INTERFACE.
+   E. DRIVER musi definovat GUID, ktory jednoznacne identifikuje dany DEVICE INTERFACE.
+   F. DRIVER MUSI v CUSTOM FUNCTION AddDevice() po vytvoreni DEVICE OBJECT zaregistrovat GUID DEVICE INTERFACE volanim FUNCTION IoRegisterDeviceInterface().
+   G. DRIVER MUSI pri spracovani MINOR FUNCTION [IRP_MN_START_DEVICE] zapnut DEVICE INTERFACE volanim FUNCTION IoSetDeviceInterfaceState().
+   !!!!! H. DRIVER MUSI implementovat MINOR FUNCTION [IPR_MN_QUERY_INTERFACE] v ktorom do FIELD [IO_STACK_LOCATION.Parameters.QueryInterface.Interface] ulozi alokovanu CUSTOM STRUCTURE, ktora je DERIVED zo STRUCTURE [INTERFACE].
+   !!!!! I. CUSTOM STRUCTURE MUSI mat nainicializovane VSETKY POINTERS na FUNCTIONS DEVICE INTERFACE a FUNCTIONS InterfaceReference() a InterfaceDereference(), pricom DRIVER pred ukoncenim spracovania MINOR FUNCTION [IPR_MN_QUERY_INTERFACE] MUSI zavolat FUNCTION InterfaceReference(), aby zvysil hodnotu REFERENCE COUNTER.
+!!!!! 7. DEVICE INTERFACES su PRIMARNE vyuzivane KERNEL MODE PROGRAMS (DRIVERS). Vdaka nim DRIVERS mozu k ostatnym DRIVERS pristupovat nezavisle, iba so znalostou, ze dany DRIVER implementuje pozadovany DEVICE INTERFACE.
+//-------------------------------------------------------------------------------------------------------

@@ -1,0 +1,72 @@
+;-----------------------------------------------------------------------------------------------------------------------
+[Version]
+Signature="$WINDOWS NT$"
+Class=MySamples
+ClassGuid={7388405C-54FB-4122-A5C9-B5562FA47F20}
+Provider=%ManufacturerName%
+DriverVer=6/02/2016
+CatalogFile=MyCatalog.cat
+;-----------------------------------------------------------------------------------------------------------------------
+;-----------------------------------------------------------------------------------------------------------------------
+;-----------------------------------------------------------------------------------------------------------------------
+[ClassInstall32]
+Addreg=MySamplesClassReg
+
+[MySamplesClassReg]
+HKR,,,0,%ClassName%
+HKR,,Icon,,-5
+
+[SourceDisksNames]
+1=%DiskName%,,,""
+
+[SourceDisksFiles]
+DMASlaveCommonBufferDriver.sys=1,,
+;-----------------------------------------------------------------------------------------------------------------------
+;-----------------------------------------------------------------------------------------------------------------------
+;-----------------------------------------------------------------------------------------------------------------------
+[DestinationDirs]
+DefaultDestDir=12
+
+[Manufacturer]
+%ManufacturerName%=Standard,NT$ARCH$
+
+[Standard.NT$ARCH$]
+%DMASlaveCommonBufferDriver.DeviceDesc%=DMASlaveCommonBufferDriver_Device, Root\DMASlaveCommonBufferDriver
+
+[DMASlaveCommonBufferDriver_Device.NT]
+CopyFiles=Drivers_Dir
+LogConfig=Driver_Config
+
+[Drivers_Dir]
+DMASlaveCommonBufferDriver.sys
+
+; Nasledujuca konfiguracia umoznuje DRIVER priradit IO PORT a IRQ.
+[Driver_Config]
+ConfigPriority=NORMAL
+; !!!!! IRQ 0 sposobil, ze sa INTERRUPT nielen korektne zaregistroval, ale sa aj vyvolaval cca KAZDYCH 55 ms. Je to vdaka tomu, ze IRQ 0 je PIP TIMER, ktory vyvolava PERIODICKY INTERRUPTS. WINDOWS bezal pekne aj po REBOOTE ci DISABLE-ENABLE DRIVER.
+IRQConfig=0
+; !!!!! Nakonfiguruje sa DMA CHANNEL.
+DMAConfig=1
+;-----------------------------------------------------------------------------------------------------------------------
+;-----------------------------------------------------------------------------------------------------------------------
+;-----------------------------------------------------------------------------------------------------------------------
+[DMASlaveCommonBufferDriver_Device.NT.Services]
+AddService=DMASlaveCommonBufferDriver,0x00000002,DMASlaveCommonBufferDriver_Service_Inst
+
+[DMASlaveCommonBufferDriver_Service_Inst]
+DisplayName=%ServiceDescription%
+ServiceType=1
+StartType=3
+ErrorControl=1
+ServiceBinary=%12%\DMASlaveCommonBufferDriver.sys
+LoadOrderGroup=Extended Base
+;-----------------------------------------------------------------------------------------------------------------------
+;-----------------------------------------------------------------------------------------------------------------------
+;-----------------------------------------------------------------------------------------------------------------------
+[Strings]
+ManufacturerName="Timmy Anderson"
+ClassName="MySamples"
+DiskName="DMASlaveCommonBufferDriver Source Disk"
+DMASlaveCommonBufferDriver.DeviceDesc="DMASlaveCommonBufferDriver Device"
+ServiceDescription="Service for DMASlaveCommonBufferDriver"
+;-----------------------------------------------------------------------------------------------------------------------

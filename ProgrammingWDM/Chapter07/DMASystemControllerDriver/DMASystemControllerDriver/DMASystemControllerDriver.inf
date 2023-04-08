@@ -1,0 +1,72 @@
+;-----------------------------------------------------------------------------------------------------------------------
+[Version]
+Signature="$WINDOWS NT$"
+Class=MySamples
+ClassGuid={7388405C-54FB-4122-A5C9-B5562FA47F20}
+Provider=%ManufacturerName%
+DriverVer=17/1/2016
+CatalogFile=MyCatalog.cat
+;-----------------------------------------------------------------------------------------------------------------------
+;-----------------------------------------------------------------------------------------------------------------------
+;-----------------------------------------------------------------------------------------------------------------------
+[ClassInstall32]
+Addreg=MySamplesClassReg
+
+[MySamplesClassReg]
+HKR,,,0,%ClassName%
+HKR,,Icon,,-5
+
+[SourceDisksNames]
+1=%DiskName%,,,""
+
+[SourceDisksFiles]
+DMASystemControllerDriver.sys=1,,
+;-----------------------------------------------------------------------------------------------------------------------
+;-----------------------------------------------------------------------------------------------------------------------
+;-----------------------------------------------------------------------------------------------------------------------
+[DestinationDirs]
+DefaultDestDir=12
+
+[Manufacturer]
+%ManufacturerName%=Standard,NT$ARCH$
+
+[Standard.NT$ARCH$]
+%DMASystemControllerDriver.DeviceDesc%=DMASystemControllerDriver_Device, Root\DMASystemControllerDriver
+
+[DMASystemControllerDriver_Device.NT]
+CopyFiles=Drivers_Dir
+LogConfig=Driver_Config
+
+[Drivers_Dir]
+DMASystemControllerDriver.sys
+
+; Nasledujuca konfiguracia umoznuje DRIVER priradit IO PORT a IRQ.
+[Driver_Config]
+ConfigPriority=NORMAL
+; !!!!! IRQ 0 sposobil, ze sa INTERRUPT nielen korektne zaregistroval, ale sa aj vyvolaval cca KAZDYCH 55 ms. Je to vdaka tomu, ze IRQ 0 je PIP TIMER, ktory vyvolava PERIODICKY INTERRUPTS. WINDOWS bezal pekne aj po REBOOTE ci DISABLE-ENABLE DRIVER.
+IRQConfig=0
+; !!!!! Nakonfiguruje sa DMA CHANNEL.
+DMAConfig=1
+;-----------------------------------------------------------------------------------------------------------------------
+;-----------------------------------------------------------------------------------------------------------------------
+;-----------------------------------------------------------------------------------------------------------------------
+[DMASystemControllerDriver_Device.NT.Services]
+AddService=DMASystemControllerDriver,0x00000002,DMASystemControllerDriver_Service_Inst
+
+[DMASystemControllerDriver_Service_Inst]
+DisplayName=%ServiceDescription%
+ServiceType=1
+StartType=3
+ErrorControl=1
+ServiceBinary=%12%\DMASystemControllerDriver.sys
+LoadOrderGroup=Extended Base
+;-----------------------------------------------------------------------------------------------------------------------
+;-----------------------------------------------------------------------------------------------------------------------
+;-----------------------------------------------------------------------------------------------------------------------
+[Strings]
+ManufacturerName="Timmy Anderson"
+ClassName="MySamples"
+DiskName="DMASystemControllerDriver Source Disk"
+DMASystemControllerDriver.DeviceDesc="DMASystemControllerDriver Device"
+ServiceDescription="Service for DMASystemControllerDriver"
+;-----------------------------------------------------------------------------------------------------------------------

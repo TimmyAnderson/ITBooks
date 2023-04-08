@@ -1,0 +1,34 @@
+//-------------------------------------------------------------------------------------------------------
+1. Solution popisuje ako funguje PAGED a NON-PAGED MEMORY vo WINDOWS.
+2. WINDOWS deli MEMORY podla toho ci je PERMANENTNE ulozena v RAM, alebo moze byt presunuta na DISK do 2 kategorii.
+   A. PAGED MEMORY je MEMORY, ktoru moze WINDOWS kedykolvek presunut z PHYSICAL MEMORY (RAM) na DISK. USER MODE MEMORY je VZDY PAGED MEMORY.
+   B. NON-PAGED MEMORY je MEMORY, ktora je VZDY ulozena v PHYSICAL MEMORY (RAM) a NIKDY NEMOZE byt presunuta na DISK.
+!!!!! 3. KERNEL STACK je VZDY ulozeny v NON-PAGED MEMORY.
+!!! 4. V PAGED MEMORY mozu byt ulozene nielen DATA, ale aj CODE. CODE v PAGED MEMORY ak je prave ulozeny na DISKU, MUSI byt pred vykonavanim presunuty do RAM.
+!!!!! 5. V PAGED MEMORY moze byt ulozeny IBA ten CODE, ktory VZDY bezi v IRQL<DISPATCH_LEVEL. CODE, ktory bezi v IRQL>=DISPATCH_LEVEL MUSI byt VZDY v NON-PAGED MEMORY. Ak nie je, a CODE v PAGED MEMORY, ktory sa ma vykonat bude v case vykonavania na DISKU a nie v RAM, dojde k BUG CHECK.
+6. Pre ulozenie DATA v MEMORY platia nasledujuce zasady.
+   !!! A. KERNEL STACK je VZDY ulozeny v NON-PAGED MEMORY.
+   B. Ak je pred GLOBAL VARIABLE aplikovana DIRECTIVE [#pragma data_seg("PAGEDATA")], potom je GLOBAL VARIABLE v PAGED MEMORY.
+   C. Ak je pred GLOBAL VARIABLE aplikovana DIRECTIVE [#pragma data_seg()], potom je GLOBAL VARIABLE v NON-PAGED MEMORY.
+   D. Ak sa MEMORY alokuje pomocou FUNCTION ExAllocatePoolWithTag(), pricom ako POOL TYPE sa pouzije hodnota [PagedPool], alokovana MEMORY bude PAGED MEMORY.
+   E. Ak sa MEMORY alokuje pomocou FUNCTION ExAllocatePoolWithTag(), pricom ako POOL TYPE sa pouzije hodnota [NonPagedPool], alokovana MEMORY bude NON-PAGED MEMORY.
+7. Pre ulozenie CODE v MEMORY platia nasledujuce zasady.
+   !!!!! A. BY-DEFAULT je CODE ulozeny v NON-PAGED MEMORY.
+   B. Ak je pred FUNCTION aplikovana DIRECTIVE [#pragma alloc_text(PAGE,FunctionName)], kde 'FunctionName' je meno FUNCTION (v C++ na FUNCTION musi byt aplikovany [extern "C"], aby nedoslo k NAME MANGLING), potom je FUNCTION ulozena v PAGED MEMORY.
+   C. Ak je pred FUNCTION aplikovana DIRECTIVE [#pragma code_seg("PAGE")], potom je FUNCTION ulozena v PAGED MEMORY.
+   D. Ak je pred FUNCTION aplikovana DIRECTIVE [#pragma code_seg("PAGEXXX")], kde 'XXX' je lubovolny nazov, potom je FUNCTION ulozena v PAGED MEMORY.
+   !!! E. Ak je pred FUNCTION aplikovana DIRECTIVE [#pragma code_seg()], potom je FUNCTION ulozena v NON-PAGED MEMORY.
+!!! 8. Ulozenie DATA i CODE v MEMORY moze byt DYNAMICKY ZMENENE. Nasledujuci zoznam definuje FUNCTIONS, ktorymi je mozne presuvat urcitu MEMORY SECTION medzi PAGED a NON-PAGED MEMORY.
+   A. MmLockPagableCodeSection() vykona LOCK CODE SECTION do ktorej referuje POINTER. To znaci, ze CODE po vykonani FUNCTION bude v NON-PAGED MEMORY.
+   B. MmLockPagableDataSection() vykona LOCK DATA SECTION do ktorej referuje POINTER. To znaci, ze DATA po vykonani FUNCTION budu v PAGED MEMORY.
+   C. MmLockPagableSectionByHandle() vykona LOCK CODE identifikovanej pomocou HANDLE, ktory vrati FUNCTION MmLockPagableCodeSection(), alebo FUNCTION MmLockPagableDataSection(). To znaci, ze CODE, alebo DATA po vykonani FUNCTION budu v NON-PAGED MEMORY.
+   D. MmUnlockPageableImageSection() vykona ULOCK LOCKED CODE, alebo DATA SECTION. To znaci, ze CODE, alebo DATA po vykonani FUNCTION budu v PAGED MEMORY.
+   !!! E. MmPageEntireDriver() vykona UNLOCK VSETKYCH PAGES, ktore su priradene danemu DRIVER. Tato FUNCTION sa zvycajne vola pri spracovavani IRP IRP_MJ_CLOSE, alebo na konci FUNCTION DriverEntry(). Je NUTNE zabezpecit, aby na DRIVER neboli otvorene ziadne HANDLES a takisto, aby pocas toho ako bude DRIVER v PAGED MEMORY nemohlo dojst k vzniku INTERRUPT, pretoze ten nemoze sposobit PAGE FAULT, kedze bezi v IRQL>=DISPATCH_LEVEL.
+   F. MmResetDriverPaging() obnovi COMPILE TIME nastavenie PAGED a NON-PAGED MEMORY. Tato FUNCTION sa zvycajne vola pri spracovavani IRP IRP_MJ_CREATE.
+!!! 9. Aj je CODE v PAGED MEMORY, odporuca sa na danu FUNCTION aplikovat MACRO PAGED_CODE(). Toto MACRO vykonava nasledujucu cinnost.
+   A. MACRO PAGED_CODE() skontroluje ci v case volania bezi CODE v IRQL<DISPATCH_LEVEL.
+   B. Ak CODE bezi v IRQL>=DISPATCH_LEVEL, tak je generovany BUG CHECK.
+   !!! C. Niekedy sa mi vsak stavalo, ze namiesto BUG CHECK WINDOWS STUHOL a BUG CHECK sa objavil az po pripojeni DEBUGGERA.
+   !!!!! D. Na CODE, pre ktory sa jeho umiestnenie v PAGED a NON-PAGED MEMORY DYNAMICKY MENI sa NESMIE pouzivat MACRO PAGED_CODE(), pretoze to NEDETEKUJE ci beziaci CODE skutocne je, alebo nie je v PAGED MEMORY, ale iba to ake je aktualne IRQL. To znaci, ze ak sa pouzije MACRO PAGED_CODE() v CODE, ktory DYNAMICKY bol LOCKED v NON-PAGED MEMORY a tento CODE bude KOREKTNE bezat v IRQL>=DISPATCH_LEVEL, MACRO PAGED_CODE() NESPRAVNE VYVOLA BUG CHECK, kedze IRQL>=DISPATCH_LEVEL.
+   !!!!! E. Na CODE, pre ktory sa jeho umiestnenie v PAGED a NON-PAGED MEMORY DYNAMICKY MENI sa MUSI pouzit MACRO PAGE_CODE_LOCKED(), ktore dokaze okrem detekcie IRQL vykonat aj detekciu ci sa CODE SKUTOCNE nachadza v PAGED, alebo NON-PAGED MEMORY.
+//-------------------------------------------------------------------------------------------------------

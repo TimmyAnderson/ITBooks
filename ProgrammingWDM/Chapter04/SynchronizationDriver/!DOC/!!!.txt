@@ -1,0 +1,532 @@
+//-------------------------------------------------------------------------------------------------------
+1. Solution demonstruje IRQL, SYNCHRONIZATION PRIMITIVES a THREADING vo WDM.
+!!! 2. Vo WDM plati, ze DRIVER CODE moze byt vykonavany na LUBOVOLNOM THREADE LUBOVOLNEHO USER MODE PROCESSU ci KERNEL THREADU. To znaci, ze AFINITA medzi CODE a THREADS NEEXISTUJE a NIE JE ju mozne GARANTOVAT.
+!!!!! 3. CPU pre vykonavanie LOCKING maju definovane SPECIALNE CPU INSTRUCTION PREFIXES. CPU INSTRUCTION PREFIX je prefix aplikovany na CPU INSTRUCTIONS, ktore podporuju LOCKING. Ak sa takyto prefix (vacsinou ma nazov 'LOCK'), aplikuje na CPU INSTRUCTION, CPU zabezpeci, ze ZIADEN INY CPU NEVYKONA v case vykonavania LOCKED CPU INSTRUCTION pristup k MEMORY, ktoru LOCKED CPU INSTRUCTION pouziva. Tym padom je zabezpecena atomickost vykonania LOCKED CPU INSTRUCTION.
+4. V DRIVER PROGRAMMING je vhodne LOCKING mozne vykonavat 2 sposobmi.
+   A. KERNEL DISPATCHER OBJECTS. Tieto OBJECTS (MUTEXES, SEMAPHORES, EVENTS, THREADS, TIMERS) vykonavaju THREAD BLOCKING ak iny THREAD prave pristupuje k PROTECTED RESOURCES. To znaci, ze THREADS je BLOCKED, az pokym dany KERNEL DISPATCHER OBJECT nie je SIGNALIZED.
+   B. SPIN LOCKS. Tieto LOCKS NEVYKONAVAJU THREAD BLOCKING. Namiesto toho vykonavaju SPINNING, cakajuc kym iny THREAD neuvolni PROTECTED RESOURCES.
+!!! 5. THREAD BLOCKING by sa mal v DRIVER PROGRAMMING pouzivat co NAJMENEJ. Preto sa namiesto KERNEL DISPATCHER OBJECTS odporuca pouzivat SPIN LOCKS.
+6. INTERRUPTS su signaly, ktore zachytava CPU, ktore CPU oznamuju ze ma PRERUSIT NORMALNY TOK CODE a vyvolat specialnu INTERRUPT SERVICE ROUTINE (ISR), ktora obsluzi vyvolany INTERRUPT. Po ukonceni ISR preruseny CODE pokracuje vo svojom vykonavani v mieste, kde bol preruseny.
+!!! 7. INTERRUPT SEVICE ROUTINES (ISR) mozu byt vyvolavane 2 sposobmi v zavislosti od typu CPU architektury.
+   A. CPU vzdy vyvola GENERICKU ROUTINE, ktora nasledne musi vykonat podla priority QUERIES na vsetky DEVICES a zistit, ktory DEVICE INTERRUPT sposobil.
+   B. CPU ma ulozeny INTERRUPT VECTOR, ktory pre kazdy typ INTERRUPT vykona skok na prislusnu INTERRUPT SEVICE ROUTINE ulozenu v INTERRUPT VECTOR. Tento mechanizmus je DALEKO EFEKTIVNEJSI aj castejsie pouzivany.
+8. INTERRUPTS sa delia do 2 kategorii.
+   A. HARDWARE INTERRUPTS su elektricke signaly, ktore sa zjavia na dedikovanych CPU PINS, aby nimi HW DEVICES pripojene k CPU (priamo, alebo cez SYSTEM BUS) mohli indikovat koniec IO OPERATIONS. Po obsluhe HW INTERRUPTS v ISR je HW DEVICE pripravene vykonat dalsiu IO OPERATION. V praxi, kedze vacsina DEVICES je pripojena k CPU cez rozlicne BUSES, tak su to prave tieto BUSES, ktore indikuju INTERRUPTS z pripojenych DEVICES a tieto INTERRUPTS nasledne zaslanim elektrickeho signalu na CPU PINS zasle do CPU.
+   B. SOFTWARE INTERRUPTS su LOGICKE INTERRUPTS generovane samotnym CPU. Tieto mozu vzniknut ako EXCEPTIONS (napriklad pri deleni 0), alebo mozu byt vyvolane pomocou specializovanych CPU INSTRUCTIONS. WINDOWS vyuziva SOFTWARE INTERRUPTS okrem ineho pri THREAD SCHEDULING, kde prepinanie THREADS je vykonavane ako reakcia na SOFTWARE INTERRUPT.
+9. HARDWARE INTERRUPTS mozu byt elektricky vyvolavane 2 sposobmi.
+   A. EDGE TRIGGERED INTERRUPTS sa pouzivali v starsich systemoch, kde sa INTERRUPT generoval pri zmene logickej hodnoty na CPU PINS (napriklad pokles z 0 do 1) v kratkom pulze. Nevyhodou tohto mechanizmu je moznost generovanie falosnych INTERRUPTS pri elektickom ruseni a riziko STRATRY INTERRUPTS, ak 2 DEVICES sucasne generuju INTERRUPTS na tom istom PINE. V tomto pripade CPU detekuje iba 1 INTERRUPT a druhy INTERRUPT sa NAVZDY STRATI. To moze mat za nasledok nefunkcnost DEVICE.
+   B. LEVEL TRIGGERED INTERRUPTS su generovane tak, ze HW DEVICES generuju KONSTANTNY SIGNAL na CPU PINS, ktory DRZIA na DEVICE-SPECIFIC urovni, az kym ich INTERRUPT nie je obsluzeny. Vyhodou je, ze NEDOCHADZA k strate INTERRUPTS, kedze VIACERO DEVICES moze NARAZ signalizovat INTERRUPTS tym, ze DEVICES svoje signaly drzia, az kym nie su obsluzene, pricom KAZDY DEVICE ma INU UROVEN ELEKTICKEHO SIGNALU, ktory zasiela na CPU PINS.
+10. Ak v pocitaci je VIACERO CPU, tak spravidla existuje HW DEVICE, ktory dokaze distribuovat INTERRUPTS na niektory z CPU. Konfiguracne je mozne nastavit CPU INTERRUPT AFFINITY, kedy niektore INTERRUPTS budu vzdy obsluhovane urcitym CPU.
+!!! 11. WINDOWS kazdemu INTERRUPT priraduje PRIORITU. Tato priorita je vyjadrena INTERRUPT REQUEST LEVEL (IRQL) co je cislo v rozpati <0,31>. ISR obsluhujuca INTERRUPT je vykonavana s IRQL, ktore bolo danemu INTERRUPT priradene.
+!!! 12. WINDOWS kazdemu HW DEVICE priradzuje IRQL pod ktorym budu ISR obsluhujuce INTERRUPTS z tohto HW DEVICE bezat. Vdaka tomu moze WINDOWS urcit PRIORITU, pre ktore HW DEVICE budu jeho INTERRUPTS obsluzene ako prve.
+13. IRQL, ktore WINDOWS priradzuje jednotlivym HW DEVICES je mozne konfiguracne zmenit pomocou DEVICE MANAGER.
+!!!!! 14. Vo WINDOWS nielen INTERRUPTS, ale KAZDY CPU ma priradenu hodnotu [CURRENT_IRQL]. CURRENT IRQL urcuje v akom IRQL CODE, ktory CPU prave vykonava bezi. Zaroven urcuje, ci vykonavanie CODE moze byt PRERUSENY pri vzniku noveho INTERRUPT. 
+!!! 15. CODE, ktory bezi v [CURRENT_IRQL] moze byt PRERUSENY pri vzniku noveho INTERRUPT v zavislosti na hodnote [CURRENT_IRQL] a IRQL noveho INTERRUPT. Platia nasledujuce zasady.
+   A. Ak novovzniknuty INTERRUPT ma [IRQL<=CURRENT_IRQL] potom INTERRUT NEMOZE prerusit aktualne beziaci CODE.
+   B. Ak novovzniknuty INTERRUPT ma [IRQL>CURRENT_IRQL] potom INTERRUT vykona PRERUSENIE BEZIACEHO CODE a spusti sa ISR obsluhujuca dany INTERRUPT.
+!!! 16. Ak je ISR prerusena vykonavanim ISR INTERRUPT s VYSSOU IRQL, potom po skonceni INTERRUPT s VYSSOU IRQL je riadenie vratene do povodnej ISR.
+!!!!! 17. Okrem vzniku INTERRUPTS aj samotny CODE moze UMELO vykonat ZMENU IRQL.
+   A. FUNCTION KeRaiseIrql() umoznuje ZVYSIT [CURRENT_IRQL] na vyssiu hodnotu.
+   B. FUNCTION KeLowerIrql() umoznuje ZNIZIT [CURRENT_IRQL] na nizsiu hodnotu.
+   C. FUNCTION KeGetCurrentIrql() umoznuje zistit hodnotu [CURRENT_IRQL].
+!!!!! 18. WINDOWS pri zachyteni INTERRUPT vykona nasledujucu postupnost krokov.
+   A. Zisti hodnotu [CURRENT_IRQL] v ktorom CPU prave bezi.
+   B. Ak prichadzajuci INTERRUPRT ma [IRQL<=CURRENT_IRQL], tak INTERRUPT je ulozeny do QUEUE odkial bude vybrany, ak CPU bude schopne dany INTERRUPT spracovat.
+   !!! C. Ak prichadzajuci INTERRUPRT ma [IRQL>CURRENT_IRQL], tak CPU prerusi normalny beh CPU INSTRUCTIONS.
+   !!!!! D. Do STACKU sa ulozi CPU STATE a CONTEXT aktualne beziaceho CODE (ulozi stav REGISTERS).
+   !!!!! E. Spusti sa INTERRUPT SEVICE ROUTINE (ISR).
+   !!!!! F. Po skonceni INTERRUPT SEVICE ROUTINE sa obnovi STACK do stavu pred spustenim vykonavania INTERRUPPT a riadenie je vratene do povodneho CODE, ktory bol INTERRUPTED.
+!!!!! 19. Ak CURRENT THREAD je preruseny INTERRUPT, tak spracovanie INTERRUPT bezi VZDY na CURRENT THREAD a po skonceni obsluhy INTERRUPT dojde k navratu na povodny CODE, ktory je ZNOVA vykonavany na CURRENT THREAD. Vztah medzi THREADS a INTERRUPTS vysvetluju nasledujuce kroky.
+   A. CPU vykonava CODE v THREAD XXX.
+   B. CPU zachyti INTERRUPT.
+   C. INTERRUPT sposobi prerusenie vykonavania CODE, avsak THREAD, ktory vykonaval CPU (THREAD XXX) sa NEZMENI.
+   !!! D. Obsluzna rutina INTERRUPT (ISR) je vykonavana na THREAD XXX.
+   !!!!! E. Ked je vykonavana ISR (resp. LUBOVOLNY CODE, ktory je vykonavany v ISR>=DISPATCH_LEVEL) CPU sa NEMOZE NIKDY PREPRNUT do INEHO THREAD, pretoze THREAD SCHEDULER, ktory THREADS prepina bezi VZDY v [IRQL=DISPATCH_LEVEL] a teda WINDOWS nemoze narusit vykonavanie CODE, ktory bezi v [IRQL>=DISPATCH_LEVEL] THREAD SCHEDULER CODE, ktory bezi v [IRQL=DISPATCH_LEVEL].
+   F. Po skonceni ISR, ak IRQL klesne na [IRQL<DISPATCH_LEVEL] pokracuje vykonavanie CODE z bodu 1 v THREAD XXX.
+   !!!!! G. Az teraz moze WINDOWS (ak uplynie casove QUANTUM, alebo THREAD s vyssou prioritou ziada o vykonanie) moze vyvolat na CPU SOFTWARE INTERRUPT, v obsluhe ktoreho spusti THREAD SCHEDULER.
+   H. THREAD SCHEDULER nasledne vykona CONTEXT SWITCH a prepne CPU na vykonavanie THREAD YYY.
+!!!!! 20. POZOR. IRQL je CISTO WINDOWS SPECIFIC vlastnost. Platia nasledujuce fakty.
+   !!! A. IRQL NIE JE NIJAKO asociovane s CPU. CPU pojem IRQL NEPOZNA. 
+   !!! B. IRQL je definovany WINDOWS a asociovany s THREADS, aby WINDOWS vedel kedy moze byt THREAD preruseny prichodom noveho INTERRUPT.
+   !!!!! C. Ak THREAD vo WINDOWS vykonava SYSTEMOVO KRITICKU OPERACIU, tak nastavi IRQL na VYSSIU HODNOTU ako IRQL KTOREHOKOLVEK HW DEVICE (DIRQL). To znaci, ze v case vykonavania tejto SYSTEMOVO KRITICKEJ OPERACIE ZIADEN HW INTERRUPT nemoze vykonat PRERUSENIE beziaceho THREADU vykonavajuceho tento SYSTEMOVO KRITICKY CODE.
+!!!!! 21. THREAD SCHEDULER bezi v [IRQL=DISPATCH_LEVEL]. Z toho vyplyvaju nasledujuce skutocnosti.
+   !!!!! A. Ak CPU, kde bezi THREAD v [IRQL=DISPATCH_LEVEL] NEMOZE byt SCHEDULED ZIADEN INY THREAD, pretoze THREAD SCHEDULER, ktory bezi v [IRQL=DISPATCH_LEVEL] sa na DANOM CPU NIKDY NESPUSTI. A kedze THREAD SCHEDULER VZDY bezi na KAZDOM CPU NEZAVISLE (ine CPU NEMOZE vykonat THREAD SCHEDULING na inom ako SVOJOM CPU), tak dany CPU je ZABLOKOVANY, az kym sa IRQL NEZNIZI na hodnotu [IRQL<DISPATCH_LEVEL].
+   B. Ak je SYSTEM iba SINGLE CPU, potom zvysenie IRQL na [IRQL=DISPATCH_LEVEL] znamena, ze ZIADEN THREAD vo WINDOWS sa NEVYKONA, az kym nebude IRQL znizene na uroven [IRQL<DISPATCH_LEVEL].
+   !!! C. CODE THREADU beziaceho v [IRQL=DISPATCH_LEVEL] MOZE byt PRERUSENY spracovanim INTERRUPS (ISR ROUTINE), avsak samotny THREAD NEBUDE ZMENENY. To znaci, ze ISR sa bude vykonavat v THREAD CONTEXT THREAD beziaceho v [IRQL=DISPATCH_LEVEL].
+   !!!!! D. Kedze THREAD SCHEDULER bezi v [IRQL=DISPATCH_LEVEL], ak THREAD bezi v [IRQL=APC_LEVEL] tak moze byt preruseny spustenim THREAD SCHEDULER, ktory moze naplanovat vykonavanie INEHO THREAD s [IRQL=PASSIVE_LEVEL]. To znaci, ze THREADS beziace v [IRQL=APC_LEVEL] MOZU BYT PRERUSENE THREADS beziacimi v [IRQL=PASSIVE_LEVEL], AJ NAPRIEK TOMU, ze [APC_LEVEL>PASSIVE_LEVEL].
+!!! 22. Vacsinu casu CPU bezi v NAJNIZSOM IRQL oznacenom ako PASSIVE_LEVEL.
+23. Jednotlive operacie bezia s nasledujucim IRQL.
+   !!! A. USER MODE CODE bezi VZDY v PASSIVE_LEVEL.
+   B. THREAD SCHEDULER bezi v DISPATCH_LEVEL.
+   C. Ak USER MODE CODE zavola WIN32API FUNCTION, tak tato FUNCTION je vykonavana v PASSIVE_LEVEL.
+   D. Vacsina IRP HANDLERS je vykonavanych v PASSIVE_LEVEL.
+   E. DRIVER FUNCTIONS ako DriverEntry() a AddDevice() bezia v PASSIVE_LEVEL.
+   F. Niektore DRIVER FUNCTIONS ako napriklad StartIo() bezia v DISPATCH_LEVEL.
+   G. DEFFERED PROCEDURE CALLS su volane na DISPATCH_LEVEL.
+   !!! H. DEVICE INTERRUPTS bezia v IRQL 3-26 (medzi DISPATCH_LEVEL-PROFILE_LEVEL) oznacovane suhrnne ako DEVICE IRP (DIRQL).
+   I. ASYNCHRONOUS PROCEDURE CALL (APC) bezi v APC_LEVEL.
+   !!! J. MEMORY SNAPSHOTS pred vykonanim HIBERNATE, spracovanie neocakavaneho IRP, alebo spracovanie BUG CHECK bezia v HIGH_LEVEL.
+   !!!!! K. PAGE FAULTS bezia v APC_LEVEL co znaci, ze CODE beziaci v DISPATCH_LEVEL a vyssie NESMIE sposobit PAGE FAULT. Ak by DISPATCH_LEVEL CODE sposobil PAGE FAULT, tak by to znacilo nutnost vyvolania CODE v APC_LEVEL co NIE JE MOZNE, pretoze APC_LEVEL ma NIZSIE IRQL ako DISPATCH_LEVEL a teda DISPATCH_LEVEL NEMOZE byt INTERRUPTED z APC_LEVEL.
+24. Priority IRQL podla velkosti. Vyssie cislo znamena vyssiu prioritu.
+   A. HIGH_LEVEL - 31.
+   B. POWER LEVEL - 30.
+   C. IPI_LEVEL - 29.
+   D. CLOCK1_LEVEL, CLOCK2_LEVEL - 28.
+   E. PROFILE_LEVEL - 27.
+   F. DEVICE INTERRUPT LEVELS 3-26.
+   G. DISPATCH_LEVEL - 2.
+   H. APC_LEVEL - 1.
+   I. PASSIVE_LEVEL - 0.
+!!! 25. INTERRUPT z HW DEVICES bezia z IRQL 3-26 (medzi DISPATCH_LEVEL-PROFILE_LEVEL) a su suhrnne oznacovane ako DEVICE INTERRUPTS (DIRQL).
+!!!!! 26. PAGE FAULTS bezia v APC_LEVEL co znaci, ze CODE beziaci v DISPATCH_LEVEL a vyssie NESMIE sposobit PAGE FAULT. Ak by DISPATCH_LEVEL CODE sposobil PAGE FAULT, tak by to znacilo nutnost vyvolania CODE v APC_LEVEL co NIE JE MOZNE, pretoze APC_LEVEL ma NIZSIE IRQL ako DISPATCH_LEVEL a teda DISPATCH_LEVEL NEMOZE byt INTERRUPTED z APC_LEVEL.
+!!! 27. THREADS mozu byt BLOCKED IBA v [IRQL<DISPATCH_LEVEL]. SPIN LOCKS, ktore NEVYKONAVAJU THREAD BLOCKING je vsak mozne pouzit aj v [IRQL<=DISPATCH_LEVEL].
+28. Aj ked VACSINOU sa DISPATCH ROUTINES vykonavaju na IRQL=PASSIVE_LEVEL, nastavenim FLAGS ci manualnym nastavenim IRQL je mozne sposobit vyvolanie DISPATCH ROUTINES s IRQL>PASSIVE_LEVEL.
+29. Dovody pre ktore jednotlive ROUTINES bezia pod danym IRQL.
+   A. ROUTINE IoStartPacket() a StartIo(), ktore spracovavaju IRP musia pristupovat do IRP QUEUE. Bezia v IRQL=DISPATCH_LEVEL preto, aby mohli nerusene citam ITEMS z QUEUE bez toho, aby ine ROUTINES pracujuce s QUEUE mohli v tej chvili pracovat s QUEUE.
+   B. INTERRUPTS su spracovavane v IRQL=DIRQL (3-26), pretoze potrebuju pracovat s DEVICE REGISTERS a pristup k nim zvycajne NEMOZE BYT SHARED. Ak bezia v DIRQL, tak na danom CPU NEMOZU byt INTERRUPTED inym INTERRUPT, ktory by sa nasledne mohol CHYBNE pokusit o pristup k NON-SHARED DEVICE REGISTERS co by sposobilo problemy.
+   C. DPC bezia v IRQL=DISPATCH_LEVEL, pretoze musia pristupovat do IRP QUEUE a NESMU byt INTERRUPTED inymi ROUTINES, ktore by tiez pracovali s QUEUE.
+30. Zmenu IRQL je mozne vykonat aj CODE volanim nasledovnych FUNCTIONS.
+   A. FUNCTION KeRaiseIrql() umoznuje ZVYSIT [CURRENT_IRQL] na vyssiu hodnotu.
+   B. FUNCTION KeLowerIrql() umoznuje ZNIZIT [CURRENT_IRQL] na nizsiu hodnotu.
+   C. FUNCTION KeGetCurrentIrql() umoznuje zistit hodnotu [CURRENT_IRQL].
+!!!!! 31. Pri ZNIZOVANI IRQL pomocou FUNCTION KeLowerIrql() sa NESMIE stat, aby IRQL klesla NIZSIE ako IRQL s ktorou bola CALLER FUNCTION volana. Ak by sa to stalo, tak CALLER FUNCTION by mohla byt INTERRUPTED aj INTERRUPTS s NIZSIM IRQL a to by mohlo narusilo vstupne podmienky pre vykonavanie CALLER a mohlo by napriklad sposbit, ze INTERRUPT s NIZSIM IRQL by pristupil k OBJECT, ktory povodna CALLER FUNCTION, ktora znizila IRQL povazovala za THREAD SAFE a mohla by narusit cinnost programu.
+!!!!! 32. Ak je k PROTECTED RESOURCE pristupovane z CODE beziacom V ROZLICNYCH IRQL pricom NAJVYSSIA MOZNA uroven IRQL pristupujuceho k PROTECTED RESOURCE je hodnota 'X', potom LOCKS pri vykonani LOCKING MUSIA zmenit IRQL na [IRQL=X]. Tym sa zabrani naruseniu PROTECTED RESOURCE, kedze ROUTINES IRQL<=X NEBUDU SPUSTENE. Zaroven vsak LOCK MUSI byt aplikovany, aby INY CPU nevykonal v case LOCKING pristup k PROTECTED RESOURCE.
+33. SPIN LOCKS umoznuju synchronizaciu pristupu k SHARED RESOURCES nasledujucim sposobom.
+   A. SPIN LOCK obsahuje VARIABLE nad ktorou THREADS, ktore chcu pristupit k SHARED RESOURCE vykonavaju ATOMICKY OPERACIU, ktora testuje ci VARIABLE je NASTAVENA a ak NIE JE, tak ju nastavi. Ak VARIABLE bola NASTAVENA, tak ATOMICKA OPERACIA NESPRAVI NIC, iba vrati informaciu, ze sa jej nepodarilo nastavit VARIABLE.
+   B. Ak ATOMICKA OPERACIA NASTAVILA hodnotu VARIABLE, tak THREAD, ktoremu sa to podarilo DRZI LOCK a MOZE pristupit k SHARED RESOURCES.
+   C. Ak ATOMICKA OPERACIA NENASTAVILA hodnotu VARIABLE, tak dany THREAD NEDRZI LOCK a musi OPAKOVANE v cykle (SPINNING) vykonava detekciu ci VARIABLE nie je UVOLNENA. Vo WDM sa pocet SPINS NENASTAVUJE a SPINNING bezi az kym nie je LOCK PRIDELENY.
+!!!!! 34. CODE beziaci so ziskanym SPIN LOCK ma nasledujuce obmedzenia.
+    !!!!! A. SPIN LOCKS vo WDM NEPODPORUJU REENTRANCY (RECURSION). To znaci, ze ak THREAD, ktory VLASTNI SPIN LOCK sa ho pokusi ZISKAT ZNOVA, tak dojde k DEADLOCK.
+    !!! B. Ak CODE ziska SPIN LOCK, tak jeho IRQL je AUTOMATICKY dvihnute na DISPATCH_LEVEL.
+    !!! C. CODE, ktory ziska SPIN LOCK MUSI byt v NON-PAGED MEMORY, pretoze bezi v DISPATCH_LEVEL.
+    !!! D. SPIN LOCK je mozne ziskat iba z CODE, ktory bezi s IRQL<=DISPATCH_LEVEL.
+    !!! E. CODE, ktory bezi so ziskanym SPIN LOCK NESMIE vykonat THREAD BLOCKING, pretoze bezi v IRQL=DISPATCH_LEVEL, kde je THREAD BLOCKING ZAKAZANY.
+    F. SPINNING je tiez vykonavany v IRQL DISPATCH_LEVEL.
+35. Pre pracu so SPIN LOCKS sluzia nasledujuce FUNCTIONS.
+   A. FUNCTION KeInitializeSpinLock() inicializuje SPIN LOCK. MEMORY na ktorej je SPIN LOCK inicializovany MUSI byt NON-PAGED.
+   !!! B. FUNCTION KeAcquireSpinLock() ziska SPIN LOCK a zmeni IRQL na DISPATCH_LEVEL. CODE v ktorom je volana MUSI byt v NON-PAGED MEMORY, pretoze po vykonani FUNCTION sa IRQL nastavi na IRQL=DISPATCH_LEVEL.
+   C. FUNCTION KeReleaseSpinLock() uvolni SPIN LOCK a vrati IRQL na LEVEL, v ktorom bola FUNCTION KeAcquireSpinLock() zavolana.
+   D. FUNCTION KeAcquireSpinLockAtDpcLevel() ziska SPIN LOCK. IRQL uz MUSI byt nastaveny na DISPATCH_LEVEL, pretoze FUNCTION ho nenastavuje.
+   E. FUNCTION KeReleaseSpinLockFromDpcLevel() uvolni SPIN LOCK. IRQL uz MUSI byt nastaveny na DISPATCH_LEVEL, pretoze FUNCTION ho nenastavuje.
+!!! 36. WINDOWS XP podporuje specialny typ SPIN LOCKS nazyvany QUEUED SPIN LOCKS. QUEUED SPIN LOCKS poskytuju VYSSIU VYKONNOST a takisto aj spravodlivy pristup k PROTECTED RESOUCES, pretoze pre cakajuce CPU garantuju FIRST-COME FIRST-SERVED pristup.
+!!! 37. QUEUED SPIN LOCKS by sa mali VZDY pouzivat NAMIESTO klasickych SPIN LOCKS.
+38. Na pracu s QUEUED SPIN LOCKS sluzia nasledujuce FUNCTIONS.
+   A. FUNCTION KeInitializeSpinLock() inicializuje QUEUED SPIN LOCK. MEMORY na ktorej je QUEUED SPIN LOCK inicializovany MUSI byt NON-PAGED. Zvycajne sa pouziva AUTOMATIC VARIABLE.
+   !!! B. FUNCTION KeAcquireInStackQueuedSpinLock() ziska QUEUED SPIN LOCK a zmeni IRQL na DISPATCH_LEVEL. CODE v ktorom je volana MUSI byt v NON-PAGED MEMORY, pretoze po vykonani FUNCTION sa IRQL nastavi na IRQL=DISPATCH_LEVEL.
+   C. FUNCTION KeReleaseInStackQueuedSpinLock() uvolni QUEUED SPIN LOCK a vrati IRQL na LEVEL, v ktorom bola FUNCTION KeAcquireInStackQueuedSpinLock() zavolana.
+   D. FUNCTION KeAcquireInStackQueuedSpinLockAtDpcLevel() ziska QUEUED SPIN LOCK. IRQL uz MUSI byt nastaveny na DISPATCH_LEVEL, alebo VYSSIE.
+   E. FUNCTION KeReleaseInStackQueuedSpinLockFromDpcLevel() uvolni QUEUED SPIN LOCK. IRQL uz MUSI byt nastaveny na DISPATCH_LEVEL, alebo VYSSIE.
+!!! 39. WDM poskytuje sadu KERNEL DISPATCHER OBJECTS, ktore je mozne pouzit na SYNCHRONIZACIU THREADS, ak THREADS MOZU byt BLOCKED (co nie je vzdy). Nasledujuci zoznam uvadza KERNEL DISPATCHER OBJECTS, ktore je mozne pouzit na SYNCHRONIZATION.
+   A. EVENTS.
+   B. SEMAPHORES.
+   C. MUTEXES.
+   D. TIMERS.
+   E. THREADS. THREAD OBJECT je signalizovany, ak THREAD SKONCI svoju cinnost.
+   F. FILE OBJECTS. FILE OBJECTS su signalizovane, ak je skoncena OVERLAPPER IO OPERATION.
+!!! 40. Na KERNEL DISPATCHER OBJECTS je mozne cakat pomocou FUNCTIONS KeWaitForSingleObject() a KeWaitForMultipleObject().
+41. V KERNEL MODE sa THREADS podla toho v akom CONTEXT bezia rozdeluju na 2 kategorie.
+   A. NON-ARBITRARY THREADS - ak pre CODE JE MOZNE JEDNOZNACNE urcit, na ktorom THREAD bude bezat, tak takyto CODE bezi v NON-ARBITRARY THREAD.
+   B. ARBITRARY THREADS - ak pre CODE NIE JE MOZNE JEDNOZNACNE urcit, na ktorom THREAD bude bezat, tak takyto CODE bezi v ARBITRARY THREAD. V tomto pripade CODE moze bezat na LUBOVOLNOM THREADE, ktory existuje v SYSTEME. Typicky INTERRUPTS su vykonavane na ARBITRARY THREADS, kedy CODE INTERRUPT HANDLERS je vykonavany na LUBOVOLNOM THREADE z tych, ktore boli v SYSTEME vytvorene.
+42. V KERNEL MODE sa THREADS podla toho kym boli vytvorene do 2 kategorii.
+   A. APPLICATION THREADS - su THREADS, ktore vytvaraju APPLICATIONS. Tieto THREADS moze KERNEL pouzit na spracovavanie INTERRUPT HANDLERS ci DPC.
+   B. SYSTEM THREADS - su THREADS, ktore su EXPLICITNE vytvorene v KERNEL MODE pomocou FUNCTION PsCreateSystemThread(). Tieto THREADS su vzdy NON-ARBITRARY THREADS.
+!!!!! 43. Ak sa IO OPERATION spracovava, tak sa vykonava na nasledujucich THREADS.
+   A. APPLICATION zavola z USER MODE IO OPERATION.
+   B. Volanie IO OPERATION sposobi prechod do KERNEL MODE.
+   !!!!! C. V KERNEL MODE sa zacne vykonavat CODE v NAJVRCHNEJSOM DRIVER. Tento CODE bude bezat na TOM ISTOM THREAD z ktoreho APPLICATION volala IO OPERATION. Tento THREAD v NAJVRCHNEJSOM DRIVER je NON-ARBITRARY THREAD, kedze je JEDNOZNACNE MOZNE POVEDAT, v ktorom THREADE bol CODE spusteny (na THREADE, ktory volal IO OPERATION v USER MODE).
+   !!! D. Ak NAJVRCHNEJSI DRIVER zavola CODE v NIZSOM DRIVER PRIAMO (do NIZSIEHO THREAD zasle IRP BEZ pouzitia QUEUE), tak aj CODE v NIZSOM DRIVER bude NON-ARBITRARY THREAD, kedze je JEDNOZNACNE MOZNE POVEDAT, v ktorom THREADE bol CODE spusteny (na THREADE, ktory volal IO OPERATION v USER MODE).
+   !!!!! E. Ak by vsak NAJVRCHNEJSI DRIVER zavola CODE v NIZSOM DRIVER NEPRIAMO ulozenim IRP do QUEUE, tak SCHEDULED FUNCTION, ktora vybera IRP z QUEUE by sa vykonala na ARBITRARY THREAD, kedze KERNEL moze na vykopnanie tejto FUNCTION pouzit LUBOVOLNY z THREADS, ktore su dostupne v SYSTEME.
+   !!!!! F. VSETKY INTERRUPT HANDLERS su vykonavane na ARBITRARY THREADS pri ktorych NIE JE MOZNE POVEDAT o aky THREAD sa jedna a akemu PROCESSES patria.
+!!! 44. SYSTEM THREADS (vytvorene pomocou PsCreateSystemThread()) MOZU byt BLOCKED. V SYSTEM THREADS bezia napriklad FUNCTIONS ako DriverEntry() ci AddDevice(). V SYSTEM THREADS takisto bezi spracovanie IPR IRP_MJ_PNP.
+45. FILTER DRIVERS NEVYKONAVAJU QUEUEING IRP MESSGES a teda ak zaslu IRP do FUNCTIONAL DRIVER, toto IRP je spracovavane VZDY v TOM ISTOM THREAD v ktorom bolo IRP spracovavane vo FILTER DRIVER.
+!!!!! 46. Pre BLOCKING THREADS platia nasledujuce pravidla.
+   A. SYSTEM THREADS MOZU byt BLOCKED.
+   B. NON-SYSTEM THREADS ak su NON-ARBITRARY THREADS a ZAROVEN maju IRQL<DISPACH_LEVEL tak MOZU BYT BLOCKED.
+   C. NON-SYSTEM THREADS ak su NON-ARBITRARY THREADS a [IRQL>=DISPACH_LEVEL], tak NESMU byt BLOCKED.
+   D. NON-SYSTEM THREADS ak su ARBITRARY THREADS, tak NESMU byt BLOCKED.
+!!! 47. Pre pouzitie KERNEL DISPATCHER OBJECTS (je ich mozne vyuzit na SYNCHRONIZATION) a SPIN LOCKS platia nasledujuce vztahy.
+   A. Ak KAZDY CODE BLOCK, ktory pouziva SHARED RESOURCE (vsetky pouzitia SHARED RESOURCE v CODE) bezi v [IRQL<DISPATCH_LEVEL], tak na SYNCHRONIZATION je potrebne pouzit KERNEL DISPATCHER OBJECTS. Tie totizto sposobia BLOCKING THREADU, ktory caka na pristup k SHARED RESOURCES a CPU mozu spracovavat ine THREADS.
+   B. Ak na NIEKTORY CODE BLOCK, ktory pouziva SHARED RESOURCE (vsetky pouzitia SHARED RESOURCE v CODE) v [IRQL=DISPATCH_LEVEL], tak na SYNCHRONIZATION je potrebne pouzit SPIN LOCKS.
+   !!! C. FUNCTIONS KeWaitForSingleObject() a KeWaitForMultipleObjects() mozu byt volane s NON-ZERO TIMEOUT IBA ako [IRQL<DISPATCH_LEVEL]. V [IRQL=DISPATCH_LEVEL] je tieto FUNCTIONS mozne pouzit IBA s NULOVYM TIMEOUT.
+48. FUNCTION KeWaitForSingleObject() vykonava BLOCKING THREAD pokym zadany KERNEL DISPATCHER OBJECT nie je signalizovany. Pre KeWaitForSingleObject() platia nasledujuce zasady.
+   !!! A. Ak TIMEOUT!=0 (ROBI sa BLOCKING), tak FUNCTION moze byt spustena LEN na NON-ARBITRARY THREADS a ZAROVEN MUSI bezat v IRQL<DISPATCH_LEVEL.
+   !!! B. Ak TIMEOUT==0 (NEROBI sa BLOCKING), tak FUNCTION moze byt spustena AJ na ARBITRARY THREADS a ZAROVEN MUSI bezat v IRQL<=DISPATCH_LEVEL.
+   !!!!! C. 1. PARAMETER Object urcuje KERNEL DISPATCHER OBJECT na ktory sa ma cakat. KERNEL DISPATCHER OBJECT MUSI byt v NON-PAGED MEMORY.
+   D. 2. PARAMETER WaitReason je HELPER hodnota, ktora urcuje dovod pre ktory sa robi BLOCKING. V pripade ze BLOCKING sa robit v CONTEXTE USER THREAD (oblsuhujuci USER IRP), tak sa nastavuje hodnota UserRequest, inak sa nastavuje hodnota Executive. PRAKTICKY VZDY sa tu zadava hodnota Executive.
+   E. 3. PARAMETER WaitMode urcuje ci sa BLOCKING realizuje na USER MODE THREAD, alebo KERNEL MODE THREAD. Zvycajne sa urcuje hodnota KernelMode.
+   F. 4. PARAMETER Alertable urcuje ci BLOCKING je ALERTABLE. Zvycajne sa nastavuje na FALSE.
+   G. 5. PARAMETER Timeout urcuje TIMEOUT ako 64 BITS VALUE. Ak je hodnota Timeout KLADNA hodnota, tak cas je urceny ako ABSOLUTNA HODNOTA v 100 MS od 1.1.1601.. Ak je Timeout ZAPORNA hodnota, tak cas je urceny ako RELATIVNA HODNOTA v 100 MS. Hodnota NULL znamena INFINITE WAITING.
+   !!! H. FUNCTION KeWaitForSingleObject() ak je OBJECT SIGNALIZED tak vykonava aj SIDE-EFFECT ACTION, ako napriklad RESET AUTO RESET EVENT do NON-SIGNALIZED STATE.
+   I. RETURN VALUE [STATUS_SUCCESS] urcuje, ze WAITING sa skoncil tym, ze KERNEL DISPATCHER OBJECT bol SIGNALIZED.
+   J. RETURN VALUE [STATUS_ALERTED] urcuje, ze WAITING bol preruseny vykonanim ALERT.
+   K. RETURN VALUE [STATUS_USER_APC] urcuje, ze WAITING bol preruseny vykonanim USER APC.
+   L. RETURN VALUE [STATUS_ABANDONED_WAIT_0], urcuje, ze KERNEL DISPATCHER OBJECT je ABANDONED MUTEX.
+   M. RETURN VALUE [STATUS_TIMEOUT], urcuje, ze doslo EXPIRACII TIMEOUT.
+   !!! N. MACRO NT_SUCCESS() vracia TRUE aj pre hodnoty [STATUS_ALERTED], [STATUS_USER_APC] a [STATUS_TIMEOUT], a preto ho NIE JE MOZNE pouzit na testovanie ci KERNEL DISPATCHER OBJECT bol SIGNALIZED.
+   !!!!! O. FUNCTION NEMENI hodnotu IRQL.
+49. FUNCTION KeWaitForMultipleObjects() vykonava BLOCKING THREAD pokym JEDEN, alebo VSETKY KERNEL DISPATCHER OBJECTS nie su signalizovany. Pre KeWaitForMultipleObjects() platia nasledujuce zasady.
+   !!! A. Ak TIMEOUT!=0 (ROBI sa BLOCKING), tak FUNCTION moze byt spustena LEN na NON-ARBITRARY THREADS a ZAROVEN MUSI bezat v IRQL<DISPATCH_LEVEL.
+   !!! B. Ak TIMEOUT==0 (NEROBI sa BLOCKING), tak FUNCTION moze byt spustena AJ na ARBITRARY THREADS a ZAROVEN MUSI bezat v IRQL<=DISPATCH_LEVEL.
+   C. 1. PARAMETER Count urcuje pocet KERNEL DISPATCHER OBJECTS na ktore bude FUNCTION cakat. Pocet NESMIE BYT VACSI ako MAXIMUM_WAIT_OBJECTS (64).
+   D. 2. PARAMETER Object obsahuje ARRAY KERNEL DISPATCHER OBJECTS. ARRAY MUSI byt v NON-PAGED MEMORY.
+   E. 3. PARAMETER WaitType urcuje ci sa ma cakat na signalizaciu PRVEHO (WaitAny), alebo VSETKYCH (WaitAll) KERNEL DISPATCHER OBJECT.
+   F. 4. PARAMETER WaitReason je HELPER hodnota, ktora urcuje dovod pre ktory sa robi BLOCKING. V pripade ze BLOCKING sa robit v CONTEXTE USER THREAD (oblsuhujuci USER IRP), tak sa nastavuje hodnota UserRequest, inak sa nastavuje hodnota Executive. PRAKTICKY VZDY sa tu zadava hodnota Executive.
+   G. 5. PARAMETER WaitMode urcuje ci sa BLOCKING realizuje na USER MODE THREAD, alebo KERNEL MODE THREAD. Zvycajne sa urcuje hodnota KernelMode.
+   H. 6. PARAMETER Alertable urcuje ci BLOCKING je ALERTABLE. Zvycajne sa nastavuje na FALSE.
+   I. 7. PARAMETER Timeout urcuje TIMEOUT ako 64 BITS VALUE. Ak je hodnota Timeout KLADNA hodnota, tak cas je urceny ako ABSOLUTNA HODNOTA v 100 MS od 1.1.1601.. Ak je Timeout ZAPORNA hodnota, tak cas je urceny ako RELATIVNA HODNOTA v 100 MS. Hodnota NULL znamena INFINITE WAITING.
+   !!! J. 8. PARAMETER WaitBlockArray obsahuje ARRAY objektov KWAIT_BLOCK o dlzke Count. Tento ARRAY NEMUSI BYT INICIALIZOVANY, ale MUSI byt v NON-PAGED MEMORY. Ak Count<=THREAD_WAIT_OBJECTS (3), tak PARAMETER moze byt NULL, pretoze KeWaitForMultipleObjects() pouzije INTERNY ARRAY.
+   !!! K. RETURN VALUE [STATUS_SUCCESS] je vracany pri nastaveni WaitType na WaitAll a urcuje, ze WAITING sa skoncil tym, ze VSETKY KERNEL DISPATCHER OBJECTS boli SIGNALIZED.
+   !!! L. RETURN VALUES ([STATUS_WAIT_0]-[STATUS_WAIT_63]) su vracane pri nastaveni WaitType na WaitAny a urcuje, ze WAITING sa skoncil tym, ze DISPATCHER KERNEL OBJECT s INDEXOM (RETURN_VALUE-STATUS_WAIT_0) bol SIGNALIZED. Samozrejme SIGNALIZED mohlo byt aj VIACERO KERNEL DISPATCHER OBJECTS, ale RETURN VALUE obsahuje informaciu IBA o JEDNOM z NICH, ktory NEMUSI byt v ARRAY ako PRVY SIGNALIZED KERNEL DISPATCHER OBJECT.
+   M. RETURN VALUES ([STATUS_ABANDONED_WAIT_0]-[STATUS_ABANDONED_WAIT_63]) su vracane pri nastaveni WaitType na WaitAny a urcuje, ze WAITING sa skoncil tym, ze DISPATCHER KERNEL OBJECT s INDEXOM (RETURN_VALUE-STATUS_ABANDONED_WAIT_0) bol ABANDONED MUTEX.
+   N. RETURN VALUE [STATUS_ALERTED] urcuje, ze WAITING bol preruseny vykonanim ALERT.
+   O. RETURN VALUE [STATUS_USER_APC] urcuje, ze WAITING bol preruseny vykonanim USER APC.
+   P. RETURN VALUE [STATUS_TIMEOUT], urcuje, ze doslo EXPIRACII TIMEOUT.
+   !!! Q. MACRO NT_SUCCESS() vracia TRUE aj pre hodnoty [STATUS_ALERTED], [STATUS_USER_APC] a [STATUS_TIMEOUT], a preto ho NIE JE MOZNE pouzit na testovanie ci KERNEL DISPATCHER OBJECT bol SIGNALIZED.
+   !!!!! R. FUNCTION NEMENI hodnotu IRQL.
+   !!!!! S. Ak bolo SIGNALIZED VIACERO OBJECTS, tak FUNCTION vrati INDEX JEDNEHO z NICH. Zaroven plati, ze IBA NAD TYMTO OBJECT vykona asociovane operacie (napriklad RESET AUTO RESET EVENT). Pre ostatne OBJECT tato operacia NIE JE VYKONANA.
+50. Pre KERNEL podporuje 2 typy EVENTS.
+   A. NOTIFICATION EVENTS reprezentuju funkcionalitu MANUAL RESET EVENTS.
+   B. SYNCHRONIZATION EVENTS reprezentuju funkcionalitu AUTO RESET EVENTS.
+!!! 51. S KERNEL EVENTS je mozne pracovat pomocou nasledujucich FUNCTIONS.
+   A. FUNCTION KeInitializeEvent() inicializuje KERNEL EVENT. KERNEL EVENT MUSI byt v NON-PAGED MEMORY. FUNCTION moze byt volana v LUBOVOLNOM IRQL.
+   !!! B. FUNCTION KeSetEvent() nastavuje EVENT do SIGNALIZED STATE. FUNCTION vracia informaciu ci PREDCHADZAJUCI STATE bol SIGNALIZED, alebo NON-SIGNALIZED. FUNCTION moze byt volana s [IRQL<=DISPATCH_LEVEL], ak PARAMETER Wait==FALSE a [IRQL<=APC_LEVEL], ak PARAMETER Wait==TRUE.
+   C. FUNCTION KeResetEvent() nastavuje EVENT do NON-SIGNALIZED STATE. FUNCTION vracia informaciu ci PREDCHADZAJUCI STATE bol SIGNALIZED, alebo NON-SIGNALIZED. FUNCTION moze byt volana s [IRQL<=DISPATCH_LEVEL].
+   D. FUNCTION KeClearEvent() nastavuje EVENT do NON-SIGNALIZED STATE, pricom vsak RETURN VALUE je VOID. FUNCTION moze byt volana s [IRQL<=DISPATCH_LEVEL].
+   !!! E. FUNCTION KeReadStateEvent() vracia STATE daneho KERNEL EVENT pricom FUNCTION EVENT STATE na rozdiel od KeWaitXXX() NEMENI. To znaci, ze pri AUTO RESET EVENTS iba vrati STATE daneho EVENT BEZ TOHO, aby ho nastavila do NON-SIGNALIZED STATE. FUNCTION moze byt volana s [IRQL<=DISPATCH_LEVEL].
+   F. FUNCTION IoCreateNotificationEvent() vytvara NAMED NOTIFICATION EVENT (MANUAL RESET EVENT).
+   G. FUNCTION IoCreateSynchronizationEvent() vytvara NAMED SYNCHRONIZATION EVENT (AUTO RESET EVENT).
+!!! 52. Pri FUNCTION KeSetEvent() sa 2. PARAMETER pouziva na urcenie THREAD PRIORITY BOOST, o ktory sa zvysi PRIORITY THREADU cakajuceho na signalizaciu EVENTU. Spravidla sa nastavuje na hodnotu [IO_NO_INCREMENT]. WDK definuje aj dalsie konstantny ako [IO_NETWORK_INCREMENT], [IO_MOUSE_INCREMENT], [IO_VIDEO_INCREMENT] ci [IO_SOUND_INCREMENT].
+!!!!! 53. Pri FUNCTION KeSetEvent() sa 3. PARAMETER pouziva pre vnutorne pouzitie samotnym KERNEL a v DRIVER DEVELOPMENT by MAL BYT VZDY nastavny na FALSE. PARAMETER nastaveny na TRUE ma zmysel LEN VTEDY, ak HNED po volani FUNCTION KeSetEvent() sa zavola FUNCTION KeWaitXXX() s ASOCIOVANYM EVENT OBJECT. Cinnost, ktora sa vykonava pri nastaveni tohto PARAMETER na TRUE je popisana v nasledujucich krokoch.
+   !!!!! A. Standardne plati, ze VSETKY BLOCKING FUNCTIONS predtym ako zacnu vykonavat svoju cinnost musia ziskat SYSTEM WIDE LOCK, ktory na konci svojej cinnosti uvolnia. Vdaka tomuto LOCK fungnuju VSETKY BLOCKING FUNCTIONS (ako napriklad KeWaitForSingleObject(), KeWaitForMultipleObjects(), KeSetEvent()) ATOMICKY.
+   B. Ak FUNCTION KeSetEvent() ma nastaveny 3. PARAMETER na TRUE, tak pri ukonceni NEUVOLNI SYSTEM-WIDE LOCK a ZAROVEN nastavi SPECIALNY FLAG, ze dany THREAD zavolal KeSetEvent() s 3. PARAMETER na TRUE. Zaroven je ZVYSENE IRQL, aby NEDOSLO k INTERRUPT daneho CODE.
+   C. Ak nasledne je OKAMZITE zavolana FUNCTION KeWaitXXX(), tak tato FUNCTION ZISTI, ze SPECIALNY FLAG bol NASTAVENY a NEPOZIADA o SYSTEM-WIDE LOCK, pretoze dany THREAD uz ho ma. FUNCTION KeWaitXXX() ak LOCK na ktory CAKA NIE JE SIGNALIZED, tak UVOLNI SYSTEM-WIDE LOCK (aby ostatne THREADS mohli pouzivat BLOCKING FUNCTIONS) a ZAROVEN ZABLOKUJE THREAD.
+   !!! D. Vo vysledku je pri pouziti KeSetEvent() s 3. PARAMETER na TRUE THREAD UVOLNENY na kratky cas, kym nezavola OKAMZITE KeWaitXXX() FUNCTION, pricom vdaka DVIHNUTEMU IRQL a NEUVOLNENEMU SYSTEM-WIDE LOCK sa ZABRANI INYM THREADS, aby prebrali riadenie.
+!!!!! 54. EVENTS je mozne na SYNCHRONIZATION pouzit IBA v SYSTEM THREADS, pretoze v USER MODE THREADS, ak sa napriklad USER MODE DEBUGGER zavola FUNCTION NtSuspendThread(), tak dojde k DEADLOCK. Takisto sa NESMU EVENTS pouzivat na SYNCHRONIZATION v CODE, ktory bezi v PAGED MEMORY.
+55. KERNEL SEMAPHORES su implementaciou SEMAPHORES v KERNEL. SEMAPHORE je COUNTER, ktory je SIGNALIZED ak jeho hodnota je >0. Ak je jeho hodnota ==0, tak je NON-SIGNALIZED. Na pracu s KERNEL SEMAPHORES WDM definuje nasleduju FUNCTIONS.
+   A. FUNCTION KeInitializeSemaphore() inicializuje KERNEL SEMAPHORE. KERNEL SEMAPHORE MUSI byt v NON-PAGED MEMORY. FUNCTION MUSI byt volana v PASSIVE_LEVEL.
+   !!! B. FUNCTION KeWaitXXX() DEKREMENTUJE (znizi o stanovenu hodnotu) interny COUNTER SEMAPHORE. Ak dosiahne 0, tak FUNCTION vykona BLOCKING volajuceho THREADU.
+   !!! C. FUNCTION KeReleaseSemaphore() INKREMENTUJE (zvysi o stanovenu hodnotu) interny COUNTER SEMAPHORE. Ak mal 0 hodnotu, tak uvolni niektory z BLOCKED THREAD. Hodnotu o ktoru sa ma COUNTER INKREMENTOVAT sa definuje ako 2. PARAMETER a nesmie prekrocit MAXIMALNU moznu hodnotu COUNTER zadanu v KeInitializeSemaphore(), inak je generovana EXCEPTION. Ako RETURN VALUE vracia 0, ak PREDCHADZAJUCI STATE SEMAPHORE bol NON-SIGNALIZED, inak vracia NENULOVU HODNOTU. FUNCTION ma aj PARAMETERS Increment a Wait, ktore sa chovaju ROVNAKO ako PARAMETERS [Increment] a [Wait] vo FUNCTION KeSetEvent().
+   !!! D. FUNCTION KeReadStateSemaphore() vracia STATE daneho KERNEL SEMAPHORE. Ako RETURN VALUE vracia 0, ak SEMAPHORE STATE je NON-SIGNALIZED, inak vracia NENULOVU HODNOTU. FUNCTION moze byt volana s LUBOVOLNOM IRQL.
+56. KERNEL podporuje 2 typy MUTEXES.
+   A. KERNEL MUTEXES. Pri ich ziskani sa NEMENI IRQL, ktore ostava na PASSIVE_LEVEL.
+   B. FAST EXECUTIVE MUTEXES. Pri ich ziskani je dvihnute IRQL na APC_LEVEL.
+57. KERNEL MUTEX je principialne podpobny SEMAPHORE s hodnotou 1. Funguje nasledujucim sposobom.
+   A. Po vytvoreni KERNEL MUTEX je KERNEL MUTEX v SIGNALIZED STATE.
+   B. Po zavolani FUNCTION KeWaitXXX() sa KERNEL MUTEX dostane do NON-SIGNALIZED STATE.
+   C. Ked THREAD drzi KERNEL MUTEX, tak jeho IRQL NA ROZDIEL od FAST EXECUTIVE MUTEXES sa NEMENI.
+   D. Po ukonceni pristupu k SHARED RESOURCE sa volanim FUNCTION KeReleaseMutex() uvolni MUTEX a ten sa stane znova SIGNALIZED.
+   !!! E. KERNEL MUTEXES na rozdiel od FAST EXECUTIVE MUTEXES su RECURSIVE. KERNEL MUTEX obsahuje LOCK COUNTER, pricom volanie FUNCTION KeWaitXXX() COUNTER INKREMENTUJE a volanie FUNCTION KeReleaseMutex() COUNTER DEKREMENTUJE. Az ked hodnota COUNTER klesne na 0, KERNEL MUTEX sa znova stava SIGNALIZED.
+   !!!!! F. DRIVER MUSI FUNCTIONS musia VZDY uvolnit KERNEL MUTEX skor nez skoncia svoju cinnost (ukonci DISPATCH ROUTINE). Ak to nespravia, WINDOWS vygeneruje BUG CHECK.
+58. S KERNEL MUTEXES je vo WDM mozne pracovat pomocou nasledujucich FUNCTIONS.
+   A. FUNCTION KeInitializeMutex() inicializuje KERNEL MUTEX. KERNEL MUTEX MUSI byt v NON-PAGED MEMORY. FUNCTION moze byt volana v LUBOVOLNOM IRQL. Vytvoreny MUTEX je v SIGNALIZED STATE.
+   !!! B. FUNCTION KeWaitXXX() zmeni MUTEX do NON-SIGNALIZED STATE, ak bol v SIGNALIZED STATE, alebo spravi BLOCKING ak KERNEL MUTEX bol v NON-SIGNALIZED STATE.
+   !!! C. FUNCTION KeReleaseMutex() zmeni KERNEL MUTEX do NON-SIGNALIZED STATE, ak pocet volani FUNCTION KeReleaseMutex() pri rekurivnom pouzivani KERNEL MUTEX zodpoveda poctu volani FUNCTION KeWaitXXX(). FUNCTION moze byt volana v [IRQL<=DISPATCH_LEVEL] a vracia hodnotu 0, ktora indikuje, ze predchadzajuci STATE bol NON-SIGNALIZED. PARAMETER [Wait] ma TEN ISTY VYZNAM ako vo FUNCTION KeSetEvent().
+   D. FUNCTION KeReadStateMutex() vracia STATE daneho KERNEL MUTEX. Ak je KERNEL MUTEX v NON-SIGNALIZED STATE, FUNCTION vracia ako RETURN VALUE hodnotu 0. Ak je KERNEL MUTEX v SIGNALIZED STATE, FUNCTION vracia ako RETURN VALUE hodnotu 1. FUNCTION moze byt volana s [IRQL<=DISPATCH_LEVEL].
+!!!!! 59. Ak sa MUTEX pokusi uvolnit THREAD, ktory ho nevlastni, dojde k BUG CHECK.
+60. KERNEL TIMER je KERNEL DISPATCHER OBJECT, ktory ma nasledujuce vlastnosti.
+   A. KERNEL TIMER ako KERNEL DISPATECHER OBJECT moze byt v SIGNALIZED a NON-SIGNALIZED STATES. SIGNALIZED sa stava pri expirovani TIMEOUT.
+   B. KERNEL TIMER moze pri expiracii TIMEOUT OPTIONALY vyvolat DPC CALLBACK FUNCTION.
+   C. KERNEL TIMER moze vyvolavat DPC CALLBACK FUNCTION iba raz, alebo PERIODICKY.
+   !!! D. KERNEL TIMER moze fungovat v rezime ako MANUAL RESET EVENT, alebo v rezime ako AUTO RESET EVENT, kedy je KERNEL TIMER vo FUNCTIONS typu KeWaitXXX() OKAMZITE RESETNUTY do NON-SIGNALIZED STATE.
+!!! 61. KERNEL TIMES je mozne pouzit aj ako TIMED EVENTS.
+   A. Ak vo FUNCTION KeInitializeTimerEx() je 2. PARAMETER nastaveny na hodnotu [NotificationTimer], tak KERNEL TIMER bude fungovat ako TIMED MANUAL RESET EVENT.
+   B. Ak vo FUNCTION KeInitializeTimerEx() je 2. PARAMETER nastaveny na hodnotu [SynchronizationTimer], tak KERNEL TIMER bude fungovat ako TIMED AUTO RESET EVENT.
+62. Vo WDM je s KERNEL TIMERS mozne pracovat pomocou nasledujucich FUNCTIONS.
+   A. FUNCTION KeInitializeTimer() inicializuje KERNEL TIMER, ktory MUSI byt v NON-PAGED MEMORY. Zaroven nastavi KERNEL TIMER do NON-SIGNALIZED STATE. FUNCTION je mozne spustat v [IRQL<=DISPATCH_LEVEL].
+   !!!!! B. FUNCTION KeInitializeTimerEx() inicializuje KERNEL TIMER, ktory MUSI byt v NON-PAGED MEMORY. Zaroven nastavi KERNEL TIMER do NON-SIGNALIZED STATE. Na rozdiel od FUNCTION KeInitializeTimer() vo FUNCTION KeInitializeTimerEx() je mozne specifikovat aj mod v ktorom ma KERNEL TIMER bezat. Ak sa ako 2. PARAMETER [Type] urci hodnota [NotificationTimer], tak KERNEL TIMER bude fungovat ako MANUAL RESET EVENT. Ak sa ako 2. PARAMETER [Type] urci hodnota [SynchronizationTimer], tak KERNEL TIMER bude fungovat ako AUTO RESET EVENT. FUNCTION je mozne spustat v [IRQL<=DISPATCH_LEVEL].
+   C. FUNCTION KeSetTimer() umoznuje nastavit EXPIRATION TIME a zaroven OPTIONALLY aj nastavenie DPC FUNCTION, ktora bude volana pri expiracii TIMEOUT. FUNCTION vracia TRUE, ak uz bolo vykonanie KERNEL TIMER ACTION SCHEDULED a volanie FUNCTION KeSetTimer() ho prerusilo a nastavilo nove. FUNCTION je mozne spustat v [IRQL<=DISPATCH_LEVEL].
+   !!! D. FUNCTION KeSetTimerEx() umoznuje nastavit EXPIRATION TIME a zaroven OPTIONALLY aj nastavenie DPC FUNCTION, ktora bude volana pri expiracii TIMEOUT. Zaroven definuje aj PERIODU s ktorou sa ma KERNEL TIMER periodicky nastavovat do SIGNALIZED STATE, resp. vyvolavat aj DPC FUNCTION. FUNCTION vracia TRUE, ak uz bolo vykonanie KERNEL TIMER ACTION SCHEDULED. FUNCTION je mozne spustat v [IRQL<=DISPATCH_LEVEL].
+   !!! E. FUNCTION KeWaitXXX() ak je KERNEL TIMER v SIGNALIZED STATE, tak sa KERNEL TIMER zmeni do NON-SIGNALIZED STATE, ak bol nastaveny mod [SynchronizationTimer] (AUTO RESET EVENT), alebo ostane v NON-SIGNALIZED STATE, ak bol nastaveny mod [NotificationTimer].
+   F. FUNCTION KeCancelTimer() umoznuje vykonat KERNEL TIMER CANCELLATION a vymaze SCHEDULED KERNEL TIMER ACTION, pokial uz TIMER EXPIROVAL a SCHEDULED KERNEL TIMER ACTION uz bola SCHEDULED. FUNCTION vracia TRUE, ak uz bolo vykonanie KERNEL TIMER ACTION SCHEDULED. FUNCTION je mozne spustat v [IRQL<=DISPATCH_LEVEL].
+   G. FUNCTION KeReadStateTimer() vracia hodnotu TRUE, ak KERNEL TIMER bol SIGNALIZED a FALSE ak bol NON-SIGNALIZED. FUNCTION je mozne spustat v [IRQL<=DISPATCH_LEVEL].
+!!! 63. Ak TIMER ma vyvolavat DPC pri TIMER EXPIRATION, tak je nutne splnit nasledujuce podmienky.
+   A. Alokovat KDPC STRUCTURE v NON-PAGED MEMORY.
+   B. Vytvorit DPC CALLBACK FUNCTION, ktora MUSI byt v NON-PAGED MEMORY.
+   C. Inicializovat KDPC STRUCTURE pomocou FUNCTION KeInitializeDpc() v ktorej sa nastavi CALLBACK FUNCTION, ktora sa ma cez DPC volat.
+   D. Pomocou FUNCTION KeSetTimer(), alebo KeSetTimerEx() inicializovat TIMER na volanie DPC CALLBACK FUNCTION pri TIMEOUT EXPIRATION.
+!!!!! 64. Vykonanie DPC sa pri PRECHODE z NON-SIGNALIZED do SIGNALIZED STATE ulozi do SCHEDULER IBA 1 KRAT a to BEZ OHLADU na to ci je TIMER AUTO RESET TIMER, alebo MANUAL RESET TIMER.
+!!!!! 65. PERIODIC KERNEL TIMERS sa KERNEL TIMERS NESMU UVOLNIT v DPC.
+!!!!! 66. Ak sa PERIODIC KERNEL TIMERS pri DRIVER UNLOAD NEZASTAVIA volanim FUNCTION KeCancelTimer(), tak sa generuje BUG CHECK. Toto je ozaj odskusane a kontroluje to i TOOL [VERIFIER.EXE].
+67. THREAD OBJECTS su KERNEL DISPATCHER OBJECTS pre ktore platia nasledujuce pravidla.
+   A. THREAD OBJECTS su vytvarane pomocou FUNCTION PsCreateSystemThread().
+   !!! B. THREAD OBJECTS tak ako vsetky KERNEL DISPATCHER OBJECTS obsahuju REFERENCE COUNTER, ktory ked klesne na 0, tak WINDOWS KERNEL DISPATCHER OBJECT uvolni.
+   !!! C. THREAD OBJECT je po vytvoreni v NON-SIGNALIZED STATE. STATE sa zmeni na SIGNALIZED, ak je THREAD ukonceny.
+   !!!!! D. FUNCTION PsCreateSystemThread() vracia HANDLE na THREAD. Ten ak ma byt pouzity vo WAIT FUNCTIONS MUSI byt konvertovany na KERNEL DISPATCHER OBJECT pomocou FUNCTION ObReferenceObject().
+!!! 68. Pre REFERENCE COUNTING THREAD OBJECTS platia nasledujuce pravidla.
+   A. THREAD OBJECT je uvolneny z MEMORY ak REFERENCE COUNTER klesne na hodnotu 0.
+   !!! B. THREAD OBJECT po vytvoreni FUNCTION PsCreateSystemThread() nastavi hodnotu REFERENCE COUNTER na 2, pretoze vytvara samotny THREAD OBJECT, ktory je KERNEL DISPATCHER OBJECT ako aj HANDLE na THREAD OBJECT, ktory FUNCTION PsCreateSystemThread() vracia.
+   C. Ak sa HANDLE na THREAD OBJECT je uvolneny volanim FUNCTION ZwClose() REFERENCE COUNTER je DEKREMENTOVANY.
+   !!! D. Ak je HANDLE na THREAD OBJECT konvertovany na KERNEL DISPATCHER OBJECT pomocou FUNCTION ObReferenceObject(), tak je REFERENCE COUNTER INKREMENTOVANY.
+   E. Ak je THREAD KERNEL DISPATCHER OBJECT uvolneny pomocou FUNCTION ObDereferenceObject(), tak REFERENCE COUNTER DEKREMENTOVANY.
+69. Konverzia HANDLE na THREAD OBJECTS na KERNEL DISPATCHER OBJECTS sa vykonava v nasledujucich krokoch.
+   A. FUNCTION PsCreateSystemThread() vracia HANDLE na THREAD OBJECT. HANDLE na THREAD OBJECT NIE JE MOZNE pouzit vo WAIT FUNCTIONS.
+   !!! B. FUNCTION ObReferenceObject() konvertuje HANDLE na THREAD OBJECT na POINTER na KERNEL DISPATCHER OBJECT. POINTER na KERNEL DISPATCHER OBJECT je mozne pouzit vo WAIT FUNCTIONS.
+   C. POINTER vrateny na KERNEL DISPATCHER OBJECT vrateny FUNCTION ObReferenceObject() je potrebne uvolnit volanim FUNCTION ObDereferenceObject().
+   D. HANDLE na KERNEL OBJECT vrateny FUNCTION PsCreateSystemThread() je nutne uvolnit volanim FUNCTION ZwClose().
+70. FUNCTION KeDelayExecutionThread() je analogiou Sleep() z USER MODE, kedy umoznuje zablokovat THREAD na stanoveny cas. FUNCTION moze byt volana pre [IRQL<=APC_LEVEL].
+71. FUNCTION KeStallExecutionProcessor() umoznuje zablokovat THREAD na cas, ktory MUSI byt <50 MS. FUNCTION moze byt volana pre LUBOVOLNE IRQL.
+!!! 72. SYSTEM THREADS su KERNEL THREADS, ktore su vytvarane v DRIVERS ako CUSTOM THREADS v ktorych moze bezat lubovolny KERNEL CODE. Pre SYSTEM THREADS platia nasledujuce fakty.
+   A. SYSTEM THREADS reprezentuju NON-ARBITRARY THREADS, kedze CODE vzdy bezi v tychto THREADS, ktorych kontext je znamy.
+   B. SYSTEM THREADS FUNCTION MUSIA byt VZDY ukoncene volanim FUNCTION PsTerminateSystemThread() v ktorom sa vracia hodnota NTSTATUS.
+   !!! C. SYSTEM THREADS su KERNEL DISPATCHER OBJECTS, ktore su SIGNALIZED, ked THREAD UKONCIL svoju cinnost. Na SYSTEM THREADS je mozne aplikovat KeWaitXXX() FUNCTIONS.
+73. SYSTEM THREADS sa vytvaraju a pouzivaju nasledujucim sposobom.
+   A. Definuje sa SYSTEM THREAD FUNCTION, ktora obsahuje CODE, ktory bude THREAD vykonavat.
+   !!! B. SYSTEM THREAD FUNCTION MUSI ako POSLEDNY PRIKAZ vykonat volanie FUNCTION PsTerminateSystemThread() v ktorej PARAMETRI urci NTSTATUS, ktora je THREAD RETURN VALUE, ktoru moze CODE, ktory so SYSTEM THREAD pracuje ziskat.
+   C. SYSTEM THREAD sa vytvara pomocou FUNCTION PsCreateSystemThread() v ktorej sa ako PARAMETER zadava SYSTEM THREAD FUNCTION, ktoru ma SYSTEM THREAD vykonat.
+   !!! D. FUNCTION PsCreateSystemThread() vracia THREAD HANDLE, ktory NIE JE VELMI POUZITELNY a zvycajne sa pomocou FUNCTION ObReferenceObjectByHandle() konvertuje na KTHREAD OBJECT.
+   E. KTHREAD OBJECT reprezentuje SYSTEM THREADS KERNEL DISPATCHER OBJECT na ktory je cez FUNCTIONS KeWaitXXX() mozne cakat, kym nebudu SIGNALIZED co sa stane, ked THREAD sa UKONCI.
+   F. Po ukonceni SYSTEM THREAD (SYSTEM THREAD FUNCTION MUSI volat FUNCTION PsTerminateSystemThread()) je KTHREAD OBJECT potrebne odstranit volanim FUNCTION ObDereferenceObject().
+   G. THREAD HANDLE sa uzatvara volanim FUNCTION ZwClose().
+   H. Pomocou FUNCTION KeGetCurrentThread() je mozne ziskat POINTER na aktualny KTHREAD OBJECT v ktorom CODE bezi.
+!!! 74. WINDOWS podporuje 2 dodatocne mechanizmy, ktorymi je mozne PRERUSIT THREAD, ktory bezi v [IRQL<=APC_LEVEL].
+   A. ALERT je INTERNY WINDOWS MECHANIZMUS (volanie UNDOCUMENTED FUNCTION NtAlertThread()), ktory WINDOWS pouziva na prebudenie WAITING THREADS.
+   !!! B. ASYNCHRONNOUS PROCEDURE CALLS (APC) je mechanizmus, ktory pomocou ALERT (volanie UNDOCUMENTED FUNCTION NtAlertThread()) umoznuje POZASTAVIT vykonavanie CODE daneho THREAD, alebo THREAD ak je vo ALERTABLE WAIT STATE (pomocou FUNCTIONS KeWaitXXX()) PREBUDIT, aby sa vykonala APC ROUTINE v kontexte daneho THREAD.
+!!! 75. Poziadavky na vykonanie APC sa ukladaju do APC QUEUES. APC QUEUES su asociovane s THREADOM a pri prichode poziadavky na vykonanie APC je APC REQUEST ulozeny do APC QUEUE odkial su vyberane a vykonavane v THREAD CONTEXT daneho THREAD pre ktore boli zaslane.
+76. Pomocou APC sa vo WINDOWS spracovavaju mnohe dolezite operacie.
+   A. THREAD SUSPENSION a THREAD TERMINATION REQUESTS.
+   B. IO COMPLETION ROUTINES. ACP sa vyuzivaju preto, aby sa IO COMPLETION ROUTINES mohli vykonat v CONTEXT THREADU, ktory bude mat pristupne USER MODE BUFFERS do ktorych sa vysledok IO OPERATION zapise.
+!!!!! 77. Ak je THREAD v [IRQL=APC_LEVEL] moze sa stat, ze THREAD bude INTERRUPTED pomocou INTERRUPT s vyssim IRQL, no pri navrate sa riadenie NEVRATI POVODNEMU THREADU, ale zacne sa vykonavat THREAD, ktory ma [IRQL=PASIVE_LEVEL]. To znaci, ze NEPRIAMO je THREAD beziaci vo VYSSOM IRQL (APC_LEVEL) 'preruseny' THREADOM beziacom s NIZSIM IRQL (PASSIVE_LEVEL). Dochadza k tomu ako nasledok nasledujucej situacie, ktora je popisana aj v dokumente [IRQL_Thread.doc] v sekcii APC.
+   A. THREAD XXX bezi v [IRQL=PASSIVE_LEVEL].
+   !!! B. Ak pride poziadavka na vykonanie APC (KERNEL MODE APC, pretoze tie su vykonane aj ked THREAD bezi) WINDOWS zaradi APC do APC QUEUE a vykona SOFTWARE INTERRUPT, ktory prerusi vykonavanie CODE v THREAD XXX.
+   C. Teraz THREAD SCHEDULER moze spustit vykonavanie LUBOVOLNEHO THREAD.
+   !!! D. Ked THREAD SCHEDULER ZNOVA prideli CPU THREAD XXX, tak SKOR ako sa zacne vykonavat CODE THREAD XXX sa WINDOWS pozrie do APC QUEUE a vykona APC ROUTINES v APC QUEUE. ACP ROUTINES su vykonavane v [IRQL=APC_LEVEL] v kontexte THREAD XXX.
+   !!! E. Pocas vykonavania APC ROUTINES sa HOCIKEDY moze spustit THREAD SCHEDULER, pretoze tento bezi v [IRQL=DISPATCH_LEVEL].
+   !!!!! F. Kedze THREAD SCHEDULER pri SCHEDULINGU NEHLADI na IRQL hodnotu THREADS, ktore posudzuje ci su vhodne na spustenie KLUDNE moze spustit THREAD YYY s [IRQL=PASSIVE_LEVEL].
+   !!!!! G. To znaci, ze THREAD beziaci v [IRQL=APC_LEVEL] moze byt pomocou THREAD SCHEDULER POZASTAVENY a namiesto neho sa moze spustit THREAD, ktory bezi v [IRQL=PASSIVE_LEVEL].
+78. APC REQUESTS sa delia do 4 skupin.
+   A. SPECIAL KERNEL MODE APC REQUESTS.
+   B. NORMAL KERNEL MODE APC REQUESTS.
+   C. NORMAL USER MODE THREAD EXIT APC REQUESTS.
+   D. NORMAL USER MODE APC REQUESTS.
+79. Pre SPECIAL KERNEL MODE APC platia nasledujuce zasady.
+   A. Novy APC REQUEST je vkladany za POSLEDNY SPECIAL KERNEL MODE APC REQUEST v APC QUEUE.
+   B. SPECIAL KERNEL MODE APC su vykonavane OKAMZITE potom ako je THREAD SCHEDULED na vykonanie.
+   C. SPECIAL KERNEL MODE APC sa podobne ako VSETKY APC vykonaju ESTE SKOR ako THREAD zacne vykonavat svoj povodny CODE, ktory ma vykonavat.
+   D. SPECIAL KERNEL MODE APC sa vykonavaju ako je THREAD v [IRQL=PASSIVE_LEVEL].
+   !!! E. SPECIAL KERNEL MODE APC sa vykonavaju AJ KED THREAD bezi v CRITICAL REGION (v CODE nebola zavolana FUNCTION KeEnterCriticalRegion()).
+   !!! F. Pocas vykonavania SPECIAL KERNEL MODE APC sa zmeni IRQL na [IRQL=APC_LEVEL].
+   G. SPECIAL KERNEL MODE APC sa pouzivaju na vykonanie IO COMPLETION ROUTINES, ktore spracovaju vysledok IO OPERATION a kopiruju nacitane data do USER MODE BUFFERS.
+80. Pre NORMAL KERNEL MODE APC platia nasledujuce zasady.
+   A. Novy APC REQUEST je vkladany az za vsetky SPECIAL KERNEL MODE APC REQUESTS a az za POSLEDNY SPECIAL KERNEL MODE APC REQUEST v APC QUEUE.
+   B. NORMAL KERNEL MODE APC su vykonavane az ked sa danom THREAD vykonali vsetky SPECIAL KERNEL MODE APC REQUESTS.
+   !!! C. SPECIAL KERNEL MODE APC sa vykonavaju ako je THREAD v [IRQL=PASSIVE_LEVEL] a ZAROVEN THREAD NIE JE v CRITICAL REGION (v CODE nebola zavolana FUNCTION KeEnterCriticalRegion()).
+81. Pre NORMAL KERNEL MODE EXIT APC platia nasledujuce zasady.
+   A. Novy APC REQUEST je vkladany az za vsetky SPECIAL KERNEL MODE APC REQUEST i vsetky KERNEL MODE APC REQUESTS, avsak PRED vsetky ostatne USER MODE APC REQUESTS.
+   B. NORMAL USER MODE THREAD EXIT APC REQUESTS su vykonavane pri navrate z KERNEL MODE do USER MODE, ak THREAD bol v ALERTABLE WAIT a nebol v CRITICAL REGION.
+82. Pre USER MODE APC platia nasledujuce zasady.
+   A. Novy APC REQUEST je vkladany az za vsetky SPECIAL KERNEL MODE APC REQUEST, vsetky KERNEL MODE APC REQUESTS i vsetky NORMAL USER MODE APC REQUESTS.
+   B. Z USER MODE za USER MODE APC vyvolava pomocou FUNCTION QueueUserAPC().
+   C. NORMAL USER MODE APC REQUESTS su vykonavane pri navrate z KERNEL MODE do USER MODE, ak THREAD bol v ALERTABLE WAIT a nebol v CRITICAL REGION.
+!!! 83. To ci THREAD vykona APC zavisi od jeho IRQL ako aj toho ci THREAD bezi v CRITICAL REGION.
+   A. Ak THREAD bezi v [IRQL=PASSIVE_LEVEL] a zaroven NEBEZI v CRITICAL REGION (v CODE nebola zavolana FUNCTION KeEnterCriticalRegion()) potom THREAD moze vykonat LUBOVOLNY typ APC.
+   B. Ak THREAD bezi v [IRQL=PASSIVE_LEVEL] a zaroven BEZI v CRITICAL REGION (v CODE bola zavolana FUNCTION KeEnterCriticalRegion()) potom THREAD moze vykonat iba SPECIAL KERNEL MODE APC.
+   !!! C. Ak THREAD bezi v [IRQL=APC_LEVEL] tak NEMOZE vykonat ZIADNE NOVE APC. Ak prave vykonava APC, tak nove APC sa vykonaju az po skonceni prave vykonavaneho APC.
+!!! 84. KERNEL MODE APC REQUESTS mozu byt vyvolane AJ KED THREAD NIE JE v ALERTABLE WAIT, zatial co v pripade USER MODE APC REQUESTS mozu byt vykonane IBA ak je THREAD v ALERTABLE WAIT.
+85. Nasledujuca tabulka urcuje ako sa FUNCTIONS KeWaitXXX() chovaju pri nastaveni ALRTABLE WAIT PARAMETERS.
+   A. Alertable=TRUE, WaitMode=UserMode -> WAIT INTERRUPTED=YES, USER APC DELIVERED=YES.
+   B. Alertable=FALSE, WaitMode=UserMode -> WAIT INTERRUPTED=YES (iba pre NORMAL USER MODE THREAD EXIT APC REQUESTS), USER APC DELIVERED=NO.
+   C. Alertable=TRUE, WaitMode=KernelMode -> WAIT INTERRUPTED=NO, USER APC DELIVERED=NO.
+   D. Alertable=FALSE, WaitMode=KernelMode -> WAIT INTERRUPTED=NO, USER APC DELIVERED=NO.
+86. USER MODE CODE moze zaslat do THREAD APC REQUEST pomocou FUNCTION QueueUserAPC().
+!!! 87. Vo FUNCTION QueueUserAPC() sa ako THREAD HANDLE sa NESMIE pouzivat PSEUDO THREAD HANDLE, ktory vracia FUNCTION GetCurrentThread(), ale SKUTOCNY THREAD HANDLE, ktory sa ziska pri vytvarani THREADU alebo ho ziskat z PSEUDO HANDLE pomocou FUNCTION DuplicateHandle().
+88. Pri vykonavani SYNCHRONNYCH IO OPERATIONS sa APC taktiez vyuzivaju a to nasledujucim sposobom.
+   A. Z USER MODE sa spusti FUNCTION ReadFile() na nacitanie dat z DEVICE.
+   B. Interne FUNCTION ReadFile() zavola FUNCTION NtReadFile(), ktora vytvori IRP a zasle ho do DRIVER prislusneho DEVICE.
+   !!! C. VACSINOU DRIVER na IRP vrati RETURN VALUE [STATUS_PENDING], kedze ZVYCAJNE IO OPERATIONS pokial nemaju uz nejake data v BUFFERS su vykonavane ASYNCHRONNE a systemu trva isty, ktory ich z DEVICE ziska.
+   D. Ak DRIVER vrati [STATUS_PENDING], tak FUNCTION NtReadFile() tuto RETURN VALUE posunie do FUNCTION ReadFile().
+   !!! E. FUNCTION ReadFile() zavola FUNCTION NtWaitForSingleObject(), ktora interne zavola FUNCTION KeWaitForSingleObject(). Ako HANDLE sa pouziva HANDLE na DEVICE z ktoreho su data citane a pouziva sa NON-ALERTABLE WAIT.
+   !!!!! F. Ked IO OPERATION skonci, tak DRIVER zavola FUNCTION IoCompleteRequest(), ktora do APC QUEUE THREADU, ktory VYVOLAL IO OPERATION v ktoreho CONTEXT su validne USER MODE BUFFERS vlozi KERNEL MODE APC REQUEST.
+   !!!!! G. KERNEL MODE APC REQUEST sa zacne spracovavat v APC ROUTINE na THREADE, ktory VYVOLAL IO OPERATION v ktoreho CONTEXT su validne USER MODE BUFFERS (rovnaky ADDRESS SPACE). APC ROUTINE zapise nacitane data do USER MODE BUFFER a zavola FUNCTION KeSetEvent() na DEVICE HANDLE, ci UVOLNI KeWaitForSingleObject() nepriamo volanu z ReadFile(). (Volanie KeSetEvent() je NEVYHNUTNE, pretoze len samotne vykonanie APC ROUTINE NEPRERUSI BLOCKING v KeWaitForSingleObject(), kedze sa pouzil NON-ALERTABLE WAIT.)
+   H. Po ukonceni BLOCKING vo FUNCTION ReadFile() moze sa FUNCTION ReadFile() ukoncit pricom vrati bud ERROR, alebo SUCCESS, kedy je USER MODE BUFFER naplneny nacitanymi datami.
+!!!!! 89. V KERNEL MODE sa THREAD BLOCKING FUNCTIONS ako KwWaitXXX() pouzivaju ZRIEDKAVO. Zvycajne sa namiesto nich pouzivaju SPIN LOCKS na SYNCHRONIZATION a pri spracovavani IO REQEUSTS sa vyuziva ASYNCHRONNE spracovanie, kedy sa do USER MODE CODE vrati STATUS [STATUS_PENDING] a az USER MODE CODE je v pripade vykonavania SYNCHRONNEJ IO OPERATION zodpovedny za vykonanie THREAD BLOCKING a NIE KERNEL MODE CODE v DRIVERS.
+90. Typicky sa v KERNEL MODE vykonava THREAD BLOCKING IBA na KERNEL SYSTEM THREADS, napriklad pri vykonavani PNP OPERATIONS.
+!!! 91. Ak sa v KERNEL MODE vykonava THREAD BLOCKING nad NON-ARBITRARY THREADS (co je mozne), tak sa dopocujuce pouzivat ALERTABLE WAITS. V ostatnych pripadoch kedy sa vykonava THREAD BLOCKING sa odporuca pouzivat NON-ALERTABLE WAITS.
+92. FAST KERNEL MUTEX je specialna verzia KERNEL MUTEX, ktora ma nasledujuce vlastnosti.
+   A. Je RYCHLEJSI ako klasicky KERNEL MUTEX.
+   B. NEMOZE byt ziskany REKURZIVNE. Pokus o REKURZIVNE ZISKANIE LOCK sposobi DEAD LOCK.
+   !!! C. Ak je LOCK ziskany pomocou FUNCTION ExAcquireFastMutexUnsafe(), tak THREAD NEPRIJMA APC, pretoze FUNCTION ExAcquireFastMutexUnsafe() DVIHNE IRQL na [IRQL=APC_LEVEL] cim sa zablokuje vykonavanie ostatnych APC.
+   !!! D. NEMOZE byt pouzity vo FUNCTIONS KeWaitForSingleObject() a KeWaitForMultipleObjects().
+   E. CODE beziaci v CRITICAL SECTION chraneny FAST KERNEL MUTEX musi byt CODE, ktory moze bezat v [IRQL=APC_LEVEL].
+   !!! F. Pred zavolanim FUNCTION ExAcquireFastMutexUnsafe() volajuci THREAD MUSI byt v [IRQL=APC_LEVEL], alebo MUSI zavolat niektou z FUNCTIONS KeEnterCriticalRegion(), alebo FsRtlEnterFileSystem().
+   !!!!! G. Tym, ze FAST KERNEL MUTEX ZNEMOZNUJE vykonavanie APC VYRAZNE OBMEDZUJE CODE, ktory je mozne pomocou FAST KERNEL MUTEX chranit. Napriklad CODE NESMIE sa pokusit o cakanie na vykonanie SYNCHRONNEHO IRP, kedze to vyzaduje vykonanie APC a to pri ziskanom FAST KERNEL MUTEX NIE JE MOZNE.
+93. S KERNEL FAST MUTEXES je vo WDM mozne pracovat pomocou nasledujucich FUNCTIONS.
+   A. FUNCTION ExInitializeFastMutex() inicializuje KERNEL FAST MUTEX. KERNEL MUTEX MUSI byt v NON-PAGED MEMORY. FUNCTION moze byt volana v [IRQL<=DISPATCH_LEVEL]. Vytvoreny MUTEX je v NON-SIGNALIZED STATE.
+   B. FUNCTION ExAcquireFastMutex() ziska FAST MUTEX a ZAROVEN aj ZVYSI IRQL na [IRQL=APC_LEVEL] cim ZNEMOZNI vyvolavanie APC na CURRENT THREAD. V pripade, ze FAST MUTEX je v NON-SIGALIZED STATE, tak sa vykona BLOCKING. Ak FAST MUTEX FUNCTION moze byt volana v [IRQL<=APC_LEVEL].
+   !!! C. FUNCTION ExAcquireFastMutexUnsafe() ziska FAST MUTEX a ZAROVEN aj pricom IRQL sa NEZMENI. V pripade, ze FAST MUTEX je v NON-SIGALIZED STATE, tak sa vykona BLOCKING. FUNCTION MUSI byt volana v [IRQL=APC_LEVEL], alebo CODE pred volanim ExAcquireFastMutexUnsafe() zavolal niektou z FUNCTIONS KeEnterCriticalRegion(), alebo FsRtlEnterFileSystem().
+   D. FUNCTION ExTryToAcquireFastMutex() pokusi sa ziskat FAST MUTEX a ZAROVEN aj ZVYSIT IRQL na APC_LEVEL ci ZNEMOZNI vyvolavanie APC na CURRENT THREAD. V pripade, ze FAST MUTEX je v NON-SIGALIZED STATE, tak FUNCTION NESPOSOBI BLOCKING, ale vrati FALSE. FUNCTION moze byt volana v [IRQL<=APC_LEVEL].
+   !!! E. FUNCTION ExReleaseFastMutex() zmeni KERNEL FAST MUTEX do NON-SIGNALIZED STATE a zaroven ZNIZI IRQL na [IRQL=PASSIVE_LEVEL]. FUNCTION moze byt volana v [IRQL=APC_LEVEL].
+   F. FUNCTION ExReleaseFastMutexUnsafe() zmeni KERNEL FAST MUTEX do NON-SIGNALIZED STATE pricom vsak NEZNIZI IRQL a ponecha ho v [IRQL=APC_LEVEL]. FUNCTION moze byt volana v [IRQL=APC_LEVEL].
+!!! 94. KERNEL FAST MUTEXES interne funguju nasledujucim sposobom.
+   A. Pri FAST MUTEX ACQUIRING sa interny COUNTER ATOMICKY DEKREMENTUJE. COUNTER udava pocet THREADS, ktore bud maju, alebo cakaju na FAST MUTEX.
+   B. Ak COUNTER po DEKREMENTACII indikuje, ze ziaden dalsi THREAD nevlastni FAST MUTEX, nevykona sa ZIADNA CINNOST a MUTEX je tym padom PRIRADENY danemu THREADU.
+   C. Ak COUNTER po DEKREMENTACII indikuje, ze iny THREAD vlastni FAST MUTEX tak CURRENT THREAD je BLOCKED pomocou KERNEL AUTO RESET EVENT, ktory FAST MUTEX interne obsahuje.
+   D. Pri FAST MUTEX RELEASING sa interny COUNTER ATOMICKY INKREMENTUJE.
+   E. Ak COUNTER po INKREMENTACII indikuje, ze ziaden dalsi THREAD NECAKA na ziskanie FAST MUTEX, tak sa uz nic viac nerobi.
+   F. Ak COUNTER po INKREMENTACII indikuje, ze nejaky THREAD CAKA na ziskanie FAST MUTEX, tak sa pomocou FUNCTION KeSetEvent() UVOLNI KERNEL AUTO RESET EVENT na ktory ostatne THREADS cakaju.
+!!! 95. EXECUTIVE RESOURCES su KERNEL DISPATCHER OBJECTS, ktore implementuju funkcionalitu READER-WRITER LOCKS. Pre EXECUTIVE RESOURCES platia nasledujuce fakty.
+   A. EXECUTIVE RESOURCES su reprezentovane STRUCTURE [ERESOURCE], ktora MUSI byt alokovana v NON-PAGED MEMORY.
+   !!! B. EXECUTIVE RESOURCES NEMOZU byt pouzite vo FUNCTIONS KeWaitForSingleObject() a KeWaitForMultipleObjects().
+   !!! C. Jeden EXECUTIVE RESOURCE moze byt SHARED medzi VIACERYMI THREADS pre READ ACCESS.
+   !!! D. Jeden EXECUTIVE RESOURCE moze byt vlastneny IBA 1 THREAD pre WRITE (EXCLUSIVE) ACCESS.
+   !!! E. EXECUTIVE RESOURCES su REKURZIVNE.
+96. S KERNEL EXECUTIVE RESOURCES je vo WDM mozne pracovat pomocou nasledujucich FUNCTIONS.
+   A. FUNCTION ExInitializeResourceLite() vytvara EXECUTIVE RESOURCE. MEMORY pre EXECUTIVE RESOURCE, ktoru FUNCTION vracia v 1. PARAMETRI MUSI byt alokovany v NON-PAGED MEMORY. FUNCTION moze byt volana v [IRQL<=DISPATCH_LEVEL].
+   B. FUNCTION ExDeleteResourceLite() odstranuje EXECUTIVE RESOURCE. FUNCTION moze byt volana v [IRQL<=APC_LEVEL].
+   C. FUNCTION ExReinitializeResourceLite() reinicializuje EXECUTIVE RESOURCE cim nahradzuje volania FUNCTIONS ExDeleteResourceLite(), ExAllocatePool() a ExInitializeResourceLite(). FUNCTION moze byt volana v [IRQL<=DISPATCH_LEVEL].
+   !!! D. FUNCTION ExAcquireResourceSharedLite() poziada o ziskanie SHARED ACCESS k EXECUTIVE RESOURCE. Ak CURRENT THREAD uz EXECUTIVE RESOURCE vlastni, tak sa INKREMENTUJE COUNTER a FUNCTION okamzite skonci vratiac ako RETURN VALUE hodnotu [TRUE]. Ak INY THREAD vlastni SHARED ACCESS, tak FUNCTION okamzite skonci pricom ako RETURN VALUE vrati hodnotu [TRUE]. Ak INY THREAD vlastni EXCLUSIVE LOCK, tak v zavislosti na 2. PARAMETRI bud FUNCTION OKAMZITE SKONCI a vrati ako RETURN VALUE hodnotu [FALSE], alebo vykona THREAD BLOCKING. FUNCTION moze byt volana v [IRQL<=APC_LEVEL].
+   !!!!! E. FUNCTION ExAcquireResourceExclusiveLite() poziada o ziskanie EXCLUSIVE ACCESS k EXECUTIVE RESOURCE. Ak CURRENT THREAD uz EXECUTIVE RESOURCE s EXCLUSIVE ACCESS vlastni, tak sa INKREMENTUJE COUNTER a FUNCTION okamzite skonci vratiac ako RETURN VALUE hodnotu [TRUE]. Ak CURRENT THREAD uz EXECUTIVE RESOURCE s SHARED ACCESS vlastni, tak volanie FUNCTION sposobi DEAD LOCK. Ak INY THREAD vlastni EXECUTIVE RESOURCE, tak tak FUNCTION v zavislosti na 2. PARAMETRI bud OKAMZITE SKONCI a vrati ako RETURN VALUE hodnotu [FALSE], alebo vykona THREAD BLOCKING. FUNCTION moze byt volana v [IRQL<=APC_LEVEL].
+   F. FUNCTION ExAcquireSharedStarveExclusive() poziada o ziskanie SHARED ACCESS k EXECUTIVE RESOURCE bez toho, aby cakala na to az vsetky THREADS, ktore poziadali o ziskanie EXCLUSIVE ACCESS k EXECUTIVE RESOURCE ho ziskali. FUNCTION moze byt volana v [IRQL<=APC_LEVEL].
+   G. FUNCTION ExAcquireSharedWaitForExclusive() poziada o ziskanie SHARED ACCESS k EXECUTIVE RESOURCE pricom vsak caka na to az vsetky THREADS, ktore poziadali o ziskanie EXCLUSIVE ACCESS k EXECUTIVE RESOURCE ho ziskaju a nasledne aj uvolnia. FUNCTION moze byt volana v [IRQL<=APC_LEVEL].
+   H. FUNCTION ExConvertExclusiveToSharedLite() konvertuje EXECUTIVE RESOURCE ziskany pre EXCLUSIVE ACCESS na SHARED ACCESS. FUNCTION moze byt volana v [IRQL<=APC_LEVEL].
+   !!! I. FUNCTION ExReleaseResourceLite() uvolnuje ziskany EXECUTIVE RESOURCE pre CURRENT THREAD. FUNCTION moze byt volana v [IRQL<=DISPATCH_LEVEL].
+   J. FUNCTION ExReleaseResourceForThreadLite() uvolnuje ziskany EXECUTIVE RESOURCE pre THREAD identifikovany hodnotou typu [ERESOURCE_THREAD]. FUNCTION ma ako 2. PARAMETER [ERESOURCE_THREAD], ktory ziska volanim FUNCTION ExGetCurrentResourceThread(). FUNCTION moze byt volana v [IRQL<=DISPATCH_LEVEL].
+   K. FUNCTION ExGetCurrentResourceThread() vracia [ERESOURCE_THREAD], ktory sluzi ako 2. PARAMETER pre FUNCTION ExReleaseResourceForThreadLite(). FUNCTION moze byt volana v [IRQL<=DISPATCH_LEVEL].
+   L. FUNCTION ExIsResourceAcquiredSharedLite() vracia informaciu ci CURRENT THREAD ma k EXECUTIVE RESOURCE SHARED ACCESS.
+   M. FUNCTION ExIsResourceAcquiredExclusiveLite() vracia informaciu ci CURRENT THREAD ma k EXECUTIVE RESOURCE EXCLUSIVE ACCESS.
+   N. FUNCTION ExIsResourceAcquiredLite() vracia informaciu ci CURRENT THREAD ma SHARED alebo EXECUTIVE ACCESS k EXECUTIVE RESOURCE.
+   O. FUNCTION ExGetSharedWaiterCount() vracia pocet WAITERS (THREADS), ktori cakaju na ziskanie SHARED ACCESS k danemu EXECUTIVE RESOURCE.
+   P. FUNCTION ExGetExclusiveWaiterCount() vracia pocet WAITERS (THREADS), ktori cakaju na ziskanie EXCLUSIVE ACCESS k danemu EXECUTIVE RESOURCE.
+   Q. FUNCTION ExSetResourceOwnerPointer() nastavuje THREAD OWNER POINTER na [ERESOURCE_THREAD] pre EXECUTIVE RESOURCE.
+   R. FUNCTION ExSetResourceOwnerPointerEx() transferuje vlastnictvo EXECUTIVE RESOURCE na noveho OWNER identifikovaneho POINTER na [ERESOURCE_THREAD].
+   S. FUNCTION ExEnterCriticalRegionAndAcquireResourceExclusive() vstupi do CRITICAL SECTION a NASLEDNE ziska EXCLUSIVE ACCESS pre EXECUTIVE RESOURCE.
+   T. FUNCTION ExReleaseResourceAndLeaveCriticalRegion() uvolni EXECUTIVE RESOURCE a nasledne opusti CRITICAL SECTION.
+!!!!! 97. Ak THREADS vyzaduju SYNCHRONIZACIU, pricom su povolene APC je vzdy treba davat pozor ci APC nemoze sposobit DEADLOCK. Alternativou je vyuzit LOCKING, ktory ZABRANUJE vzniku APC.
+   A. Pri FUNCTIONS KeWaitForXXX() ak sa NEPOVOLIA ALERTABLE WAITS tak je mozne vyvolat iba SPECIAL KERNEL MODE APC. Tym je mozne zabranit zvysanim IRQL na [IRQL=APC_LEVEL].
+   B. Ak THREAD bezi v [IRQL=APC_LEVEL], tak k APC NIKDY NEMOZE dojst. To znaci, ze dvihnutie IRQL na [IRQL=APC_LEVEL] zabranuje vzniku APC.
+   C. Pri FAST MUTEXES je mozne pouzit FUNCTION ExAcquireFastMutex(), ktora na rozdiel od FUNCTION FUNCTION ExAcquireFastMutexUnsafe() DVIHA IRQL na [IRQL=APC_LEVEL], cim zabranuje vzniku APC.
+98. Ak CODE musi ziskat 2 SYNCHRONIZATION PRIMITIVES, tak VSADE v CODE by mali byt ziskavane v ROVNAKOM PORADI, inak hrozi DEADLOCK.
+!!! 99. TOOL [VERIFIER.EXE] podporuje OPTION, ktora umoznuje detekovat existenciu DEADLOCKS a pripade ich vyskytu generuje BUG CHECK.
+100. Pre INTERLOCKED aritmetiku definuje WDM nasledujuce FUNCTIONS.
+   A. FUNCTION ExInterlockedAddLargeInteger() scitava dve 64 BITS VALUES a ako RETURN VALUE vracia hodnotu LEFT OPERAND PRED SCITANIM.
+   B. FUNCTION ExInterlockedAddUlong() scitava dve 32 BITS VALUES a ako RETURN VALUE vracia hodnotu LEFT OPERAND PRED SCITANIM.
+   C. FUNCTION ExInterlockedCompareExchange64() porovnava dve 64 BITS VALUE a ak su ROVNAKE, tak LEFT OPERAND je nastaveny na NOVU VALUE. FUNCTION ako RETURN VALUE vracia POVODNU HODNOTU LEFT OPERAND.
+   !!! D. FUNCTION ExInterlockedAddLargeStatistic() scitava 64 BITS a 32 BITS VALUES. NEVYUZIVA SPIN LOCK a inkrementovana 64 BITS VALUE (LEFT OPERAND) moze byt v NEKONZISTENTNOM STAVE, pokial CPU nepodporuje ATOMICKE operacie nad 64 BITS VALUES. Najlepsie je tuto FUNCTION NEPOUZIVAT.
+   E. FUNCTION InterlockedCompareExchange() porovnava dve 32 BITS VALUE a ak su ROVNAKE, tak LEFT OPERAND je nastaveny na NOVU VALUE. FUNCTION ako RETURN VALUE vracia POVODNU HODNOTU LEFT OPERAND.
+   E. FUNCTION InterlockedCompareExchangePointer() porovnava dve POINTERS a ak su ROVNAKE, tak LEFT OPERAND je nastaveny na NOVYM POINTER. FUNCTION ako RETURN VALUE vracia POVODNY POINTER v LEFT OPERAND.
+   G. FUNCTION InterlockedExchange() nastavi 32 BITS LEFT OPERAND na 32 BITS RIGHT OPERAND a ako RETURN VALUE vracia POVODNU HODNOTU LEFT OPERAND.
+   H. FUNCTION InterlockedExchangeAdd() scitava dve 32 BITS VALUES a ako RETURN VALUE vracia hodnotu LEFT OPERAND PRED SCITANIM.
+   I. FUNCTION InterlockedExchangePointer() nastavi LEFT OPERAND POINTER na RIGHT OPERAND POINTER a ako RETURN VALUE vracia POVODNU HODNOTU LEFT OPERAND.
+   J. FUNCTION InterlockedIncrement() inkrementuje 32 BITS VALUE a vrati inkrementovanu VALUE.
+   K. FUNCTION InterlockedDecrement() dekrementuje 32 BITS VALUE a vrati dekrementovanu VALUE.
+   L. FUNCTION InterlockedAnd() atomicky vykona OPERATION ADD a a vrati POVODNU HODNOTU LEFT OPERAND.
+   M. FUNCTION InterlockedOr() atomicky vykona OPERATION OR a a vrati POVODNU HODNOTU LEFT OPERAND.
+   N. FUNCTION InterlockedXor() atomicky vykona OPERATION XOR a a vrati POVODNU HODNOTU LEFT OPERAND.
+101. Pre INTERLOCKED aritmetiku podporuje WDM 2 typy FUNCTIONS.
+   A. FUNCTIONS InterlockedXXX() su THREAD SAFE operacie NATIVNE podporovane CPU. Mozu byt vykonavane v LUBOVOLNOM IRQL nad NON-PAGED VARIABLES. Pri pouziti PAGED VARIABLES musia pristupovat v [IRQL<=APC_LEVEL].
+   B. FUNCTIONS ExInterlockedXXX() su THREAD SAFE operacie vyuzivajuce SPIN LOCK. Mozu byt vykonavane v LUBOVOLNOM IRQL, avsak IBA nad NON-PAGED VARIABLES. PAGED VARIABLES NEPODPORUJU.
+102. WDM podporuje 3 typy THREAD SAFE LISTS.
+   A. INTERLOCKED SINGLY LINKED LISTS.
+   B. INTERLOCKED DOUBLY LINKED LISTS.
+   C. INTERLOCKED SINGLY LINKED S-LISTS.
+!!! 103. Pre THREAD SAFE LISTS platia nasledujuce fakty.
+   !!! A. Vsetky STRUCTURES, ktore THREAD SAFE LISTS vyuzivaju MUSIA byt ulozene v NON-PAGED MEMORY, kedze THREAD SAFE LISTS ZVYSUJU IRQL na urovne, kedy NIE JE mozne pouzit PAGED MEMORY.
+   B. S THREAD SAFE LISTS je az na niekolko FUNCTIONS mozne pracovat v LUBOVOLNOM IRQL.
+   C. THREAD SAFE LISTS na synchronizaciu pouzivaju SPIN LOCKS, ktore musi DRIVER explicitne vytvorit.
+   !!!!! D. Interne THREAD SAFE LIST FUNCTIONS pre INTERLOCKED SINGLY LINKED LISTS a INTERLOCKED DOUBLY LINKED LISTS zvysuju IRQL na [IRQL=HIGH_LEVEL], a pri svojom ukonceni ho vratia na povodnu hodnotu IRQL. Tym sa umoznuje, ze FUNCTIONS mozu byt volane pre LUBOVOLNE IRQL.
+104. S INTERLOCKED SINGLY LINKED LISTS je vo WDM mozne pracovat pomocou nasledujucich FUNCTIONS.
+   A. FUNCTION ExInterlockedPushEntryList() prida ITEM na VRCHOL INTERLOCKED LIST.
+   B. FUNCTION ExInterlockedPopEntryList() odstrani ITEM z VRCHOLU INTERLOCKED LIST.
+105. S INTERLOCKED DOUBLY LINKED LISTS je vo WDM mozne pracovat pomocou nasledujucich FUNCTIONS.
+   A. FUNCTION ExInterlockedInsertHeadList() vklada ITEM na ZACIATOK INTERLOCKED LIST.
+   B. FUNCTION ExInterlockedInsertTailList() vklada ITEM na KONIEC INTERLOCKED LIST.
+   C. FUNCTION ExInterlockedRemoveHeadList() odstranuje PRVY ITEM zo INTERLOCKED LIST.
+106. S INTERLOCKED SINGLY LINKED S-LISTS je vo WDM mozne pracovat pomocou nasledujucich FUNCTIONS.
+   A. FUNCTION ExInitializeSListHead() incializuje HEAD daneho INTERLOCKED S-LIST, pricom INTERLOCKED S-LIST bude PRAZDNY (NEMA ZIADEN ITEM) a HEAD.Blink a HEAD.Flink sa budu odkazovat sami na seba.
+   B. FUNCTION ExInterlockedPushEntrySList() prida ITEM na VRCHOL INTERLOCKED S-LIST.
+   C. FUNCTION ExInterlockedPopEntrySList() odstrani ITEM z VRCHOLU INTERLOCKED S-LIST.
+!!! 107. Teoreticky je mozne THREAD SAFE a THREAD UNSAFE FUNCTIONS pre pracu s LINKED LIST mozne kombinovat, ak pred zavolanim THREAD UNSAFE FUNCTIONS je vykonany LOCK na TEN ISTY SPIN LOCK, ktory pouzivaju THREAD SAFE FUNCTIONS. V tomto pripade je vsak potrebne davat pozor na hodnoty IRQL s ktorymi su jednotlive FUNCTIONS volane, aby nedoslo k tomu, ze THREAD, ktory drzi SPIN LOCK je INTERRUPTED inym THREADOM, ktory sa pokusi vykonat LINKED LIST THREAD SAFE FUNCTIONS (tieto mozu byt na rozdiel od SPIN LOCK FUNCTIONS volane s LUBOVOLNYM IRQL) a nedoslo k REKURZIVNEMU BLOKOVANIU SPIN LOCK co sposobi DEADLOCK.
+//-------------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------------
+Vztah medzi THREADS a INTERRUPTS.
+
+1. CPU vykonava CODE v THREAD XXX.
+2. CPU zachyti INTERRUPT.
+3. INTERRUPT sposobi prerusenie vykonavania CODE, avsak THREAD, ktory vykonaval CPU (THREAD XXX) sa NEZMENI.
+!!! 4. Obsluzna rutina INTERRUPT (ISR) je vykonavana na THREAD XXX.
+!!!!! 5. Ked je vykonavana ISR (resp. LUBOVOLNY CODE, ktory je vykonavany v ISR>=DISPATCH_LEVEL) CPU sa NEMOZE NIKDY PREPRNUT do INEHO THREAD, pretoze THREAD SCHEDULER, ktory THREADS prepina bezi VZDY v [IRQL=DISPATCH_LEVEL] a teda WINDOWS nemoze narusit vykonavanie CODE, ktory bezi v [IRQL>=DISPATCH_LEVEL] THREAD SCHEDULER CODE, ktory bezi v [IRQL=DISPATCH_LEVEL].
+6. Po skonceni ISR, ak IRQL klesne na [IRQL<DISPATCH_LEVEL] pokracuje vykonavanie CODE z bodu 1 v THREAD XXX.
+!!!!! 7. Az teraz moze WINDOWS (ak uplynie casove QUANTUM, alebo THREAD s vyssou prioritou ziada o vykonanie) moze vyvolat na CPU SOFTWARE INTERRUPT, v obsluhe ktoreho spusti THREAD SCHEDULER.
+8. THREAD SCHEDULER nasledne vykona CONTEXT SWITCH a prepne CPU na vykonavanie THREAD YYY.
+//-------------------------------------------------------------------------------------------------------
+LOCK a INTERRUPTS PROBLEMS.
+
+1. V KERNEL MODE existuju 2 fundamenalne SYNCHRONIZATION PROBLEMS.
+   A. LOCK PROBLEM. Tento problem je KLASICKYM SYNCHRONIZATION PROBLEM, kedy v pripade, ze sa 2 THREADS PARALELNE pokusia o pristup k SHARED RESOURCES, tak dojde k NARUSENIU STATE SHARED RESOURCE. Tento problem sa riesi pouzitim LOCKS.
+   B. INTERRUPT PROBLEM. Tento problem sa vyskytuje IBA v KERNEL MODE, kde CODE beziaci v istom IRQL moze byt INTERRUPTED inym CODE, ktory bezi vo VYSSOM IRQL. Ak CODE, ktory sposobil INTERRUPT vykona pristup k SHARED RESOURCE, tak dojde k NARUSENIU STATE SHARED RESOURCE. Tento problem sa riesi ZVYSOVANIM IRQL na definovanu hodnotu.
+   C. COMBINED PROBLEM. Je sposobeny kombinaciou LOCK a INTERRUPT PROBLEMS. LOCK PROBLEM vznikne v dosledku toho, ze MULTI CORE CPU moze spustit CODE pristupujuci k SHARED RESOURCE vdaka comu moze dojst k naruseniu SHARED RESOURCE STATE. INTERRUPT PROBLEM sa zas vyskytne pri behu na JEDNOM CORE, ked CODE, ktory drzi LOCK moze byt INTERRUPTED CODE s VYSSIM IRQL, ktory ak pristupi k SHARED RESOURCE tak narusi SHARED RESOUCE STATE. Riesenim je pouzitie LOCKS a ZVYSENIA IRQL.
+2. LOCK PROBLEM je mozne demonstrovat v nasledujucich krokoch.
+   A. SHARED VARIABLE ma byt inkrementovana ma hodnotu 1.
+   B. THREAD 1 nacita do LOCAL VARIABLE hodnotu SHARED VARIABLE. LOCAL VARIABLE bude obsahovat hodnotu 1.
+   C. THREAD 1 vykona INKREMENTACIU LOCAL VARIABLE na hodnotu 2.
+   !!! D. V THREAD 1 dojde ku CONTEXT SWITCH a namiesto THREAD 1 dostane CPU THREAD 2. (Alternativne THREAD 2 bezi PARALELNE na INOM CPU).
+   E. THREAD 1 vykona INKREMENTACIU LOCAL VARIABLE na hodnotu 2 a zapise hodnotu 2 do SHARED VARIABLE.
+   !!! F. Ked sa THREAD 1 potom ako znova dostane CPU pokusi zapisat hodnotu LOCAL VARIABLE do SHARED VARIABLE, tak NEZACHYTI ZMENU, ktoru vykonal THREAD 2 a NAMIESTO ocakavanej hodnoty 3 (po dvoch inkrementaciach) zapise NESPRAVNU hodnotu 2.
+3. INTERRUPT PROBLEM je mozne demonstrovat v nasledujucich krokoch.
+   A. SHARED VARIABLE ma byt inkrementovana ma hodnotu 1.
+   B. FUNCTION beziaca v IRQL 1 nacita do LOCAL VARIABLE hodnotu SHARED VARIABLE. LOCAL VARIABLE bude obsahovat hodnotu 1.
+   C. FUNCTION beziaca v IRQL 1 vykona INKREMENTACIU LOCAL VARIABLE na hodnotu 2.
+   !!! D. FUNCTION beziaca v IRQL 1 je INTERRUPTED FUNCTION beziacou v IRQL 2. Kedze IRQL 1 je NIZSI ako IRQL 2, tak FUNCTION beziaca v IRQL 1 sa OKAMZITE ZASTAVI a spusi sa vykonavanie FUNCTION beziacej v IRQL 2.
+   E. FUNCTION beziaca v IRQL 2 vykona INKREMENTACIU LOCAL VARIABLE na hodnotu 2 a zapise hodnotu 2 do SHARED VARIABLE.
+   !!! F. FUNCTION beziaca v IRQL 2 sa UKONCI a FUNCTION beziaca v IRQL 1 POKRACUJE v BEHU.
+   !!!!! G. Ked sa teraz FUNCTION beziaca v IRQL 1 pokusi zapisat hodnotu LOCAL VARIABLE do SHARED VARIABLE, tak NEZACHYTI ZMENU, ktoru vykonala FUNCTION beziaca v IRQL 2 a NAMIESTO ocakavanej hodnoty 3 (po dvoch inkrementaciach) zapise NESPRAVNU hodnotu 2.
+4. COMBINED PROBLEM je kombinacia LOCK PROBLEM a INTERRUPT PROBLEM. Platia prenho nasledujuce fakty.
+   A. LOCK PROBLEM vznikne v dosledku toho, ze MULTI CORE CPU moze spustit CODE pristupujuci k SHARED RESOURCE vdaka comu moze dojst k naruseniu SHARED RESOURCE STATE.
+   B. INTERRUPT PROBLEM sa zas vyskytne pri behu na JEDNOM CORE, ked CODE, ktory drzi LOCK moze byt INTERRUPTED CODE s VYSSIM IRQL, ktory ak pristupi k SHARED RESOURCE tak narusi SHARED RESOUCE STATE.
+   !!!!! C. RIESENIM COMBINED PROBLEM NIE JE IBA pouzitie klasickeho LOCK, pretoze ten zabrani sice pristupu k SHARED RESOURCE z viacerych CORES, ale nezabrani, aby CODE, ktory na niektorom z CORES drzi LOCK NEBOL INTERRUPTED a tym padom nemohol PRISTUPIT k SHARED RESOURCE a CHYBNE zmenit SHARED RESOURCE STATE.
+   !!!!! D. RIESENIM COMBINED PROBLEM NIE JE IBA zvysenie IRQL, pretoze to sa aplikuje IBA na 1 CORE a ostatne CORES kludne mozu PRISTUPIT k SHARED RESOURCE a CHYBNE zmenit SHARED RESOURCE STATE.
+!!!!! 5. Pre riesenie INTERRUPT PROBLEMS sa NEPOUZIVAJU LOCKS, pretoze pri INTERRUPT by mohlo AJ NAPRIEK LOCKS dojst k NARUSENIU SHARED RESOURCE. Problem popisuju nasledujuce kroky.
+   A. FUNCTION s IRQL 1 chce pristupit k SHARED VARIABLE, ktoru chce INKREMENTOVAT a preto ziska LOCK.
+   B. FUNCTION s IRQL 1 nacita do LOCAL VARIABLE hodnotu SHARED VARIABLE (nech je 1) a INKREMENTUJE JU (na hodnotu 2) avsak BEZ TOHO, aby inkrementovanu hodnotu zapisala do SHARED VARIABLE.
+   !!! C. SKOR nez FUNCTION s IRQL 1 zapise LOCAL VARIABLE (ma hodnotu 2) do SHARED VARIABLE (ma hodnotu 1), dojde k spusteniu FUNCTION s IRQL 2.
+   !!! D. Kedze IRQL 2 je VYSSIA ako IRQL 1, tak FUNCTION s IRQL 1 bude OKAMZITE PRERUSENA a spusti sa FUNCTION s IRQL 2.
+   !!!!! E. Tu nastava ZASADNY PROBLEM, lebo FUNCTION s IRQL 1 bola INTERRUPTED, aj ked STALE DRZI LOCK.
+   F. FUNCTION s IRQL 2 nacita do LOCAL VARIABLE hodnotu SHARED VARIABLE (momentalne je stale 1) a INKREMENTUJE JU (na hodnotu 2) pricom jej hodnotu zapise do SHARED VARIABLE (bude mat hodnotu 2).
+   !!! G. Po UKONCENI FUNCTION s IRQL 2 sa UKONCI sa riadenie vrati do FUNCTION s IRQL 1, ktora STALE DRZI LOCK.
+   H. FUNCTION s IRQL 1 zapise hodnotu LOCAL VARIABLE (ma hodnotu 2) do SHARED VARIABLE a UVOLNI LOCK.
+   !!!!! I. Vysledkom je, ze SHARED VARIABLE obsahuje hodnotu 2 NAMIESTO hodnoty 3 (po 2 inkrementaciach) a to AJ NAPRIEK TOMU, ZE SA POUZILI LOCKS.
+   !!!!! J. LOCKS teda NIE SU RIESENIM INTERRUPT PROBLEM.
+!!!!! 6. Riesenim INTERRUPT PROBLEMS je ZMENA UROVNE IRQL. Postupuje sa nasledovne.
+   A. Pre SHARED RESOURCE sa definuje IRQL, ktore sa pouzije na pristup k SHARED RESOURCE.
+   !!!!! B. Pouzije sa IBA 1 IRQL a KAZDY CODE, ktory pristupuje k SHARED RESOURCE MUSI bezat v tomto definovanom IRQL.
+   C. Ak CODE, ktory chce pristupit k SHARED RESOURCE NEBEZI v IRQL, tak IRQL je potrebne ZVYSIT na definovane IRQL a az vtedy pristupit k SHARED RESOURCE.
+   !!! D. K SHARED RESOURCE je mozne pristupovat IBA z definovaneho IRQL. Ani CODE beziaci vo VYSSOM IRQL NESMIE pristupit k SHARED RESOURCE, pretoze tento CODE mohol byt spusteny ako dosledok INTERRUPT CODE s NIZSIM IRQL, ktory prave pracoval so SHARED RESOURCE a pristupom k SHARED RESOUCE vo VYSSOM IRQL by sposobil NARAUSENIE SHARED RESOURCE STATE.
+!!!!! 7. Riesenim COMBINED PROBLEMS je pouzitie LOCKS a ZAROVEN aj ZMENA UROVNE IRQL. Postupuje sa nasledovne.
+   A. Pre SHARED RESOURCE sa definuje IRQL, ktore sa pouzije na pristup k SHARED RESOURCE.
+   !!!!! B. Pouzije sa IBA 1 IRQL a KAZDY CODE, ktory pristupuje k SHARED RESOURCE MUSI bezat v tomto definovanom IRQL.
+   !!!!! C. Kazdy pristup k SHARED RESOUCE MUSI byt STRAZENY pomocou LOCK.
+   !!!!! D. Pre CODE pristupujuci k SHARE RESOURCE musi platit, ze VZDY bezi v CODE, ktory ma JEDNU STANOVENU IRQL a ZAROVEN MUSI byt CHRANENY LOCK.
+   !!!!! E. WDM poskytuje SPIN LOCKS, ktore realizuju LOCKING a ZAROVEN aj ZVYSUJU IRQL.
+!!! 8. DEFERRED PROCEDURE CALLS (DPC) su vykonavane VZDY SERIALIZOVANE a na ROVNAKOM IRQL (DISPATCH_LEVEL) a preto ak k SHARED RESOURCE sa pristupuje IBA z DPC, tak SHARED RESOURCE je zabezpeceny proti LOCK PROBLEM aj INTERRUPT PROBLEM.
+!!!!! 9. Na riesenie COMBINED PROBLEM WDM definuje SPIN LOCKS, ktore vykonavaju LOCKING a ZAROVEN aj DVIHAJU IRQL ci sa riesi ako LOCK, tak i INTERRUPT PROBLEM. Funguju nasledujucim sposobom.
+   A. Vykona dvihnutie IRQL na definovanu uroven (pre EXECUTIVE SPIN LOCKS je to DISPATCH_LEVEL).
+   B. Vykonava SPINNING az kym neziska LOCK.
+   !!! C. Teraz CODE MOZE PRISTUPIT k SHARED RESOURCES, pretoze je chraneny pred INTERRUPT aj LOCK PROBLEMS.
+   D. Uvolni LOCK.
+   E. Znizi IRQL na POVODNU HODNOTU.
+10. WDM poskytuje 2 typy LOCKS.
+   A. EXECUTIVE SPIN LOCKS. Tieto LOCKS (inicializovane pomocou KeInitializeSpinLock()) vykonavaju okrem funkcionality LOCKING aj dvihnutie IRQL na DISPATCH_LEVEL. Pouzivaju sa na synchronizaciu WINDOWS DATA STRUCTURES, ku ktorym sa pristupuje prave z DISPATCH_LEVEL, alebo z nizsieho IRQL. Samozrejme ZIADEN CODE beziaci vo VYSSOM IRQL NESMIE pristupit k tymto SHARED RESOURCES, inak by doslo k NARUSENIU SHARED RESOURCE STATE.
+   B. INTERRUPT SPIN LOCKS. Tieto LOCKS (inicializovane pomocou KeSynchronizeExecution()) vykonavaju okrem funkcionality LOCKING aj dvihnutie IRQL na DIRQL. Pouzivaju sa na synchronizaciu DRIVER DATA STRUCTURES, ktore su pristupne z INTERRUPT HANDLERS, ktore bezia v DIRQL.
+!!!!! 11. Pre pracu so SPIN LOCKS platia nasledujuce zasady.
+   !!! A. SPIN LOCKS NEVYKONAVAJU NIKDY BLOCKING beziaceho THREADU. Namiesto toho vykonavaju SPINNING, az kym neziskaju LOCK.
+   B. Ak CODE drzi SPIN LOCK tak NESMIE pristupit k PAGED MEMORY. Moze pouzivat IBA NON-PAGED MEMORY, lebo pripadny PAGE FAULT by sposobil BUG CHECK.
+   C. Ak CODE drzi SPIN LOCK tak NESMIE generovat SW ani HW EXCEPTION, inak dojde k BUG CHECK.
+   !!! D. CODE NESMIE REKURZIVNE poziadat o SPIN LOCK, inak dojde k DEAD LOCK.
+   E. Ak CODE potrebuje ziskat VIACERO LOCKS, tak ich MUSI ZISKAVAT v ROVNAKOM PORADI a uvolnit ich v OPACNOM PORADI v akom ich ziskal, inak dojde k DEADLOCK.
+//-------------------------------------------------------------------------------------------------------
+INTERRUPTS LEVELS a CODE, ktory je v nich vykonavany.
+
+1. PASSIVE_LEVEL - User threads and most kernel-mode operations.
+2. APC_LEVEL - Asynchronous procedure calls and page faults.
+3. DISPATCH_LEVEL - Thread scheduler and deferred procedure calls (DPCs).
+4. CMC_LEVEL - Correctable machine-check level (IA64 platforms only). 
+5. Device interrupt levels (DIRQL) - Device interrupts.
+6. PC_LEVEL - Performance counter (IA64 platforms only).
+7. PROFILE_LEVEL - Profiling timer for releases earlier than Windows 2000.
+8. SYNCH_LEVEL - Synchronization of code and instruction streams across processors.
+9. CLOCK1_LEVEL - Clock timer.
+10. CLOCK2_LEVEL - Clock timer for x86 hardware.
+11. IPI_LEVEL - Interprocessor interrupt for enforcing cache consistency.
+12. POWER_LEVEL - Power failure.
+13. HIGH_LEVEL - Machine checks and catastrophic errors; profiling timer for Windows XP and later releases.
+//-------------------------------------------------------------------------------------------------------

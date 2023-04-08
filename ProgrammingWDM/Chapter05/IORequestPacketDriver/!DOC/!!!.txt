@@ -1,0 +1,807 @@
+//-------------------------------------------------------------------------------------------------------
+1. Solution demonstruje spracovanie a pouzivanie INTERRUPT REQUEST PACKETS (IRP).
+2. IRP je DATA STRUCTURE pomocou ktorej mozu aplikacie komunikovat s DRIVERS, resp. DRIVERS v DEVICE OBJECT STACK mozu komunikovat navzajom medzi sebou.
+!!! 3. IRP je ulozena v NON-PAGED MEMORY a prenasana VZDY spolu s 1-N IO_STACK_LOCATIONS, ktore v MEMORY NASLEDUJU HNED za IRP. IRP spolu s 1-N IO_STACK_LOCATIONS teda maju PREMENLIVU DLZKU, kedze pocet IO_STACK_LOCATIONS zavisi od poctu DRIVERS nizsie v DEVICE OBJECT STACK.
+!!! 4. Standardne KERNEL MODE DRIVER NEMOZE PRIAMO pristupovat k USER MODE BUFFERS, pretoze tieto su predmetom CONTEXT SWITCHES a PAGING. WINDOWS poskytuje 2 sposoby ako moze KERNEL MODE DRIVER pristupit k USER MODE BUFFERS z ktorych cita data pre WRITE OPERATIONS a zapisuje data z READ OPERATIONS.
+   A. BUFFERED IO OPERATIONS (BIO). USER MODE BUFFERS su kopirovane medzi USER MODE a KERNEL MODE. Pouzivaju sa najma pri pomalych DEVICES.
+   B. DIRECT IO OPERATIONS (DIO). USER MODE BUFFERS su LOCKED a MAPPED do KERNEL MODE ADDRESS SPACE. Pri DIRECT IO OPERATIONS NEDOCHADZA ku KOPIROVANIU DAT medzi USER a KERNEL MODE BUFFERS, ale USER MODE BUFFERS tym, ze su LOCKED a MAPPED do KERNEL MODE ADDRESS SPACE, tak DRIVERS mozu PRIAMO pristupovat k tymto USER MODE BUFFERS. Pouzivaju sa najma pri rychlych DEVICES a pri DMA DEVICES.
+!!! 5. BUFFERED IO funguje nasledujucim sposobom.
+   A. WRITE OPERATION. USER MODE BUFFER sa PRED ZACATIM WRITE OPERATION prekopiruje do KERNEL MEMORY BUFFER. DRIVER potom pouziva tento KERNEL MEMORY BUFFER na zapisanie dat do DEVICE.
+   B. READ OPERATION. V KERNEL MODE sa vytvori BUFFER o ROVNAKEJ DLZKE ako USER MODE BUFFER. DRIVER potom pouziva tento KERNEL MEMORY BUFFER na zapis dat nacitanych z DEVICE. Po SKONCENI READ OPERATION je obsah KERNEL MODE BUFFER prekopirovany do USER MODE BUFFER.
+!!! 6. DIRECT IO funguje nasledujucim sposobom.
+   A. Pred zacation IO OPERATION je USER MODE LOCKED v MEMORY, aby nemohol byt PAGED mimo RAM.
+   B. USER MODE BUFFER je zaroven MAPPED do KERNEL MODE ADDRESS SPACE, aby nebol subjektom CONTEXT SWITCH, kedze LOCKED (NON-PAGED) KERNEL MODE ADDRESS SPACE sa VZDY nachadza v RAM a je VZDY PRISTUPNA z KAZDEHO THREADU.
+   C. DRIVER pracuje s KERNEL MODE BUFFER, ktory je mapovany do KERNEL MODE ADDRESS SPACE.
+   D. Po skonceni IO OPERATION je namapovany BUFFER v KERNEL MODE uvolneny a LOCK je zruseny.
+   !!! E. Kedze USER MODE BUFFER bol MAPPED do KERNEL MODE BUFFER, tak obsahuje tie data, ktore boli zapisane do uz zruseneho KERNEL MODE BUFFER.
+7. IRP STRUCTURE je tvorena nasledujucimi MEMBERS.
+   !!! A. FIELD [IRP.MdlAddress]. Ak sa pouziva DIRECT IO OPERATION, tak obsahuje POINTER na MEMORY DESCRIPTOR LIST pre USER MODE BUFFER, ktory je LOCKED a MAPPED do KERNEL MODE ADDRESS SPACE, aby bol pristupny pre DRIVERS na zapis a citanie dat pouzivanych v IO OPERATIONS.
+   B. FIELD [IRP.Flags]. Zoznam FLAGS asociovanych s IRP. WDM DRIVERS tieto FLAGS spravidla nepouzivaju.
+   !!! C. [FIELD IRP.AssociatedIrp.SystemBuffer]. Odkazuje na KERNEL MODE BUFFER ak sa pouziva BUFFERED IO OPERATION. Do tohto BUFFER pre WRITE OPERATION SYSTEM zapise obsah USER MODE BUFFER pred spustenim IO OPERATION. Pri READ OPERATION, naopak SYSTEM na konci IO OPERATION nakopiruje data do USER MODE BUFFER, ktory bol zadany na zaciatku IO OPERATION danou APPLICATION.
+   !!! D. [FIELD IRP.IoStatus]. Je typu IO_STATUS_BLOCK a obsahuje MEMBER [IO_STATUS_BLOCK.Status] v ktorom je ulozeny vysledny NTSTATUS IO OPERATION. Takisto obsahuje MEMBER [IO_STATUS_BLOCK.Information] do ktoreho moze byt ulozena lubovola IRP SPECIFIC informacia. Zvycajne sa sem uklada pocet prenesenych BYTES danej IO OPERATION, alebo POINTER na inu DATA STRUCTURE, ktora obsahuje vysledky IO OPERATION.
+   E. FIELD [IRP.RequestorMode]. Urcuje ci IO OPERATION bola iniciovana z USER, alebo KERNEL MODE.
+   !!! F. FIELD [IRP.PendingReturned]. Urcuje ci IRP bol oznaceny ako PENDING. Spravidla k tomu dochadza, ak DRIVER NIZSIE v DEVICE OBJECT STACK nie je schopny IRP OKAMZITE UKONCIT (co je vacsina pripadov) a potrebuje viac casu na jeho dokoncenie. V tomto pripade DISPATCH ROUTINE DRIVER NIZSIE v DEVICE OBJECT STACK vrati NTSTATUS [STATUS_PENDING].
+   !!! G. FIELD [IRP.Cancel]. Urcuje ci proces IRP CANCELLATION bol zahajeny. Je nastaveny volanim FUNCTION IoCancelRequest().
+   H. FIELD [IRP.CancelIrql]. Urcuje hodnotu IRQL pri ktorom bol ziskany CANCEL SPIN LOCK. MEMBER sa vyuziva v CANCELLATION ROUTINE.
+   !!! I. FIELD [IRP.CancelRoutine]. Obsahuje POINTER na CANCELLATION ROUTINE. Nastavuje sa pomocou FUNCTION IoSetCancelRoutine().
+   J. FIELD [IRP.UserBuffer]. Obsahuje adresu USER MODE OUTPUT BUFFER, ktory je zasielany pri READ, WRITE a IO CONTROL OPERATIONS ak BUFFER METHOD je nastaveny na METHOD_NEITHER.
+   K. FIELD [IRP.Tail.Overlay.DeviceQueueEntry]. Ak je IRP QUEUED do DEVICE QUEUE, tak obsahuje tuto DEVICE QUEUE.
+   L. FIELD [IRP.Tail.Overlay.DriverContext]. Ak IRP NIE JE QUEUED v DEVICE QUEUE, tak obsahuje DATA STRUCTURE do ktorej je mozne ulozit maximalne 4 LUBOVOLNE POINTERS.
+   M. FIELD [IRP.Tail.Overlay.Thread]. Obsahuje POINTER na THREAD CONTROL BLOCK. HIGH LEVEL DRIVERS ho nastavuju pre LOW LEVEL REMOVABLE MEDIA DRIVERS, aby tie vedeli, ktory THREAD maju notifikovat, ked MEDIA potrebuje VERIFICATION.
+   N. FIELD [IRP.Tail.Overlay.ListEntry]. Ak DRIVER si spravuje CUSTOM IRP QUEUES, tak obsahuje POINTER na nasledujuci IRP v CUSTOM IRP QUEUE.
+   !!! O. FIELD [IRP.CurrentLocation]. Obsahuje INDEX do [IO_STACK_LOCATION] ARRAY. Je zavisly od pozicie DRIVER v DEVICE OBJECT STACK.
+!!!!! 8. Za IRP v MEMORY nasleduje 1 az 'N' [IO_STACK_LOCATION] STRUCTURES. Pre STRUCTURE [IO_STACK_LOCATION] platia nasledujuce zasady.
+   !!! A. Ich pocet je ROVNY poctu DRIVERS, ktore lezia v DEVICE OBJECT STACK pod CURRENT DRIVER (DEVICE OBJECT, ktory DRIVER reprezentuje). To znaci, ze NAJNIZSI DRIVER v DEVICE OBJECT STACK pri vytvarani IRP vytvori IRP, ktore bude mat iba 1 [IO_STACK_LOCATION]. Ak DRIVER je v DEVICE OBJECT STACK reprezetnovany 5. DEVICE OBJECT, tak IRP vytvorene v tomto DRIVER budu obsahovat 5 [IO_STACK_LOCATIONS] STRUCTURES.
+   !!! B. K STRUCTURE [IO_STACK_LOCATIONS] sa pristupuje pomocou WDM FUNCTIONS, pricom DRIVER moze pristupovat k [IO_STACK_LOCATIONS] zodpovedajucim aj DRIVERS NIZSIE v DEVICE OBJECT STACK.
+   !!! C. Pocet [IO_STACK_LOCATIONS] STRUCTURES pre CURRENT DRIVER (tj. jeho poziciu v DEVICE OBJECT STACK) je mozne ziskat citanim FIELD [DEVICE_OBJECT.StackSize].
+   !!!!! D. DRIVER moze v DEVICE OBJECT STACK identifikovat to, ktora [IO_STACK_LOCATION] STRUCTURE mu patri pomocou UNDOCUMENTED FIELD [IRP.CurrentLocation], ktory obsahuje INDEX do [IO_STACK_LOCATION] ARRAY a pri prechode IRP medzi DRIVERS v DEVICE OBJECT STACK ho WINDOWS AUTOMATICKY INKREMENTUJE a DEKREMENTUJE.
+   !!! E. KAZDA STRUCTURE [IO_STACK_LOCATION] obsahuje VLASTNU COMPLETION ROUTINE, ktora je volana po skonceni spracovania IRP. To znaci, ze ak IRP obsahuje 5 [IO_STACK_LOCATION] STRUCTURES, bude obsahovat 5 POINTERS na 5 COMPLETION ROUTINES.
+   !!!!! F. CURRENT [IO_STACK_LOCATION] obsahuje COMPLETION ROUTINE PARENT DRIVER v DEVICE OBJECT STACK. STRUCTURE [IO_STACK_LOCATION] pre CURRENT DRIVER (DEVICE OBJECT) teda obsahuje POINTER na COMPLETION ROUTINE, ktoru si zaregistroval PARENT DRIVER v DEVICE OBJECT STACK.
+   !!! G. COMPLETION ROUTINE je mechanizmus, ktory umoznuje PARENT DRIVERS v DEVICE OBJECT STACK byt notifikovanymi o konci spracovania IRP a na zaklade toho vykonat nejake spracovanie vysledkov IRP.
+   !!!!! H. MAJOR a MINOR FUNCTIONS su obsiahnute v STRUCTURE [IO_STACK_LOCATION], a preto plati, ze jedna IRP moze mat pri prechode medzi DRIVERS v DEVICE OBJECT STACK ROZNE MAJOR a MINOR FUNCTIONS a tym padom jedna IRP moze v rozlicnych DRIVERS vykonavat rozlicne funkcionality.
+   !!!!! I. Pri vytvoreni IRP su STRUCTURES [IO_STACK_LOCATION] NEINICIALIZOVANE a je PLNE v rezii DRIVER, aby STRUCTURES [IO_STACK_LOCATION] inicializoval.
+9. STRUCTURE [IO_STACK_LOCATION] obshuje nasledujuce data.
+   !!! A. FIELD [IO_STACK_LOCATION.MajorFunction]. Obsahuje informaciu o type IO OPERATION, ktora dodatocne specifikuje data, ktore su v STRUCTURE [IO_STACK_LOCATION] ulozene. Pre jednotlive STRUCTURES [IO_STACK_LOCATION] moze FIELD [IO_STACK_LOCATION.MajorFunction] nadobudat ODLISNE hodnoty.
+   !!! B. FIELD [IO_STACK_LOCATION.MinorFunction]. Obsahuje dodatocnu informaciu o type IO OPERATION. Pouziva sa najma vo FILE a SCSI DRIVERS. Pre jednotlive STRUCTURES [IO_STACK_LOCATION] moze FIELD [IO_STACK_LOCATION.MinorFunction] nadobudat ODLISNE hodnoty.
+   C. FIELD [IO_STACK_LOCATION.Parameters]. UNION, ktora obsahuje PARAMETERS danej [IO_STACK_LOCATION] STRUCTURE v zavislosti od hodnot FIELDS [IO_STACK_LOCATION.MajorFunction] a [IO_STACK_LOCATION.MinorFunction].
+   !!!!! D. FIELD [IO_STACK_LOCATION.DeviceObject]. Obsahuje POINTER na STRUCTURE [DEVICE_OBJECT], ktora je asociovana s danou STRUCTURE [IO_STACK_LOCATION]. Reprezentuje DRIVER, ktory spracovava STRUCTURE [IO_STACK_LOCATION]. Nenastavuje sa manualne, alebo AUTOMATICKY volanim FUNCTION IoCallDriver().
+   !!!!! E. FIELD [IO_STACK_LOCATION.FileObject]. Obsahuje POINTER na STRUCTURE [FILE_OBJECT] asociovanu s danym IRP. STRUCTURE [FILE_OBJECT] repreznetuje KERNEL OBJECT, ktory USER MODE CODE VYTVORIL a cez ktory pristupuje k DRIVER. Hodnota sa vyuziva napriklad vtedy, ked USER CODE UZAVREL HANDLER na DEVICE, bez toho, aby spracoval vsetky IRP. Prave pomocou tejto hodnoty moze DRIVER pri spracovani MAJOR FUNCTION [IRP_MJ_CLEANUP] urcit, ktore IRP su priradene uzatvorenemu DEVICE a zrusit ich.
+   !!!!! F. FIELD [IO_STACK_LOCATION.CompletionRoutine]. Obsahuje POINTER na COMPLETION ROUTINE pre DRIVER (DEVICE OBJECT) VYSSIE v DEVICE OBJECT STACK. To znaci, ze tento POINTER NIE JE POINTER na COMPLETION ROUTINE pre DRIVER, ktoremu STRUCTURE [IO_STACK_LOCATION] zodpoveda, ale PARENT DRIVER (DEVICE OBJECT) v DEVICE OBJECT STACK. FIELD URCUJE COMPLETION ROUTINE, ktoru ma WINDOWS zavolat, ked sa skonci spracovavanie IRP. Nastavuje sa volanim FUNCTION IoSetCompletionRoutine().
+   G. FIELD [IO_STACK_LOCATION.Context]. Obsahuje LUBOVOLNU VALUE, ktora sa prenasa do COMPLETION ROUTINE.
+   !!!!! H. FIELD [IO_STACK_LOCATION.Control]. Obsahuje FLAGS vratane FLAG [SL_PENDING_RETURNED], ktory urcuje ci STRUCTURE [IO_STACK_LOCATION] je v PENDING STATE.
+!!! 10. Pocet STRUCTURES [IO_STACK_LOCATION], ktore bude IRP obsahovat je mozne EXPLICITNE urcit volanim FUNCTION IoAllocateIrp(), ktora v 1. PARAMETER urcuje kolko [IO_STACK_LOCATION] STRUCTURES bude s IRP vytvorenych.
+11. So STRUCTURE [IRP] je mozne pracovat pomocou nasledujucich FUNCTIONS.
+   A. FUNCTION IoCallDriver() zasle IRP do ineho DRIVER.
+   B. FUNCTION IoCompleteRequest() indikuje, ze spracovanie IRP skoncilo.
+   !!! C. FUNCTION IoCancelRequest() nastavi IRP CANCELLATION FLAG a ZAROVEN vykona CANCELLATION ROUTINE, ak bola nastavana.
+   !!! D. FUNCTION IoStartPacket() zasle IRP do START IO ROUTINE. Interne tieto ROUTINES pouzivaju IRP QUEUE, ktore vdaka pouzivaniu SPIN LOCKS su relativne POMALE.
+   !!! E. FUNCTION IoStartNextPacket() zasle IRP do START IO ROUTINE. Interne pouzivaju IRP QUEUE, ktore vdaka pouzivaniu SPIN LOCKS su relativne POMALE.
+   !!! F. FUNCTION IoAllocateIrp() vytvori novy IRP so zadanym poctom STRUCTURES [IO_STACK_LOCATION].
+   G. FUNCTION IoBuildSynchronousFsdRequest() vytvori SYNCHRONNY IRP. Umoznuje vytvarat iba NIEKTORE TYPY IRP (IRP_MJ_PNP, IRP_MJ_READ, IRP_MJ_WRITE, IRP_MJ_FLUSH_BUFFERS a IRP_MJ_SHUTDOWN).
+   H. FUNCTION IoBuildAsynchronousFsdRequest() vytvori ASYNCHRONNY IRP. Umoznuje vytvarat iba NIEKTORE TYPY IRP (IRP_MJ_PNP, IRP_MJ_READ, IRP_MJ_WRITE, IRP_MJ_FLUSH_BUFFERS a IRP_MJ_SHUTDOWN).
+   I. FUNCTION IoFreeIrp() uvolni IRP, ktoru alokoval DRIVER.
+12. So STRUCTURE [IO_STACK_LOCATION] je mozne pracovat pomocou nasledujucich FUNCTIONS.
+   !!! A. FUNCTION IoSetNextIrpStackLocation() INKREMENTUJE INDEX v [IO_STACK_LOCATION] ARRAY, tak aby ukazoval na [IO_STACK_LOCATION] asociovany s DRIVER NIZSIE v DEVICE OBJECT STACK.
+   B. FUNCTION IoGetNextIrpStackLocation() vracia POINTER na NEXT [IO_STACK_LOCATION] v [IO_STACK_LOCATION] ARRAY. Tato FUNCTION sa vyuziva ako DRIVER chce nastavit PARAMETERS [IO_STACK_LOCATION] zodpovedajucom DRIVER NIZSIE v DEVICE OBJECT STACK.
+   C. FUNCTION IoGetCurrentIrpStackLocation() vracia POINTER na CURRENT [IO_STACK_LOCATION].
+   D. FUNCTION IoCopyCurrentIrpStackLocationToNext() kopiruje PARAMETERS CURRENT [IO_STACK_LOCATION] do NEXT [IO_STACK_LOCATION], ktory je asociovany s DRIVER NIZSIE v DEVICE OBJECT STACK.
+   !!! E. FUNCTION IoSkipCurrentIrpStackLocation() DEKREMENTUJE INDEX v [IO_STACK_LOCATION] ARRAY, aby odkazoval [IO_STACK_LOCATION], ktory je asociovany s DRIVER VYSSIE v DEVICE OBJECT STACK. Nasledne volanie FUNCTION IoCallDriver(), ktore AUTOMATUICKY INKREMENTUJE INDEX v [IO_STACK_LOCATION] ARRAY sposobi, ze DESTINATION DRIVER NIZSIE v DEVICE OBJECT STACK sa bude odkazovat na TEN ISTY [IO_STACK_LOCATION] ako CURRENT DRIVER.
+   !!!!! F. FUNCTION IoSetCompletionRoutine() asociuje COMPLETION ROUTINE s [IO_STACK_LOCATION] patriacim DRIVER NIZSIE v DEVICE OBJECT STACK. Vdaka tomuto volaniu vie DRIVER NIZSIE v DEVICE OBJECT STACK, ktoru COMPLETION ROUTINE DRIVERA VYSSIE v DEVICE OBJECT STACK ma zavolat, aby DRIVER VYSSIE v DEVICE OBJECT STACK bol notifikovany o ukonceni IRP a spracovat vysledky.
+   !!!!! G. FUNCTION IoMarkIrpPending() oznaci [IO_STACK_LOCATION], ze potrebuje dalsie spracovanie (STATUS_PENDING). STATUS_PENDING je vlastnost [IO_STACK_LOCATION] a NIE IRP a kludne sa moze stat, ze niektore STRUCTURES [IO_STACK_LOCATION] budu mat [STATUS_PENDING] nastavene a ine nie.
+!!!!! 13. EXTREMNE DOLEZITE. Pre IRP PENDING STATE platia nasledujuce vlastnosti.
+   A. FLAG [IRP.PendingReturned] urcuje ci IRP bol uvedeny do PENDING STATE. Tento FLAG je nastaveny na TRUE ak FUNCTION IoCompleteRequest() zisti, ze [IO_STACK_LOCATION] CURRENT DRIVER ma nastaveny [SL_PENDING_RETURNED] FLAG ((IO_STACK_LOCATION.Control & SL_PENDING_RETURNED)!=0).
+   !!! B. [IO_STACK_LOCATION] ma NEZAVISLY INDIKATOR, ci doslo k PENDING STATE v DANEJ [IO_STACK_LOCATION]. Ak FLAG MEMBER [IO_STACK_LOCATION.Control] obsahuje FLAG [SL_PENDING_RETURNED], tak to urcuje, ze [IO_STACK_LOCATION] bol uvedeny do PENDING STATE.
+   !!!!! C. FUNCTION IoMarkIrpPending() iba nastavuje [IO_STACK_LOCATION.Control|=SL_PENDING_RETURNED] ale NEMENI HODNOTU [IRP.PendingReturned], lebo to robi FUNCTION IoCompleteRequest(). Kedze vsak FIELD [IO_STACK_LOCATION.Control] je vlastnostou [IO_STACK_LOCATION], tak volanie IoMarkIrpPending() NEMENI hodnotu [IO_STACK_LOCATION.Control] pre ostatne [IO_STACK_LOCATION] v [IO_STACK_LOCATION] ARRAY.
+   !!!!! D. FUNCTION Kedze IoMarkIrpPending() NEMENI hodnotu [IO_STACK_LOCATION.Control] pre ostatne [IO_STACK_LOCATION] STRUCTURES v [IO_STACK_LOCATION] ARRAY, tak COMPLETION ROUTINE MUSI MANUALNE vykonavat PROPAGACIU [SL_PENDING_RETURNED] FLAG do [IO_STACK_LOCATION] pre DRIVERS VYSSIE v DEVICE OBJECT STACK a to tak, ze v COMPLETION ROUTINE zavola FUNCTION IoMarkIrpPending(), ak detekuje, ze IRP.PendingReturned==TRUE.
+   !!!!! E. Ak DRIVER NEMA COMPLETION ROUTINE, tak IO MANAGER AUTOMATICKY vykona propagaciu SL_PENDING_RETURNED do [IO_STACK_LOCATION] zodpovedajucemu DRIVER VYSSIE v DEVICE OBJECT STACK.
+!!! 14. IRP su standardne spracovavane v nasledujucich komponentach.
+   A. IO MANAGER. IRP je spravidla vytvarane bud IO MANAGER, alebo samotnym DRIVER.
+   B. DISPATCHER ROUTINE. DRIVER ROUTINE, ktora je vyvolana IO MANAGER na zaklade hodnotu IRP.MajorFunction.
+   C. START IO ROUTINE. CUSTOM ROUTINE, ktoru DRIVER implementuje a zacina v IO OPERATION na HW.
+   D. ISR (INTERRUPT SERVICE ROUTINE). Obsluzna DRIVER ROUTINE vyvolana pri vzniku INTERRUPT. ISR kedze bezi vo VYSOKOM IRQL, spravidla realne spracovanie posunie do DPC ROUTINE, aby system nevykonaval dlhy CODE v ISR.
+   E. DPC ROUTINE. SCHEDULED ROUTINE v ktorej sa vykonava CODE spracujuci INTERRUPT. Kedze bezi v NIZKOM IRQL, tak spravidla v SCHEDULED ROUTINE sa vykonava realne obsluzenie INTERRUPT.
+   F. IO MANAGER. Zaverecne spracovanie IRP a jeho uvolnenie z MEMORY, ak IRP vytvoril IO MANAGER.
+15. IRP moze byt vytvorene SYSTEMOM v IO MANAGER, alebo je ho mozne vytvarat MANUALNE volanim niektorej z nasledujucich FUNCTIONS.
+   A. FUNCTION IoBuildAsynchronousFsdRequest() vytvori IRP, ktore ma byt ASYNCHRONNE spracovane. FUNCTION je vhodna iba pre IRP typu IRP_MJ_PNP, IRP_MJ_READ, IRP_MJ_WRITE, IRP_MJ_FLUSH_BUFFERS a IRP_MJ_SHUTDOWN.
+   B. FUNCTION IoBuildSynchronousFsdRequest() vytvori IRP, ktore ma byt SYNCHRONNE spracovane. FUNCTION je vhodna iba pre IRP typu IRP_MJ_PNP, IRP_MJ_READ, IRP_MJ_WRITE, IRP_MJ_FLUSH_BUFFERS a IRP_MJ_SHUTDOWN.
+   C. FUNCTION IoBuildDeviceIoControlRequest() vytvori IRP pre SYNCHRONNE spracovanie IRP_MJ_DEVICE_CONTROL a IRP_MJ_INTERNAL_DEVICE_CONTROL.
+   D. FUNCTION IoAllocateIrp() vytvori IRP, ktore ma byt ASYNCHRONNE spracovane. FUNCTION funguje pre LUBOVOLNE IRP. FUNCTION NEINICIALIZUJE IRP, a preto je to nutne robit to robit MANUALNE.
+   E. FUNCTION IoMakeAssociatedIrp() vytvori IRP, ktore je asociovane s inym IRP. Pouziva sa IBA vo FILE SYSTEM DRIVERS a SYSTEM FILTER DRIVERS.
+!!! 16. IRP mozu byt vykonavane SYNCHRONNE, alebo ASYNCHRONNE.
+   A. SYNCHRONNE IRP sa vykonavaju na NON-ABRITRARY THREADS (SYSTEM THREADS, alebo THREADS ktore zaslali USER MODE REQUEST, kedy ie znamy ich CONTEXT).
+   B. ASYNCHRONNE IRP sa vykonavaju na ABRITRARY THREADS (THREADS u ktorych nie je mozne jednoznacne urcit ich CONTEXT).
+17. Pre SYNCHRONNE IRP platia nasledujuce fakty.
+   A. SYNCHRONNE IRP sa vytvaraju pomocou FUNCTIONS IoBuildSynchronousFsdRequest() a IoBuildDeviceIoControlRequest().
+   B. SYNCHRONNE IRP by sa NEMALI vytvarat na ARBITRARY THREADS iba na NON-ARBITRARY THREADS, kedy je THREAD CONTEXT ZNAMY.
+   !!! C. Ak THREAD, ktory vytvoril SYNCHRONNE IRP skonci, tak IO MANAGER AUTOMATICKY vykona CANCEL daneho IRP.
+   !!!!! D. Ak je IRP COMPLETED volanim FUNCTION IoCompleteRequest(), tak IO MANAGER AUTOMATICKY uvolni IRP a ZAROVEN aj SIGNALIZUJE EVENT, ktory je asociovany s IRP pri vytvarani IRP pomocou FUNCTIONS IoBuildSynchronousFsdRequest() a IoBuildDeviceIoControlRequest().
+   !!! E. EVENT, ktory bol asociovany pri vytvarani IRP pomocou FUNCTIONS IoBuildSynchronousFsdRequest() a IoBuildDeviceIoControlRequest() MUSI EXISTOVAT v case ked ho IO MANAGER pri volani FUNCTION IoCompleteRequest() ide signalizovat.
+   !!! F. Pri ukonceni IRP sa VYVOLAVA APC, ktory ukonci volanie FUNCTION KeWaitForXXX(), ktora bola pouzita na cakanie na skoncenie IRP.
+   !!!!! F. Na SYNCHRONNE IRP sa caka pomocou FUNCTIONS KeWaitForXXX(). Tato FUNCTION sa MUSI volat v [IRQL=PASSIVE_LEVEL], pretoze ak by sa volala v [IRQL>=APC_LEVEL], tak by sa APC, ktore sa ma vykonat na konci IRP NEMOHOL VYKONAT (kedze [IRQL>=APC_LEVEL] a APC potrebuje bezat v APC_LEVEL) a doslo by k DEADLOCK.
+   !!!!! G. Ak sa NEZAVOLA FUNCTION IoCompleteRequest(), potom IRP NEBUDE IO MANAGER UVOLNENE a to ANI po SKONCENI THREAD, ked sa robi iba CANCEL (kde samotny DRIVER musi CANCELLED IRP uvolnit) a NIE IRP COMPLETE.
+   !!!!! H. SYNCHRONNE IRP su uvolnene IO MANAGER IBA AK sa volanie vsetkych COMPLETION ROUTINES vykonalo po zavolani FUNCTION IoCompleteRequest(). Ak niektora COMPLETION ROUTINE vrati VALUE [STATUS_MORE_PROCESSING_REQUIRED], tak FUNCTION IoCompleteRequest() sa MUSI VOLAT ZNOVA, inak NEDOJDE k uvolneniu IRP.
+18. Pre ASYNCHRONNE IRP platia nasledujuce fakty.
+   A. ASYNCHRONNE IRP sa vytvaraju pomocou FUNCTIONS IoBuildAsynchronousFsdRequest() a IoAllocateIrp().
+   B. ASYNCHRONNE IRP sa MOZU vytvarat na ARBITRARY THREADS aj NON-ARBITRARY THREADS.
+   !!! C. Ak THREAD, ktory vytvoril ASYNCHRONNE IRP skonci, tak IO MANAGER NEVYKONA CANCEL IRP, ktore vytvoril dany THREAD.
+   !!!!! D. Kedze ASYNCHRONNE IRP NIE SU AUTOMATICKY UVOLNOVANE v IO MANAGER ako je to v pripade SYNCHRONNYCH IRP (tie IO MANAGER AUTOMATICKY UVOLNI, ked su COMPLETED pomocou volania FUNCTION IoCompleteRequest()), tak je NUTNE ich UVOLNIT MANUALNE v COMPLETION ROUTINE zavolanim FUNCTION IoFreeIrp().
+   E. Kedze IO MANAGER NEVYKONAVA AUTOMATICKY CANCEL ASYNCHRONNYCH IRP, tak CANCELLATION mechanizmus je nutne manualne naprogramovat.
+   !!! F. Kedze pri ukoceni IRP sa NEVYVOLAVA APC, tak ASYNCHRONNE IRP je mozne vytvarat v [IRQL<=DISPATCH_LEVEL].
+!!! 19. FUNCTION IoGetNextIrpStackLocation() sluzi na ziskanie [IO_STACK_LOCATION] z IRP pre DRIVER NIZSIE v DEVICE OBJECT STACK. Vrateny POINTER na [IO_STACK_LOCATION] umoznuje nastavit parametre [IO_STACK_LOCATION]. Najcastejsie sa nastavuje MEMBER MajorFunction.
+!!! 20. FUNCTION IoCallDriver() zasiela vytvorene IRP do DESTINATION DRIVER identifikovaneho pomocou DEVICE_OBJECT.
+!!!!! 21. Pri vytvoreni IRP sa INDEX do [IO_STACK_LOCATION] ARRAY nastavi na hodnotu -1. Zavolanim FUNCTION IoGetNextIrpStackLocation() sa inkrementuje na hodnotu 0 co znamena, ze INDEX ukazuje na PRVY [IO_STACK_LOCATION] objekt z celeho [IO_STACK_LOCATION] ARRAY.
+!!! 22. Pri vytvarani IRP sa VZDY spolu s IRP STRUCTURE alokuje MEMORY pre [IO_STACK_LOCATION] ARRAY. Pre [IO_STACK_LOCATION] ARRAY platia nasledujuce fakty.
+   !!! A. Standardne je velkost [IO_STACK_LOCATION] ARRAY je DEVICE_OBJECT.StackSize, aj ked ju je mozne pri vytvarani IRP pomocou FUNCTION IoAllocateIrp() nastavit na CUSTOM VALUE.
+   B. Hodnota [DEVICE_OBJECT.StackSize] sa nastavuje AUTOMATICKY pocas volania FUNCTIONS IoAttachDevice() a IoAttachDeviceToDeviceStack().
+   C. IRP obsahuje POINTER na CURRENT [IO_STACK_LOCATION] (UNDOCUMENTED MEMBER CurrentStackLocation).
+   !!! D. FUNCTION IoSetNextIrpStackLocation() INKREMENTUJE INDEX v [IO_STACK_LOCATION] ARRAY, tak aby ukazoval na [IO_STACK_LOCATION] NIZSIE v [IO_STACK_LOCATION] ARRAY.
+   E. FUNCTION IoGetNextIrpStackLocation() vracia POINTER na NEXT [IO_STACK_LOCATION] v [IO_STACK_LOCATION] ARRAY. Tato FUNCTION sa vyuziva ak DRIVER chce nastavit PARAMETERS [IO_STACK_LOCATION] zodpovedajuca DRIVER NIZSIE v DEVICE OBJECT STACK.
+   F. FUNCTION IoGetCurrentIrpStackLocation() vracia POINTER na CURRENT [IO_STACK_LOCATION].
+   G. FUNCTION IoCopyCurrentIrpStackLocationToNext() kopiruje PARAMETERS CURRENT [IO_STACK_LOCATION] do NEXT [IO_STACK_LOCATION].
+   !!! H. FUNCTION IoSkipCurrentIrpStackLocation() DEKREMENTUJE INDEX v [IO_STACK_LOCATION] ARRAY, aby odkazoval na VYSSIE [IO_STACK_LOCATION] v [IO_STACK_LOCATION] ARRAY. Nasledne volanie FUNCTION IoCallDriver(), ktora AUTOMATICKY INKREMENTUJE INDEX v [IO_STACK_LOCATION] ARRAY sposobi, ze DESTINATION DRIVER NIZSIE v DEVICE OBJECT STACK sa bude odkazovat na TEN ISTY [IO_STACK_LOCATION] ako CURRENT DRIVER v DEVICE OBJECT STACK.
+   !!!!! I. Pri vytvoreni IRP CURRENT [IO_STACK_LOCATION] ukazuje na NEPLATNY [IO_STACK_LOCATION] (pozicia -1 v [IO_STACK_LOCATION] ARRAY). Zavolanim FUNCTION IoGetNextIrpStackLocation() sa ziska POINTER na PRVY [IO_STACK_LOCATION] v [IO_STACK_LOCATION] ARRAY.
+!!! 23. FUNCTION IoCallDriver() vykonava nasledujucu cinnost.
+   !!! A. Zvysi POINTER CURRENT [IO_STACK_LOCATION] volanim FUNCTION IoSetNextIrpStackLocation(). To znaci, ze POSUNIE CURRENT [IO_STACK_LOCATION], aby odkazoval na NEXT [IO_STACK_LOCATION].
+   B. Ziska POINTER na novy CURRENT [IO_STACK_LOCATION] volanim FUNCTION IoGetCurrentIrpStackLocation().
+   C. Nastavi IO_STACK_LOCATION.DeviceObject pre CURRENT [IO_STACK_LOCATION] na DEVICE_OBJECT, ktory bol zaslany ako PARAMETER IoCallDriver() a ktory sluzi ako DESTINATION DEVICE_OBJECT.
+   D. Ziska MAJOR FUNCTION noveho CURRENT [IO_STACK_LOCATION]. MAJOR FUNCTION sluzi ako INDEX do MAJOR FUNCTION TABLE.
+   E. Ziska POINTER na DESTINATION DRIVER_OBJECT z DESTINATION DEVICE_OBJECT.
+   !!! F. Pomocou hodnoty MAJOR FUNCTION, ktora sluzi ako INDEX do MAJOR FUNCTION TABLE ziska POINTER na DISPATCH FUNCTION pre danu MAJOR FUNCTION v DESTINATION DRIVER.
+   G. Zavola DISPATCH FUNCTION pre danu MAJOR FUNCTION v DESTINATION DRIVER.
+   !!!!! H. FUNCTION IoCallDriver() ako RETURN VALUE vracia bud RETURN VALUE, ktoru vrati DISPATCH ROUTINE, alebo [STATUS_PENDING]. VALUE [STATUS_PENDING] MOZE byt vratena AJ KED DISPATCH ROUTINE vratila ERROR VALUE, pokial sa este COMPLETION ROUTINES daneho IRP sa nestihli vyvolat.
+!!!!! 24. V IRP su COMPLETION ROUTINES zakladnym nastrojom ako DRIVERS NIZSIE v DEVICE OBJECT STACK notifikuju DRIVERS VYSSIE v DEVICE OBJECT STACK, ze doslo k ukonceniu (ci uz uspesnemu, alebo po vzniku ERROR) spracovania IRP. Nasledne DRIVER, ktory IRP VYTVORIL (eventualne IO MANAGER, ak IRP vytvoril on) ho MUSI UVOLNIT volanim FUNCTION IoFreeIrp(). Pre COMPLETION ROUTINES platia nasledujuce zasady.
+   A. COMPLETION ROUTINES sluzia na notifikaciu DRIVERS VYSSIE v DEVICE OBJECT STACK o tom, ze dane IRP bolo ukocene (korektnym spracovanim, alebo vznikom ERROR).
+   !!! B. Ak DRIVER EXPLICITNE vytvoril ASYNCHRONNE IRP a zaslal ho do DRIVER NIZSIE v DEVICE OBJECT STACK, potom COMPLETION ROUTINE je miesto, kde by sa IRP malo volanim FUNCTION IoFreeIrp() UVOLNIT z MEMORY.
+   !!!!! C. Volanie COMPLETION ROUTINES je realizovane v CODE FUNCTION IoCompleteRequest(). Tato FUNCTION SYNCHRONNE vola VSETKY zaregistrovane COMPLETION ROUTINES DRIVERS VYSSIE v DEVICE OBJECT STACK. Az ked su zavolane VSETKY COMPLETION ROUTINES, volanie FUNCTION IoCompleteRequest() je ukoncene.
+   D. Ak niektory DRIVER v DEVICE OBJECT STACK NEMA zaregistrovanu COMPLETION ROUTINE, tak IO MANAGER (FUNCTION IoCompleteRequest()) zabezpeci volanie NAJBLIZSEJ COMPLETION ROUTINE, ktora zaregistrovana bola. To znaci, ze DRIVER NEMUSI explicitne registrovat vlastnu COMPLETION ROUTINE, aby zabezpecil presun IRP do DRIVERS VYSSIE v DEVICE OBJECT STACK. IO MANAGER to vykonava AUTOMATICKY.
+   !!!!! E. Ak DRIVER NEMA zaregistrovanu COMPLETION ROUTINE, tak IO MANAGER nielenze zabezpeci, aby bola zavolana COMPLETION ROUTINE pre DRIVER VYSSIE v DEVICE OBJECT STACK, ale zaroven zabezpeci aj propagaciu PROPAGACIU [SL_PENDING_RETURNED] FLAG.
+   F. COMPLETION ROUTINES vo svojom CODE zvycajne kontroluju hodnotu FIELD [IRP.IoStatus.Status], podla ktorej identifikuju ci IRP bolo uspesne spracovane, alebo doslo k vzniku ERROR.
+   !!! G. To v akom IRQL bude CODE COMPLETION ROUTINE bezat zavisi od IRQL v ktorom bol CPU pocas zavolania FUNCTION IoCompleteRequest(). Je to preto, lebo FUNCTION IoCompleteRequest() PRIAMO vo SVOJOM CODE vola jednotlive COMPLETION ROUTINES, pricom samotna FUNCTION IoCompleteRequest() hodnotu IRQL NEMENI.
+!!!!! 25. Ak DRIVER dostal IRP z DRIVER VYSSIE v DEVICE OBJECT STACK musi ho bud UKONCIT volanim FUNCTION IoCompleteRequest(), alebo ho preposlat do DRIVER NIZSIE v DEVICE OBJECT STACK, ktory ho po skonceni IO OPERATION ukonci volanim FUNCTION IoCompleteRequest().
+!!!!! 26. Ak DRIVER dostane IRP z DRIVER VYSSIE v DEVICE OBJECT STACK a kvoli nejakej chybe ho NEDOKAZE SPRACOVAT, tak MUSI IPR UKONCIT volanim IoCompleteRequest(). Ak by to nespravil, tak IRP by NEBOL NIKDY UKONCENY a ani NIKDY UVOLNENY z MEMORY, cim by doslo k MEMORY LEAK a takisto i ZABLOKOVANIU DRIVER, ktory IRP VYTVORIL a caka na jeho ukoncenie.
+!!!!! 27. Ak DRIVER vytvoril ASYNCHRONNE IRP, ktory sa MUSI EXPLICITNE uvolnit volanim FUNCTION IoFreeIrp(), tak je to prave DRIVER, ktory IRP vytvoril, ktory ho musi (resp. mal by) uvolnit. Nasledujuce kroky demonstruju zivotnost ASYNCHRONNEHO IRP.
+   A. DRIVER 'XXX' vytvori ASYNCHRONNE IRP pomocou FUNCTION IoBuildAsynchronousFsdRequest().
+   !!! B. Vytvorene IRP na pocet STRUCTURES [IO_STACK_LOCATION] rovny poctu DEVICE OBJECTS, ktore lezia pod aktualnym DRIVER.
+   !!!!! C. Vytvorene IRP odkazuje na -1 poziciu v [IO_STACK_LOCATION] ARRAY.
+   D. DRIVER 'XXX' pred zaslanim IRP do DRIVER 'YYY' NIZSIE v DEVICE OBJECT STACK, musi INICIALIZOVAT STRUCTURE [IO_STACK_LOCATION] na PRVEJ (nultej) pozicii v [IO_STACK_LOCATION] ARRAY. Inicializacia obsahuje minimalne nastavenie MAJOR FUNCTIONS.
+   !!!!! E. Kedze DRIVER 'XXX' vytvoril ASYNCHRONNE IRP, ktore je NUTNE UVOLNIT volanim FUNCTION IoFreeIrp(), MUSI zaregistrovat COMPLETION ROUTINE do STRUCTURE [IO_STACK_LOCATION] na PRVEJ (nultej) pozicii v [IO_STACK_LOCATION] ARRAY.
+   F. Teraz moze DRIVER 'XXX' volanim FUNCTION IoCallDriver() zaslat IRP do DRIVER 'YYY' NIZSIE v DEVICE OBJECT STACK.
+   G. IRP je v DRIVER 'YYY' bud kompletne spracovane, alebo je zaslane do dalsich DRIVERS, ktore su NIZSIE v DEVICE OBJECT STACK.
+   !!! H. Ak niektory z DRIVERS NIZSIE v DEVICE OBJECT STACK dokonci IO OPERATION, ktoru IRP reprezentuje, zavola pre toto IRP FUNCTION IoCompleteRequest().
+   !!! I. FUNCTION IoCompleteRequest() sposobi volanie COMPLETION ROUTINES pre DRIVERS VYSSIE v DEVICE OBJECT STACK.
+   !!! J. Ak niektory DRIVER NEZAREGISTROVAL COMPLETION ROUTINE, tak IO MANAGER AUTOMATICKY zavola volanie COMPLETION ROUTINES pre DRIVER VYSSIE v DEVICE OBJECT STACK. Zaroven IO MANAGER zabezpeci aj propagaciu PROPAGACIU FLAG [SL_PENDING_RETURNED].
+   !!!!! K. Napokon sa zavola COMPLETION ROUTINE DRIVER 'XXX', ktory MUSI zavolat FUNCTION FUNCTION IoFreeIrp(), aby tato uvolnila IRP, ktore DRIVER 'XXX' v bode A vytvoril.
+!!!!! 28. DISPATCH ROUTINE ak dostane IRP z DRIVER VYSSIE v DEVICE OBJECT STACK, jeho CODE MUSI IRP spracovat niektorym z nasledujucich sposobov.
+   A. Ak je IRP jednoduche a je ho mozne vykonat okamzite, tak DISPATCH ROUTINE okamzite spracuje IRP a na konci zavola FUNCTION IoCompleteRequest().
+   !!! B. Ak dojde k ERROR pri spracovani IRP, tak DISPATCH ROUTINE nastavi NTSTATUS a zavola FUNCTION IoCompleteRequest().
+   C. Ak IRP ma spracovat DRIVER NIZSIE v DEVICE OBJECT STACK, tak sa IRP zasle do tohto DRIVER.
+   !!! D. Ak IRP ma spracovat CURRENT DRIVER, ale jeho spracovanie bude TRVAT DLHO, tak sa IRP ulozi do IRP QUEUE, odkial bude neskor CURRENT DRIVER vybrate a spracovane bud zaslatim do ineho DRIVER, alebo ukoncenim pomocou FUNCTION IoCompleteRequest().
+!!!!! 29. EXTREMNE DOLEZITE POZNAMKY pre DISPATCH ROUTINES.
+   A. Ak DISPATCH ROUTINES ZLYHAJU, MUSIA ukoncit IRP volanim FUNCTION IoCompleteRequest(), aby sposobili vyvolanie COMPLETION ROUTINES, ktorym su DRIVERS VYSSIE v DEVICE OBJECT STACK notifikovane, ze spracovanie IRP bolo ukoncene.
+   !!!!! B. Ak vsak DISPATCH ROUTINE chcela preposlat IRP do INEHO DRIVER a uz ZAVOLALA FUNCTION IoCallDriver(), tak AJ KEBY FUNCTION IoCallDriver() ZLYHALA, tak NESMIE volat FUNCTION IoCompleteRequest(), pretoze INY DRIVER uz BOL ZAVOLANY a je JEHO ZODPOVEDNOSTOU pri ERROR ukoncit IRP volanim FUNCTION IoCompleteRequest(). Ak by CURRENT DRIVER zavolal FUNCTION IoCompleteRequest(), potom by sa spustilo volanie COMPLETION ROUTINES pre DRIVERS VYSSIE v DEVICE OBJECT STACK, ktore by sposobilo PRIAMO (volanim FUNCTION IoFreeIrp()), alebo NEPRIAMO (posunutim IRP do IO MANAGER, ktory by zavolal FUNCTION IoFreeIrp()) UVOLNENIE IRP z MEMORY. Kedze vsak toto IRP uz spracovava DRIVER NIZSIE v DEVICE OBJECT STACK, doslo by k pristupu k NEPLATNEMU IRP a tym padom aj k BUG CHECK.
+   !!! C. Ak IRP ma byt spracovane ASYNCHRONNE, tak zvycajne DISPATCH ROUTINE ho ulozi do IRP QUEUE CURRENT DRIVER odkial ju jednotlive IRP CURRENT DRIVER vyberane a spracovavane.
+   !!!!! D. Ak DISPATCH ROUTINE ukoncuje IPR volanim FUNCTION IoCompleteRequest(), tak MUSI ako RETURN VALUE vratit TU ISTU HODNOTU, aku nastavil v MEMBER IRP.IoStatus.Status. Ak vrati INU VALUE, VERIFIER sposobi BUG CHECK.
+   !!!!! E. FUNCTION IoCallDriver() ako RETURN VALUE vracia bud RETURN VALUE, ktoru vrati DISPATCH ROUTINE, alebo [STATUS_PENDING]. VALUE [STATUS_PENDING] MOZE byt vratena AJ KED DISPATCH ROUTINE vratila ERROR VALUE, pokial sa este COMPLETION ROUTINES daneho IRP sa nestihli vyvolat.
+   !!! F. Ak DISPATCH ROUTINE zavola IoMarkIrpPending(), tak MUSI ako RETURN VALUE vratit VALUE [STATUS_PENDING], inak VERIFIER hodi BUG CHECK.
+   !!!!! G. Ak DISPATCH ROUTINE zasle IRP do DESTINATION DRIVER pomocou FUNCTION IoCallDriver(), NEMSIE viac k IRP STRUCTRUE PRISTUPIT, pretoze DESTINATION DRIVER uz mohol IRP UKONCI volanim FUNCTION IoCompleteRequest(), ktora mohla vyvolat sposobit vyvolanie COMPLETION ROUTINE v CURRENT DRIVER, ktora mohla zavolat FUNCTION IoFreeIrp() a teda IRP UVOLNIT z MEMORY.
+   !!! H. Ak DISPATCH ROUTINE zavola FUNCTION IoCompleteRequest() pre IRP, ktore ma zaregistrovane COMPLETION ROUTINES, tak IRP sa dostane do PENDING STATE AZ KYM WINDOWS NEVYKONA vsetky COMPLETION ROUTINES.
+   !!!!! I. Ak DISPATCH ROUTINE, ktora ZAREGISTROVALA COMPLETION ROUTINE NEZAVOLA FUNCTION IoCallDriver() ani FUNCTION IoCompleteRequest(), tak nedojde k vyvolaniu COMPLETION ROUTINES pre DRIVERS VYSSIE v DEVICE OBJECT STACK a teda IRP NEBUDE mat kto uvolnit. Tym padom dojde k MEMORY LEAK.
+!!!!! 30. Priklad spracovanie ASYNCHRONNEJ IRP v DRIVERS 'XXX', 'YYY' a 'ZZZ'.
+   A. DRIVER 'XXX' vytvori ASYNCHRONNE IRP volanim FUNCTION IoBuildAsynchronousFsdRequest().
+   B. IRP bude obsahovat 2 STRUCTURES [IO_STACK_LOCATION], pretoze v DEVICE OBJECT STACK sa pod DRIVER 'XXX' nachadzaju DRIVERS 'YYY' a 'ZZZ'.
+   !!! C. Po vytvoreni IRP bude INDEX do [IO_STACK_LOCATION] (IRP.CurrentLocation) ukazovat na poziciu -1.
+   D. DRIVER 'XXX' volanim FUNCTION IoGetNextIrpStackLocation() ziska POINTER na STRUCTURE [IO_STACK_LOCATION] na 0. pozicii v [IO_STACK_LOCATION] ARRAY a nastavi MAJOR FUNCTION.
+   !!!!! E. DRIVER 'XXX' MUSI ZAREGISTROVAT COMPLETION ROUTINE, pretoze PRAVE v NEJ MUSI UVOLNIT IRP volanim FUNCTION IoFreeIrp().
+   !!! F. Ked DRIVER 'XXX' zaregistruje COMPLETION ROUTINE (volanim FUNCTION IoSetCompletionRoutine()), tato sa v skutocnosti ulozi do STRUCTURE [IO_STACK_LOCATION] na 0. pozicii v [IO_STACK_LOCATION] ARRAY.
+   G. DRIVER 'XXX' zavola FUNCTION IoCallDriver(), ktorou sposobi zavolanie DISPATCH ROUTINE na DRIVER 'YYY'.
+   H. FUNCTION IoCallDriver() sposobi aj INKREMENTACIU INDEXU v [IO_STACK_LOCATION] ARRAY (IRP.CurrentLocation), ktory tak bude ukazovat na 0. poziciu. Zaroven sa nastavi hodnota DEVICE OBJECT pre 0. poziciu v [IO_STACK_LOCATION] ARRAY na DEVICE OBJECT reprezentujuci DRIVER XXX. Pomocou DEVICE OBJECT reprezentujuci DRIVER XXX bude moct DRIVER YYY vyvolat COMPLETION ROUTINE DRIVER XXX.
+   I. DRIVER 'YYY' ziska POINTER na STRUCTURE [IO_STACK_LOCATION] na 1. pozicii v [IO_STACK_LOCATION] ARRAY a nastavi MAJOR FUNCTION.
+   !!!!! J. DRIVER 'YYY' sa rozhodne NEZAREGISTROVAT (aj ked by mohol) vlastnu COMPLETION ROUTINE, pretoze nepotrebuje notifikaciu o vykonani IRP.
+   K. DRIVER 'YYY' zavola FUNCTION IoCallDriver(), ktorou sposobi zavolanie DISPATCH ROUTINE na DRIVER 'ZZZ'.
+   L. FUNCTION IoCallDriver() sposobi aj INKREMENTACIU INDEXU v [IO_STACK_LOCATION] ARRAY, ktory tam bude ukazovat na 1. poziciu.
+   M. DRIVER 'ZZZ' ovlada priamo HW DEVICE. Kedze vsak vykonanie IO OPERATION vyzaduje viac casu, tak DISPATCH ROUTINE zaradi IRP do IRP QUEUE a zavola FUNCTION IoMarkIrpPending(). DISPATCH ROUTINE vrati ako RETURN VALUE [STATUS_PENDING].
+   !!! N. Ak je HW DEVICE pripravene na spracovanie IO OPERATION, vyberie IRP z IRP QUEUE a spusti vykonavanie IO OPERATION.
+   O. Ak IO OPERATION skonci, zavola sa ISR, ktora zavola DPC ROUTINE. V tejto je IRP ukoncene volanie FUNCTION IoCompleteRequest().
+   !!! P. Zavolanie FUNCTION IoCompleteRequest() prinuti IO MANAGER, aby zacal volat COMPLETION ROUTINES pre DRIVER VYSSIE v DEVICE OBJECT STACK.
+   !!! R. IO MANAGER vyberie COMPLETION ROUTINE zo STRUCTURE [IO_STACK_LOCATION] na 1. pozicii v [IO_STACK_LOCATION] ARRAY.
+   !!!!! R. Kedze DRIVER 'YYY' NEZAREGISTROVAL vlastnu COMPLETION ROUTINE, tak IO MANAGER tento DRIVER PRESKOCI a DEKREMENTUJE INDEX [IO_STACK_LOCATION] ARRAY, ktory bude odkazovat na 0. poziciu.
+   !!!!! S. IO MANAGER vyberie COMPLETION ROUTINE zo STRUCTURE [IO_STACK_LOCATION] na 0. pozicii v [IO_STACK_LOCATION] ARRAY. Tato COMPLETION ROUTINE bola zaregistrovana DRIVER 'XXX'.
+   T. IO MANAGER vyvola COMPLETION ROUTINE prisluchajucu DRIVER 'XXX'.
+   !!!!! U. COMPLETION ROUTINE DRIVER 'XXX' spracuje vysledky IO OPERATION, ktore IRP vratil a nasledne UVOLNI IRP z MEMORY volanim FUNCTION IoFreeIrp().
+31. POINTER na DEVICE_OBJECT do ktoreho sa ma zasielat IRP je mozne ziskat viacerymi sposobomi.
+   A. PRIAMO. DEVICE_OBJECT na DRIVER NIZSIE v DEVICE OBJECT STACK je mozne ziskat pri inicializacii DRIVER volanim FUNCTION IoAttachDeviceToDeviceStack().
+   B. Pomocou FUNCTION IoGetDeviceObjectPointer(). FUNCTION potrebuje ako PARAMETER meno hladaneho DRIVER zadany ako UNICODE_STRING. FUNCTION vrati DEVICE_OBJECT na NAJVYSSI DRIVER v DEVICE OBJECT STACK.
+   C. Pomocou FUNCTION IoGetAttachedDeviceReference(). FUNCTION vracia POINTER na DEVICE_OBJECT odkazujuci na NAJVYSSI DRIVER v DEVICE OBJECT STACK. Ako PARAMETER vyzaduje DEVICE_OBJECT na DRIVER v danom DEVICE OBJECT STACK.
+32. FUNCTION IoGetDeviceObjectPointer() vykonava nasledujucu cinnost.
+   A. Zavola FUNCTION ZwOpenFile() na ziskanie KERNEL HANDLE na hladany DEVICE_OBJECT. Toto volanie sposobi vyvolanie IRP_MJ_CREATE na DRIVER prisluchajucemu hladanemu DEVICE_OBJECT.
+   B. Zavola FUNCTION ObReferenceObjectByHandle() na ziskanie POINTER na FILE_OBJECT hladaneho DEVICE_OBJECT.
+   C. Zavola FUNCTION ObGetRelatedDeviceObject() na ziskanie POINTER na hladany DEVICE_OBJECT.
+   D. Zavola FUNCTION ZwClose(), ktorym uvolni HANDLE na KERNEL OBJECT.
+!!! 33. POINTERS na DEVICE_OBJECT a FILE_OBJECT, ktore vrati FUNCTION IoGetDeviceObjectPointer() MUSIA byt UVOLNENE volanim FUNCTION ObDereferenceObject().
+!!!!! 34. POINTERS na DEVICE_OBJECT a FILE_OBJECT referuju na TEN ISTY KERNEL OBJECT a preto pri uvolnovani sa NESMU uvolnovat OBE, ale iba jeden z nich, inak dojde k BUG CHECK.
+!!!!! 35. Ak DRIVER zasiela IRP do DESTINATION DRIVER, tak CALLER DRIVER musi zabezpecit, aby DESTINATION DRIVER NEBOL uvolneny z MEMORY pocas zasielanie IRP. To sa najjedoduchsie robi volanim FUNCTION IoGetDeviceObjectPointer() na DESTINATION DEVICE_OBJECT, ktora INKREMENTUJE INTERNY COUNTER DESTINATION DEVICE_OBJECT a tym ZABRANI jeho UVOLNENIU z MEMORY.
+36. DISPATCH ROUTINES musia vykonat jednu z nasledujucich cinnosti.
+   A. SYNCHRONNE spracovat IRP volanim FUNCTION IoCompleteRequest().
+   B. ASYNCHRONNE spracovat IRP zaslanim IRP do IRP QUEUE odkial ju CURRENT DRIVER neskor vyberie a spracuje.
+   C. Zaslat IRP do DRIVER NIZSIE v DEVICE OBJECT STACK volanim FUNCTION IoCallDriver().
+37. DISPATCH ROUTINE ukoncuje IRP SYNCHRONNE (volanim FUNCTION IoCompleteRequest()) v nasledujucich 2 pripadoch.
+   A. Ak IRP je jednoduche na vykonanie a jeho ho mozne vykonat OKAMZITE.
+   B. Ak IRP obsahuje ERROR a nemoze byt dalej spracovane.
+!!!!! 38. VZDY ked DISPATCH ROUTINE ukoncuje IRP MUSI zavolat FUNCTION IoCompleteRequest(). Iba vratenie ERROR RETURN VALUE NEPOSTACUJE, aby IRP bol ukonceny. VZDY sa MUSI zavolat FUNCTION IoCompleteRequest().
+!!! 39. Ukoncenie IRP ci uz SYNCHRONNE, alebo ASYNCHRONNE sa vykonava v nasledujucich krokoch.
+   A. Nastavi sa hodnota [IRP.IoStatus.Status] na niektoru z NTSTATUS VALUES. NESMIE vsak obsahovat VALUE [STATUS_PENDING], pretoze tato VALUE reprezentuje fakt, ze IRP este NEBOLA UKONCENA a [IRP.IoStatus.Status] sa nastavuje, ked sa IRP UKONCUJE volanim FUNCTION IoCompleteRequest().
+   B. Nastavi sa hodnota [IRP.IoStatus.Information] na IRP DEPENDENT VALUE. Pri operaciach ako READ ci WRITE obsahuje pocet prenesenych BYTES.
+   !!! C. Odstrani sa CANCELLATION ROUTINE volanim FUNCTION IoSetCancelRoutine() s PARAMETER NULL.
+   !!!!! D. Zavola sa FUNCTION IoCompleteRequest(). Tato FUNCTION sposobi vyvolanie COMPLETION ROUTINES zaregistrovanych v DRIVERS VYSSIE v DEVICE OBJECT STACK.
+!!!!! 40. Ak DISPATCH ROUTINE ukoncuje IRP, tak MUSI VRATIT TU ISTU NTSTATUS VALUE, aku nastavila v FIELD [IRP.IoStatus.Status], inak VERIFIER sposobi BUG CHECK.
+!!!!! 41. MEMBER IRP.IoStatus.Status NIKDY NESMIE byt nastaveny na VALUE [STATUS_PENDING], pretoze tato VALUE reprezentuje fakt, ze IRP este NEBOLA UKONCENA a [IRP.IoStatus.Status] sa nastavuje, ked sa IRP UKONCUJE volanim FUNCTION IoCompleteRequest(). Ak sa [IRP.IoStatus.Status] sa nastavi na VALUE [STATUS_PENDING], VERIFIER sposobi BUG CHECK.
+!!! 42. Ak DISPATCH ROUTINE vrati VALUE [STATUS_PENDING], tak to znamena, ze IRP bola zaradena do IRP QUEUE a bude spracovana NESKOR. To znaci, ze DISPATCH ROUTINE v tomto pripade NESMIE IRP UKONCIT volanim FUNCTION IoCompleteRequest(). IRP je v PENDING STATE a CURRENT DRIVER ho spracuje neskor.
+!!!!! 43. FUNCTION IoCompleteRequest() vykonava nasledujucu cinnost.
+   !!!!! A. Zavola COMPLETION ROUTINES zaregistrovane DRIVERS VYSSIE v DEVICE OBJECT STACK.
+   B. Uvolni MEMORY DESCRIPTOR LISTS (MDL), ktore su pouzivane pri DIRECT IO OPERATIONS.
+   !!! C. Naplanuje vykonanie KERNEL APC ROUTINE, ktora ma za ulohu prekopirovat KERNEL MODE BUFFERS do USER MODE BUFFERS, nastavit finalny STATUS IO OPERATION ci signalizovat KERNEL EVENT asociovany s (SYNCHRONNYM) IRP.
+!!!!! 44. CANCELLATION ROUTINES je nutne UVOLNIT volanim FUNCTON IoSetCancelRoutine() s PARAMETER NULL pri nasledujucich prilezitostiach.
+   A. Pred volanim FUNCTION IoCompleteRequest().
+   B. Pred zaslatim IRP do DRIVER NIZSIE v DEVICE OBJECT STACK.
+45. Zaslanie IRP do DRIVER NIZSIE v DEVICE OBJECT STACK je realizovane v nasledujucich krokoch.
+   !!! A. Odstranenim CANCELLATION ROUTINE volanim FUNCTION IoSetCancelRoutine() s PARAMETER NULL.
+   !!!!! B. Inicializaciou STRUCTURE [IO_STACK_LOCATION] pre DRIVER NIZSIE v DEVICE OBJECT STACK. To je mozne vykonat bud volanim FUNCTION IoCopyCurrentIrpStackLocationToNext(), alebo volanim FUNCTION IoSkipCurrentIrpStackLocation().
+46. FUNCTION IoCopyCurrentIrpStackLocationToNext() skopiruje MEMBERS z CURRENT STRUCTURE [IO_STACK_LOCATION] do STRUCTURE [IO_STACK_LOCATION] pre DRIVER NIZSIE v DEVICE OBJECT STACK sa tato STRUCTURE [IO_STACK_LOCATION] inicializuje.
+!!! 47. FUNCTION IoSkipCurrentIrpStackLocation() DEKREMENTUJE INDEX do [IO_STACK_LOCATION] ARRAY pre dany IRP. Nasledne volanie FUNCTION IoCallDriver(), ktore INKREMENTUJE INDEX do [IO_STACK_LOCATION] ARRAY ho posunie na TU ISTU POZICIU aka zodpoveda CURRENT DRIVER. Vysledkom tychto volanie je fakt, ze DRIVER NIZSIE v DEVICE OBJECT STACK sa bude odkazovat na TU ISTRU STRUCTURE [IO_STACK_LOCATION] ako DRIVER VYSSIE v DEVICE OBJECT STACK.
+48. Ulozenie IRP do QUEUE z ktorej CURRENT DRIVER neskor IRP vyberie a spracuje je realizovane v nasledujucich krokoch.
+   A. Pomocou FUNCTION IoMarkIrpPending() sa oznaci IRP za PENDING.
+   B. Ak je DEVICE BUSY, tak sa IRP ulozi do QUEUE. Ak je DEVICE READY, tak sa OKAMZITE zavola FUNCTION StartIo().
+   C. DISPATCH ROUTINE vrati RETURN VALUE [STATUS_PENDING].
+   !!! D. Ak sa CURRENT DRIVER UVOLNI (uz nespracovava ziadne IRP), tak sa vyberie dalsie IRP z IRP QUEUE a to sa spracuje.
+   !!!!! E. Ak je IRP ulozene do IRP QUEUE v DISPATCH ROUTINE, uz k nemu DISPACH ROUTINE NESMIE PRISTUPIT, pretoze DRIVER mohol v INOM THREADE vybrat IRP z IRP QUEUE, spracovat ho. Nasledne volanie FUNCTION IoCompleteRequest() by sposobilo vyvolanie COMPLETION ROUTINES v ktorych by sa IRP uvolnilo z MEMORY volanim FUNCTION IoFreeIrp().
+49. Pre CUSTOM ROUTINE StartIo() platia nasledujuce zasady.
+   A. Je to CUSTOM ROUTINE, ktoru DRIVER moze OPTIONALLY implementovat.
+   B. Je vykonavana v [IRQL=DISPATCH_LEVEL] a teda NESMIE sposobit PAGE FAULT. Moze pristupovat IBA k NON-PAGED MEMORY.
+   !!! C. Ulohou CUSTOM ROUTINE StartIo() je ZACAT VYKONAVANIE IRP, ktore sa dokonci vyvolanim INTERRUPT SERVICE ROUTINE (ISR) a DCP, ktoru ISR spravidla vyvola.
+   !!! D. Zacat vykonavanie IRP znamena, ze CODE musi vykonat OPERATIONS, ktore FYZICKY SPUSTIA IO OPERATION na HW DEVICE.
+   !!!!! E. Kedze CODE v CUSTOM ROUTINE StartIo() moze bezat PARALELNE s CODE v ISR, ktory pristupuje k ROVNAKYM RESOURCES (napriklad HW REGISTERS) MUSIA byt chranene ROVNAKYM SPIN LOCK. Ochrana CODE v CUSTOM ROUTINE StartIo() sa zvycajne robi pouzitim FUNCTION KeSynchronizeExecution() do ktorej sa zasle POINTER na CALLBACK FUNCTION, ktorej CODE je vyvolany v CRITICAL SECTION chranenou ZISKANYM SPIN LOCK.
+!!! 50. Pre INTERRUPT SERVICE ROUTINE (ISR) platia nasledujuce zasady.
+   A. Je zaregistrovana pomocou FUNCTIONS IoConnectInterrupt(), alebo IoConnectInterruptEx().
+   !!! B. ISR je chranena SPIN LOCK, ktory je asociovany s danou ISR.
+   C. Je vyvolana pri vzniku INTERRUPT a bezi v [IRQL=DIRQL].
+   D. ISR MUSI skontrolovat ci INTERRUPT bol generovany pozadovanym HW DEVICE a spracovat ho iba ak bol ISR vyvolany tymto HW DEVICE.
+   !!! E. ISR spravidla vykonava SCHEDULING DEFFERED PROCEDURE CALL (DPC) ROUTINE volanim FUNCTION IoRequestDpc(). DPC bezi v [IRQL=DISPATCH_LEVEL] a teda umoznuje vykonat daleko viac operacii ako v ISR, ktora bezi v [IRQL=DIRQL].
+!!! 51. Pre DEFFERED PROCEDURE CALL (DPC) platia nasledujuce zasady.
+   A. Je zaregistrovana v CUSTOM ROUTINE AddDevice() volanim FUNCTION IoInitializeDpcRequest().
+   B. Jej vyvolanie je naplanovane v ISR ROUTITNES ako reakcia na INTERRUPTS a bezi v [IRQL=DISPATCH_LEVEL].
+   !!! C. Jej ulohou je UKONCIT SPRACOVANIE IRP a SPUSTIT spracovanie NOVEHO IRP.
+   !!! D. Ukoncenie IRP sa realizuje zrusenim CANCELLATION ROUTINE, nastavenim FIELDS [IRP.IoStatus.Status] a [IRP.IoStatus.Information] a zavolanim FUNCTION IoCompleteRequest().
+!!!!! 52. FUNCTION IoCompleteRequest() vo svojom tele vykonava volanie VSETKYCH ZAREGISTROVANYCH COMPLETION ROUTINES. CODE FUNCTION IoCompleteRequest() skonci AZ POTOM co sa ZAVOLAJU VSETKY COMPLETION ROUTINES.
+!!!!! 53. Po navrate z volania FUNCTION IoCompleteRequest() moze byt IRP UZ UVOLNENA z MEMORY (zavolanim FUNCTION IoFreeIrp() v COMPLETION ROUTINE), a preto CODE po zavolani FUNCTION IoCompleteRequest() uz NESMIE k IRP pristupovat, inak by mohlo dojst k BUG CHECK.
+54. COMPLETION ROUTINES sluzia na spracovanie vysledku IO OPERATION reprezentovanej IRP a mozu byt zaregistrovane pomocou FUNCTION IoSetCompletionRoutine(), alebo FUNCTION IoSetCompletionRoutineEx().
+55. Pre FUNCTION IoSetCompletionRoutine() platia nasledujuce fakty.
+   !!!!! A. FUNCTION IoSetCompletionRoutine() NEZABEZPECUJE, ze PNP DRIVER nemoze byt UNLOADED z MEMORY SKOR nez sa stihne vyvolat zaregistrovana COMPLETION ROUTINE a preto je NUTNE MANUALNE ZABEZPECIT, aby DRIVER NEBOL uvolneny z MEMORY SKOR ako sa ukonci COMPLETION ROUTINE.
+   B. COMPLETION ROUTINE moze byt vyvolana pri SUCCESS, FAILURE a CANCEL stave.
+   C. COMPLETION ROUTINE je volana pri SUCCESS stave, ak IRP STATUS CODE pri skonceni IRP vrati pre MACRO NT_SUCCESS() TRUE hodnotu.
+   D. COMPLETION ROUTINE je volana pri FAILURE stave, ak IRP STATUS CODE pri skonceni IRP vrati pre MACRO NT_SUCCESS() FALSE hodnotu.
+   !!! E. COMPLETION ROUTINE je volana pri CANCEL stave, ak IRP pri skonceni mala nastaveny FLAG Cancel a ZAROVEN COMPLETION ROUTINE NIE JE ZAREGISTROVANA pre SUCCESS a FAILURE stavy. Ak SUCCESS a FAILURE stavy, tak je COMPLETION ROUTINE bud podla SUCCESS, alebo FAILURE stavu podla toho co vrati MACRO NT_SUCCESS() pre IRP STATUS.
+   !!!!! F. Skor nez DRIVER zavola FUNCTION IoSetCompletionRoutine() je NUTNE pripravit STRUCTURE [IO_STACK_LOCATION] pre DESTINATION DRIVER (DRIVER NIZSIE v DEVICE OBJECT STACK). Je to dosledok toho, ze FUNCTION IoSetCompletionRoutine() MODIFIKUJE niektore FLAGS v STRUCTURE [IO_STACK_LOCATION] pre DESTINATION DRIVER, ktore musia byt pre spravne vyvolanie COMPLETION ROUTINE nastavene. Ak by sa stalo, ze by sa FUNCTION IoSetCompletionRoutine() volala SKOR ako napriklad FUNCTION IoCopyCurrentIrpStackLocationToNext(), tak by volanie FUNCTION IoCopyCurrentIrpStackLocationToNext() VYMAZALO FLAGS, ktore nastavila FUNCTION IoSetCompletionRoutine() a pri pokuse o volanie COMPLETION ROUTINE by doslo k BUG CHECK.
+   !!! G. FUNCTION IoSetCompletionRoutine() sa NESMIE (ani to nema zmysel) volat pre LOWEST DRIVERS v DEVICE OBJECT STACK, pretoze pracuje s NEXT IO_STACK_ROUTINE, ktory NEEXISTUJE. Ak by sa FUNCTION IoSetCompletionRoutine() pouzila v LOWEST DRIVER v DEVICE OBJECT STACK dojde k BUG CHECK.
+   !!!!! H. FUNCTION IoSetCompletionRoutine() zaregistruje COMPLETION ROUTINE do NEXT [IO_STACK_LOCATION] a teda COMPLETION ROUTINE sa vyvola IBA ak IRP bolo zaslane do NEXT DRIVER (DRIVER NIZSIE v DEVICE OBJECT STACK) volanim FUNCTION IoCallDriver().
+56. Pre FUNCTION IoSetCompletionRoutineEx() platia nasledujuce fakty.
+   !!!!! A. VYHODOU FUNCTION IoSetCompletionRoutineEx() oproti FUNCTION IoSetCompletionRoutine() je ze ZABRANI UVOLNENIU NON-PNP DRIVER z MEMORY skor nez za COMPLETION ROUTINE zavola.
+   B. COMPLETION ROUTINE moze byt vyvolana pri SUCCESS, FAILURE a CANCEL stave.
+   C. COMPLETION ROUTINE je volana pri SUCCESS stave, ak IRP STATUS CODE pri skonceni IRP vrati pre MACRO NT_SUCCESS() TRUE hodnotu.
+   D. COMPLETION ROUTINE je volana pri FAILURE stave, ak IRP STATUS CODE pri skonceni IRP vrati pre MACRO NT_SUCCESS() FALSE hodnotu.
+   !!! E. COMPLETION ROUTINE je volana pri CANCEL stave, ak IRP pri skonceni mala nastaveny FLAG Cancel a ZAROVEN COMPLETION ROUTINE NIE JE ZAREGISTROVANA pre SUCCESS a FAILURE stavy. Ak SUCCESS a FAILURE stavy, tak je COMPLETION ROUTINE bud podla SUCCESS, alebo FAILURE stavu podla toho co vrati MACRO NT_SUCCESS() pre IRP STATUS.
+   !!!!! F. Skor nez DRIVER zavola FUNCTION IoSetCompletionRoutineEx() je NUTNE pripravit STRUCTURE [IO_STACK_LOCATION] pre DESTINATION DRIVER (DRIVER NIZSIE v DEVICE OBJECT STACK). Je to dosledok toho, ze FUNCTION IoSetCompletionRoutineEx() MODIFIKUJE niektore FLAGS v STRUCTURE [IO_STACK_LOCATION] pre DESTINATION DRIVER, ktore musia byt pre spravne vyvolanie COMPLETION ROUTINE nastavene. Ak by sa stalo, ze by sa FUNCTION IoSetCompletionRoutineEx() volala SKOR ako napriklad FUNCTION IoCopyCurrentIrpStackLocationToNext(), tak by volanie FUNCTION IoCopyCurrentIrpStackLocationToNext() VYMAZALO FLAGS, ktore nastavila FUNCTION IoSetCompletionRoutineEx() a pri pokuse o volanie COMPLETION ROUTINE by doslo k BUG CHECK.
+   !!! G. FUNCTION IoSetCompletionRoutine() sa NESMIE (ani to nema zmysel) volat pre LOWEST DRIVERS, pretoze pracuje s NEXT IO_STACK_ROUTINE, ktory NEEXISTUJE. Ak by sa FUNCTION IoSetCompletionRoutine() pouzila v LOWEST DRIVER dojde k BUG CHECK.
+   !!!!! H. Kedze FUNCTION IoSetCompletionRoutineEx() ALOKUJE MEMORY, tak po jej zavolani je NUTNE IRP zaslat do IoCallDriver(), kde sa MEMORY uvolni. Ak by sa tak nestalo dojde k MEMORY LEAK.
+   !!! I. FUNCTION IoSetCompletionRoutineEx() vracia [STATUS_SUCCESS] ak bola volana uspesna, inak vracia [STATUS_INSUFFICIENT_RESOURCES].
+   !!!!! J. FUNCTION IoSetCompletionRoutineEx() zaregistruje COMPLETION ROUTINE do NEXT [IO_STACK_LOCATION] a teda COMPLETION ROUTINE sa vyvola IBA ak IRP bolo zaslane do NEXT DRIVER (DRIVER NIZSIE v DEVICE OBJECT STACK) volanim FUNCTION IoCallDriver().
+!!! 57. Pre COMPLETION ROUTINES platia nasledujuce zasady.
+   A. COMPLETION ROUTINES su vyvolavane ako EVENTS, ktorymi su DRIVERS VYSSIE v DEVICE OBJECT STACK informovane o tom, ze vykonavanie IO OPERATION bolo ukoncene.
+   B. V COMPLETION ROUTINES sa spracovavaju vysledky IO OPERATION a pri ASYNCHRONNYCH IRP su COMPLETION ROUTINES tych DRIVERS, ktore IRP vytvorili zodpovedne za ich uvolnenie volanim FUNCTION IoFreeIrp().
+   C. COMPLETION ROUTINES su zaregistrovane bud pomocou FUNCTION IoSetCompletionRoutine(), alebo FUNCTION IoSetCompletionRoutineEx().
+   !!!!! D. Skor nez DRIVER zavola FUNCTION IoSetCompletionRoutine(), alebo FUNCTION IoSetCompletionRoutineEx() je NUTNE pripravit STRUCTURE [IO_STACK_LOCATION] pre DESTINATION DRIVER (DRIVER NIZSIE v DEVICE OBJECT STACK). Je to dosledok toho, ze FUNCTION IoSetCompletionRoutine() (resp. FUNCTION IoSetCompletionRoutineEx()) MODIFIKUJE niektore FLAGS v STRUCTURE [IO_STACK_LOCATION] pre DESTINATION DRIVER, ktore musia byt pre spravne vyvolanie COMPLETION ROUTINE nastavene. Ak by sa stalo, ze by sa FUNCTION IoSetCompletionRoutine() (resp. FUNCTION IoSetCompletionRoutineEx()) volala SKOR ako napriklad FUNCTION IoCopyCurrentIrpStackLocationToNext(), tak by volanie FUNCTION IoCopyCurrentIrpStackLocationToNext() VYMAZALO FLAGS, ktore nastavila FUNCTION IoSetCompletionRoutine() (resp. FUNCTION IoSetCompletionRoutineEx()) a pri pokuse o volanie COMPLETION ROUTINE by doslo k BUG CHECK.
+   E. COMPLETION ROUTINES mozu byt vyvolane bud v PASSIVE_LEVEL, APC_LEVEL, alebo aj DISPATCH_LEVEL.
+   F. Ak COMPLETION ROUTINES su vyvolavane v DISPATCH_LEVEL, tak MUSIA byt v NON-PAGED MEMORY a NESMU sposobit PAGE FAULT.
+   !!! G. COMPLETION ROUTINES MUSIA VZDY predpokladat, ze MOZU byt vyvolane na DISPATCH_LEVEL a preto NESMU volat FUNCTIONS, ktore nemoze bezat v DISPATCH_LEVEL a takisto NESMU sposobit PAGE FAULT.
+   !!! H. COMPLETION ROUTINES su ukladane v IO_STACK LOCATION.
+   !!! I. Jeden DRIVER moze mat zaregistrovanu MAXIMALNE 1 COMPLETION ROUTINE.
+   !!! J. Kazdy DRIVER v DEVICE OBJECT STACK si moze zaregistrovat vlastnu COMPLETION ROUTINE, ktora je NEZAVISLA na COMPLETION ROUTINES inych DRIVERS v DEVICE OBJECT STACK.
+   !!!!! K. Zaregistrovane COMPLETION ROUTINES su vyvolane FUNCTION IoCompleteRequest(), kedy sa spusti proces ich volania. Ten pokracuje az kym nie su vsetky COMPLETION ROUTINES zavolane, alebo kym niektora z COMPLETION ROUTINES nevrati RETURN VALUE [STATUS_MORE_PROCESSING_REQUIRED], kedy sa proces volania COMPLETION ROUTINES ukonci.
+   !!!!! L. Jedine VALIDNE RETURN VALUES z COMPLETION ROUTINES su [STATUS_SUCCESS] (resp. jej ALIAS [STATUS_CONTINUE_COMPLETION]) a [STATUS_MORE_PROCESSING_REQUIRED]. Ine hodnoty, vratane ERROR hodnot by sa z COMPLETION ROUTINES vracat NEMALI.
+   !!!!! M. Ak COMPLETION ROUTINE vracia RETURN VALUE [STATUS_SUCCESS] a ZAROVEN plati, ze [IRP.PendingReturned] je TRUE, tak COMPLETION ROUTINE MUSI zavolat FUNCTION IoMarkIrpPending(), aby doslo k prekopirovaniu FLAG [SL_PENDING_RETURNED] do STRUCTURE [IO_STACK_LOCATION] pre DRIVER VYSSIE v DEVICE OBJECT STACK.
+   !!!!! N. Ak COMPLETION ROUTINE UVOLNI IRP volanim FUNCTION IoFreeIrp() (robi sa to IBA pre ASYNCHRONNE IRP), tak COMPLETION ROUTINE MUSI vratit VALUE [STATUS_MORE_PROCESSING_REQUIRED], aby IO MANAGER neskusal hladat dalsie COMPLETION ROUTINES v IRP STRUCTURE, ktora uz NIE JE ALOKOVANA v MEMORY.
+   !!!!! O. COMPLETION ROUTINE sa volanim FUNCTIONS IoSetCompletionRoutine(), alebo IoSetCompletionRoutineEx() VZDY registruje do STRUCTURE [IO_STACK_LOCATION] zodpovedajucom DRIVER, ktory je NIZSIE, HNED pod CURRENT DRIVER v DEVICE OBJECT STACK. Vdaka tomu moze DRIVER NIZSIE v DEVICE OBJECT STACK najst COMPLETION ROUTINE patriacu DRIVER VYSSIE v DEVICE OBJECT STACK a zavolat ju.
+   !!!!! P. DRIVERS, ktore su na BOTTOM DEVICE OBJECT STACK NEPOTREBUJU registrovat COMPLETION ROUTINES, kedze neexistuje DRIVER NIZSIE v DEVICE OBJECT STACK, ktory by ich mohol vyvolat. Okrem toho, pri pokuse o zaregistrovanie COMPLETION ROUTINE, by doslo k pristupu k NASLEDUJUCE STRUCTURE [IO_STACK_LOCATION], ktora NEEXISTUJE, co by sposobilo BUG CHECK.
+   R. Silne sa odporuca aby namiesto RETURN VALUE [STATUS_SUCCES] COMPLETION ROUTINES vracali RETURN VALUE [STATUS_CONTINUE_COMPLETION]. Aj ked obe hodnoty su IDENTICKE, zvysuje to citatelnost CODE.
+   !!! S. COMPLETION ROUTINES by NIKDY NEMALI vracat ERROR CODES ako RETURN VALUES.
+!!!!! 58. Hodnota RETURN VALUE z COMPLETION ROUTINE zavisi od toho ci IRP je SYNCHRONNE, alebo ASYNCHRONNE.
+   A. Ak pri SYNCHRONNOM IRP (SYNCHRONNE IRP VZDY uvolnuje z MEMORY IO MANAGER) COMPLETION ROUTINE vrati RETURN VALUE [STATUS_SUCCESS] (resp. [STATUS_XXX], kde 'XXX' je ERROR), tak pre IO MANAGER to znamena, ze IRP MOZE UVOLNIT z MEMORY.
+   !!!!! B. Ak pri SYNCHRONNOM IRP (SYNCHRONNE IRP VZDY uvolnuje z MEMORY IO MANAGER) COMPLETION ROUTINE vrati RETURN VALUE [STATUS_MORE_PROCESSING_REQUIRED], tak pre IO MANAGER je to indikacia, ze IRP NESMIE UVOLNIT z MEMORY az kym ZNOVA nebude zavolana FUNCTION IoCompleteRequest().
+   !!! C. Ak pri ASYNCHRONNOM IRP COMPLETION ROUTINE vrati RETURN VALUE [STATUS_SUCCESS] (resp. [STATUS_XXX], kde 'XXX' je ERROR), tak COMPLETION ROUTINE NESMIE vo svojom CODE opatovne zavolat IoCompleteRequest(), pretoze IO MANAGER by sa pokusil pristupi k IRP STRUCTURE (pri hladani dalsich COMPLETION ROUTINES) a doslo by k BUG CHECK. IO MANAGER pri detekcii RETURN VALUE [STATUS_SUCCESS] (resp. [STATUS_XXX], kde 'XXX' je ERROR) bude pokracovat vo vyhladavani dalsich COMPLETION ROUTINES.
+   !!! D. Ak pri ASYNCHRONNOM IRP COMPLETION ROUTINE vrati RETURN VALUE [STATUS_MORE_PROCESSING_REQUIRED], tak CODE COMPLETION ROUTINE by este pred svojim ukoncenim mal zavolat FUNCTION IoFreeIrp(), aby uvolnil IRP. Ak to nespravi, IO MANAGER dalsie COMPLETION ROUTINES NEZAVOLA (RETURN VALUE [STATUS_MORE_PROCESSING_REQUIRED] je pren indikacia, aby to nerobil) a ak DRIVER neodstrani IRP nejakym inym sposobom, tak dojde k MEMORY LEAK.
+!!!!! 59. Ak DRIVER NEVYTVORIL IRP, hodnota RETURN VALUE z COMPLETION ROUTINE ma nasledujuci vyznam.
+   !!! A. Ak COMPLETION ROUTINE vrati RETURN VALUE [STATUS_SUCCESS] (resp. [STATUS_XXX], kde 'XXX' je ERROR), tak IO MANAGER pokracuje v hladani dalsich COMPLETION ROUTINES v DRIVER VYSSIE v DEVICE OBJECT STACK.
+   !!!!! B. Ak COMPLETION ROUTINE vrati RETURN VALUE [STATUS_MORE_PROCESSING_REQUIRED], tak IO MANAGER zastavi volanie COMPLETION ROUTINES. Ak IRP bolo vytvorene ASYNCHRONNE v DRIVER, DRIVER PRE UKONCENIM COMPLETION ROUTINE MUSI uvolnit IRP volanim FUNCTION IoFreeIrp(). Ak IRP bolo SYNCHRONNE (aj ked vytvorene priamo v DRIVER CODE), DRIVER ho NESMIE uvolnit volanim FUNCTION IoFreeIrp(), pretoze to IO MANAGER robi AUTOMATICKY.
+!!!!! 60. IO MANAGER ukonci SYNCHRONNU IRP IBA VTEDY, ak sa zavola COMPLETION ROUTINE tohto DRIVER, ktory IRP od IO MANAGER dostal na spracovanie a tato COMPLETION ROUTINE vrati RETURN VALUE [STATUS_SUCCESS] (resp. [STATUS_XXX], kde 'XXX' je ERROR), alebo DRIVER OPATOVNE nezavola FUNCTION IoCompleteRequest(), ktora sposobi, ze IO MANAGER IRP uvolni.
+!!!!! 61. Ak FUNCTION vytvori IRP, pre ktore nasledne zaregistruje COMPLETION ROUTINE a OKAMZITE pre toto IRP zavola IoCompleteRequest(), tak sa COMPLETION ROUTINE NEVYVOLA, pretoze COMPLETION ROUTINE je registrovana pre STRUCTURE [IO_STACK_LOCATION] pre DRIVER NIZSIE v DEVICE OBJECT STACK a kedze FUNCTION IoCompleteRequest() sa volala z CURRENT DRIVER, tak CURRENT DRIVER nevie o COMPLETION ROUTINE zaregistrovanej pre DRIVER NIZSIE v DEVICE OBJECT STACK. Vysvetlenie je nasledujuce.
+    A. FUNCTION IoCompleteRequest() pri vykonavani COMPLETION ROUTINES VZDY pozrie do IRP na hodnotu MEMBER [IRP.CurrentStackLocation] na zistenie, ktora STRUCTURE [IO_STACK_LOCATION] v [IO_STACK_LOCATION] ARRAY je aktualna.
+    !!! B. IO MANAGER vola IBA COMPLETION ROUTINES, ktore su zaregistrovane v CURRENT STRUCTURE [IO_STACK_LOCATION] a vsetkych VYSSICH STRUCTURES [IO_STACK_LOCATION].
+    !!!!! C. Kedze COMPLETION ROUTINE sa VZDY zaregistrovava NIE do CURRENT STRUCTURE [IO_STACK_LOCATION], ale do NASLEDUJUCEJ STRUCTURE [IO_STACK_LOCATION], tak FUNCTION IoCompleteRequest() NEUVIDI COMPLETION ROUTINE zaregistrovanu CURRENT DRIVER (kedze sa ulozi do STRUCTURE [IO_STACK_LOCATION] pre NEXT DRIVER).
+!!! 62. Zaregistrovane COMPLETION ROUTINES sa volaju z FUNCTION IoCompleteRequest() a to nasledujucim sposobom.
+   A. Ak COMPLETION ROUTINE vrati INU RETURN VALUE ako [STATUS_MORE_PROCESSING_REQUIRED], tak volanie COMPLETION ROUTINES zaregistrovanych DRIVERS VYSSIE v DEVICE OBJECT STACK pokracuje dalej.
+   B. Ak COMPLETION ROUTINE vrati RETURN VALUE [STATUS_MORE_PROCESSING_REQUIRED], tak sa proces volania COMPLETION ROUTINES zaregistrovanych DRIVERS VYSSIE v DEVICE OBJECT STACK ZASTAVI a ZIADNA DALSIA COMPLETION ROUTINE sa nezavola.
+   C. Ak sa VSETKY COMPLETION ROUTINES zavolali, tak sa proces volania COMPLETION ROUTINES konci.
+!!! 63. Ak mame DRIVERS A, B a C, kde A je na TOP a C na BOTTOM DEVICE OBJECT STACK tak pre registraciu COMPLETION ROUTINES platia nasledujuce fakty.
+   A. Ak DRIVER A zaregistruje COMPLETION ROUTINE, tak sa tato COMPLETION ROUTINE ulozi do [IO_STACK_LOCATION] prisluchajucemu DRIVER B.
+   B. Ak DRIVER B zaregistruje COMPLETION ROUTINE, tak sa tato COMPLETION ROUTINE ulozi do [IO_STACK_LOCATION] prisluchajucemu DRIVER C.
+   !!! C. DRIVER C sa NESMIE pokusit registrovat COMPLETION ROUTINE, pretoze ta by sa mala ulozit do NEEXISTUJUCEHO [IO_STACK_LOCATION] co by sposobilo BUG CHECK.
+   D. Ak IRP je UKONCENE volanim IoCompleteRequest(), tak DRIVER C najde vo SVOJOM [IO_STACK_LOCATION] COMPLETION ROUTINE prisluchajucu DRIVER B a zavola ju.
+   E. Ak IRP je UKONCENE volanim IoCompleteRequest(), tak DRIVER B najde vo SVOJOM [IO_STACK_LOCATION] COMPLETION ROUTINE prisluchajucu DRIVER A a zavola ju.
+   !!! F. Ak IRP bol vytvoreny IO MANAGER a zaslany do DRIVER A a IO MANAGER zaregistroval COMPLETION ROUTINE, tak ak IRP je UKONCENE volanim FUNCTION IoCompleteRequest(), tak DRIVER A najde vo SVOJOM [IO_STACK_LOCATION] COMPLETION ROUTINE prisluchajucu IO MANAGER a zavola ju.
+!!! 64. Postup volania COMPLETION ROUTINES.
+   A. Jedna IRP moze mat zaregistrovanych ROZNYMI DRIVERS v DEVICE OBJECT STACK VIACERO COMPLETION ROUTINES.
+   !!! B. Jeden DRIVER moze mat zaregistrovanu MAXIMALNE 1 COMPLETION ROUTINE.
+   C. Ak niektory DRIVER v DEVICE OBJECT STACK zavola FUNCTION IoCompleteRequest(), tak sa postupne zacnu volat zaregistrovane COMPLETION ROUTINES pre DRIVERS VYSSIE v DEVICE OBJECT STACK.
+   !!! D. Volanie COMPLETION ROUTINES skonci ak sa zavolali VSETKY COMPLETION ROUTINES, alebo ked NIEKTORA COMPLETION ROUTINE vratila RETURN VALUE [STATUS_MORE_PROCESSING_REQUIRED].
+   !!!!! E. Vratenie RETURN VALUE [STATUS_MORE_PROCESSING_REQUIRED] z COMPLETION ROUTINE znamena, ze sa zaregistrovane COMPLETION ROUTINES pre DRIVERS VYSSIE v DEVICE OBJECT STACK NEZAVOLAJU a volanie FUNCTION IoCompleteRequest() pre dany IRP v DRIVER, ktory ju zavolal OKAMZITE SKONCI.
+!!!!! 65. Po zavolani FUNCTION IoCallDriver() sa k IRP vo volajucom CODE uz NESMIE PRISTUPIT. Dovod opisuju nasledujuce kroky.
+   A. DRIVER, ktoremu bola IRP zaslana mohol IRP SYNCHRONNE UKONCIT (napriklad pri detekcii ERROR) volanim FUNCTION IoCompleteRequest().
+   B. FUNCTION IoCompleteRequest() sposobuje vyvolanie vsetkych COMPLETION ROUTINES.
+   C. Ak IRP bolo ASYNCHRONNE, potom COMPLETION ROUTINE v DRIVER, ktory IRP VYTVORIL ho musi odstranit volanim FUNCTION IoFreeIrp().
+   !!! D. Ak COMPLETION ROUTINE zavolala FUNCTION IoFreeIrp(), tak IRP bol ODSTRANENE z MEMORY, a preto ak by sa CODE za volanim FUNCTION IoCallDriver() pokusil pristupit k IRP, pristupil by k NEPLATNEJ MEMORY a doslo by k vzniku BUG CHECK.
+!!! 66. Ak DISPATCHER ROUTINE (napriklad pre IRP_MJ_READ ci IRP_MJ_WRITE) nedokaze spracovat IRP OKAMZITE a IRP musi byt spracovane ASYNCHRONNE MUSI vykonat nasledujuce cinnosti.
+   A. Zavolat FUNCTION IoMarkIrpPending(), aby v CURRENT STRUCTURE [IO_STACK_LOCATION] v [IO_STACK_LOCATION] ARRAY nastaveny FLAG [SL_PENDING_RETURNED] vo FIELD [IO_STACK_LOCATION.Control].
+   B. Vratit RETURN VALUE [STATUS_PENDING]. Ak IO MANAGER vytvoril SYNCHRONNE IRP, caka na vratenie tejto RETURN VALUE, aby vyvolal THREAD BLOCKING a cakal az kym IRP nebude ukoncene volanim FUNCTION IoCompleteRequest().
+!!! 67. FUNTION IoMarkIrpPending() NEMENI hodnotu FIELD [IRP.PendingReturned]. Modifikuje IBA hodnotu FIELD [IRP.IO_STACK_LOCATION[IRP.CurrentLocation].Control].
+!!!!! 68. Ak IO MANAGER vytvori SYNCHRONNE IRP, potom IO MANAGER ho aj musi uvolnit. Zivotnost SYNCHRONNEHO IRP je opisana v nasledujucich krokoch.
+   A. IO MANAGER vytvori SYNCHORNNE IRP a zasle ho do DRIVER DISPATCH ROUTINE.
+   B. Ak DRIVER DISPATCH ROUTINE IRP OKAMZITE SPRACUJE a zavola FUNCTION IoCompleteRequest(), tak IO MANAGER IRP okamzite uvolni volanim FUNCTION IoFreeIrp(). Tym padom je IRP uvolnene z MEMORY.
+   !!! C. Ak vsak DRIVER DISPATCH ROUTINE potrebuje spracovat IRP ASYNCHRONNE (napriklad lebo HW DEVICE prave spracovava iny IRP), potom DISPATCH ROUTINE MUSI zavolat FUNCTION IoMarkIrpPending(), aby v CURRENT STRUCTURE [IO_STACK_LOCATION] v [IO_STACK_LOCATION] ARRAY nastaveny FLAG [SL_PENDING_RETURNED] vo FIELD [IO_STACK_LOCATION.Control].
+   !!! D. Nasledne MUSI DRIVER DISPATCH ROUTINE vratit ako RETURN VALUE hodnotu [STATUS_PENDING].
+   !!!!! E. IO MANAGER ak zisti, ze DRIVER DISPATCH ROUTINE vratila hodnotu [STATUS_PENDING], tak spusti EVENT WAIT, ktory caka na ukocenie IRP.
+   !!! F. Ked HW DEVICE vykona IO OPERATION iniciovanu danym IRP, zavola FUNCTION IoCompleteRequest().
+   !!!!! G. FUNCTION IoCompleteRequest() okrem volania vsetkych COMPLETION ROUTINES vykona aj SCHEDULING APC, ktory sa vykona na THREADE, ktory je vo WAIT STATE na EVENT cakajuc na ukoncenie IRP.
+   !!!!! H. APC vykonane na THREADE, ktory je vo WAIT STATE EVENT cakajuc na ukoncenie IRP nastavi EVENT.
+   !!! I. IO MANAGER, ktory zablokoval THREAD je uvolneny.
+   !!!!! J. Ak IO MANAGER detekuje, ze CURRENT [IO_STACK_LOCATION] v [IO_STACK_LOCATION] ARRAY ma nastaveny FLAG [SL_PENDING_RETURNED] vo FIELD [IO_STACK_LOCATION.Control], tak vykona UVOLNENIE IRP volanim FUNCTION IoFreeIrp().
+   !!!!! K. Ak by v CURRENT [IO_STACK_LOCATION] v [IO_STACK_LOCATION] ARRAY NEBOL nastaveny FLAG [SL_PENDING_RETURNED] vo FIELD [IO_STACK_LOCATION.Control], tak by IO MANAGER NEUVOLNIL IRP a doslo by k MEMORY LEAK.
+!!!!! 69. Na to, aby bol FLAG [SL_PENDING_RETURNED] vo FIELD [IO_STACK_LOCATION.Control] prekopirovany medzi jednotlivymi STRUCTURES [IO_STACK_LOCATION] v [IO_STACK_LOCATION] ARRAY MUSI KAZDA zaregistrovana COMPLETION ROUTINE v pripade, ze ma IRP nastavenu hodnotu [IRP.PendingReturned=TRUE] zavolat FUNCTION IoMarkIrpPending(), ktora zabezpeci kopirovanie FLAG [SL_PENDING_RETURNED] vo FIELD [IO_STACK_LOCATION.Control] do [IO_STACK_LOCATION] pre DRIVER VYSSIE v DEVICE OBJECT STACK. Vdaka tomu je FLAG [SL_PENDING_RETURNED] propagovany az do IO MANAGER, ktory ak detekuje jeho pritomnost uvolni IRP volanim FUNCTION IoFreeIrp().
+!!!!! 70. Ak DRIVER NEMA zaregistrovanu COMPLETION ROUTINE tak propagacia FLAG [SL_PENDING_RETURNED] vo FIELD [IO_STACK_LOCATION.Control] AUTOMATICKY zabezpecuje IO MANAGER.
+!!!!! 71. EXTREMNE DOLEZITE. FUNCTION IoMarkIrpPending() sa NESMIE volat v COMPLETION ROUTINE ku ktorej NEEXISTUJE [IO_STACK_LOCATION], co je priklad COMPLETION ROUTINE v DRIVER, ktory dany IRP VYTVORIL. Ak by k tomuto doslo, tak vznikne BUG CHECK, pretoze FUNCTION IoMarkIrpPending() by sa pokusila pristupit k STRUCTURE [IO_STACK_LOCATION] v [IO_STACK_LOCATION] ARRAY s INDEXOM -1, ktora v MEMORY NEEXISTUJE.
+!!!!! 72. Pre FUNCTION IoMarkIrpPending() platia nasledujuce zasady.
+   A. FUNCTION IoMarkIrpPending() nastavuje FLAG [SL_PENDING_RETURNED] do FIELD [IRP.IO_STACK_LOCATION[IRP.CurrentLocation].Control].
+   !!! B. FUNCTION IoMarkIrpPending() NEMODIFIKUJE hodnotu FIELD [IRP.PendingReturned].
+   !!! C. Ak DISPATCH ROUTINE vrati RETURN VALUE [STATUS_PENDING], tak VZDY MUSI zavolat aj FUNCTION IoMarkIrpPending(), inak moze dojst k BUG CHECK.
+   !!! D. Ak DISPATCH ROUTINE zavola FUNCTION IoMarkIrpPending(), tak MUSI vratit RETURN VALUE [STATUS_PENDING], inak moze dojst k BUG CHECK.
+   !!!!! E. FUNCTION IoMarkIrpPending() sa v COMPLETION ROUTINES NIKDY NESMIE VOLAT, ak COMPLETION ROUTINE vracia RETURN VALUE [STATUS_MORE_PROCESSING_REQUIRED].
+!!! 73. Pri zasielani a spracovavani IRP do procesu vstupuje PNP MANAGEMENT.
+   A. Ked IRP ma zaregistrovanu COMPLETION ROUTINE, tak PNP MANAGER moze DRIVER uvolnit este PREDTYM ako sa COMPLETION ROUTINE vyvola. DRIVER MUSI ZABEZPECIT, aby k tejto situacii, ktora by viedla k BUG CHECK nedoslo.
+   !!! B. Ak DRIVER VYTVORI IRP, tak tento DRIVER MUSI zabezpecit, aby nedoslo k DRIVER UNLOAD skor, nez sa cela IRP spracuje.
+   !!! C. Ak CURRENT DRIVER dostane IRP zaslanu z ineho DRIVER, tak tento iny DRIVER je zodpovedny za to, aby CURRENT DRIVER nebol uvolneny PNP MANAGEROM.
+   !!!!! D. FUNCTION IoSetCompletionRoutineEx() na rozdiel od FUNCTION IoSetCompletionRoutine() ZABRANUJE uvolnenie CURRENT DRIVER, ktoreho DEVICE_OBJECT je zaslany ako 1. PARAMETER FUNCTION IoSetCompletionRoutineEx(). PNP MANAGER teda NEUVOLNI DRIVER, ktoreho DEVICE_OBJECT bol zasladny ako 1. PARAMETER do FUNCTION IoSetCompletionRoutineEx() SKOR, nez sa zavola a UKONCI zaregistrovana COMPLETION ROUTINE.
+   !!! E. Ochranu pred uvolnenim DRIVER PNP MANAGEROM sa robi pomocou RELEASE LOCKS.
+   !!!!! F. Dokonca aj RETURN INSTRUCTION (v C++ return(XXX)) je treba CHRANIT pred uvolnenym DRIVER z MEMORY. Aj ked len tato RETURN INTRUCTION vykonana v COMPLETION ROUTINE nie je chranena pred odstranenim z MEMORY, vznika riziko, ze DRIVER bude PREDCASNE ODSTRANENY z MEMORY a dojde k BUG CHECK. Riesenim je pouzit FUNCTION IoSetCompletionRoutineEx(), ktora ZABRANUJE az do SKONCENIA VOLANIA COMPLETION ROUTINE odstranit DRIVER z MEMORY.
+   !!!!! G. Inak povedane KAZDU CPU INSTRUCTION v COMPLETION ROUTINE je NUTNE CHRANIT pred PREDCASNYM uvolnenim DRIVER z MEMORY.
+74. DRIVERS zvycajne IRP ukladaju do IRP QUEUES odkial su postupne spracovanane, ked je DEVICE, ktory DRIVER obsluhuje volny. Vacsina DRIVERS (HW DEVICE) spracovava naraz iba 1 IRP. Ak vsak HW DEVICE je schopny paralelne spracovat aj viacero IO OPERATION, tak DRIVER moze paralelne spracovavat viacero IRP.
+75. WDM poskytuje FUNCTIONS IoStartPacket() a IoStartNextPacket() na jednoduchy QUEUEING PACKETOV. Fungnguju nasledovnym sposobom.
+   A. V DISPACH ROUTINE sa zavola FUNCTION IoStartPacket(), ktora ak DRIVER NESPRACOVAVA IRP ho OKAMZITE zacne spacovavat volanim CUSTOM FUNCTION StartIo(). Ak naopak DRIVER PRAVE SPRACOVAVA IRP, tak IRP je ulozene do IRP QUEUE.
+   B. Pri skonceni vykonavania IRP sa v DPC ROUTINE zavola FUNCTION IoStartNextPacket(), ktora ak v IRP QUEUE existuje IRP, tak ho zacne spracovavat volanim CUSTOM FUNCTION StartIo().
+76. Ak pri pouzivani FUNCTIONS IoStartPacket() a IoStartNextPacket() je IRP ukoncene v CUSTOM FUNCTION StartIo(), tak CODE CUSTOM FUNCTION StartIo() MUSI pred volanim FUNCTION IoStartNextPacket(), ktora spusti spracovanie nasledujuceho IRP v IRP QUEUE volat volat FUNCTION IoSetStartIoAttributes(). Tato FUNCTION zabezpecuje, ze sa CUSTOM FUNCTION StartIo() NEBUDE pri opakovanim ukonceni IRP vo FUNCTION StartIo() volat REKURZIVNE, co mohlo viest k vycerpaniu KERNEL STACK a tym padom aj k vzniku BUG CHECK.
+!!! 77. NEVYHODOU FUNCTIONS IoStartPacket() a IoStartNextPacket() je, ze pouzivaju relativne POMALE SPIN LOCKS.
+!!!!! 78. Pri pouziti IRP QUEUE plati, ze aj ked IRP je OKAMZITE UKONCENE vo CUSTOM FUNCTION StartIo() je lepsie namiesto volania FUNCTION IoStartNextPacket() (ak sa pouziva tento typ IRP QUEUE) priamo vo FUNCTION StartIo() vykonat SCHEDULING DPC ROUTINE a az v DPC ROUTINE zavolat FUNCTION IoStartNextPacket() (ak sa pouziva tento typ IRP QUEUE). Predchadza sa tym zbytocnej REKURZII na KERNEL STACK, ktory ma standardne dlzku iba 12 KB.
+79. WDM definuje specialny FRAMEWORK pre realizaciu CANCEL-SAFE IRP QUEUEING. FRAMEWORK sa sklada z dvoch casti.
+   A. DRIVER musi implementovat mnozinu CALLBACK FUNCTIONS, ktore su volane z WDM a realizuju funkcionalitu vkladania a vyberania IRP z IRP QUEUE.
+   B. Mnozina WDM FUNCTIONS IoCsqXXX(), ktore musi DRIVER volat pri vkladani a vyberani IRP z IRP QUEUE.
+80. CANCEL-SAFE IRP QUEUEING FRAMEWORK obsahuje nasledujuce FUNCTIONS.
+   A. FUNCTIONS IoCsqInitialize() a IoCsqInitializeEx() inicializuje CANCEL-SAFE IRP QUEUEING FRAMEWORK zaslanim CUSTOM CALLBACK FUNCTIONS, ktore bude FRAMEWORK volat.
+   B. FUNCTIONS IoCsqInsertIrp() a IoCsqInsertIrpEx() pridavaju IRP do CANCEL-SAFE IRP QUEUE. Zaroven INTERNE volaju FUNCTION IoMarkIrpPending(), takze to DRIVER CODE nemusi robit.
+   C. FUNCTION IoCsqRemoveIrp() odstrani IRP z CANCEL-SAFE IRP QUEUE.
+   D. FUNCTION IoCsqRemoveNextIrp() odstrani nasledujuci IRP z CANCEL-SAFE IRP QUEUE.
+!!! 81. Ak DRIVER chce implementovat CANCEL-SAFE IRP QUEUEING FRAMEWORK, musi implementovat nasledujuce CALLBACK FUNCTIONS.
+   A. FUNCTION CsqInsertIrp() je volana z FUNCTION IoCsqInitialize() a jej ulohou je vlozit IRP do QUEUE.
+   B. FUNCTION CsqInsertIrpEx() je volana z FUNCTION IoCsqInitializeEx() a jej ulohou je vlozit IRP do QUEUE. FUNCTION obsahuje CONTEXT PARAMETER a moze vracat RETURN VALUE o vysledku vlozenia IRP do QUEUE.
+   C. FUNCTION CsqPeekNextIrp() je volana z FUNCTION IoCsqRemoveNextIrp() a jej ulohou je najst IRP v QUEUE. Zaciatok vyhladavania (IRP od ktoreho sa zacina vyhladavat IRP) je urceny ako 2. PARAMETER. Ak 2. PARAMETER obsahuje hodnotu NULL, tak sa IRP hlada od zaciatku IRP QUEUE.
+   D. FUNCTION CsqRemoveIrp() je volana z FUNCTIONS IoCsqRemoveIrp() a IoCsqRemoveNextIrp() a jej ulohou odstranit IRP z QUEUE.
+   E. FUNCTION CsqCompleteCanceledIrp() je pouzivana WDM, aby DRIVER mohol ukoncit CANCELLED IRP.
+   F. FUNCTION CsqAcquireLock() je volana WDM ak CANCEL-SAFE IRP QUEUE potrebuje ziskat LOCK pouzivany na pristup ku QUEUE.
+   G. FUNCTION CsqReleaseLock() je volana WDM ak CANCEL-SAFE IRP QUEUE potrebuje uvolnit LOCK pouzivany na pristup ku QUEUE.
+!!! 82. Na implementaciu CANCEL-SAFE IRP QUEUEING je nutne vykonat nasledujuce kroky.
+   A. Implementovat mnozinu CALLBACK FUNCTIONS, ktore su volane z WDM a budu realizovat operacie nad IRP v QUEUE.
+   B. Vyvolavat FUNCTIONS IoCsqXXX() na ukladanie a vyberanie IRP do QUEUE.
+   C. Implementovat DISPATCH ROUTINE pre IRP_MJ_CLEANUP.
+!!!!! 83. WINDOWS implementacia CANCEL-SAFE IRP QUEUEING realizuje CANCEL SAFE IRP QUEUE, kde IRP QUEUE obsahuje iba IRP, ktore NEBOLI CANCELLED.
+!!!!! 84. CANCEL-SAFE IRP QUEUEING vsak NERIESI problemy sposobene PNP ci POWER MANAGEMENT. Tieto problemy si musi DRIVER riesit MANUALNE napisanim CUSTOM CODE.
+85. CANCEL-SAFE IRP QUEUE NEMUSIA pouzivat SPIN LOCK na vykonanie LOCKING. Mozu pouzit napriklad aj MUTEX, FAST MUTEX, alebo hocijaky iny SYNCHRONIZATION OBJECT.
+86. CANCEL-SAFE IRP QUEUES mozu byt pouzite aj na realizovanie IRP PARKING. Realizuje sa nasledujucim sposobom.
+   A. Do DEVICE_EXTENSION sa pridaju MEMBERS typu IO_CSQ_IRP_CONTEXT pre kazdy typ IRP. STRUCTURE IO_CSQ_IRP_CONTEXT obsahuje POINTER na IO_CSQ, IRP a TYPE typu ULONG.
+   B. Pri prichode novej IRP sa pouzije FUNCTION IoCsqInsertIrp() na vlozenie IRP do QUEUE, pricom ako POSLEDNY PARAMETER sa pouzije podla typu IRP prislusny MEMBER v DEVICE_EXTENSION podla typu IRP.
+   !!! C. Az ked IRP je skoncene, tak sa pouzije FUNCTION IoCsqRemoveIrp() na vybratie IRP z QUEUE, pricom ako POSLEDNY PARAMETER sa pouzije podla typu IRP prislusny MEMBER v DEVICE_EXTENSION podla typu IRP. Ak FUNCTION IoCsqRemoveIrp() vrati NULL, tak IRP bol CANCELLED.
+   !!!!! D. Na rozdiel od klasickeho pouzitia CANCEL-SAFE IRP QUEUES sa v pripade IRP PARKING IRP odstranuju z IRP QUEUE az ked je spracovanie IRP UKONCENE (IRP su COMPLETED) a NIE v momente, ked sa ma spracovanie IRP zacat, ako je to v pripade klasickeho pouzitia CANCEL-SAFE IRP QUEUES.
+87. IRP CANCELLATION sa robi vzdy zavolanim FUNCTION IoCancelIrp(). FUNCTION IoCancelIrp() moze byt volana v nasledujucich situaciach.
+   A. FUNCTION IoCancelIrp() zavola priamo WINDOWS. Toto sa typicky robi napriklad ak je HW DEVICE, ktore DRIVER obsluhuje odstranene pomocou PNP MANAGER. WINDOWS vola FUNCTION IoCancelIrp() aj vtedy, ked THREAD, ktory vytvoril IRP sa UKONCIL.
+   B. FUNCTION IoCancelIrp() zavola DRIVER ako reakciu na nejaky vzniknuty stav vyzadujuci IRP CANCELLATION. Typicky DRIVERS obsahuju mechanizmus IRP CANCELLATION pre IRP, ktore 
+   C. FUNCTION IoCancelIrp() sa zavola ako reakcia na volanie USER MODE FUNCTIONS CancelIo() a CancelIoEx() z USER MODE programu, ktora ukoncuje ASYNCHRONNE IRP, ktory THREAD z ktoreho bola USER MODE FUNCTION CancelIo() volana.
+88. IRP CANCELLATION sa moze vykonat pri vzniku nasledujucich situacii.
+   A. USER MODE PROGRAM zavola USER MODE FUNCTION CancelIo(), ktora sluzi na zrusenie beziacich IO OVERLAPPED OPERATIONS vytvorenych THREAD z ktoreho je FUNCTION CancelIo() volana. V tomto pripade WINDOWS zavola CANCELLATION ROUTINES pre VSETKY IRP, ktore boli pre dany HANDLE vytvorene v CURRENT THREAD.
+   B. USER MODE PROGRAM zavola USER MODE FUNCTION CancelIoEx(), ktora sluzi na zrusenie beziacich IO OVERLAPPED OPERATIONS vytvorenych v CURRENT PROCESS. V tomto pripade WINDOWS zavola CANCELLATION ROUTINES pre VSETKY IRP, ktore boli pre dany HANDLE vytvorene v CURRENT PROCESS.
+   !!!!! C. USER MODE PROGRAM spadne, alebo je ukonceny bez toho, aby za zavolala USER MODE FUNCTION CloseHandle(). (Pricom stale mozu bezat IO OVERLAPPED OPERATIONS, ked PROGRAM SPADNE.). V tomto pripade su pre VSETKY BEZIACE IRP asociovane s CURRENT PROCESS volane ich COMPLETION ROUTINES. Nasledne sa zavola IRP typu [IRP_MJ_CLEANUP]. Ak niektore IRP NEMAJU zaregistrovanu COMPLETION ROUTINE, tak WINDOWS pre ne nastavi FLAG [IRP.Cancel] a caka 5 minut na ukoncenie IRP. Ak k nemu NEDOJDE, potom je asociacia medzi IRP a USER MODE PROCESSOM ZRUSENA a USER MODE PROCESS je ukonceny. IRP vsak nadalej bezi v SYSTEME az do svojho ukoncenia, alebo do vykonanai SYSTEM REBOOT.
+   D. USER MODE PROGRAM spusti IO OVERLAPPED OPERATION, pricom zavola USER MODE FUNCTION CloseHandle() SKOR ako sa dokonci vykonavanie IO OVERLAPPED OPERATION. V tomto pripade sa CANCELLATION ROUTINES NEVOLAJU, ale do DRIVER sa zasle IRP typu [IRP_MJ_CLEANUP].
+89. DRIVER by mal VZDY s IRP, ktore su ulozene v QUEUE asociovavat COMPLETION ROUTINE. Zaroven by mal implementovat IRP typu [IRP_MJ_CLEANUP].
+   A. Ak DRIVER implementuje IBA CANCELLATION ROUTINES, ale NEIMPLEMENTUJE IRP typu [IRP_MJ_CLEANUP], potom IRP budu CANCELLED okrem situacie, ked USER MODE PROGRAM zavolal USER MODE FUNCTION CloseHandle() PRED ukoncenim zacatych IO OVERLAPPED OPERATIONS. IRP pre tieto OPERATIONS su uvolnovane iba pri spracovani IRP typu [IRP_MJ_CLEANUP].
+   B. Ak DRIVER implementuje IBA IRP typu [IRP_MJ_CLEANUP], ale NEIMPLEMENTUJE CANCELLATION ROUTINES, tak ukoncene budu iba IRP, ktore reprezentuju IO OPERLAPPED OPERATIONS, ktore sa skoncili az potom ako USER MODE PROGRAM zavolal USER MODE FUNCTION CloseHandle(). Pri PADE PROGRAMU, alebo pri volani USER MODE FUNCTIONS CancelIo() a CancelIoEx() IRP NEBUDU UKONCENE.
+   !!! C. Ak DRIVER implementuje CANCELLATION ROUTINES IBA pre IRP, ktore su v QUEUE, pricom pre AKTUALNE SPRACOVAVANE IRP uz CANCELLATION ROUTINE NIE JE ZAREGISTROVANA, potom DRIVER by mal tieto IRP UKONCIT co NAJSKOR, inak pri PADE PROGRAMU, bude PROCESS cakat v MEMORY, az kym sa prave spracovavane IRP NEUKONCI.
+!!! 90. IRP CANCELLATION je pre DRIVER vzdy iba SUGGESTION. Samotny DRIVER musi rozhodnut ci IRP, ktore maju byt CANCELLED je vyhodnejsie, aby skutocne boli CANCELLED, alebo ak ich dokoncenie trva kratko, tak namiesto CANCELLATION ich mozu radsej dokoncit. Toto rozhodnutie je cisto na logike daneho DRIVER.
+!!! 91. IRP CANCELLATION funguje nasledujucim sposobom.
+   A. IRP sa pred zaradenim do IRP QUEUE nastavi FIELD [IRP.CancelRoutine] na FUNCTION, ktora sa ma pri IRP CANCELLATION volat.
+   !!! B. Pri normalnom behu DRIVER, kedy sa NEVYKONAVA CANCELLATION sa pri vybere IRP z IRP QUEUE OKAMZITE nastavuje FIELD [IRP.CancelRoutine] na NULL cim sa VYPINA CANCELLATION ROUTINE. CANCELLATION ROUTINE je teda nastavena IBA ak je IRP v IRP QUEUE.
+   !!! C. Ak IRP je v IRP QUEUE a teda ma nastaveny FIELD [IRP.CancelRoutine], tak pri IRP CANCELLATION FUNCTION IoCancelIrp() nastavi FIELD [IRP.Cancel] na TRUE a zaroven spusti CANCELLATION ROUTINE ulozenu vo FIELD [IRP.CancelRoutine].
+   !!!!!! D. CANCELLATION ROUTINE sa teda spusta IBA ak je IRP v IRP QUEUE.
+   !!! E. Ulohou CANCELLATION ROUTINE je vykonat IRP CANCELLATION. Kedze CANCELLATION ROUTINE je volana iba ak IRP zatial NEBOLO SPUSTENE (pokial je IRP.CancelRoutine!=NULL, tak IRP je stale v QUEUE), tak sa IRP ukonci volanim FUNCTION IoCompleteRequest() s nastavenim FIELD [IRP.IoStatus.Status] na hodnotu [STATUS_CANCELLED].
+   !!!!! F. Pre IRP, ktore je PRAVE VYKONAVANE DRIVER (teda uz nie je v IRP QUEUE a IRP.CancelRoutine==NULL) moze DRIVER rozhodnut ci je vyhodnejsie vykonat CANCELLATION daneho IRP (ak to HW DEVICE umoznuje), alebo nechat IRP korektne dobehnut a na jeho konci nastavit FIELD [IRP.IoStatus.Status] na hodnotu [STATUS_CANCELLED].
+!!!!! 92. Pre CANCELLATION ROUTINE platia nasledujuce fakty.
+   !!!! A. Nastavuje sa pomocou FUNCTION IoSetCancelRoutine(), ktora je THREAD SAFE.
+   B. Odstranuje sa volanim THREAD SAFE FUNCTION IoSetCancelRoutine() s PARAMETEROM NULL.
+   C. CANCELLATION ROUTINE ma za ulohu vykonat vsetky cinnosti, ktore suvisia s vykonanim IRP CANCELLATION.
+   !!!!! D. CANCELLATION ROUTINE zvycajne ODSTRANUJE IRP z IRP QUEUE a nasledne vola FUNCTION IoCompleteRequest().
+   !!! E. Na ROZDIEL od COMPLETION ROUTINE, ktory je asociovany s [IO_STACK_LOCATION] STRUCTURE je CANCELLATION ROUTINE asociovana PRIAMO so STRUCTURE IRP.
+   F. Kedze CANCELLATION ROUTINE je asociovana s IRP, tak dany IRP moze mat MAXIMALNE 1 CANCELLATION ROUTINE.
+   !!! G. CANCELLATION ROUTINE je standardne nastavena predtym ako je IRP ulozena do IRP QUEUE. Ked je IRP vybrate z IRP QUEUE, aby bolo zaslane na spracovanie do HW DEVICE je CANCELLATION ROUTINE pre dane IRP nastavene na NULL. To ako bude PRAVE SPRACOVAVANE IRP CANCELLED (a ci vobec bude CANCELLED, alebo radsej bude ponechane, aby dobehlo do konca) je dane moznostami HW DEVICE (ci CANCELLATION IO OPERATIONS vobec umoznuje) a implementaciu DRIVER.
+   !!!!! H. CANCELLATION ROUTINE sa teda spusta IBA ak IRP bolo v case zavolania FUNCTION IoCancelIrp() v IRP QUEUE.
+!!!!! 93. IRP CANCELLATION je nutne SYCHRNONIZOVAT, kedze jednotlive casti CANCELLATION logiky (napriklad praca s IRP QUEUE ci volanie CANCELLATION ROUTINE, ktora tiez pristupuje k IRP QUEUE) mozu bezat PARALELNE. Pre SYNCHRONIZACIU IRP CANCELLATION platia nasledujuce zasady.
+   !!! A. Na SYNCHRONIZATION sa NEDOPORUCUJE pouzivat globalne CANCEL SPIN LOCKS. WDM sice obsahuje podporne FUNCTIONS IoAcquireCancelSpinLock() a IoReleaseCancelSpinLock(), avsak spravna implementacia IRP CANCELLATION je MIMORIADNE ZLOZITA a preto sa neodporuca pouzivat CANCEL SPIN LOCKS.
+   B. Na SYNCHRONIZATION IRP CANCELLATION je mozne vyuzit FUNCTIONS IoCsqXXX(), ktore zabezpecuju cely LOCKING a DRIVER musi iba implementovat FUNCTIONS, ktore realizuju uz samotnu logiku IRP CANCELLATION abstrahovanu od LOCKING problemov.
+   C. Na SYNCHRONIZATION IRP CANCELLATION je mozne implementovat aj CUSTOM IRP QUEUE (napriklad DEVQUEUE), ktora bude obsahovat aj SYNCHRONIZATION pri IRP CANCELLATION.
+94. FUNCTION IoCancelIrp() vykonava nasledujuce kroky.
+   A. Ziska sa GLOBALNY CANCEL LOCK volanim FUNCTION IoAcquireCancelSpinLock().
+   B. Nastavi FIELD [IRP.Cancel] na TRUE, aby sa indikovalo, ze IRP je CANCELLED.
+   !!! C. ATOMICKY sa ziska POINTER na CANCELLATION ROUTINE daneho IRP a ZAROVEN sa CANCELLATION ROUTINE pre toto IRP nastavi na NULL.
+   !!!!! D. Ak CANCELLATION ROUTINE bola pre dany IRP NASTAVENA (FIELD [IRP.CancelRoutine] bol pred volanim FUNCTION IoCancelIrp() nastaveny na NON-NULL VALUE), tak sa spusti CANCELLATION ROUTINE a vrati sa TRUE. GLOBAL CANCEL LOCK NIE JE UVOLNENY a je ulohou CANCELLATION ROUTINE GLOBAL CANCEL LOCK UVOLNIT volanim FUNCTION IoReleaseCancelSpinLock().
+   !!! E. Ak CANCELLATION ROUTINE nebola pre dany IRP NASTAVENA (FIELD [IRP.CancelRoutine] bol pred volanim FUNCTION IoCancelIrp() nastaveny na NULL VALUE), tak sa UVOLNI GLOBAL CANCEL LOCK volanim FUNCTION IoReleaseCancelSpinLock() a vrati sa hodnota FALSE.
+!!!!! 95. Plati, ze ak CANCELLATION ROUTINE je pri volani FUNCTION IoCancelIrp() NASTAVENA (FIELD [IRP.CancelRoutine] je NON-NULL), tak CANCELLATION ROUTINE MUSI uvolnit CANCEL CANCEL LOCK volsnim FUNCTION IoReleaseCancelSpinLock(), pretoze FUNCTION IoCancelIrp() v tomto pripade ho NEUVOLNUJE a teda ak by ho CANCELLATION ROUTINE NEUVOLNILA, tak by GLOBAL CANCEL LOCK ostal LOCKED co by viedlo k BUG CHECK.
+!!!!! 96. Plati, ze ak DRIVER zacne spracovavat IRP, tak OKAMZITE este pred volanim FUNCTION StartIo() musi ODSTRANIT CANCELLATION ROUTINE. IRP QUEUES to robia AUTOMATICKY pri vyberani IRP z IRP QUEUE.
+!!!!! 97. Plati, ze ak DRIVER zasiela IRP do INEHO DRIVER tak, MUSI ODSTRANIT CANCELLATION ROUTINE este PREDTYM, ako posle IRP do INEHO DRIVER.
+!!!!! 98. Ak ASYNCHRONNE IRP bolo vytvorene CURRENT DRIVER, tak DRIVER MUSI IRP UVOLNIT po skonceni vykonavania IRP. To sa vykonava nasledujucim sposobom.
+   A. CURRENT DRIVER MUSI odregistrovat CANCEL ROUTINE nastavenim na NULL.
+   B. V COMPLETION ROUTINE MUSI uvolnit IRP volanim FUNCTION IoFreeIrp().
+   !!! C. Z COMPLETION ROUTINE MUSI vratit RETURN VALUE [STATUS_MORE_PROCESSING_REQUIRED]. To je PODMIENKA, pretoze IRP uz bol uvolneny volanim FUNCTION IoFreeIrp() a RETURN VALUE [STATUS_MORE_PROCESSING_REQUIRED] zabranuje IO MANAGER, aby sa pokusil volat dalsie COMPLETION ROUTINES pre DRIVER VYSSIE v DEVICE OBJECT STACK.
+!!!!! 99. Ak DRIVER VYTVORIL IRP a zaslal ho do DRIVER NIZSIE v DEVICE OBJECT STACK pomocou FUNCTION IoCallDriver(), tak NESMIE ZA ZIADNYCH OKOLNOSTI vykonat CANCELLATION tohto IRP volanim FUNCTION IoCancelIrp() (resp. vobec pristupovat k danemu IRP po zavolani FUNCTION IoCancelIrp()), pretoze DRIVER NIZSIE v DEVICE OBJECT STACK mohol UKONCIT spracovanie IRP volanim FUNCTION IoCompleteRequest(), ktora spusti vykonavanie COMPLETION ROUTINES v korych sa zavola FUNCTION IoFreeIrp(). Problem popisuju nasledujuce kroky.
+   A. DRIVER, ktory vytvoril IRP a zaslal do DESTINATION DRIVER pomocou FUNCTION IoCallDriver() caka nejaky TIMEOUT na spracovanie a ukoncenie IRP. Ak TIMEOUT vyprsi, tak DRIVER, ktory IRP vytvoril iniciuje jeho CANCELLATION.
+   B. Ak TIMEOUT EXPIRUJE a DRIVER zavola FUNCTION IoCancelIrp(), aby IRP mohlo byt CANCELLED, kedze nebolo spracovane do daneho TIMEOUT.
+   !!! C. PROBLEM nastane vtedy, ked DESTINATION DRIVER v PRIBLIZNE RONVAKOM CASE ako expirovat TIMEOUT vykona ukoncenie IRP zavolanim FUNCTION IoCompleteRequest().
+   !!!!! D. Ak FUNCTION IoCompleteRequest() sa zavola v case ked uz TIMEOUT EXPIROVAL, no este skor ako DRIVER, ktory IRP vytvoril stihol zavolat FUNCTION IoCancelIrp(), tak FUNCTION IoCompleteRequest() sposobi vyvolanie COMPLETION ROUTINES v ktorych sa IRP UVOLNI z MEMORY volanim FUNCTION IoFreeIrp().
+   !!! E. Ak nasledne, DRIVER, ktory IRP vytvoril zavola FUNCTION IoCancelIrp(), tak IRP uz NEBUDE EXISTOVAT v MEMORY a FUNCTION IoCancelIrp() pristupi k NEPLATNEJ MEMORY co sposobi BUG CHECK.
+!!! 100. Ak DRIVER VYTVORIL SYNCHRONNY IRP a chce vykonat jeho CANCELLATION, musi postupovat nasledovne.
+   A. Pre IRP je NUTNE zaregistrovat COMPLETION ROUTINE, ktora vrati RETURN VALUE [STATUS_MORE_PROCESSING_REQUIRED].
+   !!! B. Vratenim RETURN VALUE [STATUS_MORE_PROCESSING_REQUIRED] sa ZABRANI AUTOMATICKEMU UVOLNENIU IRP z MEMORY (SYNCHRONNE IRP su uvolnovane AUTOMATICKY IO MANAGER, ked IRP je UKONCENE) ku ktoremu by doslo, ak by DRIVER NIZSIE v DEVICE OBJECT STACK zavolal FUNCTION IoCompleteRequest(). Vdaka tomu, ze COMPLETION ROUTINE vrati RETURN VALUE [STATUS_MORE_PROCESSING_REQUIRED] bude IO MANAGER IRP povazovat za ESTE NEUKONCENE a FUNCTION IoCompleteRequest() NEUVOLNI IRP z MEMORY.
+   !!!!! C. Nasledne DRIVER, ktory IRP VYTVORI MUSI ZNOVA zavolat FUNCTION IoCompleteRequest(), aby doslo k uvolneniu IRP. Ak PRED zavolanim FUNCTION IoCompleteRequest() DRIVER, ktory IRP VYTVORIL vykona CANCELLATION, tak tento CANCELLATION je SAFE a NESPOSOBI BUG CHECK, pretoze IPR sa uvolni z MEMORY AZ po OPATOVNOM zavolani FUNCTION IoCompleteRequest().
+!!! 101. Ak DRIVER VYTVORIL ASYNCHRONNY IRP a chce vykonat jeho CANCELLATION, musi postupovat nasledovne.
+   A. V DEVICE_EXTENSION sa vytvoria 2 FIELDS. FIELD [ActualIRP] a FIELD [CancelFlag].
+   B. Pred zaslanim IRP do DESTINATION DRIVER sa nastavit hodnotu FIELD [ActualIRP] na vytvoreny ASYNCHRONNY IRP a hodnotu FIELD [CancelFlag] na 0.
+   !!! C. Vytvori a zaregistruje sa COMPLETION ROUTINE, ktora vyvola FUNCTION IoFreeIrp() IBA ak INTERLOCKED FUNCTION aplikovana na FIELD [ActualIRP] vrati NON-NULL VALUE, alebo INTERLOCKED FUNCTION aplikovana na [CancelFlag] vrati 1.
+   !!! D. Vytvori sa CANCEL ROUTINE, ktora sa vola ak chce DRIVER vykonat CANCELLATION IRP. V CANCEL ROUTINE sa pomocou INTERLOCKED OPERATIONS porovnava hodnota FIELD [ActualIRP] na NON-NULL POINTER a FIELD [CancelFlag] na hodnotu 1. FUNCTION IoCancelIrp() sa zavola IBA ak FIELD [ActualIRP] ma NON-NULL. FUNCTION IoFreeIrp() sa zavola IBA vtedy ak FIELD [ActualIRP] ma NON-NULL hodnotu a ZAROVEN FIELD [CancelFlag] ma nastavenu hodnotu na 1. Kedze INTERLOCKED FUNCTIONS zaroven RESETUJU hodnotu FIELD [ActualIRP] na NULL a FIELD [CancelFlag] na 1, zabranuju pristupu k IRP, ktore uz bolo odstranene z MEMORY.
+   !!!!! E. Je EXTREMNE DOLEZITE, aby FUNCTION IoFreeIrp() ako POSLEDNA. To znaci, ze ak sucasne konci svoje beh CANCEL i COMPLETION ROUTINES, FUNCTION IoFreeIrp() musi volat ta z FUNCTIONS, ktora skonci ako DRUHA. Je to dolezite preto, lebo ak by COMPLETION ROUTINE skoncila ako PRVA a uvolnila IRP volanim FUNCTION IoFreeIrp(), mohla by CANCEL ROUTINE sa nachadzat TESNE pred zavolanim FUNCTION IoCancelIrp(). Ak by nasledne CANCEL ROUTINE zavolala FUNCTION IoCancelIrp(), volala by ho nad NEEXISTUJUCIM IRP (ktore uz bolo uvolnene volanim FUNCTION IoFreeIrp() v COMPLETION ROUTINE) a doslo by k BUG CHECK.
+!!! 102. Postup pouzity pre CANCELLATION SYNCHRONNYCH IRP je mozne pouzit UPLNE IDENTICKY aj pre CANCELLATION IRP, ktore su zaslane z DRIVER VYSSIE v DEVICE OBJECT STACK na ktorych skoncenie CURRENT DRIVER NEPOTREBUJE CAKAT.
+!!! 103. Postup pouzity pre CANCELLATION ASYNCHRONNYCH IRP je mozne pouzit UPLNE IDENTICKY aj pre CANCELLATION IRP, ktore su zaslane z DRIVER VYSSIE v DEVICE OBJECT STACK na ktorych skoncenie CURRENT DRIVER NEPOTREBUJE CAKAT. Rozdiel je akurat v tom, ze NAMIESTO FUNCTION IoFreeIrp() sa vola FUNCTION IoCompleteRequest(), pretoze az SOURCE DRIVER je zodpovedny za uvolnenie IRP, ktore vytvoril.
+!!! 104. Okrem IRP CANCELLATION je NUTNE v DRIVERS vykonavat aj IRP CLEANUP. IRP CLEANUP sa spusta vtedy, ak USER MODE PROCESS zavola FUNCTION CloseHandle(), ktora sposobi zaslanie IPR typu [IRP_MJ_CLEANUP]. DRIVER musi na [IRP_MJ_CLEANUP] zareagovat nasledujucim sposobom.
+   A. Ak PROCESS uzatvori HANDLE na FILE_OBJECT, tak do DRIVER je zaslana IRP typu [IRP_MJ_CLEANUP], ktora na DRIVER vyvola prislusnu DISPATCH ROUTINE. IRP typu [IRP_MJ_CLEANUP] sa do DRIVER zasiela ESTE PREDTYM ako sa do DRIVER zasle IRP TYPU [IRP_MJ_CLOSE].
+   !!! B. DRIVER v DISPATCH ROUTINE pre IPR typu [IRP_MJ_CLEANUP] dostane ako PARAMETER aj FILE_OBJECT (je ulozeny vo FIELD [IO_STACK_LOCATION.FileObject] zaslaneho IRP), vdaka ktoremu moze identifikovat, ktore IRP boli vytvorene uzatvaranym HANDLE.
+   !!! C. DRIVER MUSI prejst vsetky IRP v IRP QUEUE a pre IRP, ktore vytvoril uzatvarany HANDLE musi vykonat CANCELLATION s nastavenim FIELD [IRP.IoStatus.Status] na VALUE [STATUS_CANCELLED].
+   !!!!! D. DOLEZITYM PREDPOKLADOM je, aby IRP v IRP QUEUE mali vo FIELD [IO_STACK_LOCATION.FileObject] ulozeny POINTER na [FILE_OBJECT], ktory IRP vytvoril. Ak toto plati, je mozne hodnotu [IO_STACK_LOCATION.FileObject] pre IRP v IRP QUEUE pouzit na porovnanie s hodnotou [IO_STACK_LOCATION.FileObject] IRP typu [IRP_MJ_CLEANUP] na zistenie, ktore IRP maju byt CANCELLED. 
+!!!!! 105. DRIVER MUSI VZDY implementovat IRP CANCEALLATION aj IRP CLEANUP. Rozdiel medzi IRP CANCEALLATION a IRP CLEANUP je nasledovny.
+   A. IRP CANCEALLATION je mechanizums, ktory vola IO MANAGER, ked napriklad THREAD, ktory IRP vytvoril je TERMINATED, alebo ak USER MODE CODE volal FUNCTION CancelIo() pre spustenu ASYNCHRONNU OPERACIU. IRP CANCEALLATION sa teda iniciuje AJ PRI PROCESS TERMINATION, ak HANDLES na DRIVER nebol korektne uzatvoreny.
+   B. IRP CLEANUP sa vola ak USER MODE CODE korektne uzatvori HANDLE volanim FUNCTION CloseHandle().
+!!! 106. Ak DRIVER pouziva CANCEL-SAFE IRP QUEUE zalozenu na FUNCTIONS IoCsqXXX(), MUSI v pri prichod IRP typu [IRP_MJ_CLEANUP] odstranit vsetky IRPs, ktore patria tomu [FILE_OBJECT], ktory je uzatvarany. Robi sa to v nasledujucich krokoch.
+   A. V CYKLE sa vola FUNCTION FUNCTION IoCsqRemoveNextPacket(), ktora odstranuje IRP z CANCEL-SAFE IRP QUEUE.
+   B. Kazdy odstraneny IRP je ukonceny volanim FUNCTION IoCompleteRequest() s nastavenim FIELD [IRP.IoStatus.Status] na VALUE [STATUS_CANCELLED].
+!!!!! 107. Jednoduchym sposobom ako testovat IPR CANCELLATION a IRP CLEANUP je vytvorit USER MODE PROGRAM, ktory bude vytvarat OVERLAPPED IO OPERATIONS pre tie bud vykonat CANCELLATION volanim WIN32 API FUNCTION CancelIo(), alebo uzatvorenim PROGRAMU pred ich ukoncenim.
+//-------------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------------
+PRIBLIZNA implementacia FUNCTION IoCompleteIrp().
+
+1. FUNCTION IoCompleteIrp() je volana pri ukonceni IRP.
+2. FUNCTION IoCancelIrp() vykonava nasledujuce kroky.
+   A. Ziska POINTER na aktualny [IO_STACK_LOCATION] nacitanim hodnoty MEMBER [IRP.CurrentStackLocation].
+   B. Pre vsetky [IO_STACK_LOCATION] DRIVERS VYSSIE v DEVICE OBJECT STACK vola ich COMPLETION ROUTINES ak nejake zaregistrovali (1 DRIVER moze zaregistrovat MAXIMALNE 1 COMPLETION ROUTINE).
+   C. Cyklus trva, kym sa neprejdu vsetky [IO_STACK_LOCATION], alebo ak niektora COMPLETION ROUTINE nevrati [STATUS_MORE_PROCESSING_REQUIRED].
+   !!! D. Ak ZIADNA COMPLETION ROUTINE NEVRATILA [STATUS_MORE_PROCESSING_REQUIRED], tak v pripade SYNCHRONNEHO IRP je IRP UVOLNENE z MEMORY volanim FUNCTION IoFreeIrp().
+   !!!!! E. Ak NIEKTORA COMPLETION ROUTINE VRATILA [STATUS_MORE_PROCESSING_REQUIRED], tak FUNCTION IoCompleteRequest() OKAMZITE SKONCI a v pripade SYNCHRONNEHO IRP sa toto IRP NEUVOLNI z MEMORY. V tomto pripade DRIVER VYSSIE v DEVICE OBJECT STACK MUSI OPAKOVANE zavolat FUNCTION IoCompleteRequest(), ktora vykona cely algoritmus znova, avsak zacne vykonavanim nad CURRENT [IO_STACK_LOCATION], ktory uz nema zaregistrovanu COMPLETION ROUTINE, ktora vratila [STATUS_MORE_PROCESSING_REQUIRED].
+   !!!!! F. V pripade ASYNCHRONNEJ IRP MUSI DRIVER, ktory VYTVORIL IRP zavolat vo svojej COMPLETION ROUTINE FUNCTION IoFreeIrp() a NASLEDNE VRATIT RETURN VALUE [STATUS_MORE_PROCESSING_REQUIRED], ktora zabrani FUNCTION IoCompleteRequest() v hladani VYSSEJ [IO_STACK_LOCATION], co by ak by dany [IO_STACK_LOCATION] uz neexistoval sposobilo BUG CHECK.
+//-------------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------------
+Implementacia FUNCTION IoCancelIrp().
+
+1. FUNCTION IoCancelIrp() je volana ak sa ma vykona IRP CANCELLATION.
+2. FUNCTION IoCancelIrp() vykonava nasledujuce kroky.
+   A. Ziska sa CANCEL LOCK.
+   B. MEMBER IRP.Cancel sa nastavi na TRUE, aby sa indikovalo, ze IRP bola CANCELLED.
+   !!! C. ATOMICKY sa ziska POINTER na CANCELLATION ROUTINE daneho IRP a ZAROVEN sa CANCELLATION ROUTINE nastavi na NULL.
+   !!!!! D. Ak CANCELLATION ROUTINE bola pre dany IRP NASTAVENA (FIELD [IRP.CancelRoutine] bol pred volanim FUNCTION IoCancelIrp() nastaveny na NON-NULL), tak sa spusti CANCELLATION ROUTINE a vrati sa TRUE. CANEL LOCK pri tom NIE JE UVOLNENY a teda JE ULOHOU CANCELLATION ROUTINE tento LOCK UVOLNIT.
+   !!! E. Ak CANCELLATION ROUTINE nebola pre dany IRP NASTAVENA (FIELD [IRP.CancelRoutine] bol pred volanim FUNCTION IoCancelIrp() nastaveny na NULL), tak sa UVOLNI CANCEL LOCK a vrati FALSE.
+!!!!! 3. Plati, ze ak CANCELLATION ROUTINE JE pri volani FUNCTION IoCancelIrp() NASTAVENA (FIELD [IRP.CancelRoutine!=NULL]), tak CANCELLATION ROUTINE MUSI uvolnit CANCEL LOCK volsnim FUNCTION IoReleaseCancelSpinLock(), pretoze FUNCTION IoCancelIrp() ho NEUVOLNUJE a teda ak by ho CANCELLATION ROUTINE NEUVOLNILA, tak by CANCEL LOCK ostal LOCKED.
+
+BOOLEAN IoCancelIrp(PIRP InterruptRequestPacket)
+{
+	// !!! Ziska sa CANCEL LOCK.
+	IoAcquireCancelSpinLock(&InterruptRequestPacket->CancelIrql);
+
+	InterruptRequestPacket->Cancel=TRUE;
+
+	// !!!!! ATOMICKY sa ziska POINTER na CANCELLATION ROUTINE a ZAROVEN sa CANCELLATION ROUTINE nastavi na NULL.
+	PDRIVER_CANCEL												CancelRoutine=IoSetCancelRoutine(InterruptRequestPacket,NULL);
+
+	if (CancelRoutine!=NULL)
+    {
+		PIO_STACK_LOCATION										Stack=IoGetCurrentIrpStackLocation(InterruptRequestPacket);
+
+		// !!! Zavola sa CANCELLATION ROUTINE s DEVICE_OBJECT pre dany [IO_STACK_LOCATION].
+		(*CancelRoutine)(Stack->DeviceObject,InterruptRequestPacket);
+
+		// !!!!! CANCEL LOCK sa NEUVOLNUJE. Je ZODPOVEDNOSTOU CUSTOM CancelRoutine(), aby CANCEL LOCK UVOLNILA.
+
+		return(TRUE);
+    }
+	else
+    {
+		// !!! Uvolni sa CANCEL LOCK.
+		IoReleaseCancelSpinLock(InterruptRequestPacket->CancelIrql);
+
+		return(FALSE);
+	}
+}
+//-------------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------------
+Implementacia FUNCTION IoCallDriver().
+
+1. FUNCTION IoCallDriver() je volana ak DRIVER chce zaslat DRIVER do DESTINATION DRIVER.
+!!! 2. Zvysi POINTER CURRENT [IO_STACK_LOCATION] volanim FUNCTION IoSetNextIrpStackLocation(). To znaci, ze POSUNIE CURRENT [IO_STACK_LOCATION], aby odkazoval na NEXT [IO_STACK_LOCATION].
+3. Ziska POINTER na novy CURRENT [IO_STACK_LOCATION] volanim FUNCTION IoGetCurrentIrpStackLocation().
+4. Nastavi FIELD [IO_STACK_LOCATION.DeviceObject] pre CURRENT [IO_STACK_LOCATION] na DEVICE_OBJECT, ktory bol zaslany ako PARAMETER FUNCTION IoCallDriver() a ktory sluzi ako DESTINATION DEVICE_OBJECT.
+5. Ziska MAJOR FUNCTION noveho CURRENT [IO_STACK_LOCATION]. MAJOR FUNCTION sluzi ako INDEX do MAJOR FUNCTION TABLE.
+6. Ziska POINTER na DESTINATION DRIVER_OBJECT z DESTINATION [DEVICE_OBJECT].
+!!! 7. Pomocou hodnoty MAJOR FUNCTION, ktora sluzi ako INDEX do MAJOR FUNCTION TABLE ziska POINTER na DISPATCH FUNCTION pre danu MAJOR FUNCTION v DESTINATION DRIVER.
+8. Zavola DISPATCH FUNCTION pre danu MAJOR FUNCTION v DESTINATION DRIVER.
+!!!!! 9. FUNCTION IoCallDriver() vrati ako RETRUN VALUE RETURN VALUE z DISPATCH FUNCTION v DESTINATION DRIVER, ktoru zavolal.
+
+NTSTATUS IoCallDriver(PDEVICE_OBJECT DeviceObject, PIRP InterruptRequestPacket)
+{
+	IoSetNextIrpStackLocation(InterruptRequestPacket);
+  
+	PIO_STACK_LOCATION											Stack=IoGetCurrentIrpStackLocation(InterruptRequestPacket);
+  
+	Stack->DeviceObject=DeviceObject;
+
+	ULONG														Function=Stack->MajorFunction;
+	PDRIVER_OBJECT												Driver=DeviceObject->DriverObject;
+	NTSTATUS													ReturnValue=(*Driver->MajorFunction[Function])(DeviceObject,InterruptRequestPacket);
+
+	return(ReturnValue);
+}
+//-------------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------------
+Vseobecny tvar StartIo() ROUTINE.
+
+VOID StartIo(...)
+{
+	PDEVICE_EXTENSION											DeviceExtension=(DEVICE_EXTENSION*) Parameter;
+	KIRQL														OldIRQL;
+
+	OldIRQL=KeAcquireInterruptSpinLock(DeviceExtension->InterruptObject);
+
+	// INITIALIZE DEVICE FOR IRP PROCESSING.
+
+	KeReleaseInterruptSpinLock(DeviceExtension->InterruptObject,OldIRQL);
+}
+//-------------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------------
+Dovody pre ktore je NUTNE v COMPLETION ROUTINE pri navrate INEJ RETURN VALUE ako 'STATUS_MORE_PROCESSING_REQUIRED', ak ZAROVEN plati, ze IRP.PendingReturned je TRUE volat FUNCTION IoMarkIrpPending().
+
+1. Standardne pri volani FUNCTION IoCompleteRequest() sa vyvolaju zaregistrovane COMPLETION ROUTINES a nasledne vykona SCHEDULING APC.
+!!! 2. V APC (ak IRP bol vytvoreny IO MANAGER a NIE priamo v DRIVER CODE) sa okrem ineho vyvola NASTAVENIE EVENT, ktory je asociovany s IRP a UVOLNENIU IRP volanim FUNCTION IoFreeIrp().
+!!!!! 3. IO MANAGER vo FUNCTION IoCompleteRequest() vsak NEVYKONA VZDY SCHEDULING APC. Pre NIEKTORE IRP FUNCTION IoCompleteRequest() vykona SCHEDULING APC IBA ak v TOP-MOST DRIVER v DEVICE OBJECT STACK ma vo svojom [IO_STACK_LOCATION] nastaveny FLAG [SL_PENDING_RETURNED].
+!!!!! 4. Pre NIEKTORE IRP ak teda TOP-MOST DRIVER v DEVICE OBJECT STACK NENASTAVI vo svojom [IO_STACK_LOCATION] FLAG [SL_PENDING_RETURNED], potom IRP NEBUDE UVOLNENE z MEMORY a zaroven ani NEBUDE NASTAVENY KERNEL EVENT asociovany s IRP a ak nan nejaky CODE CAKAL, tak dojde k DEADLOCK.
+!!!!! 5. Ak [IO_STACK_LOCATION] v NON-TOP-MOST DRIVER ma nastaveny FLAG [SL_PENDING_RETURNED], pricom DRIVER VYSSIE v DEVICE OBJECT STACK NEMA vo svojom [IO_STACK_LOCATION] nastaveny FLAG [SL_PENDING_RETURNED], avsak ANI NEMA ZAREGISTOVANU COMPLETION ROUTINE, tak FUNCTION IoCompleteRequest() AUTOMATICKY PREKOPIRUJE FLAG [SL_PENDING_RETURNED] do [IO_STACK_LOCATION] prisluchajucemu DRIVER VYSSIE v DEVICE OBJECT STACK, pricom ak je tento FLAG nastaveny aj v TOP-MOST DRIVER, tak je SCHEDULED APC v ktorej je IRP uvolnene a KERNEL EVENT SIGNALIZOVANY.
+!!!!! 6. PROBLEM nastava, ak DRIVER v DEVICE OBJECT STACK MA nastavenu COMPLETION ROUTINE. Vtedy FLAG [SL_PENDING_RETURNED] NIE JE AUTOMATICKY PREKOPIROVANY do [IO_STACK_LOCATION] prisluchajucemu DRIVER VYSSIE v DEVICE OBJECT STACK a FLAG [SL_PENDING_RETURNED] NIE JE PROPAGOVANY do DRIVERS VYSSIE v DEVICE OBJECT STACK. Ak TOP-MOST DRIVER NEMA nastaveny FLAG [SL_PENDING_RETURNED], tak NEDOJDE k SCHEDULINGU APC, vdaka comu NEDOJDE k UVOLNENIU IRP ani SIGNALIZACII KERNEL EVENT co moze sposobit DEADLOCK.
+!!!!! 7. IO MANAGER UPLNE NELOGICKY (plati to aj vo WINDOWS 7) namiesto nastavenia FLAG [SL_PENDING_RETURNED] nastavuje FIELD [IRP.PendingReturned] na NON-FALSE hodnotu, co je indikator, ze IRP je v PENDING STATE.
+!!!!! 8. Riesenim je v COMPLETION ROUTINE, ak tato vracia INU RETURN VALUE ako [STATUS_MORE_PROCESSING_REQUIRED] skontrolovat ci FIELD [IRP.PendingReturned] ma NON-FALSE hodnotu. Ak ano potom je NUTNE zavolat FUNCTION IoMarkIrpPending(), aby sa nastavil FLAG [SL_PENDING_RETURNED] na CURRENT [IO_STACK_LOCATION] a prinutil IO MANAGER vykonat SCHEDULING APC.
+!!!!! 9. Ak IRP je vytvorena PRIAMO v DRIVER CODE a NIE cez IO MANAGER, tak uvolnenie IRP cez FUNCTION IoFreeIrp() i nastavenie KERNEL EVENT je PLNE v REZII DRIVER CODE a tieto kroky je NUTNE vykonat MANUALNE.
+!!!!! 10. Plati, ze ak DRIVER CODE vytvori ASYNCHRONNY IRP, tak MUSI zaregistrovat COMPLETION ROUTINE v ktorej uvolni IRP volanim FUNCTION IoFreeIrp() a ZAROVEN MUSI vratit z COMPLETION ROUTINE VALUE [STATUS_MORE_PROCESSING_REQUIRED], aby IO MANAGER sa uz nepokusal pracovat s [IO_STACK_LOCATION] RECORDS nad NEEXISTUJUCIM IRP, co by sposobilo BUG CHECK.
+!!!!! 11. Plati jednoudcha zasada, ze ked DISPATCH ROUTINE zavola FUNCTION IoMarkIrpPending(), tak MUSI vratit RETURN VALUE [STATUS_PENDING] a V ZIADOM PRIPADE NESMIE vratit [STATUS_MORE_PROCESSING_REQUIRED].
+!!!!! 12. Ak COMPLETION ROUTINE vracia RETURN VALUE [STATUS_MORE_PROCESSING_REQUIRED], tak by NEMALA volat FUNCTION IoMarkIrpPending(), kedze FUNCTION IoCompleteRequest() pri detekcii [STATUS_MORE_PROCESSING_REQUIRED] ukoncuje svoju cinnost.
+!!!!! 13. EXTREMNE DOLEZITE. FUNCTION IoMarkIrpPending() sa NESMIE volat v COMPLETION ROUTINE ku ktorej NEEXISTUJE [IO_STACK_LOCATION], co je priklad COMPLETION ROUTINE v DRIVER, ktory dany IRP VYTVORIL. Ak by k tomuto doslo, tak vznikne BUG CHECK.
+//-------------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------------
+Praca s [IO_STACK_LOCATION] ARRAY.
+
+!!! 1. Velkost [IO_STACK_LOCATION] ARRAY je vo FIELD [DEVICE_OBJECT.StackSize].
+2. Hodnota FIELD [DEVICE_OBJECT.StackSize] sa nastavuje AUTOMATICKY pocas volania FUNCTIONS IoAttachDevice() a IoAttachDeviceToDeviceStack().
+!!! 3. IRP obsahuje POINTER na CURRENT [IO_STACK_LOCATION] (UNDOCUMENTED FIELD [IO_STACK_LOCATION.CurrentStackLocation]).
+!!! 4. Pomocou FUNCTION IoSetNextIrpStackLocation() sa POINTER na CURRENT [IO_STACK_LOCATION] posuva na NEXT [IO_STACK_LOCATION] v NIZSIE ARRAY.
+5. FUNCTION IoGetNextIrpStackLocation() vracia POINTER na NEXT [IO_STACK_LOCATION] v [IO_STACK_LOCATION] ARRAY. Tato FUNCTION sa vyuziva ako DRIVER chce nastavit PARAMETERS [IO_STACK_LOCATION] zodpovedajuca DRIVER NIZSIE v DEVICE OBJECT STACK.
+6. FUNCTION IoGetCurrentIrpStackLocation() vracia POINTER na CURRENT [IO_STACK_LOCATION].
+7. FUNCTION IoCopyCurrentIrpStackLocationToNext() kopiruje PARAMETERS CURRENT [IO_STACK_LOCATION] do NEXT [IO_STACK_LOCATION].
+!!! 8. Pri vytvoreni IRP CURRENT [IO_STACK_LOCATION] ukazuje na NEPLATNY [IO_STACK_LOCATION]. Zavolanim FUNCTION IoGetNextIrpStackLocation() sa ziska POINTER na PRVY [IO_STACK_LOCATION].
+//-------------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------------
+Praca s KERNEL OBJECTS.
+
+1. Medzi KERNEL OBJECTS patria nasledujuce OBJECTS.
+   A. DEVICE OBJECTS.
+   B. FILE OBJECTS.
+   C. SYMBOLIC LINKS.
+   D. REGISTRY KEYS.
+   E. THREAD OBJECTS.
+   F. PROCESS OBJECTS.
+   G. KERNEL DISPATCHER OBJECTS (MUTEXES, SEMAPHORES, EVENTS, TIMERS, DPC).
+   H. CALLBACK OBJECTS.
+   I. SECTION OBJECTS.
+2. KERNEL OBJECTS sa vytvaraju pomocou specializovanych FUNCTIONS ako napriklad FUNCTION IoCreateDevice() ci KeInitializeMutex().
+3. KERNEL OBJECTS (presnejsie HANDLE na KERNEL OBJECTS) sa uvolnuju volanim FUNCTION ZwClose(). FUNCTION ZwClose() DEKREMENTUJE INTERNY COUNTER a ak ten KLESNE na 0, tak KERNEL OBJECT je UVOLNENY.
+!!!!! 4. KERNEL OBJECTS interne pouzivaju COUNTER, ktory az ked klesne na 0, tak je KERNEL OBJECT skutocne uvolneny.
+5. Volanim FUNCTIONS ObReferenceObject() a ObReferenceObjectXXX() sa ZVYSUJE INTERNY COUNTER daneho KERNEL OBJECT.
+6. Volanim FUNCTIONS ObDereferenceObject() a ObDereferenceObjectXXX() sa ZNIZUJE INTERNY COUNTER daneho KERNEL OBJECT.
+//-------------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------------
+SCENARIO 1 - Zaslanie IRP do NIZSIEHO DRIVER so zaregistrovanim COMPLETION ROUTINE.
+
+Podmienky pre spracovanie zaslania IRP do NIZSIEHO DRIVER so zaregistrovanim COMPLETION ROUTINE.
+
+1. Je potrebny SOURCE DRIVER, ktory do DRIVER zasle IRP, aby pomocou neho DRIVER zacal IO OPERATION.
+2. CURRENT DRIVER potrebuje vykonat nejaky POSTPROCESSING po skonceni vykonavania IRP (NIZSIM DRIVER) a preto si zaregistruje COMPLETION ROUTINE.
+3. IRP moze zo SOURCE DRIVER dorazit v [IRQL==DISPATCH_LEVEL], alebo na ARBITRARY THREAD, takze THREAD NEMOZE byt BLOCKED a nesmie sposobit PAGE FAULT.
+4. COMPLETION ROUTINE v ktorej sa vykonava POSTPROCESSING sa moze vykonat v [IRQL==DISPATCH_LEVEL] a nesmie sposobit PAGE FAULT.
+
+Spracovanie zaslania IRP do NIZSIEHO DRIVER so zaregistrovanim COMPLETION ROUTINE.
+
+1. V DISPATCH ROUTINE sa pomocou FUNCTION IoAcquireRemoveLock() ziska REMOVE LOCK.
+2. Zavola sa FUNCTION IoCopyCurrentIrpStackLocationToNext(), ktora skopiruje CURRENT [IO_STACK_LOCATION] do pozicie pre DESTINATION DRIVER.
+!!!!! 3. Pomocou FUNCTIONS IoSetCompletionRoutine(), alebo IoSetCompletionRoutineEx() sa nastavi POINTER na COMPLETION ROUTINE, ktora sa vyvola az ked DESTINATION DRIVER zavola FUNCTION IoCompleteRequest() cim UKONCI IRP. V COMPLETION ROUTINE sa vykonava CUSTOM POSTPROCESSING IRP vykonaneho DRIVER NIZSIE v DEVICE OBJECT STACK.
+4. Pomocou FUNCTION IoCallDriver() sa zasle IRP do DESTINATION DRIVER.
+!!! 5. V COMPLETION ROUTINE ak FIELD [IRP.PendingReturned==TRUE], tak sa zavola FUNCTION IoMarkIrpPending(), ktora sposobi nastavenie FLAG [SL_PENDING_RETURNED] vo FIELD [IO_STACK_LOCATION.Control] pre CURRENT [IO_STACK_LOCATION].
+!!!!! 6. Teraz moze v COMPLETION ROUTINE byt vykonany LUBOVOLNY POSTPROCESSING.
+7. V COMPLETION ROUTINE sa po POSTPROCESSINGU uvolni REMOVE LOCK pomocou FUNCTION IoReleaseRemoveLock().
+!!! 8. COMPLETION ROUTINE MUSI vratit hodnotu [STATUS_SUCCESS], aby aj COMPLETION ROUTINES DRIVERS VYSSIE v DEVICE OBJECT STACK mohli byt vykonane.
+//-------------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------------
+SCENARIO 2 - Zaslanie IRP do NIZSIEHO DRIVER BEZ zaregistrovania COMPLETION ROUTINE.
+
+Podmienky pre spracovanie zaslania IRP do NIZSIEHO DRIVER BEZ zaregistrovania COMPLETION ROUTINE.
+
+1. Je potrebny SOURCE DRIVER, ktory do DRIVER zasle IRP, aby pomocou neho DRIVER zacal IO OPERATION.
+2. IRP v CURRENT DRIVER nie je NIJAKO SPRACOVANY, iba preposlany do DRIVER NIZSIE v DEVICE OBJECT STACK.
+
+Spracovanie zaslania IRP do NIZSIEHO DRIVER BEZ zaregistrovania COMPLETION ROUTINE.
+
+1. V DISPATCH ROUTINE sa pomocou FUNCTION IoAcquireRemoveLock() ziska REMOVE LOCK.
+2. Zavola sa FUNCTION IoSkipCurrentIrpStackLocation(), ktora pre DESTINATION DRIVER nastavi ten isty [IO_STACK_LOCATION] ako pouziva CURRENT DRIVER.
+3. Pomocou FUNCTION IoCallDriver() sa zasle IRP do DESTINATION DRIVER.
+4. V DISPATCH ROUTINE sa uvolni REMOVE LOCK pomocou FUNCTION IoReleaseRemoveLock().
+5. Ako RETURN VALUE vrati DISPATCH ROUTINE RETURN VALUE FUNCTION IoCallDriver().
+//-------------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------------
+SCENARIO 3 - Ukoncenie IRP v DISPATCH ROUTINE.
+
+Podmienky pre spracovanie ukoncenia IRP v DISPATCH ROUTINE.
+
+1. Je potrebny SOURCE DRIVER, ktory do DRIVER zasle IRP, aby pomocou neho DRIVER zacal IO OPERATION.
+2. IRP si NEVYZADUJE ASYNCHRONNE spracovanie ani iny DRIVER a moze byt kompletne spracovana v DISPATCH ROUTINE, ale doslo k ERROR, ktory neumoznuje zaslat IRP do DRIVER NIZSIE v DEVICE OBJECT STACK.
+
+Spracovanie ukoncenia IRP v DISPATCH ROUTINE.
+
+1. V DISPATCH ROUTINE sa kompletne spracuje IRP.
+2. Nastavi sa FIELD [IRP.IoStatus.Status] na NTSTATUS VALUE indikujucu vysledok IO OPERATION.
+3. Nastavi sa FIELD [IRP.IoStatus.Information] na LUBOVOLNU CUSTOM VALUE. Napriklad pri citani ci zapise dat sa vklada pocet spracovanych BYTES.
+!!! 4. Z DISPATCH ROUTINE sa zavola FUNCTION IoCompleteRequest() na UKONCENIE IRP.
+5. Z DISPATCH ROUTINE sa vrati ako RETURN VALUE NTSTATUS VALUE, ktora MUSI BYT ta ista ako sa nastavila do FIELD [IRP.IoStatus.Status].
+//-------------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------------
+SCENARIO 4 - IRP QUEUEING.
+
+Podmienky pre spracovanie IRP QUEUEING.
+
+1. Je potrebny SOURCE DRIVER, ktory do DRIVER zasle IRP, aby pomocou neho DRIVER zacal IO OPERATION.
+2. IRP NEMOZE byt spracovane OKAMZITE, pretoze DEVICE moze byt BUSY.
+!!! 3. Vyuziva sa CUSTOM OBJECT DEVQUEUE, ktory bol sucastou CD ku knihe.
+
+Spracovanie IRP QUEUEING prebieha v nasledujucich krokoch.
+
+1. V CUSTOM FUNCTION AddDevice() sa inicializuje DEVQUEUE pomocou CUSTOM FUNCTION InitializeQueue().
+!!! 2. Vytvori sa CANCELLATION ROUTINE, ktora sa vyvolava pri IRP CANCELLATION. Tato ROUTINE MUSI zavolat CUSTOM FUNCTION CancelRequest(), aby zastavila vykonavanie prave beziaceho IRP.
+3. V DISPATCH ROUTINE sa IRP oznaci ako PENDING volanim FUNCTION IoMarkIrpPending(). To nastavi FLAG [SL_PENDING_RETURNED] vo FIELD [IO_STACK_LOCATION.Control] pre CURRENT [IO_STACK_LOCATION].
+!!! 4. V DISPATCH ROUTINE sa zavola CUSTOM FUNCTION StartPacket(). Tato FUNCTION potrebuje ako PARAMETER POINTER na CUSTOM FUNCTION StartIo().
+!!!!! 5. CUSTOM FUNCTION StartPacket() ak DEVICE NESPRACOVAVA IRP, tak OKAMZITE spusti vykonavanie IO OPERATION. Ak naopak DEVICE UZ SPRACOVAVA INU IRP, tak NOVU IRP ulozi do DEVQUEUE.
+!!!!! 6. V CUSTOM FUNCTION StartIo() sa musi spustit vykonavani IO OPERATION pre DEVICE, ktore DRIVER riadi.
+!!! 7. Po skonceni IO OPERATION sa vola INTERRUPT, ktory vykona SCHEDULING DPC.
+!!!!! 8. V DPC sa zavola FUNCTION StartNextPacket(), ktora ak v DEVQUEUE je nejaka IRP, tak ju vyberie a zacne jej spracovanie zavolanim CUSTOM FUNCTION StartIo().
+!!!!! 9. CUSTOM FUNCTIONS StartPacket() a StartNextPacket() kontroluju ci nedoslo k ABORT a CANCELLATION DRIVERA, alebo IRP.
+!!! 10. V DPC za MUSI ukoncit IRP volanim FUNCTION IoCompleteRequest().
+//-------------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------------
+SCENARIO 5 - Spracovanie ASYNCHRONNYCH IRP.
+
+Podmienky pre spracovanie ASYNCHRONNYCH IRP.
+
+1. Je potrebny DESTINATION DRIVER do ktoreho DRIVER zasle IRP na spracovanie (DESTINATION DRIVER vola FUNCTION IoCompleteRequest()).
+2. IRP musi byt vytvorene v [IRQL<=DISPATCH_LEVEL] a bud na ARBITRARY THREAD, alebo na NON-ARBITRARY THREAD.
+
+Spracovanie ASYNCHRONNYCH IRP prebieha v nasledujucich krokoch.
+
+1. Pomocou FUNCTION IoAcquireRemoveLock() sa ziska REMOVE LOCK. Tento krok je nutny iba ak sa IRP je zaslany do NIZSIEHO DRIVER v DEVICE OBJECT STACK.
+2. Pomocou FUNCTIONS IoBuildAsynchronousFsdRequest(), alebo IoAllocateIrp() sa vytvori IRP.
+!!! 3. Pomocou FUNCTION IoGetNextIrpStackLocation() sa ziska pozicia na [IO_STACK_LOCATION] na DRIVER NIZSIE v DEVICE OBJECT STACK do ktoreho sa ma IRP zaslat (za predpokladu, ze sa IRP zasiela do DRIVER NIZSIE v DEVICE OBJECT STACK).
+4. V novovytvorenom [IO_STACK_LOCATION] je nutne nastavit FIELD [IO_STACK_LOCATION.MajorFunction] na MAJOR FUNCTION, ktoru ma DRIVER NIZSIE v DEVICE OBJECT STACK spracovat.
+!!!!! 5. Pomocou FUNCTIONS IoSetCompletionRoutine(), alebo IoSetCompletionRoutineEx() sa nastavi POINTER na COMPLETION ROUTINE, ktora sa vyvola az DESTINATION DRIVER zavola FUNCTION IoCompleteRequest() cim UKONCI IRP.
+6. Pomocou FUNCTION IoCallDriver() sa zasle IRP do DESTINATION DRIVER.
+!!!!! 7. IRP v DESTINATION DRIVER sa UKONCI volanim FUNCTION IoCompleteRequest().
+!!! 8. FUNCTION IoCompleteRequest() vyvola COMPLETION ROUTINE.
+!!! 9. Ak sa jednalo o DIRECT IO OPERATION, tak COMPLETION ROUTINE MUSI uvolnit aj MDL STRUCTURE volanim FUNCTIONS MmUnlockPages() (ak boli PAGES LOCKED pomocou FUNCTION MmProbleAndLockPages()).
+!!!!! 10. V COMPLETION ROUTINE je NUTNE uvolnit IRP volanim FUNCTION IoFreeIrp().
+11. V COMPLETION ROUTINE  sa pomocou FUNCTION IoReleaseRemoveLock() uvolni REMOVE LOCK. Tento krok je nutny iba ak sa IRP je zaslany do NIZSIEHO DRIVER v DEVICE OBJECT STACK.
+12. COMPLETION ROUTINE MUSI vrati hodnotu [STATUS_MORE_PROCESSING_REQUIRED], aby sa dalsie COMPLETION ROUTINE (pre uz NEEXISTUJUCE IRP) NEVOLALI.
+//-------------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------------
+SCENARIO 6 - Spracovanie SYNCHRONNYCH IRP.
+
+Podmienky pre spracovanie SYNCHRONNYCH IRP.
+
+1. Je potrebny DESTINATION DRIVER do ktoreho DRIVER zasle IRP na spracovanie (DESTINATION DRIVER vola FUNCTION IoCompleteRequest()).
+2. DRIVER musi vyckat kym IO OPERATION neskonci, kym moze pokracovat.
+3. IRP musi byt vytvorene v [IRQL==PASSIVE_LEVEL] a na NON-ARBITRARY THREAD.
+
+Spracovanie SYNCHRONNYCH IRP prebieha v nasledujucich krokoch.
+
+1. Pomocou FUNCTION IoAcquireRemoveLock() sa ziska REMOVE LOCK. Tento krok je nutny iba ak sa IRP je zaslany do NIZSIEHO DRIVER v DEVICE OBJECT STACK.
+2. Vytvori sa KERNEL EVENT, ktory bude signalizovany pri skonceni IRP.
+!!! 3. Pomocou FUNCTIONS IoBuildSynchronousFsdRequest(), alebo IoBuildDeviceIoControlRequest() sa vytvori IRP. Ako PARAMETER sa do FUNCTIONS zasle vytvoreny KERNEL EVENT.
+4. Pomocou FUNCTION IoCallDriver() sa zasle IRP do cieloveho DRIVER.
+!!! 5. Pomocou FUNCTION KeWaitForXXX() sa vykona BLOKOVANIE THREADU, ktore caka na EVENT, ktory bol zaslany do FUNCTIONS IoBuildSynchronousFsdRequest(), alebo IoBuildDeviceIoControlRequest().
+!!!!! 6. IRP v DESTINATION DRIVER sa UKONCI volanim FUNCTION IoCompleteRequest().
+7. FUNCTION IoCompleteRequest() vyvola COMPLETION ROUTINE (ak bola zaregistrovana) a SIGNALIZUJE EVENT zaslany do FUNCTIONS IoBuildSynchronousFsdRequest(), alebo IoBuildDeviceIoControlRequest().
+8. FUNCTION KeWaitForXXX() sa UKONCI.
+9. Pomocou FUNCTION IoReleaseRemoveLock() sa uvolni REMOVE LOCK. Tento krok je nutny iba ak sa IRP je zaslany do NIZSIEHO DRIVER v DEVICE OBJECT STACK.
+//-------------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------------
+SCENARIO 7 - SYNCHRONNE spracovanie IRP, ktore DRIVER iba PREPOSIELA do DRIVER NIZSIE v DEVICE OBJECT STACK.
+
+Podmienky pre SYNCHRONNE spracovanie IRP, ktore DRIVER iba PREPOSIELA do DRIVER NIZSIE v DEVICE OBJECT STACK.
+
+1. Je potrebny SOURCE DRIVER, ktory do DRIVER zasle IRP, aby ho preposlal do DESTINATION DRIVER.
+2. Je potrebny DESTINATION DRIVER do ktoreho DRIVER zasle IRP na spracovanie (DESTINATION DRIVER vola FUNCTION IoCompleteRequest()).
+3. IRP musi byt spracovany v [IRQL==PASSIVE_LEVEL] a na NON-ARBITRARY THREAD.
+4. POSTPROCESSING IRP musi byt realizovany v [IRQL==PASSIVE_LEVEL].
+!!!!! 5. Tento SCENARIO uz NIE JE POTREBNE REALIZOVAT, pretoze WDK pre WINDOWS XP ma FUNCTION IoForwardIrpSynchronously(), ktory realizuje toto SCENARIO.
+
+SYNCHRONNE spracovanie IRP, ktore DRIVER iba PREPOSIELA do DRIVER NIZSIE v DEVICE OBJECT STACK prebieha v nasledujucich krokoch.
+
+1. Pomocou FUNCTION IoAcquireRemoveLock() sa ziska REMOVE LOCK. Tento krok je nutny iba ak sa IRP je zaslany do NIZSIEHO DRIVER v DEVICE OBJECT STACK.
+2. SOURCE DRIVER zasle IRP, ktory ma DRIVER preposlat do DESTINATION DRIVER.
+3. Vytvori sa KERNEL EVENT, ktory bude signalizovany pri skonceni IRP.
+4. Zavola sa FUNCTION IoCopyCurrentIrpStackLocationToNext(), ktora skopiruje CURRENT [IO_STACK_LOCATION] do pozicie pre DESTINATION DRIVER.
+!!!!! 5. Pomocou FUNCTIONS IoSetCompletionRoutine(), alebo IoSetCompletionRoutineEx() sa nastavi POINTER na COMPLETION ROUTINE, ktora sa vyvola az DESTINATION DRIVER zavola FUNCTION IoCompleteRequest() cim UKONCI IRP.
+6. Pomocou FUNCTION IoCallDriver() sa zasle IRP do DESTINATION DRIVER.
+!!! 7. Pomocou FUNCTION KeWaitForXXX() sa vykona BLOKOVANIE THREADU, ktory caka na EVENT, ktory bol zaslany do FUNCTIONS IoBuildSynchronousFsdRequest(), alebo IoBuildDeviceIoControlRequest().
+!!!!! 8. IRP v DESTINATION DRIVER sa UKONCI volanim FUNCTION IoCompleteRequest().
+!!! 9. FUNCTION IoCompleteRequest() vyvola COMPLETION ROUTINE.
+!!! 9. COMPLETION ROUTINE vyvola KeSetEvent(), ktorym sa nastavi vytvoreny EVENT, ktory BLOKUJE THREAD.
+10. COMPLETION ROUTINE MUSI vrati hodnotu [STATUS_MORE_PROCESSING_REQUIRED], aby sa nevolali COMPLETION ROUTINES VYSSIE v DEVICE OBJECT STACK.
+11. Blokovany THREAD sa UVOLNI a moze spracovat vysledky IRP.
+12. Pomocou FUNCTION IoReleaseRemoveLock() sa uvolni REMOVE LOCK. Tento krok je nutny iba ak sa IRP je zaslany do NIZSIEHO DRIVER v DEVICE OBJECT STACK.
+//-------------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------------
+SCENARIO 8 - SYNCHRONNE spracovanie ASYNCHRONNEHO IRP.
+
+Podmienky pre SYNCHRONNE spracovanie ASYNCHRONNEHO IRP.
+
+1. Je potrebny DESTINATION DRIVER do ktoreho DRIVER zasle IRP na spracovanie (DESTINATION DRIVER vola FUNCTION IoCompleteRequest()).
+2. DRIVER musi vyckat kym IO OPERATION neskonci, kym moze pokracovat.
+3. IRP musi byt vytvorene v [IRQL==APC_LEVEL] a na NON-ARBITRARY THREAD.
+
+SYNCHRONNE spracovanie ASYNCHRONNEHO IRP prebieha v nasledujucich krokoch.
+
+1. Pomocou FUNCTION IoAcquireRemoveLock() sa ziska REMOVE LOCK. Tento krok je nutny iba ak sa IRP je zaslany do NIZSIEHO DRIVER v DEVICE OBJECT STACK.
+2. Pomocou FUNCTIONS IoBuildAsynchronousFsdRequest(), alebo IoAllocateIrp() sa vytvori IRP.
+!!! 3. Pomocou FUNCTION IoGetNextIrpStackLocation() sa ziska pozicia na [IO_STACK_LOCATION] na DRIVER NIZSIE v DEVICE OBJECT STACK do ktoreho sa ma IRP zaslat (za predpokladu, ze sa IRP zasiela do DRIVER NIZSIE v DEVICE OBJECT STACK).
+4. V novovytvorenom [IO_STACK_LOCATION] je nutne nastavit FIELD [IO_STACK_LOCATION.MajorFunction] na MAJOR FUNCTION, ktoru ma DRIVER NIZSIE v DEVICE OBJECT STACK spracovat.
+5. Vytvori sa KERNEL EVENT, ktory bude signalizovany pri skonceni IRP.
+!!!!! 6. Pomocou FUNCTIONS IoSetCompletionRoutine(), alebo IoSetCompletionRoutineEx() sa nastavi POINTER na COMPLETION ROUTINE, ktora sa vyvola az DESTINATION DRIVER zavola FUNCTION IoCompleteRequest() cim UKONCI IRP. Ako CONTEXT PARAMETER sa zasla do COMPLETION ROUTINE vytvoreny KERNEL EVENT.
+7. Pomocou FUNCTION IoCallDriver() sa zasle IRP do DESTINATION DRIVER.
+!!!!! 8. IRP v DESTINATION DRIVER sa UKONCI volanim FUNCTION IoCompleteRequest().
+!!! 9. FUNCTION IoCompleteRequest() vyvola COMPLETION ROUTINE.
+!!! 10. V COMPLETION ROUTINE sa SIGNALIZUJE KERNEL EVENT volanim FUNCTION KeSetEvent().
+!!!!! 11. V COMPLETION ROUTINE je NUTNE uvolnit IRP volanim FUNCTION IoFreeIrp().
+12. COMPLETION ROUTINE MUSI vrati hodnotu [STATUS_MORE_PROCESSING_REQUIRED], aby sa nevolali COMPLETION ROUTINES VYSSIE v DEVICE OBJECT STACK.
+!!! 13. Pomocou FUNCTION IoReleaseRemoveLock() sa uvolni REMOVE LOCK. Tento krok je nutny iba ak sa IRP je zaslany do NIZSIEHO DRIVER v DEVICE OBJECT STACK.
+//-------------------------------------------------------------------------------------------------------

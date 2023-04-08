@@ -1,0 +1,1 @@
+eventcreate.exe /t information /id 802 /l application /so PNPNotificationService /d "PNP NOTIFICATION SERVICE"

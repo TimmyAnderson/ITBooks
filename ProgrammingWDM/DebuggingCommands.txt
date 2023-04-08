@@ -1,0 +1,72 @@
+Dolezite prikazy WinDbg.
+
+1. COMMAND [g] - pokracuje vo vykonavani PROCESSU.
+2. COMMAND [lm] - vypise zoznam vsetkych modules DRIVERS. COMMAND [lm lt n] vypise zoznam vsetkych nainstalovanych DRIVERS.
+3. COMMAND [bl] - vypise zoznam vsetkych BREAKPOINTS.
+4. COMMAND [bu] - pridava BREAKPOINT. COMMAND [bu MODULE_NAME!FUNCTION_NAME] pridava BREAKPOINT do FUNCTION FUNCTION_NAME do MODULE_NAME. Napriklad [bu AC97SMPL!DriverEntry] prida do MODULE AC97SMPL (je to MODULE DRIVER AC97SMPL.SYS) BREAKPOINT na FUNCTION DriverEntry().
+5. COMMAND [k] - zobrazuje CALL STACK.
+6. COMMAND [kp] - zobrazuje CALL STACK aj s FUNCTION PARAMETERS.
+7. COMMAND [.reload /f] - nacita SYMBOLS.
+8. COMMAND [!verifier -v] - spusi detailnu analyzu MEMORY DUMP, ktory vznikol po BUG CHECK.
+9. COMMAND [!verifier FLAGS DRIVER_NAME.SYS] - vypise neuvolnenu MEMORY, pre ktoru VERIFIER.EXE vyhodil BUG CHECK.
+10. COMMAND [!verifier 3 DRIVER_NAME.SYS] - vypisuje podla hodnoty FLAGS rozlicne analyzy, ktore spravit VERIFIER.EXE. Pouziva sa napriklad na vypis MEMORY LEAKS, ktore detekoval VERIFIER.
+
+
+
+DEBUGGING KERNELU.
+
+1. Na PC sa spusti Visual Studio 2013.
+!!! 2. Na PC vo Visual Studion 2013 sa vyberie [Tools->Attach to Process], ktory sa nastavi nasledovne: [Transport=Windows Kernel Mode Debugger], [Qualifier=VIRTUAL MACHINE NAME] a [Available Processes=Kernel]. VIRTUAL MACHINE musi byt nakonfigurovana vid vyssie.
+!!! 3. Na PC sa stlaci tlacitko [Attach].
+!!!!! 4. Teraz (po stlaceni [Attach]) MUSI byt VIRTUAL MACHINE REBOOTED. Visual Studio bude CAKAT, kym VIRTUAL MACHINE nebude REBOOTED.
+!!!!! 5. Po REBOOT VIRTUAL MACHINE sa DEBUGGER PRIPOJI ku KERNEL PROCESS VIRTUAL MACHINE.
+!!!!! 6. Pomocou prikazu [Debug->Break All] sa vyvola BREAKPOINT v KERNEL PROCESS VIRTUAL MACHINE.
+!!! 7. Nasledne je v [Debugger Immediate Window] mozne zadavat DEBUG prikazy.
+
+
+LOGGING.
+
+1. V CODE daneho DRIVER je nutne pouzivat FUNCTION DbgPrintEx() - napriklad [DbgPrintEx(DPFLTR_IHVAUDIO_ID,DBG_PRINT,"Some TEXT !\n")].
+!!! 2. Ak chcem do DbgPrintEx() zapisat ANSI_STRING je treba pouzit [%z].
+!!! 3. Ak chcem do DbgPrintEx() zapisat UNICODE_STRING je treba pouzit [%wz].
+4. Do VIRTUAL MACHINE je treba nainstalovat program [Dbgview.exe] od SYS INTERNALS, ktory je treba spustit.
+!!! 5. Ak chcem vidiet logy pri STUPSTENI DRIVER (pocas BOOT OS) je treba v [Dbgview.exe] nastavit [Capture->Log Boot] a dat REBOOT VIRTUAL MACHINE. Po REBOOT je treba spustit [Dbgview.exe] a ten zobrazi LOGS, ktore zaznamenal pocas BOOT a teda aj LOGS pocas SPUSTENIA DRIVERS.
+!!!!! 6. Ak v DEBUG FUNCTIONS ako napriklad DbgPrintEx() sa zada NESPRARNY FORMAT STRING (napriklad namiesto %08x sa zada %08h ('h' je NEEXISTUJUCI TYP) tak FUNCTION UPLNE IGNORUJE VYPIS a NIC NEVYPISE do LOGU.
+
+
+Priklad DEBUGGINGU WINDOWS DERIVER.
+
+1. DRIVER (ac97smpl.sys) skompilovany pre WINDOWS 7 X64 DEBUG sa nainstaluje do VIRTUAL MACHINE. Najlepsie sa to robi kompilaciou tohto PROJECT vo Visual Studio 2013. Pri kompilacii ak su PC a VIRTUAL MACHINE preojene, tak sa DRIVER AUTOMATICKY nainstaluje do VIRTUAL MACHINE.
+2. Na PC sa spusti vo Visual Studio 2013 DEUGGER pomocou [Tools->Attach to Process], ktory sa nastavi nasledovne: [Transport=Windows Kernel Mode Debugger], [Qualifier=VIRTUAL MACHINE NAME] a [Available Processes=Kernel].
+!!! 3. Na VIRTUAL MACHINE sa vykona REBOOT.
+4. Po vykonani REBOOT sa DEBUGGER pripoji ku KERNEL PROCESS.
+5. Vo Visual Studio 2013 sa pomocou prikazu [Debug->Break All] zastavi vykonavanie KERNEL co je signalizovane ZMRAZENIM VIRTUAL MACHINE.
+6. V [Debugger Immediate Window] sa vlozi BREAKPOINT [bu AC97SMPL!DriverEntry], ktory sa vyvola pocas zavedenia DRIVER do VIRTUAL MEMORY. BREAKPOINT by mal byt vidiet aj v CODE (adapter.cpp).
+7. Spusti sa KERNEL pomocou prikazu [g].
+!!! 8. Vo VIRTUAL MACHINE sa pomocou [Device Manager] spravi DISABLE [AC'97 Sample Driver for Intel(r) 82801AA Controller].
+!!!!! 9. Vo VIRTUAL MACHINE sa pomocou [Device Manager] spravi ENABLE [AC'97 Sample Driver for Intel(r) 82801AA Controller]. Visual Studio 2013 na PC ZACHYTI BREAKPOINT a je mozne vykonata TRACE i prezeranie VARIABLES.
+
+
+Cas v INF FILES.
+
+1. Pri vytvoreni SIGNATURE daneho DRIVER je detekovany CAS MODIFIKACIE .INF FILE. Ten sa standardne udava v UTC.
+!!! 2. Ak UTC DATUM poslednej MODIFIKACIE .INF FILE je INY ako AKTUALNY UTC DATUM (napriklad na Slovensku do 1. hodiny po polnoci), tak pre DRIVER NIE JE MOZNE vykonat SIGNATURE.
+!!! 3. Riesenim je v PROPERTIES PACKAGE PROJECT nastavit [Configuration Properties->Inf2Cat->General->Use Local Time=YES]. Potom bude mozne kompilovat DRIVER aj do 1. hodinu po polnoci.
+
+
+Zotavenie sa po PADE SYSTEMU.
+
+1. Po zobrazeni BLUE SCREEN je treba dat RESTART WINDOWS, ak sa nevykona automaticky.
+2. Pocas BOOT stlacit F8 a vojst do SAFE MODE.
+3. V SAFE MODE odinstalovat DRIVER, ktory sposobil BLUE SCREEN.
+
+
+SYMBOLS.
+
+1. SYMBOLS je potrebne stiahnut z INTERNETU pre PRESNE TU ISTU VERZIU OS a VERZIU SP, ktora bude DEBUGGED.
+2. V MENU VISUAL STUDIO [TOOLS->OPTIONS] je potrebne vybrat [Debugging->Symbols] a vlozit PATH do [Symbol file (.pdb) locations] v ktorej su nainstalovane SYMBOLS z bodu 1.
+3. Pri DEBUGGINGU dat COMMAND [.reload /f], ktory nacita SYMBOLS.
+4. Teraz COMMAND [k], alebo [kp] vrati ovela podrobnejsi CALL STACK.
+!!! 5. Vyzera, ze WDK 8 WMD TEMPLATE dokaze aj SAMA AUTOMATICKY NACITAT SPRAVNE SYMBOLS a JEDINE co je treba spravit je vlozit COMMAND [.reload /f].
+!!!!! 6. COMMAND [.reload /f] je dobre davat po KAZDOM ZASTAVENI na BREAKPOINT. Vysledkom je presnejsi CALL STACK.
+!!!!! 7. KERNEL CALL STACK dokaze zobrazovat aj VISUAL STUDIO [Call Stack] WINDOW.

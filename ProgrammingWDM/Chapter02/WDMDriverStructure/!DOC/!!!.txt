@@ -1,0 +1,532 @@
+//-------------------------------------------------------------------------------------------------------
+1. Solution popisuje zakladnu strukturu WDM DRIVERS.
+!!!!! 2. DRIVER si je logicky mozne predstavit ako COLLECTION SUBROUTINES, ktore su volane zo strany OS a vykonavaju rozlicne operacie nad HW.
+3. APPLICATIONS maju VZDY MAIN SUBROUTINE, ktorej pri spusteni prideli OS THREAD, ktory vykonava kod APPLICATION az do skoncenia jej kodu. OS SCHEDULER prideluje THREAD CPU podla PRIORITY.
+!!! 4. THREAD dostava CPU na stanoveny TIME SLICE. Ked TIME SLICE VYPRSI, tak CPU generuje INTERRUPT. V INTERRUPT HANDLER ulozi hodnoty REGISTROV do pamate, nahradi ich ulozenymi hodnotami REGISTROV THREADU, ktory ma byt spusteny a nasledne spusty dany THREAD.
+!!! 5. DRIVER je podobne ako APPLICATIONS EXECUTABLE FILE, ktory vsak NEMA MAIN SUBROUTINE. Namiesto toho maju SADU SUBROUTINES, ktore OS podla potreby vykonava.
+6. DRIVER ma nasledujuce charakteristiky.
+   A. DRIVER obsahuje EXECUTABLE CODE.
+   B. DRIVER pouziva DYNAMICALLY LINKED KERNEL LIBRARIES.
+   C. DRIVER moze mat DEBUG SYMBOLS.
+   D. DRIVER moze mat RESOURCES.
+   E. DRIVER je tvoreny mnozinou SUBROUTINES, ktore vola OS aby DRIVER mohol vykonat IO OPERATIONS.
+   !!! F. DRIVER standardne NEMA pridelene THREADS, ktore by vykonaval. OS spusta SUBROUTINES v lubovolnom PRAVE AKTIVNOM THREAD.
+   G. DRIVER vykonava vacsinu svojich ROUTINES v LUBOVOLNOM z THREADS, ktore v systeme bezia. WINDOWS pri zisteni, ze DRIVER potrebuje vykonat nejaku cinnost mu prideli NIEKTORY z beziacich THREADS. Taketo THREADS sa nazyvaju ARBITARY THREADS, pretoze DRIVER v ktorom THREADE bude bezat a tak NEMOZE vykonat ziadne THREAD-AFFINITY operacie.
+   !!! H. DRIVER vsak moze vytvorit aj VLASTNE THREADS.
+7. Priklad cinnosti DRIVER.
+   A. USER pripoji DEVICE k pocitacu.
+   B. OS detekuje pritomnost DEVICE, nacita DRIVER daneho DEVICE do VIRTUAL MEMORY.
+   C. OS zavola SUBROUTINE DriverEntry(). Ta vykona inicializaciu DRIVER. Ak DriverEntry() vrati ERROR CODE, tak DRIVER NEBUDE zavedeny do MEMORY.
+   D. PLUG AND PLAY MANAGER zavola SUBROUTINE AddDevice().
+   E. Ked APPLICATION otvori HANDLE na DEVICE, tak OS do DRIVER zasle IRP, ktory prislusna SUBROUTINE spracuje.
+   F. Ak APPLICATION poziada o vykonanie IO OPERATION, OS do DRIVER ZASLE IRP. Ak uz bezi nejaka IO OPERATION, tak IRP je ulozeny do QUEUE.
+   G. Ked sa IRP dostane na vrchol QUEUE, tak je vybrata z QUEUE a do DEVICE sa zasle prikaz na vykonanie tejto IO OPERACIE.
+   !!! H. Ked DEVICE UKONCI IO OPERATION, vyvola INTERRUPT, ktory DRIVER ZACHYTAVA.
+   I. SUBROUTINE spracujuca INTERRUPT spravuje vysledky IO OPERATION a naplanuje do SCHEDULER vykonanie DPC CALLBACK.
+   !!! J. DPC CALLBACK odstrani IRP reprezentujucu vykonanu IO OPERATION z IRP QUEUE a umozni USER MODE PROGRAM spracovat vysledky IO OPERATION.
+   K. Ak USER odpoji DEVICE z pocitaca, DRIVER zavola SUBROUTINE DriverUnload(), ktory uvolni alokovane RESOURCES.
+   L. DRIVER je odstraneny z VIRTUAL MEMORY.
+8. ROUTINES, ktore DRIVER vykonava moze bezat v 2 typoch THREADS.
+   A. ARBITRARY THREADS. Ak ROUTINE bezi v ARBITRARY THREAD znamena to, ze je vykonavana LUBOVOLNY THREAD v SYSTEME. V tomto pripade DRIVER ROUTINE NESMIE vykonat ZIADNE THREAD-AFFINITY operacie, kedze nema ziadnu zaruku, ze bude znova spustena v tomto THREADE.
+   B. NON-ARBITRARY THREADS. Ak ROUTINE bezi v NON-ARBITRARY THREAD znamena to, ze je vykonavana v PRESNE DEFINOVANOM THREADE. Moze sa jednat o THREAD, spustil vykonavanie SYNCHRONNEJ OPERACIE a presiel z USER MODE do KERNEL MODE, kde spustil konkretnu ROUTINE. DRIVERS takisto mozu vytvarat vlastne CUSTOM THREADS, ktore su tiez povazovane za NON-ARBITRARY THREADS.
+!!! 9. Pre THREADS su v DRIVER DEVELOPMENT platia nasledujuce zasady.
+   A. DRIVERS standardne NEMAJU PRIDELENE THREADS. Ich CODE je vykonavany v CURRENT EXECUTING THREAD.
+   !!! B. To na ktorom THREADE je DRIVER SUBROUTINE vykonavana NEDETERMINISTICKE.
+   C. Ta ista DRIVER SUBROUTINE moze byt vykonavana ROZLICNYMI THREADS.
+   !!! D. V MULTICORE SYSTEMS mozu byt DRIVER SUBROUTINES volane PARALELNE a preto je NUTNA SYNCHRONIZACIA.
+   E. DRIVER moze vytvorit CUSTOM THREADS pomocou SUBROUTINE PsCreateSystemThread(). Na tieto THREADS je mozne odosielat WORK ITEMS, ktore sa vykonaju v CONTEXTE tohto THREADU.
+   F. Niektore typy IRP (iniciovane APPLICATIONS) su volane na APPLICATION THREADS.
+   !!! G. DRIVER SUBROUTINES by mali bezat relativne KRATKU DOBU, aby THREADS v ktorych bezia NEBOLI PRILIS DLHO BLOKOVANE.
+   H. SYNCHRONE IRP su vykonavane na THREADE na ktorom boli vytvorene.
+10. IRP je mozne rozdelit do 2 kategorii.
+   A. SYNCHRONE IRP su IRP, ktore su vykonavane v THREADE v ktorom boli vytvorene. Ak THREAD je ukonceny a IRP este nebolo spracovane, tak je CANCELLED.
+   B. ASYNCHRONE IRP NIE SU ASOCIOVANE so ZIADNYM THREADOM a mozu byt vykonane INYM THREADOM ako tym na ktorom boli VYTVORENE.
+!!! 11. WINDOWS ma dva rozdielne sposoby ako OS detekuje, ktory DRIVER ma zaviest pre dany DEVICE.
+   A. PLUG AND PLAY DEVICES obsahuju protokol, ktorym moze SYSTEM BUS IDENTIFIKOVAT pripojeny DEVICE nacitanim DEVICE SIGNATURE. Na zaklade tejto SIGNATURE je v REGISTRY najdeny DRIVER, ktory sa nasledne nacita do VIRTUAL MEMORY.
+   B. LEGACY DEVICES NEDOKAZU vratit DEVICE SIGNATURE. Pre tieto DEVICES musi USER iniciovat proces nainstalovania DEVICE DRIVER. Nasledne WINDOWS pomocou SYSTEM BUS DRIVER spusti proces DETEKCIE DEVICES pripojenych na SYSTEM BUS a najdeny HW a jemu prisluchajuci DRIVER, ktory musi USER spravidla MANUALNE ZADAT ulozi do REGISTRY. LEGACY DRIVERS sa VZDY pri BOOTE OS nacitaju do VIRTUAL MEMORY.
+12. V starsich verziach WINDOWS bolo ulohou DRIVER a NIE WINDOWS, aby vykonal vyhladavanie HW DEVICES a zistil ci HW DEVICE je pritomny. To znacne komplikovalo vyvoj DRIVERS.
+!!! 13. PNP HW DEVICES su HW DEVICES, ktore podporuju PNP PROTOCOL. Pre PNP HW DEVICES platia nasledujuce fakty.
+   A. KAZDY PNP HW DEVICE ma definovanu SIGNATURE, ktoru dokaze OS pomocou PNP PROTOCOL ziskat. PNP SIGNATURE potom sluzi na najdenie zodpovedajucich DRIVERS pre dany PNP HW DEVICE.
+   !!! B. BUS DRIVER pre BUS DEVICE ku ktoremu je PNP HW DEVICE pripojene je schopny ENUMEROVAT vsetky pripojene CHILD DEVICES a ziskat z nich PNP SIGNATURE (i mnozstvo inych informacii) a na zaklade neho identifikovat HW DEVICE, zistit jeho PROPERTIES a korektne ho pripojit k SYSTEMU.
+   !!! C. STADNARDNE BUS DRIVER pre BUS DEVICE vykonava detekciu pripojenych CHILD DEVICES pocas BOOT OS, avsak HOT-PLUG BUSES dokazu detekovat pridanie ci odobratie CHILD DEVICE aj pocas BEHU SYSTEMU a tieto vykonavaju ENUMERACIU CHILD DEVICES aj pri prichode elektrickeho SIGNALU oznamujuceho ze doslo k pridaniu, alebo odboranie CHILD DEVICE z BUS.
+!!! 14. WINDOWS rozlisuje nasledujuce klucove pojmy.
+   A. DRIVER.
+   B. DEVICE OBJECT.
+   C. DEVICE OBJECT TREE.
+   D. DEVICE OBJECT STACK.
+!!!!! 15. Pre DRIVER platia nasledujuce fakty.
+   A. DRIVER je kus CODE, ktory je zavedeny vo VIRTUAL MEMORY VZDY IBA RAZ. To znaci, ze aj ked DRIVER obsluhuje 100 HW DEVICES, tak VZDY je jeho CODE zavedeny vo VIRTUAL MEMORY IBA RAZ.
+   !!! B. DRIVER je kolekcia ROUTINES, ktore mozu v DANEJ CHVILI vystupovat v rozlicnych ROLES. To v akej ROLE DRIVER prave vystupuje urcuje to s akym DEVICE OBJECT prave pracuje.
+   C. DRIVER ROUTINE DriverEntry() je volana pre KAZDY DRIVER IBA RAZ.
+   D. DRIVER moze obsluhovat naraz VIACERO HW DEVICES.
+   E. DRIVER moze pri obsluhe HW DEVICES vystupovat v rozlicnych ROLES. Raz moze vystupovat v ROLE BUS DRIVER, inokedy v ROLE FUNCTION DRIVER.
+   !!! F. Kazda ROLE v korej DRIVER vystupuje je reprezentovana jednym DEVICE OBJECT.
+!!!!! 16. Pre DEVICE OBJECT platia nasledujuce fakty.
+   A. DEVICE OBJECT je instancia STRUCTURE [DEVICE_OBJECT].
+   !!!!! B. DEVICE OBJECT obsahuje STATE DATA reprezentuje 1 INSTANCIU DRIVER. Ak DRIVER obsluhuje 10 HW DEVICES, pricom kazde HW DEVICE pouziva 1 INSTANCIU DRIVER, potom v SYSTEME existuje 10 INSTANCII DEVICE OBJECT.
+   !!! C. Instanciu STRUCTURE [DEVICE_OBJECT] NEVYTVARA WINDOWS AUTOMATICKY, ale ak identitikuje potrebu jej vytvorenia, zavola CUSTOM DRIVER ROUTINE AddDevice(), ktorej ulohou je instanciu STRUCTURE [DEVICE_OBJECT] vytvorit.
+   D. Kazdy DEVICE OBJECT je VZDY priradeny PRAVE JEDNEMU DRIVER.
+   E. Pri vytvoreni DEVICE OBJECT je pre DRIVER s ktorym je DEVICE OBJECT zavolana ROUTINE AddDevice().
+   !!! F. DEVICE OBJECT reprezentuje ROLE, ktoru DRIVER pri obsluhe daneho HW DEVICE vykonava.
+   !!!!! G. Ak DRIVER obsluhuje 10 HW DEVICES a kazdy HW DEVICE vyzaduje aby DRIVER vystupoval v 2 ROLES potom WINDOWS vytvori (DEVICE_OBJECT v skutocnosti vytvara DRIVER CODE volanim FUNCTION IoCreateDevice()) a s danym DRIVER asociuje 20 DEVICE OBJECTS.
+   !!! H. DEVICE OBJECTS pri obsluhe HW DEVICES vytvaraju stromovu strukturu nazyvanu DEVICE OBJECT TREE.
+!!!!! 17. Pre DEVICE OBJECT TREE (pozri obrazok [DeviceObjectsAndDrivers.png]) platia nasledujuce fakty.
+   !!!!! A. DEVICE OBJECT TREE reprezentuje kolekciu vsetkych DEVICE OBJECTS, ktore sa podielaju na obsluhe vsetkych HW DEVICES v SYSTEME.
+   !!! B. DEVICE OBJECT TREE je v SYSTEME IBA RAZ a obsahuje DEVICE OBJECTS pre obsluhu VSETKYCH HW DEVICES v CELOM SYSTEME. To znaci, ze WINDOWS VZDY obsahuje IBA 1 DEVICE OBJECT TREE.
+   !!!!! C. KAZDY BRANCH DEVICE OBJECT TREE reprezentuje DEVICE OBJECTS, ktore sa podielaju na obsluhe 1 HW DEVICE. To znaci, ze DEVICE OBJECT TREE BRANCH je zoznam vsetkych DEVICE OBJECTS (ktore su asociovane s DRIVERS), ktore sa podielaju na ovladanie 1 HW DEVICE.
+   E. Ak ma SYSTEM 50 HW DEVICES, potom DEVICE OBJECT TREE ma 50 BRANCHES.
+   !!! E. Kazda BRANCH DEVICE OBJECT TREE sa sklada z 1-N DEVICE OBJECT STACKS.
+   !!!!! F. Kazdy DEVICE OBJECT STACK v BRANCH reprezenuje 1 LOGICKY DRIVER. Ak BRANCH obsahuje 3 DEVICE OBJECT STACKS, potom na obsluhe daneho HW DEVICE sa podielaju 3 LOGICKE DRIVERS. Ak napriklad BRANCH repreznetuje USB DISK, potom BRANCH obsahuje DEVICE OBJECT STACK pre USB DISK, DEVICE OBJECT STACK pre USB BUS a DEVICE OBJECT STACK pre PCI EXPRESS ku ktoremu je USB BUS pripojeny.
+!!!!! 18. Pre DEVICE OBJECT STACK platia nasledujuce fakty.
+   !!! A. DEVICE OBJECT STACK reprezentuje LOGICKY DRIVER. Je to STACK DEVICE OBJECTS, ktore vykonavaju ucelenu cinnost pri obsluhe 1 HW DEVICE.
+   !!!!! B. 1 HW DEVICE je spravidla obsluhovany VIACERYMI LOGICKY DRIVERS (PCI EXPRESS, USB MASS BUS, USB DISC), co znaci, ze viacero DEVICE OBJECT STACKS je poskladanych nad seba tvoriac tak BRANCH TREE DEVICE OBJECT.
+   A. DEVICE OBJECT STACK je tvoreny 2-N DEVICE OBJECTS.
+   B. Kazdy OBJECT DEVICE STACK MUSI obsahovat aspon 1 DEVICE OBJECT reprezentujuci BUS DRIVER a 1 DEVICE OBJECT reprezentujuci FUNCTION DRIVER.
+!!! 19. DEVICE OBJECT moze v DEVICE OBJECT STACK vystupovat v nasledujucich ROLES.
+   A. PHYSICAL DEVICE OBJECT (PDO) je DEVICE OBJECT, ktory je asociovany s BUS DRIVER. Vytvara ho FDO BUS ku ktorej je HW DEVICE pripojene. Ulohou PDO je obsluhovat pripojenie HW DEVICE k BUS. Kedze k TEJ ISTE BUS sa pripaja 'N' HW DEVICES, tieto HW DEVICES maju vytvorene ROVANKY TYP PDO. Kazdy HW DEVICE pripojeny k TEJ ISTE BUS zavedie VLASTNU INSTANCIU PDO, ktore je vsak ROVNAKEHO TYPU.
+   B. FUNCTION DEVICE OBJECT (FDO) je DEVICE OBJECT, ktory je asociovany s FUNCTION DRIVER. Ulohou FDO je obsluhovat HW DEVICE. FDO vsak uz nezabezpecuje komunikaciu s BUS, kedze tuto cinnost ma na starosti PDO.
+   C. FILTER DEVICE OBJECT (FIDO) je DEVICE OBJECT, ktory je asociovany s FILTER DRIVER.
+20. FILTER DRIVERS v zavislosti na tom ako su aplikovane sa rozdeluju do 3 kategorii.
+   A. BUS FILTER DRIVERS. Tieto FILTER DRIVERS su vytvarane pre kazde HW DEVICE, ktory je pripojeny k danemu BUS.
+   B. CLASS FILTER DRIVERS. Tieto FILTER DRIVERS su vytvarane pre kazde HW DEVICE, ktory ma dany CLASS.
+   C. HW DEVICE FILTER DRIVERS. Tieto FILTER DRIVERS su vytvarane pre dany HW DEVICE.
+21. FILTER DRIVERS v zavislosti na tom kde su aplikovane sa rozdeluju do 2 kategorii.
+   A. LOWER FILTER DRIVERS. Ich DEVICE OBJECTS su umiestnene v DEVICE OBJECT STACK pod FDO.
+   B. UPPER FILTER DRIVERS. Ich DEVICE OBJECTS su umiestnene v DEVICE OBJECT STACK nad FDO.
+!!!!! 22. PDO aj FDO ak su v jednom DEVICE OBJECT STACK, obsluhuju TEN ISTY HW DEVICE. Rozdiel je v subore cinnosti, ktore PDO a FDO na danom HW DEVICE riadia.
+   A. PDO je vytvorene FDO BUS ku ktorej HW DEVICE pripojene.
+   !!!!! B. Pre DRIVERS, ktore su VIRTUALNE (neovlada sa pomocou nich fyzicky HW DEVICE) su PDO v DEVICE OBJECT STACK vytvorene SPECIALNYM BUS DRIVER nazyvanym UNKNOWN BUS DRIVER.
+   !!! C. PDO obsluhuje KOMUNIKACIU medzi HW DEVICE a BUS ku ktorej je HW DEVICE pripojene.
+   D. PDO takisto zabezpecuje ZAPINANIE a VYPINANIE HW DEVICE (POWER MANAGEMENT).
+   !!!!! E. FDO lezi az NAD PDO v DEVICE OBJECT STACK a zabezpecuje CINNOST HW DEVICE OKREM KOMUNIKACIE s BUS a elektrickym pripojenim a odpojenim HW DEVICE (POWER MANAGEMENT), pretoze tieto cinnosti realizuje PDO.
+   !!!!! F. Ak FDO DRIVER zachyti IRP, ktore sa tyka POWER MANAGEMENT tak toto NESPRACOVAVA, ale iba ho posunie NIZSIE v DEVICE OBJECT STACK na spracovanie FDO.
+   !!!!! G. Pri komunikacii s HW DEVICE je ulohou FDO pripravit HW DEVICE na komunikaciu, no PRENOS DAT po BUS je riadeny PDO, pretoze iba PDO je priamo zodpovedne za KOMUNIKACIU HW DEVICE a BUS.
+   !!!!! H. Ak 'N' HW DEVICES je pripojenych k TEJ ISTEJ BUS, potom KAZDY HW DEVICE ma VLASTNU INSTANCIU PDO, ktore su vsak ROVNAKEHO TYPU (su ovladane TYM ISTY BUS DRIVER).
+   !!!!! I. Ak DRIVER neobsluhuje realne HW DEVICE, tak WINDOWS vytvara VIRTUAL DEVICE OBJECT, ktory reprezentuje PDO v DEVICE OBJECT STACK. Tento VIRTUAL DRIVER implementuje IBA IRP typu [IRP_MJ_POWER] a [IRP_MJ_PNP] a VSETKY OSTATNE IRP skoncia ukoncenim IRP FUNCTION IoCompleteRequest() s ERROR CODE (STATUS_INVALID_DEVICE_REQUEST).
+!!!!! 23. Priklad DEVICE OBJECT STACK pre HDD, ktory je cez PCI EXPRESS SYSTEM BUS pripojeny do SYSTEMU.
+   !!!!! A. Na vrchole DEVICE OBJECT STACK je HDD FDO, ktore zasielanim IRP do PDO riadi HDD.
+   !!! B. Pod HDD FDO sa nachadza HDD PDO. HDD PDO je zodpovedne za KOMUNIKACIU s HDD pomocou PCI EXPRESS BUS. HDD PDO prijima IRP z FDO a HW DEVICE SPECIFIC OPERATIONS, ktore su v nich obsiahnute cez PCI EXPRESS zasiela do HW DEVICE.
+   C. Pod FDO sa nachadza DEVICE OBJECT STACK samotnej PCI EXPRESS BUS, ktora obsahuje PCI EXPRESS FDO a PCI EXPRESS PDO.
+   !!!!! D. HDD PDO a PCI EXPRESS FDO su obsluhovane TYM ISTYM DRIVER. To znaci, ze TEN ISTY CODE (DLL) obsluhuje 2 ROZLICNE INSTANCIE DEVICE OBJECTS. Raz obsluhuje DEVICE OBJECT vo funkcii HDD PDO a inokedy DEVICE OBJECT vo funkcii PCI EXPRESS FDO.
+   !!! E. Ulohou PCI EXPRESS FDO je riadit komunikaciu po BUS.
+   F. Ulohou PCI EXPRESS PDO je komunikovat s BUS cez HARDWARE ABSTRACTION LAYER MOTHERBORAD na ktorej je SYSTEM BUS obsadena.
+!!!!! 24. Priklad zasielania IRP v DEVICE OBJECT STACK pre HDD, ktory je cez PCI EXPRESS SYSTEM BUS pripojeny do SYSTEMU.
+   A. IRP, ktore sa tykaju POWER MANAGEMENT FDO zasiela do PDO, pretoze PDO je zodpovedne za realizaciu POWER MANAGEMENT.
+   B. IRP, ktore pozaduju vykonanie READ/WRITE nad HDD su spracovavane FDO.
+   !!! C. FDO pri prichode IRP pozadujucej vykonanie READ/WRITE nad HDD FDO NAJPRV zasle do PDO 1-N IRP, ktore pripravia HW DEVICE na vykonanie READ/WRITE OPERATION. Tieto IRP nesu informaciu o tom kde na HDD ma dojde k READ/WRITE.
+   D. PDO IRP nesuce informaciu o tom kde na HDD ma dojde k READ/WRITE odkomunikuje cez BUS na HDD.
+   E. Po uspesnom ukonceni IRP nesucich informaciu o tom kde na HDD ma dojst k READ/WRITE moze FDO vykonat READ/WRITE OPERATION.
+   !!! F. FDO spusti READ/WRITE OPERATION zaslanim 1-N IRP do PDO, ktore obsahuju prikazy pre HDD, aby vykonal prenost dat.
+   !!! G. PDO prenesie IRP, ktore obsahuju prikazy pre HDD cez BUS do HDD.
+   H. HDD vykona READ/WRITE OPERATION.
+   !!! I. Po vykonani READ/WRITE OPERATION HDD zasiela INTERRUPT (elektricky signal) na BUS, ktorym BUS notifikuje o ukonceni IO OPERATION.
+   !!! J. INTERRUPT je zachyteny PDO, ktore obsluhuje komunikaciu HDD s BUS. PDO nasledne zasle notifikaciu o ukonceni READ/WRITE OPERATION do FDO.
+   K. FDO spracuje vysledky READ/WRITE OPERATION a moze iniciovat dalsiu IO OPERATION.
+!!!!! 25. DEVICE OBJECT STACK ma nasledujucu strukturu (BOTTOM-UP).
+   A. Na BOTTOM daneho STACK je VZDY PDO reprezentujuci BUS DRIVER. BUS DRIVER umoznuje DEVICE komunikovat s BUS ku ktoremu je pripojeny.
+   B. Nad PDO reprezentujucim BUS DRIVER moze byt 0-N FIDO reprezentujucich LOWER FILTER DRIVERS. Tieto DRIVERS umoznuju monitorovat a modifikovat IRP PACKETS zaslane z FUNCTION DRIVER do BUS DRIVER.
+   !!! C. Nad FIDO reprezentujucich LOWER FILTER DRIVERS (alebo BUS DRIVER, ak DEVICE STACK neobsahuje LOWER FILTER DRIVERS) je 0-N FDO reprezentujucich FUNCTION DRIVERS. Tieto DRIVERS zabezpecuje ovladanie DEVICE spustanim IO OPERATIONS a spracovanim INTERRUPTS generovanych dany DEVICE. Jeden z FDO je casto CLASS DRIVER implementovany MICROSOFT.
+   D. Nad FDO reprezentujcim FUNCTION DRIVER mozu moze byt 0-N FIDO reprezentujucich UPPER FILTER DRIVERS. Tieto DRIVERS umoznuju monitorovat a modifikovat IRP PACKETS predtym ako su zaslane do FUNCTION DRIVER.
+!!!!! 26. Podla toho s akym typom DEVICE OBJECT DRIVER pracuje je logicky mozne cinnost DRIVERS rozdelich do 3 kategorii.
+   A. BUS DRIVER. Ak DRIVER vystupuje v ROLE BUS DRIVER, potom DRIVER zabezpecuje ovladanie BUS, avsak NIE za ZAPIS a CITANIE z BUS. Je zodpovedny za ENUMERACIU vsetkych CHILD DEVICES, ktore su k BUS pripojene ako aj ich elektricke vypinanie a zapinanie.
+   B. FUNCTION DRIVER. Ak DRIVER vystupuje v ROLE FUNCTION DRIVER, potom DRIVER zabezpecuje zakladne ovladanie HW DEVICE. Je zodpovedny za za spustanie IO OPERATIONS, spracovavanie INTERRUPTS, ktore su generovane po skonceni IO OPERATIONS a MANAGEMENT daneho DEVICE, ako napriklad zmena konfiguracie iniciovanu zo strany USER.
+   C. FILTER DRIVERS. Ak DRIVER vystupuje v ROLE FUNCTION DRIVER, potom DRIVER zabezpecuje snimanie a modifikaciu IRP PACKETS. V DEVICE OBJECT STACK moze byt 0-N DEVICE OBJECT vystupujucich vo funkcii FILTER DRIVERS. FILTER DRIVERS mozu byt v DRIVER STACK umiestnene bud medzi WIN32 API a FUNCTION DRIVER, alebo medzi FUNCTION DRIVER a BUS DRIVER.
+!!!!! 27. To v akej ROLE DRIVER vystupuje urcuje DEVICE OBJECT s ktorym momentalne pracuje.
+   A. Ak v DANEJ CHVILI DRIVER pracuje s DEVICE OBJECT typu PDO logicky vykonava cinnosti BUS DRIVER.
+   B. Ak v DANEJ CHVILI DRIVER pracuje s DEVICE OBJECT typu FDO logicky vykonava cinnosti FUNCTION DRIVER.
+   C. Ak v DANEJ CHVILI DRIVER pracuje s DEVICE OBJECT typu FIDO logicky vykonava cinnosti FILTER DRIVER.
+   !!! D. DRIVER (CODE) moze PARALELNE pracovat s viacerymi DEVICE OBJECTS a tym padom PARALELNY vystupovat vo viacerych ROLES.
+!!!!! 28. Ten isty DRIVER moze vystupovat v DEVICE OBJECT TREE, ba dokonca aj v tom istom BRANCH DEVICE OBJECT TREE vo viacerych ROLES. Nasledujuce DEVICE OBJECTS reprezentuju BRANCH TREE DEVICE OBJECT pre obsluhu USB DISC.
+   A. FDO pre USB DISC. Tento DEVICE OBJECT reprezentuje FUNCTION DRIVER pre HW DEVICE USB DISC.
+   B. PDO pre USB DISC. Tento DEVICE OBJECT reprezentuje BUS DRIVER pre HW DEVICE USB DISC.
+   C. FDO pre USB BUS. Tento DEVICE OBJECT reprezentuje FUNCTION DRIVER pre HW DEVICE USB BUS ku ktoremu je USB DISC pripojeny.
+   D. PDO pre USB BUS. Tento DEVICE OBJECT reprezentuje BUS DRIVER pre HW DEVICE USB BUS ku ktoremu je USB DISC pripojeny.
+   E. FDO pre PCI EXPRESS BUS. Tento DEVICE OBJECT reprezentuje FUNCTION DRIVER pre HW DEVICE PCI EXPRESS BUS ku ktoremu je USB BUS pripojeny.
+   F. PDO pre PCI EXPRESS BUS. Tento DEVICE OBJECT reprezentuje BUS DRIVER pre HW DEVICE PCI EXPRESS BUS ku ktoremu je USB BUS pripojeny.
+   !!!!! G. Plati, ze PDO pre USB DISC a FDO pre USB BUS su asociovane s TYM ISTYM DRIVER (USB BUS DRIVER).
+   !!!!! H. Plati, ze PDO pre USB BUS a FDO pre USB PCI EXPRESS BUS su asociovane s TYM ISTYM DRIVER (USB PCI EXPRESS BUS).
+!!!!! 29. Vo WINDOWS je KAZDY HW DEVICE ku ktoremu sa pripajaju INE HW DEVICES oznacovany ako BUS HW DEVICE. Napriklad pre MOUSE pripojenu cez USB PORT, struktura DEVICE OBJECTS je nasledovna (vid. obrazok USBDeviceStructure.png).
+    A. MOUSE. Toto je KONCOVY DEVICE, ktory NIE JE BUS DEVICE.
+    B. USB HUB. K USB HUB je pripojena MOUSE a teda USB HUB je BUS DEVICE voci MOUSE.
+    C. USB HOST CONTROLLER. K USB HOST CONTROLLER je pripojeny USB HUB a teda USB HOST CONTROLLER je BUS DEVICE voci USB HUB.
+    D. PCI BUS. K PCI BUS je pripojeny USB HOST CONTROLLER a teda PCI BUS je BUS DEVICE voci USB HOST CONTROLLER.
+30. Pre DRIVERS, ktore realizuju funkcnost BUS DRIVERS platia nasledujuce skutocnosti.
+   A. Zabezpecuje ovladanie BUS.
+   !!! B. BUS DRIVERS funguju ako FUNCTION DRIVERS pre DANY BUS, ktory ovladaju.
+   C. Elektricky zapina a vypina HW DEVICES pripojene k BUS.
+   D. Enumeruje vsetkymi DEVICES, ktore su pripojene k danemu BUS.
+   E. Odpoveda na PNP a POWER MANAGEMENT IRP.
+   F. Vykonava MULTIPLEXING pristupu k BUS.
+   !!! G. Po enumerovani vsetkymi pripojenymi DEVICES vytvori BUS DRIVER vytvori pre kazdy najdeny CHILD DEVICE novy DEVICE OBJECT typu PDO, ktory sluzi na SW pripojenie HW DEVICE k BUS.
+   H. Pre CHILD DEVICES vykonava niektore cinnosti, ako napriklad zmenu ich POWER STATE. (Elektricke zapinutie a vypinutie HW DEVICE.)
+   !!!!! I. BUS DRIVERS NEVYKONAVAJU priamo READ a WRITE OPERATIONS nad BUS. Vykonavaju IBA ODKOMUNUIKOVANIE tychto OPERATIONS medzi HW DEVICE a BUS. Avsak samotne vykonavanie READ a WRITE OPERATIONS, ktore vyzaduje HW DEVICE SPECIFIC OPERACIE je zalezitostou FUNCTION DRIVER CHILD DEVICES. Iba ak je CHILD DEVICE v RAW MODE, tak BUS DRIVER zabezpecuje aj READ a WRITE OPERATIONS nad BUS.
+31. Pre DRIVERS, ktore realizuju funkcnost FUNCTION DRIVERS platia nasledujuce skutocnosti.
+   A. Je to MAIN DRIVER zodpovedny za ovladanie DEVICE. Obsahuje teda obsluju HW SPECIFIC OPERATIONS.
+   !!! B. Je zodpovedny za ovladanie DEVICE ako je vykonavanie READ a WRITE OPERATIONS nad BUS, ku ktory je DEVICE pripojeny, ktore su cez BUS zaslane do tohto DEVICE.
+   !!! C. Ak DEVICE je ovladane v RAW MODE, tak NEMA FUNCTION DRIVER a vsetky READ a WRITE OPERATIONS su realizovane BUS DRIVER.
+32. Pre DRIVERS, ktore realizuju funkcnost FILTER DRIVERS platia nasledujuce skutocnosti.
+   A. Je to OPTIONAL DRIVER, ktorych DRIVER STACK moze mat 0-N.
+   B. Rozsiruje funkcionalitu FUNCTION a BUS DRIVERS implementaciou DEVICE SPECIFIC funkcionalitu.
+   C. BUS FILTER DRIVER rozsiruje BUS DRIVER o DEVICE SPECIFIC funkcionalitu.
+   D. LOWER LEVEL FILTER DRIVERS rozsiruju funkcionalitu FUNCTION DRIVERS. Monitoruju a modifikuju IRP, ktore FUNCTION DRIVER zasiela do BUS DRIVER.
+   E. UPPER LEVEL FILTER DRIVERS rozsiruju funkcionalitu FUNCTION DRIVERS. Monitoruju a modifikuju IRP, ktore prijima FUNCTION DRIVER z USER MODE.
+!!! 33. VSETKY KERNEL MODE DRIVERS bezia v SPOLOCNOM ADDRESS SPACE. Teda DRIVERS na rozdiel od APPLICATIONS NEMAJU PRIVATE ADDRESS SPACE, ale SHARED ADDRESS SPACE.
+34. Postup pri instalacii PNP DEVICES je nasledujuci.
+   A. Pri BOOTE (alebo pre HOT-PLUG BUSES aj pri pridani ci odobrani HW DEVICE) je spusteny proces vyhladania CHILD DEVICES pripojenych k danej BUS.
+   B. Ak BUS DRIVER zisti, ze bol pridany NOVY PNP HW DEVICE, tak zavola FUNCTION IoInvalidateDeviceRelations() pomocou ktorej BUS DRIVER notifikuje PNP MANAGER, ze doslo zmene struktury CHILD DEVICES.
+   !!! C. PNP MANAGER zasle dp BUS DRIVER IRP [IRP_MN_QUERY_DEVICE_RELATIONS] s informaciou, ze PNP MANAGER chce, aby BUS DRIVER vratil zoznam PDO DEVICE OBJECT reprezentujucich CHILD DEVICES, ktore su pripojene k danemu BUS.
+   D. BUS DRIVER spusti ENUMERACIU vsetkych CHILD DEVICES pripojenych k danemu BUS.
+   !!! E. Pre kazdy najdeny CHILD DEVICE je vytvorena instancia STRUCTURE [DEVICE_OBJECT] nazvana PHYSICAL DEVICE OBJECT (PDO). Zoznam vsetkych PDO je vrateny do PNP MANAGER.
+   F. PNP MANAGER nasledne zasle do BUS DRIVER seriu [IRP IRP_MN_QUERY_ID]. BUS DRIVER spusti DETEKCIU pripojenych CHILD DEVICES a pre KAZDY DEVICE zisti jeho PNP DEVICE ID.
+   !!! G. PNP MANAGER pouzije PNP DEVICE ID ako KEY do REGISTRY na najdenie HW KEY. Ak HW KEY NIE JE NAJDENY, znamena to, ze sa jedna o HW DEVICE, ktory este k pocitacu NEBOL NIKDY PRIPOJENY a je treba spustit proces INSTALACIE DRIVER.
+   !!!!! H. Pri instalaci DRIVER SYSTEM vyhlada .INF FILE. INF FILE je INI FILE, ktory obsahuje k PNP DEVICE ID zoznam INSTALLATION STEPS, ktore musi OS vykonat, aby nainstaloval DRIVER. INSTALLATION STEPS obsahuju kopirovanie FILES, definovanie novych DRIVER SERVICES ci pridanie ENTRIES do REGISTRY. Zaroven je do REGISTRY pridany aj HW KEY pomocou, ktoreho v buducnosti bude WINDOWS schopny najst nainstalovany DRIVER.
+   !!! I. Ak REGISTRY obsahuje HW KEY, tak PNP MANAGER poveri MEMORY MANAGER, aby bol DRIVER zavedeny do VIRTUAL MEMORY. DRIVER FILES sa vsak NENACITAVAJU PRIAMO DO MEMORY, ale su len MAPPED pomocou FILE MAPPING.
+   J. Po zavedeni DRIVER do VIRTUAL MEMORY MEMORY MANAGER zavola FUNCTION DriverEntry() daneho DRIVER.
+   !!!!! K. Potom co MEMORY MANAGER zaviedol DRIVER, PNP MANAGER vytvori NOVU INSTANCIU DEVICE_OBJECT (v skutocnosti DEVICE_OBJECT vytvara DRIVER CODE volanim FUNCTION IoCreateDevice()) a zavola FUNCTION AddDevice() daneho DRIVER.
+   !!! L. PNP MANAGER zasle do BUS DRIVER ku ktoremu je HW DEVICE pripojeny IRP [IRP_MN_QUERY_RESOURCE_REQUIREMENTS]. Na tento IRP musi BUS DRIVER vratit svoje REQUIREMENTS na IO PORT ADDRESSES, IO MEMORY ADDRESSES, IRQ NUMBERS ci DMA CHANNELS pre HW DEVICE, ktory bol v IRP [IRP_MN_QUERY_RESOURCE_REQUIREMENTS] zadany.
+   M. PNP MANAGER priradi danemu DRIVER pozadovane RESOURCES a zasle mu IRP [IRP_MN_START_DEVICE]. DRIVER vykona inicializaciu a alokaciu potrebnych RESOURCES a od tejto chvile je SPUSTENY a PLNE FUNKCNY.
+35. V pripade instalacie LEGACY DEVICE (nepodporuje PNP a teda ho WINDOWS nedokaze detekovat) je nutne spustit 'Add New Hardware Wizard', ktorym sa spusti procedura instalacie LEGACY DEVICE pri ktorej sa nainstaluje LEGACY DRIVER. Pocas instalacie sa do REGISTRY vlozia ENTRIES, ktore OS dokaze citat a na zaklade nich zavedie do VIRTUAL MEMORY a nasledne spusti prislusne LEGACY DRIVERS. Proces instalacie LEGACY DRIVERS je realizovany v nasledujucich krokoch.
+   A. USER spusti 'Add New Hardware Wizard', kde specifikuje DRIVER, ktory chce nainstalovat.
+   B. Instalacna procedura vytvori REGISTRY ENTRIES na zaklade CONFIGURATION v [LogConfig] ENTRY .INF FILE.
+   C. Po ukonceni instalacie (alebo REBOOT) WINDOWS prehlada REGISTRY a zavedie do VIRTUAL MEMORY vsetky objavene LEGACY DRIVERS.
+36. WINDOWS pri BOOT vytvara DEVICE OBJECT TREE nasledujucim sposobom.
+   A. WINDOWS spusti ROOT ENUMERATOR, ktory pomocou REGISTRY ziska zoznam vsetkych LEGACY DRIVERS, ktore maju byt zavedene. Kedze tieto DEVICES NEPODPORUJU PNP a teda nemaju ako cez elektricky signal oznamit svoju pritomnost, ich DRIVERS musia byt nacitane VZDY, bez spustenia PNP PROTOCOLU.
+   !!! B. ROOT ENUMERATOR zaroven zisti aj ROOT BUS DRIVER (je to PRIMARY BUS daneho PC co je v sucasnosti zvycajne PCI EXPRESS BUS), ktory bol to REGISTRY ulozeny pocas INSTALACIE WINDOWS, kedy instalacna procedura WINDOWS dokaze detekovat typ ROOT BUS.
+   C. ROOT ENUMERATOR po detekovani ROOT BUS DRIVER vytvori jeho PDO a ROOT BUS DRIVER zavedie do FDO ROOT BUS.
+   D. FDO ROOT BUS DRIVER (DRIVER vystupuje ako FUNCTION DRIVER pre ROOT BUS) spusti detekciu vsetkych CHILD DEVICES, ktore su pripojene na ROOT BUS.
+   E. Pre kazdy CHILD HW DEVICE je vytvoreny PDO (ktory je asociovany s ROOT BUS DRIVER, teraz vystupujucim ako BUS DRIVER a nie FUNCTION DRIVER) a nasledne sa vytvori FDO pre kazdy CHILD HW DEVICE reprezentujuci jeho FUNCTION DRIVER.
+   !!!!! F. Ak CHILD HW DEVICES su BUS HW DEVICES (napriklad USB BUS), tak sa cely proces REKURZIVNE OPAKUJE, az kym nie su detekovane VSETKY HW DEVICES.
+37. WINDOWS si uklada informacie o INSTALLED DRIVERS do REGISTRY KEYS. REGISTRY KEYS obsahujuce informacie o DRIVERS su 2 roznych druhov.
+   A. DEVICE KEYS. Obsahuje zoznam DRIVERS pre dany DEVICE. VALUE 'LowerFilters' typu REG_MULTI_SZ (moze mat viacero STRINGS) obsahuje 1-N DEVICE LOWER FILTER DRIVERS asociovane s danym DEVICE. VALUE 'UpperFilters' typu REG_MULTI_SZ (moze mat viacero STRINGS) obsahuje 1-N DEVICE UPPER FILTER DRIVERS asociovane s danym DEVICE. VALUE 'Service' obsahuje DEVICE FUNCTION DRIVER daneho DEVICE.
+   B. CLASS KEYS. Obsahuje zoznam CLASS DRIVERS pre DEVICE CLASS. VALUE 'LowerFilters' typu REG_MULTI_SZ (moze mat viacero STRINGS) obsahuje 1-N LOWER CLASS FILTER DRIVERS asociovane s danym DEVICE CLASS. VALUE 'UpperFilters' typu REG_MULTI_SZ (moze mat viacero STRINGS) obsahuje 1-N UPPER CLASS FILTER DRIVERS asociovane s danym DEVICE CLASS. VALUE 'Service' obsahuje CLASS FUNCTION DRIVER daneho DEVICE CLASS.
+!!! 38. Kazdy DRIVER ma implementovanu FUNCTION AddDevice(). Tieto FUNCTIONS su VZDY pri vytvreni noveho DEVICE OBJECT. Pre DEVICE OBJECTS v DEVICE OBJECT STACK su ROUTINES AddDevice() volane v nasledujucom poradi.
+   A. WINDOWS zavola AddDevice() pre vsetky DEVICE OBJECTS LOWER FILTER DRIVERS v poradi v akom su ulozene v REGISTRY VALUE 'LowerFilters'.
+   B. WINDOWS zavola AddDevice() pre vsetky DEVICE OBJECTS CLASS LOWER FILTER DRIVER v poradi v akom su ulozene v REGISTRY VALUE 'LowerFilters'.
+   C. WINDOWS zavola AddDevice() pre DEVICE OBJECT FUNCTION DRIVER, ktory nacita z REGISTRY VALUE 'Service' DEVICE KEY.
+   D. WINDOWS zavola AddDevice() pre vsetky DEVICE OBJECTS UPPER FILTER DRIVERS v poradi v akom su ulozene v REGISTRY VALUE 'UpperFilters'.
+   E. WINDOWS zavola AddDevice() pre vsetky DEVICE OBJECTS CLASS UPPER FILTER DRIVERS v poradi v akom su ulozene v REGISTRY VALUE 'UpperFilters'.
+!!! 39. Pri spracovani IRP WINDOWS postupuje nasledovnym sposobom.
+   !!! A. Vzdy ked WINDOWS chce vykonat nejaku operaciu nad DEVICE, tak do jeho DRIVER zasle IRP.
+   B. IRP je vzdy zasielany do NAJVYSSIEHO UPPER FILTER DEVICE OBJECT (FIDO) v DEVICE OBJECT STACK. Ten ho moze spracovat IRP SPRACOVAT, zaslat do DRIVER NIZSIE v DEVICE OBJECT STACK, alebo SPRACOVAT AJ zaslat NIZSIE do DEVICE OBJECT STACK.
+   C. V pripade, ze UPPER FIDO NAJVYSSIE v DEVICE OBJECT STACK sa rozhodne zaslat IRP DALEJ, tak IRP je poslane do FIDO NIZSIE v DEVICE OBJECT STACK (ak ma viacero FIDO), alebo do FUNCTION DEVICE OBJECT (FDO).
+   D. V pripade, ze ziaden UPPER FIDO, FDO ani ziaden LOWER FIDO NESPRACUJE (NEPOHLTI) IRP, tak IRP je preposlane az do PHYSICAL DEVICE OBJECT (PDO) asoicovany s BUS DRIVER.
+   !!! E. PHYSICAL DEVICE OBJECT (PDO) asoicovany s BUS DRIVER moze IRP bud spracovat, alebo ho zasle do INEHO DEVICE OBJECT STACK, kde je IRP dalej spracovany. Takisto moze namiesto podovneho IRP vygenerovat NOVE IRP, ktore posle do ineho DEVICE OBJECT STACK.
+   !!!!! F. IRP ktore pristupuju na HW DEVICE casto pouzivaju HAL, ktory vykonava samotnu komunikaciu s HW DEVICES na MOTHERBOARD.
+40. Pre spracovanie IRP v DEVICE OBJECT STACK platia nasledujuce fakty.
+   A. IRP v DEVICE OBJECT STACKS VZDY tecu iba JEDNYM SMEROM a to z UPPER FILTER DRIVERS (reprezentovanym FIDO) do FUNCTION DRIVER (reprezentovanym FDO), odtial do LOWER FILTER DRIVERS (reprezentovanym FIDO) a odtial do BUS DRIVER (reprezentovanym PDO).
+   !!! B. IRP NEMUSIA PRETIECT CELYM DEVICE OBJECT STACK. Ak su napriklad IRP KOMPLETNE obsluzene vo FUNCTION DRIVER, tak uz NETECU do LOWER FILTER DRIVERS a BUS DRIVER.
+   !!! C. HW DEVICES, ktore su pripojene PRIAMO k SERVICE BUS (napriklad k PCI) zapisuju a citaju data do DEVICE pomocou ADDRESSES, ktore su NAMAPOVANE na PORT daneho DEVICE, alebo jeho MEMORY RESOURCES. Zapis, alebo citanie z tychto ADDRESSES znamena zapis, alebo citanie z pripojeneho HW DEVICE.
+   !!! D. HW DEVICES, ktore NIE su pripojene PRIAMO k SERVICE BUS musia komunikovat cez BUS DRIVER daneho BUS cez ktory su pripojene (napriklad USB).
+!!!!! 41. WMD NEDEFINUJE univerzalny sposob, ktorym by mohli DRIVERS referovat na ostatne DRIVERS v DRIVER STACK. Je to cisto implementacne zavisle ako si DRIVER bude drzat odkazy na ostatne DRIVERS v DRIVER STACK.
+42. Pomocou FUNCTION RtlGetVersion() je mozne ziskat cislo VERZIE OS. To je mozne vyuzit pri pisanie DRIVERS, ktore su zavisle na PLATFORME.
+!!! 43. WDM definuje 2 zakladne OBJECTS.
+   A. DRIVER OBJECT (DRIVER_OBJECT) reprezentuje DRIVER. Obsahuje POINTERS na FUNCTIONS, ktore DRIVER pri inicializacii naplni a ktore nasledne WINDOWS vyvolava pri vzniku rozlicnych EVENTS.
+   B. DEVICE OBJECT (DEVICE_OBJECT) reprezentuje ROLE v ktorej DRIVER vystupuje v danom DEVICE OBJECT STACK. Ak DRIVER obsluhuje 10 HW DEVICES, pricom v kazdom HW DEVICE vystupuje v 2 ROLES (ako FDO a PDO), potom v SYSTEME (DOMAIN OBJECT TREE) je vytvorenych 20 instancii STRUCTURE DEVICE_OBJECT. STRUCTURE DEVICE_OBJECT umoznuje spravovat a pracovat s DEVICES, ktory DRIVER ovlada. Vytvara sa volanim FUNCTION IoCreateDevice(), ktora sa spravidla vola vo FUNCTION AddDevice().
+44. STRUCTURES DRIVER_OBJECT a DEVICE_OBJECT obsahuju MNOZSTVO OPAQUE FIELDS s ktorymi DRIVER NESMIE PRACOVAT. Su urcene iba pre vnutornu cinnost WINDOWS a pristup k nim by znamenal narusenie cinnosti WINDOWS. Takisto NIE JE GARANTOVANA PRITOMNOST ci POZICIA UNDOCUMENTED FIELDS v DRIVER_OBJECT a DEVICE_OBJECT v buducich verziach WDM.
+!!! 45. V DRIVERS sa NEPOUZIVAJU C++ PRIMITIVE TYPES ale z nich odvodene TYPEDEFS ako napriklad VOID, PVOID, PVOID64, LONG, PLONG, LARGE_INTEGER ci PLARGE_INTEGER. Zjednodusuje to portabilitu medzi X86 a X64 DRIVERS.
+46. DRIVER_OBJECT ma nasledujuce DOCUMENTED FIELDS.
+   !!! A. FIELD DRIVER_OBJECT.DeviceObject obsahuje POINTER na LIST instancii typu DEVICE_OBJECT, ktory obsahuje vsetky DEVICE OBJECTS, ktore dany DRIVER spravuje. Tento LIST je DYNAMICKY MODIFIKOVANY WINDOWS pri kazdom uspesnom volanim FUNCTION IoCreateDevice(). Vyuzivaju ho najma NON-WDM DRIVERS, ktore pri uvolnovani DRIVER moze vdaka tomuto FIELD FUNCTION DriverUnload() zistit zoznam vsetkych DEVICE OBECTS, ktore DRIVER spravuje a odstranit ich. WDM DRIVERS tento FIELD spravidla nepouzivaju.
+   B. FIELD DRIVER_OBJECT.DriverExtension obsahuje POINTER na DRIVER_EXTENSION STRUCTURE. DRIVER_EXTENSION ma pristupny IBA FIELD DRIVER_EXTENSION.AddDevice, ktory obsahuje POINTER na FUNCTION AddDevice(). Ta je volana pri pridani noveho DEVICE OBJECT, ktory bude DRIVER spravovat.
+   C. FIELD DRIVER_OBJECT.HardwareDatabase obsahuje POINTER na nazov REGISTRY KEY v ktorom je ulozena HW DATABASE obsahujuca HW konfiguracne parametere. Je to UNICODE STRING, tak ako VSETKY STRINGS vo WDK.
+   D. FIELD DRIVER_OBJECT.FastIoDispatch obsahuje POINTER na FAST_IO_DISPATCH STRUCTURE, ktora obsahuje POINTERS na CALLBACK FUNCTIONS, ktore su volane IBA vo FILE SYSTEM a NETWORK DRIVERS. Ine DRIVERS tuto STRUCTURE NEPOUZIVAJU.
+   E. FIELD DRIVER_OBJECT.DriverInit obsahuje POINTER na FUNCTION DriverEntry(). Nastavuje ju IO MANAGER.
+   F. FIELD DRIVER_OBJECT.DriverStartIo obsahuje POINTER na FUNCTION StartIo(), ktora je volana z IO MANAGER na spracovanie serializovanych IO REQUESTS (IRP).
+   G. FIELD DRIVER_OBJECT.DriverUnload obsahuje POINTER na FUNCTION DriverUnload(), ktora je volana z IO MANAGER pri uvolnovani DRIVER z VIRTUAL MEMORY, kedy je mozne uvolnit alokovane RESOURCES.
+   !!! H. FIELD DRIVER_OBJECT.MajorFunction obsahuje POINTER na ARRAY obsahujuci CALLBACK FUNCTIONS, ktore su volane pri prichode prislusnych typov IRP PACKETS.
+47. DEVICE_OBJECT ma nasledujuce DOCUMENTED a UNDOCUMENTED FIELDS.
+   A. FIELD DEVICE_OBJECT.DriverObject obsahuje POINTER na DRIVER_OBJECT asociovany s DEVICE_OBJECT. Pomocou tohto FIELD moze DEVICE OBJECT pristupit k DRIVER OBJECT DRIVER s ktorym je asociovany.
+   !!! B. FIELD DEVICE_OBJECT.NextDevice obsahuje POINTER na LIST instancii typu DEVICE_OBJECT (identicky s VALUE vo FIELD FIELD DRIVER_OBJECT.DeviceObject), ktory obsahuje vsetky DEVICE OBJECTS, ktore dany DRIVER spravuje. Tento LIST je DYNAMICKY MODIFIKOVANY WINDOWS pri kazdom uspesnom volanim FUNCTION IoCreateDevice(). Vyuzivaju ho najma NON-WDM DRIVERS, ktore pri uvolnovani DRIVER moze vdaka tomuto FIELD FUNCTION DriverUnload() zistit zoznam vsetkych DEVICE OBECTS, ktore DRIVER spravuje a odstranit ich. WDM DRIVERS tento FIELD spravidla nepouzivaju. Pristup k tomuto FIELD NIE JE THREAD SAFE, kedze IO MANAGER vykonava jeho DYNAMIC UPDATES. DYNAMIC UPDATES su synchronizovane pomocou INTERNAL SYSTEM LOCK, ktory vsak vo WDM NIE JE PRISTUPNY. To znaci, ze aj ked tento FIELD je DOCUMENTED, tak je v podstate NEPOUZITELNY okrem LEGACY DRIVERS, kde si DEVICE_OBJECT LIST spravuje sam DRIVER.
+   C. FIELD DEVICE_OBJECT.CurrentIrp obsahuje POINTER na aktualny IRP spracovavany FUNCTION StartIo(), ak tato bola nastavena. WDM DRIVERS tento FIELD NEPOUZIVAJU.
+   D. FIELD DEVICE_OBJECT.Flags obsahuje FLAGS popisujuce cinnost HW DEVICE, ktory dany DEVICE OBJECT riadi.
+   E. FIELD DEVICE_OBJECT.Characteristics obsahuje FLAGS popisujuce dany DEVICE_OBJECT ako napriklad ci sa jedna o REMOVABLE DEVICE, VIRTUAL VOLUME a podobne.
+   !!! F. FIELD DEVICE_OBJECT.DeviceExtension obsahuje POINTER na CUSTOM STRUCTURE, ktore sa alokuje pri volani FUNCTION IoCreateDevice() zadanim jej dlzky. DRIVER CODE moze do tejto STRUCTURE ukladat LUBOVOLNE DATA, ktore potrebuje pre svoju cinnost.
+   G. FIELD DEVICE_OBJECT.DeviceType je CONSTANT urcujuci TYPE daneho DEVICE.
+   H. FIELD DEVICE_OBJECT.StackSize urcuje pocet DEVICE OBJECTS, ktore su v DEVICE OBJECT STACK od CURRENT DEVICE OBJECT az po PDO. PDO ma hodnotu 1, kedze je najnizsie v DEVICE OBJECT STACK.
+   I. FIELD DEVICE_OBJECT.AlignmentRequirement urcuje pozadovany ALIGNMENT pre DATA BUFFERS pouzivane pri READ a WRITE operaciach.
+   !!!!! J. FIELD DEVICE_OBJECT.DeviceQueue je UNDOCUMENTED MEMBER, ktory obsahuje POINTER na QUEUE obsahujucu vsetky IRP, ktore este neboli spracovane.
+!!!!! 48. WDM nativne pouziva VZDY UNICODE STRINGS. Avsak napriklad LOG FUNCTION MUSIA pouzivat v ASCII STRINGS.
+!!!!! 49. Vo WDM je pouzitie C++ VELMI PROBLEMATICKE, najma pre MANAGEMENT MEMORY. C++ pouziva svoje vlastne HEAPS, ktore vsak nefunguju spolu s KERNEL HEAPS, ktore je nutne pouzit pri programovani DRIVERS. Pre programovanie DRIVERS v C++ platia nasledujuce obmedzenia.
+   A. CLASSES su podporovane iba ako POD C++ CLASSES, ktore nesmu BASE CLASSES a nesmu pouzivat INHERITANCE ani POLYMORPHISM.
+   !!! B. CLASSES, ktore NEMAJU BASE CLASSES MOZU mat PRIVATE a PUBLIC FIELDS, CONSTRUCTORS, DESTRUCTORS, NON-VIRTUAL INSTANCE METHODS, STATIC METHODS i OVERLOADED OPERATORS, vratane OPERATORS NEW a DELETE.
+   C. C++ EXCEPTIONS NIE SU PODPOROVANE.
+   D. C++ RTTI NIE JE PODPOROVANE.
+   !!!!! E. Pomocou C++ napriklad je mozne vytvorit STRING CLASS. Tato CLASS MUSI definovat CUSTOM OPERATORS pre OPERATOR NEW a OPERATOR DELETE, ktory namiesto C++ HEAP pouzije PAGED, alebo NON-PAGED KERNEL HEAP.
+50. WDM definuje 2 zakladne inicializacne FUNCTIONS.
+   A. FUNCTION DriverEntry() je analogiou main() C++ FUNCTION. Je volana IBA RAZ po nacitani DRIVER do VIRTUAL MEMORY. FUNCTION DriverEntry() MUSI byt pri C++ COMPILATION nastavena na 'extern C', pretoze tato FUNCTION je EXPORTED a NESMIE MAT MANGLED NAME.
+   B. FUNCTION AddDevice() je volana VZDY ked sa do DRIVER prida nova INSTANCIA DEVICE OBJECT, ktory ma DRIVER spravovat.
+!!! 51. Vo WDM FUNCTIONS, ktore sluzia ako ROUTINES, ktore vola WINDOWS vracaju hodnotu NTSTATUS. NTSTATUS je LONG VALUE, ktora reprezentuje vysledok volania FUNCTION. WDM definuje mnozstvo standardizovanych hodnot, ktore do NTSTATUS je mozne vlozit.
+!!! 52. KLUCOVOU funkcionalitou FUNCTION DriverEntry() je nainicializovat CALLBACK FUNCTIONS, ktore budu vyvolavane IO MANAGER pri vyskyte rozlicnych EVENTS. DriverEntry() inicializuje tieto CALLBACK FUNCTIONS.
+   A. FIELD DriverObject->DriverUnload sa nastavuje na CUSTOM FUNCTION DriverUnload(), ktora je volana pri odstranovani DRIVER z VIRTUAL MEMORY. Je to miesto, kde je mozne uvolnit alokovane RESOURCES.
+   B. FIELD DriverObject->DriverExtension->AddDevice sa nastavuje na CUSTOM FUNCTION AddDevice(), ktora je volana v momente ked do DRIVER je pridany DEVICE OBJECT, ktory ma dany DRIVER spravovat.
+   C. FIELD DriverObject->DriverStartIo sa nastavuje na CUSTOM FUNCTION DriverStartIo(), ktora je volana ak DRIVER pouziva STANDARD QUEUEING METHOD pre IO REQUESTS (IRP).
+   !!! D. FIELD DriverObject->MajorFunction obsahuje ARRAY s CALLBACK FUNCTIONS, ktore su volane IO MANAGER pri vzniku rozlicnych EVENTS. Minimalne IRP_MJ_PNP, IRP_MJ_POWER a IRP_MJ_SYSTEM_CONTROL musia byt nastavene.
+   E. PARAMETER FUNCTION DriverEntry() typu PUNICODE_STRING obsahuje REGISTRY KEY obsahujuci konfiguraciu DRIVER. Tento STRING ma platnosti iba pocas volania FUNCTION DriverEntry(), a preto ak ma byt pouzivany aj v inych FUNCTIONS, je nutne vytvorit jeho DEEP COPY.
+53. FUNCTION DriverUnload() je volana ked je DRIVER UNLOADED z VIRTUAL MEMORY. Platia pre nu nasledujuce zasady.
+   A. FUNCTION DriverUnload() sa nastavuje do FIELD DriverObject->DriverUnload.
+   B. FUNCTION DriverUnload() musi uvolnit VSETKY ALOKOVANE RESOURCES.
+   !!! C. FUNCTION DriverUnload() MUSI byt implementovana, aby IO MANAGER bol schopny uvolnit DRIVER z VIRTUAL MEMORY a zaroven ak ma DRIVER prejst cez DATA VERIFIER.
+   !!!!! D. FUNCTION DriverUnload() NIE JE VOLANA, ak FUNCTION DriverEntry() vrati ERROR CODE. V tomto pripade je DriverEntry() ZODPOVEDNA za uvolnenie RESOURCES, ktore alokovala.
+54. FUNCTION AddDevice() je volana VZDY ked DRIVER ma zacat spravovat novy DEVICE OBJECT. Ma nasledujuce PARAMETERS.
+   A. 1. PARAMETER DriverObject je instancia STRUCTURE DRIVER_OBJECT reprezentujuca DRIVER.
+   !!! B. 2. PARAMETER PhysicalDeviceObject je PDO v DEVICE OBJECT STACK daneho HW DEVICE. PhysicalDeviceObject sa odkazuje na PDO, aj ked v DEVICE OBJECT STACK je VIACERO DEVICE_OBJECT nad PDO ako napriklad FIDO (FILTER DEVICE OBJECT).
+!!! 55. FUNCTION AddDevice() by mala realizovat minimalne tento CODE.
+   A. Vytvorit DEVICE_OBJECT volanim FUNCTION IoCreateDevice(). Zaroven sa pocas volania IoCreateDevice() alokuje pamat pre EXTENSION DATA.
+   !!! B. Zaregistruje sa 0-N USER INTERFACES, aby APPLICATIONS vedeli pristupovat k danemu (DEVICE_OBJECT) DRIVER a pomocou neho pracovat s HW DEVICE. Alternativne je mozne dat DEVICE_OBJECT NAME a vytvorit SYMBOLIC LINK.
+   C. Inicializuju sa EXTENSION DATA a FLAGS vytvoreneho DEVICE_OBJECT.
+   !!! D. Zavola sa FUNCTION IoAttachDeviceToDeviceStack(), ktorou sa prida DEVICE_OBJECT na VRCHOL DRIVER STACK.
+56. FUNCTION IoCreateDevice() vytvara DEVICE_OBJECT a zaroven alokuje MEMORY pre EXTENSION DATA, ktore su asociovane s DEVICE_OBJECT. Ma nasledujuce PARAMETERS.
+   A. 1. PARAMETER DriverObject je DRIVER_OBJECT s ktorym sa asociuje dany DEVICE_OBJECT.
+   B. 2. PARAMETER DeviceExtensionSize je dlzka EXTENSION DATA v BYTES, ktore budu asociovane s DEVICE_OBJECT.
+   C. 3. PARAMETER DeviceName je NAME daneho DEVICE_OBJECT. Pomocou tohto NAME moze USER MODE CODE vytvorit HANDLE na HW DEVICE, ktory DEVICE_OBJECT obsluhuje.
+   D. 4. PARAMETER DeviceType urcuje TYP DEVICE_OBJECT. FLAG je dolezity najma pre FILE SYSTEM, DISK ci TAPE DEVICES.
+   E. 5. PARAMETER DeviceCharacteristics urcuje DEVICE CHARACTERISTICS pre dany DEVICE_OBJECT. Zvycajne sa vyuziva pri DRIVERS pre MASS STORAGE DEVICES.
+   F. 6. PARAMETER Exclusive urcuje ci DEVICE bude pouzivane v EXCLUSIVE rezime. Tento PARAMTER sa zvycajne nastavuje na FALSE a v pripade, ze DEVICE ma praxovat v EXCLUSIVE rezime, tak pri obsluje IRP IRP_MJ_CREATE moze DRIVER vratit CHYBU.
+   G. 7. PARAMETER DeviceObject je POINTER na vytvoreny DEVICE_OBJECT. PARAMETER DeviceObject je naplneny IBA ak IoCreateDevice() skonci uspesne. Ak po vytvoreni DEVICE_OBJECT dojde k vyskytu chyby, tak je NUTNE uvolnit DEVICE_OBJECT pomocou FUNCTION IoDeleteDevice().
+57. FUNCTION IoDeleteDevice() ODSTRANUJE vytvoreny DEVICE_OBJECT. Ako PARAMETER ma POINTER na vytvoreny DEVICE_OBJECT.
+!!! 58. WINDOWS si uklada rozlicne objekty OS ako napriklad DRIVERS, DEVICES, SYSTEM DLL, KERNEL OBJECTS ci CUSTOM OBJECTS ako SYSTEM OBJECTS. Pre SYSTEM OBJECTS platia nasledujuce zasady.
+   A. SYSTEM OBJECTS su podobne ako FILES vo FILES SYSTEM hierarchicky ukladane do SYSTEM OBJECT TREE, ktory ma DIRECTORIES a SUBDIRECTORIES.
+   B. TOOL [WinObj.exe] zo SYS INTERNALS umoznuje prezerat hiererchicky ulozene SYSTEM OBJECTS.
+   C. SYSTEM OBJECTS mozu mat priradene NAMES.
+   !!! D. Na SYSTEM OBJECTS je mozne vytvarat SYMBOLIC LINKS pomocou ktorych sa je mozne odkazovat na DEVICE OBJECTS.
+!!! 59. DEVICE OBJECTS su TIEZ SYSTEM OBJECTS. Ak DEVICE_OBJECT ma priradeny NAME tak je tento NAME mozne vyuzit 2 sposobmi.
+   A. V KERNEL MODE je mozne pomocou KERNEL API FUNCTION IoGetDeviceObjectPointer() vyhladat DEVICE_OBJECT a zaslat mu IRP.
+   !!! B. V USER MODE mozu APPLICATIONS otvarat HANDLES na DEVICE_OBJECT pomocou FUNCTION CreateFile() a nasledne robit READ a WRITE pomocou ReadFile() a WriteFile(). NAME SYSTEM OBJECT MUSI mat pri pouziti WIN32 API FUNCTION CreateFile() PREFIX [\\.\]. To znamena, ze ak napriklad NAME ma hodnotu [XXX], tak FUNCTION CreateFile() je nutne volat s PARAMETER [\\.\XXX].
+!!!!! 60. DEVICE OBJECTS NEMUSIA mat definovany NAME. V tomto pripade na nie NIE JE MOZNE vytvorit SYMBOLIC LINK. Pristup k nim je vsak mozny cez USER INTERFACE zaregistrovany v DRIVER FUNCTION AddDevice().
+!!! 61. Pri vyhladavani SYSTEM OBJECTS podla NAME (C:\Text.txt) postupuje WINDOWS nasledovne.
+   A. Pri volani WIN32 API FUNCTION CreateFile() transformuje DOS FILE NAME [C:\Text.txt] na WINDOWS SYSTEM OBJECT PATH [\??\C:\Text.txt].
+   B. OBJECT MANAGER nahradi cast PATH [??] za PATH do DIRECTORY [DosDevices] pre CURRENT USER. Napriklad [\??\C:\Text.txt] sa moze nahradit za PATH [\Session\0\DosDevices].
+   C. Ak hladany SYSTEM OBJECT NIE JE v PATH [\Session\0\DosDevices] NAJDENY, OBJECT MANAGER zacne prehladavat DIRECTORY [GLOBAL??] v SYSTEM OBJECT TREE. To znaci, ze hlada SYSTEM OBJECT v PATH [\GLOBALS??\C:].
+   !!! D. Kedze v PATH [\GLOBALS??] sa nachadza SYBOLIC LINK pre [C:], ktora odkazuje na PATH [\Device\HarddiskVolume1], tak sa hladany PATH zmeni na [\Device\HarddiskVolume1\Text.txt].
+   D. OBJECT MANAGER sa pozrie do DIRECTORY [\Device], kde najde SYSTEM OBJECT [HarddiskVolume1].
+   E. Nasledne sa do DRIVER, ktory je asociovany so SYSTEM OBJECT [HarddiskVolume1] sa zasle IRP s poziadavkou na nacitanie FILE [Text.txt].
+62. V USER MODE sa pre DOS DEVICES vytvara a odstranuje SYMBOLIC LINK pomocou FUNCTION DefineDosDevice().
+63. V KERNEL MODE sa pre DOS DEVICES vytvara SYMBOLIC LINK pomocou FUNCTION IoCreateSymbolicLink().
+64. V USER MODE je mozne ziskat mena vsetkych SYMBOLIC LINKS pomocou FUNCTION QueryDosDevice(). Tato FUNCTION umoznuje ziskat aj SYMBOLIC NAME pre konkretny DOS DEVICE, napriklad pre [C:].
+!!! 65. Ak sa vytvori TA ISTA SYMBOLIC LINK VIACKRAT, je nu NUTNE aj VIACKRAT UVOLNIT, aby sa zrusila jej platnost.
+!!! 66. Ak sa pre DEVICE_OBJECT vytvori NAME, tak je mozne vykonavat pomocou tohto NAME tieto operacie.
+   A. Ktorykolvek KERNEL MODE PROGRAM moze otvorit HANDLE na DEVICE pomocou NAME.
+   B. Ktorykolvek KERNEL MODE ci USER MODE PROGRAM moze vytvorit SYMBOLIC LINK na DEVICE_OBJECT pomocou ktoreho je mozne vytvorit HANDLE na DEVICE_OBJECT.
+!!! 67. NEVYHODA pridelenia NAME DEVICE_OBJECT je SECURITY RISK, kedze ACL je prideleny k DEVICE_OBJECT podla TYPU DEVICE nastaveneho pri volani FUNCTION IoCreateDevice(). ACL su pridelene podla TYPU DEVICE a to nasledujucim sposobom.
+   A. DEVICE_OBJECT pre FILE SYSTEM DEVICES maju nastavene READ_CONTROL, SYNCHRONIZE, FILE_TRAVERSE a FILE_READ_ATTRIBUTES pre VSETKYCH USERS, pricom pre GROUP 'Administrators' a USER [System] su pridelene FULL RIGHTS.
+   B. DEVICE_OBJECT pre DISK a NETWORK DEVICES maju podobne ACL ako DEVICE_OBJECT pre FILE SYSTEM DEVICES s niektorymi mensimi modifikaciami, ako napriklad pridelenie FULL RIGHTS pre pristup k FLOPPY DISKS ci RIGHT na spustenie SCAN DISK.
+   C. DEVICE_OBJECT pre ostatne typy DEVICES maju ACL nastavene na FULL RIGHTS.
+68. SECURE alternativa voci IoCreateDevice() je FUNCTION IoCreateDeviceSecure().
+!!! 69. TOOL [WinObj.exe] zo SYS INTERNALS umoznuje prezerat ACL jednotlivych DEVICE_OBJECT.
+!!!!! 70. Z hladiska SECURITY sa NEODPORUCA davat NAMES pre DEVICE_OBJECT. Tieto DEVICE_OBJECT NIE SU PRISTUPNE cez NAMES, ale su pristupne cez INTERFACES.
+71. DEVICE_OBJECT NAME sa vytvara nasledujucim sposobom.
+   A. Vytvori sa UNIKATNY NAME v 'Device' NAMESPACE. Zvycajne sa vytvara tak, ze sa ze sa prida k NAME POSFIX udavajuci PORADOVE CISLO DEVICE_OBJECT, ktory dany DRIVER obsluhuje.
+   B. Pomocou FUNCTION RtlInitUnicodeString() sa inicializuje STRUCTURE UNICODE_STRING, ktora obsahuje NAME.
+   C. DEVICE_OBJECT NAME sa zada ako 3. PARAMETER do FUNCTION IoCreateDevice().
+!!!!! 72. DEVICE INTERFACE CLASS je UNIKANTY GUID, ktory identifikuje SW INTERFACE, ktorym mozu APPLICATIONS komunikovat s HW DEVICES. Plati, ze kazdy novy (standardizovany) sposob akym moze APPLICATION komunikovat s nejakym DEVICE ma prideleny GUID, vdaka ktoremu mozu APPLICATION zistit ci dany DEVICE tento DEVICE INTERFACE implementuje. DEVICE INTERFACES su NAHRADOU za DEVICE_OBJECT NAMES.
+73. FUNCTION IoRegisterDeviceInterface() umoznuje registrovat DEVICE INTERFACE CLASS s danym GUID a vytvara jeho INSTANCIU (SYMBOLIC LINK NAME, ktory ulozi ho REGISTRY). Ma nasledujuce PARAMETERS.
+   A. 1. PARAMETER PhysicalDeviceObject je POINTER na PDO (PHYSICAL DEVICE_OBJECT).
+   B. 2. PARAMETER InterfaceClassGuid je GUID DEVICE INTERFACE.
+   C. 3. PARAMETER ReferenceString je SUBNAME. Bezne sa NEPOUZIVA.
+   !!! D. 4. PARAMETER SymbolicLinkName je POINTER na SYMBOLIC LINK NAME, ktory nepriamo pouzivaju APPLICATIONS na otvaranie HANDLERS na DEVICE. Pre DRIVERS je to OPAQUE VALUE.
+!!! 74. FUNCTION IoRegisterDeviceInterface() vykonava 2 CINNOSTI.
+   A. Do REGISTRY zaregistruje DEVICE INTERFACE CLASS ak predtym nebol zaregistrovany.
+   !!! B. Vytvori INSTANCIU DEVICE INTERFACE CLASS, ktoru DRIVER moze pouzit, aby umoznil APPLICATIONS pristupovat cez tento DEVICE INTERFACE k DEVICE.
+!!!!! 75. To ako DEVICE INTERFACE CLASS dany DRIVER zaregistruje zavisi IBA od toho aku FUNKCIONALITU VYSTAVUJE. Napriklad 3 MOUSE DEVICES (jedna pripojena cez SERIAL PORT, druha cez USB PORT a tretia cez INFRARED PORT) vystavuju TEN ISTY DEVICE INTERFACE CLASS, kedze vystavuju FUNKCIONALITU MOUSE DEVICE.
+76. DRIVERS zvycajne registruju iba 1 DEVICE INTERFACE CLASS, ale v pripade potreby (napriklad vystavuju specializovane FUNCTIONS) mozu ich zaregistrovat aj viacero.
+77. Pri registracii DEVICE INTERFACE CLASS sa do REGISTRY ulozi SYMBOLIC LINK, ktora asociuje DEVICE a DEVICE INTERFACE CLASS. Tato asociacia je teda ulozena PERMANENTE v REGISTRY.
+78. FUNCTION IoSetDeviceInterfaceState() vykonava ENABLE, alebo DISABLE instancie DEVICE INTERFACE CLASS.
+!!! 79. WDK umoznuje enumerovat zaregistrovanymi DEVICE INTERFACES nasledujucim sposobom.
+   A. V REGISTRY KEY [HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\DeviceClasses] su ulozene vsetky DEVICE INTERFACE CLASSES, ktore boli zaregistrovane DRIVERS pomocou FUNCTION IoRegisterDeviceInterface().
+   B. Pre DEVICE INTERFACE CLASS (GUID) je mozne ziskat informacie o danom DEVICE (DEVICE INFORMATION SET) pomocou FUNCTION SetupDiGetClassDevs(). Tato FUNCTION vrati HANDLE na DEVICE INFORMATION SET pomocou ktoreho je mozne ziskat podrobnosti o DEVICES.
+   C. Pomocou FUNCTION SetupDiEnumDeviceInterfaces() je mozne ENUMEROVAT vsetkymi DEVICE INTERFACES zaregistrovanymi pre dany DEVICE INTERFACE CLASS. Ako PARAMETERS prijima HANDLE na DEVICE INFORMATION SET a GUID obsahujuci DEVICE INTERFACE CLASS.
+   D. Pomocou FUNCTION SetupDiGetDeviceInterfaceDetail() je mozne ziskat podrobnosti o DEVICE INTERFACE, vratane HANDLE na DEVICE INTERFACE.
+   E. Pomocou FUNCTION SetupDiOpenDeviceInterfaceRegKey() je mozne otvorit REGISTRY KEY obsahujuci informacie o DEVICE INTERFACE.
+   F. Pomocou FUNCTION SetupDiGetDeviceRegistryProperty() je mozne ziskat DEVICE PROPERTIES z REGISTRY KEY obsahujuceho informacie o DEVICE INTERFACE.
+   G. FUNCTION SetupDiDestroyDeviceInfoList() uvolnuje DEVICE INFORMATION SET.
+!!!!! 80. Ak chce USER MODE PROGRAM otvorit HANDLE na DEVICE pomocou DEVICE INTERFACE, musi vykonat nasledujuce kroky.
+   A. Zavolat FUNCTION SetupDiEnumDeviceInterfaces() na spustenie enumeracie DEVICE INTERFACES.
+   !!! B. Vytvorit STRUCTURE SP_DEVICE_INTERFACE_DETAIL_DATA, ktora musi obsahovat aj BUFFER do ktoreho sa ulozi SYMBOLIC LINK, ktory je mozne pouzit do FUNCTION CreateFile() na ziskanie HANDLE na dany DEVICE.
+   C. Nainicalizovat FIELD SP_DEVICE_INTERFACE_DETAIL_DATA.cbSize na SIZEOF(SP_DEVICE_INTERFACE_DETAIL_DATA).
+   !!! D. Zavolat FUNCTION SetupDiGetDeviceInterfaceDetail(), kde 2. PARAMETER musi obsahovat POINTER na vytvorenu STRUCTURE SP_DEVICE_INTERFACE_DETAIL_DATA a 3. PARAMETER musi obsahovat dlzku BUFFER vo FIELD SP_DEVICE_INTERFACE_DETAIL_DATA.DevicePath.
+   !!! E. FUNCTION SetupDiGetDeviceInterfaceDetail() nastavi FIELD SP_DEVICE_INTERFACE_DETAIL_DATA.DevicePath na SYMBOLIC LINK.
+   F. Zavolat FUNCTION SetupDiDestroyDeviceInfoList() na uvolnenie dat, ktore sa alkovali pocas enumerovania DEVICE INTERFACES.
+   !!!!! G. Teraz je mozne pouzit hodnotu FIELD SetupDiDestroyDeviceInfoList ako PARAMETER FUNCTION CreateFile() na ziskanie HANDLE pomocou, ktoreho je mozne vykonat IO OPERATION nad danym DEVICE.
+81. STRUCTURE DEVICE_OBJECT moze obsahovat CUSTOM DATA (EXTENSION DATA), pre ktore je MEMORY (NON-PAGED) alokovane vo FUNCTION IoCreateDevice(). V 2. PARAMETRI IoCreateDevice() sa urcuje velkost EXTENSION DATA, pre ktoru FUNCTION IoCreateDevice() alokuje na konci STRUCTURE DEVICE_OBJECT NON-PAGED MEMORY. EXTENSION DATA spravidla obsahuje nasledujuce FIELDS.
+   A. POINTER na DEVICE_OBJECT s ktorym je EXTENSION DATA asociovany.
+   B. POINTER na DEVICE_OBJECT reprezentujuci DEVICE_OBJECT NIZSIE v DEVICE OBJECT STACK.
+   C. POINTER na DEVICE_OBJECT reprezentujuci PDO.
+   D. POINTER na UNICODE_STRING obsahujuci DEVICE INTERFACE NAME.
+   E. IO_REMOVE_LOCK, ktory sa pouziva na identifikaciu kedy je bezpecne uvolnit DEVICE_OBJECT z MEMORY pomocou FUNCTION IoDeleteDevice().
+   F. IRP QUEUES, ktore obsahuju nespracovane IRP PACKETS.
+   G. Stav PNP a POWER MANAGEMENT.
+82. FUNCTION AddDevice() by mala vykonat minimalne tieto kroky.
+   A. Pomocou FUNCTION IoCreateDevice() vytvorit DEVICE_OBJECT.
+   !!! B. Pridat vytvoreny DEVICE_OBJECT na VRCHOL DRIVER STACK volanim FUNCTION IoAttachDeviceToDeviceStack().
+   C. Inicializovat DEFFERED PROCEDURE CALL (DPC) ROUTINE.
+   D. Pomocou FUNCTION IoRegisterDeviceInterface() zaregistrovat DEVICE INTERFACE CLASS (a zaroven vytvorit INSTANCIU DEVICE INTERFACE CLASS).
+   E. Nastavit FIELDS v EXTENSION DATA CUSTOM STRUCTURE, vratane FIELD do ktoreho sa ulozi IO_REMOVE_LOCK vytvoreny pomocou FUNCTION IoInitializeRemoveLock().
+   F. Nastavit ALIGNMENT REQUIREMENTS vo FIELD DEVICE_OBJECT.AlignmentRequirement.
+   !!! G. Nastavit FLAGS. Niektore FLAGS (DO_BUFFERED_IO a DO_DIRECT_IO) je NUTNE nastavit uz v AddDevice(), pretoze si DEVICE OBJECTS, ktore su VYSSIE v DEVICE OBJECT STACK spravia ich kopiu a notifikaciu o pripadnej zmene FLAGS NIE JE MOZNE zaslat do tychto DRIVERS.
+   !!! H. Zavola sa FUNCTION IoAttachDeviceToDeviceStack(), ktora prida vytvoreny DEVICE OBJECT na vrchol DEVICE OBJECT STACK (bud nad PDO, alebo FIDO). FUNCTION IoAttachDeviceToDeviceStack() zaroven vracia POINTER na DEVICE OBJECT, ktory je HNED POD CURRENT DEVICE OBJECT v DEVICE OBJECT STACK.
+   !!! I. Odmaskovat FLAG [DO_DEVICE_INITIALIZING] z FIELD DEVICE_OBJECT.Flags. Vyhodenie FLAG [DO_DEVICE_INITIALIZING] znamena, ze DEVICE_OBJECT je initizalizovany a mozu sa k nemu pridavat dalsie DEVICE_OBJECT v DRIVER STACK. Takisto je mozne otvorit HANDLE na DEVICE reprezentovany tymto DEVICE_OBJECT.
+   J. Ako RETURN VALUE vratit hodnotu STATUS_SUCCESS.
+!!! 83. Ak DEVICE vykonava DMA TRANSFERS pri READ a WRITE OPERATIONS z DEVICE, tak HAL moze nastavit poziadavku na ADDRESS ALIGNMENT. Ak DRIVER ma RESTRIKTIVNEJSIU POZIADAVKU na ADDRESS ALIGNMENT, tak je treba upravit FIELD DEVICE_OBJECT.AlignmentRequirement. Platia pri tom nasledujuce pravidla.
+   A. FIELD DEVICE_OBJECT.AlignmentRequirement musi obsahovat hodnotu (ADDRESS_ALIGNMENT-1). Teda je o 1 BYTE kratsia hodnota ako poziadavka na ADDRESS ALIGNMENT.
+   B. FIELD DEVICE_OBJECT.AlignmentRequirement sa pri vypocte ADDRESS so spravnym ALIGNMENT pouziva ako BIT MASK.
+   !!! C. Ak DRIVER ma RESTRIKTIVNEJSIU poziadavku na ADDRESS ALIGNMENT (MY_ADDRESS_ALIGNMENT>DEFAULT_ADDRESS_ALIGNMENT), tak FIELD DEVICE_OBJECT.AlignmentRequirement je potrebne nastavit podla nasledujuceho vzorca [DEVICE_OBJECT.AlignmentRequirement=MY_ADDRESS_ALIGNMENT-1].
+   D. Ak je z ADDRESS [Address] potrebne ziskat ADDRESS so spravnym LOWER ALIGNMENT, pouzije sa nasledujuci vzorec [AlignedAddress=(PVOID) ((SIZE_T) Address & ~DEVICE_OBJECT.AlignmentRequirement)].
+   E. Ak je z ADDRESS [Address] potrebne ziskat ADDRESS so spravnym UPPER ALIGNMENT, pouzije sa nasledujuci vzorec [AlignedAddress=(PVOID) (((SIZE_T) Address+DEVICE_OBJECT.AlignmentRequirement) & ~DEVICE_OBJECT.AlignmentRequirement)].
+84. FUNCTION IoAttachDeviceToDeviceStack() pridava DEVICE_OBJECT na VRCHOL DEVICE OBJECT STACK. Ma nasledujuce PARAMETERS.
+   A. 1. PARAMETER SourceDevice obsahuje POINTER na DEVICE_OBJECT, ktory sa ma pridat na VRCHOL DEVICE OBJECT STACK.
+   B. 2. PARAMETER TargetDevice je POINTER na DEVICE_OBJECT reprezentujuci PDO.
+   !!! C. RETURN VALUE je POINTER na DEVICE_OBJECT urcujuci POVODNY VRCHOL DEVICE OBJECT STACK pred pridanim noveho DEVICE_OBJECT. Je to zaroven POINTER na DEVICE_OBJECT, ktory je v DEVICE OBJECT STACK HNED pod pridanym DEVICE_OBJECT.
+   !!! D. Ak RETURN VALUE je NULL, potom to znamena, ze sa DEVICE_OBJECT NEPODARILO pridat na VRCHOL DEVICE OBJECT STACK a AddDevice(), ktora najcastejsie FUNCTION IoAttachDeviceToDeviceStack() vola MUSI vratit RETURN VALUE [STATUS_DEVICE_REMOVED].
+//-------------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------------
+Priklady prechodu IRP cez DEVICE TREE.
+
+A. APPLICATION chce citat data z DEVICE, ktory je pripojeny k SECONDARY BUS, ktory je pripojeny k ROOT PCI BUS cez PCI-TO-PCI BRIDGE CHIP.
+
+1. APPLICATION vysle cez KERNEL do DRIVER pre dany DEVICE IRP s poziadavkou na nacitanie dat.
+2. IRP sa dostane na vrchol DRIVER STACK cieloveho DEVICE do najvyssieho FIDO.
+3. FIDO IRP nespracuje, ale preposle ho nizsie v DRIVER STACK cieloveho DEVICE do FDO.
+!!! 4. FDO zavola HAL, ktory poziada o nacitanie dat z DEVICE pripojeneho na SECONDARY BUS, ktory je pripojeny k ROOT PCI BUS.
+
+B. APPLICATION chce citat data z DEVICE, ktory je pripojeny k USB MASS STORAGE DEVICE cez USB HUB a USB CONTROLLER.
+
+1. APPLICATION vysle cez KERNEL do DRIVER pre dany DEVICE IRP s poziadavkou na nacitanie dat.
+2. IRP sa dostane na vrchol DRIVER STACK cieloveho DEVICE do najvyssieho FIDO.
+3. FIDO IRP nespracuje, ale preposle ho nizsie v DRIVER STACK cieloveho DEVICE do FDO.
+!!! 4. FDO cieloveho DEVICE pre prijaty IRP vygeneruje 1-N IRP, ktore su smerovane na PDO (BUS DRIVER) v DRIVER STACK cieloveho DEVICE.
+!!! 5. PDO DRIVER (v tomto pripade DRIVER z USB HUB) preposle zaslene IRPs do NAJVYSSIEHO DRIVER v DRIVER STACK pre USB HOST CONTROLLER (PARENT DRIVER STACK) ku ktoremu je cielovy DEVICE pripojeny.
+!!!!! 6. DRIVER STACK pre USB HOST CONTROLLER nasledne vykona citanie dat z cieloveho USB DEVICE pomocou HAL.
+
+C. Odoslanie NOTIFICATION IRP.
+
+1. IRP je prijaty DRIVER na VRCHOLE DRIVER STACKU (bud FIDO, alebo FDO) kazdeho DEVICE v OS.
+2. IRP je zaslany z vrchola DRIVER STACKU postupne na nizsie urovne az kym sa nedostane do PDO (BUS DRIVER).
+3. PDO zasle IRP do PARENT DRIVER STACK, ktory rekurzivne zasiela IRP az do ROOT DRIVER STACK.
+//-------------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------------
+MSDN - USER a KERNEL MODES.
+
+1. PROGRAMY vo WINDOWS mozu bezat bud v USER MODE, alebo v KERNEL MODE.
+2. V USER MODE maju PROCESSES PRIVATE ADDRESS SPACE. To znamena, ze PROCESSES NEMOZU pristupit k ADDRESS SPACE INEHO PROCESS, alebo k ADDRESS SPACE samotneho OS.
+!!! 3. V KERNEL MODE VSETKY DRIVERS maju SHARED ADDRESS SPACE nazyvany aj SYSTEM ADDRESS SPACE. To znaci, ze JEDEN DRIVER MOZE PRISTUPIT k ADDRESS SPACE INEHO DRIVERU ci k ADDRESS SPACE samotneho OS.
+//-------------------------------------------------------------------------------------------------------
+MSDN - VIRTUAL ADDRESS SPACES.
+
+1. WINDOWS virtualizuje pristup k PHYSICAL MEMORY pomocou VIRTUAL ADDRESS SPACE.
+2. VIRTUAL ADDRESS SPACE ma nasledujuce charakteristiky.
+   A. Pri pristupe k MEMORY musi OS transformovat VIRTUAL ADDRESS na PHYSICAL ADDRESS.
+   B. VIRTUAL ADDRESS SPACE je vytvara KONTINUALNU VIRTUAL MEMORY, aj ked PHYSICAL MEMORY KONTINUALNA NEMUSI BYT.
+   C. VIRTUAL ADDRESS SPACE moze poskytovat daleko viac VIRTUAL MEMORY ako mnozstvo PHYSICAL MEMORY, ktore ma SYSTEM k dispozicii. V pripade nedostatku PHYSICAL MEMORY je jej obsahu ulozeny na DISK.
+   D. VIRTUAL ADDRESS SPACE v USER MODE je PRIVATNY. To znamena, ze PROCESSES NEMOZU pristupit k ADDRESS SPACE INEHO PROCESS, alebo k ADDRESS SPACE samotneho OS.
+!!! 3. VIRTUAL ADDRESS SPACE je vo WINDOWS rozdeleny na 2 casti.
+   A. USER ADDRESS SPACE je USER MODE ADDRESS SPACE, ktory APPLICATIONS mozu vyuzivat na vykonavanie svojho CODE.
+   B. SYSTEM ADDRESS SPACE je KERNEL MODE ADDRESS SPACE, ktoru vyuziva KERNEL OS na beh OS a DRIVERS.
+!!!!! 4. CODE beziaci v USER ADDRESS SPACE (USER CODE) je PRIVATNY, co znaci, ze CODE v USER ADDRESS SPACE NEMOZE pristupovat k USER ADDRESS SPACE INEHO PROCESSU, ani k SYSTEM ADDRESS SPACE.
+!!!!! 5. CODE beziaci v SYSTEM ADDRESS SPACE (KERNEL CODE) je SHARED, co znaci, ze CODE v SYSTEM ADDRESS SPACE MOZE pristupovat k SYSTEM ADDRESS SPACE i USER ADDRESS SPACE CURRENT PROCESS (PROCESS, ktory ma v case behu KERNEL CODE ma prideleny CPU).
+!!! 6. V X64 PROCESSES su ADDRESSES rozdelene nasledovne.
+   A. ADDRESSES <00000000'00000000-000007FF'FFFFFFFF> su pridelene USER ADDRESS SPACE.
+   B. ADDRESSES <FFFF0800'00000000-FFFFFFFF'FFFFFFFF> su pridelene KERNEL ADDRESS SPACE.
+!!! 7. USER ADDRESS SPACE moze byt CELY PAGED na DISK.
+!!! 8. V SYSTEM ADDRESS SPACE iba CAST ADDRESS SPACE moze byt PAGED na DISK.
+   A. ADDRESSES <FFFFA800'00000000-0xFFFFA81F'FFFFFFFF> patria do PAGED POOL a tieto ADDRESSES MOZU byt PAGED na DISK.
+   B. ADDRESSES <FFFFAC00'00000000-0xFFFFAC1F'FFFFFFFF> patria do NON-PAGED POOL a tieto ADDRESSES NIKDY NESMU byt PAGED na DISK.
+//-------------------------------------------------------------------------------------------------------
+MSDN - DEVICE NODES a STACKS.
+
+1. WINDOWS organizuje DEVICES do DEVICE TREE, ktory je tvoreny DEVICE NODES.
+!!! 2. DEVICE NODE moze reprezentovat nasledujuce entity.
+   A. DEVICE.
+   B. INDIVIDUAL FUNCTION COMPOSITE DEVICE.
+   C. SW COMPONENT.
+!!! 3. Priklady usporiadania NODES v DEVICE TREE.
+   A. Ak BUS DEVICE vystupuje ako PARENT DEVICE NODE, jeho CHILD NODES su DEVICES pripojene k tomuto BUS.
+   B. Kedze v PC je k PCI BUS DEVICE pripojeny USB HOST CONTROLLER, ku ktoremu su pripojene cez USB ROOT HUB USB DEVICES, tak v DEVICE TREE je PCI BUS DEVICE je PARENT DEVICE k USB HOST CONTROLLER DEVICE, ten je PARENT NODE k USB ROOT HUB DEVICE a ten je PARENT NODE k 1-N USB DEVICES.
+!!!!! 4. Kazdy DEVICE NODE ma DEVICE STACK, ktory je tvoreny SORTED LIST obsahujuci 1-N DEVICE-DRIVERS PAIRS, pricom KAZDY DEVICE-DRIVER PAIR obsahuje DEVICE OBJECT a s nim asociovany DRIVER.
+!!! 5. V DEVICE STACK MUSI byt PRAVE 1 FUNCTION DRIVER a 0-N FILTER DRIVERS.
+!!!!! 6. DEVICE TREE je konstrukovany nasledujucim sposobom.
+   A. Pri BOOTE WINDOWS poziada KAZDY BUS, aby enumeroval vsetky svoje CHILD DEVICES - DEVICES, ktore su fyzicky pripojene na dany BUS.
+   !!! B. BUS vykona enumeraciu VSETKYCH PRIPOJENYCH CHILD DEVICES a pre KAZDY CHILD DEVICE vytvori DEVICE OBJECT, ktory sa nazyva PHYSICAL DEVICE OBJECT (PDO).
+   C. Pre PHYSICAL DEVICE OBJECT KAZDEHO CHILD DEVICE je vytvoreny DEVICE NODE, ktory je zaradeny do DEVICE TREE.
+   !!!!! D. K PHYSICAL DEVICE OBJECT (PDO) KAZDEHO CHILD DEVICE je PRIDELENY DRIVER (najde sa v REGISTRY). Tento DRIVER je BUS DRIVER daneho BUS ku ktoremu je DEVICE PRIPOJENY. Vdaka tomuto BUS DRIVER bude moct DEVICE komunikovat s ostatnymi DEVICES na danom BUS.
+   E. WINDOWS pozrie do REGISTRY, odkial zisti, ktore DRIVERS maju byt sucastou DEVICE STACK. V DEVICE STACK MUSI byt VZDY PRAVE 1 FUNCTION DRIVER a 0-N FILTER DEVICE DRIVERS.
+   F. WINDOWS nacita FUNCTION DRIVER a ak existuju, tak aj vsetky FILTER DRIVERS.
+   !!! G. Pre FUNCTION DRIVER je vytvoreny FUNCTION DEVICE OBJECT (FDO) a pre vsetky FILTER DRIVERS su vytvorene FILTER DEVICE OBJECTS (FIDO).
+   H. Vsetky vytvorene FUNCTION DEVICE OBJECTS (FDO) a FILTER DEVICE OBJECTS (FIDO) su vlozene na VRCHOL DEVICE STACK - NAD PHYSICAL DEVICE OBJECT.
+!!! 7. FILTER DRIVERS sa delia do 2 kategorii podla ich umiestnenia voci FUNCTION DRIVER v danom STACK NODE.
+   A. UPPER FILTER DRIVER je FILTER DRIVER ktory je v DEVICE STACK nad FUNCTION DRIVER.
+   B. LOWER FILTER DRIVER je FILTER DRIVER ktory je v DEVICE STACK pod FUNCTION DRIVER.
+!!!!! 8. BUS DRIVERS vykonavaju v DEVICE TREE 2 ulohy.
+   A. Ak sa vyskytuju v DEVICE NODES, ktore reprezentuju samotny BUS, tak su asociovane s FUNCTION DEVICE OBJECTS.
+   B. Ak sa vyskytuju v DEVICE NODES, ktore reprezentuju BUS CHILD NODES, tak su asociovane s PHYSICAL DEVICE OBJECTS.
+9. USER MODE DRIVERS vytvaraju USER MODE DEVICE STACKS (v USER ADDRESS SPACE) na rozdiel od KERNEL MODE DRIVERS, ktore vytvaraju KERNEL MODE DEVICE STACKS (v SYSTEM ADDRESS SPACE).
+//-------------------------------------------------------------------------------------------------------
+MSDN - IRP.
+
+1. Do DEVICE DRIVER su REQUESTS zaselane vo forme IRP (IO REQUEST PACKET).
+!!! 2. IRP je DATOVA STRUKTURA (STRUCT 'IRP') ulozena v MEMORY.
+3. IRP, ktory  moze byt generovany bud OS, alebo INYM DRIVEROM.
+!!!!! 4. IRP v DEVICE STACKS VZDY tecu iba JEDNYM SMEROM a to z UPPER FILTER DRIVERS do FUNCTION DRIVER, odtial do LOWER FILTER DRIVERS a odtial do BUS DRIVER.
+!!!!! 5. IRP NEMUSIA PRETIECT CELYM DEVICE STACKOM. Ak su napriklad KOMPLETNE obsluzene vo FUNCTION DRIVER, tak uz NETECU do LOWER FILTER DRIVERS a BUS DRIVER.
+//-------------------------------------------------------------------------------------------------------
+MSDN - DRIVER STACKS.
+
+1. VACSINA REQUESTS, ktore su zasielane do DEVICE DRIVERS su zabalene v IRP (INTERRUPT REQUEST PACKET).
+2. IRP prechadzaju cez COLLECTION DRIVERS, ktore su usporiadane v DEVICE STACKS, ktore su ulozene v DEVICE TREE.
+3. DRIVERS, ktore participuju na spracovani IRP tvoria DRIVER STACK pre IO REQUEST.
+!!! 4. Priklad spracovania IRP v USB DEVICE STACK (vid. obrazky DriverStackForIORequest1.png, DriverStackForIORequest2.png a DriverStackForIORequest3.png).
+   A. FDO DRIVER Disk.sys v DEVICE NODE [My USB Storage Device] vygeneruje IRP REQUEST pre zapis dat na USB DEVICE.
+   B. IRP je zaslany z FDO DRIVER Disk.sys v DEVICE NODE [My USB Storage Device] do PDO DRIVER Usbstor.sys v DEVICE NODE [My USB Storage Device].
+   !!! C. PDO DRIVER Usbstor.sys v DEVICE NODE [My USB Storage Device] je ZAROVEN FDO DRIVER v DEVICE NODE [USB Mass Storage Device] a preto sa IRP dostane do DEVICE NODE [USB Mass Storage Device].
+   D. IRP je zaslany z FDO DRIVER Usbstor.sys v DEVICE NODE [USB Mass Storage Device] do PDO DRIVER Usbhub.sys v DEVICE NODE [USB Mass Storage Device].
+   !!! E. PDO DRIVER Usbhub.sys v DEVICE NODE [USB Mass Storage Device] je ZAROVEN FDO DRIVER v DEVICE NODE [USB Root Hub] a preto sa IRP dostane do DEVICE NODE [USB Root Hub].
+   F. IRP je zaslany z FDO DRIVER Usbhub.sys v DEVICE NODE [USB Root Hub] do PDO DRIVER (Usbuhci.sys, Usbport.sys) v DEVICE NODE [USB Root Hub].
+   !!! G. PDO DRIVER (Usbuhci.sys, Usbport.sys) v DEVICE NODE [USB Root Hub] je ZAROVEN FDO DRIVER v DEVICE NODE [USB Host Controller] a preto sa IRP dostane do DEVICE NODE [USB Host Controller].
+   !!!!! H. FDO DRIVER v DEVICE NODE [USB Host Controller] vykona zapis dat na USB BUS.
+//-------------------------------------------------------------------------------------------------------
+MSDN - TYPY WDM DRIVERS.
+
+!!!!! 1. Vo WDM existuju 3 TYPY DRIVERS.
+   A. BUS DRIVER. Zabezpecuje ovladanie BUS, avsak NIE za ZAPIS a CITANIE z BUS. Je zodpovedny za ENUMERACIU vsetkych CHILD DEVICES, ktore su k BUS pripojene.
+   B. FUNCTION DRIVER. Zabezpecuje ovladanie DEVICE. Je zodpovedny za za spustanie IO OPERATIONS, spracovavanie INTERRUPTS, ktore su generovane po skonceni IO OPERATIONS a MANAGEMENT daneho DEVICE, ako napriklad zmena konfiguracie iniciovanu zo strany USER.
+   C. FILTER DRIVERS. DEVICE moze mat asociovanych 0-N FILTER DRIVERS, ktore snimaju a modifikuju IRP PACKETS.
+2. Pre BUS DRIVERS platia nasledujuce skutocnosti.
+   A. Zabezpecuje ovladanie BUS.
+   !!! B. BUS DRIVERS funguju ako FUNCTION DRIVERS pre DANY BUS, ktory ovlada.
+   C. Enumeruje vsetkymi DEVICES, ktore su pripojene k danemu BUS.
+   D. Odpoveda na PNP a POWER MANAGEMENT IRP.
+   E. Vykonava MULTIPLEXING pristupu k BUS.
+   F. Po enumerovani vsetkymi pripojenymi DEVICES vytvori BUS DRIVER vytvori pre kazdy najdeny CHILD DEVICE novy DEVICE OBJECT.
+   G. Pre CHILD DEVICES vykonava niektore cinnosti, ako napriklad zmenu ich POWER STATE.
+   !!!!! H. BUS DRIVERS NEVYKONAVAJU priamo READ a WRITE OPERATIONS nad BUS. Vykonavanie READ a WRITE OPERATIONS je zalezitostou FUNCTION DRIVER CHILD DEVICES. Iba ak je CHILD DEVICE v RAW MODE, tak BUS DRIVER zabezpecuje aj READ a WRITE OPERATIONS nad BUS.
+3. Pre FUNCTION DRIVERS platia nasledujuce skutocnosti.
+   A. Je to MAIN DRIVER zodpovedny za ovladanie DEVICE.
+   !!!!! B. Je zodpovedny za ovladanie DEVICE - vykonavanie READ a WRITE OPERATIONS nad BUS, ku ktory je DEVICE pripojeny, ktore su cez BUS zaslane do tohto DEVICE.
+   C. Moze ovladat naraz aj VIACERO DEVICES.
+   !!! D. Ak DEVICE je ovladane v RAW MODE, tak NEMA FUNCTION DRIVER a vsetky READ a WRITE OPERATIONS su realizovane BUS DRIVER.
+4. Pre FILTER DRIVERS platia nasledujuce skutocnosti.
+   A. Je to OPTIONAL DRIVER, ktorych DEVICE STACK moze mat 0-N.
+   B. Rozsiruje funkcionalitu FUNCTION a BUS DRIVERS implementaciou DEVICE SPECIFIC funkcionalitu.
+   C. BUS FILTER DRIVER rozsiruje BUS DRIVER o DEVICE SPECIFIC funkcionalitu.
+   D. LOWER LEVEL FILTER DRIVERS rozsiruju funkcionalitu FUNCTION DRIVERS. Monitoruju a modifikuju IRP, ktore FUNCTION DRIVER zasiela do BUS DRIVER.
+   E. UPPER LEVEL FILTER DRIVERS rozsiruju funkcionalitu FUNCTION DRIVERS. Monitoruju a modifikuju IRP, ktore prijima FUNCTION DRIVER z OS.
+!!!!! 5. Vo WINDOWS je KAZDY DEVICE ku ktoremu sa pripajaju INE DEVICES oznacovany ako BUS DEVICE. Napriklad ak mam MOUSE pripojenu cez USB PORT, tak struktura DEVICES je nasledovna (vid. obrazok USBDeviceStructure.png).
+    A. MOUSE. Toto je KONCOVY DEVICE, ktory NIE JE BUS DEVICE.
+	B. USB HUB. K USB HUB je pripojena MOUSE a teda USB HUB je BUS DEVICE voci MOUSE.
+	C. USB HOST CONTROLLER. K USB HOST CONTROLLER je pripojeny USB HUB a teda USB HOST CONTROLLER je BUS DEVICE voci USB HUB.
+	D. PCI BUS. K PCI BUS je pripojeny USB HOST CONTROLLER a teda PCI BUS je BUS DEVICE voci USB HOST CONTROLLER.
+//-------------------------------------------------------------------------------------------------------
+MSDN - DEVICE INTERFACES.
+
+!!! 1. DEVICE INTERFACE reprezentuje SW INTERFACE prostrednictvom ktoreho mozu USER MODE ci KERNEL MODE APPLICATIONS komunikovat s DRIVER, ktory DEVICE INTERFACE vystavil.
+!!! 2. V minulosti (WINDOWS NT) sa namiesto DEVICE INTERFACES pouzivali DEVICE_OBJECT NAMES na ktore sa v REGISTRY vytvorili SYMBOLIC LINKS, ktore prepojili DEVICE_OBJECT NAMES s USER MODE Win32 NAMES. Od WINDOWS 2000 sa uz pouzivaju DEVICE INTERFACES.
+3. DRIVER zaregistruje DEVICE_OBJECT INTERFACE CLASS (typu GUID) a nasledne pre kazdy novy DEVICE_OBJECT vytvori INSTANCIU DEVICE_OBJECT INTERFACE CLASS.
+!!! 4. Pomocou FUNCTION IoRegisterDeviceInterface() sa vykonavaju 2 CINNOSTI.
+   A. Do REGISTRY zaregistruje DEVICE INTERFACE CLASS ak predtym nebol zaregistrovany.
+   !!! B. Vytvori INSTANCIU DEVICE INTERFACE CLASS, ktoru DRIVER moze pouzit, aby umoznil APPLICATIONS pristupovat cez tento DEVICE INTERFACE k DEVICE.
+!!!!! 4. APPLICATIONS pouzivaju INSTANCIE DEVICE INTERFACE CLASS na pristup k DEVICES.
+!!!!! 5. To ako DEVICE INTERFACE CLASS dany DRIVER zaregistruje zavisi IBA od toho aku FUNKCIONALITU VYSTAVUJE. Napriklad 3 MOUSE DEVICES (jedna pripojena cez SERIAL PORT, druha cez USB PORT a tretia cez INFRARED PORT) vystavuju TEN ISTY DEVICE INTERFACE CLASS, kedze vystavuju FUNKCIONALITU MOUSE DEVICE.
+6. DRIVERS zvycajne registruju iba 1 DEVICE INTERFACE CLASS, ale v pripade potreby (napriklad vystavuju specializovane FUNCTIONS) mozu ich zaregistrovat aj viacero.
+7. Pri registracii DEVICE INTERFACE CLASS sa do REGISTRY ulozi SYMBOLIC LINK, ktora asociuje DEVICE a DEVICE INTERFACE CLASS. Tato asociacia je teda ulozena PERMANENTE v REGISTRY.
+8. FUNCTION IoSetDeviceInterfaceState() vykonava ENABLE, alebo DISABLE instancie DEVICE INTERFACE CLASS.
+//-------------------------------------------------------------------------------------------------------

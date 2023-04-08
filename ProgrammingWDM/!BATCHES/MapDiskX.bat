@@ -1,0 +1,1 @@
+net use x: \\192.168.0.10\C$ /u:administrator /persistent:yes

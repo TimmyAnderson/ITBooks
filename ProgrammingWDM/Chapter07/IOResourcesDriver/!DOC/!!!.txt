@@ -1,0 +1,493 @@
+//-------------------------------------------------------------------------------------------------------
+1. Solution demonstruje citanie a zapis dat vo WDM DRIVERS.
+2. SYSTEM moze WDM DRIVERS priradit nasledujuce typy IO RESOURCES.
+   A. IO PORTS.
+   B. MEMORY REGISTERS.
+   C. DIRECT MEMORY ACCESS CHANNELS.
+   D. INTERRUPT REQUESTS.
+3. Pridelovanie IO RESOURCES je PLNE v kompetencii PNP MANAGER, ktory priradenie vykonava na zaklade poziadaviek, ktore DRIVER specifikuje v .INF FILE.
+4. PNP MANAGER sa snazi o co najefektivnejsie pridelovanie IO RESOURCES vsetkym DRIVERS, ktore su v SYSTEME nainstalovane aktivne. V pripade, ze VIACERO DRIVERS ziada o pridelenie TOHO ISTEHO IO RESOURCE, IO MANAGER robi arbitra, ktoru urci, aky IO RESOURCE bude ktoremu DRIVER prideleny.
+5. PNP MANAGER prideluje IO RESOURCES v IRP typu [IRP_MJ_PNP] zaslanim MINOR FUNCTION [IPR_MN_START_DEVICE]. IRP obsahuje STRUCTURE [CM_PARTIAL_RESOURCE_LIST], ktora obsahuje 0-N STRUCTURES [CM_PARTIAL_RESOURCE_DESCRIPTOR] reprezentujucich RESOURCES, ktore PNP MANAGER pridelil danemu DRIVER. Pocet STRUCTURES [CM_PARTIAL_RESOURCE_DESCRIPTOR] v STRUCTURE [CM_PARTIAL_RESOURCE_LIST] urcuje FIELD [CM_PARTIAL_RESOURCE_LIST.Count].
+!!! 6. Poradie STRUCTURES [CM_PARTIAL_RESOURCE_DESCRIPTOR] v STRUCTURE [CM_PARTIAL_RESOURCE_LIST] je NEDEFINOVANE a moze byt LUBOVOLNE. DRIVER NESMIE ocakavat, ze STRUCTURE [CM_PARTIAL_RESOURCE_DESCRIPTOR] reprezentujuca ocakavny IO RESOURCE bude v STRUCTURE [CM_PARTIAL_RESOURCE_LIST] na konkretnej pozicii.
+7. DRIVERS po prideleni jednotlivych IO RESOURCES ich musia ulozit a inicializovat. DRIVERS typicky pre jednotlive typy IO RESOURCES vykonavaju v HANDLER IRP typu [IRP_MJ_PNP] pre MINOR FUNCTION [IPR_MN_START_DEVICE] nasledujuce operacie.
+   A. IO PORTS. DRIVER si uklada BASE PORT ADDRESS do DEVICE EXTENSION OBJECT.
+   B. MEMORY REGISTERS. DRIVER si uklada BASE MEMORY ADDRESS do DEVICE EXTENSION OBJECT.
+   C. DIRECT MEMORY ACCESS CHANNELS. DRIVER vola FUNCTION IoGetDmaAdapter() na vytvorenie DMA ADAPTER OBJECT.
+   D. INTERRUPT REQUESTS. DRIVER zavola FUNCTION IoConnectInterrupt() na vytvorenie INTERRUPT OBJECT, ktory odkazuje na CUSTOM CALLBACK INTERRUPT SERVICE ROUTINE.
+8. Ak USER MODE CODE chce vykonat READ, alebo WRITE OPERATION, musi do DRIVER zaslat BUFFER do ktoreho chce z HW DEVICE nacitane data ulozit, resp. z ktoreho sa maju data zapisovane na HW DEVICE citat. BUFFER, ktory zasiela USER MODE CODE lezi v USER MODE VIRTUAL ADDRESS SPACE, ktory je zavisly od toho v akom PROCESS bezi THREAD, ktory vykonava CODE daneho DRIVER. Z tohto dovodu v KERNEL MODE vacsinou NIE JE mozne PRIAMO pristupovat k BUFFERS z USER MODE. WDM ponuka nasledujuce 3 riesenia ako pristupovat k USER MODE BUFFERS pouzivanych pri READ a WRITE OPERATIONS.
+   A. BUFFERED MODE. V tomto MODE WINDOWS pred zavolanim READ/WRITE DISPATCH ROUTINES alokuje KERNEL MODE BUFFER do ktoreho kopiruje data z USER MODE BUFFER. DRIVER potom pracuje s KERNEL MODE DRIVER.
+   B. DIRECT MODE. V tomto MODE WINDOWS pred zavolanim READ/WRITE DISPATCH ROUTINES vykona LOCKING USER MODE BUFFER, tak aby k nim KERNEL MODE DRIVER mohol pristupovat.
+   C. NO MODE. V tomto MODE WINDOWS NEVYKONAVA ZIADNU ASISTENCIU pred volanim READ/WRITE DISPATCH ROUTINES a je na DRIVER, aby zabezpecil korektny pristup k BUFFER.
+9. BUFFERING MODE sa definuje nastavenim FIELD [DEVICE_OBJECT.Flags].
+   A. VALUE [DO_BUFFERED_IO] znamena pouzitie BUFFERED MODE.
+   B. VALUE [DO_DIRECT_IO] znamena pouzitie DIRECT MODE.
+   C. Ak sa nepouzije ziadna z VALUES [DO_BUFFERED_IO] a [DO_DIRECT_IO], znamena to ze sa pouzije NO MODE.
+!!! 10. BUFFERING MODE je mozne nastavit IBA pri vytvarani STRUCTURE [DEVICE_OBJECT] v CUSTOM FUNCTION AddDevice(). Po vytvoreni STRUCTURE [DEVICE_OBJECT] sa uz BUFFERING MODE NESMIE menit, pretoze DEVICE OBJECT STACK je vytvoreny a napriklad FILTER DRIVERS VYSSIE v DEVICE OBJECT STACK mohli prebrat hodnotu BUFFERING MODE pri svojom vytvarani. Nasledna zmena tohto MODU by viedla k nespravnemu pristupu k MEMORY a vzniku BUG CHECK.
+11. BUFFERED MODE je realizovany WINDOWS v nasledujucich krokoch.
+   A. Ak USER MODE CODE chce vykonat IO OPERATION, musi pomocou volani FUNCTIONS ReadFile() a WriteFile() nastavit USER MODE BUFFER do ktoreho, alebo z ktoreho sa maju citat data.
+   B. Pri prechode CODE z USER MODE do KERNEL MODE WINDOWS alokuje KERNEL MODE BUFFER o rovnakej velkosti aku ma USER MODE BUFFER.
+   C. Ak sa jedna o operaciu WRITE, WINDOWS nakopiruje obsah USER MODE BUFFER do KERNEL MODE BUFFER.
+   !!! D. WINDOWS nastavi FIELD [IRP.AssociatedIrp.SystemBuffer] na alokovany KERNEL MODE BUFFER.
+   E. WINDOWS ziska POINTER na STRUCTURE [IO_STACK_LOCATION] prisluchajucu NAJVYSSIEMU DRIVER v DEVICE OBJECT STACK.
+   F. Ak IO OPERATION je OPERATION WRITE, WINDOWS nastavi FIELD [IO_STACK_LOCATION.Parameters.Write.Length] na dlzku KERNEL MODE BUFFER, ktora je rovnaka ako dlzka USER MODE BUFFER.
+   G. Ak IO OPERATION je OPERATION READ, WINDOWS nastavi FIELD [IO_STACK_LOCATION.Parameters.Read.Length] na dlzku KERNEL MODE BUFFER, ktora je rovnaka ako dlzka USER MODE BUFFER.
+   !!!!! H. WINDOWS zavola DISPATCH FUNCTION danej IO OPERATION v NAJVYSSOM DRIVER v DEVICE OBJECT STACK. DRIVER nasledne vykona IO OPERATION.
+   !!! I. Po skonceni IO OPERATION a prejdeni vsetkych DRIVERS v DEVICE OBJECT STACK WINDOWS vyvola APC ROUTINE.
+   !!!!! J. V APC ROUTINE, ak IO OPERATION je OPERATION READ, WINDOWS nakopiruje obsah KERNEL MODE BUFFER do USER MODE BUFFER.
+   K. WINDOWS uvolni KERNEL MODE BUFFER.
+12. DIRECT MODE vyuziva PAGE LOCKING, kde WINDOWS vykona LOCK na PAGES, v ktorych je ulozeny USER MODE BUFFER. Pri PAGE LOCKING sa vyuziva STRUCTURE [MDL], ktora ma nasledujuce FIELDS.
+   A. FIELD [MDL.Next] odkazuje na nasledujucu STRUCTURE [MDL] v MDL CHAIN.
+   B. FIELD [MDL.Size] obsahuje velkost STRUCTURE [MDL] v BYTES.
+   C. FIELD [MDL.Flags] obsahuje nedokumentovane FLAGS.
+   D. FIELD [MDL.Process] obsahuje POINTER na STRUCTURE [_EPROCESS], ktora popisuje, ktory PROCESS alokoval BUFFER, na ktory WINDOWS uvalil LOCK.
+   D. FIELD [MDL.MappedSystemVa] obsahuje MAPPED VIRTUAL ADDRESS.
+   D. FIELD [MDL.StartVa] obsahuje USER MODE VIRTUAL ADDRESS odkazujucu na USER MODE BUFFER. Tato ADDRESS je validna iba v PROCESS CONTEXT toho PROCESS, ktory BUFFER alokoval.
+   D. FIELD [MDL.ByteCount] obsahuje pocet BYTES v BUFFER.
+   D. FIELD [MDL.ByteOffet] je OFFSET v BUFFER.
+!!! 13. Za STRUCTURE [MDL] sa v MEMORY nachadza zoznam s informaciami o PAGES, ktore boli STRUCTURE [MDL] LOCKED.
+14. So STRUCTURE [MDL] NIE JE mozne pracovat PRIAMO, ale IBA prostrednictvom nasledujucich FUNCTIONS.
+   A. FUNCTION IoAllocateMdl() vytvara pre dane IRP instanciu STRUCTURE [MDL]. Ak PARAMETER [Irp] obsahuje hodnotu NULL, tak sa alokuje KERNEL MODE BUFFER, ktory nebude asociovany s IRP.
+   B. FUNCTION IoBuildPartialMdl() vytvara STRUCTURE [MDL] z inej STRUCTURE [MDL], pricom umoznuje vytvorit SUB-BUFFER z BUFFER alokovaneho povodnou STRUCTURE [MDL].
+   C. FUNCTION IoFreeMdl() uvolnuje STRUCTURE [MDL] z MEMORY.
+   D. FUNCTION MmBuildMdlForNonPagedPool() modifikuje existujucu STRUCTURE [MDL]. Povodna STRUCTURE [MDL] musi byt alokovane v KERNEL MODE ADDRESS SPACE.
+   E. FUNCTION MmGetMdlByteCount() vracia dlzku BUFFER v BYTES, ktory obsahuje STRUCTURE [MDL].
+   F. FUNCTION MmGetMdlByteOffset() vracia BUFFER OFFSET na prvu LOCKED PAGE.
+   G. FUNCTION MmGetMdlPfnArray() vracia POINTER na zoznam s informaciami o PAGES, ktore boli pomocou STRUCTURE [MDL] LOCKED. Zoznam s PAGES sa nachadza v MEMORY hned za STRUCTURE [MDL].
+   H. FUNCTION MmGetMdlVirtualAddress() vracia USER MODE VIRTUAL ADDRESS na USER MODE BUFFER, ktory obsahuje STRUCTURE [MDL]. Kedze VIRTUAL ADDRESS je asociovana s PROCESS, ktory instanciu [IRP] vytvoril, je tuto ADDRESS je mozne vyuzit IBA v kontexte tohto PROCESS a nie v kontexte ARBITRARY THREAD.
+   !!!!! I. FUNCTION MmGetSystemAddressForMdlSafe() vracia VIRTUAL ADDRESS na NON-PAGED MEMORY alokovana v SYSTEM ADDRESS SPACE. Vdaka tomu, ze ADDRESS sa nachadza v SYSTEM ADDRESS SPACE, je ju mozne pouzivat v ARBITRARY KERNEL THREADS. Tuto FUNCTION je mozne vola IBA ak predtym bola MDL LOCKED v MEMORY. To sa da zistit nacitanim FLAGS z FIELD [MDL.MdlFlags] a samotny LOCKING sa vykonava volanim FUNCTION MmProbeAndLockPages(). Ak je MDL LOCKED volanim FUNCTION MmProbeAndLockPages(), musi sa LOCK uvolnit volanim FUNCTION MmUnlockPages().
+   J. FUNCTION MmInitializeMdl() reinicializuje STRUCTURE [MDL], aby odkazovala na novy BUFFER.
+   K. FUNCTION MmMapLockedPagesSpecifyCache() mapuje fyzicke PAGES, ktore su ulozene v STRUCTURE [MDL] do VIRTUAL ADDRESS.
+   L. FUNCTION MmPrepareMdlForReuse() uvolni interne data STRUCTURE [MDL], aby mohla byt znova pouzita.
+   M. FUNCTION MmProbeAndLockPages() skontroluje vsetky PAGES, ktore popisuje STRUCTURE [MDL], vykona ich LOCKING a ak nie su ulozene v NON-PAGED MEMORY, tak su presunute do NON-PAGED MEMORY.
+   N. FUNCTION MmSizeOfMdl() vracia pocet BYTES, ktore su potrebne na vytvorenie STRUCTURE [MDL] pre zadany BUFFER, ktory ma STRUCTURE [MDL] popisovat.
+   O. FUNCTION MmUnlockPages() vykonava UNLOCKING LOCKED PAGES.
+   P. FUNCTION MmUnmapLockedPages() rusi MAPPING PAGES alokovanych predchadzajucim volanim FUNCTION MmMapLockedPages().
+!!!!! 15. EXTREMNE DOLEZITE. Pre volanie FUNCTION MmGetSystemAddressForMdlSafe() pre MDL v IRP, ktore vytvoril IO MANAGER sa NESMIE volat ZIADNA FUNCTION na uvolnenie MEMORY, vratane FUNCTION MmUnlockPages(). Tato MEMORY je alokovana WINDOWS a uz JE v NON-PAGED MEMORY. WINDOWS je zodpovedny za jej uvolnenie. Pri pokuse DRIVER zavolat FUNCTION MmUnlockPages() doslo k OBCASNYM BUG CHECKS a aj v DEBUGGER bolo vidiet, ze sa MEMORY uvolnila a je neplatna. Preto FUNCTION MmUnlockPages() sa NESMIE volat po FUNCTION MmGetSystemAddressForMdlSafe() pre MDL v IRP vytvorene IO MANAGER.
+16. DIRECT MODE je realizovany WINDOWS v nasledujucich krokoch.
+   A. Ak USER MODE CODE chce vykonat IO OPERATION, musi pomocou volani FUNCTIONS ReadFile() a WriteFile() nastavit USER MODE BUFFER do ktoreho, alebo z ktoreho sa maju citat data.
+   B. Pri prechode CODE z USER MODE do KERNEL MODE WINDOWS alokuje zavola FUNCTION IoAllocateMdl(), ktora pre dane IRP vytvori instanciu STRUCTURE [MDL]. STRUCTURE [MDL] obali USER MODE BUFFER, ktory USER MODE CODE zaslat do DRIVER. Instancia STRUCTURE [MDL] sa ulozi do FIELD [IRP.MdlAddress].
+   !!! C. WINDOWS pre vytvorenu STRUCTURE [MDL] zavola FUNCTION MmProbeAndLockPages(), ktora vykona LOCKING MEMORY PAGES v ktorych je USER MODE BUFFER ulozeny a presunie ich do NON-PAGED MEMORY.
+   !!!!! D. WINDOWS zavola DISPATCH FUNCTION danej IO OPERATION v NAJVYSSOM DRIVER v DEVICE OBJECT STACK. DRIVER nasledne vykona IO OPERATION. K STRUCTURE [MDL] DRIVER moze pristupovat IBA pomocou FUNCTIONS pracujucimi s touto STRUCTURE. NIKDY nie je mozne pristupovat priamo k FIELDS STRUCTURE [MDL] ci STRUCTURE [IRP]. DISPATCH FUNCTION ma pristup v STRUCTURE [IRP] asociovanej s instanciu STRUCTURE [IRP] pomocou FIELD [IRP.MdlAddress].
+   !!! E. Po skonceni IO OPERATION a prejdeni vsetkych DRIVERS v DEVICE OBJECT STACK WINDOWS vyvola APC ROUTINE.
+   !!! F. V APC ROUTINE sa zavola FUNCTION MmUnlockPages(), ktora vykona UNLOCKING MEMORY PAGES v ktorych je ulozeny USER MODE BUFFER.
+   G. APC ROUTINE nasledne zavola FUNCTION IoFreeMdl(), ktora uvolni STRUCTURE [MDL] z MEMORY.
+17. Typicky sa STRUCTURE [MDL] pouziva bud DMA, alebo sa zasle do USB DRIVER, ktory interne pouziva tuto STRUCTURE.
+!!!!! 18. STRUCTURE [MDL] je v DRIVERS mozne pouzivat aj manualne pomocou nasledujucich FIELDS a FUNCTIONS.
+   A. FIELD [IRP.MdlAddress], vracia POINTER na STRUCTURE [MDL] asociovanu so STRUCTURE [IRP].
+   B. FUNCTION MmGetMdlByteCount() vracia POCET BYTES, ktore su ulozene v BUFFER, ktory STRUCTURE [MDL] obaluje.
+   !!! C. FUNCTION MmGetSystemAddressForMdlSafe() vracia VIRTUAL ADDRESS v SYSTEM ADDRESS SPACE na BUFFER, ktory STRUCTURE [MDL] obaluje.
+!!! 19. Pri NO MODE DRIVERS je DRIVER plne zodpovedny za PAGE LOCKING. Pri pouziti STRUCTURE [MDL] je NEVYHNUTNE spravit LOCKING volanim FUNCTION MmProbeAndLockPages(). Volanie tejto FUNCTION MUSI byt v __try __except() BLOCKS, pretoze moze generovat EXCEPTION ak POINTER na BUFFER, alebo dlzka BUFFER bola nastavena nespravne.
+20. HW DEVICES mozu komunikovat s CPU a CPU komunikovat s HW DEVICES nasledujucimi sposobmi.
+   A. Vykonanim MEMORY MAPPED IO OPERATIONS. Tato komunikacia prebieha medzi CPU a HW DEVICE.
+   B. Vykonanim PORT MAPPED IO OPERATIONS. Tato komunikacia prebieha medzi CPU a HW DEVICE.
+!!! 21. MEMORY MAPPED IO a PORT MAPPED IO sa lisia v sposobe akym su HW DEVICES pripojene k CPU.
+   A. Pri MEMORY MAPPED IO su MEMORY a HW DEVICES pripojene na TIE ISTE ADDRESS a DATA BUSES. To znamena, ze komunikacia CPU s MEMORY a HW DEVICES prebieha cez tie iste BUSES.
+   B. Pri PORT MAPPED IO je MEMORY pripojena cez SEPARATNE ADDRESS a DATA BUSES, zatial co HW DEVICES su taktiez pripojene cez SEPARATNE ADDRESS a DATA BUSES. To znaci, ze komunikacia CPU s MEMORY prebieha po INYCH BUSES ako komunikacia CPU s HW DEVICES.
+22. Komunikacia CPU s HW DEVICE cez MEMORY MAPPED IO funguje nasledujucim sposobom.
+   A. Kazdy HW DEVICE pripojeny k CPU cez ADDRESS a DATA BUSES ma vyhradeny v MEMORY ADDRESS SPACE rozsah ADDRESSES. MEMORY ADDRESS SPACE je SPOLOCNY ADDRESS SPACE, ktory sa pouziva na komunikaciu s MEMORY aj HW DEVICES.
+   B. Ak CPU chce komunikovat s HW DEVICE, vykona instrukciu citania, alebo zapisu do ADDRESS v rozsahu pridelenom danemu HW DEVICE.
+   !!!!! C. Na komunikaciu s HW DEVICE sa teda pouzivaju TIE ISTE CPU INSTRUCTIONS ako na zapis do MEMORY, co je aj HLAVNA VYHODA MEMORY MAPPED IO.
+   D. Ked CPU vykona CPU INSTRUCTION citania, alebo zapisu do ADDRESS, tato ADDRESS je vlozena do ADDRESS BUS daneho CPU.
+   !!!!! E. Kazdy HW DEVICE, ktory je pripojeny cez MEMORY MAPPED IO vykonava MONITORING ADDRESS BUS a ak zisti, ze ADDRESS zapisana na ADDRESS BUS je v rozsahu, ktory bol daneho HW DEVICE prideleny, pripoji DATA BUS k HW DEVICE a spusti vykonavanie IO OPERATION.
+   !!! F. HW DEVICES mozu mat pridelenych VIACERO ADDRESSES z MEMORY ADDRESS SPACE. Tieto ADDRESSES z MEMORY ADDRESS SPACE su mapovane na HW REGISTERS v HW DEVICE. Vyznam jednotlivych HW REGISTERS je zavisly na type daneho HW DEVICE.
+   !!!!! G. Ak ADDRESS na ADDRESS BUS NIE JE NAMAPOVANA pre ZIADEN HW DEVICE, tak operacia citania, alebo zapisu je vykonana v MEMORY.
+23. Komunikacia CPU s HW DEVICE cez PORT MAPPED IO funguje nasledujucim sposobom.
+   !!! A. Kazdy HW DEVICE maju vyhradeny ADDRESS SPACE v SEPARATNOM IO ADDRESS SPACE. IO ADDRESS SPACE je na rozdiel od MEMORY MAPPED IO NEZAVISLY na MEMORY ADDRESS SPACE a komunikacia prebieha na SEPARATNYCH ADDRESS a DATA BUSES.
+   !!! B. Ak CPU chce komunikovat s HW DEVICE, vykona CPU INSTRUCTION 'IN' (citanie dat z HW DEVICE), alebo CPU INSTRUCTION 'OUT' (zapis dat do HW DEVICE). OBE INSTRUCTIONS musia mat definovanu ADDRESS. Ta je bud ulozena priamo za danou CPU INSTRUCTION, alebo je ulozena v EAX REGISTER.
+   !!!!! C. Na komunikaciu s HW DEVICE sa teda pouzivaju INE CPU INSTRUCTIONS ako na zapis do MEMORY.
+   D. ADDRESS a DATA, ktore su sucastou IO OPERATION su zaslane na IO ADDRESS BUS a IO DATA BUS.
+   !!!!! E. Kazdy HW DEVICE, ktory je pripojeny cez PORT MAPPED IO vykonava MONITORING IO ADDRESS BUS a ak zisti, ze ADDRESS zapisana na IO ADDRESS BUS je v rozsahu, ktory bol daneho HW DEVICE prideleny, pripoji IO DATA BUS k HW DEVICE a spusti vykonavanie IO OPERATION.
+   !!! F. HW DEVICES mozu mat pridelenych VIACERO ADDRESSES z IO ADDRESS SPACE. Tieto ADDRESSES z IO ADDRESS SPACE su mapovane na HW REGISTERS v HW DEVICE. Vyznam jednotlivych HW REGISTERS je zavisly na type daneho HW DEVICE.
+24. CPU ARCHITECTURES X86 aj X64 podporuje ako MEMORY MAPPED IO, tak aj PORT MAPPED IO.
+25. RISC CPU ARCHITECTURES ako ALPHA podporuje IBA MEMORY MAPPED IO, kedze implementacia PORT MAPPED IO by zvysovala zlozitost CPU a znizovala jeho vykon.
+!!! 26. WINDOWS pri komunikacii s HW DEVICES pripojenymi pomocou MEMORY MAPPED IO, alebo PORT MAPPED IO definuje HARDWARE ABSTRACTION LEVEL (HAL). HAL je logicka SW vrstva, ktora unifikuje pristup k MEMORY MAPPED IO a PORT MAPPED IO pomocou jednotnej skupiny FUNCTIONS. Tieto FUNCTIONS su PLATFORM INDEPENDENT co ulahcuje vyvoj DRIVERS pre jednotlive PLATFORMS.
+27. WINDOWS umoznuje pracu s HW DEVICES podporujucich MEMORY MAPPED IO pomocou nasledujucich HAL FUNCTIONS.
+   A. READ_REGISTER_UCHAR nacitava 1 BYTE z HW DEVICE pripojenom cez MEMORY MAPPED IO.
+   B. WRITE_REGISTER_UCHAR zapisuje 1 BYTE do HW DEVICE pripojenom cez MEMORY MAPPED IO.
+   C. READ_REGISTER_USHORT nacitava 2 BYTES z HW DEVICE pripojenom cez MEMORY MAPPED IO.
+   D. WRITE_REGISTER_USHORT zapisuje 2 BYTES do HW DEVICE pripojenom cez MEMORY MAPPED IO.
+   E. READ_REGISTER_ULONG nacitava 4 BYTES z HW DEVICE pripojenom cez MEMORY MAPPED IO.
+   F. WRITE_REGISTER_ULONG zapisuje 4 BYTES do HW DEVICE pripojenom cez MEMORY MAPPED IO.
+   G. READ_REGISTER_UCHAR nacitava BUFFER osabhujuci ITEMS o dlzke 1 BYTE z HW DEVICE pripojenom cez MEMORY MAPPED IO.
+   H. WRITE_REGISTER_UCHAR zapisuje BUFFER osabhujuci ITEMS o dlzke 1 BYTE do HW DEVICE pripojenom cez MEMORY MAPPED IO.
+   I. READ_REGISTER_USHORT nacitava BUFFER osabhujuci ITEMS o dlzke 2 BYTES z HW DEVICE pripojenom cez MEMORY MAPPED IO.
+   J. WRITE_REGISTER_USHORT zapisuje BUFFER osabhujuci ITEMS o dlzke 2 BYTES do HW DEVICE pripojenom cez MEMORY MAPPED IO.
+   K. READ_REGISTER_ULONG nacitava BUFFER osabhujuci ITEMS o dlzke 4 BYTES z HW DEVICE pripojenom cez MEMORY MAPPED IO.
+   L. WRITE_REGISTER_ULONG zapisuje BUFFER osabhujuci ITEMS o dlzke 4 BYTES do HW DEVICE pripojenom cez MEMORY MAPPED IO.
+28. WINDOWS umoznuje pracu s HW DEVICES podporujucich PORT MAPPED IO pomocou nasledujucich HAL FUNCTIONS.
+   A. READ_PORT_UCHAR nacitava 1 BYTE z HW DEVICE pripojenom cez PORT MAPPED IO.
+   B. WRITE_PORT_UCHAR zapisuje 1 BYTE do HW DEVICE pripojenom cez PORT MAPPED IO.
+   C. READ_PORT_USHORT nacitava 2 BYTES z HW DEVICE pripojenom cez PORT MAPPED IO.
+   D. WRITE_PORT_USHORT zapisuje 2 BYTES do HW DEVICE pripojenom cez PORT MAPPED IO.
+   E. READ_PORT_ULONG nacitava 4 BYTES z HW DEVICE pripojenom cez PORT MAPPED IO.
+   F. WRITE_PORT_ULONG zapisuje 4 BYTES do HW DEVICE pripojenom cez PORT MAPPED IO.
+   G. READ_PORT_UCHAR nacitava BUFFER osabhujuci ITEMS o dlzke 1 BYTE z HW DEVICE pripojenom cez PORT MAPPED IO.
+   H. WRITE_PORT_UCHAR zapisuje BUFFER osabhujuci ITEMS o dlzke 1 BYTE do HW DEVICE pripojenom cez PORT MAPPED IO.
+   I. READ_PORT_USHORT nacitava BUFFER osabhujuci ITEMS o dlzke 2 BYTES z HW DEVICE pripojenom cez PORT MAPPED IO.
+   J. WRITE_PORT_USHORT zapisuje BUFFER osabhujuci ITEMS o dlzke 2 BYTES do HW DEVICE pripojenom cez PORT MAPPED IO.
+   K. READ_PORT_ULONG nacitava BUFFER osabhujuci ITEMS o dlzke 4 BYTES z HW DEVICE pripojenom cez PORT MAPPED IO.
+   L. WRITE_PORT_ULONG zapisuje BUFFER osabhujuci ITEMS o dlzke 4 BYTES do HW DEVICE pripojenom cez PORT MAPPED IO.
+29. Pridelovanie a uvolnovanie PORT MAPPED IO je realizovane v nasledujucich krokoch.
+   A. Pridelenie PORT MAPPED IO sa realizuje v IRP typu [IRP_MJ_PNP] pocas spracovavanie MINOR FUNCTION [IRP_MN_START_DEVICE].
+   B. HANDLER spracujuci MINOR FUNCTION [IRP_MN_START_DEVICE] v PARAMETER 'TranslatedList' obsahuje STRUCTURE [PCM_PARTIAL_RESOURCE_LIST].
+   C. Vo FIELD [PCM_PARTIAL_RESOURCE_LIST->PartialDescriptors] sa nachadza ARRAY STRUCTURES [PCM_PARTIAL_RESOURCE_DESCRIPTOR].
+   D. Kazda STRUCTURE [PCM_PARTIAL_RESOURCE_DESCRIPTOR] obsahuje FIELD [Type] urcujuci TYPE daneho IO RESOURCE. PORT MAPPED IO obsahuje VALUE [CmResourceTypePort].
+   E. FIELD [PCM_PARTIAL_RESOURCE_DESCRIPTOR->u.Port.Start] obsahuje PRVU ADDRESS v PORT MAPPED IO na ktoru je dany HW DEVICE namapovany.
+   F. FIELD [PCM_PARTIAL_RESOURCE_DESCRIPTOR->u.Port.Length] obsahuje pocet ADDRESSES, ktore dany HW DEVICE pouziva.
+   G. FIELD [PCM_PARTIAL_RESOURCE_DESCRIPTOR->Flags] obsahuje FLAGS. Ak je nastaveny FLAG [CM_RESOURCE_PORT_IO], potom to znamena, ze CPU ARCHITECTURE podporuje PORT MAPPED IO.
+   !!! H. Ak CPU ARCHITECTURE NEPODPORUJE PORT MAPPED IO, potom je NEVYHNUTNE vykonat MAPPING ADDRESSES, aby odkazovali na MAIN MEMORY ADDRESSES. To sa robi pomocou FUNCTION MmMapIoSpace().
+   !!!!! I. Teraz je mozne pouzivat HAL FUNCTIONS pre pracu s PORT MAPPED IO na citanie a zapis dat do HW DEVICE.
+   !!! J. Pri spracovavani IRP typu [IRP_MJ_PNP] v MINOR FUCTION [IRP_MN_STOP_DEVICE] je v pripade, ze CPU ARCHITECTURE NEPODPORUJE PORT MAPPED IO zavolat FUNCTION MmUnmapIoSpace(), ktora uvolni mapovanie PORT IO do MAIN MEMORY.
+30. Pridelovanie a uvolnovanie MEMORY MAPPED IO je realizovane v nasledujucich krokoch.
+   A. Pridelenie MEMORY MAPPED IO sa realizuje v IRP typu [IRP_MJ_PNP] pocas spracovavanie MINOR FUNCTION [IRP_MN_START_DEVICE].
+   B. HANDLER spracujuci MINOR FUNCTION [IRP_MN_START_DEVICE] v PARAMETER 'TranslatedList' obsahuje STRUCTURE [PCM_PARTIAL_RESOURCE_LIST].
+   C. Vo FIELD [PCM_PARTIAL_RESOURCE_LIST->PartialDescriptors] sa nachadza ARRAY STRUCTURES [PCM_PARTIAL_RESOURCE_DESCRIPTOR].
+   D. Kazda STRUCTURE [PCM_PARTIAL_RESOURCE_DESCRIPTOR] obsahuje FIELD [Type] urcujuci TYPE daneho IO RESOURCE. MEMORY MAPPED IO obsahuje VALUE [CmResourceTypeMemory].
+   E. FIELD [PCM_PARTIAL_RESOURCE_DESCRIPTOR->u.Memory.Start] obsahuje PRVU ADDRESS v MEMORY MAPPED IO na ktoru je dany HW DEVICE namapovany.
+   F. FIELD [PCM_PARTIAL_RESOURCE_DESCRIPTOR->u.Memory.Length] obsahuje pocet ADDRESSES, ktore dany HW DEVICE pouziva.
+   !!!!! G. Kedze FIELD [PCM_PARTIAL_RESOURCE_DESCRIPTOR->u.Memory.Start] obsahuje PHYSICAL MEMORY ADDRESS je nutne vykonat jej konverziu na VIRTUAL ADDRESS volanim FUNCTION MmMapIoSpace().
+   !!!!! H. Teraz je mozne pouzivat HAL FUNCTIONS pre pracu s MEMORY MAPPED IO na citanie a zapis dat do HW DEVICE.
+   !!! I. Pri spracovavani IRP typu [IRP_MJ_PNP] v MINOR FUCTION [IRP_MN_STOP_DEVICE] je nutne uvolnit VIRTUAL ADDRESS volanim FUNCTION MmUnmapIoSpace().
+31. INTERRUPTS je sposob, akym HW DEVICES informuju CPU o vzniku udalosti, na ktoru musi CPU zareagovat. Spravidla sa jedna o informaciu o dokonceni IO OPERATION, alebo o vzniku ASYNCHRONOUS EVENT v HW DEVICE.
+32. INTERRUPTS su realizovane ako elektricke signaly, ktore HW DEVICES zasle na PIN CPU.
+33. Pridelovanie a uvolnovanie INTERRUPTS je realizovane v nasledujucich krokoch.
+   A. Pridelenie INTERRUPT sa realizuje v IRP typu [IRP_MJ_PNP] pocas spracovavanie MINOR FUNCTION [IRP_MN_START_DEVICE].
+   B. HANDLER spracujuci MINOR FUNCTION [IRP_MN_START_DEVICE] v PARAMETER 'TranslatedList' obsahuje STRUCTURE [PCM_PARTIAL_RESOURCE_LIST].
+   C. Vo FIELD [PCM_PARTIAL_RESOURCE_LIST->PartialDescriptors] sa nachadza ARRAY STRUCTURES [PCM_PARTIAL_RESOURCE_DESCRIPTOR].
+   D. Kazda STRUCTURE [PCM_PARTIAL_RESOURCE_DESCRIPTOR] obsahuje FIELD [Type] urcujuci TYPE daneho IO RESOURCE. INTERRUPT obsahuje VALUE [CmResourceTypeInterrupt].
+   E. FIELD [PCM_PARTIAL_RESOURCE_DESCRIPTOR->u.Interrupt.Level] obsahuje hodnotu IRQL daneho INTERRUPT.
+   F. FIELD [PCM_PARTIAL_RESOURCE_DESCRIPTOR->u.Interrupt.Vector] obsahuje INTERRUPT VECTOR daneho INTERRUPT.
+   G. FIELD [PCM_PARTIAL_RESOURCE_DESCRIPTOR->u.Interrupt.Affinity] obsahuje BITMASK urcujuca, ktore CPU mozu dany INTERRUPT obsluhovat.
+   H. Ak FIELD [PCM_PARTIAL_RESOURCE_DESCRIPTOR->Flags] obsahuje FLAG [CM_RESOURCE_INTERRUPT_LATCHED], tak INTERRUPT je EDGE-TRIGGERED. Ak FLAG nie je nastaveny, INTERRUPT je LEVEL-TRIGGERED.
+   I. Ak FIELD [PCM_PARTIAL_RESOURCE_DESCRIPTOR->ShareDisposition] obsahuje VALUE [CmResourceShareShared], INTERRUPT je SHARED.
+   !!! J. Zavola sa FUNCTION IoConnectInterrupt(), alebo FUNCTION IoConnectInterruptEx(), ktora pripoji INTERRUPT k INTERRUPT SERVICE ROUTINE (ISR).
+   !!!!! K. Teraz moze HW DEVICE generovat INTERRUPTS a vyvolat INTERRUPT SERVICE ROUTINES. INTERRUPTS dokonca mozu byt generovane este POCAS BEHU FUNCTIONS IoConnectInterrupt() a IoConnectInterruptEx(), preto DRIVER musi byt naprogramovany tak s tym pocital.
+   !!! L. Pri spracovavani IRP typu [IRP_MJ_PNP] v MINOR FUCTION [IRP_MN_STOP_DEVICE] je nutne odpojit INTERRUPT volanim FUNCTION IoDisconnectInterrupt().
+34. FUNCTION IoConnectInterrupt() ma nasledujuce PARAMETERS.
+   A. 1. PARAMETER 'InterruptObject' obsahuje POINTER na KERNEL INTERRUPT OBJECT, ktory FUNCTION vytvori.
+   B. 2. PARAMETER 'ServiceRoutine' obsahuje POINTER na INTERRUPT SERVICE ROUTINE, ktora sa bude volat na spracovanie INTERRUPT.
+   C. 3. PARAMETER 'ServiceContext' obsahuje POINTER na CUSTOM DATA, ktore budu zaslane do INTERRUPT SERVICE ROUTINE. Spravidla sa ako CONTEXT prenasa bude DEVICE OBJECT, alebo DEVICE OBJECT EXTENSION.
+   !!! D. 4. PARAMETER 'SpinLock' obsahuje SPIN LOCK, ktory sa pouziva na synchronizaciu ako HW DEVICE pouziva VIACERO INTERRUPTS.
+   E. 5. PARAMETER 'Vector' obsahuje INTERRUPT VECTOR daneho INTERRUPT.
+   F. 6. PARAMETER 'Irql' obsahuje IRQL daneho INTERRUPT.
+   !!! G. 7. PARAMETER 'SynchronizeIrql' obsahuje maximalne IRQL zo vsetkych INTERRUPTS, ktore dany HW DEVICE pouziva.
+   H. 8. PARAMETER 'InterruptMode' obsahuje INTERRUPT MODE daneho INTERRUPT. Moze byt bud EDGE-TRIGGERED INTERRUPT, alebo LEVEL-TRIGGERED INTERRUPT.
+   I. 9. PARAMETER 'ShareVector' urcuje ci INTERRUPT je SHARED.
+   J. 10. PARAMETER 'ProcessorEnableMask' urcuje AFFINITY daneho INTERRUPT, ktory definuje, ktore CPU mozu dany INTERRUPT spracovat.
+   K. 11. PARAMETER 'FloatingSave ' urcuje ci WINDOWS ma ulozit FLOATING POINT STACK, ked DRIVER spracovava dany INTERRUPT.
+35. FUNCTION IoConnectInterruptEx() ma PARAMETER TYPE [PIO_CONNECT_INTERRUPT_PARAMETERS], ktory obsahuje FIELDS, ktore su IDENTICKE ako PARAMETERS FUNCTION IoConnectInterrupt().
+36. FUNCTION IoDisconnectInterrupt() ma PARAMETER TYPE [PKINTERRUPT], ktory identifikuje INTERRUPT, ktory ma byt uvolneny.
+!!!!! 37. HW DEVICES mozu pouzivat aj VIACERO INTERRUPTS. V takomto pripade DRIVER musi postupvat nasledovne.
+   A. DRIVER alokuje SPIN LOCK.
+   B. DRIVER musi urcit maximalne IRQL zo vsetkych INTERRUPTS, ktore HW DEVICE pouziva.
+   C. DRIVER musi pre KAZDY INTERUPT zavolat FUNCTION IoConnectInterrupt(), alebo FUNCTION IoConnectInterruptEx() pricom v PARAMETER 'SpinLock' je nutne definovat vytvoreny SPIN LOCK a PARAMETER 'SynchronizeIrql' je nutne zadat maximalne IRQL zo vsetkych INTERRUPTS, ktore HW DEVICE pouziva.
+   D. Pri ukonceni pouzivania INTERRUPTS musi DRIVER pre KAZDY INTERRUPT zavolat FUNCTION IoDisconnectInterrupt().
+!!! 38. Ak HW DEVICE pouziva iba jeden INTERRUPT, tak SPIN LOCK NIE JE NUTNE vytvarat, pretoze ho WINDOWS vytvori AUTOMATICKY.
+!!!!! 39. Ak CPU detekuje vznik INTERRUPT, WINDOWS identifikuje DRIVER, ktory dany INTERRUPT obsluhuje a vykona nasledujucu cinnost.
+   A. Na danom CPU dvihne IRQL na uroven prisluchajucu vzniknutemu INTERRUPT (DIRQL).
+   B. Ziska SPIN LOCK pouzit asociovany s danym INTERRUPT.
+   C. Zavola INTERRUPT SERVICE ROUTINE.
+   D. Uvolni SPIN LOCK.
+   E. Znizi IRQL na povodnu uroven.
+   !!!!! F. Ak je INTERRUPT SHARED medzi VIACERYMI DRIVERS, tak rovnaky proces je vykonany pre dalsie DRIVERS.
+!!! 40. Kedze INTERRUPT SERVICE ROUTINE bezi v [IRQL=DIRQL], mala by vykonavat iba obmedzeny pocet cinnosti, aby neblokovala cely SYSTEM.
+   !!!!! A. INTERRUPT SERVICE ROUTINE MUSI zistit ci INTERRUPT (elektricky signal na PINE) generuje HW DEVICE, ktore obsluhuje. To sa spravidla robi citanim HW REGISTER, ktory je na HW DEVICE naprogramovany tak, aby indikoval ci HW DEVICE prave generuje INTERRUPT.
+   !!!!! B. Ak HW DEVICE generuje INTERRUPT, KLUCOVOU CINNOSTOU INTERRUPT SERVICE ROUTINE je prinutit HW DEVICE, ktory INTERRUPT generuje (drzanim elektrickeho signalu na PINE), aby zastavil generovanie tohto INTERRUPT. To sa spravidla robi zapisom do HW REGISTER daneho HW DEVICE, ktory je naprogramovany tak, aby HW DEVICE zastavilo generovanie INTERRUPT.
+   !!! C. Ak DRIVER potrebuje vykonat komplexnu cinnost, napriklad obsluhu a ukoncenie IRP, mala by vykonat SCHEDULING DEFERRED PROCEDURE CALL, v ktorej sa tato cinnost vykonala. Je to dolezite preto, pretoze pocas behu CODE v INTERRUPT SERVICE ROUTINE je [IRQL=DIRQL], cim je zablokovany AKYKOLVEK CODE, ktory bezi s NIZSIM, alebo ROVNAKYM IRQL, az do skoncenia INTERRUPT SERVICE ROUTINE. Preto cinnost v INTERRUPT SERVICE ROUTINE by mala byt kratka.
+   !!! D. Pri niektorych typoch INTERRUPTS, ak napriklad INTERRUPT znamena signalizaciu pripravenosti citania dalsieho BYTE z BUS je mozne tuto cinnost vykonat aj PRIAMO v INTERRUPT SERVICE ROUTINE. Tym, ze tato cinnost je vykonana priamo v INTERRUPT SERVICE ROUTINE a nie v DEFERRED PROCEDURE CALL je cinnost HW DEVICE efektivnejsia. Zavisi to vsak najma od typu HW DEVICE.
+   !!! E. Ak INTERRUPT SERVICE ROUTINE zistila, ze INTERRUPT generoval HW DEVICE, ktory obsluhuje, MUSI vratit TRUE. Inak vracia hodnotu FALSE.
+41. CODE beziaci v INTERRUPT SERVICE ROUTINE je mozne synchronizovat s inymi castami DRIVER nasledujucimi sposobmi.
+   A. Vykonanim SCHEDULING CUSTOM ROUTINE pomocou FUNCTION KeSynchronizeExecution(). Tato FUNCTION zavola CALLBACK FUNCTION, ktorej CODE bude bezat so ziskanym SPIN LOCK a IRQL, ktore su asociovane s danym INTERRUPT.
+   B. Vykonanim CODE v bloku medzi volaniami FUNCTIONS KeAcquireInterruptSpinLock() a KeReleaseInterruptSpinLock(). CODE medzi volaniami tychto FUNCTION bezi so ziskanym SPIN LOCK a IRQL, ktore su asociovane s danym INTERRUPT.
+42. Synchronizacia CODE s CODE v INTERRUPT SERVICE ROUTINE sa pomocou FUNCTION KeSynchronizeExecution() vykonava nasledujucim sposobom.
+   A. CODE zavola FUNCTION KeSynchronizeExecution() pricom ako PARAMETER sa zada POINTER na CALLBACK FUNCTION, ktora sa ma vyvolat. FUNCTION KeSynchronizeExecution() vyzaduje ako PARAMETER takisto POINTER na INTERRUPT KERNEL OBJECT z ktoreho ziska SPIN LOCK a IRQL daneho INTERRUPT.
+   B. FUNCTION KeSynchronizeExecution() ziska SPIN LOCK asociovany s danym INTERRUPT.
+   C. FUNCTION KeSynchronizeExecution() dvihne IRQL na DIRQL, ktory je asociovany s danym INTERRUPT.
+   !!! D. FUNCTION KeSynchronizeExecution() zavola CUSTOM CALLBACK FUNCTION.
+   !!! E. Po ukonceni CUSTOM CALLBACK FUNCTION FUNCTION KeSynchronizeExecution() znizi IRQL na povodnu hodnotu.
+   G. FUNCTION KeSynchronizeExecution() uvolni ziskany SPIN LOCK.
+   !!! H. RETURN VALUE, ktoru vratila CUSTOM CALLBACK FUNCTION je vratena ako RETURN VALUE FUNCTION KeSynchronizeExecution().
+43. Synchronizacia CODE s CODE v INTERRUPT SERVICE ROUTINE sa pomocou FUNCTIONS KeAcquireInterruptSpinLock() a KeReleaseInterruptSpinLock() vykonava nasledujucim sposobom.
+   A. CODE zavola FUNCTION KeAcquireInterruptSpinLock() pricom ako PARAMETER ako PARAMETER sa zada POINTER na INTERRUPT KERNEL OBJECT z ktoreho ziska SPIN LOCK a IRQL daneho INTERRUPT.
+   B. FUNCTION KeAcquireInterruptSpinLock() ziska SPIN LOCK asociovany s danym INTERRUPT.
+   C. FUNCTION KeAcquireInterruptSpinLock() dvihne IRQL na DIRQL, ktory je asociovany s danym INTERRUPT.
+   !!! D. FUNCTION KeAcquireInterruptSpinLock() ukonci svoju cinnost a nasledujuci CODE uz je vykonavany so ziskanym SPIN LOCK a v [IRQL=DIRQL].
+   E. CODE zavola FUNCTION KeReleaseInterruptSpinLock().
+   F. FUNCTION KeReleaseInterruptSpinLock() znizi IRQL na povodnu hodnotu.
+   G. FUNCTION KeReleaseInterruptSpinLock() uvolni ziskany SPIN LOCK.
+!!! 44. FUNCTIONS KeSynchronizeExecution(), KeAcquireInterruptSpinLock() a KeReleaseInterruptSpinLock() NIE JE mozne pouzit pre INTERRUPTS, ktore bezia v [IRQL=PASSIVE_LEVEL]. Tieto typy ITERRUPTS su sucastou az WINDOWS 8.
+45. Ak v INTERRUPT SERVICE ROUTINE je nutne vykonat casovo narocnu cinnost, alebo zavolat FUNCTION, ktora vyzaduje [IRQL<DIRQL], je nutne pouzit DEFERRED PROCEDURE CALL. DEFERRED PROCEDURE CALL umoznuje zaradit do SYSTEM-WIDE DEFERRED PROCEDURE CALL QUEUE volanie CALLBACK FUNCTION, ktore bude po skonceni INTERRUPT SERVICE ROUTINE vykonane v [IRQL=DISPATCH_LEVEL].
+!!! 46. DEFERRED PROCEDURE CALL je reprezentovana STRUCTURE [KDPC], ktora predstavuje DEFERRED PROCEDURE CALL ITEM. Ak je instancia STRUCTURE [KDPC] zaradena do SYSTEM-WIDE DEFERRED PROCEDURE CALL QUEUE, tak CPU az dokonci prioritnejsie cinnosti vyberie zo SYSTEM-WIDE DEFERRED PROCEDURE CALL QUEUE instanciu STRUCTURE [KDPC] a zavola pre nu CALLBACK FUNCTION, ktora je s instanciou STRUCTURE [KDPC] asociovana.
+!!!!! 47. KAZDA instancia STRUCTURE [KDPC] moze byt v SYSTEM-WIDE DEFERRED PROCEDURE CALL ulozena IBA RAZ. Pri dalsom pokuse ulozit TU ISTU INSTANCIU STRUCTURE [KDPC] do SYSTEM-WIDE DEFERRED PROCEDURE CALL QUEUE bude tento pokus ignorovany a CALLBACK FUNCTION sa vykona IBA RAZ. Avsak, hned potom ako sa instancia STRUCTURE [KDPC] z SYSTEM-WIDE DEFERRED PROCEDURE CALL QUEUE, AJ BEZ TOHO, aby bola pre nu zavolana CALLBACK FUNCTION je mozne do SYSTEM-WIDE DEFERRED PROCEDURE CALL QUEUE zaradit znova tu istu instanciu STRUCTURE [KDPC]. Ak ine CPU vyberie zo SYSTEM-WIDE DEFERRED PROCEDURE CALL QUEUE tuto instanciu STRUCTURE [KDPC], moze CALLBACK ROUTINE pre TU ISTU instanciu STRUCTURE [KDPC] bezat PARALELNE.
+48. V DEFERRED PROCEDURE CALL sa spravidla realizuje nasledujuce kroky.
+   A. Zavola sa CUSTOM FUNCTION StartNextPacket() CUSTOM STRUCTURE DEVQUEUE, ktora spusti vykonavanie dalsieho IRP.
+   B. Zavola sa FUNCTION IoCompleteRequest(), ktorou sa ukonci prave skoncena IRP.
+49. WINDOWS podporuje 2 typy DEFERRED PROCEDURE CALLS.
+   A. WINDOWS pri vytvoreni instancie STRUCTURE [DEVICE_OBJECT] AUTOMATICKY vytvori instanciu DEFERRED PROCEDURE CALL (STRUCTURE [KDPC]), ktora je pristupna vo FIELD [DEVICE_OBJECT.Dpc].
+   B. DRIVER moze vytvorit CUSTOM instanciu STRUCTURE [KDPC], ktora reprezentuje CUSTOM DEFERRED PROCEDURE CALL OBJECT volanim FUNCTION KeInitializeDpc().
+50. Pouzitie DEFERRED PROCEDURE CALL, ktora je asociovana s instanciou STRUCTURE [DEVICE_OBJECT] sa realizuje v nasledujucich krokoch.
+   A. Po vytvoreni instancie STRUCTURE [DEVICE_OBJECT] je nutne inicializovat STRUCTURE [KDPC] volanim FUNCTION IoInitializeDpcRequest(). FUNCTION IoInitializeDpcRequest() prijima ako PARAMETER CUSTOM CALLBACK FUNCTION, ktora sa ma vyvolat pri spracovani instancie STRUCTURE [KDPC].
+   B. V INTERRUPT SERVICE ROUTINE sa zavola FUNCTION IoRequestDpc(), ktora zaradi instanciu [KDPC] do SYSTEM-WIDE DEFERRED PROCEDURE CALL QUEUE.
+   C. PO SKONCENI INTERRUPT SERVICE ROUTINE ak CPU nema prioritnejsiu cinnost, vyberie instanciu STRUCTURE [KDPC] zo SYSTEM-WIDE DEFERRED PROCEDURE CALL QUEUE a zavola CALLBACK FUNCTION, ktora je s instanciou STRUCTURE [KDPC] asociovana.
+51. Pouzitie CUSTOM DEFERRED PROCEDURE CALL sa realizuje v nasledujucich krokoch.
+   A. Vytvori sa instancia STRUCTURE [KDPC] volanim FUNCTION KeInitializeDpc().
+   !!! B. V INTERRUPT SERVICE ROUTINE sa zavola FUNCTION KeInsertQueueDpc(), ktora zaradi instanciu STRUCTURE [KDPC] do SYSTEM-WIDE DEFERRED PROCEDURE CALL QUEUE. FUNCTION vracia TRUE, ak instancia STRUCTURE [KDPC] bola uspesne zaradena do SYSTEM-WIDE DEFERRED PROCEDURE CALL QUEUE. Ak instancia STRUCTURE [KDPC] sa UZ NACHADZALA v SYSTEM-WIDE DEFERRED PROCEDURE CALL QUEUE, tak FUNCTION vrati FALSE a instancia STRUCTURE [KDPC] NEBUDE zaradena do SYSTEM-WIDE DEFERRED PROCEDURE CALL QUEUE na vykonanie.
+   C. PO SKONCENI INTERRUPT SERVICE ROUTINE ak CPU nema prioritnejsiu cinnost, vyberie instanciu STRUCTURE [KDPC] zo SYSTEM-WIDE DEFERRED PROCEDURE CALL QUEUE a zavola CALLBACK FUNCTION, ktora je s instanciou STRUCTURE [KDPC] asociovana.
+!!! 52. Pomocou FUNCTION KeRemoveQueueDpc() je mozne zo SYSTEM-WIDE DEFERRED PROCEDURE CALL QUEUE ODSTRANIT instanciu STRUCTURE [KDPC], aby sa pre nu CALLBACK FUNCTION nezavolala. FUNCTION KeRemoveQueueDpc() vracia TRUE, ako bol instancia STRUCTURE [KDPC] bola odstranena zo SYSTEM-WIDE DEFERRED PROCEDURE CALL QUEUE. FUNCTION KeRemoveQueueDpc() vracia FALSE, ak sa instancia STRUCTURE [KDPC] v SYSTEM-WIDE DEFERRED PROCEDURE CALL QUEUE NENACHADZALA.
+53. FUNCTION KeSetTargetProcessorDpc() umoznuje danej instancii STRUCTURE [KDPC] dedikovat CPU na ktorom budu DEFERRED PROCEDURE CALLS spustane.
+54. FUNCTION KeSetImportanceDpc() umoznuje urcit prioritu instancii STRUCTURE [KDPC]. Priorita je iba HINT a nie je garanciu, ze bude respektovana. FUNCTION KeSetImportanceDpc() umoznuje zadat nasledujuce priority.
+   A. VALUE [LowImportance] znamena, ze instancia STRUCTURE [KDPC] bude zaradena na koniec SYSTEM-WIDE DEFERRED PROCEDURE CALL QUEUE, pricom SYSTEM-WIDE DEFERRED PROCEDURE CALL QUEUE nebude okamzite spracovavana.
+   B. VALUE [MediumImportance] znamena, ze instancia STRUCTURE [KDPC] bude zaradena na koniec SYSTEM-WIDE DEFERRED PROCEDURE CALL QUEUE, pricom vsak ak spracovanie instancie STRUCTURE [KDPC] je nastavene na CURRENT CPU, bude SYSTEM-WIDE DEFERRED PROCEDURE CALL QUEUE OKAMZITE SPRACOVANA. Tato VALUE je DEFAULT VALUE.
+   C. VALUE [MediumHighImportance] znamena, ze instancia STRUCTURE [KDPC] bude zaradena na koniec SYSTEM-WIDE DEFERRED PROCEDURE CALL QUEUE a SYSTEM-WIDE DEFERRED PROCEDURE CALL QUEUE bude OKAMZITE SPRACOVANA.
+   D. VALUE [HighImportance] znamena, ze instancia STRUCTURE [KDPC] bude zaradena na zaciatok SYSTEM-WIDE DEFERRED PROCEDURE CALL QUEUE a SYSTEM-WIDE DEFERRED PROCEDURE CALL QUEUE bude OKAMZITE SPRACOVANA.
+55. DIRECT MEMORY ACCESS (DMA) je PRIAMY prenos dat medzi SYSTEM MEMORY a HW DEVICES (periferiami) BEZ toho, aby prenos musel riadit CPU. CPU pri DMA prenos IBA INICIALIZUJE, ale jeho realizaciu zabezpecuje DMA CONTROLLER, ktory moze byt bud separatny HW (pri ISA BUSES), alebo sucastou BUS CONTROLLER (pri PCI BUSES).
+56. Na DMA prenose sa podielaju nasledujuce logicke komponenty.
+   A. SYSTEM MEMORY. SYSTEM MEMORY je fyzicka RAM MEMORY, ktora pouziva PHYSICAL ADDRESS SPACE. ADDRESSES v tomto ADDRESS SPACE zodpovedaju PRIAMO ADDRESSES v SYSTEM MEMORY.
+   B. BUS ADDRESS SPACE. Tento ADDRESS SPACE pouzivaju HW DEVICE ak chcu cez DMA pristupit k SYSTEM MEMORY. ADDRESSES v BUS ADDRESS SPACE je NEVYHNUTNE PREMAPOVAT na ADDRESSES v PHYSICAL ADDRESS SPACE.
+   !!! C. MAP REGISTERS. MAP REGISTERS su REGISTERS v DMA CONTROLLER, ktore zabezpecuju mapovanie ADDRESSES medzi PHYSICAL ADDRESS SPACE a BUS ADDRESS SPACE. Kazdy MAP REGISTER obsahuje ADDRESS jedneho PHYSICAL MEMORY PAGE v SYSTEM MEMORY na ktoru mapovanie vykonava. V niektorych architekturach ako ALHPA su MAP REGISTERS implementovane ako SEPARATNY HW. V X86 a X64 su MAP REGISTERS ulozene v SYSTEM MEMORY.
+   D. ADAPTER OBJECT. ADAPTER OBJECT je DATA STRUCTURE pomocou ktora obsahuje charakteristicky DMA a pomocou ktorej je mozne riadit DMA prenos. Pomocou tejto STRUCTURE mozu DRIVERS riadit prenost cez DMA, vratane nastavenia MAP REGISTERS a pristupu k DMA CHANNELS. DMA CHANNELS reprezentuju HW RESOURCES, ktore su SHARED medzi vsetkymi HW DEVICES v SYSTEME.
+!!!!! 57. Kedze 1 MAP REGISTER obsahuje ADDRESS 1 MEMORY PAGE, na prenos 'N' MAP PAGES je potrebnych 'N' MAP REGISTERS. Ak WINDOWS alokuje danemu DRIVER MENEJ MAP REGISTERS, DMA prenos je nutne rozdelit do VIACERYCH STAGES.
+58. S ADAPTER OBJECT sa vo WDM pracuje nasledujucim sposobom.
+   A. Pomocou FUNCTION IoGetDmaAdapter() sa ziska instancia STRUCTURE [DMA_ADAPTER].
+   B. STRUCTURE [DMA_ADAPTER] vo FIELD [DMA_ADAPTER.DmaOperations] obsahuje POINTER na STRUCTURE [DMA_OPERATIONS].
+   !!! C. STRUCTURE [DMA_OPERATIONS] ma mnozstvo FIELDS, ktore reprezentuju POINTERS na FUNCTIONS pomocou ktorych DRIVER moze riadit prenos cez DMA.
+   D. Ak DRIVER ukonci pracu so STRUCTURE [DMA_ADAPTER] MUSI zavolat FUNCTION vo FIELD [DMA_ADAPTER.DmaOperations.PutDmaAdapter], ktorou sa uvolni POINTER ziskany volanim FUNCTION IoGetDmaAdapter().
+59. STRUCTURE [DMA_OPERATIONS] ma nasledujuce FIELDS.
+   1. FIELD [DMA_OPERATIONS.Size] obsahuje dlzku STRUCTURE [DMA_OPERATIONS].
+   !!! 2. FIELD [DMA_OPERATIONS.PutDmaAdapter] obsahuje POINTER na SYSTEM FUNCTION, ktora uvolnuje POINTER na STRUCTURE [DMA_ADAPTER] ziskany volanim FUNCTION IoGetDmaAdapter().
+   3. FIELD [DMA_OPERATIONS.AllocateCommonBuffer] obsahuje POINTER na SYSTEM FUNCTION, ktora alokuje COMMON BUFFER.
+   4. FIELD [DMA_OPERATIONS.FreeCommonBuffer] obsahuje POINTER na SYSTEM FUNCTION, ktora uvolnuje COMMON BUFFER.
+   5. FIELD [DMA_OPERATIONS.AllocateAdapterChannel] obsahuje POINTER na SYSTEM FUNCTION, ktora alokuje ADAPTER CHANNEL a MAP REGISTERS.
+   6. FIELD [DMA_OPERATIONS.FlushAdapterBuffers] obsahuje POINTER na SYSTEM FUNCTION, ktora urobi FLUSH DATA BUFFERS v CACHE po skonceni DMA prenosu.
+   7. FIELD [DMA_OPERATIONS.FreeAdapterChannel] obsahuje POINTER na SYSTEM FUNCTION, ktora uvolnuje ADAPTER CHANNEL a MAP REGISTERS.
+   8. FIELD [DMA_OPERATIONS.FreeMapRegisters] obsahuje POINTER na SYSTEM FUNCTION, ktora uvolnuje iba MAP REGISTERS.
+   9. FIELD [DMA_OPERATIONS.MapTransfer] obsahuje POINTER na SYSTEM FUNCTION, ktora spusta DMA prenos.
+   10. FIELD [DMA_OPERATIONS.GetDmaAlignment] obsahuje POINTER na SYSTEM FUNCTION, ktora vracia poziadavky na ALIGNMENT pre DMA prenos.
+   11. FIELD [DMA_OPERATIONS.ReadDmaCounter] obsahuje POINTER na SYSTEM FUNCTION, ktora vracia pocet BYTES, ktore v aktualnom DMA prenose este ostava preniest.
+   12. FIELD [DMA_OPERATIONS.GetScatterGatherList] obsahuje POINTER na SYSTEM FUNCTION, ktora alokuje MAP REGISTERS a vytvori SCATTER-GATHER LIST potrebny pre DMA prenos.
+   13. FIELD [DMA_OPERATIONS.PutScatterGatherList] obsahuje POINTER na SYSTEM FUNCTION, ktora uvolni MAP REGISTERS a SCATTER-GATHER LIST po skonceni DMA prenosu.
+   14. FIELD [DMA_OPERATIONS.CalculateScatterGatherList] obsahuje POINTER na SYSTEM FUNCTION, ktora vracia pocet BYTES potrebnych na alokaciu SCATTER-GATHER LIST.
+   15. FIELD [DMA_OPERATIONS.BuildScatterGatherList] obsahuje POINTER na SYSTEM FUNCTION, ktora alokuje MAP REGISTERS a vytvori SCATTER-GATHER LIST potrebny pre DMA prenos v BUFFER alokovanom DRIVER.
+   16. FIELD [DMA_OPERATIONS.BuildMdlFromScatterGatherList] obsahuje POINTER na SYSTEM FUNCTION, ktora vytvori MDL pre zodpovedajuci SCATTER-GATHER LIST.
+   17. FIELD [DMA_OPERATIONS.GetDmaAdapterInfo] obsahuje POINTER na SYSTEM FUNCTION, ktora vrati instanciu STRUCTURE [DMA_ADAPTER_INFO]. Ta obsahuje CAPABILITIES DMA SYSTEMU, ktory SYSTEM obsahuje.
+   18. FIELD [DMA_OPERATIONS.GetDmaTransferInfo] obsahuje POINTER na SYSTEM FUNCTION, ktora vracia poziadavky na dlzku, OFFSET a MDL potrebne na alokaciu SCATTER-GATHER LIST. FUNCTION je NAHRADA za FUNCTION vo FIELD [CalculateScatterGatherList].
+   19. FIELD [DMA_OPERATIONS.InitializeDmaTransferContext] obsahuje POINTER na SYSTEM FUNCTION, ktora inicializuje DMA CONTEXT, ktory WINDOWS vyuziva na ukladanie interneho stavu DMA prenosu.
+   20. FIELD [DMA_OPERATIONS.AllocateCommonBufferEx] obsahuje POINTER na SYSTEM FUNCTION, ktora alokuje COMMON BUFFER, ktory je pristupny pre CPU aj HW DEVICE.
+   21. FIELD [DMA_OPERATIONS.AllocateAdapterChannelEx] obsahuje POINTER na SYSTEM FUNCTION, ktora alokuje ADAPTER CHANNEL a MAP REGISTERS a zavola CUSTOM FUNCTION definovanu DRIVER, ktora zahaji DMA prenos.
+   22. FIELD [DMA_OPERATIONS.ConfigureAdapterChannel] obsahuje POINTER na SYSTEM FUNCTION, ktora povoli CUSTOM FUNCTION implementovanu DMA CONTROLLER.
+   23. FIELD [DMA_OPERATIONS.CancelAdapterChannel] obsahuje POINTER na SYSTEM FUNCTION, ktora sa pokusi zrusit aktualnu poziadavku na alokaciu DMA CHANNEL.
+   24. FIELD [DMA_OPERATIONS.MapTransferEx] obsahuje POINTER na SYSTEM FUNCTION, ktora nastavi MAP REGISTERS aby mapovali PHYSICAL ADDRESSES v SCATTER-GATHER LIST na BUS ADDRESSES, ktore su potrebne pre realizaciu DMA prenosu.
+   25. FIELD [DMA_OPERATIONS.GetScatterGatherListEx] obsahuje POINTER na SYSTEM FUNCTION, ktora alokuje MAP REGISTERS a vytvori SCATTER-GATHER LIST potrebny pre DMA prenos. Nasledne zavola CUSTOM FUNCTION, ktoru definuje DRIVER, aby ta spustila DMA prenos.
+   26. FIELD [DMA_OPERATIONS.BuildScatterGatherListEx] obsahuje POINTER na SYSTEM FUNCTION, ktora vytvori SCATTER-GATHER LIST v BUFFER, ktory vytvoril DRIVER a nasledne zavola CUSTOM FUNCTION, ktoru definuje DRIVER, aby ta spustila DMA prenos.
+   27. FIELD [DMA_OPERATIONS.FlushAdapterBuffersEx] obsahuje POINTER na SYSTEM FUNCTION, ktora urobi FLUSH DATA BUFFERS v CACHE po skonceni DMA prenosu. Pre HW DEVICES, ktore pouzivaju SYSTEM DMA CONTROLLER FUNCTION ZRUSI aktualny DMA prenos, ak este nebol ukonceny.
+   28. FIELD [DMA_OPERATIONS.FreeAdapterObject] obsahuje POINTER na SYSTEM FUNCTION, ktora uvolni instanciu STRUCTURE [DMA_ADAPTER] po skonceni DMA prenosu.
+   29. FIELD [DMA_OPERATIONS.CancelMappedTransfer] obsahuje POINTER na SYSTEM FUNCTION, ktora zastavi MAPPED DMA prenos.
+60. Sposob DMA prenosu ovplyvnuju nasledujuce faktory.
+   A. Ak HW DEVICE ma schopnost BUS-MASTERING, obsahuje potrebnu elektroniku pre realizaciu DMA prenosu. DRIVER takemuto HW DEVICE musi definovat typ operacie (INPUT/OUTPUT), adresu, kde maju byt DATA ulozene, velkost jednej DATA UNIT (BYTE, WORD, DWORD, QUADWORD) a pocet DATA UNITS, ktore maju byt prenesene.
+   B. Ak HW DEVICE ma schopnost SCATTER-GATHER, HW DEVICE je schopne prenasat velke bloky dat pomocou DMA prenosu. Bloky dat je mozne prenasat do kontinualnych aj nekontiualnych blokov MEMORY PAGES v SYSTEM MEMORY. Vyhodou tohto principu je eliminacia nutnosti, aby DRIVER alokoval velke bloky MEMORY PAGES v SYSTEM MEMORY. PAGES v SYSTEM MEMORY nad ktorymi sa ma DMA prenos realizovat su danym DRIVER LOCKED v SYSTEM MEMORY a DRIVER nasledne iba oznami HW DEVICE kde maju by DATA READ/WRITE pri DMA prenose.
+   C. Ak HW DEVICE NEMA schopnost BUS-MASTERING (tj. HW DEVICE nevie vystupovat ako BUS MASTER), DRIVER musi pouzit DMA CONTROLLER, ktory je sucastou MOTHERBOARD daneho PC. Takyto DMA prenos je oznacovany ako SLAVE DMA prenos. Nove verzie WINDOWS dokazu SLAVE DMA prenos realizovat transparentne.
+   D. DMA prenos standardne vyzaduje, aby DRIVER nastavil MAP REGISTERS a vykonal kopirovanie dat do, alebo z MEMORY PAGES, nad ktorymi DMA prenos prebiehal. Ak vsak HW DEVICE potrebuje kontinualne prenasat data, neustale nastavovanie MAP REGISTERS a kopirovanie dat by spomalovalo DMA prenos. V tomto pripade je vyhodnejsie, aby DRIVER alokoval COMMON BUFFERS do ktorych moze pristupovat simultane ako HW DEVICE tak aj DRIVER. To umoznuje eliminovat neustale nastavovania MAP REGISTERS a kopirovanie dat v MEMORY.
+61. Vo WDM DRIVERS realizuju DMA prenos v nasledujucich krokoch.
+   A. V CUSTOM FUNCTION StartIO() sa volanim FUNCTION vo FIELD [DMA_OPERATIONS.AllocateAdapterChannel] alokuje HW RESOURCE DMA CHANNEL. Kedze pocet DMA CHANNELS v SYSTEME je limitovany (vacsinou na 4, 8, 16, alebo 32) jeden DMA CHANNEL je zvycajne cez OPERATING SYSTEM SHARED viacerymi DRIVERS.
+   B. FUNCTION vo FIELD [DMA_OPERATIONS.AllocateAdapterChannel] alokuje MAP REGISTERS, ktore su pocas vykonavania DMA prenosu priradene danemu DRIVER.
+   C. FUNCTION vo FIELD [DMA_OPERATIONS.AllocateAdapterChannel] nasledne zavola CUSTOM FUNCTION.
+   D. Ulohou CUSTOM FUNCTION je volanim FUNCTION vo FIELD [DMA_OPERATIONS.MapTransfer] nakonfigurovat a spustit DMA prenos.
+   E. HW DEVICE spusti vykonavanie DMA prenosu na konci ktoreho generuje INTERRUPT.
+   F. INTERRUPT sposobi vyvolanie INTERRUPT SERVICE ROUTINE (ISR), ktora nasledne vyvola spustenie DPC ROUTINE.
+   !!! G. DPC ROUTINE vyhodnoti realizovany prenos. Ak pocas jednej iteracie sa NEPODARILO PRENIEST VSETKY DATA, napriklad pre limitovany pocet MAP REGISTER, cela procedura od volania FUNCTION vo FIELD [DMA_OPERATIONS.MapTransfer] sa opakuje, az kym nie su vsetky data prenesene.
+   !!! H. Po prenose VSETKYCH dat je DMA prenos ukonceni volanim FUNCTION vo FIELD [DMA_OPERATIONS.FreeMapRegisters], alebo FUNCTION vo FIELD [DMA_OPERATIONS.FreeAdapterChannel].
+!!! 62. DRIVERS pouzivajuce DMA spravidla pouzivaju DIRECT MODE na prenos obsahu BUFFERS z USER MODE do KERNEL MODE. Je to dane tym, ze POINTERS na tieto MEMORY DESCRIPTORES referujuce na tieto BUFFERS je mozne priamo pouzit ako PARAMETER SYSTEM FUNCTION MapTransfer() ulozenu vo FIELD [DMA_OPERATIONS.MapTransfer].
+!!!!! 63. NEVYHODOU pouzitia DIRECT MODE pri prenose cez DMA je nutnost, aby BUFFERS respektovali MEMORY ALIGNMENT, ktore vyzaduje dane DMA DEVICE. To USER MODE BUFFERS pouzivane pri DIRECT MODE spravidla nerespektuju (su alokovane v USER MODE, kde PROGRAM pouzivajuci dany DRIVER nemusi o tomto obmedzeni vediet), a preto je treba v tomto pripade casti BUFFERS, ktore nie su ALIGNED musia byt danym DRIVER korektne ALIGNED predtym, nez su zaslane cez DMA prenos. Kedze vsak ALGNMENT je spravidla iba par BYTES, potreba vykonat ALIGNMENT sa tyka iba malej casti celkoveho BUFFER.
+64. Pre inicializaciu DMA systemu platia nasledujuce fakty.
+   A. Ak HW DEVICE funguje ako BUS MASTER, potom ma vsetku potrebnu elektroniku, aby SAMO realizovalo DMA prenos a NEPOTREBUJE k tomu SYSTEM DMA - HW pritomny na MOTHERBOARD.
+   B. Inicializacia DMA ADAPTER OBJECT sa vykonava pomocou FUNCTION IoGetDmaAdapter(), ktora prijima ako 2. PARAMETER STRUCTURE [DEVICE_DESCRIPTION]. FUNCTION sa vola spravidla ako reakcia na IRP typu [IRP_MN_START_DEVICE].
+   !!!!! C. Ak HW DEVICE funguje ako BUS MASTER, tak DRIVER NEZISKAVA IO RESOURCE v IRP typu [IRP_MN_START_DEVICE]. To znamena, ze STRUCTURE [CM_PARTIAL_RESOURCE_DESCRIPTOR] NEBUDE obsahovat IO RESOURCE typu [CmResourceTypeDma]. Je to dane tym, ze HW DEVICE ma elektroniku potrebnu na realizaciu DMA prenosu a tak NEPOTREBUJE asistenciu SYSTEM DMA, ktora je ulozena na MOTHERBOARD.
+   !!! D. Ak HW DEVICE NEFUNGUJE ako BUS MASTER a na DMA prenos pouziva SYSTEM DMA, potom DRIVER ZISKA IO RESOURCE v IRP typu [IRP_MN_START_DEVICE]. STRUCTURE [CM_PARTIAL_RESOURCE_DESCRIPTOR] teda BUDE obsahovat IO RESOURCE typu [CmResourceTypeDma], ktorej hodnoty sa pouziju na icializaciu DMA SYSTEMU volanim FUNCTION IoGetDmaAdapter().
+   !!!!! E. FUNCTION IoGetDmaAdapter() interne zasiela do CURRENT DRIVER IRP typu [IRP_MN_QUERY_INTERFACE] pomocou, ktoreho zistuje ci CURRENT DRIVER definuje INTERFACE (zoznam CUSTOM FUNCTIONS) typu [GUID_BUS_INTERFACE_STANDARD]. Ak ano, potom pouzije CUSTOM FUNCTIONS toho INTERFACE implementovane v CURRENT DRIVER na ziskanie DMA ADAPTER OBJECT. Ak CURRENT DRIVER tento INTERFACE NEIMPLEMENTUJE, tak FUNCTION IoGetDmaAdapter() zavola FUNCTION HalGetAdapter(), ktora vrati DMA ADAPTER OBJECT. FUNCTION HalGetAdapter() by sa teda NEMALA POUZIVAT a je oznacena ako OBSOLETE.
+65. STRUCTURE [DEVICE_DESCRIPTION] pouzivana vo FUNCTION IoGetDmaAdapter() na popisanie poziadaviek na DMA prenos ma nasledujuce FIELDS.
+   A. FIELD [DEVICE_DESCRIPTION.Version] obsahuje VERSION STRUCTURE [DEVICE_DESCRIPTION]. Musi byt nastavena na VALUE [DEVICE_DESCRIPTION_VERSION].
+   B. FIELD [DEVICE_DESCRIPTION.Master] urcuje ci HW DEVICE je BUS MASTER DEVICE.
+   C. FIELD [DEVICE_DESCRIPTION.ScatterGather] pre HW DEVICES, ktore su BUS MASTER DEVICES FIELD urcuje ci HW DEVICE podporuje SCATTER/GATHER CAPABILITY.
+   D. FIELD [DEVICE_DESCRIPTION.DemandMode] sa pouziva IBA pre HW DEVICE, ktore NIE SU BUS MASTER DEVICES a pouzivaju SYSTEM DMA CONTROLL. FIELD urcuje ci HW DEVICE vyzaduje na realizovanie DMA prenosu pouzitie SYSTEM DMA CONTROLLER, ktory je umiestneny na MOTHERBOARD.
+   E. FIELD [DEVICE_DESCRIPTION.AutoInitialize] sa pouziva IBA pre HW DEVICE, ktore NIE SU BUS MASTER DEVICES, resp. ak DMA CONTROLLER daneho HW DEVICE NEPODPORUJE BUS MASTER pricom urcuje ci HW DEVICE podporuje AUTOINICIALIZACIU svojho DMA CONTROLLER. Pri AUTOINITIALIZATION MODE SYSTEM DMA CONTROLLER dokaze AUTOMATICKY urcit poziciu v MEMORY, do ktorej sa bude robit READ/WRITE z HW DEVICE. Je to mozne vdaka pouzitiu COMMON BUFFER, co je kontinualny NON-PAGED MEMORY BLOCK, a preto SYSTEM DMA CONTROLLER dokaze automaticky vypocitavat pozicie v tomto bloku do ktoreho sa maju ulozit data z READ/WRITE DMA prenosu.
+   F. FIELD [DEVICE_DESCRIPTION.Dma32BitAddresses] urcuje ci HW DEVICE pouziva plnu 32 BITS adresaciu.
+   G. FIELD [DEVICE_DESCRIPTION.IgnoreCount] urcuje ci WINDOWS ma ignorovat pocitadlo prenesenych BYTES v DMA CONTROLLER daneho HW DEVICE a ma pouzit vlastne pocitadlo.
+   H. FIELD [DEVICE_DESCRIPTION.Reserved1] je RESERVED FIELD, ktory MUSI byt nastaveny na 0.
+   I. FIELD [DEVICE_DESCRIPTION.Dma64BitAddresses] urcuje ci HW DEVICE pouziva plnu 64 BITS adresaciu.
+   J. FIELD [DEVICE_DESCRIPTION.BusNumber] je RESERVED FIELD, ktory MUSI byt nastaveny na 0.
+   K. FIELD [DEVICE_DESCRIPTION.DmaChannel] sa pouziva IBA ak HW DEVICE pouziva DMA CONTROLLER na MOTHERBOARD, resp. ak DMA CONTROLLER daneho HW DEVICE NEPODPORUJE BUS MASTER. FIELD urcuje cislo DMA CHANNEL. Ziskava sa IO RESOURCE typu [CmResourceTypeDma] v STRUCTURE [CM_PARTIAL_RESOURCE_DESCRIPTOR].
+   !!! L. FIELD [DEVICE_DESCRIPTION.InterfaceType] urcuje BUS TYPE. VALUE [InterfaceTypeUndefined] znamena, ze IO MANAGER si zaslanim IRP do BUS DRIVER leziacom pod CURRENT DRIVER AUTOMATICKY detekuje typ BUS.
+   M. FIELD [DEVICE_DESCRIPTION.DmaWidth] sa pouziva IBA ak HW DEVICE pouziva DMA CONTROLLER na MOTHERBOARD, resp. ak DMA CONTROLLER daneho HW DEVICE NEPODPORUJE BUS MASTER. FIELD urcuje sirku DMA PRENOSU v BITS. Ziskava sa IO RESOURCE typu [CmResourceTypeDma] v STRUCTURE [CM_PARTIAL_RESOURCE_DESCRIPTOR]. Validne VALUES su [Width8Bits], [Width16Bits], [Width32Bits], alebo [Width64Bits].
+   N. FIELD [DEVICE_DESCRIPTION.DmaSpeed] sa pouziva IBA ak HW DEVICE pouziva DMA CONTROLLER na MOTHERBOARD, resp. ak DMA CONTROLLER daneho HW DEVICE NEPODPORUJE BUS MASTER. FIELD urcuje rychlost DMA PRENOSU. Ziskava sa IO RESOURCE typu [CmResourceTypeDma] v STRUCTURE [CM_PARTIAL_RESOURCE_DESCRIPTOR]. Validne VALUES su [Compatible], [TypeA], [TypeB], [TypeC], alebo [TypeF].
+   O. FIELD [DEVICE_DESCRIPTION.MaximumLength] urcuje maximalny pocet BYTES, ktore HW DEVICE moze preniest.
+   P. FIELD [DEVICE_DESCRIPTION.DmaPort] je OBSOLETE a je IGNOROVANY.
+   Q. FIELD [DEVICE_DESCRIPTION.DmaAddressWidth] sa pouziva IBA ak HW DEVICE podporuje BUS MASTER. FIELD urcuje pocet BITS pouzivanych v adresacii pri DMA prenose. Hodnota MUSI byt v intervale <1,64>. Pre HW DEVICES pouzivajucich DMA CONTROLLER na MOTHERBOARD, resp. ak DMA CONTROLLER daneho HW DEVICE NEPODPORUJE BUS MASTER je dlzka DMA ADDRESSES urcena dlzkou DMA ADDRESSES, ktore pouziva DMA CONTROLLER na MOTHERBOARD.
+   R. FIELD [DEVICE_DESCRIPTION.DmaControllerInstance] sa NEPOUZIVA.
+   S. FIELD [DEVICE_DESCRIPTION.DmaRequestLine] sa pouziva IBA ak HW DEVICE pouziva DMA CONTROLLER na MOTHERBOARD, resp. ak DMA CONTROLLER daneho HW DEVICE NEPODPORUJE BUS MASTER. FIELD urcuje cislo REQUEST LINE na DMA CONTROLLER ku ktoremu je HW DEVICE pripojene. Ziskava sa IO RESOURCE typu [CmResourceTypeDma] v STRUCTURE [CM_PARTIAL_RESOURCE_DESCRIPTOR].
+   T. FIELD [DEVICE_DESCRIPTION.DeviceAddress] sa pouziva IBA ak HW DEVICE pouziva DMA CONTROLLER na MOTHERBOARD, resp. ak DMA CONTROLLER daneho HW DEVICE NEPODPORUJE BUS MASTER. FIELD urcuje MEMORY-MAPPED ADDRES toho DATA REGISTER na HW DEVICE, ktory sa pouziva ako SOURCE, alebo DESTINATION pri DMA prenose. Ziskava sa IO RESOURCE typu [CmResourceTypeDma] v STRUCTURE [CM_PARTIAL_RESOURCE_DESCRIPTOR].
+66. DMA ADAPTER OBJECT sa uvolnuje volanim SYSTEM FUNCTION ulozenej vo FIELD [DMA_OPERATIONS.PutDmaAdapter].
+67. DMA prenos sa spravidla realizuje v nasledujucich krokoch.
+   A. V CUSTOM FUNCTION StartIO() sa zavola DMA FUNCTION ulozena vo FIELD [DMA_OPERATIONS.AllocateAdapterChannel], ktorou sa alokuje DMA CHANNEL a spusti sa vykonavanie CUSTOM FUNCTION AdapterControl(), ktora zahaji samotny DMA prenos.
+   B. V CUSTOM FUNCTION AdapterControl() sa zavola sa zavola DMA FUNCTION ulozena vo FIELD [DMA_OPERATIONS.MapTransfer], ktorou sa pridelia MAP REGISTERS potrebne pre DMA prenos. Nasledne CUSTOM FUNCTION AdapterControl() pomocou CUSTOM OPERATIONS prinuti HW DEVICE, aby zahajil DMA prenos.
+   C. Po skonceni DMA prenosu je spravidla generovany INTERRUPT, ktory je spracovany v CUSTOM FUNCTION DpcForIsr(). V tejto FUNCTION sa v pripade, ze vsetky data boli prenesene musi zavolat DMA FUNCTION ulozena vo FIELD [DMA_OPERATIONS.FreeMapRegister], ktora uvolni alokovane DMA REGISTERS.
+!!!!! 68. DMA prenos reprezentuje 1 TRANSFER, ktory sa ma vykonat. Pre TRANSFER platia nasledujuce vlastnosti.
+   A. Jeden TRANSFER moze byt realizovany v <1,N> STAGES.
+   B. Maximalny pocet MEMORY PAGES, ktore je mozne pocas 1 STAGE preniest, urcuje pocet MAP REGISTERS, ktore boli danemu DRIVER priradene pri inicializacii DMA SYSTEMU.
+   !!!!! C. Na prenos 1 MEMORY PAGE je potrebny 1 MAP REGISTER, ktory obsahuje ADDRESS danej MEMORY PAGE.
+   !!! D. Ak BUFFER, ktory sa ma cez jeden TRANSFER preniest sa rozklada na 'M' MEMORY PAGES, pricom WINDOWS priradil danemu DRIVER 'N' MAP REGISTERS, pricom plati, ze M>N, tak je TRANSFER NUTNE rozdelit do M/N (resp. podla relativnej pozicie BUFFER voci zaciatku MEMORY PAGE aj ((M/N)+1)) STAGES.
+   !!!!! E. Pomocou MACRO ADDRESS_AND_SIZE_TO_SPAN_PAGES() je mozne urcit kolko MEMORY PAGES bude potrebnych na prenos BUFFER. MACRO MACRO ADDRESS_AND_SIZE_TO_SPAN_PAGES() berie do uvahy relativnu poziciu BUFFER voci zaciatku MEMORY PAGE, ako aj pocet BYTES, ktore BUFFER obsahuje. Ak BUFFER NIE JE ZAROVNANY na zaciatok MEMORY PAGE, tak z 1. PAGE bude preneseny iba prislusny fragment od zaciatku MEMORY BUFFER az po koniec MEMORY PAGE.
+69. CUSTOM FUNCTION StartIO() pri realizovani DMA prenosu vykonava nasledujuce kroky.
+   A. Kedze FUNCTION StartIO() zacina cely DMA prenos, MUSI si ulozit velkost prenasanych dat, ako aj ADDRESS USER MODE BUFFER, ktory bol LOCKED cez MDL do DEVICE EXTENSION OBJECT. Pomocou FUNCTION MmGetMdlVirtualAddress() FUNCTION StartIO() ziskava POINTER na LOCKED USER MODE BUFFER a pomocou FUNCTION MmGetMdlByteCount() FUNCTION StartIO() ziskava pocet BYTES, ktore maju byt prenesene.
+   !!! B. Pomocou MACRO ADDRESS_AND_SIZE_TO_SPAN_PAGES() sa vypocita kolko MEMORY PAGES je nutne preniest pre dany TRANSFER. MACRO ADDRESS_AND_SIZE_TO_SPAN_PAGES() berie do uvahy zaciatocu ADDRESS MEMORY BUFFER zaslaneho z USER MODE, ako aj pocet BYTES, ktore sa maju preniest.
+   C. Vykona sa porovnanie poctu MAP REGISTERS a MEMORY PAGES, ktore maju byt prenesene. Ak pocet MAP REGISTERS je nizsi ako pocet MEMORY PAGES, potom je TRANSFER nutne vykonat vo VIACERYCH STAGES.
+   D. Do DEVICE EXTENSION OBJECT sa ulozia informacie o pocte BYTES, ktore maju byt pocas aktualnej STAGE a pocte MAP REGISTERS, ktore sa na to pouziju. Pocet MAP REGISTERS je nutny pre ich neskorsie uvolnenie.
+   !!! E. Zavola sa FUNCTION ulozena vo FIELD [DMA_OPERATIONS.AllocateAdapterChannel]. Ako 4. PARAMETER FUNCTION sa definuje CUSTOM CALLBACK FUNCTION AdapterControl(), ktoru DMA SYSTEM zavola, aby v nej DRIVER inicializoval DMA prenos.
+   !!!!! F. FUNCTION ulozena vo FIELD [DMA_OPERATIONS.AllocateAdapterChannel] interne vykona THREAD BLOCKING az kym nedojde k uvolneniu MAP REGISTERS a DMA CHANNELS, ktore mozu byt vo WINDOWS SHARED medzi viacerymi DRIVERS.
+70. CUSTOM FUNCTION AdapterControl() pri realizovani DMA prenosu vykonava nasledujuce kroky.
+   A. CUSTOM FUNCTION AdapterControl() musi zavolat FUNCTION KeFlushIoBuffers(), ktora prekopiruje vsetky data asociovane s danym MDL z MEMORY CACHES kazdeho CPU do MAIN MEMORY.
+   B. CUSTOM FUNCTION AdapterControl() musi zavolat FUNCTION ulozenu vo FIELD [DMA_OPERATIONS.MapTransfer], ktora vrati PHYSICAL ADDRESS (instancia STRUCTURE [PHYSICAL_ADDRESS]) na ktoru ma HW DEVICE zapisovat data pomocou DMA prenosu.
+   !!!!! C. Teraz musi CUSTOM FUNCTION AdapterControl() vykonat CUSTOM STEPS ako su volania HAL FUNCTIONS, aby prinutila HW DEVICE vykonat DMA prenos na PHYSICAL ADDRESS (instancia STRUCTURE [PHYSICAL_ADDRESS]), ktoru vratila FUNCTION ulozena vo FIELD [DMA_OPERATIONS.MapRegister].
+   !!! D. CUSTOM FUNCTION AdapterControl() MUSI ako RETURN VALUE vratit VALUE [DeallocateObjectKeepRegisters], ktoru FUNCTION indikuje WINDOWS, ze ADAPTER OBJECT uz aktualny TRANSFER NEPOUZIVA, no MAP REGISTERS su stale pouzivane HW DEVICE na prenos dat cez DMA prenos.
+71. CUSTOM FUNCTION DpcForIsr() pri realizovani DMA prenosu vykonava nasledujuce kroky.
+   A. CUSTOM FUNCTION DpcForIsr() pomocou CUSTOM FUNCTION GetCurrentIRP() ziska IRP, ktore je prave spracovavane.
+   B. CUSTOM FUNCTION DpcForIsr() musi zavolat FUNCTION ulozenu vo FIELD [DMA_OPERATIONS.FlushAdapterBuffers], ktora prinuti DMA, aby vycistil INTERMEDIATE BUFFERS a presunul ich do USER MODE BUFFER.
+   C. CUSTOM FUNCTION DpcForIsr() vykona kalkulaciu kolko BYTES bolo prenesenych a kolko je este treba preniest, v pripade, ze TRANSFER je realizovany vo VIACERYCH STAGES.
+   !!!!! D. CUSTOM FUNCTION DpcForIsr() v pripade, ze DMA TRANSFER ZLYHAL musi zavolat FUNCTION ulozenu vo FIELD [DMA_OPERATIONS.FreeMapRegisters] na uvolnenie MAP REGISTERS, UKONCIT IRP volanim FUNCTION IoCompleteRequest() a spustit vykonavanie dalsieho IRP v DEVQUEUE volanim CUSTOM FUNCTION StartNextPacket(). Detekcia zlyhania DMA prenosu sa spravidla vykonava citanim STATUS PORT HW DEVICE. Je to HW DEVICE SPECIFIC OPERATION.
+   !!! E. CUSTOM FUNCTION DpcForIsr() v pripade, ze DMA TRANSFER vyzaduje viacero STAGES, MUSI zahajit prenos novej STAGE.
+   F. V pripade, ze TRANSFER je tvoreny viacerymi STAGES, CUSTOM FUNCTION DpcForIsr() musi vypocitat novu poziciu BUFFER pre DMA prenos ako v CUSTOM FUNCTION StartIO() a nasledne zavolat FUNCTION vo FIELD [DMA_OPERATIONS.MapRegister], ktora vypocita [PHYSICAL_ADDRESS] pre dalsiu STAGE DMA TRANSFER.
+   !!!!! G. CUSTOM FUNCTION DpcForIsr() v pripade, ze DMA TRANSFER skoncil musi zavolat FUNCTION ulozenu vo FIELD [DMA_OPERATIONS.FreeMapRegisters] na uvolnenie MAP REGISTERS, UKONCIT IRP volanim FUNCTION IoCompleteRequest() a spustit vykonavanie dalsieho IRP v DEVQUEUE volanim CUSTOM FUNCTION StartNextPacket().
+72. Ak HW DEVICE podporuje DMA SCATTER-GATHER TRANSFER (HW DEVICE dokaze prenasat aj MEMORY PAGES, ktore NIE SU KONTINUALNE ulozene v SYSTEM MEMORY), DMA prenos sa vykonava v nasledujucich krokoch.
+   A. V CUSTOM FUNCTION AddDevice() sa alokuje NON-PAGED MEMORY o dlzke [sizeof(SCATTER_GATHER_LIST)+N*sizeof(SCATTER_GATHER_ELEMENT)] BYTES. Tato MEMORY sa bude pouzivat na ukladanie ITEMS v SCATTER-GATHER LIST, ktory sa bude vyuzivat pri DMA prenose. MEMORY je nutne uvolnit v CUSTOM FUNCTION RemoveDevice().
+   B. V CUSTOM FUNCTION StartDevice() sa vyvori ADAPTER OBJECT. Tento OBJECT MUSI mat nastaveny FIELD [DEVICE_DESCRIPTION.ScatterGather] na TRUE.
+   C. DMA prenos zacina v CUSTOM FUNCTION StartIO(), ktora vykonava ROVNAKU funkcnost ako pri NON SCATTER-GATHER DMA prenose, vratane volania FUNCTION vo FIELD [DMA_OPERATIONS.AllocateAdapterChannel], ktora vyvola CUSTOM FUNCTION AdapterControl().
+   !!! D. CUSTOM FUNCTION AdapterControl() musi v cykle inicializovat <1,N> instancii STRUCTURE [SCATTER_GATHER_ELEMENT], ktoru ulozi do MEMORY alokovanej v CUSTOM FUNCTION AddDevice(). Kazda instancii STRUCTURE [SCATTER_GATHER_ELEMENT] obsahuje 1 KONTINUALNY BLOCK SYSTEM MEMORY z BUFFER, ktory zaslal USER MODE PROGRAM do DRIVER.
+   !!!!! E. Pre kazdu vytvorenu instanciu STRUCTURE [SCATTER_GATHER_ELEMENT] sa vola FUNCTION vo FIELD [DMA_OPERATIONS.MapRegister], ktora vykona ANALYZU aka cast MEMORY v ktorej je ulozeny USER MODE BUFFER je ulozena KONTINUALNE v SYSTEM MEMORY. Tejto MEMORY je priradeny 1 MAP REGISTER, pricom FUNCTION vracia pocet BYTES, ktore su takto KONTINUALNE ulozene ako aj ADDRESS zaciatku tohto BLOKU. ADDRESS sa uklada do FIELD [SCATTER_GATHER_ELEMENT.Address] a dlzka do FIELD [SCATTER_GATHER_ELEMENT.Length] inicializovanej instancie STRUCTURE [SCATTER_GATHER_ELEMENT].
+   !!!!! F. Ak pocet KONTINUALNYCH BLOKOV SYSTEM MEMORY v ktorych je ulozeny BUFFER zaslany USER MODE PROGRAM do DRIVER PRESAHUJE pocet 'N', DMA TRANSFER je NUTNE vykonat vo vicerych STAGES podobne ako pri NON SCATTER-GATHER DMA prenose.
+   !!! G. CUSTOM FUNCTION AdapterControl() po inicializovani <1,N> instancii STRUCTURE [SCATTER_GATHER_ELEMENT] musi udaje z tychto STRUCTURES pomcou HW DEVICE SPECIFIC HAL OPERACII zaslat do HW DEVICE, aby tento realizoval DMA prenost.
+   H. Po skonceni DMA prenosu HW DEVICE vyvola INTERRUPT, ktory spusti INTERRUPT SERVICE ROUTINE.
+   I. INTERRUPT SERVICE ROUTINE spusti vykonavanie DEFFERED PROCEDURE CALL.
+   !!! J. DEFFERED PROCEDURE CALL identifikuje ci na vykonanie DMA TRANSFER je potrebnych viacero STAGES. Ak ano, DEFFERED PROCEDURE CALL musi ZNOVA INICIALIZOVAT <1,N> instancii STRUCTURE [SCATTER_GATHER_ELEMENT] ako to urobila CUSTOM FUNCTION AdapterControl() a prinutit HW DEVICE, aby spustil DMA prenos.
+   K. Ak vsetky STAGES DMA TRANSFER uspesne skoncili, DEFFERED PROCEDURE CALL musi zavolat CUSTOM FUNCTION CompleteRequest(), ktora zavola FUNCTION IoCompleteRequest() a spustit vykonavanie dalsieho IRP volanim DEVQUEUE FUNCTION StartNextPacket().
+!!! 73. WDM od verzie WINDOWS 2000 poskytuje jednoduchsi sposob DMA prenosu pomocou volania FUNCTION vo FIELD [DMA_OPERATIONS.GetScatterGatherList]. Pre uskutocnenie DMA prenosu cez tuto FUNCTION je nutne splnit podmienku, ze DMA prenose NESMIE pouzit viac MAP REGISTER ako je pocet MAP REGISTERS pridelenych volanim FUNCTION IoGetDmaAdapter().
+!!!!! 74. Pouzitie FUNCTION vo FIELD [DMA_OPERATIONS.GetScatterGatherList] je mozny iba ak pocet BYTES, ktore maju byt prenesene medzi HW DEVICE a DRIVER je MENSI ako pocet BYTES, ktore mozu byt prenesene cez maximalny pocet alokovany MAP REGISTERS (MAX_MAP_REGISTERS*PAGE_SIZE), potom tato FUNCTION NEMOZE byt pouzita a MUSI byt pouzity klasicky sposob DMA prenosu pomocou FUNCTION vo FIELD [DMA_OPERATIONS.AllocateAdapterChannel].
+75. DMA prenos s vyuzitim volania FUNCTION vo FIELD [DMA_OPERATIONS.GetScatterGatherList] sa realizuje v nasledujucich krokoch.
+   A. V CUSTOM FUNCTION StartIO() sa NAMIESTO volania FUNCTION vo FIELD [DMA_OPERATIONS.AllocateAdapterChannel] zavola FUNCTION vo FIELD [DMA_OPERATIONS.GetScatterGatherList].
+   !!!!! B. FUNCTION vo FIELD [DMA_OPERATIONS.GetScatterGatherList] pocka kym je v SYSTEME dostatocny pocet volnych MAP REGISTERS a volny DMA ADAPTER OBJECT na realizovanie celeho DMA prenosu. Tieto MAP REGISTERS FUNCTION alokuje ulozi do STRUCTURE [SCATTER_GATHER_LIST]. Nasledne zavola CALLBACK FUNCTION DmaExecutionRoutine() zadanu ako 6. PARAMETER FUNCTION vo FIELD [DMA_OPERATIONS.GetScatterGatherList].
+   C. V CALLBACK FUNCTION DmaExecutionRoutine() DRIVER zasle cez CUSTOM HW DEVICE INSTRUCTIONS PHYSICAL ADDRESSES zo STRUCTURES [SCATTER_GATHER_ELEMENT] ulzenych v STRUCTURE [SCATTER_GATHER_LIST].
+   !!! D. Ak pocet STRUCTURES [SCATTER_GATHER_ELEMENT] ulozenych v STRUCTURE [SCATTER_GATHER_LIST] je vacsi ako pocet DMA prenosov, ktore je HW DEVICE schopne realizovat, je nutne cely prenos realizovat vo viacerych STAGES.
+   E. Ak DMA prenos pre danu STAGE SKONCI, zavola sa INTERRUPT SERVICE ROUTINE, ktora vykona SCHEDULING DEFERRED PROCEDURE CALL.
+   F. DEFERRED PROCEDURE CALL v pripade, ze DMA prenos je realizovany vo viacerych STAGES vykona prenos dalsej STAGE.
+   !!! G. Na konci DMA prenosu musi DRIVER zavolat FUNCTION vo FIELD [DMA_OPERATIONS.PutScatterGatherList] ci uvolni DMA ADAPTER OBJECT a alokovane MAP REGISTERS.
+   !!!!! H. Kedze FUNCTION vo FIELD [DMA_OPERATIONS.PutScatterGatherList] vykonava aj FLUSH dat z CACHES, je ju NUTNE volat PRED pristupom k BUFFEER, ktory bol cez DMA prenos vykonany.
+   !!!!! I. Az TERAZ moze DRIVER bezpecne pristupit k BUFFER, ktory bol cez DMA prenos preneseny.
+!!! 76. Ak HW DEVICE NEMA elektronicke obvody, ktore by boli schopne riadit DMA prenos, DMA prenos je riadeny SYSTEM DMA CONTROLLER, ktory je umiestnany na MOTHERBOARD. Toto zapojenie HW DEVICE sa nazyva SLAVE DMA a HW DEVICE musi byt k SYSTEM DMA CONTROLLER pripojeny kablom.
+!!! 77. SLAVE DMA sa realizuje podobne ako prenos cez MASTER DMA uvedeny vyssie. Rozdiely su iba vo vytvoreni DMA ADAPTER OBJECT.
+   A. V CUSTOM FUNCTION StartDevice() je nutne pri enumerovani HW RESOURCES zachytit HW RESUORCE typu DMA ([CmResourceTypeDma]). Zo STRUCTURE [CM_PARTIAL_RESOURCE_DESCRIPTOR] je nutne vybrat cislo DMA CHANNEL z FIELD [CM_PARTIAL_RESOURCE_DESCRIPTOR.u.Dma.Channel] a cislo DMA PORTU z FIELD [CM_PARTIAL_RESOURCE_DESCRIPTOR.u.Dma.Port]. Tieto hodnoty sa pouziju pri inicializacii STRUCTURE [DEVICE_DESCRIPTION].
+   !!! B. FUNCTION ulozena vo FIELD [DMA_OPERATIONS.AllocateAdapterChannel] MUSI vratit RETURN VALUE [KeepObject]. Je to NEVYHNUTNE PRETO, lebo pri SLAVE DMA prenose je DMA CHANNEL DMA CONTROLLER na MOTHERBOARD SHARED medzi viacerymi HW DEVICES, a preto pocas CELEHO DMA PRENOSU MUSI byt DMA CHANNEL priradeny HW DEVICE, ktory ho pouziva. RETURN VALUE [KeepObject] prave toto zabezpeci.
+   !!! C. Po skonceni DMA prenosu je NUTNE uvolnit ako MAP REGISTERS tak aj DMA CHANNEL. To sa vykonava volanim FUNCTION ulozenej vo FIELD [DMA_OPERATIONS.FreeAdapterChannel].
+78. Pri realizacii DMA prenosu je mozne vyuzit COMMON BUFFER. COMMON BUFFER je KONTINUALNA oblast NON-PAGED MEMORY, ktoru je mozne vyuzit ako BUFFER nad ktorym HW DEVICE pomocou DMA PRENOSU realizuju IO OPERATIONS (READ/WRITE). Tym, ze COMMON BUFFER je KONTINUALNA NON-PAGED MEMORY (je VZDY v RAM) je realizacia DMA prenosu jednoduchsia, kedze nie je potrebne adresovat kazdy MEMORY PAGE (ktoru pri nepouziti COMMON BUFFER su roztrusene po RAM) zvlast, ale ako jeden suvisly blok.
+79. COMMON BUFFER je mozne vyuzit nasledujucimi sposobmi.
+   !!! A. COMMON BUFFER umoznuje vyuzit SYSTEM DMA CONTROLLER AUTOINITIALIZE MODE. AUTOINITIALIZE MODE je mozne pouzit IBA pre HW DEVICES, ktore pouzivaju SYSTEM DMA CONTROLLER. Pomocou AUTOINITIALIZE MODE SYSTEM DMA CONTROLLER AUTOMATICKY vypocitava poziciu v COMMON BUFFER do ktorej ma realizovat IO OPERATIONS (READ/WRITE) pre DMA prenos. SYSTEM DMA CONTROLLER dokaze vypocitat poziciu AUTOMATICKY obycajnou INKREMENTACIOU POINTER, pretoze COMMON BUFFER je KONTINUALNY BLOCK NON-PAGED MEMORY. Ak by COMMON BUFFER nebol KONTINUALNY BLOCK NON-PAGED MEMORY (ako je to pri BUS MASTER DMA prenosoch) a teda MEMORY PAGES obsahujuce USER MODE BUFFER by boli roztrusene po SYSTEM MEMORY (RAM) potom by po ukonceni KAZDEJ STAGE DMA prenosu bola nutna intervencia DRIVER, ktory by musel zaslat do SYSTEM DMA CONTROLLER nove MEMORY PAGE ADDRESSES, aby sa mohla spustit dalsia STAGE. Vdaka COMMON BUFFER vsak cely DMA prenos (az do velkosti COMMON BUFFER) dokaze riadit SYSTEM DMA CONTROLLER.
+   B. COMMON BUFFER pri niektorych typoch BUSES zabranuje zbytocnemu kopirovaniu dat do TEMPORARY BUFFERS, ktore interne pouziva IO MANAGER. Pre niektore starsie typy BUSES platili obmedzenia na to z akeho RANGE a s akym ALIGNMENT musia byt ADDRESSES pouzivane v DMA prenosoch. Napriklad ISA BUSES museli mat ADDRESSES v spodnych 16 MB RAM. Za tymto ucelom IO MANAGER realizoval kopirovanie dat do svojich TEMPORARY BUFFERS. Pomocou COMMON BUFFER je mozne tomuto kopirovaniu zabranit.
+   C. COMMON BUFFER pri BUS MASTER DMA CONTROLLERS zjednodusuje prenos tym, ze nie je potrebne volat FUNCTION vo FIELD [DMA_OPERATIONS.AllocateAdapterChannel], FUNCTION vo FIELD [DMA_OPERATIONS.MapTransfer] a FUNCTION vo FIELD [DMA_OPERATIONS.FreeMapRegisters].
+!!!!! 80. POZOR. Pouzitie COMMON BUFFER NEZNAMENA, ze DMA CHANNEL nepouziva MAP REGISTERS, alebo pouziva iba 1 MAP REGISTER pre cely COMMON BUFFER, aj ked ten presahuje velkost MEMORY PAGE. Pre KAZDU MEMORY PAGE BEZ OHLADU na to ci je v COMMON BUFFER (KONTINUALNEJ NON-PAGED MEMORY), alebo v nom nie je NUTNE alokovat 1 MAP REGISTER. Preto ak ma COMMON BUFFER velkost 10 MEMORY PAGES, na jeho prenos ju potrebnych 10 MAP REGISTERS.
+81. COMMON BUFFER sa alokuje volanim FUNCTION vo FIELD [DMA_OPERATIONS.AllocateCommonBuffer]. Pre FUNCTION vo FIELD [DMA_OPERATIONS.AllocateCommonBuffer] platia nasledujuce fakty.
+   A. FUNCTION vo FIELD [DMA_OPERATIONS.AllocateCommonBuffer] sa spravidla vola v CUSTOM FUNCTION StartDevice().
+   B. 1. PARAMETER obsahuje POINTER na STRUCTURE [DMA_ADAPTER] identifikujuci DMA ADAPTER OBJECT pre ktory je FUNCTION volana.
+   C. 2. PARAMETER obsahuje dlzku COMMON BUFFER v BYTES.
+   !!! D. 3. PARAMETER obsahuje POINTER na STRUCTURE [PHYSICAL_ADDRESS]. STRUCTURE [PHYSICAL_ADDRESS] po skonceni volania FUNCTION vo FIELD [DMA_OPERATIONS.AllocateCommonBuffer] sa naplni (trochu nelogicky pomenovanou) LOGICAL ADDRESS. LOGICAL ADDRESS je ADDRESS, ktoru HW DEVICE pouzije ako miesto kde bude cez DMA prenos realizovat IO OPERATIONS (READ/WRITE). Tato ADDRESS je teda ADDRESS pouzivana HW DEVICE. Spravidla LOGICAL ADDRESS je v skutocnosti PHYSICAL ADDRESS do SYSTEM MEMORY (RAM). No NIE VZDY to MUSI tak BYT. Pri niektorych architekturach LOGICAL ADDRESS ulozena v STRUCTURE [PHYSICAL_ADDRESS] moze predstavovat IO BUS ADDRESS, ktorej rozumie iba dany typ BUS a v tomto pripade sa NEJEDNA o ADDRESS zo SYSTEM MEMORY (RAM). Preto aj sa vola LOGICAL a nie PHYSICAL ADDRESS.
+   E. 4. PARAMETER obsahuje FLAG ci COMMON BUFFER moze byt ulozeny v CPU CACHE. Spravidla sa nastavuje na hodnotu FALSE.
+   !!! F. Ako RETURN VALUE FUNCTION vo FIELD [DMA_OPERATIONS.AllocateCommonBuffer] vracia POINTER na VIRTUAL MEMORY. Tento POINTER pouziva DRIVER ak chce pristupit k datam, ktore maju byt ci boli cez DMA prenos prenesene.
+82. COMMON BUFFER sa uvolnuje volanim FUNCTION vo FIELD [DMA_OPERATIONS.FreeCommonBuffer]. Pre FUNCTION vo FIELD [DMA_OPERATIONS.FreeCommonBuffer] platia nasledujuce fakty.
+   A. FUNCTION vo FIELD [DMA_OPERATIONS.FreeCommonBuffer] sa spravidla vola v CUSTOM FUNCTION StopDevice(), pred uvolnenim DMA ADAPTER OBJECT.
+   B. 1. PARAMETER obsahuje POINTER na STRUCTURE [DMA_ADAPTER] identifikujuci DMA ADAPTER OBJECT pre ktory je FUNCTION volana.
+   C. 2. PARAMETER obsahuje dlzku COMMON BUFFER v BYTES. Hodnota MUSI byt IDENTICKA s dlzkou pouzitou pri volani FUNCTION vo FIELD [DMA_OPERATIONS.AllocateCommonBuffer].
+   D. 3. PARAMETER obsahuje POINTER na STRUCTURE [PHYSICAL_ADDRESS] obsahujucu LOGICAL ADDRESS. Hodnota MUSI byt IDENTICKA s hodnotou 3. PARAMETER nastavenou volanim FUNCTION vo FIELD [DMA_OPERATIONS.AllocateCommonBuffer].
+   E. 4. PARAMETER obsahuje POINTER na VIRTUAL ADDRESS, ktoru vratila v RETURN VALUE FUNCTION vo FIELD [DMA_OPERATIONS.AllocateCommonBuffer].
+   F. 5. PARAMETER obsahuje FLAG ci COMMON BUFFER moze byt ulozeny v CPU CACHE. Hodnota MUSI byt IDENTICKA s hodnotou 4. PARAMETER FUNCTION vo FIELD [DMA_OPERATIONS.AllocateCommonBuffer].
+83. COMMON BUFFER sa pri HW DEVICES vyuzivajucich na DMA prenos SYSTEM DMA CONTROLLER pouziva nasledujucim sposobom.
+   A. V CUSTOM FUNCTION StartDevice() DRIVER zavola FUNCTION vo FIELD [DMA_OPERATIONS.AllocateCommonBuffer], ktorou sa alokuje COMMON BUFFER. Velkost COMMON BUFFER by mala idealne byt nasobkom velkosti MEMORY PAGE, aby sa zbytocne nealokovali nevyzite BYTES.
+   !!! B. DRIVER si do DEVICE EXTENSION STRUCTURE MUSI ulozit PHYSICAL ADDRESS (instancia STRUCTURE [PHYSICAL_ADDRESS]) vratenu v 3. PARAMETERI FUNCTION vo FIELD [DMA_OPERATIONS.AllocateCommonBuffer]. Tato ADDRESS je pouzivana HW DEVICE na prenos dat cez DMA prenos.
+   !!! C. DRIVER si do DEVICE EXTENSION STRUCTURE MUSI ulozit POINTER na VIRTUAL MEMORY, ktoru FUNCTION vo FIELD [DMA_OPERATIONS.AllocateCommonBuffer] vratila ako RETURN VALUE. Tuto ADDRESS vyuziva DRIVER pri pristupe k datam ulozenym v COMMON BUFFER.
+   !!!!! D. Po zavolani FUNCTION vo FIELD [DMA_OPERATIONS.AllocateCommonBuffer] DRIVER v CUSTOM FUNCTION StartDevice() zavola FUNCTION IoAllocateMdl(), ktorym sa alokuje MDL OBJECT. Tento TEMPORARY MDL, ktory referuje na COMMON BUFFER sa nasledne pocas vykonavania DMA prenosu NAMIESTO MDL, ktore obsahuje IRP READ/WRITE PACKETS.
+   !!!!! E. Pomocou FUNCTION MmBuildMdlForNonPagedPool() sa vykona ASOCIACIA medzi MDL vytvorenym v predchadzajucom kroku a vytvorenym COMMON BUFFER. MDL po zavolani FUNCTION MmBuildMdlForNonPagedPool() bude referovat na MDL.
+   F. Pri vykonavani WRITE OPERATION je v CUSTOM FUNCTION StartIO() nutne NAJPRV prekopirovat data z USER MODE BUFFER ulozenom v MDL IRP WRITE PACKET do COMMON BUFFER. Vyuzit na to je mozne napriklad FUNCTION RtlMoveMemory().
+   G. Na zaciatku vykonania IO OPERATION sa alokuje DMA CHANNEL volanim FUNCTION vo FIELD [DMA_OPERATIONS.AllocateAdapterChannel].
+   !!! H. Ak IO OPERATION pozaduje preniest VIAC BYTES ako je velkost COMMON BUFFER, potom je NUTNE rozdelit DMA prenos na vicero STAGES, pricom pocas kazdej STAGE je mozne preniest pocet BYTES rovny velkosti COMMON BUFFER.
+   I. Pre kazdu STAGE DMA prenosu je nutne v CALLBACK FUNCTION volanej z FUNCTION vo FIELD [DMA_OPERATIONS.AllocateAdapterChannel] zavolat FUNCTION vo FIELD [DMA_OPERATIONS.MapTransfer]. Ako 2. PARAMETER sa pouzije vytvorena TEMPORARY MDL a NIE MDL z IRP.
+   !!! J. V Pripade MULTI-STAGE DMA prenosu je pocet BYTES prenesenych pocas aktualneho DMA prenosu je mozne zistit volanim FUNCTION vo FIELD [DMA_OPERATIONS.ReadDmaCounter]. Po ukonceni KAZDE STAGE MULTI-STAGE DMA prenosu je nutne presnut prenesene data medzi COMMON BUFFER a USER MODE BUFFER danej IO OPERATION. V pripade READ OPERATION je nutne preniest data z COMMON BUFFER do USER MODE BUFFER a v pripade WRITE OPERATION je nutne preniest data z USER MODE BUFFER do COMMON BUFFER.
+   K. Po skonceni celeho DMA prenosu je nutne zavolat FUNCTION vo FIELD [DMA_OPERATIONS.FlushAdapterBuffers] na uvolnenie DMA BUFFERS. Ako 2. PARAMETER sa pouzije vytvorena TEMPORARY MDL a NIE MDL z IRP.
+   !!! L. Pri vykonavani READ OPERATION je NUTNE po nacitani dat do COMMON BUFFER po kazdej STAGE ich prekopirovat z COMMON BUFFER do USER MODE BUFFER ulozenom v MDL IRP READ PACKET. Vyuzit na to je mozne napriklad FUNCTION RtlMoveMemory().
+   M. Nasledne je nutne zavolat FUNCTION vo FIELD [DMA_OPERATIONS.FreeAdapterChannel], ktoru sa uvolni DMA CHANNEL alokovany volanim FUNCTION vo FIELD [DMA_OPERATIONS.AllocateAdapterChannel].
+   N. V CUSTOM FUNCTION StopDevice() je nutne zavolat FUNCTION IoFreeMdl(), ktorou sa uvolni alokovany TEMPORARY MDL.
+   O. V CUSTOM FUNCTION StopDevice() je nutne zavolat FUNCTION vo FIELD [DMA_OPERATIONS.FreeCommonBuffer], ktorou sa uvolni COMMON BUFFER. PARAMETRE FUNCTION vo FIELD [DMA_OPERATIONS.FreeCommonBuffer] MUSIA korespondovat s PARAMETRAMI pouzitymi pri volani FUNCTION vo FIELD [DMA_OPERATIONS.AllocateCommonBuffer].
+!!!!! 84. Pri pouzivani COMMON BUFFER FUNCTION MmGetSystemAddressForMdlSafe() vracia POINTER na tie data aky MDL sa mu ako PARAMETER zada.
+   A. Ak PARAMETER referuje na MDL spracovavaneho IRP, tak FUNCTION MmGetSystemAddressForMdlSafe() vrati POINTER na USER MODE BUFFER.
+   B. Ak PARAMETER referuje na MDL COMMON BUFFER, tak FUNCTION MmGetSystemAddressForMdlSafe() vrati POINTER na COMMON BUFFER.
+85. COMMON BUFFER sa pri HW DEVICES vyuzivajucich na DMA prenos BUS-MASTER DMA pouziva nasledujucim sposobom.
+   A. V CUSTOM FUNCTION StartDevice() DRIVER zavola FUNCTION vo FIELD [DMA_OPERATIONS.AllocateCommonBuffer], ktorou sa alokuje COMMON BUFFER. Velkost COMMON BUFFER by mala idealne byt nasobkom velkosti MEMORY PAGE, aby sa zbytocne nealokovali nevyzite BYTES.
+   !!! B. DRIVER si do DEVICE EXTENSION STRUCTURE MUSI ulozit PHYSICAL ADDRESS (instancia STRUCTURE [PHYSICAL_ADDRESS]) vratenu v 3. PARAMETERI FUNCTION vo FIELD [DMA_OPERATIONS.AllocateCommonBuffer]. Tato ADDRESS je pouzivana HW DEVICE na prenos dat cez DMA prenos.
+   !!! C. DRIVER si do DEVICE EXTENSION STRUCTURE MUSI ulozit POINTER na VIRTUAL MEMORY, ktoru FUNCTION vo FIELD [DMA_OPERATIONS.AllocateCommonBuffer] vratila ako RETURN VALUE. Tuto ADDRESS vyuziva DRIVER pri pristupe k datam ulozenym v COMMON BUFFER.
+   !!!!! D. Pri alokacii COMMON BUFFER je NUTNE, aby velkost COMMON BUFFER v MEMORY PAGES nepresiahla pocet MAP REGISTERS, ktore boli akolkovane pocas volania FUNCTION IoGetDmaAdapter(), inak FUNCTION vo FIELD [DMA_OPERATIONS.AllocateCommonBuffer] ZLYHA a vrati NULL. Pocet PAGES, ktore zabera 'N' BYTES je mozne zistit pomocou MACRO BYTES_TO_PAGES().
+   E. Pocas realizacie DMA prenosu DRIVER moze lubovolnym sposobom pouzivat COMMON BUFFER na prenos dat cez DMA.
+   !!!!! F. Na rozdiel od inych DMA prenosov NIE JE NUTNE pouzivat FUNCTION vo FIELD [DMA_OPERATIONS.AllocateAdapterChannel], FUNCTION vo FIELD [DMA_OPERATIONS.MapTransfer] a FUNCTION vo FIELD [DMA_OPERATIONS.FreeMapRegisters], pretoze na DMA prenos sa pouziva COMMON BUFFER. Kedze DRIVER ma k dispozicii PHYSICAL aj LOGICAL ADDRESSES moze lubovolne pracovat s COMMON BUFFER podla potreby.
+   !!! G. Ak IO OPERATION pozaduje preniest VIAC BYTES ako je velkost COMMON BUFFER, potom je NUTNE rozdelit DMA prenos na vicero STAGES, pricom pocas kazdej STAGE je mozne preniest pocet BYTES rovny velkosti COMMON BUFFER.
+   H. V CUSTOM FUNCTION StopDevice() je nutne zavolat FUNCTION vo FIELD [DMA_OPERATIONS.FreeCommonBuffer], ktorou sa uvolni COMMON BUFFER. PARAMETRE FUNCTION vo FIELD [DMA_OPERATIONS.FreeCommonBuffer] MUSIA korespondovat s PARAMETRAMI pouzitymi pri volani FUNCTION vo FIELD [DMA_OPERATIONS.AllocateCommonBuffer].
+86. Intenzivne pouzivanie COMMON BUFFER moze viest k nasledujucim problemom.
+   A. COMMON BUFFER vyzaduje KONTINUALNY MEMORY BLOCK. Ten v systemoch a obmedzenou kapacitou SYSTEM MEMORY moze byt nedostupny.
+   B. Prilis velky COMMON BUFFER moze vycerpat VSETKY DMA REGISTERS, takze tieto nebudu k dispozicii ostatnych HW DEVICES.
+   C. Velkost COMMON BUFFER je VZDY nasobkom MEMORY PAGE SIZE. To znaci, ze prilis kratky COMMON BUFFER zabera zbytocne vela BYTES v SYSTEM MEMORY.
+//-------------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------------
+MEMORY MAPPED IO a PORT MAPPED IO.
+
+1. HW DEVICES mozu v PC komunikovat nasledujucimi sposobmi.
+   A. Vykonanim MEMORY MAPPED IO OPERATIONS. Tato komunikacia prebieha medzi CPU a HW DEVICE.
+   B. Vykonanim PORT MAPPED IO OPERATIONS. Tato komunikacia prebieha medzi CPU a HW DEVICE.
+   C. Vykonanim DMA komunikacie. Tato komunikacia prebieha medzi MEMORY a HW DEVICE BEZ zasahu CPU, ktore iba DMA prenos iniciuje.
+   D. Zaslanim HW INTERRUPT. Tato komunikacie je len 1 BIT SIGNAL, ktorym HW DEVICE oznamuje CPU, ze nastala situacia na ktoru musi zareagovat.
+2. MEMORY MAPPED IO a PORT MAPPED IO su 2 sposoby ako mozu HW DEVICES komunikovat s CPU a CPU komunikovat s HW DEVICES.
+3. Dany HW DEVICE ma spravidla IBA 1 SPOSOB komunikacie. To znaci, ze na zaklade konstrukcie HW DEVICE a jeho pripojenia k CPU (cez BUSES) moze dany HW DEVICE podporovat bud komunikaciu pomocou MEMORY MAPPED IO, alebo komunikaciu pomocou PORT MAPPED IO.
+!!! 4. MEMORY MAPPED IO a PORT MAPPED IO sa lisia v sposobe akym su HW DEVICES pripojene k CPU.
+   A. Pri MEMORY MAPPED IO su MEMORY a HW DEVICES pripojene na TIE ISTE ADDRESS a DATA BUSES. To znamena, ze komunikacia CPU s MEMORY a HW DEVICES prebieha cez tie iste BUSES.
+   B. Pri PORT MAPPED IO je MEMORY pripojena cez SEPARATNE ADDRESS a DATA BUSES, zatial co HW DEVICES su taktiez pripojene cez SEPARATNE ADDRESS a DATA BUSES. To znaci, ze komunikacia CPU s MEMORY prebieha po INYCH BUSES ako komunikacia CPU s HW DEVICES.
+5. Komunikacia CPU s HW DEVICE cez MEMORY MAPPED IO funguje nasledujucim sposobom.
+   A. Kazdy HW DEVICE pripojeny k CPU cez ADDRESS a DATA BUSES ma vyhradeny v MEMORY ADDRESS SPACE rozsah ADDRESSES. MEMORY ADDRESS SPACE je SPOLOCNY ADDRESS SPACE, ktory sa pouziva na komunikaciu s MEMORY aj HW DEVICES.
+   B. Ak CPU chce komunikovat s HW DEVICE, vykona instrukciu citania, alebo zapisu do ADDRESS v rozsahu pridelenom danemu HW DEVICE.
+   !!!!! C. Na komunikaciu s HW DEVICE sa teda pouzivaju TIE ISTE CPU INSTRUCTIONS ako na zapis do MEMORY, co je aj HLAVNA VYHODA MEMORY MAPPED IO.
+   D. Ked CPU vykona CPU INSTRUCTION citania, alebo zapisu do ADDRESS, tato ADDRESS je vlozena do ADDRESS BUS daneho CPU.
+   !!!!! E. Kazdy HW DEVICE, ktory je pripojeny cez MEMORY MAPPED IO vykonava MONITORING ADDRESS BUS a ak zisti, ze ADDRESS zapisana na ADDRESS BUS je v rozsahu, ktory bol daneho HW DEVICE prideleny, pripoji DATA BUS k HW DEVICE a spusti vykonavanie IO OPERATION.
+   !!! F. HW DEVICES mozu mat pridelenych VIACERO ADDRESSES z MEMORY ADDRESS SPACE. Tieto ADDRESSES z MEMORY ADDRESS SPACE su mapovane na HW REGISTERS v HW DEVICE. Vyznam jednotlivych HW REGISTERS je zavisly na type daneho HW DEVICE.
+   !!!!! G. Ak ADDRESS na ADDRESS BUS NIE JE NAMAPOVANA pre ZIADEN HW DEVICE, tak operacia citania, alebo zapisu je vykonana v MEMORY.
+!!! 6. MEMORY MAPPED IO ma nasledujuce VYHODY.
+   A. Pouzitie spolocnej sady ADDRESS a DATA BUSES pre MEMORY aj HW DEVICES vedie k jednoduchej architekture CPU.
+   B. Pouzitie spolocnej sady ADDRESS a DATA BUSES pre MEMORY aj HW DEVICES vedie k mensim rozmerom CPU.
+   C. Pouzitie spolocnej sady ADDRESS a DATA BUSES pre MEMORY aj HW DEVICES vedie k mensej spotrebe energie.
+   !!! D. Pouzitie TYCH ISTYCH CPU INSTRUCTIONS na citanie a zapis do MEMORY aj do HW DEVICES umoznuje vytvarat jednoduchsie PROGRAMY.
+   E. Pouzitie TYCH ISTYCH CPU INSTRUCTIONS na citanie a zapis do MEMORY aj do HW DEVICES umoznuje plne vyuzitie CPU REGISTERS. CPU REGISTERS je mozne vyuzit pri praci s HW DEVICES rovnako ako pri praci s MEMORY (napriklad indexovany pristup). To vedie k mensiemu poctu CPU INSTRUCTIONS potrebnych na vykonanie IO OPERATIONS.
+   F. Pouzitie TYCH ISTYCH CPU INSTRUCTIONS na citanie a zapis do MEMORY aj do HW DEVICES umoznuje vykonat aritmeticko-logicke operacie PRIAMO na HW REGISTERS HW DEVICES.
+!!! 7. MEMORY MAPPED IO ma nasledujuce NEVYHODY.
+   A. Pouzitie spolocnej sady ADDRESS a DATA BUSES pre MEMORY aj HW DEVICES vedie k POMALSEJ KOMUNIKACII. HW DEVICES su spravidla vyrazne pomalsie ako MEMORY a komunikacia cez spolocne BUSES spomaluje komunikaciu s MEMORY.
+   !!! B. ADDRESS SPACE, ktora je pouzita pre HW DEVICES NEMOZE byt vyuzita na pristup k MEMORY. To znaci, ze cast MEMORY, aj ked je fyzicky nainstalovana v PC ostava NEVYUZITA.
+8. Komunikacia CPU s HW DEVICE cez PORT MAPPED IO funguje nasledujucim sposobom.
+   !!! A. Kazdy HW DEVICE maju vyhradeny ADDRESS SPACE v SEPARATNOM IO ADDRESS SPACE. IO ADDRESS SPACE je na rozdiel od MEMORY MAPPED IO NEZAVISLY na MEMORY ADDRESS SPACE a komunikacia prebieha na SEPARATNYCH ADDRESS a DATA BUSES.
+   !!! B. Ak CPU chce komunikovat s HW DEVICE, vykona CPU INSTRUCTION 'IN' (citanie dat z HW DEVICE), alebo CPU INSTRUCTION 'OUT' (zapis dat do HW DEVICE). OBE INSTRUCTIONS musia mat definovanu ADDRESS. Ta je bud ulozena priamo za danou CPU INSTRUCTION, alebo je ulozena v EAX REGISTER.
+   !!!!! C. Na komunikaciu s HW DEVICE sa teda pouzivaju INE CPU INSTRUCTIONS ako na zapis do MEMORY.
+   D. ADDRESS a DATA, ktore su sucastou IO OPERATION su zaslane na IO ADDRESS BUS a IO DATA BUS.
+   !!!!! E. Kazdy HW DEVICE, ktory je pripojeny cez PORT MAPPED IO vykonava MONITORING IO ADDRESS BUS a ak zisti, ze ADDRESS zapisana na IO ADDRESS BUS je v rozsahu, ktory bol daneho HW DEVICE prideleny, pripoji IO DATA BUS k HW DEVICE a spusti vykonavanie IO OPERATION.
+   !!! F. HW DEVICES mozu mat pridelenych VIACERO ADDRESSES z IO ADDRESS SPACE. Tieto ADDRESSES z IO ADDRESS SPACE su mapovane na HW REGISTERS v HW DEVICE. Vyznam jednotlivych HW REGISTERS je zavisly na type daneho HW DEVICE.
+!!! 9. PORT MAPPED IO ma nasledujuce VYHODY.
+   A. Pouzitie separatej sady ADDRESS a DATA BUSES pre MEMORY aj HW DEVICES vedie k vyssej rychlosti komunikacie.
+   B. Pouzitie separatneho IO ADDRESS SPACE, ktory je nezavisly na MEMORY ADDRESS SPACE neblokuje ziadnu cast MEMORY, ktora moze byt kompletne adresovana.
+!!! 10. PORT MAPPED IO ma nasledujuce NEVYHODY.
+   A. Pouzitie separatnej sady ADDRESS a DATA BUSES pre MEMORY aj HW DEVICES vedie k zlozitejsej architekture CPU.
+   B. Pouzitie separatnej sady ADDRESS a DATA BUSES pre MEMORY aj HW DEVICES vedie k vacsim rozmerom CPU.
+   C. Pouzitie separatnej sady ADDRESS a DATA BUSES pre MEMORY aj HW DEVICES vedie k vyssej spotrebe energie.
+   D. Pouzitie SPECIALNYCH CPU INSTRUCTIONS na citanie a zapis do HW DEVICES vedie k zlozitejsim PROGRAMOM.
+   E. Pouzitie SPECIALNYCH CPU INSTRUCTIONS na citanie a zapis do HW DEVICES vedie k limitovanemu poctu CPU REGISTERS, ktore je mozne pouzit. Spravidla je mozne pouzit iba 1 CPU REGISTER (EAX).
+   F. Pouzitie SPECIALNYCH CPU INSTRUCTIONS na citanie a zapis do HW DEVICES vedie k obmedzenej sade aritmeticko-logickych operacii, ktore je mozne vyuzit. To vedie k nutnosti pouzit viacero CPU INSTRUCTIONS. Napriklad na prictanie konstatnej hodnoty k hodnote v HW DEVICE su nutne az 3 INSTRUCTIONS (IN, ADD, OUT), zatial co v pripade MEMORY MAPPED IO staci pouzit 1 CPU INSTRUCTION.
+   !!! G. CPU ARCHITECTURE X64 NEUMOZNUJE prenost 64 BITS cez MEMORY MAPPED IO. Maximalny objem dat, ktore je mozne preniest cez MEMORY MAPPED IO v 1 CPU INSTRUCTION je 32 BITS.
+11. CPU ARCHITECTURES X86 aj X64 podporuje ako MEMORY MAPPED IO, tak aj PORT MAPPED IO.
+12. RISC CPU ARCHITECTURES ako ALPHA podporuje IBA MEMORY MAPPED IO, kedze implementacia PORT MAPPED IO by zvysovala zlozitost CPU a znizovala jeho vykon.
+//-------------------------------------------------------------------------------------------------------
