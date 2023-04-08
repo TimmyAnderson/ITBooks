@@ -1,0 +1,207 @@
+﻿//-------------------------------------------------------------------------------------------------------
+1. Solution demonstruje implementaciu STATIC SEMANTIC ANALYZER.
+2. Ulohou SEMANTIC ANALYZER je realizovat DODATOCNU KONTORLU SOURCE CODES, ktore presahuje moznosti PARSERA. Patria sem nasledujuce cinnosti.
+   A. Vytvorenie SYMBOL TABLE - obsahujucej vsetky DEKLARACIE (premenne, konstanty, funkcie, typy).
+   B. Typova kontrola.
+   C. Vypocet EXPRESSIONS napriklad pri konstantach.
+   D. Vypocty dalsich atributov, ktore su potrebne pri generovani kodu.
+3. SEMANTIC ANALYZERS je mozne rozdelit do 2 skupin.
+   A. STATIC SEMANTIC ANALYZER - realizuje SEMANTICKU ANALYZU pocas KOMPILACIE.
+   B. DYNAMIC SEMANTIC ANALYZER - realizuje SEMANTICKU ANALYZU pocas RUN-TIME. Pouziva sa najma v silne DYNAMICKYCH jazykoch.
+!!! 4. Na rozdiel od SCANERA ci PARSERA v pripade SEMANTIC ANALYZER NEEXISTUJE UNIVERZALNY ALGORITMUS, kedze SEMANTIKA je ZAVISLA na vlastnostiach konkretneho programovacieho jazyka.
+!!!!! 5. Na reprezentaciu SEMANTIC RULES sa pouziva ATTRIBUTE GRAMMAR. Aj ked je mozne postavit algoritmus, ktory by aplikoval ATTRIBUTE GRAMMAR na PARSER/SYNTAX TREE, v praxi je taketo riesenie vyzadujuce realizaciu ACYKLICKYCH GRAFOV komplikovane a POMALE a preto sa velmi NEPOUZIVA.
+!!!!! 6. V beznych programovacich jazykoch su SEMANTIC RULES aplikovane AD-HOC algoritmom, ktory je postaveny pre KONKRETNY JAZYK.
+7. ATTRIBUTES sa aplikuju na NODES PARSE, alebo SYNTAX TREE. Urcuju sa bud z hodnot ziskanych SCANEROM (ciselne konstanty, nazvy premennych ci funkcii), alebo VYPOCTOM, ktory moze zahrnat PARENT, CHILD, alebo SIBLING NODES.
+8. Podla toho ako je hodnota daneho ATTRIBUTE vypocitavana, rozlisujeme 2 typy ATTRIBUTES.
+   A. SYNTHESIZED ATTRIBUTES - ich hodnota je zavisla na hodnotach ATTRIBUTES CHILD NODES. Sem patri typicky VYPOCET KONSTATNEHO EXPRESSION - napriklad vyrazu 2*(3+4).
+   B. INHERITED ATTRIBUTES - ich hodnota je zavisla na hodnotach ATTRIBUTES SIBLING, alebo PARENT NODES. Sem patri typicky KONTROLA TYPU EXPRESSION.
+//-------------------------------------------------------------------------------------------------------
+BNF RULES pre jazyk C--.
+
+1. PROGRAM -> DECLARATION_LIST.
+2. DECLARATION_LIST -> DECLARATION_LIST DECLARATION | DECLARATION.
+3. DECLARATION -> VARIABLE_DECLARATION | FUNCTION_DECLARATION.
+4. VARIABLE_DECLARATION -> TYPE_SPECIFIER id; | TYPE_SPECIFIER id=CONST; | TYPE_SPECIFIER id[num];.
+5. TYPE_SPECIFIER -> int | string | void.
+6. FUNCTION_DECLARATION -> TYPE_SPECIFIER id(PARAMS) COMPOUND_STATEMENT.
+7. PARAMS -> PARAM_LIST | void.
+8. PARAM_LIST -> PARAM_LIST,PARAM | PARAM.
+9. PARAM -> TYPE_SPECIFIER id | TYPE_SPECIFIER id[].
+10. COMPOUND_STATEMENT -> {LOCAL_DECLARATIONS STATEMENT_LIST}.
+11. LOCAL_DECLARATIONS -> LOCAL_DECLARATIONS VARIABLE_DECLARATION | ɛ.
+12. STATEMENT_LIST -> STATEMENT_LIST STATEMENT | ɛ.
+13. STATEMENT -> EXPRESSION_STATEMENT | COMPOUND_STATEMENT | SELECTION_STATEMENT | ITERATION_STATEMENT | RETURN_STATEMENT.
+14. EXPRESSION_STATEMENT -> VARIABLE=EXPRESSION; | CALL; | ;.
+15. SELECTION_STATEMENT -> if (EXPRESSION) STATEMENT | if (EXPRESSION) STATEMENT else STATEMENT.
+16. ITERATION_STATEMENT -> while (EXPRESSION) STATEMENT.
+17. RETURN_STATEMENT -> return; | return(EXPRESSION);.
+18. VARIABLE -> id | id[EXPRESSION].
+19. EXPRESSION -> ADDITIVE_EXPRESSION COMPARE_OPERATION ADDITIVE_EXPRESSION | ADDITIVE_EXPRESSION.
+20. COMPARE_OPERATION -> <= | < | > | >= | == | !=.
+21. ADDITIVE_EXPRESSION -> ADDITIVE_EXPRESSION ADD_OPERATION TERM | TERM.
+22. ADD_OPERATION -> + | -.
+23. TERM -> TERM MUL_OPERATION FACTOR | FACTOR.
+24. MUL_OPERATION -> * | /.
+25. FACTOR -> (EXPRESSION) | VARIABLE | CALL | num | string_literal.
+26. CALL -> id(ARGS).
+27. ARGS -> ARG_LIST | ɛ.
+28. ARG_LIST -> ARG_LIST,EXPRESSION | EXPRESSION.
+29. CONST -> num | string_literal.
+//-------------------------------------------------------------------------------------------------------
+ATTRIBUTES pre BNF RULES.
+
+1. Jazyk obsahuje nasledujuce ATTRIBUTES.
+   A. SymbolTable - reprezentuje ITEM v SYMBOL TABLE.
+   B. ParamType - reprezentuje TYP PARAMETRA FUNKCIE pri jej VOLANI. Parametre sa v RULE ARG_LIST postupne zoskupuju do COLLECTION a v RULE CALL sa porovnaju voci DEKLARACII FUNKCIE. Porovnava sa POCET a TYP.
+   C. ReturnType - reprezentuje RETURN TYPE FUNKCIE. Prenasa sa z RULE RETURN_STATEMENT az do FUNCTION_DECLARATION, kde sa porovna ci RETURN TYPE sedi s RETURN TYPE v DEKLARACII FUNKCIE.
+   D. HasReturn - reprezentuje informaciu ci FUNKCIA vzdy vracia RETURN VALUE. Ak FUNKCIA obsahuje RETURN_STATEMENT na UROVNI FUNKCIE vracia RETURN VALUE, alebo ak IF A ZAROVEN i ELSE BLOK na UROVNI FUNKCIE vracia RETURN VALUE, potom je FUNKCIA oznacena za FUNKCIU, ktora vracia RETURN VALUE a to sa porovna s tym ci FUNKCIA SKUTOCNE VRACIA RETURN VALUE.
+2. ATTRIBUTE podla kategorii su rozdelene nasledovne.
+   A. SymbolTable je INHERITED.
+   B. ParamType je SYNTHESIZED.
+   C. ReturnType je SYNTHESIZED.
+   D. HasReturn su SYNTHESIZED.
+!!! 3. Jazyk NEUMOZNUJE aby v JEDNOM SCOPE boli 2 VARIABLES s ROVNAKYM MENOM, avsak umoznuje mat 2 VARIABLES s ROVNAKYM MENOM v ROZNYCH SCOPES. Tu vsak plati vynimka pre meno FUNKCIE, kde plati, ze NIE JE MOZNE deklarovat VARIABLE s ROVANKYM NAZVOM ako je NAZOV FUNKCIE v ktorej je deklarovana.
+//-------------------------------------------------------------------------------------------------------
+Popis aplikacie ATTRIBUTES v BNF RULES.
+
+1. CHOICE: [VARIABLE_DECLARATION -> TYPE_SPECIFIER id;].
+   A. Do SYMBOL TABLE sa zaradi VARIABLE 'id' s typom TYPE_SPECIFIER.
+   B. Kontroluje sa ci v danom SCOPE nie je deklarovana VARIABLE s ROVNAKYM MENOM.
+   C. Kontroluje sa ci nie je deklarovana FUNKCIA s ROVNAKYM MENOM.
+2. CHOICE: [VARIABLE_DECLARATION -> TYPE_SPECIFIER id=CONST;].
+   A. Do SYMBOL TABLE sa zaradi VARIABLE 'id' s typom TYPE_SPECIFIER.
+   B. Kontroluje sa ci v danom SCOPE nie je deklarovana VARIABLE s ROVNAKYM MENOM.
+   C. Kontroluje sa ci nie je deklarovana FUNKCIA s ROVNAKYM MENOM.
+   D. Porovna ci TYP konstanty je zhodny s TYPOM VARIABLE.
+3. CHOICE: [VARIABLE_DECLARATION -> TYPE_SPECIFIER id[num];].
+   A. Do SYMBOL TABLE sa zaradi VARIABLE 'id' s typom TYPE_SPECIFIER. Zistuje velkost ARRAY 'num'.
+   B. Kontroluje sa ci v danom SCOPE nie je deklarovana VARIABLE s ROVNAKYM MENOM.
+   C. Kontroluje sa ci nie je deklarovana FUNKCIA s ROVNAKYM MENOM.
+4. CHOICE: [FUNCTION_DECLARATION -> TYPE_SPECIFIER id(PARAMS) COMPOUND_STATEMENT].
+   A. Do SYMBOL TABLE sa zaradi FUNKCIU 'id' s typom TYPE_SPECIFIER.
+   B. Kontroluje sa ci v danom SCOPE nie je deklarovana FUNKCIA s ROVNAKYM MENOM.
+   C. Vytvori NOVU SYMBOL TABLE reprezentujucu NOVY SCOPE.
+   D. Skontroluje ci FUNKCIA SKUTOCNE VRACIA NAVRATOVU HODNOTU - FUNCTION_DECLARATION ma ATTRIBUTE HasReturn. Ten je nastaveny ak v SCOPE na urovni FUNKCIE (BLOK {} hned za DEKLARACIOU FUNKCIE) ma RETURN_STATEMENT, alebo IF-ELSE BLOK v SCOPE na urovni FUNKCIE ma v IF aj ELSE BLOKU RETURN_STATEMENT.
+   E. Skontroluje ci FUNKCIA ma KOREKTNY TYP RETURN VALUE - ak nejaky RETURN VALUE vracia, alebo ci nema deklarovany RETURN_STATEMENT, ked v skutocnosti vracia VOID.
+5. CHOICE: [COMPOUND_STATEMENT -> {LOCAL_DECLARATIONS STATEMENT_LIST}].
+   A. Vytvori NOVU SYMBOL TABLE reprezentujucu NOVY SCOPE.
+   B. Ak je deklarovany ReturnType, tak ho posunie do PARENT NODE.
+   C. Ak je deklarovany HasReturn, tak ho posunie do PARENT NODE.
+6. CHOICE: [PARAM -> TYPE_SPECIFIER id].
+   A. Do SYMBOL TABLE sa zaradi VARIABLE 'id' s typom TYPE_SPECIFIER.
+   B. Kontroluje sa ci v danom SCOPE nie je deklarovana VARIABLE s ROVNAKYM MENOM.
+   C. Kontroluje sa ci nie je deklarovana FUNKCIA s ROVNAKYM MENOM.
+7. CHOICE: [PARAM -> TYPE_SPECIFIER id[]].
+   A. Do SYMBOL TABLE sa zaradi VARIABLE 'id' s typom TYPE_SPECIFIER.
+   B. Kontroluje sa ci v danom SCOPE nie je deklarovana VARIABLE s ROVNAKYM MENOM.
+   C. Kontroluje sa ci nie je deklarovana FUNKCIA s ROVNAKYM MENOM.
+8. CHOICE: [VARIABLE -> id].
+   A. Zisti ci 'id' je deklarovany v SYMBOL TABLE.
+   B. Zisti ci 'id' predstavuje VARIABLE, alebo ARRAY VARIABLE (pri prenose ARRAY do FUNCTION).
+   C. Nastavi ATTRIBUTE Type na TYPE danej VARIABLE.
+9. CHOICE: [VARIABLE -> id[EXPRESSION]].
+   A. Zisti ci 'id' je deklarovany a je typu ARRAY VARIABLE.
+   B. Zisti ci 'id' predstavuje ARRAY VARIABLE.
+   C. Nastavi ATTRIBUTE Type na TYPE danej VARIABLE.
+10. CHOICE: [STATEMENT_LIST -> STATEMENT_LIST STATEMENT].
+   A. Urci ReturnType zo STATEMENT_LIST a STATEMENT a porovna ci nie su rozdielne. Ak su zhodne, prenesie ReturnType do PARENT NODE.
+   B. Ak STATEMENT_LIST, alebo STATEMENT maju nastaveny HasReturn, potom ho posunie do PARENT NODE.
+11. CHOICE: [CALL -> id(ARGS)].
+   A. Zisti ci 'id' reprezentuje FUNCTION.
+   B. Nastavi Type ATTRIBUTE na RETURN TYPE FUNCTION, ktory vracia operacia volania FUNCTION.
+   C. Skontroluje pocet parametrov v DEKLARACII FUNCTION a jej volani.
+   D. Skontroluje TYPE vsetkych parametrov v DEKLARACII FUNCTION a jej volani.
+12. CHOICE: [ARGS -> ARG_LIST].
+   A. Zisti ParamTypes pre ARG_LIST.
+   B. Posunie ParamTypes do PARENT NODE.
+13. CHOICE: [ARGS -> ɛ].
+   A. Vytvori PRAZDY ParamTypes.
+   B. Posunie ParamTypes do PARENT NODE.
+14. CHOICE: [ARG_LIST -> ARG_LIST,EXPRESSION].
+   A. Zisti Type pre EXPRESSION.
+   B. Zisti ParamTypes pre ARG_LIST.
+   C. Prida Type EXPRESSION, reprezentujuci nasledujuci parameter FUNCTION na koniec POLA ParamTypes, ktory reprezentuje ostatne parametre FUNCTION.
+15. CHOICE: [ARG_LIST -> EXPRESSION].
+   A. Zisti Type pre EXPRESSION.
+   B. Vytvori novy ParamTypes do ktoreho prida Type EXPRESSION reprezentujuci paramter FUNCTION.
+16. CHOICE: [EXPRESSION_STATEMENT -> VARIABLE=EXPRESSION;].
+   A. Zisti Type pre EXPRESSION.
+   B. Porovna TYPE pre VARIABLE a EXPRESSION ci su zhodne a posunie TYPE do PARENT NODE.
+   !!! C. Priradenie CELEHO ARRAY NIE JE PODPOROVANE.
+17. CHOICE: [SELECTION_STATEMENT -> if (EXPRESSION) STATEMENT].
+   A. Zisti Type pre EXPRESSION a urci ci je typu INT.
+   B. Zisti ReturnType pre STATEMENT.
+   C. Ak je ReturnType nastaveny, posunie ho vyssie v TREE. Znamena to tolko, ze IF BLOK obsahuje RETURN a treba skontrolovat RETURN VALUE s DEKLARACIOU FUNCTION.
+18. CHOICE: [SELECTION_STATEMENT -> if (EXPRESSION) STATEMENT else STATEMENT].
+   A. Zisti Type pre EXPRESSION a urci ci je typu INT.
+   B. Zisti ReturnType pre IF-STATEMENT a ELSE-STATEMENT.
+   C. Zisti HasReturn pre IF-STATEMENT a ELSE-STATEMENT.
+   D. Porovna ci ReturnType pre IF-STATEMENT a ELSE-STATEMENT su zhodne a posunie ReturnType do PARENT NODE.
+   E. Ak OBE IF-STATEMENT a ELSE-STATEMENT maju HasReturn ATTRIBUTE, tak je nastaveny i na PARENT NODE - pretoze IBA VTEDY je ISTOTA, ze IF aj ELSE bloky URCITE MAJU RETURN_STATEMENT.
+19. CHOICE: [ITERATION_STATEMENT -> while (EXPRESSION) STATEMENT].
+   A. Zisti Type pre EXPRESSION a urci ci je typu INT.
+   B. Zisti ReturnType pre STATEMENT.
+   C. Ak je ReturnType nastaveny, posunie ho vyssie v TREE. Znamena to tolko, ze WHILE BLOK obsahuje RETURN a treba skontrolovat RETURN VALUE s DEKLARACIOU FUNCTION.
+20. CHOICE: [RETURN_STATEMENT -> return;].
+   A. Vytvori ReturnType a nastavi RETURN TYPE na VOID.
+   B. Posunie ReturnType do PARENT NODE.
+21. CHOICE: [RETURN_STATEMENT -> return(EXPRESSION);].
+   A. Zisti Type pre EXPRESSION.
+   B. Vytvori ReturnType s RETURN VALUE obsahujucou TYPE daneho EXPRESSION a posunie ho do PARENT NODE.
+   C. Vytvori HasReturn a posunie ho do PARENT NODE.
+22. CHOICE: [EXPRESSION -> ADDITIVE_EXPRESSION COMPARE_OPERATION ADDITIVE_EXPRESSION].
+   A. Zisti Type pre ADDITIVE_EXPRESSION 1 a ADDITIVE_EXPRESSION 2.
+   B. Porovna ci ADDITIVE_EXPRESSION 1 a ADDITIVE_EXPRESSION 2 maju rovnaky TYPE. Jediny povoleny TYPE je INT.
+   C. Ak je Type INT posunie ho do PARENT NODE.
+23. CHOICE: [EXPRESSION -> ADDITIVE_EXPRESSION].
+   A. Zisti Type pre ADDITIVE_EXPRESSION.
+   B. Posunie Type do PARENT NODE.
+24. CHOICE: [ADDITIVE_EXPRESSION -> ADDITIVE_EXPRESSION ADD_OPERATION TERM].
+   A. Zisti Type pre ADDITIVE_EXPRESSION a TERM.
+   B. Porovna ci ADDITIVE_EXPRESSION a TERM maju rovnaky TYPE.
+   !!! C. Podporovanymi TYPES su INT a STRING, ale ten iba v pripade, ze ADD_OPERATION='+'.
+   D. Posunie Type do PARENT NODE.
+25. CHOICE: [ADDITIVE_EXPRESSION -> TERM].
+   A. Zisti Type pre TERM.
+   B. Posunie Type do PARENT NODE.
+26. CHOICE: [TERM -> TERM MUL_OPERATION FACTOR].
+   A. Zisti Type pre TERM a FACTOR.
+   B. Porovna ci TERM a FACTOR maju rovnaky TYPE. Jediny povoleny TYPE je INT.
+   C. Ak je Type INT posunie ho do PARENT NODE.
+27. CHOICE: [TERM -> FACTOR].
+   A. Zisti Type pre FACTOR.
+   B. Posunie Type do PARENT NODE.
+28. CHOICE: [STATEMENT -> COMPOUND_STATEMENT].
+   A. Zisti ci ReturnType pre COMPOUND_STATEMENT EXISTUJE a ak ano, tak ho posunie do PARENT NODE. Ak nie, tak sa nic nestane, kedze je to NEPOVINNY ATTRIBUTE.
+   B. Zisti ci HasReturn pre COMPOUND_STATEMENT EXISTUJE a ak ano, tak ho posunie do PARENT NODE. Ak nie, tak sa nic nestane, kedze je to NEPOVINNY ATTRIBUTE.
+29. CHOICE: [STATEMENT -> SELECTION_STATEMENT].
+   A. Zisti ci ReturnType pre SELECTION_STATEMENT EXISTUJE a ak ano, tak ho posunie do PARENT NODE. Ak nie, tak sa nic nestane, kedze je to NEPOVINNY ATTRIBUTE.
+   B. Zisti ci HasReturn pre SELECTION_STATEMENT EXISTUJE a ak ano, tak ho posunie do PARENT NODE. Ak nie, tak sa nic nestane, kedze je to NEPOVINNY ATTRIBUTE.
+30. CHOICE: [STATEMENT -> ITERATION_STATEMENT].
+   A. Zisti ci ReturnType pre ITERATION_STATEMENT EXISTUJE a ak ano, tak ho posunie do PARENT NODE. Ak nie, tak sa nic nestane, kedze je to NEPOVINNY ATTRIBUTE.
+   !!! B. ATTRIBUTE HasReturn sa v ITERATION_STATEMENT IGNORUJE, kedze cyklus sa NEMUSI NIKDY VYKONAT a teda RETURN_STATEMENT v ITERATION_STATEMENT NIE JE ZARUKOU, ze sa RETURN_STATEMENT VZDY VYKONA.
+31. CHOICE: [STATEMENT -> RETURN_STATEMENT].
+   A. Zisti ci ReturnType pre RETURN_STATEMENT a posunie ho do PARENT NODE. Je to POVINNY PARAMETER.
+   B. Zisti ci HasReturn pre RETURN_STATEMENT EXISTUJE a ak ano, tak ho posunie do PARENT NODE. Ak nie, tak sa nic nestane, kedze je to NEPOVINNY ATTRIBUTE (pre CHOICE [return;] NIE JE NASTAVENY).
+32. CHOICE: [FACTOR -> (EXPRESSION)].
+   A. Zisti Type pre EXPRESSION.
+   B. Posunie Type do PARENT NODE.
+33. CHOICE: [FACTOR -> VARIABLE].
+   A. Zisti Type pre VARIABLE.
+   B. Posunie Type do PARENT NODE.
+34. CHOICE: [FACTOR -> CALL].
+   A. Zisti Type pre CALL.
+   B. Posunie Type do PARENT NODE.
+35. CHOICE: [FACTOR -> num].
+   A. Vytvori Type s hodnotou INT.
+   B. Posunie Type do PARENT NODE.
+36. CHOICE: [FACTOR -> string_literal].
+   A. Vytvori Type s hodnotou STRING.
+   B. Posunie Type do PARENT NODE.
+37. CHOICE: [CONST -> num].
+   A. Vytvori Type s hodnotou INT.
+   B. Posunie Type do PARENT NODE.
+38. CHOICE: [CONST -> string_literal].
+   A. Vytvori Type s hodnotou STRING.
+   B. Posunie Type do PARENT NODE.
+//-------------------------------------------------------------------------------------------------------

@@ -1,0 +1,1 @@
+bison.exe -t -v -l -d -o Expressions.c Expressions.y >Output.txt 2>Errors.txt

@@ -1,0 +1,64 @@
+﻿<Table>
+  <InputChars>
+    <InputChar Type="CInputChar_OneOrMoreCharacters" Name="Slash">
+      <Character Value="/"/>
+    </InputChar>
+    <InputChar Type="CInputChar_OneOrMoreCharacters" Name="Asterisk">
+      <Character Value="*"/>
+    </InputChar>
+    <InputChar Type="CInputChar_OneOrMoreCharacters" Name="WhiteChars">
+      <Character Value=" "/>
+      <Character Value="TAB"/>
+      <Character Value="CR"/>
+      <Character Value="NEW_LINE"/>
+    </InputChar>
+    <InputChar Type="CInputChar_EOF" Name="EOF" />
+    <InputChar Type="CInputChar_Other" Name="Other" />
+  </InputChars>
+
+  <States>
+    <State Type="CState_NonAcceptingStart" Name="Start">
+      <Transition InputChar="Slash" NewState="AfterOpeningSlash" IsConsumingCharTransition="true"/>
+      <Transition InputChar="Asterisk" NewState="Error" IsConsumingCharTransition="false"/>
+      <Transition InputChar="WhiteChars" NewState="AfterWhiteSpace" IsConsumingCharTransition="true"/>
+      <Transition InputChar="EOF" NewState="TokenWhiteChars" IsConsumingCharTransition="false"/>
+      <Transition InputChar="Other" NewState="Error" IsConsumingCharTransition="false"/>
+    </State>
+
+    <State Type="CState_NonAccepting" Name="AfterWhiteSpace">
+      <Transition InputChar="Slash" NewState="TokenWhiteChars" IsConsumingCharTransition="false"/>
+      <Transition InputChar="Asterisk" NewState="TokenWhiteChars" IsConsumingCharTransition="false"/>
+      <Transition InputChar="WhiteChars" NewState="AfterWhiteSpace" IsConsumingCharTransition="true"/>
+      <Transition InputChar="EOF" NewState="TokenWhiteChars" IsConsumingCharTransition="false"/>
+      <Transition InputChar="Other" NewState="TokenWhiteChars" IsConsumingCharTransition="false"/>
+    </State>
+
+    <State Type="CState_NonAccepting" Name="AfterOpeningSlash">
+      <Transition InputChar="Slash" NewState="Error" IsConsumingCharTransition="false"/>
+      <Transition InputChar="Asterisk" NewState="InComment" IsConsumingCharTransition="true"/>
+      <Transition InputChar="WhiteChars" NewState="Error" IsConsumingCharTransition="false"/>
+      <Transition InputChar="EOF" NewState="Error" IsConsumingCharTransition="false"/>
+      <Transition InputChar="Other" NewState="Error" IsConsumingCharTransition="false"/>
+    </State>
+
+    <State Type="CState_NonAccepting" Name="InComment">
+      <Transition InputChar="Slash" NewState="InComment" IsConsumingCharTransition="true"/>
+      <Transition InputChar="Asterisk" NewState="AfterClosingAsterisk" IsConsumingCharTransition="true"/>
+      <Transition InputChar="WhiteChars" NewState="InComment" IsConsumingCharTransition="true"/>
+      <Transition InputChar="EOF" NewState="Error" IsConsumingCharTransition="false"/>
+      <Transition InputChar="Other" NewState="InComment" IsConsumingCharTransition="true"/>
+    </State>
+
+    <State Type="CState_NonAccepting" Name="AfterClosingAsterisk">
+      <Transition InputChar="Slash" NewState="TokenComment" IsConsumingCharTransition="true"/>
+      <Transition InputChar="Asterisk" NewState="AfterClosingAsterisk" IsConsumingCharTransition="true"/>
+      <Transition InputChar="WhiteChars" NewState="InComment" IsConsumingCharTransition="true"/>
+      <Transition InputChar="EOF" NewState="Error" IsConsumingCharTransition="false"/>
+      <Transition InputChar="Other" NewState="InComment" IsConsumingCharTransition="true"/>
+    </State>
+
+    <State Type="CState_AcceptingToken" Name="TokenWhiteChars" TokenID="WHITE CHARS"/>
+    <State Type="CState_AcceptingToken" Name="TokenComment" TokenID="COMMENT"/>
+    <State Type="CState_AcceptingError" Name="Error"/>
+  </States>
+</Table>

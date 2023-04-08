@@ -1,0 +1,134 @@
+﻿//-------------------------------------------------------------------------------------------------------
+1. Solution demonstruje implementaciu BOTTOM UP PARSERA.
+2. BOTTOM UP PASER postupuje smerom od LEAFS v PARSING TREE k ROOT. Preto aj sa vola BOTTOM UP. Ak je PARSING uspesny, tak INPUT STREAM musi byt PRAZDNY (obsahovat iba symbol EOF '$') a v PARSING STACK MUSI byt START NON-TERMINAL 'S'.
+3. Pri implementacii BOTTOM UP PASER sa vyuzivaju 2 zakladne operacie.
+   A. SHIFT - znamena presun TOKEN z INPUT STREAM do PARSING STACK.
+   B. REDUCE - znamena redukciu TERMINALS a NON-TERMINALS na vrchole PARSING STACK do noveho NON-TERMINAL.
+4. BOTTOM UP PASER sa zvykne nazyvat aj SHIFT-REDUCE PARSER.
+!!! 5. BOTOM UP PARSER este PRED ZACATIM realizacie PARSINGU musi vykonat nasledujuce kroky.
+   A. Pre gramatiku v BNF je potrebne vypocitat NFA, podla algoritmu spomenuteho v knihe, ktory SA MI PODARILO IMPLEMENTOVAT.
+   B. Z vypocitaneho NFA je potrebne vypocitat DFA. I to sa MI PODARILO IMPLEMENTOVAT.
+!!!!! 6. Algoritmus vypoctu DFA ak mam GRAMATIKU s LEFT RECURSION generuje OVELA VIAC DFA STATES ako GRAMATIKA uz s ODSTRANENYM LEFT-RECURSION a vykonanim LEFT FACTORING.
+   A. LEFT-RECURSION REMOVAL. Pri LEFT-RECURSION existuje aspon 1 CHOICE, ktory na aj NAJLAVEJSI NON-TERMINAL ten isty NON-TERMINAL ako na LAVEJ STRANE daneho CHOICE. Napriklad RULE [DECLARATION_LIST -> DECLARATION_LIST DECLARATION | DECLARATION] je NON-TERMINAL [DECLARATION_LIST] ako na LAVEJ STRANE RULE, tak aj ako NAJLAVEJSI NON-TERMINAL v 1. CHOICE.
+   B. LEFT FACTORING. Pri LEFT-FACTORING maju VSETKY CHOICES TEN ISTY PREFIX. Napriklad RULE [SIMPLE_EXPRESSION -> ADDITIVE_EXPRESSION COMPARE_OPERATION ADDITIVE_EXPRESSION | ADDITIVE_EXPRESSION] ma v OBOCH CHOICES ako NAJLAVEJSI SYMBOL (je jedno ci TERMINAL ci NON-TERMINAL) TEN ISTY SYMBOL [ADDITIVE_EXPRESSION].
+!!!!! 7. Program demonstruje i LALR(1). Vytvorenie LALR(1) pozostava z nasledujucich krokov.
+   A. Vytvorim DFA pre LR(1).
+   B. Konvertujem DFA pre LR(1) na DFA pre LALR(1).
+   !!! C. Algoritmus PARSERA pre LALR(1) je IDENTICKY s PARSEROM pre LR(1).
+!!! 8. Konverzia DFA pre LR(1) na DFA pre LALR(1) pozostava z nasledujucich krokov.
+   A. V DFA pre LR(1) najdem vsetky STATES, ktore maju INDENTICKE LR(0) CORES. LR(0) CORE je tvoreny VSETKYMI LR0 ITEMS daneho DFA STATE (ktory obsahuje 1-N NFA STATES, kde kazdy NFA STATE obsahuje jeden LR(0) ITEM).
+   B. DFA STATES pre LR(1) s IDENTICKYMI LR(0) CORES ZLUCIM do JEDINEHO DFA STATE pre LALR(1). Kazdy DFA STATE pre LALR(1) bude obsahovat zoznam VSETKY NFA STATES zo ZLUCENYCH DFA STATES DFA pre LR(1). Kazdy NFA STATE pritom obsahuje LR(1) ITEM.
+   C. Medzi DFA STATES pre LALR(1) podla principu, ze ak mam v DFA pre LR(1) STATES S1 a S2, ktore maju IDENTICKE LR(0) CORE, tak ak z S1 podla symbolu X existuje TRANSITION do STATE T1, potom takisto z S2 cez X musi existovat TRANSITION do T2, pricom plati, ze T1 a T2 budu ma IDENTICKE LR(0) CORES.
+9. ERROR RECOVERY v LR(1) je presnejsi ako v LALR(1), alebo SLR(1).
+!!! 10. Pri vyskyte chyby je pri LR(1) a LALR(1) doporucovany nasledujuci ERROR RECOVERY algoritmus.
+   A. Vykonam POP STATES z PARSING STACK az kym nenajdem STATE, ktory ma GOTO ACTION.
+   B. Ak existuje LEGALNA ACTION (PARSING TABLE nema prazdny CELL) pre aktualny TOKEN z INPUT STRING z niektoreho zo GOTO STATES, tento STATE je PUSHED do PARSING STACK a pokracuje sa v NORMALNOM PARSINGU. Ak existuje NIEKOLKO GOTO STATES, tak vyberiem taky, z ktoreho sa pre AKTUALNY TOKEN tak spravit SHIFT. Ak vsetky GOTO STATES vedu IBA do REDUCE ACTION, tak vyberiem ten GOTO STATE (ktory volzim na vrchol PARSING STACK), ktoreho asociovany NONTERMINAL je NAJMENEJ VSEOBECNY.
+   C. Ak NEEXISTUJE ziadne LEGAL ACTION pre aktualny TOKEN z INPUT STRING pre ZIADNY z GOTO STATES, tak POSUNIEM sa na NASLEDUJUCI INPUT v INPUT STRING az kym LEGALNU ACTION NENAJDEM, alebo nedorazim na KONIEC INPUT STRING.
+!!!!! 11. Algoritmus uvedeny v bode 10 MOZE VIEST k NEKONECNEJ REKURZII, kedze sa pridavaju NOVE STATES a preto je tento stav potrebne riesit pridanim FLAGU do kazdeho STATE a kontrolou ci sa pri ERROR RECOVERY nedostanem do NEKONECNEHO CYKLU - do STATE, ktory ma FLAG nastaveny. Ak ano, potom je treba urobit POP vsetkych STATES, vratane STATE, ktory sposobil ERROR a restartovat ERROR RECOVERY od bodu 1. Ak sa pri ERROR RECOVERY vyskytne ACTION SHIFT tak FLAG vynulujem.
+!!!!! 12. Program implementuje aj ERROR RECOVERY, ba dokonca i jednoduchu kontrolu proti INFINITE LOOPS pri ERROR RECOVERY. Aj ked samozrejme ERROR RECOVERY nie je idealna, v niektorych situaciach dokaze spravit celkom solidny RECOVERY, bez zahodenia velkej casti kodu.
+!!!!! 13. ALTERNATIVOU voci vyssie uvedenemu ERROR RECOVERY je modifikovat PARSING TABLE a to tak, ze namiesto prazdnych CELLS sa daju AD-HOC akcie SPECIFICKE pre danu GRAMATIKU na zaklade toho aky PREDPOKLADANY ERROR NASTAL. Tieto riesenie su vsak SPECIFICKE NA KONKRETNEJ GRAMATIKE. Casto sa jedna o ACTION, ktora vyhodi vsetky TOKENS z INPUT STRING, az kym nenajde SYNCHRONIZACNY TOKEN, teda TOKEN od ktoreho sa predpoklada, ze moze zacat normalny PARSING. Volba SYNCHRONIZACNEHO TOKENU zavisi od miesta v GRAMATIKE, kde chyba vznikla.
+//-------------------------------------------------------------------------------------------------------
+Algoritmus LR(1)/LALR(1) PARSERA.
+
+1. Z BNF gramatiky spravim AUGUMENTED BNF, co je povodna BNF rozsirena o NOVY RULE S' -> S, kde S je START STATE povodnej BNF.
+2. Pre kazdy CHOICE kazdeho RULE danej BNF urcim vsetky LR(0) ITEMS a to nasledujucim sposobom.
+   A. Ak mam CHOICE A -> αXβ, tak z neho vytvorim nasledujuce LR(0) ITEMS: [A -> .αXβ], [A -> α.Xβ], [A -> αX.β] a [A -> αXβ.]. LR(0) ITEM je [A -> αXβ.] je oznacovany ako COMPLETE ITEM, lebo ma znak '.' ako POSLEDNY.
+   B. Ak mam CHOICE A -> ɛ, tak z neho vytvorim LR(0) ITEMS [A -> .], ktory je zaroven i COMPLETE ITEM.
+3. Vypocitam NFA automat v ktorom jednotlive STATES maju tvar LR(1) ITEMS [A -> αXβ, a], kde A -> αXβ je CHOICE daneho RULE a 'a' je TERMINAL.
+   A. Ako START STATE pre NFA urcim LR(1) ITEM [S' -> S, $], kde S' je START STATE pre AUGUMENTED BNF gramatiku a $ je symbol EOF programu.
+   B. Z kazdeho NFA STATE reprezentovaneho LR(1) ITEM [A -> α.Xβ, a] ak X je TERMINAL, alebo NON-TERMINAL vykonam TRANSITION podla znaku 'a' do NFA STATE reprezentovaneho LR(1) ITEM [A -> αX.β, a]. Cize dochadza k POSUNU znaku '.' DOPRAVA.
+   C. Z kazdeho NFA STATE reprezentovaneho LR(1) ITEM [A -> α.Xβ, a] ak X je NON-TERMINAL vykonam EPSILON TRANSITION podla znaku 'ɛ' do NFA STATE reprezentovaneho LR(1) ITEM [X -> γ., b] pre KAZDY CHOICE X -> γ a KAZDY TERMINAL 'b' patriaci do FIRST(βa).
+4. Pomocou klasickeho algoritmu TRANSFORMACIE NFA automatu na DFA automat vytvorim DFA automat.
+5. Vytvorenie PARSING TABLE, ktora obsahuje STATES DFA z DFA automatu a k nim priradene akcie, ktore sa maju po prichode TERMINALU, alebo NON-TERMINALU vykonat. Tabulka moze obsahovat v jednotlivych CELLS nasledujuce operacie.
+   A. SHIFT - ak z DFA STATE 'S1' existuje TRANSITION podla TERMINAL 'a' do DFA STATE 'S2', tak do CELL(S1,a) pridam operaciu SHIFT(S2).
+   B. REDUCE - ak DFA STATE 'S' obsahuje COMPLETE LR(1) ITEM , tak [X -> γ., b], tak do CELL(S,b) pridam operaciu REDUCE(X -> γ).
+   C. GOTO - ak z DFA STATE 'S1' existuje TRANSITION podla NON-TERMINAL 'A' do DFA STATE 'S2', tak do CELL(S1,A) pridam operaciu GOTO(S2).
+   D. ACCEPT - ak DFA STATE 'S' obsahuje COMPLETE LR(1) ITEM [S' -> S., $], kde CHOICE S' - > S' je START RULE AUGUMENTED gramatiky, tak do CELL(S',$) pridam operaciu ACCEPT(S' -> S).
+6. Realizacia algoritmu LR(1), ktory vybera hodnoty z PARSING STACK a SOURCE CODE INPUT STRING a na zaklade hodnot v PARSING TABLE vykonava potrebne akcie. Algorismus pozostava z nasledujucich akcii.
+   A. PARSING STACK sa ITEMOM, ktory obsahuje START STATE DFA automatu a znak EOF - '$'. SOURCE CODE INPUT STRING obsahuje plny zdrojovy kod BEZ KOMNETAROV a WHITE CHARS.
+   B. Opakuje sa cyklus az kym nie je najdeny ACCEPT stav, alebo ERROR.
+   C. V cykle spravim PEEK nad PARSING STACK aj SOURCE CODE INPUT STRING.
+   D. Z AKTUALNEHO STATE DFA automatu v PARSING STACK a AKUTALNEHO TERMINALU z SOURCE CODE INPUT STRING ziskam PARSING TABLE CELL s operaciou, ktoru je potrebne vykonat.
+   E. Ak CELL neobsahuje ziadnu operaciu HODIM ERROR.
+   F. Ak sa jedna o operaciu typu ACCEPT, tak PARSING je USPESNY a CYKLUS je UKONCENY.
+   H. Ak sa jedna o operaciu typu SHIFT, presuniem TERMINAL zo SOURCE CODE INPUT STREAM do PARSING STACK.
+   I. Ak sa jedna o operaciu typu REDUCE odstranim z PARSING STACK 'N' ITEMS, kde 'N' je dlzka CHOICE A -> a, podla ktoreho robim REDUCE. V pripade CHOICE A -> ɛ je tato dlzka rovna 0. Nasledne ziskam AKTUALNY ITEM z PARSING STACK (po odstraneni ITEMS cez REDUCE). Potom NAJDEM v PARSING STACK CELL(AfterReduceState,A), kde 'AfterReduceState' je hodnota DFA STATE v AKTUALNOM ITEM a 'A' je NONTERMINAL podla ktoreho CHOICE som robil REDUCE. Novy DFA STATE je STATE na ktory spravim GOTO.
+//-------------------------------------------------------------------------------------------------------
+BNF RULES pre jazyk C-- BEZ UPRAV.
+
+1. PROGRAM -> DECLARATION_LIST.
+2. DECLARATION_LIST -> DECLARATION_LIST DECLARATION | DECLARATION.
+3. DECLARATION -> VARIABLE_DECLARATION | FUNCTION_DECLARATION.
+4. VARIABLE_DECLARATION -> TYPE_SPECIFIER id; | TYPE_SPECIFIER id[num];.
+5. TYPE_SPECIFIER -> int | string | void.
+6. FUNCTION_DECLARATION -> TYPE_SPECIFIER id(PARAMS) COMPOUND_STATEMENT.
+7. PARAMS -> PARAM_LIST | void.
+8. PARAM_LIST -> PARAM_LIST,PARAM | PARAM.
+9. PARAM -> TYPE_SPECIFIER id | TYPE_SPECIFIER id[].
+10. COMPOUND_STATEMENT -> {LOCAL_DECLARATIONS STATEMENT_LIST}.
+11. LOCAL_DECLARATIONS -> LOCAL_DECLARATIONS VARIABLE_DECLARATION | ɛ.
+12. STATEMENT_LIST -> STATEMENT_LIST STATEMENT | ɛ.
+13. STATEMENT -> EXPRESSION_STATEMENT | COMPOUND_STATEMENT | SELECTION_STATEMENT | ITERATION_STATEMENT | RETURN_STATEMENT.
+14. EXPRESSION_STATEMENT -> EXPRESSION; | ;.
+15. SELECTION_STATEMENT -> if (EXPRESSION) STATEMENT | if (EXPRESSION) STATEMENT else STATEMENT.
+16. ITERATION_STATEMENT -> while (EXPRESSION) STATEMENT.
+17. RETURN_STATEMENT -> return; | return(EXPRESSION).
+18. EXPRESSION -> VARIABLE=EXPRESSION | SIMPLE_EXPRESSION.
+19. VARIABLE -> id | id[EXPRESSION].
+20. SIMPLE_EXPRESSION -> ADDITIVE_EXPRESSION COMPARE_OPERATION ADDITIVE_EXPRESSION | ADDITIVE_EXPRESSION.
+21. COMPARE_OPERATION -> <= | < | > | >= | == | !=.
+22. ADDITIVE_EXPRESSION -> ADDITIVE_EXPRESSION ADD_OPERATION TERM | TERM.
+23. ADD_OPERATION -> + | -.
+24. TERM -> TERM MUL_OPERATION FACTOR | FACTOR.
+25. MUL_OPERATION -> * | /.
+26. FACTOR -> (EXPRESSION) | VARIABLE | CALL | num | string_literal.
+27. CALL -> id(ARGS).
+28. ARGS -> ARG_LIST | ɛ.
+29. ARG_LIST -> ARG_LIST,EXPRESSION | EXPRESSION.
+//-------------------------------------------------------------------------------------------------------
+BNF RULES pre jazyk C-- s ODSTRANENYM LEFT-RECURSION a vykonanim LEFT FACTORING.
+
+!!! 1. Pre LEFT-RECURSION REMOVAL sa zmenili tieto RULES: 2, 8, 11, 12, 22, 24 a 29.
+!!! 2. Pre LEFT-FACTORING sa zmenili tieto RULES: 4, 9, 15, 17, 19 a 20.
+
+1. PROGRAM -> DECLARATION_LIST.
+2A. DECLARATION_LIST -> DECLARATION MOD_DECLARATION_LIST.
+2B. MOD_DECLARATION_LIST -> DECLARATION MOD_DECLARATION_LIST | ɛ.
+3. DECLARATION -> VARIABLE_DECLARATION | FUNCTION_DECLARATION.
+4A. VARIABLE_DECLARATION -> TYPE_SPECIFIER id MOD_VARIABLE_DECLARATION.
+4B. MOD_VARIABLE_DECLARATION -> ; | [num];.
+5. TYPE_SPECIFIER -> int | string | void.
+6. FUNCTION_DECLARATION -> TYPE_SPECIFIER id(PARAMS) COMPOUND_STATEMENT.
+7. PARAMS -> PARAM_LIST | void.
+8A. PARAM_LIST -> PARAM MOD_PARAM_LIST.
+8B. MOD_PARAM_LIST -> ,PARAM MOD_PARAM_LIST | ɛ.
+9A. PARAM -> TYPE_SPECIFIER id MOD_PARAM.
+9B. MOD_PARAM -> [] | ɛ.
+10. COMPOUND_STATEMENT -> {LOCAL_DECLARATIONS STATEMENT_LIST}.
+11M. LOCAL_DECLARATIONS -> VARIABLE_DECLARATION LOCAL_DECLARATIONS | ɛ.
+12M. STATEMENT_LIST -> STATEMENT STATEMENT_LIST | ɛ.
+13. STATEMENT -> EXPRESSION_STATEMENT | COMPOUND_STATEMENT | SELECTION_STATEMENT | ITERATION_STATEMENT | RETURN_STATEMENT.
+14. EXPRESSION_STATEMENT -> EXPRESSION; | ;.
+15A. SELECTION_STATEMENT -> if (EXPRESSION) STATEMENT MOD_SELECTION_STATEMENT.
+15B. MOD_SELECTION_STATEMENT -> else STATEMENT | ɛ.
+16. ITERATION_STATEMENT -> while (EXPRESSION) STATEMENT.
+17A. RETURN_STATEMENT -> return MOD_RETURN_STATEMENT.
+17B. MOD_RETURN_STATEMENT -> ; | (EXPRESSION).
+18. EXPRESSION -> VARIABLE=EXPRESSION | SIMPLE_EXPRESSION.
+19A. VARIABLE -> id MOD_VARIABLE.
+19B. MOD_VARIABLE -> [EXPRESSION] | ɛ.
+20A. SIMPLE_EXPRESSION -> ADDITIVE_EXPRESSION MOD_SIMPLE_EXPRESSION.
+20B. MOD_SIMPLE_EXPRESSION -> COMPARE_OPERATION ADDITIVE_EXPRESSION | ɛ.
+21. COMPARE_OPERATION -> <= | < | > | >= | == | !=.
+22A. ADDITIVE_EXPRESSION -> TERM MOD_ADDITIVE_EXPRESSION.
+22B. MOD_ADDITIVE_EXPRESSION -> ADD_OPERATION TERM MOD_ADDITIVE_EXPRESSION | ɛ.
+23. ADD_OPERATION -> + | -.
+24A. TERM -> FACTOR MOD_TERM.
+24B. MOD_TERM -> MUL_OPERATION FACTOR MOD_TERM | ɛ.
+25. MUL_OPERATION -> * | /.
+26. FACTOR -> (EXPRESSION) | VARIABLE | CALL | num | string_literal.
+27. CALL -> id(ARGS).
+28. ARGS -> ARG_LIST | ɛ.
+29A. ARG_LIST -> EXPRESSION MOD_ARG_LIST.
+29B. MOD_ARG_LIST -> ,EXPRESSION MOD_ARG_LIST | ɛ.
+//-------------------------------------------------------------------------------------------------------

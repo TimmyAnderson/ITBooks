@@ -1,0 +1,46 @@
+//-------------------------------------------------------------------------------------------------------
+1. Solution demonstruje pouzitie FLEX na vygenerovanie SCANER v jazyku C/C++.
+2. FLEX je optimalizovane verzia LEX, ktora dokaze okrem C kodu, generovat i C++ kod.
+3. Pre pouzivanie FLEX platia nasledujuce pravidla.
+   A. VSTUPOM do FLEX je RULE SUBOR, ktory obsahuje pravidla vo forme REGULARNYCH VYRAZOV ako i C++ kod, ktory je mozne integrovat do vygenerovaneho suboru.
+   B. VYSTUPOM z FLEX je C/C++ KOD, ktory reprezentuje SCANER. Obsahuje TABULKOVY ALGORITMUS DFA, vsetky RULES
+   C. RULE je pravidlo, ktore obsahuje REGULARNY VYRAZ a C++ KOD, ktory sa VYKONA pri NAJDENI REGULARNEHO VYRAZU.
+!!!!! 4. Skusal som pomocou OPTION '-+' generovat i C++ SCANER, ale NEPODARILO SA MI HO PREKOMPILOVAT. Problem bol z IO STREAMS z STL. MS implementacia sa odlisuje od toho co pouziva FLEX, minimalne v tom, ze nepouziva NAMESPACES.
+!!!!! 5. Ak pouzivam C SCANER, tak MUSIM DEFINOVAT FUNKCIU s PROTOTYPOM 'extern "C" int yywrap(void)'. Tato funkcia je volana pri najdeni EOF. V nej mozem bud vratit 1 - koniec SCANINGU, alebo NACITAT DALSI SUBOR do VSTUPNYCH BUFFEROV SCANERA a vratit 0.
+6. Postup pri pouzivani FLEX.
+   A. Napisem RULE FILE pre FLEX. Tento RULE FILE obsahuje REGULARNE VYRAZY a C++ KODY, ktore sa pri najdeni daneho REGULARNEHO VYRAZU vykonany.
+   B. Pouzijem FLEX na vygenerovanie .C suboru.
+   C. Do C/C++ projektu pridan .C subor, ktory obsahuje kod SCANERU.
+   D. Pridam do proramu funkciu, ktora nastavi hodnotu INPUT STREAM (stdin) pre FLEX - premenna 'yyin' na SUBOR OBSAHUJUCI SOURCE CODE.
+   E. Do programu pridam volanie SCANER funkcie yylex().
+   F. Vykonam kompilaciu programu.
+!!! 7. Pri definovani REGULARNYCH VYRAZOV pre RULE FILE sa moze pouzit syntax, ze znak X definujem iba ako X, alebo ako "X". Rozdiel medzi tymito zapismi je v tom, ze ak X je METACHARACTER, tak pri syntaxy X je interpretovany ako METACHARACTER, zatial co pri syntaxy "X" je reprezenovany ako BEZNY ZNAK a jeho META vyznam sa STRACA.
+8. FLEX pozna nasledujuce typy REGULARNYCH VYRAZOV.
+   A. X - je znak X.
+   B. "X" - je znak X aj keby X bol METACHARACTER.
+   C. \X - je znak X aj keby X bol METACHARACTER.
+   D. X* - 0, alebo viac vyskytov znaku X.
+   E. X+ - 1, alebo viac vyskytov znaku X.
+   F. X? - 0, alebo 1 vyskyt znaku X.
+   G. X|Y - znak X, alebo Y.
+   H. (X) - znak X.
+   I. [XYZ] - lubovolny zo znakov X, Y, alebo Z.
+   J. [X-Z] - lubovolny zo znakov X, Y, alebo Z.
+   K. [^XY] - vsetky znaky OKREM X a Y.
+   L. . - vsetky znaky, okrem znaku NOVY RIADOK.
+   M. {NAME} - NAME je deklaracia REGULARNEHO VYRAZU, ktory je mozne pouzit vo vnutri INYCH REGULARNYCH VYRAZOV.
+9. RULE FILE musi mat presne stanoveny tvar, aby ho FLEX vedel dekodovat.
+   A. %{C++ kod%} - na zaciatku RULE FILE mozem pridat LUBOVOLNY C++ kod, ktory sa vlozi NA ZACIATOK vygenerovaneho C/C++ suboru.
+   B. NAMED REGULAR EXPRESSIONS (EXPRESSIONS, ktore maju tvar {NAME}) - tieto deklaracie sa potom mozu pouzit pri definovani dalsich REGULARNYCH VYRAZOV.
+   C. %% - oddelovac 1. casti RULE FILE.
+   D. REGULAR_EXPRESSION CPP_CODE - nasleduje ZOZNAM RULES, kde KAZDY RULE ma tvar REGULAR_EPXRESSION a CPP_CODE, co je C/C++ kod, ktory sa vykona pri NAJDENI DANEHO REGULAR EXPRESSION.
+   E. %% - oddelovac 2. casti RULE FILE.
+   F. C++ kod - lubovolny C/C++ kod, ktory sa prida na KONIEC vygenerovaneho C/C++ suboru SCANERU.
+10. FLEX definuje viacero PREMENNYCH a FUNKCII, ktore je mozne bud v C++ vygenerovaneho suboru SCANERU, alebo v C++ kode, ktory spusta SCANER pouzit.
+   A. yylex() - funkcia spustajuca FLEX.
+   B. yytex - obsahuje LEXEMU. Je je mozne pouzit v RULES - v C/C++ kode, ktory sa vykona pri najdeni RULE v parsovanom zdrojovom kode.
+   C. yyin - je premenna obsahujuca 'stdin' STREAM FLEXU. Do neho je treba vlozit SOURCE CODE programu, na ktory chcem aplikovat SCANER.
+   D. yyout - reprezentuje 'stdout' FLEXU.
+   E. input() - je funkcia pre BUFFERING. Pomocou nej mozem vybrat NASLEDUJUCI ZNAK z 'yyin'. Pouziva sa v pripadoch, kedy sa REGULANYM VYRAZOM NEDA DEFINOVAT JAZYKOVA KONSTUKCIA a MUSIM NAPISAT VLASTNY ALGORITMUS HLADANIA JAZYKOVEJ KONSTRUKCIE v C++. Typicky sa pouziva napriklad pri hladani C++ komentatov /**/, pre ktore je TAZKE NAPISAT REGULARNY VYRAZ.
+   F. yywrap() - je volana, ked FLEX narazi na EOF. Tu, ak mam dalsi SOURCE CODE FILE na parsovanie mozem ZNOVA INICIALIZOVAT 'yyin' a vratit 0 na pokracovanie SCANINGU, alebo aj je koniec SCANINGU, tak vratit 0.
+//-------------------------------------------------------------------------------------------------------

@@ -1,0 +1,108 @@
+﻿//-------------------------------------------------------------------------------------------------------
+1. Solution demonstruje funkcionalitu jednoducheho SCANER.
+2. SCANER implementuje TABULKOVY ALGORITMUS, kde jednotlive STATE su zaradene do TABULKY, ktora urcuje TRANSITIONS medzi jednotlivymi STATES.
+!!!!! 3. Ulohou SCANER je NAJDENIE LEGITIMNYCH TOKENS, ktore sa mozu v programovacom jazyku vyskytovat. SCANER ma za ulohu IBA NAJST TOKENS. Jeho ulohou vsak NIE JE ZISTOVANIE ci PORADIE TOKENS vyhovuje SYNTAKTICKYM PRAVIDLAM. To znamena, ze ak napriklad mam VYRAZ ')EXPRESSION(', tak SCANER najde 3 TOKENS ')', 'EXPRESSION' a ')' a proces SCANING skonci USPESNE, aj napriek tomu, ze SYNTAKTICKY je tam CHYBA. Az v dalsej faze kompilacie SYNTAKTICKY ANALYZATOR vyhodnoti vyraz ako CHYBNY.
+!!! 4. SCANER vyhladava nasledujuce typy TOKENS.
+   A. Identifikatory.
+   B. Klucove slova.
+   C. Konstanty.
+   D. Specialne symboly. Sem patria operatory ci zatvorky.
+   E. Biele znaky a komentare.
+5. Pri vytvoreni SCANER sa pouzivaju nasledujuce teoreticke konstrukcie.
+   A. REGULARNE VYRAZY. Umoznuju definovat TOKENS.
+   B. DETERMINISTIC a NONDETERMINISTIC FINITE AUTOMATA. Umoznuju definovat algoritmus, ktorym bude kompilator vyhladavat TOKENS.
+//-------------------------------------------------------------------------------------------------------
+Tabulka pre DFA akceptujuci C++ komentar a WHITE CHARS.
+
+					/					*					WHITE				EOF						OTHER
+Start				AfterOpeningSlash	[Error]				AfterWhiteChar		[TokenWhiteChars]		[Error]
+AfterWhiteChar		[TokenWhiteChars]	[TokenWhiteChars]	AfterWhiteChar		[TokenWhiteChars]		[TokenWhiteChars]
+AfterOpeningSlash	[Error]				InComment			[Error]				[Error]					[Error]
+InComment			InComment			AfterCloseAsterisk	InComment			[Error]					InComment
+AfterCloseAsterisk	TokenComment		AfterCloseAsterisk	InComment			[Error]					InComment
+
+ACCEPTING STATES:
+
+TokenWhiteChars
+TokenComment
+Error
+//-------------------------------------------------------------------------------------------------------
+Jazyk C- obsahuje nasledujuce TOKENS.
+
+1. Klucove slova.
+   A. 'if' - prikaz IF.
+   B. 'else' - prikaz ELSE.
+   C. 'while' - prikaz WHILE.
+   D. 'int' - typ INT.
+   E. 'string' - typ STRING.
+   F. 'void' - prazdna navratova hodnota funkcie.
+   G. 'return' - navratova hodnota funkcie.
+2. Symboly.
+   A. '+' - operacia SCITANIA.
+   B. '-' - operacia ODCITANIA.
+   C. '*' - operacia NASOBENIA.
+   D. '/' - operacia DELENIA.
+   E. '<' - operacia MENSI.
+   F. '<=' - operacia MENSI, alebo ROVNY.
+   G. '>' - operacia VACSI.
+   H. '>=' - operacia VACSI, alebo ROVNY.
+   I. '==' - operacia ROVNY.
+   J. '!=' - operacia NEROVNY.
+   K. '=' - operacia PRIRADENIA.
+   L. ';' - koniec prikazu.
+   M. ','- odelovac PARAMETROV FUNKCIE.
+   N. '(' - otvaracia zatvorka VYRAZU.
+   O. ')' - uzatvaracia zatvorka VYRAZU.
+   P. '[' - otvaracia zatvorka INDEXERA POLA.
+   Q. ']' - uzatvaracia zatvorka INDEXERA POLA.
+   R. '{' - otvaracia zatvorka BLOKU.
+   S. '}' - uzatvaracia zatvorka BLOKU.
+   T. '/*' - zaciatok komentara.
+   U. '*/' - koniec komentara.
+   V. '"' - zaciatok a koniec RETAZCA.
+   W. '\' - ESCAPE znak v RETAZCI.
+3. Identifikator - ma tvar: LETTER(LETTER | NUMBER)*.
+4. Ciselna konstanta - ma tvar: (+ | -)+(NUMBER)*.
+5. Retazec - ma tvar: "(\(! | " | \) | OTHER)*", kde '\!' je to iste co v C++ '\n'.
+//-------------------------------------------------------------------------------------------------------
+Tabulka pre DFA akceptujuci jazyk C-.
+
+					WHITE				LETTER				NUMBER				+					-					*					/					<					>					=					!					;,()[]{}			"					\					EOF					OTHER
+Start				AfterWhiteChar		Identifier			Number				AfterPlus			AfterMinus			AfterAsterisk		AfterSlash			AfterLesser			AfterGreater		AfterEqual			AfterExclamation	TokenSymbol			InString			[Error]				[TokenEOF]			[Error]
+AfterWhiteChar		AfterWhiteChar		[TokenWhiteChars]	[TokenWhiteChars]	[TokenWhiteChars]	[TokenWhiteChars]	[TokenWhiteChars]	[TokenWhiteChars]	[TokenWhiteChars]	[TokenWhiteChars]	[TokenWhiteChars]	[TokenWhiteChars]	[TokenWhiteChars]	[TokenWhiteChars]	[TokenWhiteChars]	[TokenWhiteChars]	[TokenWhiteChars]
+Identifier			[TokenIdentifier]	Identifier			Identifier			[TokenIdentifier]	[TokenIdentifier]	[TokenIdentifier]	[TokenIdentifier]	[TokenIdentifier]	[TokenIdentifier]	[TokenIdentifier]	[TokenIdentifier]	[TokenIdentifier]	[TokenIdentifier]	[TokenIdentifier]	[TokenIdentifier]	[TokenIdentifier]
+Number				[TokenNumber]		[TokenNumber]		Number				[TokenNumber]		[TokenNumber]		[TokenNumber]		[TokenNumber]		[TokenNumber]		[TokenNumber]		[TokenNumber]		[TokenNumber]		[TokenNumber]		[TokenNumber]		[TokenNumber]		[TokenNumber]		[TokenNumber]
+AfterPlus			[TokenPlus]			[TokenPlus]			Number				[TokenPlus]			[TokenPlus]			[TokenPlus]			[TokenPlus]			[TokenPlus]			[TokenPlus]			[TokenPlus]			[TokenPlus]			[TokenPlus]			[TokenPlus]			[TokenPlus]			[TokenPlus]			[TokenPlus]
+AfterMinus			[TokenMinus]		[TokenMinus]		Number				[TokenMinus]		[TokenMinus]		[TokenMinus]		[TokenMinus]		[TokenMinus]		[TokenMinus]		[TokenMinus]		[TokenMinus]		[TokenMinus]		[TokenMinus]		[TokenMinus]		[TokenMinus]		[TokenMinus]
+AfterAsterisk		[TokenAsterisk]		[TokenAsterisk]		[TokenAsterisk]		[TokenAsterisk]		[TokenAsterisk]		[TokenAsterisk]		[TokenAsterisk]		[TokenAsterisk]		[TokenAsterisk]		[TokenAsterisk]		[TokenAsterisk]		[TokenAsterisk]		[TokenAsterisk]		[TokenAsterisk]		[TokenAsterisk]		[TokenAsterisk]
+AfterSlash			[TokenSlash]		[TokenSlash]		[TokenSlash]		[TokenSlash]		[TokenSlash]		InComment			[TokenSlash]		[TokenSlash]		[TokenSlash]		[TokenSlash]		[TokenSlash]		[TokenSlash]		[TokenSlash]		[TokenSlash]		[TokenSlash]		[TokenSlash]
+AfterLesser			[TokenLesser]		[TokenLesser]		[TokenLesser]		[TokenLesser]		[TokenLesser]		[TokenLesser]		[TokenLesser]		[TokenLesser]		[TokenLesser]		TokenLesserOrEqual	[TokenLesser]		[TokenLesser]		[TokenLesser]		[TokenLesser]		[TokenLesser]		[TokenLesser]
+AfterGreater		[TokenGreater]		[TokenGreater]		[TokenGreater]		[TokenGreater]		[TokenGreater]		[TokenGreater]		[TokenGreater]		[TokenGreater]		[TokenGreater]		TokenGreaterOrEqual	[TokenGreater]		[TokenGreater]		[TokenGreater]		[TokenGreater]		[TokenGreater]		[TokenGreater]
+AfterEqual			[TokenAssigment]	[TokenAssigment]	[TokenAssigment]	[TokenAssigment]	[TokenAssigment]	[TokenAssigment]	[TokenAssigment]	[TokenAssigment]	[TokenAssigment]	TokenEqual			[TokenAssigment]	[TokenAssigment]	[TokenAssigment]	[TokenAssigment]	[TokenAssigment]	[TokenAssigment]
+AfterExclamation	[Error]				[Error]				[Error]				[Error]				[Error]				[Error]				[Error]				[Error]				[Error]				TokenNotEqual		[Error]				[Error]				[Error]				[Error]				[Error]				[Error]
+InString			InString			InString			InString			InString			InString			InString			InString			InString			InString			InString			InString			InString			TokenString			AfterBackslash		[Error]				InString
+AfterBackslash		[Error]				[Error]				[Error]				[Error]				[Error]				[Error]				[Error]				[Error]				[Error]				[Error]				InString			[Error]				InString			InString			[Error]				[Error]
+InComment			InComment			InComment			InComment			InComment			InComment			AfterCloseAsterisk	InComment			InComment			InComment			InComment			InComment			InComment			InComment			InComment			[Error]				InComment
+AfterCloseAsterisk	InComment			InComment			InComment			InComment			InComment			AfterCloseAsterisk	TokenComment		InComment			InComment			InComment			InComment			InComment			InComment			InComment			[Error]				InComment
+
+ACCEPTING STATES:
+
+TokenWhiteChars
+TokenIdentifier
+TokenNumber
+TokenPlus
+TokenMinus
+TokenAsterisk
+TokenSlash
+TokenLesser
+TokenLesserOrEqual
+TokenGreater
+TokenGreaterOrEqual
+TokenAssigment
+TokenEqual
+TokenNotEqual
+TokenComment
+TokenSymbol
+TokenString
+Error
+//-------------------------------------------------------------------------------------------------------

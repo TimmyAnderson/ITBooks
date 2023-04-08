@@ -1,0 +1,598 @@
+﻿//-------------------------------------------------------------------------------------------------------
+1. Solution demonstruje CODE GENERATION pre jazyk C--.
+!!! 2. Generovany kod JE KOMPILOVATELNY ASSEMBLER CODE, ktory generuje CODE pre ASSEMBLER prekladac MASM 10.0, ktory je sucastou Visual Studio 2010. Nato aby som dokazal CODE kompilovat bolo potrebne stiahnut aj FREE knizniciu MASM 32, ktora obsahuje podporne deklaracie API funkcii a kniznic.
+!!! 3. Program obsahuje aj VYLEPSENU identifikaciu kompilacnych chyb, kde presnejsie detekuje pricinu i miesto chyby.
+4. Generovanie kodu sa realizuje prechodom SYNTAX TREE pri ktorom sa pre jednotlive CHOICES generuju ASSEMBLER instrukcie.
+5. Prechod SYNTAX TREE vyvolava metody generatora kodu v PRE-ORDER, IN-ORDER a POST-ORDER poradi. V tychto metodach sa generuju instrukcie ASSEMBLERU.
+!!!!! 6. Generovany kod pouziva STACK na prenos udajov medzi CHOICES. Kazdy CHOICE, ktory potrebuje vystup z ineho CHOICE ho ma ulozeny na VRCHOLE STACKU a vysledok tiez uklada na VRCHOL STACKU. Napriklad pre CHOICE [TERM -> TERM MUL_OPERATION FACTOR] je generovany nasledujuci algoritmus.
+   A. Hodnota FACTOR sa vyberie zo STACKU.
+   B. Hodnota TERM sa vyberie zo STACKU.
+   C. Z CHILD NODES PARSE TREE sa zisti ci MUL_OPERATION obsahuje NASOBENIE, alebo DELENIE.
+   D. Generuje sa instrukcia NASOBENIA, alebo DELENIA.
+   E. Do STACKU sa ulozi vysledok NASOBENIA, alebo DELENIA.
+!!! 7. Pouzitie STACKU na prenost udajov medzi CHOICES VYRAZNE ZJEDNODUSUJE kod GENERATORA INSTRUKCII.
+!!!!! 8. Alternativou voci STACKU by TEORETICKY mohli byt REGISTRE. Tu je vsak ZASADNY PROBLEM, pretoze napriklad v CHOICE [TERM -> TERM MUL_OPERATION FACTOR] moze byt TERM i FACTOR reprezentovany napriklad VOLNIM FUNKCIE. V takomto pripade sa NEDA GARANTOVAT, ze ak by som napriklad do ECX ulozil hodnotu TERM, tak pri vypocte FACTOR, ak by ten pozostaval z FUNKCIE, ktora by napriklad tiez obsahovala CHOICE [TERM -> TERM MUL_OPERATION FACTOR] NEDOSLO k ZMENE ECX. Preto taketo pouzitie REGISTROV je NEMOZNE.
+!!!!! 9. REGISTRE by vsak mohlo byt mozne pouzit pre jednoduchsie CHOICES, ak mam ISTOTU, ze SYNTAX TREE je pre dany CHOICE VZDY ROVNAKY. Toto je napriklad mozne GARANTOVAT pri CHOICE [VARIABLE_DECLARATION -> TYPE_SPECIFIER id=CONST;], kedze CONST VZDY OBSAHUJE iba JEDNODUCHY RULE [CONST -> num | string_literal], ktory VYLUCUJE MODIFIKACIU REGISTROV pouzitych na ukladanie medzivysledkov. Takze v pripade tychto 2 RULES by BOLA MOZNA OPTIMALIZACIA, kde by sa vyhradil REGISTER na ukladanie vysledku RULE CONST z ktoreho by si CHOICE [VARIABLE_DECLARATION -> TYPE_SPECIFIER id=CONST;] hodnotu KONSTANTY VYTIAHLA. Moj generator vsak toto NEROBI.
+!!! 10. RETURN VALUE FUNKCIE sa VZDY prenasa v REGISTRI EAX.
+!!!!! 11. LOCAL VARIABLES sa alokuju STATICKY generatorom kodu a to tak, ze sa rezervuje potrebna pamat na STACKU na ZACIATKU TELA FUNKCIE posunutim ESP registra o pocet BYTES rovnajuci sa MAXIMALNEJ VELKOSTI LOCAL VARIABLES. Na konci funkcie sa potom ESP znizi na povodnu hodnotu, cim dojde k UVOLNENIU PAMATE pre LOCAL VARIABLES.
+!!!!! 12. Pre alokaciu pamate pre LOCAL VARIABLES je KLUCOVE, ze sa alokuje MAXIMALNA DLZKA LOCAL VARIABLES pre VSETKY BRANCHES FUNKCIE. Ak mam napriklad nasledujuci kod, tak MNOZSTVO ALKOVANEJ PAMATE bude 16 BYTES, pretoze to je MAXIMLNA DLZKA PAMATI vo VSETKYCH BRANCHES.
+   A. Na urovni funkcie XXX() su deklarovane 2 INTEGERS (8 BYTES).
+   B. Funkcia XXX() obsahuje IF blok s 1 INTEGER (4 BYTES). MAXIMALNA VELKOST LOCAL VARIABLES pre tento BRANCH je 12 BYTES.
+   C. Funkcia XXX() obsahuje ELSE blok s 2 INTEGER (8 BYTES). MAXIMALNA VELKOST LOCAL VARIABLES pre tento BRANCH je 16 BYTES. Kedze tento BRANCH obsahuje MAXIMALNU VELKOST LOCAL VARIABLES zo VSETKYCH BRANCHES FUNKCIE XXX(), tak pri generovani funkcie XXX() sa na JEJ ZACIATKU alokuje 16 BYTES.
+//-------------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------------
+BNF RULES pre jazyk C--.
+
+1. PROGRAM -> DECLARATION_LIST.
+2. DECLARATION_LIST -> DECLARATION_LIST DECLARATION | DECLARATION.
+3. DECLARATION -> VARIABLE_DECLARATION | FUNCTION_DECLARATION.
+4. VARIABLE_DECLARATION -> TYPE_SPECIFIER id; | TYPE_SPECIFIER id=CONST; | TYPE_SPECIFIER id[num];.
+5. TYPE_SPECIFIER -> int | string | void.
+6. FUNCTION_DECLARATION -> TYPE_SPECIFIER id(PARAMS) COMPOUND_STATEMENT.
+7. PARAMS -> PARAM_LIST | void.
+8. PARAM_LIST -> PARAM_LIST,PARAM | PARAM.
+9. PARAM -> TYPE_SPECIFIER id | TYPE_SPECIFIER id[].
+10. COMPOUND_STATEMENT -> {LOCAL_DECLARATIONS STATEMENT_LIST}.
+11. LOCAL_DECLARATIONS -> LOCAL_DECLARATIONS VARIABLE_DECLARATION | ɛ.
+12. STATEMENT_LIST -> STATEMENT_LIST STATEMENT | ɛ.
+13. STATEMENT -> EXPRESSION_STATEMENT | COMPOUND_STATEMENT | SELECTION_STATEMENT | ITERATION_STATEMENT | RETURN_STATEMENT.
+14. EXPRESSION_STATEMENT -> VARIABLE=EXPRESSION; | CALL;.
+15. SELECTION_STATEMENT -> if (EXPRESSION) STATEMENT | if (EXPRESSION) STATEMENT else STATEMENT.
+16. ITERATION_STATEMENT -> while (EXPRESSION) STATEMENT.
+17. RETURN_STATEMENT -> return; | return(EXPRESSION);.
+18. VARIABLE -> id | id[EXPRESSION].
+19. EXPRESSION -> ADDITIVE_EXPRESSION COMPARE_OPERATION ADDITIVE_EXPRESSION | ADDITIVE_EXPRESSION.
+20. COMPARE_OPERATION -> <= | < | > | >= | == | !=.
+21. ADDITIVE_EXPRESSION -> ADDITIVE_EXPRESSION ADD_OPERATION TERM | TERM.
+22. ADD_OPERATION -> + | -.
+23. TERM -> TERM MUL_OPERATION FACTOR | FACTOR.
+24. MUL_OPERATION -> * | /.
+25. FACTOR -> (EXPRESSION) | VARIABLE | CALL | num | string_literal.
+26. CALL -> id(ARGS).
+27. ARGS -> ARG_LIST | ɛ.
+28. ARG_LIST -> ARG_LIST,EXPRESSION | EXPRESSION.
+29. CONST -> num | string_literal.
+//-------------------------------------------------------------------------------------------------------
+ATTRIBUTES pre BNF RULES.
+
+1. Jazyk obsahuje nasledujuce ATTRIBUTES.
+   A. SymbolTable - reprezentuje ITEM v SYMBOL TABLE.
+   B. ParamType - reprezentuje TYP PARAMETRA FUNKCIE pri jej VOLANI. Parametre sa v RULE ARG_LIST postupne zoskupuju do COLLECTION a v RULE CALL sa porovnaju voci DEKLARACII FUNKCIE. Porovnava sa POCET a TYP.
+   C. ReturnType - reprezentuje RETURN TYPE FUNKCIE. Prenasa sa z RULE RETURN_STATEMENT az do FUNCTION_DECLARATION, kde sa porovna ci RETURN TYPE sedi s RETURN TYPE v DEKLARACII FUNKCIE.
+   D. HasReturn - reprezentuje informaciu ci FUNKCIA vzdy vracia RETURN VALUE. Ak FUNKCIA obsahuje RETURN_STATEMENT na UROVNI FUNKCIE vracia RETURN VALUE, alebo ak IF A ZAROVEN i ELSE BLOK na UROVNI FUNKCIE vracia RETURN VALUE, potom je FUNKCIA oznacena za FUNKCIU, ktora vracia RETURN VALUE a to sa porovna s tym ci FUNKCIA SKUTOCNE VRACIA RETURN VALUE.
+2. ATTRIBUTE podla kategorii su rozdelene nasledovne.
+   A. SymbolTable je INHERITED.
+   B. ParamType je SYNTHESIZED.
+   C. ReturnType je SYNTHESIZED.
+   D. HasReturn su SYNTHESIZED.
+!!! 3. Jazyk NEUMOZNUJE aby v JEDNOM SCOPE boli 2 VARIABLES s ROVNAKYM MENOM, avsak umoznuje mat 2 VARIABLES s ROVNAKYM MENOM v ROZNYCH SCOPES. Tu vsak plati vynimka pre meno FUNKCIE, kde plati, ze NIE JE MOZNE deklarovat VARIABLE s ROVANKYM NAZVOM ako je NAZOV FUNKCIE v ktorej je deklarovana.
+//-------------------------------------------------------------------------------------------------------
+Popis aplikacie ATTRIBUTES v BNF RULES.
+
+1. CHOICE: [VARIABLE_DECLARATION -> TYPE_SPECIFIER id;].
+   A. Do SYMBOL TABLE sa zaradi VARIABLE 'id' s typom TYPE_SPECIFIER.
+   B. Kontroluje sa ci v danom SCOPE nie je deklarovana VARIABLE s ROVNAKYM MENOM.
+   C. Kontroluje sa ci nie je deklarovana FUNKCIA s ROVNAKYM MENOM.
+2. CHOICE: [VARIABLE_DECLARATION -> TYPE_SPECIFIER id=CONST;].
+   A. Do SYMBOL TABLE sa zaradi VARIABLE 'id' s typom TYPE_SPECIFIER.
+   B. Kontroluje sa ci v danom SCOPE nie je deklarovana VARIABLE s ROVNAKYM MENOM.
+   C. Kontroluje sa ci nie je deklarovana FUNKCIA s ROVNAKYM MENOM.
+   D. Porovna ci TYP konstanty je zhodny s TYPOM VARIABLE.
+3. CHOICE: [VARIABLE_DECLARATION -> TYPE_SPECIFIER id[num];].
+   A. Do SYMBOL TABLE sa zaradi VARIABLE 'id' s typom TYPE_SPECIFIER. Zistuje velkost ARRAY 'num'.
+   B. Kontroluje sa ci v danom SCOPE nie je deklarovana VARIABLE s ROVNAKYM MENOM.
+   C. Kontroluje sa ci nie je deklarovana FUNKCIA s ROVNAKYM MENOM.
+4. CHOICE: [FUNCTION_DECLARATION -> TYPE_SPECIFIER id(PARAMS) COMPOUND_STATEMENT].
+   A. Do SYMBOL TABLE sa zaradi FUNKCIU 'id' s typom TYPE_SPECIFIER.
+   B. Kontroluje sa ci v danom SCOPE nie je deklarovana FUNKCIA s ROVNAKYM MENOM.
+   C. Vytvori NOVU SYMBOL TABLE reprezentujucu NOVY SCOPE.
+   D. Skontroluje ci FUNKCIA SKUTOCNE VRACIA RETURN VALUE - FUNCTION_DECLARATION ma ATTRIBUTE HasReturn. Ten je nastaveny ak v SCOPE na urovni FUNKCIE (BLOK {} hned za DEKLARACIOU FUNKCIE) ma RETURN_STATEMENT, alebo IF-ELSE BLOK v SCOPE na urovni FUNKCIE ma v IF aj ELSE BLOKU RETURN_STATEMENT.
+   E. Skontroluje ci FUNKCIA ma KOREKTNY TYP RETURN VALUE - ak nejaky RETURN VALUE vracia, alebo ci nema deklarovany RETURN_STATEMENT, ked v skutocnosti vracia VOID.
+5. CHOICE: [COMPOUND_STATEMENT -> {LOCAL_DECLARATIONS STATEMENT_LIST}].
+   A. Vytvori NOVU SYMBOL TABLE reprezentujucu NOVY SCOPE.
+   B. Ak je deklarovany ReturnType, tak ho posunie do PARENT NODE.
+   C. Ak je deklarovany HasReturn, tak ho posunie do PARENT NODE.
+6. CHOICE: [PARAM -> TYPE_SPECIFIER id].
+   A. Do SYMBOL TABLE sa zaradi VARIABLE 'id' s typom TYPE_SPECIFIER.
+   B. Kontroluje sa ci v danom SCOPE nie je deklarovana VARIABLE s ROVNAKYM MENOM.
+   C. Kontroluje sa ci nie je deklarovana FUNKCIA s ROVNAKYM MENOM.
+7. CHOICE: [PARAM -> TYPE_SPECIFIER id[]].
+   A. Do SYMBOL TABLE sa zaradi VARIABLE 'id' s typom TYPE_SPECIFIER.
+   B. Kontroluje sa ci v danom SCOPE nie je deklarovana VARIABLE s ROVNAKYM MENOM.
+   C. Kontroluje sa ci nie je deklarovana FUNKCIA s ROVNAKYM MENOM.
+8. CHOICE: [VARIABLE -> id].
+   A. Zisti ci 'id' je deklarovany v SYMBOL TABLE.
+   B. Zisti ci 'id' predstavuje VARIABLE, alebo ARRAY VARIABLE (pri prenose ARRAY do FUNCTION).
+   C. Nastavi ATTRIBUTE Type na TYPE danej VARIABLE.
+9. CHOICE: [VARIABLE -> id[EXPRESSION]].
+   A. Zisti ci 'id' je deklarovany a je typu ARRAY VARIABLE.
+   B. Zisti ci 'id' predstavuje ARRAY VARIABLE.
+   C. Nastavi ATTRIBUTE Type na TYPE danej VARIABLE.
+10. CHOICE: [STATEMENT_LIST -> STATEMENT_LIST STATEMENT].
+   A. Urci ReturnType zo STATEMENT_LIST a STATEMENT a porovna ci nie su rozdielne. Ak su zhodne, prenesie ReturnType do PARENT NODE.
+   B. Ak STATEMENT_LIST, alebo STATEMENT maju nastaveny HasReturn, potom ho posunie do PARENT NODE.
+11. CHOICE: [CALL -> id(ARGS)].
+   A. Zisti ci 'id' reprezentuje FUNCTION.
+   B. Nastavi Type ATTRIBUTE na RETURN TYPE FUNCTION, ktory vracia operacia volania FUNCTION.
+   C. Skontroluje pocet parametrov v DEKLARACII FUNCTION a jej volani.
+   D. Skontroluje TYPE vsetkych parametrov v DEKLARACII FUNCTION a jej volani.
+12. CHOICE: [ARGS -> ARG_LIST].
+   A. Zisti ParamTypes pre ARG_LIST.
+   B. Posunie ParamTypes do PARENT NODE.
+13. CHOICE: [ARGS -> ɛ].
+   A. Vytvori PRAZDY ParamTypes.
+   B. Posunie ParamTypes do PARENT NODE.
+14. CHOICE: [ARG_LIST -> ARG_LIST,EXPRESSION].
+   A. Zisti Type pre EXPRESSION.
+   B. Zisti ParamTypes pre ARG_LIST.
+   C. Prida Type EXPRESSION, reprezentujuci nasledujuci parameter FUNCTION na koniec POLA ParamTypes, ktory reprezentuje ostatne parametre FUNCTION.
+15. CHOICE: [ARG_LIST -> EXPRESSION].
+   A. Zisti Type pre EXPRESSION.
+   B. Vytvori novy ParamTypes do ktoreho prida Type EXPRESSION reprezentujuci paramter FUNCTION.
+16. CHOICE: [EXPRESSION_STATEMENT -> VARIABLE=EXPRESSION;].
+   A. Zisti Type pre EXPRESSION.
+   B. Porovna TYPE pre VARIABLE a EXPRESSION ci su zhodne a posunie TYPE do PARENT NODE.
+   !!! C. Priradenie CELEHO ARRAY NIE JE PODPOROVANE.
+17. CHOICE: [SELECTION_STATEMENT -> if (EXPRESSION) STATEMENT].
+   A. Zisti Type pre EXPRESSION a urci ci je typu INT.
+   B. Zisti ReturnType pre STATEMENT.
+   C. Ak je ReturnType nastaveny, posunie ho vyssie v TREE. Znamena to tolko, ze IF BLOK obsahuje RETURN a treba skontrolovat RETURN VALUE s DEKLARACIOU FUNCTION.
+18. CHOICE: [SELECTION_STATEMENT -> if (EXPRESSION) STATEMENT else STATEMENT].
+   A. Zisti Type pre EXPRESSION a urci ci je typu INT.
+   B. Zisti ReturnType pre IF-STATEMENT a ELSE-STATEMENT.
+   C. Zisti HasReturn pre IF-STATEMENT a ELSE-STATEMENT.
+   D. Porovna ci ReturnType pre IF-STATEMENT a ELSE-STATEMENT su zhodne a posunie ReturnType do PARENT NODE.
+   E. Ak OBE IF-STATEMENT a ELSE-STATEMENT maju HasReturn ATTRIBUTE, tak je nastaveny i na PARENT NODE - pretoze IBA VTEDY je ISTOTA, ze IF aj ELSE bloky URCITE MAJU RETURN_STATEMENT.
+19. CHOICE: [ITERATION_STATEMENT -> while (EXPRESSION) STATEMENT].
+   A. Zisti Type pre EXPRESSION a urci ci je typu INT.
+   B. Zisti ReturnType pre STATEMENT.
+   C. Ak je ReturnType nastaveny, posunie ho vyssie v TREE. Znamena to tolko, ze WHILE BLOK obsahuje RETURN a treba skontrolovat RETURN VALUE s DEKLARACIOU FUNCTION.
+20. CHOICE: [RETURN_STATEMENT -> return;].
+   A. Vytvori ReturnType a nastavi RETURN TYPE na VOID.
+   B. Posunie ReturnType do PARENT NODE.
+21. CHOICE: [RETURN_STATEMENT -> return(EXPRESSION);].
+   A. Zisti Type pre EXPRESSION.
+   B. Vytvori ReturnType s RETURN VALUE obsahujucou TYPE daneho EXPRESSION a posunie ho do PARENT NODE.
+   C. Vytvori HasReturn a posunie ho do PARENT NODE.
+22. CHOICE: [EXPRESSION -> ADDITIVE_EXPRESSION COMPARE_OPERATION ADDITIVE_EXPRESSION].
+   A. Zisti Type pre ADDITIVE_EXPRESSION 1 a ADDITIVE_EXPRESSION 2.
+   B. Porovna ci ADDITIVE_EXPRESSION 1 a ADDITIVE_EXPRESSION 2 maju rovnaky TYPE. Jediny povoleny TYPE je INT.
+   C. Ak je Type INT posunie ho do PARENT NODE.
+23. CHOICE: [EXPRESSION -> ADDITIVE_EXPRESSION].
+   A. Zisti Type pre ADDITIVE_EXPRESSION.
+   B. Posunie Type do PARENT NODE.
+24. CHOICE: [ADDITIVE_EXPRESSION -> ADDITIVE_EXPRESSION ADD_OPERATION TERM].
+   A. Zisti Type pre ADDITIVE_EXPRESSION a TERM.
+   B. Porovna ci ADDITIVE_EXPRESSION a TERM maju rovnaky TYPE.
+   C. Podporovanym TYPE je INT.
+   D. Posunie Type do PARENT NODE.
+25. CHOICE: [ADDITIVE_EXPRESSION -> TERM].
+   A. Zisti Type pre TERM.
+   B. Posunie Type do PARENT NODE.
+26. CHOICE: [TERM -> TERM MUL_OPERATION FACTOR].
+   A. Zisti Type pre TERM a FACTOR.
+   B. Porovna ci TERM a FACTOR maju rovnaky TYPE. Jediny povoleny TYPE je INT.
+   C. Ak je Type INT posunie ho do PARENT NODE.
+27. CHOICE: [TERM -> FACTOR].
+   A. Zisti Type pre FACTOR.
+   B. Posunie Type do PARENT NODE.
+28. CHOICE: [STATEMENT -> COMPOUND_STATEMENT].
+   A. Zisti ci ReturnType pre COMPOUND_STATEMENT EXISTUJE a ak ano, tak ho posunie do PARENT NODE. Ak nie, tak sa nic nestane, kedze je to NEPOVINNY ATTRIBUTE.
+   B. Zisti ci HasReturn pre COMPOUND_STATEMENT EXISTUJE a ak ano, tak ho posunie do PARENT NODE. Ak nie, tak sa nic nestane, kedze je to NEPOVINNY ATTRIBUTE.
+29. CHOICE: [STATEMENT -> SELECTION_STATEMENT].
+   A. Zisti ci ReturnType pre SELECTION_STATEMENT EXISTUJE a ak ano, tak ho posunie do PARENT NODE. Ak nie, tak sa nic nestane, kedze je to NEPOVINNY ATTRIBUTE.
+   B. Zisti ci HasReturn pre SELECTION_STATEMENT EXISTUJE a ak ano, tak ho posunie do PARENT NODE. Ak nie, tak sa nic nestane, kedze je to NEPOVINNY ATTRIBUTE.
+30. CHOICE: [STATEMENT -> ITERATION_STATEMENT].
+   A. Zisti ci ReturnType pre ITERATION_STATEMENT EXISTUJE a ak ano, tak ho posunie do PARENT NODE. Ak nie, tak sa nic nestane, kedze je to NEPOVINNY ATTRIBUTE.
+   !!! B. ATTRIBUTE HasReturn sa v ITERATION_STATEMENT IGNORUJE, kedze cyklus sa NEMUSI NIKDY VYKONAT a teda RETURN_STATEMENT v ITERATION_STATEMENT NIE JE ZARUKOU, ze sa RETURN_STATEMENT VZDY VYKONA.
+31. CHOICE: [STATEMENT -> RETURN_STATEMENT].
+   A. Zisti ci ReturnType pre RETURN_STATEMENT a posunie ho do PARENT NODE. Je to POVINNY PARAMETER.
+   B. Zisti ci HasReturn pre RETURN_STATEMENT EXISTUJE a ak ano, tak ho posunie do PARENT NODE. Ak nie, tak sa nic nestane, kedze je to NEPOVINNY ATTRIBUTE (pre CHOICE [return;] NIE JE NASTAVENY).
+32. CHOICE: [FACTOR -> (EXPRESSION)].
+   A. Zisti Type pre EXPRESSION.
+   B. Posunie Type do PARENT NODE.
+33. CHOICE: [FACTOR -> VARIABLE].
+   A. Zisti Type pre VARIABLE.
+   B. Posunie Type do PARENT NODE.
+34. CHOICE: [FACTOR -> CALL].
+   A. Zisti Type pre CALL.
+   B. Posunie Type do PARENT NODE.
+35. CHOICE: [FACTOR -> num].
+   A. Vytvori Type s hodnotou INT.
+   B. Posunie Type do PARENT NODE.
+36. CHOICE: [FACTOR -> string_literal].
+   A. Vytvori Type s hodnotou STRING.
+   B. Posunie Type do PARENT NODE.
+37. CHOICE: [CONST -> num].
+   A. Vytvori Type s hodnotou INT.
+   B. Posunie Type do PARENT NODE.
+38. CHOICE: [CONST -> string_literal].
+   A. Vytvori Type s hodnotou STRING.
+   B. Posunie Type do PARENT NODE.
+//-------------------------------------------------------------------------------------------------------
+Instrukce INTERMEDIATE CODE.
+
+1. Instrukcia [ProcedureName PROC] oznacuje zaciatok PROCEDURY.
+2. Instrukcia [ProcedureName ENDP] oznacuje koniec PROCEDURY.
+3. Instrukcia [RET] ukonci volanie PROCEDURY vyberom RETURN ADRESY zo STACK na ktoru nasledne vykona JUMP. RETURN VALUE sa prenasa cez register EAX, ktory musi PROCEDURA PRED SKONCENIM NAPLNIT.
+4. Instrukcia [MOV O1, O2] kopiruje hodnotu operandu O2 do operandu O1. Operand O1 moze byt MEMORY LOCATION, alebo REGISTER. Operand O1 moze byt MEMORY LOCATION, REGISTER, alebo CONSTANT. Operandy O1 a O2 NESMU byt SUCASNE MEMORY LOCATIONS.
+5. Instrukcia [ADD O1, O2] scitava hodnoty operandov O1 a O2 a vysledok uklada do operandu O1. Operand O1 moze byt MEMORY LOCATION, alebo REGISTER. Operand O1 moze byt MEMORY LOCATION, REGISTER, alebo CONSTANT. Operandy O1 a O2 NESMU byt SUCASNE MEMORY LOCATIONS.
+6. Instrukcia [SUB O1, O2] odcitava hodnoty operandov O1 a O2 a vysledok uklada do operandu O1. Operand O1 moze byt MEMORY LOCATION, alebo REGISTER. Operand O1 moze byt MEMORY LOCATION, REGISTER, alebo CONSTANT. Operandy O1 a O2 NESMU byt SUCASNE MEMORY LOCATIONS.
+7. Instrukcia [MUL O] BEZZNAMIENKOVO nasobi hodnotu registra EAX hodnotou operandu O a vysledok uklada do dvojice registrov EDX:EAX.
+8. Instrukcia [DIV O] BEZZNAMIENKOVO deli hodnotu registra EAX hodnotou operandu O, pricom vysledok delenia uklada do registra EAX a zvysok do registra EDX. Pred pouzitim je NUTNE do registra EDX ulozit 0.
+9. Instrukcia [IMUL O] ZNAMIENKOVO nasobi hodnotu registra EAX hodnotou operandu O a vysledok uklada do dvojice registrov EDX:EAX.
+10. Instrukcia [IDIV O] ZNAMIENKOVO deli hodnotu registra EAX hodnotou operandu O, pricom vysledok delenia uklada do registra EAX a zvysok do registra EDX. Pred pouzitim je NUTNE POUZIT INSTUKCIU CDQ, aby nastavila ZNAMIENKOVY BIT v EDX.
+11. Instrukcia [CALL ProcedureName] vola PROCEDURU ProcedureName. Do STACK ULOZI na STACK RETURN ADRESU a vykona JUMP na zaciatocnu adresu PROCEDURY.
+12. Instrukcia [PUSH R] uklada hodnotu registra R na STACK.
+13. Instrukcia [POP R] vybera hodnotu zo STACK a ulozi ju do registra R.
+14. Instrukcia [CMP O1,O2] porovnava hodnoty operandov O1 a O2. Porovnanie sa vykonava ODCITANIM O1 a O2, pricom vysledok VYSLEDOK NEUKLADA iba NASTAVUJE FLAGS. Operand O1 moze byt MEMORY LOCATION, alebo REGISTER. Operand O1 moze byt MEMORY LOCATION, REGISTER, alebo CONSTANT. Operandy O1 a O2 NESMU byt SUCASNE MEMORY LOCATIONS.
+15. Instrukcia [LabelName:] oznacuje LABEL v kode.
+16. Instrukcia [JE LabelName] vykonava skok ak O1==O2.
+17. Instrukcia [JNE LabelName] vykonava skok ak O1!=O2.
+18. Instrukcia [JG LabelName] vykonava skok ak O1>O2.
+19. Instrukcia [JL LabelName] vykonava skok ak O1<O2.
+20. Instrukcia [JGE LabelName] vykonava skok ak O1>=O2.
+21. Instrukcia [JLE LabelName] vykonava skok ak O1<=O2.
+22. Instrukcia [JMP LabelName] vykonava nepodmieneny skok.
+23. Instrukcia [ASMText] zapisuje lubovolny retazec do generovaneho kodu. Pouziva sa na generovanie hlavicky ASM suboru ci globalnych premennych.
+24. Instrukcia [CDQ] vykona konverziu registra EAX do EDX:EAX, co je NEVYHNUTNE pred volanim instrukcie DIV a IDIV.
+//-------------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------------
+Popis instrukcii generovanych pre jednotlive BNF CHOICES.
+//-------------------------------------------------------------------------------------------------------
+CHOICE: [VARIABLE_DECLARATION -> TYPE_SPECIFIER id=CONST;].
+
+Vstupne poziadavky:
+	STACK musi obsahovat hodnotu konstanty.
+Vystup:
+	LOKALNA premenna bude obsahovat hodnotu konstanty.
+
+Algoritmus:
+
+	1. POP EAX								Do EAX sa ulozi hodnota konstanty.
+	2. MOV [EBP,VariableOffset],EAX			Do LOKALNEJ premennej s OFFSET VariableOffset sa ulozi hodnota konstanty.
+//-------------------------------------------------------------------------------------------------------
+CHOICE: [FUNCTION_DECLARATION -> TYPE_SPECIFIER id(PARAMS) COMPOUND_STATEMENT].
+
+Vystup:
+	EBP bude obsahovat adresu zaciatku LOKALNYCH PREMENNYCH.
+
+Algoritmus:
+
+	1. ProcedureName PROC					Prikaz oznacuje zaciatok funkcie ProcedureName.
+	2. PUSH EBP								Do STACK ulozi hodnotu EBP na STACK, aby pri navrate z fukcie mohla byt obnovena povodna hodnota.
+	3. PUSH EBX								Do STACK ulozi hodnotu EBX na STACK, aby pri navrate z fukcie mohla byt obnovena povodna hodnota.
+	4. MOV EBP,ESP							Do EBP ulozi hodnotu ESP, aby EBP mohla sluzit ako BAZICKA ADRESA pre vsetky lokalne premenne.
+	5. SUB ESP,LocalVariablesStackSize		Alokuje na STACK pamat pre lokalne premenne posunutim STACK registra ESP o hodnotu LocalVariablesStackSize obsahuju MAXIMALNU VELKOST lokalrnych premennych VSETKYCH BRANCHES funkcie.
+//-------------------------------------------------------------------------------------------------------
+CHOICE: [COMPOUND_STATEMENT -> {LOCAL_DECLARATIONS STATEMENT_LIST}].
+
+Algoritmus:
+
+	Ak CHOICE reprezentuje blok FUNKCIE, generuje sa kod na ukoncenie funkcie.
+
+	1. ExitProcedureCodeLabel:				Label oznacujuci ZACIATOK ukoncovacie kodu funkcie.
+	2. MOV ESP,EBP							Do ESP ulozi hodnotu EBP, cim sa uvolni pamat pridelena lokalnym premennym alokovanym na zaciatku funkcie.
+	3. POP EBX								Do EBX sa ulozi povodna hodnota EBX ulozena do STACK na zaciatku funkcie.
+	4. POP EBP								Do EBP sa ulozi povodna hodnota EBP ulozena do STACK na zaciatku funkcie.
+	5. RET									Ukonci volanie funkcie a riadenie sa vrati do volajucej funkcie.
+	6. ProcedureName ENDP					Prikaz oznacuje koniec funkcie ProcedureName.
+//-------------------------------------------------------------------------------------------------------
+CHOICE: [EXPRESSION_STATEMENT -> VARIABLE=EXPRESSION;].
+
+Vstupne poziadavky:
+	STACK musi obsahovat hodnotu EXPRESSION a ADRESU VARIABLE.
+
+Algoritmus:
+
+	1. POP EBX								Do EBX sa ulozi hodnota EXPRESSION.
+	2. POP EAX								Do EAX sa ulozi ADRESA VARIABLE.
+	3. MOV [EAX],EBX						Na ADRESU VARIABLE sa ulozi hodnota EXPRESSION.
+//-------------------------------------------------------------------------------------------------------
+CHOICE: [EXPRESSION_STATEMENT -> CALL;].
+
+Vstupne poziadavky:
+	Funkcia ak ma RETURN VALUE, musi ho ukladat do EAX.
+Vystup:
+	Ak funkcia vracia RETURN VALUE, STACK bude naplneny RETURN VALUE funkcie.
+
+Algoritmus:
+
+	Ak funkcia VRACIA RETURN VALUE.
+
+	1. POP EAX								Do EAX sa ulozi RETURN VALUE funkcie.
+
+	Ak funkcia NEVRACIA RETURN VALUE, algoritmus je PRAZDNY.
+//-------------------------------------------------------------------------------------------------------
+CHOICE: [SELECTION_STATEMENT -> if (EXPRESSION) STATEMENT].
+
+Vstupne poziadavky:
+	STACK musi obsahovat hodnotu EXPRESSION.
+
+Algoritmus:
+
+	1. POP EAX								Do EAX sa ulozi hodnota EXPRESSION.
+	2. CMP EAX,0							Porovna EAX s hodnotou EXPRESSION.
+	3. JE EndOfIfBlockLabel					Ak EAX==0, vykona skok na EndOfIfBlockLabel oznacujuci KONIEC IF bloku.
+	4. --- KOD v IF BLOKU. ---
+	5. EndOfIfBlockLabel:					Label oznacujuci KONIEC ID bloku.
+//-------------------------------------------------------------------------------------------------------
+CHOICE: [SELECTION_STATEMENT -> if (EXPRESSION) STATEMENT else STATEMENT].
+
+Vstupne poziadavky:
+	STACK musi obsahovat hodnotu EXPRESSION.
+
+Algoritmus:
+
+	1. POP EAX								Do EAX sa ulozi hodnota EXPRESSION.
+	2. CMP EAX,0							Porovna EAX s hodnotou EXPRESSION.
+	3. JE BeginOfElseBlockLabel				Ak EAX==0, vykona skok na BeginOfElseBlockLabel oznacujuci ZACIATOK ELSE bloku.
+	4. --- KOD v IF BLOKU. ---
+	5. JMP EndOfElseBlockLabel				Vykona skok na EndOfElseBlockLabel oznacujuci KONIEC ELSE bloku.
+	6. BeginOfElseBlockLabel:				Label oznacujuci ZACIATOK ELSE bloku.
+	7. --- KOD v ELSE BLOKU. ---
+	8. EndOfElseBlockLabel:					Label oznacujuci KONIEC ELSE bloku.
+//-------------------------------------------------------------------------------------------------------
+CHOICE: [ITERATION_STATEMENT -> while (EXPRESSION) STATEMENT].
+
+Vstupne poziadavky:
+	STACK musi obsahovat hodnotu EXPRESSION.
+
+Algoritmus:
+
+	1. BeginOfWhileBlockLabel:				Label oznacujuci ZACIATOK WHILE bloku.
+	2. POP EAX								Do EAX sa ulozi hodnota EXPRESSION.
+	3. CMP EAX,0							Porovna EAX s hodnotou EXPRESSION.
+	4. JE EndOfWhileBlockLabel				Ak EAX==0, vykona skok na EndOfWhileBlockLabel oznacujuci KONIEC WHILE bloku.
+	5. --- KOD vo WHILE BLOKU. ---
+	6. JMP BeginOfWhileBlockLabel			Vykona skok na BeginOfWhileBlockLabel oznacujuci ZACIATOK WHILE bloku.
+	7. EndOfWhileBlockLabel:				Label oznacujuci KONIEC WHILE bloku.
+//-------------------------------------------------------------------------------------------------------
+CHOICE: [RETURN_STATEMENT -> return;].
+
+Algoritmus:
+
+	1. JMP ExitProcedureCodeLabel			Vykona skok na ukoncovaci kod funkcie.
+//-------------------------------------------------------------------------------------------------------
+CHOICE: [RETURN_STATEMENT -> return(EXPRESSION);].
+
+Vstupne poziadavky:
+	STACK musi obsahovat hodnotu EXPRESSION.
+Vystup:
+	EAX bude obsahovat RETURN VALUE funkcie.
+
+Algoritmus:
+
+	1. POP EAX								Do EAX sa ulozi hodnota EXPRESSION.
+	2. JMP ExitProcedureCodeLabel			Vykona skok na ukoncovaci kod funkcie.
+//-------------------------------------------------------------------------------------------------------
+CHOICE: [VARIABLE -> id].
+
+Vystup:
+	STACK bude obsahovat adresu ID.
+
+Algoritmus:
+
+	Ak ID NIE JE ARRAY a je PARAMETROM FUNKCIE, alebo LOKALNYM PARAMETROM:
+
+	1. MOV EAX,EBP							Do EAX sa ulozi EBP, z ktorej vypocitam ADRESU PREMENNEJ ID.
+	2. ADD EAX,VariableOffset				Do EAX sa ulozi hodnota (EBP+VariableOffset), co je ADRESA PREMENNEJ ID.
+	3. PUSH EAX								Do STACK sa ulozi adresa PREMENNEJ ID.
+
+	Ak ID NIE JE ARRAY a je GLOBALNOU PREMENNOU:
+
+	1. ADD EAX,OFFSET GlobalVariable		Do EAX sa ulozi hodnota (OFFSET GlobalVariable), co je ADRESA PREMENNEJ ID.
+	2. PUSH EAX								Do STACK sa ulozi adresa PREMENNEJ ID.
+
+	Ak ID je ARRAY a je PARAMETROM FUNKCIE:
+
+	1. MOV EAX,[EBP+ParameterOffset]		Do EAX sa ulozi hodnota [EBP+ParameterOffset], co je ADRESA PREMENNEJ ID.
+	2. PUSH EAX								Do STACK sa ulozi adresa PREMENNEJ ID.
+
+	Ak ID je ARRAY a je LOKALNOU PREMENNOU:
+
+	1. MOV EAX,EBP							Do EAX sa ulozi EBP, z ktorej vypocitam ADRESU PREMENNEJ ID.
+	2. ADD EAX,LocalVariableOffset			Do EAX sa ulozi hodnota (EBP+LocalVariableOffset), co je ADRESA PREMENNEJ ID.
+	3. PUSH EAX								Do STACK sa ulozi adresa PREMENNEJ ID.
+
+	Ak ARRAY je GLOBALNOU PREMENNOU:
+
+	1. ADD EAX,OFFSET GlobalVariable		Do EAX sa ulozi hodnota (OFFSET GlobalVariable), co je ADRESA PREMENNEJ ID.
+	2. PUSH EAX								Do STACK sa ulozi adresa PREMENNEJ ID.
+//-------------------------------------------------------------------------------------------------------
+CHOICE: [VARIABLE -> id[EXPRESSION]].
+
+Vstupne poziadavky:
+	STACK musi obsahovat hodnotu EXPRESSION.
+Vystup:
+	STACK bude obsahovat adresu ID[EXPRESSION].
+
+Algoritmus:
+
+	1. POP EAX								Do EAX sa ulozi hodnota EXPRESSION.
+	2. MOV EBX,ItemSizeof					Do EBX sa ulozi hodnota SIZEOF(ARRAY_ITEM).
+	3. MUL EAX								Do EAX sa ulozi hodnota SIZEOF(ARRAY_ITEM)*EXPRESSION.
+	4. MOV EBX,EAX							Do EBX sa ulozi hodnota SIZEOF(ARRAY_ITEM)*EXPRESSION pre neskorsi vypocet.
+
+	Ak ARRAY je PARAMETROM FUNKCIE:
+
+	5. MOV EAX,[EBP+ParameterOffset]		Do EAX sa ulozi hodnota [EBP+ParameterOffset], co je ADRESA ZACIATKU POLA, ak je pole PARAMETER funkcie.
+	6. ADD EAX,EBX							Do EAX sa ulozi adresa ID[EXPRESSION], kde adresa ID je ADRESA ZACIATKU POLA.
+	7. PUSH EAX								Do STACK sa ulozi adresa ID[EXPRESSION].
+
+	Ak ARRAY je LOKALNOU PREMENNOU:
+
+	5. MOV EAX,EBP							Do EAX sa ulozi EBP, z ktorej vypocitam ADRESU ZACIATKU POLA.
+	6. ADD EAX,LocalVariableOffset			Do EAX sa ulozi hodnota (EBP+LocalVariableOffset), co je ADRESA ZACIATKU POLA, ak je pole ako LOKALNA premenna.
+	7. ADD EAX,EBX							Do EAX sa ulozi adresa ID[EXPRESSION], kde adresa ID je ADRESA ZACIATKU POLA.
+	8. PUSH EAX								Do STACK sa ulozi adresa ID[EXPRESSION].
+
+	Ak ARRAY je GLOBALNOU PREMENNOU:
+
+	5. ADD EAX,OFFSET GlobalVariable		Do EAX sa ulozi hodnota (OFFSET GlobalVariable), co je ADRESA ZACIATKU POLA ak, je pole ako GLOBALNA premenna.
+	6. ADD EAX,EBX							Do EAX sa ulozi adresa ID[EXPRESSION], kde adresa ID je ADRESA ZACIATKU POLA.
+	7. PUSH EAX								Do STACK sa ulozi adresa ID[EXPRESSION].
+//-------------------------------------------------------------------------------------------------------
+CHOICE: [EXPRESSION -> ADDITIVE_EXPRESSION COMPARE_OPERATION ADDITIVE_EXPRESSION].
+
+Vstupne poziadavky:
+	STACK musi obsahovat 2 hodnoty ADDITIVE_EXPRESSION.
+Vystup:
+	STACK bude obsahovat adresu ID[EXPRESSION].
+
+Algoritmus:
+
+	1. POP EBX								Do EBX sa ulozi hodnota OPERANDU O2 (PRAVEHO ADDITIVE_EXPRESSION).
+	2. POP EAX								Do EBX sa ulozi hodnota OPERANDU O1 (LAVEHO ADDITIVE_EXPRESSION).
+	3. CMP EAX,EBX							Vykona porovnanie hodnot operandov O1 a O2.
+
+	Ak O1<O2 vykona sa nasledujuca instrukcia.
+
+	4. JL TrueLabel							Vykona skok na TrueLabel ak O1<O2.
+
+	Ak O1<=O2 vykona sa nasledujuca instrukcia.
+
+	4. JLE TrueLabel						Vykona skok na TrueLabel ak O1<=O2.
+
+	Ak O1>O2 vykona sa nasledujuca instrukcia.
+
+	4. JG TrueLabel							Vykona skok na TrueLabel ak O1>O2.
+
+	Ak O1>=O2 vykona sa nasledujuca instrukcia.
+
+	4. JGE TrueLabel						Vykona skok na TrueLabel ak O1>=O2.
+
+	Ak O1==O2 vykona sa nasledujuca instrukcia.
+
+	4. JE TrueLabel							Vykona skok na TrueLabel ak O1==O2.
+
+	Ak O1!=O2 vykona sa nasledujuca instrukcia.
+
+	4. JE TrueLabel							Vykona skok na TrueLabel ak O1!=O2.
+
+	5. MOV EAX,0							Do EAX sa ulozi hodnota FALSE (0).
+	6. JMP FalseLabel						Vykona skok na FalseLabel.
+	7. TrueLabel:							Label oznacujuci TRUE blok.
+	8. MOV EAX,1							Do EAX sa ulozi hodnota TRUE (0).
+	9. FalseLabel:							Label oznacujuci FALSE blok.
+	10. PUSH EAX							Do STACK sa ulozi vysledna hodnota porovnania, ktora moze byt bud 1 (TRUE), alebo 0 (FALSE).
+//-------------------------------------------------------------------------------------------------------
+CHOICE: [ADDITIVE_EXPRESSION -> ADDITIVE_EXPRESSION ADD_OPERATION TERM].
+
+Vstupne poziadavky:
+	STACK musi obsahovat hodnoty ADDITIVE_EXPRESSION a TERM.
+Vystup:
+	STACK bude obsahovat vysledok operacie scitania/odcitania.
+
+Algoritmus:
+
+	1. POP EBX								Do EBX sa ulozi hodnota TERM.
+	2. POP EAX								Do EAX sa ulozi hodnota ADDITIVE_EXPRESSION.
+
+	Ak ADD_OPERATION reprezentuje operaciu SCITANIA vykonaju sa nasledujuce instrukcie.
+
+	3. ADD EAX,EBX							Do EAX sa ulozi vysledok operacie (ADDITIVE_EXPRESSION+TERM).
+	4. PUSH EAX								Do STACK sa ulozi vysledna hodnota operacie scitania/odcitania.
+
+	Ak ADD_OPERATION reprezentuje operaciu ODCITANIA vykonaju sa nasledujuce instrukcie.
+
+	3. SUB EAX,EBX							Do EAX sa ulozi vysledok operacie (ADDITIVE_EXPRESSION-TERM).
+	4. PUSH EAX								Do STACK sa ulozi vysledna hodnota operacie scitania/odcitania.
+//-------------------------------------------------------------------------------------------------------
+CHOICE: [TERM -> TERM MUL_OPERATION FACTOR].
+
+Vstupne poziadavky:
+	STACK musi obsahovat hodnoty TERM a FACTOR.
+Vystup:
+	STACK bude obsahovat vysledok operacie nasobenie/delenie.
+
+Algoritmus:
+
+	1. POP EBX								Do EBX sa ulozi hodnota FACTOR.
+	2. POP EAX								Do EAX sa ulozi hodnota TERM.
+
+	Ak MUL_OPERATION reprezentuje operaciu NASOBENIA vykonaju sa nasledujuce instrukcie.
+
+	3. IMUL EBX								Do EDX:EAX sa ulozi vysledok operacie EAX*EBX (TERM*FACTOR).
+	4. PUSH EAX								Do STACK sa ulozi vysledna hodnota nasobenia/delenia.
+
+	Ak MUL_OPERATION reprezentuje operaciu DELENIA vykonaju sa nasledujuce instrukcie.
+
+	3. CDQ									Do EDX:EAX sa ulozi KONVERTOVANA hodnota z EAX. Tato instrukcia je nevyhnutna pred operaciou IDIV pre korektne delenie ZAPORNYCH cisel.
+	4. IDIV EAX,EBX							Do EAX sa ulozi vysledok operacie EDX:EAX/EBX (TERM/FACTOR).
+	5. PUSH EAX								Do STACK sa ulozi vysledna hodnota operacie nasobenia/delenia.
+//-------------------------------------------------------------------------------------------------------
+CHOICE: [FACTOR -> VARIABLE].
+
+Vstupne poziadavky:
+	STACK musi obsahovat adresu premennej.
+Vystup:
+	STACK bude obsahovat hodnotu premennej.
+
+Algoritmus:
+
+	Ak VARIABLE NEMA ako CHILD NODE CHOICE [VARIABLE -> id[EXPRESSION]].
+
+	1. POP EAX								Do EAX sa ulozi adresa premennej.
+	3. MOV EAX,[EAX]						Do EAX sa ulozi hodnota premennej z jej adresy.
+	3. PUSH EAX								Do STACK sa ulozi hodnota premennej.
+
+	Ak VARIABLE ma ako CHILD NODE CHICE [VARIABLE -> id[EXPRESSION]], algoritmus je PRAZDNY.
+//-------------------------------------------------------------------------------------------------------
+CHOICE: [FACTOR -> num].
+
+Vystup:
+	STACK bude obsahovat hodnotu ciselnej konstanty.
+
+Algoritmus:
+
+	1. MOV EAX,IntConstant					Do EAX sa ulozi hodnota ciselnej konstanty.
+	2. PUSH EAX								Do STACK sa ulozi hodnota ciselnej konstanty.
+//-------------------------------------------------------------------------------------------------------
+CHOICE: [FACTOR -> string_literal].
+
+Vystup:
+	STACK bude obsahovat adresu literalu.
+
+Algoritmus:
+
+	1. PUSH OFFSET StringLiteralOffset		Do STACK sa ulozi adresa literalu, ktory je v generovanom kode definovany ako GLOBALNA KONSTANTA.
+//-------------------------------------------------------------------------------------------------------
+CHOICE: [CALL -> id(ARGS)].
+
+Vstupne poziadavky:
+	STACK musi by naplneny vsetkymi argumentami procedury.
+	Ak procedura vracia RETURN VALUE musi procedura ulozit RETURN VALUE do EAX.
+Vystup:
+	STACK bude obsahovat RETURN VALUE procedury.
+
+Algoritmus:
+
+	1. CALL ProcedureName					Zavola sa procedura ProcedureName. Do STACK sa ulozi RETURN ADDRESS, kam sa ma riadenie vratit po vykonani instukcie RET.
+	2. ADD ESP,ArgumentSize					Do ESP sa ulozi hodnota STACK POINTER znizena o velkost vsetkych argumentov procedury. Dojde tym k vymazaniu argumentov procedury zo STACK.
+
+	Ak procedura VRACIA RETURN VALUE algoritmus bude obsahovat nasledujuce instrukcie.
+
+	3. PUSH EAX.
+//-------------------------------------------------------------------------------------------------------
+CHOICE: [CONST -> num].
+
+Vystup:
+	STACK bude obsahovat hodnotu ciselnej konstanty.
+
+Algoritmus:
+
+	1. MOV EAX,IntConstant					Do EAX sa ulozi hodnota ciselnej konstanty.
+	2. PUSH EAX								Do STACK sa ulozi hodnota ciselnej konstanty.
+//-------------------------------------------------------------------------------------------------------
+CHOICE: [CONST -> string_literal].
+
+Vystup:
+	STACK bude obsahovat adresu literalu.
+
+Algoritmus:
+
+	1. PUSH OFFSET StringLiteralOffset		Do STACK sa ulozi adresa literalu, ktory je v generovanom kode definovany ako GLOBALNA KONSTANTA.
+//-------------------------------------------------------------------------------------------------------

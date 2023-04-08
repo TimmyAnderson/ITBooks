@@ -1,0 +1,84 @@
+//-------------------------------------------------------------------------------------------------------
+1. Solution demonstruje pouzitie YACC (Bison) na vygenerovanie SCANNERA a PARSERA pre gramatiku zapisanu v BNF.
+!!! 2. YACC pouziva LALR(1).
+3. YACC pouziva ako vstupny subor, textovy subor s priponou .Y, ktory je tvoreny 3 sekciami, ktore su oddelene znakmi '%%'.
+   A. DEFINITIONS - obsahuje '#include<>', deklaracie premennych, alebo konstant, ktore budu uvedene na zaciatku .C suboru generovaneho YACC. Moze obsahovat i deklaracie TOKENS.
+   !!! B. RULES - su zapisane v BNF, pricom jednotlive RULES su oddelene znakom ';'. V BNF RULES namiesto sipky (->) sa pouziva znak ':'. Za kazdym RULE v {} by sa mal nachadzat KOD v C, ktory sa vykona pri najdeni daneho RULE (jeho REDUCTION v LALR).
+   C. HELPER ROUTINES - lubovolne funkcie a deklaracie, ktore budu pridane na koniec .C suboru generovaneho YACC.
+4. TOKENS je v .Y subore moze definovat 2 sposobmi.
+   A. V sekcii DEFINITIONS definovat pomocou klauzuly '%token'.
+   B. V BNF uzatvorit znak v obycajnych zatvorkach, napriklad '+'.
+5. Pre RULES v YACC platia nasledujuce zasady.
+   A. RULE zacina definiciou NONTERMINAL za ktorym nasleduje znak ':'.
+   B. Za znakom ':' nasleduje jeden, alebo viacero CHOICES, ktore su oddelene znakom '|'.
+   C. Kazdy RULE je ukonceny znakom ';'.
+   !!! D. Po definicii CHOICE nasleduje v zlozenych zatvorkach '{}' ACTION, co je kod v jazyku C, ktory sa vykona ked YACC detekuje pritomnost daneho CHOICE (pri operacii REDUCE).
+   E. ACTION moze obsahovat okrem regularneho kodu v C i PSEUDO-VARIABLES. Tieto zacinaju znakom '$'.
+   F. PSEUDO-VARIABLES oznacene ako '$$' referuje na hodnotu TERMINALU daneho RULE. Zvycajne sa pouziva pri priradeni ako hodnota premennej na LAVEJ STRANE priradenia.
+   G. PSEUDO-VARIABLES oznacene ako '$1', '$2' ... '$N' oznacuju HODNOTU SYMBOLU v CHOICE. Ak teda napriklad mam CHOICE [TERM '*' FACTOR], tak $1 bude obsahovat hodnotu TERM, $2 hodnotu '+' a $3 hodnotu FACTOR.
+   !!! H. Standardne su VSETKY HODNOTY PSEUDO-VARIABLES typovane ako INT. Toto je samozrejme mozne zmenit.
+!!!!! 6. Do suboru generovaneho YACC je treba doplnit nasledujuce FUNKCIE, ktore YACC PRIAMO VOLA zo svojho PARSERA.
+   A. int yylex(void) - Funkcia je volana pocas SCANNINGU. Funkcia musi implementovat SCANNER, ktory musi vracat nasledjuci ZNAK, alebo KONSTANTU DEFINOVANU ako TOKEN v sekcii DEFINITIONS. Ak narazi na koniec suboru MUSI VRATIT hodnotu 0.
+   B. int yyerror(char *S) - Funkcia je volana pri vyskyte ERROR. Pomocou nej je mozne napriklad vypisat ERROR na konzolu.
+!!! 7. YACC poskytuje funkciu int yyparse(void), ktoru mozem volat z vlasteho kodu na spustenie PARSERA.
+8. Program Bison.exe ma nasledujuce parametre.
+   A. -o [FileName.c] - udava nazov .C suboru, ktory BISON vygeneruje.
+   B. -d - okrem .C suboru BISON vygeneruje i .H subor s deklaraciami TOKENS, funkcii a premennych, ktore BISON vystavuje.
+   C. -l - .C subor nebude obsahovat '#line' direktivy s cim mal trochu problem VC++, ktory generoval WARNINGS.
+   D. -v - vygeneruje aj subor .output, ktory obsahuje popis LALR(1) PARSING TABLE, ktory je mozne pouzit pri analyze chyb gramatiky. Subor obsahuje ZOZNAM DFA STATES, kde pre kazdy DFA STATE obsahuje vsetky NFA STATES (NFA STATE obsahuje LR(1) ITEM s '.' ako symbolom DISTINGUISHING POSITION). Okrem NFA STATES obsahuje i symboly pre ktore robi SHIFT a GOTO a informaciu ci robi i REDUCE.
+   E. -t - vo vygenerovanom .C subore nastavi YYDEBUG na 1, cim zapne TRACE vypisy YACC do konzoly.
+!!! 9. YACC ma vstavany mechanizmus na RIESENIE CONFLICTS.
+   A. CONFLICTS typu SHIFT-REDUCE riesi tak, ze uprednostni SHIFT pred REDUCE.
+   B. CONFLICTS typu REDUCE-REDUCE riesi tak, ze uprednostni 1. RULE v BNF, ktory vedie k REDUCE pred ostatnymi.
+   C. Pri matematickych operaciach YACC preferuje aplikovanie PRECEDENCE a ASSOCIATIVITY, tak aby matematicke operacie sedeli s matematickou logikou. To ulahcuje konstrukciu GRAMATIKY, kedze inak na riesenie PRECEDENCE a ASSOCIATIVITY musi byt modifikovana GRAMATIKA.
+   !!! D. YACC poskytuje klauzuly '%left', '%right' a '%nonassoc' pomocou, ktorych mozem definovat PRECEDENCE a ASSOCIATIVITY operatorov v DEFINITIONS sekcii .Y suboru.
+10. YYAC o svojej cinnosti moze vypisovat podrobny TRACING. Ten je mozne zapnut nasledujucim postupom.
+   A. Je potrebne vo vygenerovanom .C subore nastavit YYDEBUG na 1. To je mozne spravit bud rucne, alebo pri generovani pouzit v Bison.exe OPTION -t, ktory direktivu preprocesora nastavi uz pri generovani .C suboru.
+   B. V kode V MOMENTE ODKEDY CHCEM ZACAT VYPIS TRACING musim nastavit hodnotu premennej 'yydebug' na 1.
+!!! 11. Standardne su hodnoty pri parsovani (YACC hodnota 'yylval') typovane ako INTEGER. To je vsak mozne zmenit 2 sposobmi.
+   A. V .C subore deklarujem TYPEDEF 'YYSTYPE' na hodnotu typu, ktory chcem namiesto INTEGER. Tato zmena zmeni HODNOTY pri parsovani KAZDEHO RULE.
+   B. Ak chcem pre kazdy RULE iny typ, tak musim pouzit klauzly YACC '%union' a '%type'.
+!!! 12. YACC umoznuje ESTE PRED VYKONANIM REDUCE vykonat EMBEDDED ACTION. EMBEDDED ACTION je C kod, ktory definujem MEDZI 2 SYMBOLY RULE a tato ACTION je vykonana este PRED vykonanim REDUCE celeho RULE.
+!!! 13. YACC umoznuje pridat do BNF RULES CHOICE, ktory na pravej strane obsahuje TOKEN 'error'. Ten potom moze obsahovat akciu (C kod), ktory sa pokusi zotavit z chyby. To ake zotavenie bude realizovaje je cisto zavisle na GRAMATIKE.
+//-------------------------------------------------------------------------------------------------------
+Struktura .Y suboru.
+
+{Definitions}
+%%
+{Rules}
+%%
+{HelperRoutines}
+//-------------------------------------------------------------------------------------------------------
+Priklad STATE zo suboru Expressions.output.
+
+// Nazov DFA STATE.
+state 12
+
+// NFA STATES daneho DFA so znakom '.' ako DISTINGUISHING POSITION.
+    6 TERM: TERM '/' . FACTOR
+
+// Informacia o SHIFT.
+    NUMBER  shift, and go to state 1
+    '('     shift, and go to state 2
+
+// Informacia o GOTO.
+    FACTOR  go to state 17
+
+
+// Nazov DFA STATE.
+state 14
+
+// NFA STATES daneho DFA so znakom '.' ako DISTINGUISHING POSITION.
+// !!! Obsahuje COMPLETE ITEM - so znakom '.' na konci a PRETO BUDE OBSAHOVAT i REDUCE operaciu.
+    2 EXP: EXP '+' TERM .
+    5 TERM: TERM . '*' FACTOR
+    6     | TERM . '/' FACTOR
+
+// Informacia o SHIFT.
+    '*'  shift, and go to state 11
+    '/'  shift, and go to state 12
+
+// Informacia o REDUCE.
+// !!! Kedze DFA STATE obsahuje COMPLETE ITEM - so znakom '.' na konci, STATE OBSAHUJE REDUCE operaciu. Cislo 2 znamena, ze to robi podla RULE 2 - pozri vyssie medzi NFA STATES.
+    $default  reduce using rule 2 (EXP)
+//-------------------------------------------------------------------------------------------------------

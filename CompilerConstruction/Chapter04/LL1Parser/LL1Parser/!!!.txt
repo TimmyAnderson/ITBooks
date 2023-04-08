@@ -1,0 +1,622 @@
+﻿//-------------------------------------------------------------------------------------------------------
+1. Program demonstruje implementaciu LL(1) PARSERA.
+2. LL(1) PARSER je PARSER typu TOP DOWN, ktory je zalozeny na pouzivani STACK na ukladanie derirovanych RULES a STACK na ukladanie INPUT TOKENS, ktore su vystupom zo SCANERA.
+!!! 3. LL(1) PARSER vyuziva PARSING TABLE, ktoru je potrebne ZOSTAVIT pomocou ALGORITMU, ktory vyzaduje vytvorit mnoziny FIRST(X) a FOLLOW(X) pre KAZDY NON-TERMINAL X.
+!!! 4. Pred konstrukciou PARSING TABLE je VYHODNE UPRAVIT GRAMATIKU vstupujucu do PARSERA, tak aby bola LL(1) GRAMATIKOU, alebo aby aspon CO NAJVIAC SA PRIBLIZILA LL(1) GRAMATIKE. K realizacii LL(1) GRAMATIKY moze napomoct (aj ked nie nie je to ZARUKOU) aplikacia 2 RULES.
+   A. LEFT-RECURSION REMOVAL. Pri LEFT-RECURSION existuje aspon 1 CHOICE, ktory na aj NAJLAVEJSI NON-TERMINAL ten isty NON-TERMINAL ako na LAVEJ STRANE daneho CHOICE. Napriklad RULE [DECLARATION_LIST -> DECLARATION_LIST DECLARATION | DECLARATION] je NON-TERMINAL [DECLARATION_LIST] ako na LAVEJ STRANE RULE, tak aj ako NAJLAVEJSI NON-TERMINAL v 1. CHOICE.
+   B. LEFT FACTORING. Pri LEFT-FACTORING maju VSETKY CHOICES TEN ISTY PREFIX. Napriklad RULE [SIMPLE_EXPRESSION -> ADDITIVE_EXPRESSION COMPARE_OPERATION ADDITIVE_EXPRESSION | ADDITIVE_EXPRESSION] ma v OBOCH CHOICES ako NAJLAVEJSI SYMBOL (je jedno ci TERMINAL ci NON-TERMINAL) TEN ISTY SYMBOL [ADDITIVE_EXPRESSION].
+5. Po uprave GRAMATIKY je potrebne vykonat nasledujuce kroky.
+   A. Urcit FIRST(X) pre VSETKY NON-TERMINALS.
+   B. Urcit FOLLOW(X) pre VSETKY NON-TERMINALS.
+   C. Urcit PARSING TABLE [A,a], pre vsetky NON-TERMINALS 'A' a vsetky TERMINALS 'a', kde medzi TERMINALS sa zaraduje i TOKEN '$' reprezentujuci EOF.
+!!! 6. Ak chcem realizovat ERROR RECOVERY proces, potom je nutne PARSING TABLE [A,a] MODIFIKOVAT a to NASLEDUJUCIM SPOSOBOM.
+   A. Ak pre PRAZDNE POLE PARSING TABLE [A,a] plati, ze 'a' PATRI do FOLLOW(A), alebo 'a'='$', tak do tohto PRAZDNEHO POLA sa vlozi operacia POP.
+   B. Ak pre PRAZDNE POLE PARSING TABLE [A,a] plati, ze 'a' NIE JE '$' a zaroven 'a' NEPATRI do ZJEDNOTENIA FIRST(A) a FOLLOW(A), tak do tohto PRAZDNEHO POLA sa vlozi operacia SCAN.
+!!! 7. Pri ERROR RECOVERY maju operacie POP a SCAN NASLEDUJUCI VYZNAM.
+   A. POP - z vrcholu PARSING STACK ODSTRANI NON-TERMINAL.
+   B. SCAN - z vrcholu INPUT STACK ODSTRANI TOKEN.
+!!!!! 8. Nasledujuce ALGORITMY sa mi podarilo USPESNE IMPLEMENTOVAT.
+   A. Vypocet FIRST SETS.
+   B. Vypocet FOLLOW SETS.
+   C. Vypocet PARSING TABLE.
+   D. Rozsirenie PARSING TABLE o ERROR RECOVERY.
+   E. PARSING ALGORUITMUS LL(1) a vytvorenie jednoducheho PARSE TREE.
+//-------------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------------
+Algoritmus vypoctu FIRST(X), kde X je NON-TERMINAL, alebo TERMINAL.
+
+Pre VSETKY NON-TERMINALS 'X' nastav FIRST(X)={} - PRAZDNEJ MNOZINE.
+Pre vsetky TERMINALS 'a' nastav FIRST(a)={'a'} - obsahuje jediny TOKEN 'A'.
+Opakuj cyklus kym FOLLOW(X) niektoreho NON-TERMINAL 'X' sa zmenil.
+{
+	Opakuj cyklus pre KAZDY CHOICE [A -> X1 X2 ... Xn] KAZDEHO RULES (jeden RULE moze mat VIACERO CHOICES oddelenych znakom '|').
+	{
+		k=1;
+		Continue=true;
+
+		Opakuj kym Continue==TRUE A ZAROVEN k<=N.
+		{
+			Pridaj do FIRST(A) hodnotu FIRST(Xk)-ɛ.
+
+			// Cyklus sa teda opakuje kym NENAJDEM FIRST(Xk), ktory NEOBSAHUJE 'ɛ'.
+			if (FIRST(Xk) NOBSAHUJE ɛ)
+				Continue=FALSE;
+
+			k=k+1;
+		}
+	}
+}
+//-------------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------------
+Algoritmus vypoctu FOLLOW(X), kde X je NON-TERMINAL.
+
+Pre START NON-TERMINAL 'S' nastav FOLLOW(S) na mnozninu {'$'}.
+Pre KAZDY NON-TERMINAL 'X' okrem 'S' nastav FOLLOW(X) na PRAZDNU MNOZINU {}.
+Opakuj cyklus kym FOLLOW(X) niektoreho NON-TERMINAL 'X' sa zmenil.
+{
+	Opakuj cyklus pre KAZDY CHOICE [A -> X1 X2 ... Xn] KAZDEHO RULES (jeden RULE moze mat VIACERO CHOICES oddelenych znakom '|').
+	{
+		Pre kazdy NON-TERMINAL 'Xi' vykonaj nasledujuce kroky.
+		{
+			Pridaj do FOLLOW(Xi) hodnotu FIRST(Xi+1 Xi+2 ... Xn)-ɛ, pricom plati, ze ak FIRST(Xi+1) NEOBSAHUJE 'ɛ', potom FIRST(Xi+1 Xi+2 ... Xn)=FIRST(Xi+1). Ak vsak FIRST(Xi+1) OBSAHUJE ɛ a FIRST(Xi+2) NEOBSAHUJE ɛ, tak FIRST(Xi+1 Xi+2 ... Xn)=FIRST(Xi+1)-ɛ+FIRST(Xi+2) teda ZJEDNOTENIE FIRST(Xi+1) a FIRST(Xi+2) OKREM znaku 'ɛ'. Ak VSETKY FIRST(Xi+1), FIRST(Xi+2) ... FIRST(Xi+n) obsahuju ɛ, potom FIRST(Xi+1 Xi+2 ... Xn)=ɛ.
+
+			// !!! Dolezita poznamka. FOLLOW(X) sa vzdy rata pre X na PRAVEJ STRANE RULE.
+
+			if (FIRST(Xi+1 Xi+2 ... Xn)==ɛ || i==n)
+			{
+				Pridaj do FOLLOW(Xi) hodnotu FOLLOW(A).
+			}
+		}
+	}
+}
+//-------------------------------------------------------------------------------------------------------
+Priklad vypoctu FOLLOW(X).
+
+1. Majme nasledujucu gramatiku.
+
+1. STATEMENT -> IF_STATEMENT | other.
+2. IF_STATEMENT -> if (EXP) STATEMENT ELSE_STATEMENT.
+3. ELSE_STATEMENT -> else STATEMENT | ɛ.
+4. EXP -> 0 | 1.
+
+2. Ako prve je VHODNE si gramatiku rozpisat tak, ze z CHOICES spravim RULES.
+
+1. STATEMENT -> IF_STATEMENT.
+2. STATEMENT -> other.
+3. IF_STATEMENT -> if (EXP) STATEMENT ELSE_STATEMENT.
+4. ELSE_STATEMENT -> else STATEMENT.
+5. ELSE_STATEMENT -> ɛ.
+6. EXP -> 0.
+7. EXP -> 1.
+
+!!! 3. Kedze RULES 2,5,6 a 7 obsahuju IBA TERMINALS, tak FOLLOW(X) pre ne NEMA ZMYSEL VYPOCITAVAT. FOLLOW(X) sa vyratava IBA z NON-TERMINALS 'X' na PRAVEJ STRANE RULE.
+4. Upravena gramatika pre ktoru budem vyratavat FOLLOW(X), teda obsahuje iba nasledujuce RULES.
+
+1. STATEMENT -> IF_STATEMENT.
+3. IF_STATEMENT -> if (EXP) STATEMENT ELSE_STATEMENT.
+4. ELSE_STATEMENT -> else STATEMENT.
+
+5. Pre gramatiku musim urcit FIRST(X) pre KAZDY NON-TERMINAL 'X'.
+
+1. FIRST(STATEMENT)={'if','other'}.
+2. FIRST(IF_STATEMENT)={'if'}.
+3. FIRST(ELSE_STATEMENT)={'else','ɛ'}.
+4. FIRST(EXP)={'0','1'}.
+
+
+Vypocet FOLLOW(X).
+
+1. Urobim inicializaciu a teda FOLLOW(STATEMENT)={'$'}.
+2. Urobim inicializaciu a teda FOLLOW(IF_STATEMENT)={}, FOLLOW(EXP)={} a FOLLOW(ELSE_STATEMENT)={}.
+3. Pre RULE 1 plati, ze IF_STATEMENT je POSLEDNY NON-TERMINAL (teda i=n), a tak do FOLLOW(IF_STATEMENT) zaradim FOLLOW(STATEMENT)=={'$'}.
+4. V RULE 2 mam az 3 NON-TERMINALS a pre KAZDY musim urcit jeho FOLLOW(X).
+   A. FOLLOW(EXP) je FIRST(') STATEMENT ELSE_STATEMENT')-ɛ==FIRST(')')=={')'}.
+   B. FOLLOW(STATEMENT) je FIRST(ELSE_STATEMENT)-ɛ=={else,ɛ}-ɛ=={else}. Kedze FOLLOW(STATEMENT) obsahoval {'$'}, tak teraz bude obsahovat {'$','else'}.
+   !!! C. Kedze vsak FIRST(ELSE_STATEMENT) OBSAHUJE prazdny retazec 'ɛ', tak podla algoritmu do FOLLOW(STATEMENT) je potrebne pridat i FOLLOW(IF_STATEMENT), ktory momentalne obsahuje {'$'}. Kedze FOLLOW(STATEMENT) uz obsahoval vsaka INICIALIZACII v bode 1 mnozinu {'$'}, tak sa NIC NEZMENI.
+   D. Pre FOLLOW(ELSE_STATEMENT), kedze ELSE_STATEMENT je POSLEDNY NON-TERMINAL (i==n), tak do FOLLOW(ELSE_STATEMENT) pridam FOLLOW(IF_STATEMENT), ktory je momentalne prazdny - {'$'}. FOLLOW(ELSE_STATEMENT) teda obsahuje {'$'}.
+5. RULE 4 obsahuje oba jediny NON-TERMINAL STATEMENT a kedze je POSLEDNY (i==n), tak podla algoritmu plati, ze do FOLLOW(STATEMENT) je treba zaradit FOLLOW(ELSE_STATEMENT)=={'$'}. Kedze vsak FOLLOW(STATEMENT) uz obsahuje {'$'}, tak sa NIC NEMENI.
+!!! 6. V tomto bode je stav FOLLOW(X) nasledujuci.
+   A. FOLLOW(STATEMENT)={'$','else'}.
+   B. FOLLOW(IF_STATEMENT)={'$'}.
+   C. FOLLOW(ELSE_STATEMENT)={'$'}.
+   D. FOLLOW(EXP)={')'}.
+7. Kedze som presiel VSETKY RULES a DOSLO k ZMENE ASPON JEDNEHO FOLLOW(X), algorimtus MUSIM OPAKOVAT.
+8. Pre RULE 1 plati, ze osahuje iba IF_STATEMENT a kedze je to POSLEDNY NON-TERMINAL, tak do FOLLOW(IF_STATEMENT) je treba zaradit FOLLOW(STATEMENT)=={'$','else'}.
+9. Pre RULE 2 plati, ze obsahuje 3 NON-TERMINALS.
+   A. FOLLOW(EXP) je FIRST(') STATEMENT ELSE_STATEMENT')-ɛ==FIRST(')')=={')'} - cize ZIADNA ZMENA.
+   B. FOLLOW(STATEMENT) je FIRST(ELSE_STATEMENT)-ɛ=={else,ɛ}-ɛ=={else}. Kedze FOLLOW(STATEMENT) obsahoval {'$'}, tak teraz bude obsahovat {'$','else'}. Znova ZIADNA ZMENA.
+   !!! C. Kedze vsak FIRST(ELSE_STATEMENT) OBSAHUJE prazdny retazec 'ɛ', tak podla algoritmu do FOLLOW(STATEMENT) je potrebne pridat i FOLLOW(IF_STATEMENT), ktory obsahuje {'$'}, cize znova ZIADNA ZMENA.
+   D. Pre FOLLOW(ELSE_STATEMENT), kedze ELSE_STATEMENT je POSLEDNY NON-TERMINAL (i==n), tak do FOLLOW(ELSE_STATEMENT) pridam FOLLOW(IF_STATEMENT), ktory je momentalne {'$','else'}. Teda FOLLOW(ELSE_STATEMENT)=={'$','else'}.
+10. RULE 4 obsahuje oba jediny NON-TERMINAL STATEMENT a kedze je POSLEDNY (i==n), tak podla algoritmu plati, ze do FOLLOW(STATEMENT) je treba zaradit FOLLOW(ELSE_STATEMENT)=={'$','else'}. Kedze vsak FOLLOW(STATEMENT) uz obsahuje {'$','else'}, tak sa NIC NEMENI.
+!!! 11. V tomto bode je stav FOLLOW(X) nasledujuci.
+   A. FOLLOW(STATEMENT)={'$','else'}.
+   B. FOLLOW(IF_STATEMENT)={'$','else'}.
+   C. FOLLOW(ELSE_STATEMENT)={'$','else'}.
+   D. FOLLOW(EXP)={')'}.
+12. Kedze som presiel VSETKY RULES a DOSLO k ZMENE ASPON JEDNEHO FOLLOW(X), algorimtus MUSIM OPAKOVAT.
+13. Tento krok vsak uz NEZMENI ZIADEN FOLLOW(X) a algoritmus tak KONCI.
+
+Vysledne hodnoty FOLLOW(X) su nasledovne.
+
+1. FOLLOW(STATEMENT)={'$','else'}.
+2. FOLLOW(IF_STATEMENT)={'$','else'}.
+3. FOLLOW(ELSE_STATEMENT)={'$','else'}.
+4. FOLLOW(EXP)={')'}.
+//-------------------------------------------------------------------------------------------------------
+Priklady vypoctu FOLLOW(X) pre RULES.
+
+1. Mam nasledujuce RULES.
+
+SELECTION_STATEMENT -> if (EXPRESSION) STATEMENT MOD_SELECTION_STATEMENT.
+COMPOUND_STATEMENT -> {LOCAL_DECLARATIONS STATEMENT_LIST}.
+
+2. Mam vypocitane nasledujuce FIRST(X).
+
+MOD_SELECTION_STATEMENT		('else','ɛ').
+STATEMENT_LIST				(';','{','if','while','return','id','(','num','string_literal','ɛ').
+
+3. Pre RULE SELECTION_STATEMENT platia nasledujuce vypocty.
+   A. FOLLOW(EXPRESSION)=FIRST(") STATEMENT MOD_SELECTION_STATEMENT")-ɛ==')'. Cize do MNOZINY FOLLOW(EXPRESSION) pridam ')'.
+   B. FOLLOW(STATEMENT)=FIRST(MOD_SELECTION_STATEMENT)==('else','ɛ')-ɛ='else'. Cize do MNOZINY FOLLOW(STATEMENT) pridam 'else'.
+   !!! C. Kedze FIRST(MOD_SELECTION_STATEMENT) OBSAHUJE i znak 'ɛ', tak MUSIM vytvorit i FOLLOW(STATEMENT)=FOLLOW(SELECTION_STATEMENT). Cize do MNOZINY FOLLOW(STATEMENT) pridam OBSAH MNOZINY FOLLOW(SELECTION_STATEMENT).
+   D. FOLLOW(MOD_SELECTION_STATEMENT)=FOLLOW(SELECTION_STATEMENT). Cize do MNOZINY FOLLOW(MOD_SELECTION_STATEMENT) pridam OBSAH MNOZINY FOLLOW(SELECTION_STATEMENT).
+4. Pre RULE COMPOUND_STATEMENT platia nasledujuce vypocty.
+   !!! A. FOLLOW(LOCAL_DECLARATIONS)=FIRST(STATEMENT_LIST})-ɛ. Kedze FIRST(STATEMENT_LIST)=(';','{','if','while','return','id','(','num','string_literal','ɛ') OBSAHUJE ZNAK 'ɛ', MUSIM POCITAT i FIRST(X) pre NASLEDUJUCI ZNAK, teda FIRST(})='}'. FOLLOW(LOCAL_DECLARATIONS) bude potom obsahovat ZJEDNOTENIE (';','{','if','while','return','id','(','num','string_literal','ɛ')-ɛ a '}'=(';','{','if','while','return','id','(','num','string_literal','}'). Cize do MNOZINY FOLLOW(LOCAL_DECLARATIONS) pridam (';','{','if','while','return','id','(','num','string_literal','}').
+   B. FOLLOW(STATEMENT_LIST)=FIRST(})='}'.Cize do MNOZINY FOLLOW(STATEMENT_LIST) pridam '}'.
+//-------------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------------
+Algoritmus vypoctu PARSING TABLE M[A,a], kde A je NON-TERMINAL a 'a' je BUD TERMINAL, alebo TOKEN '$' reprezentujuci EOF.
+
+Opakuj cyklus pre KAZDY CHOICE [A -> X1 X2 ... Xn] KAZDEHO RULES (jeden RULE moze mat VIACERO CHOICES oddelenych znakom '|').
+{
+	// Urcuje sa tak, ze FIRST(X1, X2 ... Xn)=FIRST(X1)-ɛ, ak FIRST(X1) NEOBSAHUJE ɛ. Ak OBSAHUJE, tak FIRST(X1, X2 ... Xn)=FIRST(X1)+FIRST(X2)-ɛ a takto sa pokracuje az do najdenia PRVEHO FIRST(Xi), ktore NEOBSAHUJE 'ɛ'. Ak i FIRST(Xn) OBSAHUJE 'ɛ' tak sa do FIRST(X1, X2 ... Xn) zaradi i 'ɛ'.
+	Urci FIRST(X1, X2 ... Xn).
+	Pre KAZDY TOKEN 'a' z FIRST(X1, X2 ... Xn) zarad do M[A,a] CHOICE [A -> X1 X2 ... Xn].
+
+	// !!! Pozor ucruje sa FOLLOW(A) a NIE FOLLOW(X1, X2 ... Xn).
+	Ak FIRST(X1, X2 ... Xn) obsahuje TOKEN 'ɛ', tak urci FOLLOW(A).
+	{
+		Pre KAZDY TOKEN 'a' z FOLLOW(A) zarad do M[A,a] CHOICE [A -> X1 X2 ... Xn].
+	}
+}
+//-------------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------------
+BNF RULES pre jazyk C-- BEZ UPRAV.
+
+1. PROGRAM -> DECLARATION_LIST.
+2. DECLARATION_LIST -> DECLARATION_LIST DECLARATION | DECLARATION.
+3. DECLARATION -> VARIABLE_DECLARATION | FUNCTION_DECLARATION.
+4. VARIABLE_DECLARATION -> TYPE_SPECIFIER id; | TYPE_SPECIFIER id[num];.
+5. TYPE_SPECIFIER -> int | string | void.
+6. FUNCTION_DECLARATION -> TYPE_SPECIFIER id(PARAMS) COMPOUND_STATEMENT.
+7. PARAMS -> PARAM_LIST | void.
+8. PARAM_LIST -> PARAM_LIST,PARAM | PARAM.
+9. PARAM -> TYPE_SPECIFIER id | TYPE_SPECIFIER id[].
+10. COMPOUND_STATEMENT -> {LOCAL_DECLARATIONS STATEMENT_LIST}.
+11. LOCAL_DECLARATIONS -> LOCAL_DECLARATIONS VARIABLE_DECLARATION | ɛ.
+12. STATEMENT_LIST -> STATEMENT_LIST STATEMENT | ɛ.
+13. STATEMENT -> EXPRESSION_STATEMENT | COMPOUND_STATEMENT | SELECTION_STATEMENT | ITERATION_STATEMENT | RETURN_STATEMENT.
+14. EXPRESSION_STATEMENT -> EXPRESSION; | ;.
+15. SELECTION_STATEMENT -> if (EXPRESSION) STATEMENT | if (EXPRESSION) STATEMENT else STATEMENT.
+16. ITERATION_STATEMENT -> while (EXPRESSION) STATEMENT.
+17. RETURN_STATEMENT -> return; | return(EXPRESSION).
+18. EXPRESSION -> VARIABLE=EXPRESSION | SIMPLE_EXPRESSION.
+19. VARIABLE -> id | id[EXPRESSION].
+20. SIMPLE_EXPRESSION -> ADDITIVE_EXPRESSION COMPARE_OPERATION ADDITIVE_EXPRESSION | ADDITIVE_EXPRESSION.
+21. COMPARE_OPERATION -> <= | < | > | >= | == | !=.
+22. ADDITIVE_EXPRESSION -> ADDITIVE_EXPRESSION ADD_OPERATION TERM | TERM.
+23. ADD_OPERATION -> + | -.
+24. TERM -> TERM MUL_OPERATION FACTOR | FACTOR.
+25. MUL_OPERATION -> * | /.
+26. FACTOR -> (EXPRESSION) | VARIABLE | CALL | num | string_literal.
+27. CALL -> id(ARGS).
+28. ARGS -> ARG_LIST | ɛ.
+29. ARG_LIST -> ARG_LIST,EXPRESSION | EXPRESSION.
+//-------------------------------------------------------------------------------------------------------
+BNF RULES pre jazyk C-- s ODSTRANENYM LEFT-RECURSION a vykonanim LEFT FACTORING.
+
+!!! 1. Pre LEFT-RECURSION REMOVAL sa zmenili tieto RULES: 2, 8, 11, 12, 22, 24 a 29.
+!!! 2. Pre LEFT-FACTORING sa zmenili tieto RULES: 4, 9, 15, 17, 19 a 20.
+
+1. PROGRAM -> DECLARATION_LIST.
+2A. DECLARATION_LIST -> DECLARATION MOD_DECLARATION_LIST.
+2B. MOD_DECLARATION_LIST -> DECLARATION MOD_DECLARATION_LIST | ɛ.
+3. DECLARATION -> VARIABLE_DECLARATION | FUNCTION_DECLARATION.
+4A. VARIABLE_DECLARATION -> TYPE_SPECIFIER id MOD_VARIABLE_DECLARATION.
+4B. MOD_VARIABLE_DECLARATION -> ; | [num];.
+5. TYPE_SPECIFIER -> int | string | void.
+6. FUNCTION_DECLARATION -> TYPE_SPECIFIER id(PARAMS) COMPOUND_STATEMENT.
+7. PARAMS -> PARAM_LIST | void.
+8A. PARAM_LIST -> PARAM MOD_PARAM_LIST.
+8B. MOD_PARAM_LIST -> ,PARAM MOD_PARAM_LIST | ɛ.
+9A. PARAM -> TYPE_SPECIFIER id MOD_PARAM.
+9B. MOD_PARAM -> [] | ɛ.
+10. COMPOUND_STATEMENT -> {LOCAL_DECLARATIONS STATEMENT_LIST}.
+11M. LOCAL_DECLARATIONS -> VARIABLE_DECLARATION LOCAL_DECLARATIONS | ɛ.
+12M. STATEMENT_LIST -> STATEMENT STATEMENT_LIST | ɛ.
+13. STATEMENT -> EXPRESSION_STATEMENT | COMPOUND_STATEMENT | SELECTION_STATEMENT | ITERATION_STATEMENT | RETURN_STATEMENT.
+14. EXPRESSION_STATEMENT -> EXPRESSION; | ;.
+15A. SELECTION_STATEMENT -> if (EXPRESSION) STATEMENT MOD_SELECTION_STATEMENT.
+15B. MOD_SELECTION_STATEMENT -> else STATEMENT | ɛ.
+16. ITERATION_STATEMENT -> while (EXPRESSION) STATEMENT.
+17A. RETURN_STATEMENT -> return MOD_RETURN_STATEMENT.
+17B. MOD_RETURN_STATEMENT -> ; | (EXPRESSION).
+18. EXPRESSION -> VARIABLE=EXPRESSION | SIMPLE_EXPRESSION.
+19A. VARIABLE -> id MOD_VARIABLE.
+19B. MOD_VARIABLE -> [EXPRESSION] | ɛ.
+20A. SIMPLE_EXPRESSION -> ADDITIVE_EXPRESSION MOD_SIMPLE_EXPRESSION.
+20B. MOD_SIMPLE_EXPRESSION -> COMPARE_OPERATION ADDITIVE_EXPRESSION | ɛ.
+21. COMPARE_OPERATION -> <= | < | > | >= | == | !=.
+22A. ADDITIVE_EXPRESSION -> TERM MOD_ADDITIVE_EXPRESSION.
+22B. MOD_ADDITIVE_EXPRESSION -> ADD_OPERATION TERM MOD_ADDITIVE_EXPRESSION | ɛ.
+23. ADD_OPERATION -> + | -.
+24A. TERM -> FACTOR MOD_TERM.
+24B. MOD_TERM -> MUL_OPERATION FACTOR MOD_TERM | ɛ.
+25. MUL_OPERATION -> * | /.
+26. FACTOR -> (EXPRESSION) | VARIABLE | CALL | num | string_literal.
+27. CALL -> id(ARGS).
+28. ARGS -> ARG_LIST | ɛ.
+29A. ARG_LIST -> EXPRESSION MOD_ARG_LIST.
+29B. MOD_ARG_LIST -> ,EXPRESSION MOD_ARG_LIST | ɛ.
+//-------------------------------------------------------------------------------------------------------
+RULES rozpisane, tak aby CHOICES boli napisane POD SEBOU.
+
+1. PROGRAM -> DECLARATION_LIST.
+2A. DECLARATION_LIST -> DECLARATION MOD_DECLARATION_LIST.
+2BA. MOD_DECLARATION_LIST -> DECLARATION MOD_DECLARATION_LIST.
+2BB. MOD_DECLARATION_LIST -> ɛ.
+3A. DECLARATION -> VARIABLE_DECLARATION.
+3B. DECLARATION -> FUNCTION_DECLARATION.
+4A. VARIABLE_DECLARATION -> TYPE_SPECIFIER id MOD_VARIABLE_DECLARATION.
+4BA. MOD_VARIABLE_DECLARATION -> ;.
+4BB. MOD_VARIABLE_DECLARATION -> [num];.
+5A. TYPE_SPECIFIER -> int.
+5B. TYPE_SPECIFIER -> string.
+5C. TYPE_SPECIFIER -> void.
+6. FUNCTION_DECLARATION -> TYPE_SPECIFIER id(PARAMS) COMPOUND_STATEMENT.
+7A. PARAMS -> PARAM_LIST.
+7B. PARAMS -> void.
+8A. PARAM_LIST -> PARAM MOD_PARAM_LIST.
+8BA. MOD_PARAM_LIST -> ,PARAM MOD_PARAM_LIST.
+8BB. MOD_PARAM_LIST -> ɛ.
+9A. PARAM -> TYPE_SPECIFIER id MOD_PARAM.
+9BA. MOD_PARAM -> [].
+9BB. MOD_PARAM -> ɛ.
+10. COMPOUND_STATEMENT -> {LOCAL_DECLARATIONS STATEMENT_LIST}.
+11MA. LOCAL_DECLARATIONS -> VARIABLE_DECLARATION LOCAL_DECLARATIONS.
+11MB. LOCAL_DECLARATIONS -> ɛ.
+12MA. STATEMENT_LIST -> STATEMENT STATEMENT_LIST.
+12MB. STATEMENT_LIST -> ɛ.
+13A. STATEMENT -> EXPRESSION_STATEMENT.
+13B. STATEMENT -> COMPOUND_STATEMENT.
+13C. STATEMENT -> SELECTION_STATEMENT.
+13D. STATEMENT -> ITERATION_STATEMENT.
+13E. STATEMENT -> RETURN_STATEMENT.
+14A. EXPRESSION_STATEMENT -> EXPRESSION;.
+14B. EXPRESSION_STATEMENT -> ;.
+15A. SELECTION_STATEMENT -> if (EXPRESSION) STATEMENT MOD_SELECTION_STATEMENT.
+15BA. MOD_SELECTION_STATEMENT -> else STATEMENT.
+15BB. MOD_SELECTION_STATEMENT -> ɛ.
+16. ITERATION_STATEMENT -> while (EXPRESSION) STATEMENT.
+17A. RETURN_STATEMENT -> return MOD_RETURN_STATEMENT.
+17BA. MOD_RETURN_STATEMENT -> ;.
+17BB. MOD_RETURN_STATEMENT -> (EXPRESSION).
+18A. EXPRESSION -> VARIABLE=EXPRESSION.
+18B. EXPRESSION -> SIMPLE_EXPRESSION.
+19A. VARIABLE -> id MOD_VARIABLE.
+19BA. MOD_VARIABLE -> [EXPRESSION].
+19BB. MOD_VARIABLE -> ɛ.
+20A. SIMPLE_EXPRESSION -> ADDITIVE_EXPRESSION MOD_SIMPLE_EXPRESSION.
+20BA. MOD_SIMPLE_EXPRESSION -> COMPARE_OPERATION ADDITIVE_EXPRESSION.
+20BB. MOD_SIMPLE_EXPRESSION -> ɛ.
+21A. COMPARE_OPERATION -> <=.
+21B. COMPARE_OPERATION -> <.
+21C. COMPARE_OPERATION -> >.
+21D. COMPARE_OPERATION -> >=.
+21E. COMPARE_OPERATION -> ==.
+21F. COMPARE_OPERATION -> !=.
+22A. ADDITIVE_EXPRESSION -> TERM MOD_ADDITIVE_EXPRESSION.
+22BA. MOD_ADDITIVE_EXPRESSION -> ADD_OPERATION TERM MOD_ADDITIVE_EXPRESSION.
+22BB. MOD_ADDITIVE_EXPRESSION -> ɛ.
+23A. ADD_OPERATION -> +.
+23B. ADD_OPERATION -> -.
+24A. TERM -> FACTOR MOD_TERM.
+24BA. MOD_TERM -> MUL_OPERATION FACTOR MOD_TERM.
+24BB. MOD_TERM -> ɛ.
+25A. MUL_OPERATION -> *.
+25B. MUL_OPERATION -> /.
+26A. FACTOR -> (EXPRESSION).
+26B. FACTOR -> VARIABLE.
+26C. FACTOR -> CALL.
+26D. FACTOR -> num.
+26E. FACTOR -> string_literal.
+27. CALL -> id(ARGS).
+28A. ARGS -> ARG_LIST.
+28B. ARGS -> ɛ.
+29A. ARG_LIST -> EXPRESSION MOD_ARG_LIST.
+29BA. MOD_ARG_LIST -> ,EXPRESSION MOD_ARG_LIST.
+29BB. MOD_ARG_LIST -> ɛ.
+//-------------------------------------------------------------------------------------------------------
+Vypocet FIRST(X) pre KAZDY NON-TERMINAL.
+
+							PASS 1																	PASS 2																	PASS 3																	PASS 4																	PASS 5																	PASS 6																	PASS 7																	PASS 8																	PASS 9																	PASS 10
+PROGRAM																																																																														('int','string','void').												**********																**********																**********																**********																**********
+DECLARATION_LIST																																																									('int','string','void').												**********																**********																**********																**********																**********																**********
+MOD_DECLARATION_LIST		('ɛ')																	('ɛ')																	('ɛ')																	('int','string','void','ɛ').											**********																**********																**********																**********																**********																**********
+DECLARATION																																									('int','string','void').												**********																**********																**********																**********																**********																**********																**********
+VARIABLE_DECLARATION																				('int','string','void').												**********																**********																**********																**********																**********																**********																**********																**********
+MOD_VARIABLE_DECLARATION	(';','[').																**********																**********																**********																**********																**********																**********																**********																**********																**********
+TYPE_SPECIFIER				('int','string','void').												**********																**********																**********																**********																**********																**********																**********																**********																**********
+FUNCTION_DECLARATION																				('int','string','void').												**********																**********																**********																**********																**********																**********																**********																**********
+PARAMS						('void')																('void')																('void')																('void','int','string').												**********																**********																**********																**********																**********																**********
+PARAM_LIST																																									('int','string','void').												**********																**********																**********																**********																**********																**********																**********
+MOD_PARAM_LIST				(',','ɛ').																**********																**********																**********																**********																**********																**********																**********																**********																**********
+PARAM																								('int','string','void').												**********																**********																**********																**********																**********																**********																**********																**********
+MOD_PARAM					('[','ɛ').																**********																**********																**********																**********																**********																**********																**********																**********																**********
+COMPOUND_STATEMENT			('{').																	**********																**********																**********																**********																**********																**********																**********																**********																**********
+LOCAL_DECLARATIONS			('ɛ')																	('ɛ')																	('int','string','void','ɛ').											**********																**********																**********																**********																**********																**********																**********
+STATEMENT_LIST				('ɛ')																	('ɛ')																	(';','{','if','while','return','ɛ')										(';','{','if','while','return','ɛ')										(';','{','if','while','return','id','ɛ')								(';','{','if','while','return','id','ɛ')								(';','{','if','while','return','id','ɛ')								(';','{','if','while','return','id','(','num','string_literal','ɛ')		(';','{','if','while','return','id','(','num','string_literal','ɛ').	**********
+STATEMENT																							(';','{','if','while','return')											(';','{','if','while','return')											(';','{','if','while','return','id')									(';','{','if','while','return','id')									(';','{','if','while','return','id')									(';','{','if','while','return','id','(','num','string_literal')			(';','{','if','while','return','id','(','num','string_literal').		**********																**********
+EXPRESSION_STATEMENT		(';')																	(';')																	(';','id')																(';','id')																(';','id')																(';','id','(','num','string_literal')									(';','id','(','num','string_literal').									**********																**********																**********
+SELECTION_STATEMENT			('if').																	**********																**********																**********																**********																**********																**********																**********																**********																**********
+MOD_SELECTION_STATEMENT		('else','ɛ').															**********																**********																**********																**********																**********																**********																**********																**********																**********
+ITERATION_STATEMENT			('while').																**********																**********																**********																**********																**********																**********																**********																**********																**********
+RETURN_STATEMENT			('return').																**********																**********																**********																**********																**********																**********																**********																**********																**********
+MOD_RETURN_STATEMENT		(';','(').																**********																**********																**********																**********																**********																**********																**********																**********																**********
+EXPRESSION																							('id')																	('id')																	('id')																	('id','(','num','string_literal')										('id','(','num','string_literal').										**********																**********																**********																**********
+VARIABLE					('id').																	**********																**********																**********																**********																**********																**********																**********																**********																**********
+MOD_VARIABLE				('[','ɛ').																**********																**********																**********																**********																**********																**********																**********																**********																**********
+SIMPLE_EXPRESSION																																																									('(','num','string_literal')											('(','num','string_literal','id').										**********																**********																**********																**********																**********
+MOD_SIMPLE_EXPRESSION		('ɛ')																	('<=','<','>','>=','==','!=','ɛ').										**********																**********																**********																**********																**********																**********																**********																**********
+COMPARE_OPERATION			('<=','<','>','>=','==','!=').											**********																**********																**********																**********																**********																**********																**********																**********																**********
+ADDITIVE_EXPRESSION																																							('(','num','string_literal')											('(','num','string_literal','id').										**********																**********																**********																**********																**********																**********
+MOD_ADDITIVE_EXPRESSION		('ɛ')																	('+','-','ɛ').															**********																**********																**********																**********																**********																**********																**********																**********
+ADD_OPERATION				('+','-').																**********																**********																**********																**********																**********																**********																**********																**********																**********
+TERM																								('(','num','string_literal')											('(','num','string_literal','id').										**********																**********																**********																**********																**********																**********																**********
+MOD_TERM					('ɛ')																	('*','/','ɛ').															**********																**********																**********																**********																**********																**********																**********																**********
+MUL_OPERATION				('*','/').																**********																**********																**********																**********																**********																**********																**********																**********																**********
+FACTOR						('(','num','string_literal')											('(','num','string_literal','id').										**********																**********																**********																**********																**********																**********																**********																**********
+CALL						('id').																	**********																**********																**********																**********																**********																**********																**********																**********																**********
+ARGS						('ɛ')																	('ɛ')																	('ɛ')																	('id','ɛ')																('id','ɛ')																('id','ɛ')																('id','(','num','string_literal','ɛ')									('id','(','num','string_literal','ɛ').									**********																**********
+ARG_LIST																																									('id')																	('id')																	('id')																	('id','(','num','string_literal')										('id','(','num','string_literal').										**********																**********																**********
+MOD_ARG_LIST				(',','ɛ').																**********																**********																**********																**********																**********																**********																**********																**********																**********
+//-------------------------------------------------------------------------------------------------------
+Najdene FIRST(X) pre KAZDY NON-TERMINAL.
+
+PROGRAM						('void','int','string').
+DECLARATION_LIST			('void','int','string').
+MOD_DECLARATION_LIST		('void','int','string','ɛ').
+DECLARATION					('void','int','string').
+VARIABLE_DECLARATION		('void','int','string').
+MOD_VARIABLE_DECLARATION	(';','[').
+TYPE_SPECIFIER				('void','int','string').
+FUNCTION_DECLARATION		('void','int','string').
+PARAMS						('void','int','string').
+PARAM_LIST					('void','int','string').
+MOD_PARAM_LIST				(',','ɛ').
+PARAM						('void','int','string').
+MOD_PARAM					('[','ɛ').
+COMPOUND_STATEMENT			('{').
+LOCAL_DECLARATIONS			('void','int','string','ɛ').
+STATEMENT_LIST				(';','{','if','while','return','id','(','num','string_literal','ɛ').
+STATEMENT					(';','{','if','while','return','id','(','num','string_literal').
+EXPRESSION_STATEMENT		(';','id','(','num','string_literal').
+SELECTION_STATEMENT			('if').
+MOD_SELECTION_STATEMENT		('else','ɛ').
+ITERATION_STATEMENT			('while').
+RETURN_STATEMENT			('return').
+MOD_RETURN_STATEMENT		(';','(').
+EXPRESSION					('id','(','num','string_literal').
+VARIABLE					('id').
+MOD_VARIABLE				('[','ɛ').
+SIMPLE_EXPRESSION			('(','num','string_literal','id').
+MOD_SIMPLE_EXPRESSION		('<=','<','>','>=','==','!=','ɛ').
+COMPARE_OPERATION			('<=','<','>','>=','==','!=').
+ADDITIVE_EXPRESSION			('(','num','string_literal','id').
+MOD_ADDITIVE_EXPRESSION		('+','-','ɛ').
+ADD_OPERATION				('+','-').
+TERM						('(','num','string_literal','id').
+MOD_TERM					('*','/','ɛ').
+MUL_OPERATION				('*','/').
+FACTOR						('(','num','string_literal','id').
+CALL						('id').
+ARGS						('id','(','num','string_literal','ɛ').
+ARG_LIST					('id','(','num','string_literal').
+MOD_ARG_LIST				(',','ɛ').
+//-------------------------------------------------------------------------------------------------------
+Najdene FOLLOW(X) pre KAZDY NON-TERMINAL.
+
+PROGRAM						('$').
+DECLARATION_LIST			('$').
+MOD_DECLARATION_LIST		('$').
+DECLARATION					('$','void','int','string').
+VARIABLE_DECLARATION		('$','void','int','string',';','{','if','while','return','id','(','num','string_literal','}').
+MOD_VARIABLE_DECLARATION	('$','void','int','string',';','{','if','while','return','id','(','num','string_literal','}').
+TYPE_SPECIFIER				('id').
+FUNCTION_DECLARATION		('$','void','int','string').
+PARAMS						(')').
+PARAM_LIST					(')').
+MOD_PARAM_LIST				(')').
+PARAM						(',',')').
+MOD_PARAM					(',',')').
+COMPOUND_STATEMENT			('$','void','int','string',';','{','if','while','return','id','(','num','string_literal','}','else').
+LOCAL_DECLARATIONS			(';','{','if','while','return','id','(','num','string_literal','}').
+STATEMENT_LIST				('}').
+STATEMENT					(';','{','if','while','return','id','(','num','string_literal','}','else').
+EXPRESSION_STATEMENT		(';','{','if','while','return','id','(','num','string_literal','}','else').
+SELECTION_STATEMENT			(';','{','if','while','return','id','(','num','string_literal','}','else').
+MOD_SELECTION_STATEMENT		(';','{','if','while','return','id','(','num','string_literal','}','else').
+ITERATION_STATEMENT			(';','{','if','while','return','id','(','num','string_literal','}','else').
+RETURN_STATEMENT			(';','{','if','while','return','id','(','num','string_literal','}','else').
+MOD_RETURN_STATEMENT		(';','{','if','while','return','id','(','num','string_literal','}','else').
+EXPRESSION					(';',')',']',',').
+VARIABLE					('=','+','-','*','/','<=','<','>','>=','==','!=',';',')',']',',').
+MOD_VARIABLE				('=','+','-','*','/','<=','<','>','>=','==','!=',';',')',']',',').
+SIMPLE_EXPRESSION			(';',')',']',',').
+MOD_SIMPLE_EXPRESSION		(';',')',']',',').
+COMPARE_OPERATION			('(','num','string_literal','id').
+ADDITIVE_EXPRESSION			('<=','<','>','>=','==','!=',';',')',']',',').
+MOD_ADDITIVE_EXPRESSION		('<=','<','>','>=','==','!=',';',')',']',',').
+ADD_OPERATION				('(','num','string_literal','id').
+TERM						('+','-','<=','<','>','>=','==','!=',';',')',']',',').
+MOD_TERM					('+','-','<=','<','>','>=','==','!=',';',')',']',',').
+MUL_OPERATION				('(','num','string_literal','id').
+FACTOR						('+','-','*','/','<=','<','>','>=','==','!=',';',')',']',',').
+CALL						('+','-','*','/','<=','<','>','>=','==','!=',';',')',']',',').
+ARGS						(')').
+ARG_LIST					(')').
+MOD_ARG_LIST				(')').
+//-------------------------------------------------------------------------------------------------------
+Zoznam vsetkych TERMINAL CHARS.
+
+1. id.
+2. num.
+3. string_literal.
+4. +.
+5. -.
+6. *.
+7. /.
+8. <.
+9. <=.
+10. >.
+11. >=.
+12. =.
+13. ==.
+14. !=.
+15. ;.
+16. ,.
+17. (.
+18. ).
+19. [.
+20. ].
+21. {.
+22. }.
+23. if.
+24. else.
+25. while.
+26. return.
+27. int.
+28. string.
+29. void.
+//-------------------------------------------------------------------------------------------------------
+PARSING TABLE pre jazyk C--.
+
+Tabulka HORIZONTALNE obsahuje VSETKY TERMINALS a symbol $ - TOKEN EOF.
+Tabulka VERTIKALNE obsahuje VSETKY NON-TERMINALS.
+Obsah tabulky su RULE CHOICES.
+
+Poznamky:
+1. Gramatika NIE JE LL(1) gramatikou, kedze obsahuje pre niektore M[A,a] VIACERO CHOICES - AMBIGUITY.
+2. AMBIGUITIES je potrebne odstranit pomocou DISAMBIGUATION RULES.
+!!! 3. Niektore AMBIGUITIES je mozne odstranit PRIAMO MODIFIKACIOU TABULKY, ine je treba odstranit v algoritme PARSERA.
+4. V PARSING TABLE existuju nasledujuce AMBIGUITIES.
+   A. RULE 3 - DISAMBIUATION pre TOKENS 'int', 'string' a 'void' je mozne odstranit pomocou DISAMBIGUATION RULE, ktore bude testovat ci IDENTIFIKATORE PREMENNEJ/FUNKCIE bude nasledovat TOKEN (';','[') - co znamena deklaraciu PREMENNEJ, teda VARIABLE_DECLARATION, alebo nasleduje znak ('(') - co znamena deklraciu FUNKCIE, teda FUNCTION_DECLARATION.
+   B. RULE 7 - DISAMBIUATION pre TOKEN 'void' odstranit je mozne pomocou MODIFIKACIE PARSING TABLE. Pre TOKEN 'void' je mozne vybrat medzi CHOICE 'PARAM_LIST' a 'void'. V pripade TOKEN 'void', ktory sa pre toto RULE objavi ako PARAMETER FUNKCIE je logicke zvolit CHOICE 'void' a CHOICE PARAM_LIST ODSTRANIT.
+   !!! C. RULE 15B - DISAMBIUATION pre TOKEN 'else' odstranit je mozne pomocou MODIFIKACIE PARSING TABLE. Pre TOKEN 'else' je mozne vybrat medzi CHOICE 'else STATEMENT' a 'ɛ'. Jedna sa o klasicky ELSE DANGLING problem, kde je VHODNEJSIE uprednostnit CHOICE 'else STATEMENT'.
+   D. RULE 18 - DISAMBIUATION pre TOKEN 'id' je mozne odstranit pomocou DISAMBIGUATION RULE, kde zistim ci nasledujuci TOKEN je ('='), vtedy vyberiem CHOICE 'VARIABLE=EXPRESSION', alebo TOKEN je ('id','(','num','string_literal'), vtedy vyberiem CHOICE SIMPLE_EXPRESSION.
+   E. RULE 26 - DISAMBIUATION pre TOKEN 'id' je mozne odstranit pomocou DISAMBIGUATION RULE, kde zistim ci nasledujuci TOKEN je ('('), vtedy vyberiem CHOICE 'CALL', alebo HOCIJAKY INY TOKEN, vtedy vyberiem CHOICE 'VARIABLE'.
+??? 5. Pravdepodobne RULES 3, 18 aj 26 by sa dali odstranit upravou GRAMATIKY - konkretne aplikaciou LEFT FACTORING, avsak neskusal som to.
+
+										id													num													string_literal										+													-													*													/													<													<=													>													>=													=													==													!=													;													,													(													)													[													]													{													}													if													else												while												return												int													string												void												$
+1. PROGRAM								*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											DECLARATION_LIST									DECLARATION_LIST									DECLARATION_LIST									*********
+2A. DECLARATION_LIST					*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											DECLARATION MOD_DECLARATION_LIST					DECLARATION MOD_DECLARATION_LIST					DECLARATION MOD_DECLARATION_LIST					*********
+2B. MOD_DECLARATION_LIST				*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											DECLARATION MOD_DECLARATION_LIST					DECLARATION MOD_DECLARATION_LIST					DECLARATION MOD_DECLARATION_LIST					ɛ
+3. DECLARATION							*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											VARIABLE_DECLARATION								VARIABLE_DECLARATION								VARIABLE_DECLARATION								*********
+										*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											FUNCTION_DECLARATION								FUNCTION_DECLARATION								FUNCTION_DECLARATION								*********
+4A. VARIABLE_DECLARATION				*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											TYPE_SPECIFIER id MOD_VARIABLE_DECLARATION			TYPE_SPECIFIER id MOD_VARIABLE_DECLARATION			TYPE_SPECIFIER id MOD_VARIABLE_DECLARATION			*********
+4B. MOD_VARIABLE_DECLARATION			*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											;													*********											*********											*********											[num];												*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********
+5. TYPE_SPECIFIER						*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											int													string												void												*********
+6. FUNCTION_DECLARATION					*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											TYPE_SPECIFIER id(PARAMS) COMPOUND_STATEMENT		TYPE_SPECIFIER id(PARAMS) COMPOUND_STATEMENT		TYPE_SPECIFIER id(PARAMS) COMPOUND_STATEMENT		*********
+7. PARAMS								*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											PARAM_LIST											PARAM_LIST											PARAM_LIST											*********
+										*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											void												*********
+8A. PARAM_LIST							*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											PARAM MOD_PARAM_LIST								PARAM MOD_PARAM_LIST								PARAM MOD_PARAM_LIST								*********
+8B. MOD_PARAM_LIST						*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											,PARAM MOD_PARAM_LIST								*********											ɛ													*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********
+9A. PARAM								*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											TYPE_SPECIFIER id MOD_PARAM							TYPE_SPECIFIER id MOD_PARAM							TYPE_SPECIFIER id MOD_PARAM							*********
+9B. MOD_PARAM							*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											ɛ													*********											ɛ													[]													*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********
+10. COMPOUND_STATEMENT					*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											{LOCAL_DECLARATIONS STATEMENT_LIST}					*********											*********											*********											*********											*********											*********											*********											*********											*********
+11M. LOCAL_DECLARATIONS					ɛ													ɛ													ɛ													*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											ɛ													*********											ɛ													*********											*********											*********											ɛ													ɛ													ɛ													*********											ɛ													ɛ													VARIABLE_DECLARATION LOCAL_DECLARATIONS				VARIABLE_DECLARATION LOCAL_DECLARATIONS				VARIABLE_DECLARATION LOCAL_DECLARATIONS				*********
+12M. STATEMENT_LIST						STATEMENT STATEMENT_LIST							STATEMENT STATEMENT_LIST							STATEMENT STATEMENT_LIST							*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											STATEMENT STATEMENT_LIST							*********											STATEMENT STATEMENT_LIST							*********											*********											*********											STATEMENT STATEMENT_LIST							ɛ													STATEMENT STATEMENT_LIST							*********											STATEMENT STATEMENT_LIST							STATEMENT STATEMENT_LIST							*********											*********											*********											*********
+13. STATEMENT							EXPRESSION_STATEMENT								EXPRESSION_STATEMENT								EXPRESSION_STATEMENT								*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											EXPRESSION_STATEMENT								*********											EXPRESSION_STATEMENT								*********											*********											*********											COMPOUND_STATEMENT									*********											SELECTION_STATEMENT									*********											ITERATION_STATEMENT									RETURN_STATEMENT									*********											*********											*********											*********
+14. EXPRESSION_STATEMENT				EXPRESSION;											EXPRESSION;											EXPRESSION;											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											;													*********											EXPRESSION;											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********
+15A. SELECTION_STATEMENT				*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											if (EXPRESSION) STATEMENT MOD_SELECTION_STATEMENT	*********											*********											*********											*********											*********											*********											*********
+15B. MOD_SELECTION_STATEMENT			ɛ													ɛ													ɛ													*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											ɛ													*********											ɛ													*********											*********											*********											ɛ													ɛ													ɛ													else STATEMENT										ɛ													ɛ													*********											*********											*********											*********
+										*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											ɛ													*********											*********											*********											*********											*********											*********
+16. ITERATION_STATEMENT					*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											while (EXPRESSION) STATEMENT						*********											*********											*********											*********											*********
+17A. RETURN_STATEMENT					*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											return MOD_RETURN_STATEMENT							*********											*********											*********											*********
+17B. MOD_RETURN_STATEMENT				*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											;													*********											(EXPRESSION)										*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********
+18. EXPRESSION							VARIABLE=EXPRESSION									SIMPLE_EXPRESSION									SIMPLE_EXPRESSION									*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											SIMPLE_EXPRESSION									*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********
+										SIMPLE_EXPRESSION									*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********
+19A. VARIABLE							id MOD_VARIABLE										*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********
+19B. MOD_VARIABLE						*********											*********											*********											ɛ													ɛ													ɛ													ɛ													ɛ													ɛ													ɛ													ɛ													ɛ													ɛ													ɛ													ɛ													ɛ													*********											ɛ													[EXPRESSION]										ɛ													*********											*********											*********											*********											*********											*********											*********											*********											*********											*********
+20A. SIMPLE_EXPRESSION					ADDITIVE_EXPRESSION MOD_SIMPLE_EXPRESSION			ADDITIVE_EXPRESSION MOD_SIMPLE_EXPRESSION			ADDITIVE_EXPRESSION MOD_SIMPLE_EXPRESSION			*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											ADDITIVE_EXPRESSION MOD_SIMPLE_EXPRESSION			*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********
+20B. MOD_SIMPLE_EXPRESSION				*********											*********											*********											*********											*********											*********											*********											COMPARE_OPERATION ADDITIVE_EXPRESSION				COMPARE_OPERATION ADDITIVE_EXPRESSION				COMPARE_OPERATION ADDITIVE_EXPRESSION				COMPARE_OPERATION ADDITIVE_EXPRESSION				*********											COMPARE_OPERATION ADDITIVE_EXPRESSION				COMPARE_OPERATION ADDITIVE_EXPRESSION				ɛ													ɛ													*********											ɛ													*********											ɛ													*********											*********											*********											*********											*********											*********											*********											*********											*********											*********
+21. COMPARE_OPERATION					*********											*********											*********											*********											*********											*********											*********											<													<=													>													>=													*********											==													!=													*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********
+22A. ADDITIVE_EXPRESSION				TERM MOD_ADDITIVE_EXPRESSION						TERM MOD_ADDITIVE_EXPRESSION						TERM MOD_ADDITIVE_EXPRESSION						*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											TERM MOD_ADDITIVE_EXPRESSION						*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********
+22B. MOD_ADDITIVE_EXPRESSION			*********											*********											*********											ADD_OPERATION TERM MOD_ADDITIVE_EXPRESSION			ADD_OPERATION TERM MOD_ADDITIVE_EXPRESSION			*********											*********											ɛ													ɛ													ɛ													ɛ													*********											ɛ													ɛ													ɛ													ɛ													*********											ɛ													*********											ɛ													*********											*********											*********											*********											*********											*********											*********											*********											*********											*********
+23. ADD_OPERATION						*********											*********											*********											+													-													*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********
+24A. TERM								FACTOR MOD_TERM										FACTOR MOD_TERM										FACTOR MOD_TERM										*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											FACTOR MOD_TERM										*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********
+24B. MOD_TERM							*********											*********											*********											ɛ													ɛ													MUL_OPERATION FACTOR MOD_TERM						MUL_OPERATION FACTOR MOD_TERM						ɛ													ɛ													ɛ													ɛ													*********											ɛ													ɛ													ɛ													ɛ													*********											ɛ													*********											ɛ													*********											*********											*********											*********											*********											*********											*********											*********											*********											*********
+25. MUL_OPERATION						*********											*********											*********											*********											*********											*													/													*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********
+26. FACTOR								VARIABLE											num													string_literal										*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											(EXPRESSION)										*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********
+										CALL												*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********
+27. CALL								id(ARGS)											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********
+28. ARGS								ARG_LIST											ARG_LIST											ARG_LIST											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											ARG_LIST											ɛ													*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********
+29A. ARG_LIST							EXPRESSION MOD_ARG_LIST								EXPRESSION MOD_ARG_LIST								EXPRESSION MOD_ARG_LIST								*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											EXPRESSION MOD_ARG_LIST								*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********
+29B. MOD_ARG_LIST						*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											,EXPRESSION MOD_ARG_LIST							*********											ɛ													*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********											*********
+//-------------------------------------------------------------------------------------------------------
+Upravena PARSING TABLE s rozsirenim o ERROR RECOVERY.
+
+Z PARSING TABLE boli odstranene AMBIGOUS RULES 7 a RULE 15B.
+
+										id													num													string_literal										+													-													*													/													<													<=													>													>=													=													==													!=													;													,													(													)													[													]													{													}													if													else												while												return												int													string												void												$
+1. PROGRAM								!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												DECLARATION_LIST									DECLARATION_LIST									DECLARATION_LIST									!POP!
+2A. DECLARATION_LIST					!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												DECLARATION MOD_DECLARATION_LIST					DECLARATION MOD_DECLARATION_LIST					DECLARATION MOD_DECLARATION_LIST					!POP!
+2B. MOD_DECLARATION_LIST				!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												DECLARATION MOD_DECLARATION_LIST					DECLARATION MOD_DECLARATION_LIST					DECLARATION MOD_DECLARATION_LIST					ɛ
+3. DECLARATION							!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												VARIABLE_DECLARATION								VARIABLE_DECLARATION								VARIABLE_DECLARATION								!POP!
+										---------											---------											---------											---------											---------											---------											---------											---------											---------											---------											---------											---------											---------											---------											---------											---------											---------											---------											---------											---------											---------											---------											---------											---------											---------											---------											FUNCTION_DECLARATION								FUNCTION_DECLARATION								FUNCTION_DECLARATION								---------
+4A. VARIABLE_DECLARATION				!POP!												!POP!												!POP!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!POP!												!SCAN!												!POP!												!SCAN!												!SCAN!												!SCAN!												!POP!												!POP!												!POP!												!SCAN!												!POP!												!POP!												TYPE_SPECIFIER id MOD_VARIABLE_DECLARATION			TYPE_SPECIFIER id MOD_VARIABLE_DECLARATION			TYPE_SPECIFIER id MOD_VARIABLE_DECLARATION			!POP!
+4B. MOD_VARIABLE_DECLARATION			!POP!												!POP!												!POP!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												;													!SCAN!												!POP!												!SCAN!												[num];												!SCAN!												!POP!												!POP!												!POP!												!SCAN!												!POP!												!POP!												!POP!												!POP!												!POP!												!POP!
+5. TYPE_SPECIFIER						!POP!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												int													string												void												!POP!
+6. FUNCTION_DECLARATION					!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												TYPE_SPECIFIER id(PARAMS) COMPOUND_STATEMENT		TYPE_SPECIFIER id(PARAMS) COMPOUND_STATEMENT		TYPE_SPECIFIER id(PARAMS) COMPOUND_STATEMENT		!POP!
+7. PARAMS								!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!POP!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												PARAM_LIST											PARAM_LIST											void												!POP!
+8A. PARAM_LIST							!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!POP!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												PARAM MOD_PARAM_LIST								PARAM MOD_PARAM_LIST								PARAM MOD_PARAM_LIST								!POP!
+8B. MOD_PARAM_LIST						!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												,PARAM MOD_PARAM_LIST								!SCAN!												ɛ													!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!POP!
+9A. PARAM								!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!POP!												!SCAN!												!POP!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												TYPE_SPECIFIER id MOD_PARAM							TYPE_SPECIFIER id MOD_PARAM							TYPE_SPECIFIER id MOD_PARAM							!POP!
+9B. MOD_PARAM							!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												ɛ													!SCAN!												ɛ													[]													!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!POP!
+10. COMPOUND_STATEMENT					!POP!												!POP!												!POP!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!POP!												!SCAN!												!POP!												!SCAN!												!SCAN!												!SCAN!												{LOCAL_DECLARATIONS STATEMENT_LIST}					!POP!												!POP!												!POP!												!POP!												!POP!												!POP!												!POP!												!POP!												!POP!
+11M. LOCAL_DECLARATIONS					ɛ													ɛ													ɛ													!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												ɛ													!SCAN!												ɛ													!SCAN!												!SCAN!												!SCAN!												ɛ													ɛ													ɛ													!SCAN!												ɛ													ɛ													VARIABLE_DECLARATION LOCAL_DECLARATIONS				VARIABLE_DECLARATION LOCAL_DECLARATIONS				VARIABLE_DECLARATION LOCAL_DECLARATIONS				!POP!
+12M. STATEMENT_LIST						STATEMENT STATEMENT_LIST							STATEMENT STATEMENT_LIST							STATEMENT STATEMENT_LIST							!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												STATEMENT STATEMENT_LIST							!SCAN!												STATEMENT STATEMENT_LIST							!SCAN!												!SCAN!												!SCAN!												STATEMENT STATEMENT_LIST							ɛ													STATEMENT STATEMENT_LIST							!SCAN!												STATEMENT STATEMENT_LIST							STATEMENT STATEMENT_LIST							!SCAN!												!SCAN!												!SCAN!												!POP!
+13. STATEMENT							EXPRESSION_STATEMENT								EXPRESSION_STATEMENT								EXPRESSION_STATEMENT								!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												EXPRESSION_STATEMENT								!SCAN!												EXPRESSION_STATEMENT								!SCAN!												!SCAN!												!SCAN!												COMPOUND_STATEMENT									!POP!												SELECTION_STATEMENT									!POP!												ITERATION_STATEMENT									RETURN_STATEMENT									!SCAN!												!SCAN!												!SCAN!												!POP!
+14. EXPRESSION_STATEMENT				EXPRESSION;											EXPRESSION;											EXPRESSION;											!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												;													!SCAN!												EXPRESSION;											!SCAN!												!SCAN!												!SCAN!												!POP!												!POP!												!POP!												!POP!												!POP!												!POP!												!SCAN!												!SCAN!												!SCAN!												!POP!
+15A. SELECTION_STATEMENT				!POP!												!POP!												!POP!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!POP!												!SCAN!												!POP!												!SCAN!												!SCAN!												!SCAN!												!POP!												!POP!												if (EXPRESSION) STATEMENT MOD_SELECTION_STATEMENT	!POP!												!POP!												!POP!												!SCAN!												!SCAN!												!SCAN!												!POP!
+15B. MOD_SELECTION_STATEMENT			ɛ													ɛ													ɛ													!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												ɛ													!SCAN!												ɛ													!SCAN!												!SCAN!												!SCAN!												ɛ													ɛ													ɛ													else STATEMENT										ɛ													ɛ													!SCAN!												!SCAN!												!SCAN!												!POP!
+16. ITERATION_STATEMENT					!POP!												!POP!												!POP!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!POP!												!SCAN!												!POP!												!SCAN!												!SCAN!												!SCAN!												!POP!												!POP!												!POP!												!POP!												while (EXPRESSION) STATEMENT						!POP!												!SCAN!												!SCAN!												!SCAN!												!POP!
+17A. RETURN_STATEMENT					!POP!												!POP!												!POP!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!POP!												!SCAN!												!POP!												!SCAN!												!SCAN!												!SCAN!												!POP!												!POP!												!POP!												!POP!												!POP!												return MOD_RETURN_STATEMENT							!SCAN!												!SCAN!												!SCAN!												!POP!
+17B. MOD_RETURN_STATEMENT				!POP!												!POP!												!POP!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												;													!SCAN!												(EXPRESSION)										!SCAN!												!SCAN!												!SCAN!												!POP!												!POP!												!POP!												!POP!												!POP!												!POP!												!SCAN!												!SCAN!												!SCAN!												!POP!
+18. EXPRESSION							VARIABLE=EXPRESSION									SIMPLE_EXPRESSION									SIMPLE_EXPRESSION									!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!POP!												!POP!												SIMPLE_EXPRESSION									!POP!												!SCAN!												!POP!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!POP!
+										SIMPLE_EXPRESSION									---------											---------											---------											---------											---------											---------											---------											---------											---------											---------											---------											---------											---------											---------											---------											---------											---------											---------											---------											---------											---------											---------											---------											---------											---------											---------											---------											---------											---------
+19A. VARIABLE							id MOD_VARIABLE										!SCAN!												!SCAN!												!POP!												!POP!												!POP!												!POP!												!POP!												!POP!												!POP!												!POP!												!POP!												!POP!												!POP!												!POP!												!POP!												!SCAN!												!POP!												!SCAN!												!POP!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!POP!
+19B. MOD_VARIABLE						!SCAN!												!SCAN!												!SCAN!												ɛ													ɛ													ɛ													ɛ													ɛ													ɛ													ɛ													ɛ													ɛ													ɛ													ɛ													ɛ													ɛ													!SCAN!												ɛ													[EXPRESSION]										ɛ													!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!POP!
+20A. SIMPLE_EXPRESSION					ADDITIVE_EXPRESSION MOD_SIMPLE_EXPRESSION			ADDITIVE_EXPRESSION MOD_SIMPLE_EXPRESSION			ADDITIVE_EXPRESSION MOD_SIMPLE_EXPRESSION			!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!POP!												!POP!												ADDITIVE_EXPRESSION MOD_SIMPLE_EXPRESSION			!POP!												!SCAN!												!POP!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!POP!
+20B. MOD_SIMPLE_EXPRESSION				!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												COMPARE_OPERATION ADDITIVE_EXPRESSION				COMPARE_OPERATION ADDITIVE_EXPRESSION				COMPARE_OPERATION ADDITIVE_EXPRESSION				COMPARE_OPERATION ADDITIVE_EXPRESSION				!SCAN!												COMPARE_OPERATION ADDITIVE_EXPRESSION				COMPARE_OPERATION ADDITIVE_EXPRESSION				ɛ													ɛ													!SCAN!												ɛ													!SCAN!												ɛ													!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!POP!
+21. COMPARE_OPERATION					!POP!												!POP!												!POP!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												<													<=													>													>=													!SCAN!												==													!=													!SCAN!												!SCAN!												!POP!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!POP!
+22A. ADDITIVE_EXPRESSION				TERM MOD_ADDITIVE_EXPRESSION						TERM MOD_ADDITIVE_EXPRESSION						TERM MOD_ADDITIVE_EXPRESSION						!SCAN!												!SCAN!												!SCAN!												!SCAN!												!POP!												!POP!												!POP!												!POP!												!SCAN!												!POP!												!POP!												!POP!												!POP!												TERM MOD_ADDITIVE_EXPRESSION						!POP!												!SCAN!												!POP!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!POP!
+22B. MOD_ADDITIVE_EXPRESSION			!SCAN!												!SCAN!												!SCAN!												ADD_OPERATION TERM MOD_ADDITIVE_EXPRESSION			ADD_OPERATION TERM MOD_ADDITIVE_EXPRESSION			!SCAN!												!SCAN!												ɛ													ɛ													ɛ													ɛ													!SCAN!												ɛ													ɛ													ɛ													ɛ													!SCAN!												ɛ													!SCAN!												ɛ													!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!POP!
+23. ADD_OPERATION						!POP!												!POP!												!POP!												+													-													!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!POP!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!POP!
+24A. TERM								FACTOR MOD_TERM										FACTOR MOD_TERM										FACTOR MOD_TERM										!POP!												!POP!												!SCAN!												!SCAN!												!POP!												!POP!												!POP!												!POP!												!SCAN!												!POP!												!POP!												!POP!												!POP!												FACTOR MOD_TERM										!POP!												!SCAN!												!POP!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!POP!
+24B. MOD_TERM							!SCAN!												!SCAN!												!SCAN!												ɛ													ɛ													MUL_OPERATION FACTOR MOD_TERM						MUL_OPERATION FACTOR MOD_TERM						ɛ													ɛ													ɛ													ɛ													!SCAN!												ɛ													ɛ													ɛ													ɛ													!SCAN!												ɛ													!SCAN!												ɛ													!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!POP!
+25. MUL_OPERATION						!POP!												!POP!												!POP!												!SCAN!												!SCAN!												*													/													!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!POP!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!POP!
+26. FACTOR								VARIABLE											num													string_literal										!POP!												!POP!												!POP!												!POP!												!POP!												!POP!												!POP!												!POP!												!SCAN!												!POP!												!POP!												!POP!												!POP!												(EXPRESSION)										!POP!												!SCAN!												!POP!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!POP!
+										CALL												---------											---------											---------											---------											---------											---------											---------											---------											---------											---------											---------											---------											---------											---------											---------											---------											---------											---------											---------											---------											---------											---------											---------											---------											---------											---------											---------											---------											---------
+27. CALL								id(ARGS)											!SCAN!												!SCAN!												!POP!												!POP!												!POP!												!POP!												!POP!												!POP!												!POP!												!POP!												!SCAN!												!POP!												!POP!												!POP!												!POP!												!SCAN!												!POP!												!SCAN!												!POP!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!POP!
+28. ARGS								ARG_LIST											ARG_LIST											ARG_LIST											!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												ARG_LIST											ɛ													!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!POP!
+29A. ARG_LIST							EXPRESSION MOD_ARG_LIST								EXPRESSION MOD_ARG_LIST								EXPRESSION MOD_ARG_LIST								!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												EXPRESSION MOD_ARG_LIST								!POP!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!POP!
+29B. MOD_ARG_LIST						!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												,EXPRESSION MOD_ARG_LIST							!SCAN!												ɛ													!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!SCAN!												!POP!
+//-------------------------------------------------------------------------------------------------------
