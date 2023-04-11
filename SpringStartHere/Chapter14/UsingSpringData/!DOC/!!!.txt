@@ -1,0 +1,61 @@
+//----------------------------------------------------------------------------------------------------------------------
+1. Solution demonstruje pouzitie SPRING DATA na pristup k DATABASES.
+2. JAVA definuje mnozstvo rozlicnych FRAMEWORKS, ktore umoznuju pristup k DATABASES.
+3. Nevyhodou je, ze kazdy FRAMEWORK definuje svoje vlastne API, ktore je potrebne ovladat, aby bol mozny pristup k DATABASES.
+!!! 4. SPRING DATA je HIGH LEVEL DATA ACCESS LAYER, ktory umoznuje pouzit velke mnozstvo rozlicnych DATA ACCESS FRAMEWORKS na pristup k DATABASES.
+!!! 5. SPRING DATA poskytuje unifikovane API pomocou, ktoreho je mozne pristupit k DATABASES pomocou DATA ACCESS FRAMEWORKS, ktore SPRING DATA podporuje.
+!!! 6. SPRING DATA umoznuje rovnakym API pristup k SQL aj NO-SQL DATABASES.
+7. SPRING DATA je interne implementovana nasledovnym sposobom.
+   A. SPRING DATA definuje API v podobe INTERFACES, ktore je mozne vyuzit v CODE daneho PROGRAMU na pristup k DATABASE.
+   !!! B. SPRING DATA definuje pre kazdy DATA ACCEESS FRAMEWORK, ktory podporuje specialny MODULE, ktory umoznuje pristup k danemu DATA ACCEESS FRAMEWORK pomocou INTERFACES SPRING DATA.
+!!!!! 8. SPRING DATA NEEXISTUJE vo forme jednej DEPENDENCY do MAVEN FILE [.pom]. Pre kazdy MODULE, ktory umoznuje pristup k danemu DATA ACCEESS FRAMEWORK existuje specificka DEPENDENCY, ktoru je nutne pridat do MAVEN FILE [.pom], aby bol z SPRING DATA mozny pristup k DATABASE pomocou daneho DATA ACCEESS FRAMEWORK.
+9. SPRING DATA definuje nasledujude INTERFACES, ktorymi je mozny pristup k DATABASE.
+   A. INTERFACE [Repository<T,ID>].
+   B. INTERFACE [CrudRepository<T,ID>].
+   C. INTERFACE [PagingAndSortingRepository<T,ID>].
+10. Pre INTERFACE [Repository<T,ID>] platia nasledujuce fakty.
+   A. TYPE 'T' reprezentuje TYPE DATA TYPE.
+   B. TYPE 'ID' reprezentuje TYPE ID.
+   !!! C. INTERFACE [Repository<T,ID>] je zakladny INTRAFACE SPRING DATA, ktory NEDEFINUJE ZIADNE METHODS.
+11. Pre INTERFACE [CrudRepository<T,ID>] platia nasledujuce fakty.
+   A. TYPE 'T' reprezentuje TYPE DATA TYPE.
+   B. TYPE 'ID' reprezentuje TYPE ID.
+   C. INTERFACE [CrudRepository<T,ID>] implementuje INTRAFACE [Repository<T,ID>].
+   !!! D. INTERFACE [CrudRepository<T,ID>] poskytuje zakladne CRUD OPERATIONS nad DATA REPOSITORY.
+12. Pre INTERFACE [PagingAndSortingRepository<T,ID>] platia nasledujuce fakty.
+   A. TYPE 'T' reprezentuje TYPE DATA TYPE.
+   B. TYPE 'ID' reprezentuje TYPE ID.
+   C. INTERFACE [PagingAndSortingRepository<T,ID>] implementuje INTRAFACE [CrudRepository<T,ID>].
+   !!! D. INTERFACE [PagingAndSortingRepository<T,ID>] poskytuje okrem zakladnych CRUD OPERATIONS nad DATA REPOSITORY aj OPERATIONS pre PAGING a SORTING.
+!!!!! 13. Konkretny SPRING DATA MODULE moze definovat aj SPECIFICKE INTERFACES, ktore implementuju OPERATIONS specificke pre dany DATA ACCEESS FRAMEWORK.
+   A. INTERFACE [JpaRepository<T,ID>] definuje OPERATIONS, ktore su typicke pre SPRING DATA MODULE JPA PERSISTANCE API, ako je napriklad HIBERNATE. INTERFACE [JpaRepository<T,ID>] implementuje SPRING DATA INTERFACE [PagingAndSortingRepository<T,ID>].
+   B. INTERFACE [MongoRepository<T,ID>] definuje OPERATIONS, ktore su typicke pre SPRING DATA MODULE MONGO. INTERFACE [JpaRepository<T,ID>] implementuje SPRING DATA INTERFACE [MongoRepository<T,ID>].
+14. Ak chce vykonat PROGRAM pristup k DATABASE pomocou SPRING DATA, je potrebne vykonat nasledujuce kroky.
+   A. Do PROJECT sa prida DEPENDENCY na konkretny SPRING DATA MODULE urcujuci, ktory DATA ACCEESS FRAMEWORK ma SPRING DATA pouzit na pristup k DATABASE.
+   B. Definuje sa CUSTOM INTERFACE, ktory bude obsahovat DEKLARACIE METHODS na pristup k DATABASE.
+   !!! C. CUSTOM INTERFACES MUSI implementovat niektory zo SPRING DATA INTERFACES. Bud to moze byt jeden zo STANDARDNYCH SPRING DATA INTERFACES ako INTERFACE [Repository<T,ID>], INTERFACE [CrudRepository<T,ID>], alebo INTERFACE [PagingAndSortingRepository<T,ID>], alebo to moze byt INTERFACE, ktory je definovany v konkretnom SPRING DATA MODULE, ako je INTERFACE [JpaRepository<T,ID>], alebo INTERFACE [MongoRepository<T,ID>].
+   D. V CUSTOM INTERFACE sa DEKLARUJU (pozor NIE DEFINUJU) METHODS pre CRUD pristup k DATABASE.
+   !!!! E. SPRING DATA DYNAMICKY implementuje CUSTOM INTERFACES v podobe CLASS, ktora implementuje jednotlive METHODS CUSTOM INTERFACE.
+   F. V CODE je sa pouzije CUSTOM INTERFACE na pristup k DATABASE. Kedze CUSTOM INTERFACE je SPRING BEAN OBJECT, tak SPRING ho nahradi za CLASS, ktoru SPRING DATA DYNAMICKY GENEROVAL.
+!!! 15. SPRING DATA je definovany v GROUP ID [org.springframework.boot] a ARTIFACT ID [spring-boot-starter-data-jdbc].
+!!! 16. V CLASS, ktora definuje ENTITY TYPE, ktory sa cita a uklada do DATABASE MUSI byt FIELD reprezentujuci PRIMARY KEY oznaceny pomocou ANNOTATION [@Id].
+17. SPRING DATA pristupuje k DATABASES definovanim CUSTOM REPOSITORY INTERFACES, ktore musia implementovat niektory zo SPRING DATA INTERFACES umoznujucich pristup k DATABASE. Prikladom takychto INTERFACES su nasledujuce INTERFACES.
+   A. INTERFACE [Repository<T,ID>]. Je to STANDARDNY SPRING DATA INTERFACE.
+   B. INTERFACE [CrudRepository<T,ID>]. Je to STANDARDNY SPRING DATA INTERFACE.
+   C. INTERFACE [PagingAndSortingRepository<T,ID>]. Je to STANDARDNY SPRING DATA INTERFACE.
+   D. INTERFACE [JpaRepository<T,ID>]. Je to INTERFACE definovany pre SPRING DATA MODULE JPA.
+   E. INTERFACE [MongoRepository<T,ID>].  Je to INTERFACE definovany pre SPRING DATA MODULE MONGO.
+!!! 18. CUSTOM REPOSITORY INTERFACES mozu definovat DATABASE OPERATIONS nasledujucimi sposobmi.
+   A. Definovanim METHODS, ktore dodrzuju SPRING DATA NAMING CONVENTIONS. Pre taketo METHODS dokaze SPRING DATA AUTOMATICKY (bez nutnosti definovat SQL COMMAND) vygenerovat DATABASE OPERATIONS, ktore sa vykonaju nad DATABASE.
+   B. Definovanim METHODS na ktore je aplikovana ANNOTATION [@Query] pomocou ktorej sa explicitne definuje SQL COMMAND, ktory sa ma voci DATABASE vykonat. Ak SQL COMMAND je INSERT, UPDATE, alebo DELETE, tak je na METHOD nutne aplikovat aj ANNOTATION [@Modifying].
+19. CUSTOM REPOSITORY INTERFACES mozu definovat SQL COMMAND iba na zaklade definovania METHOD, ktora splna presne definovanu CONVENTION. METHOD [List<CAccount> findAccountsByName(String name)] je interpretovana nasledovne.
+   A. RETURN TYPE [List<CAccount>] je indikatorom, ze SQL COMMAND moze vracat 0-N RECORDS.
+   B. Cast METHOD NAME [find] indikuje, ze SQL COMMAND bude typu SELECT.
+   C. Cast METHOD NAME [Accounts] indikuje, ze SQL COMMAND SELECT ma citat data z TABLE 'Account'.
+   D. Cast METHOD NAME [ByName] indikuje, ze SQL COMMAND SELECT ma mat WHERE CLAUSE [WHERE Name=?].
+   E. METHOD PARAMETER [String name] je PARAMETER do SQL COMMAND SELECT vo WHERE CLAUSE [WHERE Name=?].
+!!! 20. Generovanie SQL COMMAND z nazvu METHODS je NEPREHLADNE a POMALSIE ako ked sa pouzije ANNOTATION [@Query].
+21. Pre SQL COMMANDS v ANNOTATION [@Query] platia nasledujuce fakty.
+   A. SQL COMMANDS v ANNOTATION [@Query] mozu mat PARAMETERS. PARAMETER sa definuje pomocou CONVENTION [:PARAMETER_NAME], kde VALUE 'PARAMETER_NAME' musi byt IDENTICKA s PARAMETER NAME METHOD na ktoru je aplikovana ANNOTATION [@Query].
+   !!! B. SQL COMMANDS MOZU obsahovat aj SQL COMMANDS INSERT, UPDATE a DELETE. V taktom pripade na METHOD na ktoru je aplikovana ANNOTATION [@Query] je potrebne aplikovat aj ANNOTATION [@Modifying].
+//----------------------------------------------------------------------------------------------------------------------

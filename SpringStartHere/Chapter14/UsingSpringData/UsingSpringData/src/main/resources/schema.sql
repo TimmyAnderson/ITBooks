@@ -1,0 +1,8 @@
+CREATE TABLE Account (
+    ID INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    Name VARCHAR(50) NOT NULL,
+    Amount INT NOT NULL
+);
+
+INSERT INTO Account (Name,Amount) VALUES ('Timmy',1000);
+INSERT INTO Account (Name,Amount) VALUES ('Jenny',1000);
