@@ -1,4 +1,4 @@
-package Chapter15.MyTests;
+package Chapter15.MyUnitTests;
 //----------------------------------------------------------------------------------------------------------------------
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.mock;
@@ -11,7 +11,7 @@ import Chapter15.Testing.Repository.Account;
 import Chapter15.Testing.Repository.CAccountService;
 import Chapter15.Testing.Repository.IAccountRepository;
 //----------------------------------------------------------------------------------------------------------------------
-public class CMyTests1
+public class CMyUnitTests1
 {
 //----------------------------------------------------------------------------------------------------------------------
 	@Test

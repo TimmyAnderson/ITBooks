@@ -1,4 +1,4 @@
-package Chapter15.MyTests;
+package Chapter15.MyUnitTests;
 //----------------------------------------------------------------------------------------------------------------------
 import static org.junit.jupiter.api.Assertions.assertEquals;
 //----------------------------------------------------------------------------------------------------------------------
@@ -6,7 +6,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import Chapter15.Testing.Repository.CAccountController;
 //----------------------------------------------------------------------------------------------------------------------
-public class CMyTests3
+public class CMyUnitTests3
 {
 //----------------------------------------------------------------------------------------------------------------------
 	@Test

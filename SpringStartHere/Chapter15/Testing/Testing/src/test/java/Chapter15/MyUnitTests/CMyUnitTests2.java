@@ -1,4 +1,4 @@
-package Chapter15.MyTests;
+package Chapter15.MyUnitTests;
 //----------------------------------------------------------------------------------------------------------------------
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.anyInt;
@@ -20,7 +20,7 @@ import Chapter15.Testing.Repository.IAccountRepository;
 //----------------------------------------------------------------------------------------------------------------------
 // !!!!! ANNOTATION [@ExtendWith(MockitoExtension.class)] umozni MOCK LIBRARY [Mockito] aby vedela, ze musi vytvorit MOCK OBJECTS.
 @ExtendWith(MockitoExtension.class)
-public class CMyTests2
+public class CMyUnitTests2
 {
 //----------------------------------------------------------------------------------------------------------------------
 	// !!!!! Na FIELDS do ktorych maju byt ulozene MOCK OBJECTS aplikuje ANNOTATION [@Mock], aby MOCK LIBRARY [Mockito] tieto FIELDS naplnil instanciami MOCK OBJECTS.
@@ -48,10 +48,10 @@ public class CMyTests2
 		Destination.setId(2);
 		Destination.setAmount(1000);
 
-		// !!!!! Pomocou METHOD [<T> BDDMockito.BDDMyOngoingStubbing<T> given(T MethodCall)] a METHOD [BDDMyOngoingStubbing<T> BDDMockito.willReturn(T Value)] sa da nastavit aka VALUE sa ma vratit, ak sa zavola dana METHOD MOCK OBJECT s danymi PARAMETERS.
+		// !!!!! Pomocou METHOD [<T> BDDMyOngoingStubbing<T> BDDMockito.given(T MethodCall)] a METHOD [BDDMyOngoingStubbing<T> BDDMockito.willReturn(T Value)] sa da nastavit aka VALUE sa ma vratit, ak sa zavola dana METHOD MOCK OBJECT s danymi PARAMETERS.
 		given(MAccountRepository.findById(Sender.getId())).willReturn(Optional.of(Sender));
 
-		// !!!!! Pomocou METHOD [<T> BDDMockito.BDDMyOngoingStubbing<T> given(T MethodCall)] a METHOD [BDDMyOngoingStubbing<T> BDDMockito.willReturn(T Value)] sa da nastavit aka VALUE sa ma vratit, ak sa zavola dana METHOD MOCK OBJECT s danymi PARAMETERS.
+		// !!!!! Pomocou METHOD [<T> BDDMyOngoingStubbing<T> BDDMockito.given(T MethodCall)] a METHOD [BDDMyOngoingStubbing<T> BDDMockito.willReturn(T Value)] sa da nastavit aka VALUE sa ma vratit, ak sa zavola dana METHOD MOCK OBJECT s danymi PARAMETERS.
 		given(MAccountRepository.findById(Destination.getId())).willReturn(Optional.of(Destination));
 
 		// !!!!! Spusti sa testovana METHOD.
