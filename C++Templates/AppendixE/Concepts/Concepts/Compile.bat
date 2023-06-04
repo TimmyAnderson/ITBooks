@@ -1,0 +1,1 @@
+g++-12 -m64 -std=c++2b -fconcepts -pthread -fexceptions -pedantic -Wall -Wextra -o Program.exe MyDebug.cpp Concepts.cpp CDummyClass.cpp CClassWithOperatorLower.cpp CClassWithOperatorLowerAndMultiple.cpp CClassWithMethodGetValue.cpp

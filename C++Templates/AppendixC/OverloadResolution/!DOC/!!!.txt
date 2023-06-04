@@ -1,0 +1,100 @@
+//----------------------------------------------------------------------------------------------------------------------
+1. Solution demonstruje OVERLOAD RESOLUTION v C++.
+2. OVERLOAD RESOLUTION je proces, ktoreho cielom je vyber FUNCTION, ktora bude pre dane ARGUMENTS zavolana.
+3. V C++ moze mat viacero FUNCTIONS rovnaky NAME a OVERLOAD RESOLUTION z nich vybera najvhodnejsiu FUNCTION, ktoru pre dane ARGUMENTS zavola.
+!!! 4. OVERLOAD RESOLUTION sa NEVYKONAVA v nasledujucich pripadoch.
+   A. Ak je FUNCTION volana pomocou POINTER.
+   B. Ak je METHOD volana pomocou POINTER-TO-MEMBER.
+   C. Pre FUNCTION LIKE MACROS. MACROS NEMOZU byt OVERLOADED.
+5. Pri hladani spravnej FUNCTION C++ postupuje v nasledujucich krokoch.
+   A. Vytvori sa INITIAL OVERLOAD SET, ktory obsahuje vsetky FUNCTIONS, ktore maju ten isty NAME, ako FUNCTION, ktora ma byt volana.
+   B. INITIAL OVERLOAD SET moze byt MODIFIKOVANY aplikaciou TEMPLATE ARGUMENTS DEDUCTION a TEMPLATE ARGUMENTS SUBSTITUTION, kedy niektore FUNCTIONS z INITIAL OVERLOAD SET mozu byt odstranene.
+   C. Vsetky FUNCTIONS, ktore ani po aplikacii IMPLICIT CONVERSIONS a DEFAULT ARGUMENTS nemozu byt volane su vyradene. Takto vznika VIABLE FUNCTION CANDIDATES SET.
+   !!!!! D. Nad VIABLE FUNCTION CANDIDATES SET je vykonany OVERLOAD RESOLUTION na najdenie najlepsej FUNCTION, ktora ma byt volana. Ak sa nadje prave 1 takato FUNCTION, tak sa tato pouzije. Ak sa najde VIACERO, alebo ZIADNA, COMPILER hodi ERROR.
+   E. Vybrata FUNCTION je skontrolovana ci sa napriklad nejedna o DELETED METHOD, alebo je INACCESSIBLE. Ak nie, zavola sa tato METHOD (FUNCTION), inak COMPILER hodi ERROR.
+!!! 6. OVERLOAD RESOLUTION pri hodnoteni FUNCTIONS z VIABLE FUNCTION CANDIDATES SET postupuje nasledovne.
+   A. OVERLOAD RESOLUTION hodnoti kvalitu MATCH zadanych ARGUMENTS a PARAMETERS pre kazdy PARAMETER posudzovanej FUNCTION.
+   !!! B. Na to, aby bola FUNCTION vybrata ako najlepsi kandidat OVERLOAD RESOLUTION sa NESMIE stat, aby vybrata FUNCION mala pre lubovolny PARAMETER horsi MATCH ako ina FUNCTION pre dany PARAMETER.
+7. OVERLOAD RESOLUTION vyhodnocuje FUNCTIONS podla nasledujucich pravidiel. Ak je FUNCTION vyhodnotena podla skorsieho pravidla, tak je preferovana pred FUNCTION vyhodnotenou neskorsim pravidlom.
+   A. PERFECT MATCH. K PERFECT MATCH dochadza, ak PARAMETER ma rovnaky TYPE ako ARGUMENT, ale PARAMETER je REFERENCE na TYPE, aky ma ARGUMENT. PARAMETER moze mat aplikovany KEYWORD [const], alebo KEYWORD [volatile].
+   B. MATCH WITH MINOR ADJUSTMENTS. K MATCH WITH MINOR ADJUSTMENTS dochadza pri DECAY ARRAY VARIABLE na POINTER na 1. ARRAY ELEMENT, alebo pridanie KEYWORD [const]. To znamena, ze ak ARGUMENT ma napriklad TYPE [int**] a PARAMETER ma TYPE [const int* const*], tak dochadza k MATCH WITH MINOR ADJUSTMENTS.
+   C. MATCH WITH PROMOTION. K MATCH WITH PROMOTION dochadza pri konverzii mensich NUMERIC TYPES na vacsie NUMERIC TYPES, ako napriklad CONVERSION TYPE [int] na TYPE [long], alebo CONVERSION TYPE [float] na TYPE [double].
+   D. MATCH WITH STANDARD CONVERSIONS ONLY. K MATCH WITH STANDARD CONVERSIONS ONLY dochadza pri lubovolnej STANDARD CONVERSION ako napriklad CONVERSION z TYPE [int] na TYPE [float], alebo pri CONVERSION DERIVED CLASS na BASE CLASS avsak BEZ aplikacie USER DEFINED CONVERSION CONSTRUCTORS, ci aplikacie USER DEFINED CONVERSION OPERATORS.
+   E. MATCH WITH USER DEFINED CONVERSIONS. K MATCH WITH USER DEFINED CONVERSIONS dochadza ak ARGUMENT TYPE moze byt CONVERTED na PARAMETER TYPE aplikaciou USER DEFINED CONVERSION CONSTRUCTORS, ci aplikaciou USER DEFINED CONVERSION OPERATORS.
+   F. MATCH WITH ELLIPSES (...). MATCH WITH ELLIPSES (...) akceptuje takmer vsetky TYPES. VYNIMKOU su iba CLASSES z NONTRIVIAL COPY CONSTRUCTORS, kde sa implementacia C++ moze rozhodnut ci ARGUMENT vyzadujuci tento typ CONVERSION bude povazovat za MATCH WITH ELLIPSES (...).
+!!!!! 8. OVERLOAD RESOLUTION sa vykonava AZ po TEMPLATE ARGUMENTS DEDUCTION. Z toho vyplyvaju nasledujuce skutocnosti.
+   A. TEMPLATE ARGUMENTS DEDUCTION je JEDNODUCHSI PROCES ako OVERLOAD RESOLUTION a napriklad NEVYKONAVA niektore typy CONVERSIONS, ake vykonava TEMPLATE ARGUMENTS DEDUCTION.
+   !!! B. C++ pred vykonanim OVERLOAD RESOLUTION vykonava TEMPLATE ARGUMENTS DEDUCTION, ktory vdaka tomu, ze je trivialnejsi ako samotny OVERLOAD RESOLUTION, moze niektore TEMPLATE FUNCTIONS vyradit z INITIAL OVERLOAD SET. FUNCTIONS, ktore su vyradene z INITIAL OVERLOAD SET NIE su zaslane do OVERLOAD RESOLUTION a tym padom nemozu byt vybrate pre dane volanie FUNCTION.
+!!! 9. Pri TEMPLATE ARGUMENTS DEDUCTION sa aplikuju nasledujuce principy, ak TEMPLATE PARAMETER je REFERENCE na RVALUE.
+   A. TEMPLATE PARAMETER moze byt DEDUCED ako LVALUE REFRENCE TYPE, ak je TEMPLATE ARGUMENT LVALUE.
+   B. TEMPLATE PARAMETER moze byt DEDUCED ako RVALUE REFRENCE TYPE, ak je TEMPLATE ARGUMENT RVALUE.
+10. NON-STATIC METHODS maju IMPLICITNY PARAMETER [*this]. Pre IMPLICITNY PARAMETER [*this] platia nasledujuce fakty.
+   A. Pre NON-CONST METHODS ma IMPLICITNY PARAMETER [*this] TYPE [CLASS_NAME&], kde VALUE 'CLASS_NAME' je nazov CLASS.
+   B. Pre CONST METHODS ma IMPLICITNY PARAMETER [*this] TYPE [const CLASS_NAME&], kde VALUE 'CLASS_NAME' je nazov CLASS.
+   C. IMPLICITNY PARAMETER [*this] je v CODE METHODS pristupny ako POINTER pomocou KEYWORD [this].
+   D. Pre NON-CONST METHODS ma KEYWORD [this] ma TYPE [CLASS_NAME*], kde VALUE 'CLASS_NAME' je nazov CLASS.
+   E. Pre CONST METHODS ma KEYWORD [this] ma TYPE [const CLASS_NAME*], kde VALUE 'CLASS_NAME' je nazov CLASS.
+11. Pri OVERLOAD RESOLUTION METHODS platia nasledujuce zasady.
+   A. IMPLICITNY PARAMETER [*this] participuje na OVERLOAD RESOLUTION.
+   !!! B. Vo VIABLE FUNCTION CANDIDATES SET mozu byt skombinovane STATIC a NON-STATIC METHODS. V takom pripade sa pri OVERLOAD RESOLUTION NEPOSUDZUJE kvalita MATCH pre IMPLICITNY PARAMETER [*this].
+12. C++11 umoznuje urcit aky TYPE bude mat IMPLICITNY PARAMETER [*this] pri volani METHOD. Platia nasledujuce fakty.
+   A. Ak ma METHOD PROTOTYPE [RETURN_VALUE_TYPE METHOD_NAME(PARAMETERS)], tak IMPLICITNY PARAMETER [*this] ma TYPE [CLASS_NAME&], kde VALUE 'CLASS_NAME' je nazov CLASS. IMPLICITNY PARAMETER [*this] je teda LVALUE.
+   B. Ak ma METHOD PROTOTYPE [RETURN_VALUE_TYPE METHOD_NAME(PARAMETERS) &], tak IMPLICITNY PARAMETER [*this] ma TYPE [CLASS_NAME&], kde VALUE 'CLASS_NAME' je nazov CLASS. IMPLICITNY PARAMETER [*this] je teda LVALUE.
+   C. Ak ma METHOD PROTOTYPE [RETURN_VALUE_TYPE METHOD_NAME(PARAMETERS) &&], tak IMPLICITNY PARAMETER [*this] ma TYPE [CLASS_NAME&&], kde VALUE 'CLASS_NAME' je nazov CLASS. IMPLICITNY PARAMETER [*this] je teda RVALUE.
+   !!! D. Ak ma METHOD PROTOTYPE [RETURN_VALUE_TYPE METHOD_NAME(PARAMETERS)], tak tak volanie METHOD je mozne ak je OBJECT LVALUE, ale aj ked je OBJECT RVALUE. V takom pripade je interne OBJECT RVALUE konvertovany na OBJECT LVALUE. Naproti tomu, PROTOTYPE [RETURN_VALUE_TYPE METHOD_NAME(PARAMETERS) &] NEUMOZNUJE volanie danej METHOD, ak je OBJECT RVALUE, ale iba ak je LVALUE.
+13. C++ pri vykonavani PERFECT MATCH pre TYPE [TYPE_NAME] rozlisuje nasledujuce TYPES.
+   A. TYPE [TYPE_NAME].
+   B. TYPE [TYPE_NAME&].
+   C. TYPE [const TYPE_NAME&].
+   D. TYPE [TYPE_NAME&&].
+   E. TYPE [const TYPE_NAME&&].
+14. Pre OVERLOAD RESOLUTION TEMPLATE FUNCTIONS platia nasledujuce pravidla.
+   A. NON-TEMPLATE FUNCTION je vzdy preferovana pred TEMPLATE FUNCTION.
+   B. TEMPLATE FUNCTION SPECIALIZATION je vzdy preferovana pred TEMPLATE FUNCTION.
+   C. Ak existuje TEMPLATE FUNCTION SPECIALIZATION bez TEMPLATE PARAMETER PACK a TEMPLATE FUNCTION SPECIALIZATION s TEMPLATE PARAMETER PACK, tak sa vzdy preferuje TEMPLATE FUNCTION SPECIALIZATION bez TEMPLATE PARAMETER PACK.
+15. C++ pri vykonavanie IMPLICIT CONVERSIONS, moze vykonat naraz aj niekolko za sebou iducich CONVERSIONS, aby bolo mozne IMPLICIT CONVERSION vykonat. Takato seria CONVERSIONS sa nazyva CONVERSION SEQUENCE. Pre CONVERSION SEQUENCES platia nasledujuce fakty.
+   A. CONVERSION SEQUENCE moze obsahovat lubovolny pocet CONVERSIONS.
+   B. CONVERSION SEQUENCE moze obsahovat MAXIMALNE iba 1 USER DEFINED CONVERSION.
+   C. Pri OVERLOAD RESOLUTION je preferovana ta CONVERSION SEQUENCE, ktora je SUBSET dlhsej CONVERSION SEQUENCE.
+16. C++ vykonava pre POINTERS nasledujuce STANDARD CONVERSIONS.
+   A. CONVERSION POINTER na TYPE [bool].
+   B. CONVERSION POINTER na TYPE [void*].
+   C. CONVERSION POINTER na DERIVED TYPE na POINTER na BASE TYPE.
+!!! 17. Aj ked vsetky STANDARD POINTER CONVERSIONS patria do RULE 'MATCH WITH STANDARD CONVERSIONS ONLY', nie su pri OVERLOAD RESOLUTION hodnotene rovnako. Platia nasledujuce fakty.
+   A. CONVERSION POINTER na DERIVED TYPE na POINTER na BASE TYPE ma NAJVYSSIU PRIORITU.
+   B. CONVERSION POINTER na TYPE [void*] ma NIZSIU prioritu ako CONVERSION POINTER na DERIVED TYPE na POINTER na BASE TYPE, ale VYSSIU prioritu ako CONVERSION POINTER na TYPE [bool].
+   C. CONVERSION POINTER na TYPE [bool] ma NAJNIZSIU prioritu.
+   !!! D. Pri CONVERSION POINTER v INHERITANCE HIERARCHY C++ preferuje CONVERSION na NAJBLIZSI DERIVED CLASS.
+18. C++ vykonava pre POINTERS na MEMBERS nasledujuce STANDARD CONVERSIONS.
+   A. CONVERSION POINTER na MEMBER na TYPE [bool].
+   B. CONVERSION POINTER na MEMBER na BASE TYPE na POINTER na MEMBER na DERIVED TYPE.
+!!! 19. Aj ked vsetky STANDARD POINTER TO MEMBERS CONVERSIONS patria do RULE 'MATCH WITH STANDARD CONVERSIONS ONLY', nie su pri OVERLOAD RESOLUTION hodnotene rovnako. Platia nasledujuce fakty.
+   A. CONVERSION POINTER na MEMBER na BASE TYPE na POINTER na MEMBER na DERIVED TYPE ma NAJVYSSIU PRIORITU.
+   B. CONVERSION POINTER na MEMBER na TYPE [bool] ma NAJNIZSIU prioritu.
+   !!! C. Pri CONVERSION POINTER na MEMBER v INHERITANCE HIERARCHY C++ preferuje CONVERSION na NAJBLIZSI BASE CLASS.
+20. INITIALIZER LIST ARGUMENTS [{}] mozu byt CONVERTED na nasledujuce typy PARAMETERS.
+   A. TYPE [initializer_list<TType>].
+   B. CLASS, ktory ma CONSTRUCTOR s 1 PARAMETER TYPE [initializer_list<TType>].
+   C. CLASS TYPES, pre ktore INITIALIZER LIST ARGUMENTS mozu byt interpretovane ako CONSTRUCTOR PARAMETERS.
+   D. AGGREGATE TYPES, ktoreho MEMBERS mozu byt inicializovane pomocou INITIALIZER LIST ARGUMENTS.
+21. AGGREGATE TYPES su bud C-LIKE ARRAYS, alebo USER DEFINED TYPES s nasledujucimi obmedzeniami.
+   A. Nemaju definovany CUSTOM CONSTRUCTOR.
+   B. Nemaju PRIVATE, alebo PROTECTED FIELDS.
+   C. Nemaju NON-PUBLIC BASE CLASSES.
+   D. Nemaju VIRTUAL METHODS.
+!!! 22. Ak dochadza k OVERLOAD RESOLUTION pre FUNCTIONS, ktore maju PARAMETER TYPE [initializer_list<TType>], tak C++ postupuje nasledovne.
+   A. Pre kazdy ITEM v INITIALIZER LIST ARGUMENTS [{}] C++ vyhodnoti podla ktoreho OVERLOAD RESOLUTION RULE je mozne vykonat CONVESION daneho ITEM na TYPE 'TType' TYPE [initializer_list<TType>].
+   B. Pre OVERLOAD RESOLUTION C++ vyberie NAJHORSI mozny OVERLOAD RESOLUTION RULE a ten je povazovany za OVERLOAD RESOLUTION RULE celej FUNCTION.
+   C. C++ zavola FUNCTION, ktora ma najlepsi OVERLOAD RESOLUTION RULE.
+23. Ked je instancia CLASS TYPE inicializovana pomocou INITIALIZER LIST ARGUMENTS [{}], C++ vyhladava najvhodnejsi CONSTRUCTOR daneho CLASS TYPE. C++ pri vyhladavani vhodneho CONSTRUCTOR postupuje nasledovne.
+   A. Ak CLASS TYPE ma CONSTRUCTORS, ktore maju IBA PARAMETER TYPE [initializer_list<TType>], C++ posudi ci niektory z tychto CONSTRUCTORS nemoze byt volany. Ak ano, tak ho zavola.
+   B. Ak CLASS TYPE NEMA CONSTRUCTORS, ktore maju IBA PARAMETER TYPE [initializer_list<TType>], tak C++ vykona OVERLOAD RESOLUTION pre ostatne CONSTRUCTORS.
+   !!! C. Ak je INITIALIZER LIST ARGUMENTS [{}] PRAZDNY a CLASS TYPE ma DEFAULT CONSTRUCTOR, tak sa zavola DEFAULT CONSTRUCTOR.
+24. Ak dochadza k pouzitiu OPERATOR [OPERATOR()] na CLASS TYPE OBJECT, tak C++ modifikuje INITIAL OVERLOAD SET pridanim nasledujucich OPERATORS.
+   A. Ak CLASS TYPE ma definovane OPERATOR [OPERATOR()], tak su tieto pridane do INITIAL OVERLOAD SET.
+   !!! B. Ak CLASS TYPE ma CONVERSION OPERATOR [OPERATOR TYPE], pricom TYPE 'TYPE' je POINTER na FUNCTION, alebo REFERENCE na FUNCTION, tak C++ prida SURGOATE METHOD do INITIAL OVERLOAD SET. SURGOATE METHOD ma ako 1. PARAMETER IMPLICITNY PARAMETER TYPE 'TYPE' za ktorym nasleduju PARAMETERS samotnej FUNCTION.
+25. C++ robi OVERLOAD RESOLUTION nielen pri volani FUNCTIONS a METHODS, ale aj v nasledujucich CONTEXTS.
+   A. OVERLOAD RESOLUTION sa robi pri priradzovani FUNCTION do POINTER na FUNCTION, alebo REFERENCE na FUNCTION.
+   B. OVERLOAD RESOLUTION sa robi pri volani CONSTRUCTORS.
+   C. OVERLOAD RESOLUTION sa robi pri volani USER DEFINED CONVERSION OPERATORS.
+//----------------------------------------------------------------------------------------------------------------------

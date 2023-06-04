@@ -1,0 +1,64 @@
+//----------------------------------------------------------------------------------------------------------------------
+1. Solution demonstruje pouzitie TEMPLATE FUNCTIONS.
+2. Pre TEMPLATE FUNCTIONS platia nasledujuce fakty.
+   A. FUNCTION TEMPLATE je FUNCTION, ktora ma parametrizovane ELEMENTS, ktore vo svojom CODE pouziva.
+   B. Tieto ELEMENTS su vo FUNCTION TEMPLATE PARAMETERS, ktorych konkretne VALUES su v DEFINITION FUNCTION TEMPLATE NEZNAME a su definovane az v case pouzitia FUNCTION TEMPLATE.
+   C. Najcastejsie parametrizovanymi ELEMENTS su TYPES, ktore FUNCTION pouziva.
+3. TEMPLATE FUNCTION PARAMETERS su definovane pomocou SYNTAX [template <PARAMETER_1,PARAMETER_2,...,PARAMETER_N>], kde VALUE 'PARAMETER_X' je definicia TEMPLATE FUNCTION PARAMETER.
+4. V pripade, ze TEMPLATE FUNCTION PARAMETER je TYPE, tak TEMPLATE FUNCTION PARAMETER ma SYNTAX [typename TYPE_NAME], kde VALUE 'TYPE_NAME' je nazov TYPE, ktory sa pouziva v CODE TEMPLATE FUNCTION.
+5. Ak je FUNCTION TEMPLATE pouzita v CODE, dochadza k procesu TEMPLATE INSTANTIATION. TEMPLATE INSTANTIATION znamena nasledovne.
+   A. C++ COMPILER pre kazdu kombinaciu TEMPLATE PARAMETERS definuje vlastnu CODE ENTITY. To znamena, ze v pripade TEMPLATE INSTANTIATION TEMPLATE FUNCTIONS COMPILER pre kazdu kombinaciu TEMPLATE PARAMETERS vygeneruje vlastny CODE, kde su TEMPLATE PARAMETERS nahradene konkretnymi PARAMETERS.
+   B. TEMPLATE INSTANTIATION nie je nutne vykonavat explicitne. Staci zavolat FUNCTION TEMPLATE s dosadenymi TEMPLATE PARAMETERS a C++ automaticky pre nu vygeneruje CODE s tymito TEMPLATE PARAMETERS.
+   C. TEMPLATE PARAMETERS je mozne definovat EXPLICITNE pomocou SYNATAX [<PARAMETER_1,PARAMETER_2,...,PARAMETER_N>], kde VALUE 'PARAMETER_X' je konkretna VALUE TEMPLATE PARAMETER.
+   D. TEMPLATE PARAMETERS mozu byt aj odvodene priamo COMPILER z PARAMETERS, ktore su pri volani TEMPLATE FUNCTION pouzite.
+6. TYPE [void] je validnym TEMPLATE FUNCTION PARAMETER, ak samozrejme vygenerovana FUNCTION dava logicky zmysel a moze byt COMPILED.
+!!! 7. TEMPLATES su v C++ COMPILED v 2 krokoch v procese nazyvanom TWO-PHASE TRANSLATION.
+   A. Pri definovani TEMPLATE COMPILER vykona zakladnu kontrolu ci je TEMPLATE CODE syntakticky a semanticky definovany spravne. To znamena, vykonavaju sa SYNTAX CHECKS, vykonava sa SEMANTIC CHECKS ako kontrola ci volanie METHODS, ktore nepouzivaju TEMPLATE PARAMETERS su DEFINED a kontrolovane su aj STATIC ASSERTS nepouzivajuce TEMPLATE PARAMETERS.
+   B. Pri TEMPLATE INSTANTIATION COMPILER vykona kompletnu kontrolu TEMPLATE CODE, vratane vsetkych SYNTAX a SEMANTIC CHECKS tykajucich sa konkretnych VALUES dosadenych za TEMPLATE PARAMETERS.
+8. TWO-PHASE LOOKUP je proces, ktory COMPILER vykonava pri kontrole NAMES pouzitych v TEMPLATE CODE. Nie vsetky COMPILERS su schopne vykonavat TWO-PHASE LOOKUP spravne.
+9. TWO-PHASE TRANSLATION sposobuje problem s oddelenim CODE na DECLARATIONS v [.h] FILES a DEFINITIONS v [.cpp] FILES. COMPILER v niektorych momentoch potrebuje poznat celu TEMPLATE DEFINITION a NESTACI mu iba TEMPLATE DECLARATION. Najjednoduchsim riesenim tohto problemu je definovat TEMPLATE BODIES vzdy v [.h] FILES.
+10. C++ COMPILER dokaze vykonat TYPE DEDUCTION TYPES FUNCTION TEMPLATE PARAMETERS. C++ COMPILER dokaze vykonat TYPE DEDUCTION aj PARTIAL TYPE ako napriklad [const TType& Parameter], kde VALUE 'TType' je TYPE FUNCTION TEMPLATE PARAMETER.
+!!! 11. Pri TYPE DEDUCTION TYPES FUNCTION TEMPLATE PARAMETERS robi C++ iba niektore AUTOMATIC TYPE CONVERSIONS na zistenie TYPES.
+   A. Ked su TYPE PARAMETERS prenasane BY-REFERENCE, tak sa pri TYPE DEDUCTION nerobia ZIADNE, ani TRIVIAL CONVERSIONS. V pripade, ze FUNCTION TEMPLATE ma viac PARAMETERS rovnakeho TYPE PARAMETER, tieto PARAMETERS musia mat UPLNE ROVNAKY TYPE.
+   B. Ked su TYPE PARAMETERS prenasane BY-VALUE, tak sa pri TYPE DEDUCTION robia iba TRIVIAL CONVERSIONS, ktore podporuju TYPE DECAY. To znamena, ze KEYWORD [const] a KEYWORD [volatile] su IGNORED, REFERENCES su CONVERTED na REFERENCED TYPE a RAW ARRAYS, alebo FUNCTIONS su CONVERTED na prislusny POINTER TYPE. V pripade, ze FUNCTION TEMPLATE ma viac PARAMETERS rovnakeho TYPE PARAMETER, tieto PARAMETERS po TYPE DECAY musia mat ROVNAKY TYPE.
+12. V pripade, ze TYPE DEDUCTION nedokaze identifikovat spravny TYPE, je mozne vykona niektory z nasledujucich krokov.
+   A. Vykonat EXPLICIT TYPE CONVERSION PARAMETERS FUNCTION TEMPLATE.
+   B. Explicitne definovat TYPE pomocou SYNTAX [<PARAMETER_1,PARAMETER_2,...,PARAMETER_N>], kde VALUE 'PARAMETER_X' je konkretna VALUE TEMPLATE PARAMETER.
+   C. Ak FUNCTION ma viac nez 1 FUNCTION TEMPLATE PARAMETER, ktore maju rozdielny TYPE, tak definovaju FUNCTION TEMPLATE s rozlicnymi TYPE PARAMETERS pre jednotlive FUNCTION TEMPLATE PARAMETERS. Napriklad [template<typename TType1, typename TType2> T1 Max(TType1 A, TType2 B)].
+!!! 13. TYPE DEDUCTION TYPES FUNCTION TEMPLATE PARAMETERS NEFUNGUJE pre DEFAULT ARGUMENTS. Je vsak mozne pouzit DEFAULT TYPE pre FUNCTION TEMPLATE PARAMETERS.
+14. FUNCTION TEMPLATE ma 2 typy PARAMETERS.
+   A. TEMPLATE PARAMETERS. TEMPLATE PARAMETERS su definovane pomocou SYNTAX [template <PARAMETER_1,PARAMETER_2,...,PARAMETER_N>], kde VALUE 'PARAMETER_X' je definicia TEMPLATE PARAMETER.
+   B. CALL PARAMETERS. CALL PARAMETERS su PARAMATERS TEMPLATE FUNCTION definovane pomocou SYNTAX [RETURN_TYPE FUNCTION_NAME(PARAMETER_1_TYPE Parameter1, PARAMETER_2_TYPE Parameter2,..., PARAMETER_N_TYPE ParameterN)], kde VALUE 'FUNCTION_NAME' je NAME FUNCTION TEMPLATE, VALUE 'PARAMETER_N_TYPE' je definicia TYPE CALL PARAMETER a VALUE 'RETURN_TYPE' je RETURN TYPE FUNCTION TEMPLATE.
+15. FUNCTION TEMPLATE moze mat lubovolny pocet TEMPLATE PARAMETERS i CALL PARAMETERS.
+!!!!! 16. TYPE DEDUCTION vo FUNCTION TEMPLATE sa NEVYKONAVA pre RETURN TYPE. RETURN TYPE je pri TYPE DEDUCTION IGNOROVANY.
+!!! 17. Ak ma FUNCTION TEMPLATE viacero TEMPLATE PARAMETERS, tak explicitne je nutne specifikovat vsetky TEMPLATE PARAMETERS az po posledny TEMPLATE PARAMETER, ktory nemoze byt DEDUCED z CALL PARAMETERS FUNCTION TEMPLATE. To znamena, ze pre TEMPLATE [template<typename T1, typename RT, typename T2> RT TEMPLATE_NAME(T1 Param1, T1 Param2)] je nutne definovat TEMPLATE PARAMETER 'T1' a TEMPLATE PARAMETER 'RT', ale NIE TEMPLATE PARAMETER 'T2'. Je to preto, lebo TEMPLATE PARAMETER 'RT' je POSLEDNY, ktory NEMOZE byt DEDUCED z CALL PARAMETERS FUNCTION TEMPLATE.
+18. C++ dokaze vykonat RETURN TYPE DEDUCTION vo FUNCTION TEMPLATE. RETURN TYPE DEDUCTION sa lisi od verzie C++.
+   A. V C++ 11 je nutne definovat TRAILING RETURN TYPE pomocou SYNTAX [-> TYPE].
+   B. V C++ 14 umoznuje automaticku RETURN TYPE DEDUCTION bez pouzitia TRAILING RETURN TYPE SYNTAX.
+19. V C++ 11 sa RETURN TYPE DEDUCTION vo FUNCTION TEMPLATE vykonava nasledujucim sposobom.
+   A. Vo FUNCTION TEMPLATE sa namiesto RETURN TYPE pouzije KEYWORD [auto].
+   B. Vo FUNCTION TEMPLATE DECLARATION sa za PARAMETERS pouzije TRAILING RETURN TYPE pomocou SYNTAX [-> TYPE]. TYPE 'TYPE' definuje RETURN VALUE TYPE danej FUNCTION TEMPLATE.
+20. V C++ 14 sa RETURN TYPE DEDUCTION vo FUNCTION TEMPLATE vykonava nasledujucim sposobom.
+   A. Vo FUNCTION TEMPLATE sa namiesto RETURN TYPE pouzije KEYWORD [auto].
+   !!! B. C++ odvodi RETURN VALUE TYPE z deklaracie [return(EXPRESSION)], kde RETURN VALUE TYPE je urceny z TYPE 'EXPRESSION'.
+   !!!! C. Ak FUNCTION TEMPLATE ma viacnasobne pouzitie deklaracie [return(EXPRESSION)], tak vsetky deklaracia MUSIA vratit TEN ISTY TYPE.
+21. C++ STANDARD LIBRARY definuje TYPE TRAIT [template<typename... T> common_type<>], ktory umoznuje najst COMMON TYPE so zadanych TYPES. To je mozne vyuzit pri definovani RETURN VALUE TYPE vo FUNCTION TEMPLATE. C++ 14 definuje HELPER TYPE [using common_type_t=typename common_type<T...>::type].
+22. TEMPLATE FUNCTIONS mozu mat DEFAULT TEMPLATE PARAMETERS. Pre DEFAULT TEMPLATE PARAMETERS platia nasledujuce fakty.
+   A. DEFAULT TEMPLATE PARAMETERS mozu pri definicii svoje VALUE sa odkazovat na predchadzajuce TEMPLATE PARAMETERS, ktore boli definovane pred TEMPLATE PARAMETER, ktoreho DEFAULT TEMPLATE VALUE sa zadava.
+   B. DEFAULT TEMPLATE PARAMETERS mozu byt zadane pre lubovolny TEMPLATE PARAMETER. Neplati teda obmedzenie ako pri FUNCTION PARAMETERS, kde vsetky FUNCTION PARAMETERS s DEFAULT VALUE musia byt definovane ako POSLEDNE.
+   !!! C. C++ pri TYPE DEDUCTION dokaze kombinovat TYPE DEDUCTION s DEFAULT PARAMETERS. Napriklad TEMPLATE [template<typename RT=long, typename T1, typename T2> RT FUNCTION_TEMPLATE_NAME(T1 A, T2 B)] NEPOTREBUJE mat ZADANY ani 1 TEMPLATE PARAMETER, pretoze pre TEMPLATE PARAMETER 'RT' sa pouzije DEFAULT TYPE 'long' a TEMPLATE PARAMETER 'T1' a TEMPLATE PARAMETER 'T2' su DEDUCED z FUNCTION CALL ARGUMENTS.
+23. C++ pri TEMPLATE FUNCTIONS podporuje aj FUNCTION OVERLOADING. Pre FUNCTION OVERLOADING platia nasledujuce fakty.
+   A. C++ umoznuje OVERLOADING NON-TEMPLATE FUNCTIONS a TEMPLATE FUNCTIONS.
+   B. Ak PARAMETERS presne sedia pre niektoru z OVERLOADED NON-TEMPLATE FUNCTION, tak C++ vyberie NON-TEMPLATE FUNCTION.
+   C. Ak PARAMETERS nesedia presne pre niektoru z OVERLOADED NON-TEMPLATE FUNCTION, tak sa vyberie TEMPLATE FUNCTION.
+   D. Ak PARAMETERS presne sedia pre niektoru z OVERLOADED NON-TEMPLATE FUNCTION, ale ma sa volat TEMPLATE FUNCTION, je potrebne volat FUNCTION so SYNTAX [<>]. Tym COMPILER vie, ze ma pouzit TEMPLATE FUNCTION, aj ked TYPES PARAMETERS sedia presne na TEMPLATE FUNCTION.
+   !!! E. Pretoze AUTOMATIC TYPE CONVERSIONS pri TEMPLATE PARAMETER DEDUCTION sa NEAPLIKUJU, ale aplikuju sa pre OVERLOADING NON-TEMPLATE FUNCTIONS, tak NON-TEMPLATE FUNCTION sa moze volat, aj ked ARGUMENT TYPES nesedia presne s PARAMETER TYPES NON-TEMPLATE FUNCTION.
+24. Vo TEMPLATE FUNCTIONS sa PARAMETERS zvyknut prenasat BY-VALUE, a NIE BY-REFERENCE ako je to bezne u NON-TEMPLATE FUNCTIONS. Dovody su nasledujuce.
+   A. SYNTAX je jednoduchsia.
+   B. COMPILERS dokazu vykonat lepsiu OPTIMIZATION.
+   C. Pri pouziti MOVE SEMANTICS nedochadza k vytvaraniu kopii PARAMETERS.
+   D. Niekedy COPY SEMANTICS ani MOVE SEMANTICS nie je potrebna.
+   !!! E. CALLER FUNCTION TEMPLATE moze vzdy zaslat PARAMETERS ako REFERENCES pomocou FUNCTION [template<typename T> constexpr reference_wrapper<T> ref(T& Parameter) noexcept] a FUNCTION [template<typename T> constexpr reference_wrapper<const T> cref(const T& Parameter) noexcept].
+!!! 25. TEMPLATE FUNCTIONS nie je potrebne oznacovat pomocou KEYWORD [inline]. Jedinou vynimkou su SPECIALIZATIONS TEMPLATE FUNCTIONS, pre konkretne TYPES, ktore uz nie su TEMPLATE FUNCTIONS, ale NON-TEMPLATE FUNCTION. Nepouzivanie KEYWORD [inline] je dosledok toho, ze TEMPLATE FUNCTIONS sa spravidla definuju v HEADER FILES a kazda kopia je v osobitnej TRANSLATION UNIT (CPP FILE), takze C++ ich napokon explicitne definuje ako keby boli INLINE.
+26. TEMPLATE FUNCTIONS je mozne oznacit pomocou KEYWORD [constexpr] vdaka comu je ich mozne pouzit tam kde su potrebne COMPILE TIME CONSTANTS, ako napriklad ARRAY SIZE.
+//----------------------------------------------------------------------------------------------------------------------

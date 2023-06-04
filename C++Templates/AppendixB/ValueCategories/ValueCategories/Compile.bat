@@ -1,0 +1,1 @@
+g++-12 -m64 -std=c++2b -Wno-return-local-addr -fconcepts -pthread -fexceptions -pedantic -Wall -Wextra -o Program.exe MyDebug.cpp ValueCategories.cpp CValue.cpp CValueWithConstructors.cpp CValueNoConstructors.cpp
