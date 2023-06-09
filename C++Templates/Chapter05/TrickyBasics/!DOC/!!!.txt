@@ -1,0 +1,104 @@
+//----------------------------------------------------------------------------------------------------------------------
+1. Solution demonstruje pouzitie rozlicne aspekty TEMPLATES v C++.
+!!! 2. C++ vyzaduje, aby v TEMPLATE CODE ak IDENTIFIER, ktory je zavisly na niektorom z TEMPLATE PARAMETERS definuje TYPE bol oznaceny pomocou KEYWORD [typename]. To znamena, ze ak CODE [TType::Iterator] definuje TYPE, tak je nutne pouzit KEYWORD [typename] a CODE ma tvar [typename TType::Iterator].
+3. C++ umoznuje ZERO INITIALIZATION. ZERO INITIALIZATION znamena u PRIMITIVE TYPE nastavene VALUE danej VARIABLE na 0 a v pripade CLASS TYPES volanie DEFAULT CONSTRUCTOR daneho CLASS TYPE. ZERO INITIALIZATION sa realizuje nasledujucimi sposobmi.
+   A. Pre LOCAL VARIABLES je ZERO INITIALIZATION mozne vykonat bud pomocou CODE [TYPE VARIABLE=TYPE()], alebo pomocou CODE [TYPE VARIABLE{}], kde VALUE 'TYPE' je TYPE danej VARIABLE a VALUE 'VARIABLE' je nazov danej VARIABLE.
+   B. Pre FIELDS v CONSTRUCTORS je ZERO INITIALIZATION mozne vykonat bud pomocou CODE [FIELD()], alebo pomocou CODE [FIELD{}], kde VALUE 'FIELD' je nazov NON-STATIC FIELD v CLASS TYPE.
+   C. Pre FIELDS vo FIELD DEFINITION je ZERO INITIALIZATION mozne vykonat bud pomocou CODE [TYPE FIELD=TYPE()], alebo pomocou CODE [FIELD{}], kde VALUE 'TYPE' je TYPE danej VARIABLE a VALUE 'FIELD' je nazov FIELD v CLASS TYPE.
+   D. Pre DEFAULT VALUE PARAMETERS vo FUNCTIONS je ZERO INITIALIZATION mozne vykonat bud pomocou CODE [TYPE VARIABLE=TYPE()], alebo pomocou CODE [TYPE VARIABLE=TYPE{}], kde VALUE 'TYPE' je TYPE daneho FUNCTION PARAMETER a VALUE 'VARIABLE' je nazov daneho FUNCTION PARAMETER.
+!!!!! 4. Pre TEMPLATE CLASSES, ktore maju BASE CLASSES, ktore su zavisle na TEMPLATE PARAMETERS volanie BASE MEMBER v DERIVED CLASS NEZNAMENA, ze sa APLIKUJE SEMANTIKA [this->MEMBER]. To znamena, ze ak napriklad BASE CLASS ma METHOD 'METHOD' a v DERIVED CLASS za pouzije CODE [METHOD()], tak COMPILER HODI ERROR, pretoze nedokaze najst danu METHOD, hoci je definovana v BASE CLASS. Existuju nasledujuce riesenia.
+   A. Explicitne pouzit KEYWORD [this] v CODE [this->METHOD()].
+   B. Pouzit nazov BASE CLASS v CODE [BASE_CLASS<TTYPE>::METHOD()].
+!!!!! 5. C-ARRAYS je mozne prenasat BY-REFERENCES pomocou CODE [ARRAY_TYPE(&ARRAY_NAME)[ARRAY_SIZE]], kde VALUE 'ARRAY_TYPE' je TYPE C-ARRAY ITEMS, VALUE 'ARRAY_NAME' je nazov C-ARRAY a VALUE 'ARRAY_SIZE' je dlzka C-ARRAY.
+6. Pre pouzitie C-ARRAYS v TEMPLATES platia nasledujuce fakty.
+   A. Ak je C-ARRAY zasielany do TEMPLATE BY-REFERENCE, tak sa NEVYKONAVA DECAY. To znamena, ze ak sa napriklad posiela ARGUMENT [L"Timmy"], tak TEMPLATE PARAMETER bude TYPE [const wchar_t[6]], pretoze STRING LITERAL ma 6 CHARACTERS spolu s NULL CHARACTER.
+   B. Ak je C-ARRAY zasielany do TEMPLATE BY-VALUE, tak sa VYKONAVA DECAY. To znamena, ze ak sa napriklad posiela ARGUMENT [L"Timmy"], tak TEMPLATE PARAMETER bude TYPE [const wchar_t*].
+   C. TEMPLATES pre C-ARRAYS znamej dlzky musia mat ako NON-TYPE PARAMETER pocet ITEMS v ARRAY.
+   !!! D. V pripade definovania TEMPLATES je vzhladom na odlisne chovanie C-ARRAYS vhodne definovat TEMPLATE SPECIALIZATIONS pre C-ARRAYS znamej aj neznamej dlzky. C-ARRAYS znamej dlzky maju ako NON-TYPE PARAMETER pocet ITEMS v ARRAY.
+!!! 7. TEMPLATE CLASSES mozu mat definovane METHODS, ktore su same TEMPLATE FUNCTIONS a maju vlastne TEMPLATE PARAMETERS nezavisle na TEMPLATE PARAMETERS TEMPLATE CLASS. Ak je takato METHOD DEFINED mimo BODY TEMPLATE CLASS, tak ma jej PROTYPE je definovany v CODE [template<CLASS_TEMPLATE_PARAMETERS> template<METHOD_TEMPLATE_PARAMETERS> METHOD_PROTOTYPE], kde VALUE 'CLASS_TEMPLATE_PARAMETERS' su TEMPLATE PARAMETERS TEMPLATE CLASS, VALUE 'METHOD_TEMPLATE_PARAMETERS' su TEMPLATE PARAMETERS TEMPLATE METHOD a VALUE 'METHOD_PROTOTYPE' je PROTOTYPE TEMPLATE METHOD.
+!!! 8. TEMPLATE CLASS moze deklarovat ako FRIEND TEMPLATE CLASSES. Platia nasledujuce fakty.
+   A. Ak ma TEMPLATE CLASS mat ako FRIEND inu TEMPLATE CLASS, je nutne pouzit SYNTAX [template<typename> friend class CLASS_NAME], kde VALUE 'CLASS_NAME' je nazov TEMPLATE CLASS.
+   !!!!! B. Pre CODE [template<typename TYPE> friend class CLASS_NAME<TYPE>], hodi COMPILER ERROR. C++ povazuje takuto DECLARATION za DECLARAION TEMPLATE SPECIALIZATION a nie TEMPLATE CLASS s lubovolnym TEMPLATE PARAMETER.
+!!!!! 9. C++ umoznuje definiciu TEMPLATE CLASS METHOD SPECIALIZATIONS. Platia nasledujuce pravidla.
+   A. C++ umoznuje definovat TEMPLATE METHODS pre TEMPLATE CLASS SPECIALIZATIONS.
+   !!! B. C++ umoznuje definovat TEMPLATE METHODS SPECIALIZATIONS pre TEMPLATE CLASS SPECIALIZATIONS.
+   !!!!! C. C++ NEMUMOZNUJE definovat TEMPLATE METHODS SPECIALIZATIONS pre TEMPLATE CLASSES.
+!!! 10. Ak ma CLASS definovane TEMPLATE COPY/MOVE CONSTRUCTORS ci TEMPLATE COPY/MOVE OPERATORS [OPERATOR=], tak aj napriek tomu C++ vytvori DEFAULT COPY/MOVE CONSTRUCTORS a DEFAULT COPY/MOVE OPERATORS [OPERATOR=]. A tieto CONSTRUCTORS a OPERATORS [OPERATOR=] maju PREDNOST pred volanim USER DEFINED TEMPLATE COPY/MOVE CONSTRUCTORS a USER DEFINED TEMPLATE COPY/MOVE OPERATORS [OPERATOR=].
+!!! 11. DEPENDENT NAME je C++ TYPE, alebo EXPRESSION, ktory je zavisly na TYPES TEMPLATE TYPE PARAMETERS a VALUES TEMPLATE NON-TYPE PARAMETERS.
+12. C++ umoznuje pouzit KEYWORD [template] ako TEMPLATE DISAMBIGUATOR na urcenie, ze CODE za tymto KEYWORD ma byt povazovany za TEMPLATE a CHARACTER '<' ma byt povazovany za zaciatok specifikacie TEMPLATE ARGUMENTS. Pre TEMPLATE DISAMBIGUATOR platia nasledujuce fakty.
+   A. TEMPLATE DISAMBIGUATOR je NUTNE pouzit vtedy, ak sa pouziva DEPENDENT NAME, ktory nie je sucastou CURRENT INSTANTIATION. Typickym prikladom je, ak sa v TEMPLATE FUNCTION pre DEPENDENT NAME (EXPRESSION, ktory je zavisly na TEMPLATE PARAMETER) vola TEMPLATE METHOD s explicitnou kvalifikaciou TEMPLATE PARAMETERS. V takom pripade pouzitie CHARACTER '<' bez pouzitia KEYWORD [template] vedie k tomu, ze COMPILER povazuje CHARACTER '<' za OPERATOR [OPERATOR<] a dojde ku COMPILATION ERROR.
+   B. TEMPLATE DISAMBIGUATOR je sa umiestnuje hned za DEPENDENT NAME a este pred dalsim CODE, ktory pouziva CHARACTER '<'.
+   C. TEMPLATE DISAMBIGUATOR moze byt pouzity pomocou SYNTAX [template.], SYNTAX [template->], alebo SYNTAX [::template].
+!!!!! 13. LAMBDA FUNCTIONS su v C++ INTERNE implementovane ako FUNCTION OBJECTS s CONSTRUCTOR, ktore INTERNE generuje COMPILER.
+14. C++ umoznuje definovat GENERIC LAMBDA EXPRESSIONS, ktore mozu mat TEMPLATE PARAMETERS. Pre GENERIC LAMBDA EXPRESSIONS platia nasledujuce fakty.
+   A. GENERIC LAMBDA EXPRESSIONS sa definuju pomocou SYNTAXE [[CAPTURES]<TEMPLATE_PARAMETERS>(FUNCTION_PROTOTYPE) -> RETURN_TYPE {FUNCTION_BODY}], kde VALUE 'CAPTURES' su CAPTURES LAMBDA EXPRESSION, VALUE 'TEMPLATE_PARAMETERS' obsahuje TEMPLATE PARAMETERS LAMBDA EXPRESSION, VALUE 'FUNCTION_PROTOTYPE' je PROTOTYPE LAMBDA EXPRESSION, VALUE 'RETURN_TYPE' je RETURN TYPE LAMBDA EXPRESSION a VALUE 'FUNCTION_BODY' je BODY LAMBDA EXPRESSION.
+   B. GENERIC LAMBDA EXPRESSIONS mozu by aj VARIADIC a obsahovate TEMPLATE PARAMETER PACK.
+   !!! C. Pre GENERIC LAMBDA EXPRESSIONS NIE je mozne EXPLICITNE definovat TEMPLATE ARGUMENTS. Tieto su VZDY dedukovane.
+15. C++ umoznuje definovanie TEMPLATE VARIABLES. Pre TEMPLATE VARIABLES platia nasedujuce fakty.
+   A. TEMPLATE VARIABLES sa definuju pomocou SYNTAX [template<TEMPLATE_PARAMETERS> VARIABLE_TYPE VARIABLE_NAME=VARIABLE_VALUE], kde VALUE 'TEMPLATE_PARAMETERS' su TEMPLATE PARAMETERS TEMPLATE VARIABLE, VALUE 'VARIABLE_NAME' je NAME TEMPLATE VARIABLE a VALUE 'VARIABLE_VALUE' je DEFAULT VALUE TEMPLATE VARIABLE.
+   !!! B. TEMPLATE VARIABLES mozu mat TEMPLATE TYPE PARAMETERS i TEMPLATE NON-TYPE PARAMETERS.
+   !!!!! C. TEMPLATE VARIABLES mozu byt DEFINED IBA na NAMESPACE SCOPE.
+   !!!!! D. Ak je ta ista TEMPLATE VARIABLE pre tie iste TEMPLATE ARGUMENTS pouzivat vo viacerych nezavislych TRANSLATION UNITS, tak referuju na TU ISTU TEMPLATE VARIABLE.
+   E. TEMPLATE VARIABLES mozu mat DEFAULT VALUES pre svoje TEMPLATE PARAMETERS. Ak pre vsetky TEMPLATE PARAMETERS su pouzite DEFAULT VALUES je TEMPLATE VARIABLE pristupna pomocou SYNTAX [VARIABLE_NAME<>], kde VALUE 'VARIABLE_NAME' je NAME TEMPLATE VARIABLE.
+   F. TEMPLATE VARIABLES pouzivaju napriklad TYPE TRAITS, vdaka comu namiesto CODE [is_integral<int>::value] je mozne pouzit CODE [is_integral_v<int>].
+!!! 16. C++ umoznuje, aby ako TEMPLATE PARAMETERS boli pouzite TEMPLATES. Takymto TEMPLATE PARAMETERS sa hovori TEMPLATE TEMPLATE PARAMETERS a platia pre nich nasledujuce fakty.
+   A. TEMPLATE TEMPLATE PARAMETERS su TEMPLATE PARAMETERS, ktoru su same TEMPLATES. Typickym prikladom je TEMPLATE PARAMETER typu COLLECTION, ktora je sama TEMPLATE.
+   !!! B. TEMPLATE TEMPLATE PARAMETERS mozu byt iba TEMPLATE CLASSES a TEMPLATE ALIASES, ale NIE TEMPLATE FUNCTIONS a TEMPLATE VARIABLES.
+   !!! C. Na definovanie TEMPLATE TEMPLATE PARAMETER sa pouziva SYNTAX [template<TEMPLATE_PARAMETERS> typename TEMPLATE_NAME], kde VALUE 'TEMPLATE_PARAMETERS' obsahuje TEMPLATE PARAMETERS daneho TEMPLATE TEMPLATE PARAMETER a VALUE 'TEMPLATE_NAME' predstavuje nazov TEMPLATE daneho TEMPLATE TEMPLATE PARAMETER.
+   !!!!! D. Kedze v SYNTAX [template<TEMPLATE_PARAMETERS> typename TEMPLATE_NAME] sa VALUE 'TEMPLATE_PARAMETERS' NIKDY NEPOUZIVA, tak moze byt vynechana a moze sa pouzit SYNTAX [template<typename> typename TEMPLATE_NAME].
+   !!! E. Ak ma TEMPLATE TEMPLATE PARAMETER DEFAULT VALUE, tak tato DEFAULT VALUE je TEMPLATE CLASS BEZ definovanych TEMPLATE PARAMETERS.
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+TEMPLATE METHOD SPECIALIZATIONS.
+
+1. Je definovana TEMPLATE CLASS.
+
+template<typename TType>
+class CTemplateMethodsSpecializations final
+{
+//----------------------------------------------------------------------------------------------------------------------
+	public:
+		template<class TMethodType>
+		void TemplateMethod(TType Value1, TMethodType Value2);
+//----------------------------------------------------------------------------------------------------------------------
+};
+
+2. Nasledujuci CODE obsahuje DEFINITION TEMPLATE METHOD pre TEMPLATE CLASS bez vykonania akejkolvek SPECIALIZATION.
+
+template<typename TType>
+template<class TMethodType>
+void CTemplateMethodsSpecializations<TType>::TemplateMethod(TType Value1, TMethodType Value2)
+{
+	std::wcout << L"222 - TEMPLATE METHOD [void TemplateMethod(TType Value1, TMethodType Value2)] is CALLED ! VALUE 1 [" << Value1 << L"] VALUE 2 [" << Value2 << L"] !" << std::endl;
+}
+
+!!! 3. C++ umoznuje definovat TEMPLATE METHODS pre TEMPLATE CLASS SPECIALIZATIONS.
+
+template<>
+template<class TMethodType>
+void CTemplateMethodsSpecializations<double>::TemplateMethod(double Value1, TMethodType Value2)
+{
+	std::wcout << L"444 - TEMPLATE CLASS SPECIALIZATION METHOD [void TemplateMethod(double Value1, TMethodType Value2)] is CALLED ! VALUE 1 [" << Value1 << L"] VALUE 2 [" << Value2 << L"] !" << std::endl;
+}
+
+!!! 4. C++ umoznuje definovat TEMPLATE METHOD SPECIALIZATIONS  pre TEMPLATE CLASS SPECIALIZATIONS.
+
+template<>
+template<>
+void CTemplateMethodsSpecializations<double>::TemplateMethod<long>(double Value1, long Value2)
+{
+	std::wcout << L"555 - TEMPLATE CLASS SPECIALIZATION METHOD SPECIALIZATION [void TemplateMethod<long>(double Value1, long Value2)] is CALLED ! VALUE 1 [" << Value1 << L"] VALUE 2 [" << Value2 << L"] !" << std::endl;
+}
+
+!!!!! 5. C++ vsak NEUMOZNUJE TEMPLATE METHOD SPECIALIZATIONS  pre TEMPLATE CLASSES. Preto pre nasledujuci CODE hodi COMPILER ERROR.
+
+// !!!!! COMPILER hodi ERROR.
+// !!!!! Pre TEMPLATE CLASSES, NIE JE mozne definovat TEMPLATE METHOD SPECIALIZATIONS. IBA pre TEMPLATE CLASSES SPECIALIZATIONS je mozne definovat TEMPLATE METHOD SPECIALIZATIONS.
+template<typename TType>
+template<>
+void CTemplateMethodsSpecializations<TType>::TemplateMethod<long double>(TType Value1, long double Value2)
+{
+	std::wcout << L"666 - TEMPLATE CLASS METHOD SPECIALIZATION [void TemplateMethod<long double>(TType Value1, long double Value2)] is CALLED ! VALUE 1 [" << Value1 << L"] VALUE 2 [" << Value2 << L"] !" << std::endl;
+}
+//----------------------------------------------------------------------------------------------------------------------
