@@ -1,0 +1,40 @@
+//----------------------------------------------------------------------------------------------------------------------
+1. Solution demonstruje MOVE SEMANTICS a pouzitie TYPE TRAIT [enable_if<>] v C++.
+2. MOVE OPERATION umoznuje namiesto kopirovanie internych dat daneho OBJECT presunut interne data z jedneho OBJECT do druheho. Povodny OBJECT je po vykonani MOVE OPERATION povazovany za neplatny s okrem volania jeho DESTRUCTOR by sa nad nim nemala vykonat ziadna ina OPERATION.
+3. MOVE SEMANTICS sa aplikuje na RVALUE REFERENCES [TYPE&&].
+!!!!! 4. RVALUE REFERENCES [TYPE&&] NIE su AUTOMATICKY preposielane do volanej FUNCTION, ale je VZDY NUTNE explicitne volat FUNCTION [move()]. To znamena, ze aj ked VARIABLE ma TYPE [TYPE&&] a je zaslana ako ARGUMENT do FUNCTIONS, ktora ocakava TYPE [TYPE&&], tak bez pouzitia FUNCTION [move()] COMPILER hodi ERROR, pretoze akekolvek pouzitie VARIABLE TYPE [TYPE&&] bez pouzitia FUNCTION [move()] je povazovane za pouzitie LVALUE REFERENCE, a NIE RVALUE REFERENCE. Dovod pre ktory C++ nezachovava RVALUE REFERENCE bez explicitneho pouzitia FUNCTION [move()] je taky, ze ak by to spravila, tak kazde pouzitie VARIABLE TYPE [TYPE&&] by viedlo k aplikovaniu MOVE SEMANTICS a tym aj jej DESTRUKCII po ktorej by sa uz dal volat iba DESTRUCTOR. Vynutenie pouzitia FUNCTION [move()] znamena, ze CODE musi EXPLICITNE urcit pri ktorom pouziti VARIABLE TYPE [TYPE&&] dojde k aplikovaniu MOVE SEMANTICS a tym padom aj k destrukcii jej VALUE.
+5. PERFECT FORWARDING je technika, ktora umoznuje posielanie OBJECT ARGUMENTS do FUNCTIONS bez toho, aby bolo nutne kopirovanie tychto OBJECTS. Pre PERFECT FORWARDING platia nasledujuce pravidla.
+   A. MODIFYABLE OBJECTS musia byt prenasane tak, aby boli aj nadalej MODIFYABLE.
+   B. CONSTANT OBJECTS musia byt prenasane tak, aby boli aj nadalej CONSTANT.
+   C. MOVABLE OBJECTS musia byt prenasane tak, aby boli aj nadalej MOVABLE.
+6. PERFECT FORWARDING je v C++ mozne vykonat nasledujucimi sposobmi.
+   A. Bez pouzitia TEMPLATES.
+   B. S pouzitim TEMPLATES.
+7. Vykonanie PERFECT FORWARDING BEZ pouzitia TEMPLATES vyzaduje vykonanie nasledujucich krokov.
+   A. Implementuje sa FORWARDER FUNCTION pre PARAMETER TYPE [TYPE&], ktora vykonava PERFECT FORWARDING volanim koncovej FUNCTION, ktora ma PARAMETER TYPE [TYPE&].
+   B. Implementuje sa FORWARDER FUNCTION pre PARAMETER TYPE [const TYPE&], ktora vykonava PERFECT FORWARDING volanim koncovej FUNCTION, ktora ma PARAMETER TYPE [const TYPE&].
+   !!! C. Implementuje sa FORWARDER FUNCTION pre PARAMETER TYPE [TYPE&&], ktora vykonava PERFECT FORWARDING volanim koncovej FUNCTION, ktora ma PARAMETER TYPE [TYPE&&]. Pri zasielani PARAMETER do koncovej FUNCTION je NUTNE pouzit METHOD [move()], aby ta konvertovala LVALUE REFERENCE [TYPE&] na RVALUE REFERENCE [TYPE&&], ktoru ocakava koncova FUNCTION. Bez pouzitia FUNCTION [move()] by sa volala koncova FUNCTION s PARAMETER TYPE [TYPE&].
+   !!!!! D. Ak sa NEPOUZIVAJU TEMPLATES, tak PERFECT FORWARDING je mozne implementovat iba tak, ze sa implementuju 3 FORWARDER FUNCTIONS.
+8. Vykonanie PERFECT FORWARDING S pouzitim TEMPLATES vyzaduje vykonanie nasledujucich krokov.
+   A. IMPLEMENTUJE sa FORWARDER FUNCTION ako TEMPLATE FUNCTION.
+   B. FORWARDER FUNCTION ma PARAMETER TYPE [TTYPE&&].
+   C. FORWARDER FUNCTION pri volani koncovej FUNCTION pouzije HELPER FUNCTION [forward<TYPE>()], ktora zabezpeci vykonanie PERFECT FORWARDING.
+   !!!!! D. Ak sa pouzivaju TEMPLATES, tak PERFECT FORWARDING je mozne implementovat IBA pomocou implementacie 1 FORWARDER FUNCTION, ktora je TEMPLATE FUNCTION.
+!!!!! 9. Dovod pre ktory je mozne implmentovat PERFECT FORWARDING iba s pouzitim 1 TEMPLATE FORWARDER FUNCTION je v tom, ze C++ pouziva ine RULES pre NON-TEMPLATE RVALUE PARAMETERS [TYPE&&] a pre TEMPLATE RVALUE PARAMETERS [TType&&].
+!!!!! 10. C++ pre NON-TEMPLATE RVALUE PARAMETERS TYPE [TYPE&&] aplikuje nasledujuce RULES.
+   A. NON-TEMPLATE PARAMETER TYPE [TYPE&&] je RVALUE REFERENCE.
+   !!! B. NON-TEMPLATE PARAMETER TYPE [TYPE&&] moze byt BOUND iba na PRVALUE, alebo XVALUE (ak sa pouzije FUNCTION [move()]).
+   C. NON TEMPLATE PARAMETER TYPE [TYPE&&] je VZDY MUTABLE a je mozne pren spravit PERFECT FORWARDING.
+!!!!! 11. C++ pre TEMPLATE RVALUE PARAMETERS TYPE [TType&&] aplikuje nasledujuce RULES.
+   !!! A. TEMPLATE RVALUE PARAMETERS TYPE [TType&&] je FORWARD REFERENCE.
+   !!!!! B. TEMPLATE RVALUE PARAMETERS TYPE [TType&&] ako FORWARD REFERENCE moze byt BOUND na MUTABLE OBJECT [TYPE&], IMUTABLE OBJECT [const TYPE&] aj MOVABLE OBJECT [TYPE&&].
+   !!! C. Vo vnutri FUNCTION TEMPLATE RVALUE PARAMETERS TYPE [TType&&] sa moze chovat ako MUTABLE OBJECT [TYPE&], IMUTABLE OBJECT [const TYPE&] a MOVABLE OBJECT [TYPE&&].
+   !!! D. Vo vnutri FUNCTION TEMPLATE TYPES, ktore su len zavisle na TEMPLATE PARAMETER a nie su samotnym TEMPLATE PARAMETER (napriklad TYPE [TType::TYPE]) NIE SU FORWARD REFERENCES, ale iba RVALUE REFERENCES a tym padom NEMOZU byt FORWARDED.
+!!! 12. PERFECT FORWARDING S pouzitim TEMPLATES nemusi fungovat korektne pre TEMPLATE CONSTRUCTOR. Ak ma CLASS definovany TEMPLATE FORWARD CONSTRUCTOR, a zaroven aj NON-TEMPLATE COPY CONSTRUCTOR a NON-TEMPLATE MOVE CONSTRUCTOR, tak CODE volajuci NON-TEMPLATE COPY CONSTRUCTOR v skutocnosti zavola TEMPLATE CONSTRUCTOR. Je to kvoli OVERLOADING RULES.
+13. C++ definuje TYPE TRAIT [enable_if<>], ktory umoznuje ignorovate TEMPLATE FUNCTIONS, ak nie je splnena definovana CONDITION. TYPE TRAIT [enable_if<>] funguje nasledujucim sposobom.
+   A. TYPE TRAIT [enable_if<>] ma 2 TEMPLATE PARAMETERS. Povinny NON-TYPE TEMPLATE PARAMETER TYPE [bool], ktory definuje CONDITION a nepovinny TYPE TEMPLATE PARAMETER, ktory je BY DEFAULT nastaveny na TYPE [void].
+   !!! B. Ak CONDITION v 1. TEMPLATE PARAMETER vracia VALUE [true], tak TYPE TRAIT [enable_if<>] definuje MEMBER TYPE [enable_if<>::type], ktory vracia TYPE 2. TEMPLATE PARAMETER.
+   !!!!! C. Ak CONDITION v 1. TEMPLATE PARAMETER vracia VALUE [false], tak TYPE TRAIT [enable_if<>] NEOBSAHUJE MEMBER TYPE [enable_if<>::type]. Pokial sa nan TEMPLATE CODE referuje, tak dojde k ERROR a dana TEMPLATE FUNCTION je vyradena z CANDIDATE SET vsetkych FUNCTIONS, ktore mozu byt volane. Tym padom po nesplneni CONDITION je TEMPLATE FUNCTION na ktory je TYPE TRAIT [enable_if<>] aplikovany IGNOROVANY.
+!!! 14. V C++ TEMPLATE COPY/MOVE CONSTRUCTORS a TEMPLATE OPERATOR [COPY/MOVE OPERATOR=] NIKDY nenahradzuju DEFAULT COPY/MOVE CONSTRUCTORS a DEFAULT OPERATOR [COPY/MOVE OPERATOR=]. Ak CLASS definuje TEMPLATE COPY/MOVE CONSTRUCTORS a TEMPLATE OPERATOR [COPY/MOVE OPERATOR=] a zavola tieto METHODS, v skutocnosti sa VZDY volaju DEFAULT COPY/MOVE CONSTRUCTORS a DEFAULT OPERATOR [COPY/MOVE OPERATOR=].
+!!! 15. Na vylucenie TEMPLATE FUNCTION z CANDIDATE SET je mozne namiesto pouzitia TYPE TRAIT [enable_if<>] pouzit CONCEPT. Ak CONCEPT aplikovany na TEMPLATE FUNCTION nie je splneny, tak TEMPLATE FUNCTION NIE JE zaradena do CANDIDATE SET.
+//----------------------------------------------------------------------------------------------------------------------

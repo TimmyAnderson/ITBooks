@@ -1,0 +1,1 @@
+g++-12 -m64 -std=c++2b -fconcepts -pthread -fexceptions -pedantic -Wall -Wextra -o Program.exe MyDebug.cpp OneDefinitionRule.cpp COneDefinitionRule.cpp CTranslationUnit1.cpp CTranslationUnit2.cpp CNonPolymorphicType.cpp CPolymorphicType.cpp CSingleTranslationUnit.cpp CCrossTranslationUnitEquivalence1.cpp CCrossTranslationUnitEquivalence2.cpp CCrossTranslationUnitEquivalence.cpp

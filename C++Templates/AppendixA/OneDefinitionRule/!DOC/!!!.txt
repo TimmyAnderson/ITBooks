@@ -1,0 +1,56 @@
+//----------------------------------------------------------------------------------------------------------------------
+1. Solution demonstruje ONE DEFINITION RULE v C++.
+2. ONE DEFINITION RULE znamena, ze NON-INLINE FUNCTIONS a OBJECTS mozu byt definovane iba RAZ v celom PROGRAME napriec vsetkymi FILES. Definicia CLASSES, INLINE FUNCTIONS a INLINE VARIABLES moze sa moze nachadzat iba RAZ v KAZDOM TRANSLATION UNIT.
+3. TRANSLATION UNIT je vysledok aplikacie C++ PREPROCESSOR na FILE, ktory je vstupom do COMPILER. C++ PREPROCESSOR vykonava nasledujuce cinnosti pri vytvarani TRANSLATION UNITS.
+   A. Vyhodi tie casti CODE, ktore nesplnaju CONDITIONS pre PREPROCESSOR KEYWORDS ako KEYWORD [#if], KEYWORD [#ifdef], KEYWORD [#ifndef] ci KEYWORD [#else].
+   B. Vyhodi COMMENTS.
+   C. Rekurzivne vlozi obsah inych FILES pomocou PREPROCESSOR KEYWORD [#include].
+   D. Expanduje MACROS.
+4. Prepojenie medzi TRANSLATION UNIT BOUNDARIES je realizovane pomocou DECLARATIONS s EXTERNAL LINKAGE, ktore su vlozene do vsetkych TRANSLATION UNITS v ktorych sa dane DECLARATIONS pouzivaju.
+5. C++ rozlisuje medzi DECLARATIONS a DEFINITIONS.
+   A. DELARATION v C++ znamena deklaraciu, alebo redeklaraciu NAME daneho C++ CONSTRUCT.
+   B. DEFINITION v C++ znamena definiciu BODY daneho C++ CONSTRUCT.
+6. Vyznam DECLARATIONS a DEFINITIONS zavisi od C++ CONSTRUCT pre ktory je vytvoreny.
+   A. NAMESPACES a NAMESPACES ALIASES. DECLARATION NAMESPACES a NAMESPACES ALIASES je VZDY zaroven aj ich DEFINITION. DEFINITION NAMESPACES sa moze nachadzat aj vo viacerych TRANSLATION UNITS.
+   B. CLASSES, CLASS TEMPLATES, FUNCTIONS, FUNCTION TEMPLATES, METHODS, METHOD TEMPLATES, OPERATORS, TEMPLATE OPERATORS, OPERATOR METHODS a TEMPLATE OPERATOR METHODS. DECLARATION je zaroven aj DEFINITION ak obsahuje ich BODY uzatvorene v zlozenych zatvorkach [{}].
+   C. ENUMERATION. DECLARATION je zaroven aj DEFINITION ak obsahuje BODY uzatvorene v zlozenych zatvorkach [{}].
+   D. LOCAL VARIABLES a NON-STATIC FIELDS. DECLARATIONS su zaroven aj DEFINITIONS.
+   E. FUNCTION a METHOD PARAMETERS. DECLARATIONS FUNCTIONS a METHODS obsahuju DECLARATIONS PARAMETERS. DEFINITIONS FUNCTIONS a METHODS obsahuju DEFINITIONS PARAMETERS.
+   F. GLOBAL VARIABLES. Ak pred GLOBAL VARIABLE je pouzity KEYWORD [extern] a zaroven GLOBAL VARIABLE NEMA aplikovany INITIALIZER, tak sa jedna o DECLARATION. Ak pred GLOBAL VARIABLE nie je pouzity KEYEWORD [extern], alebo je aplikovany INITIALIZER, jedna sa o DEFINITION.
+   G. STATIC FIELDS. DECLARATION je DEFINITION iba ak sa nachadza mimo DEFINITION svojej CLASS ci CLASS TEMPLATE, alebo je sa nachadza vo svojej CLASS ci CLASS TEMPLATE a zaroven je oznacena pomocou KEYWORD [inline], alebo KEYWORD [constexpr].
+   H. EXPLICIT a PARTIAL SPECIALIZATIONS. DECLARATION je zaroven aj DEFINITION, ak CODE [template<>], alebo CODE [template<...>] je sam DEFINITION. Vynimkou su EXPLICIT SPECIALIZATIONS STATIC DATA FIELDS, alebo STATIC DATA FIELD TEMPLATES, ktore su DEFINITIONS iba ak zaroven obsahuju aj INITIALIZERS.
+   I. TYPE ALIASES a TEMPLATE PARAMETERS. TYPE ALIASES pomocou KEYWORD [typedef], alebo KEYWORD [using] a TEMPLATE PARAMETERS su VZDY iba DECLARATIONS a NIKDY NIE DEFINITIONS.
+7. ONE DEFINITION RULE definuje nasledujuce ONE PER PROGRAM CONSTRAINTS.
+   A. NON-INLINE FUNCTION a NON-INLINE METHODS, vratane TEMPLATE FUNCTIONS, TEMPLATE METHODS a ich SPECIALIZATIONS mozu mat iba 1 DEFINITION v celom PROGRAME.
+   B. NON-INLINE VARIABLES, ktore su v GLOBAL a NAMESPACE SCOPE a nemaju aplikovany KEYWORD [static] mozu mat iba 1 DEFINITION v celom PROGRAME.
+   C. NON-INLINE STATIC DATA FIELDS mozu mat iba 1 DEFINITION v celom PROGRAME.
+   !!! D. STATIC VARIABLES s INTERNAL LINKAGE (aplikovany KEYWORD [static]) sa s tym ISTYM NAME mozu nachadzat aj vo VIACERYCH TRANSLATIONS UNITS, pretoze su navzajom NEZAVISLE.
+   !!! E. C++ ELEMENTS DECLARED v UNNAMED NAMESPACE su povazovane za NEZAVISLA, ak su DECLARED vo VIACERYCH TRANSLATIONS UNITS. Je to preto, lebo DEFAULT LINKAGE pre tieto ELEMENTS je INTERNAL LINKAGE.
+!!!!! 8. ONE DEFINITION RULE aplikuje ONE PER PROGRAM CONSTRAINTS IBA ak referovana ENTITA je realne POUZIVA v CODE.
+   A. Pouzitie znamena referovanie sa na danu ENTITY v CODE, ktoru sposobi generovanie CODE danej ENTITY. Prikladom je pristup k VARIABLE, volanie FUNCTION, alebo ziskanie ADDRESS danej ENTITY.
+   B. Pouzitie moze byt aj IMPLICITNE. Napriklad sa sa volna OPERATOR [OPERATOR NEW], tak sa IMPLICITNE CODE referuje aj na [OPERATOR DELETE], ktory sa vola ak CONSTRUCTOR hodi EXCEPTION.
+   C. VIRTUAL METHODS pokial nejde o PURE VIRTUAL METHODS su pouzivane IMPLICITNE internymi strukturami C++.
+   !!! D. ELEMETNS, ktore su v TEMPLATES, ktore NIE su referovane sa nepovazuju za pouzite ELEMENTS.
+   !!! E. ELEMENTS v nepouzitych BRANCHES CODE [if constexpr] sa nepovazuju za pouzite ELEMENTS.
+   !!! F. Pri pouziti OPERATOR [OPERATOR sizeof()] pouzitie ELEMENT v tomto OPERATOR NIE JE povazovane za POUZITIE daneho ELEMENT.
+   !!! G. Pri pouziti OPERATOR [OPERATOR typeide()] pouzitie ELEMENT v tomto OPERATOR JE povazovane za POUZITIE daneho ELEMENT IBA ak ELEMENT reprezentuje POLYMORPHIC OBJECT. Ak ELEMENT nie je POLYMORPHIC OBJECT, tak pouzitie ELEMENT v OPERATOR [OPERATOR typeide()] nie je povazovane za jeho pouzitie.
+8. ONE DEFINITION RULE definuje nasledujuce ONE PER TRANSLATION UNIT CONSTRAINTS.
+   A. Ziadna ENTITY NESMIE byt v 1 TRANSLATION UNIT DEFINED VIACKRAT.
+   B. CLASSES (TEMPLATE CLASSES) MUSIA byt DEFINED predtym nez su pouzite.
+   C. FUNCTIONS, INLINE FUNCTIONS i TEMPLATE FUNCTIONS mozu byt pouzite predtym, nez su DEFINED. Na ich pouzitie staci, aby boli DECLARED.
+   !!! D. INLINE FUNCTIONS MUSIA byt DEFINED v KAZDOM TRANSLATION UNIT v ktorom su pouzite.
+9. Ak dochadza k pouzitiu danej CLASS, CLASS MUSI byt DEFINED. K pouzitiu CLASS NEDOCHADZA ak sa na CLASS DEFINUJE iba POINTER. Pouzitie CLASS nastava v nasledujucich pripadoch.
+   A. Vytvorenie instancie danej CLASS.
+   B. Deklaracia DATA MEMBER, ktory ma TYPE danej CLASS.
+   C. Aplikovanie OPERATOR [OPERATOR sizeof()], alebo OPERATOR [OPERATOR typeid()] na OBJECT danej CLASS.
+   D. Implicitny, alebo explicitny pristup k lubovolnemu MEMBER danej CLASS.
+   E. CONVERSION EXPRESSION z alebo na TYPE danej CLASS.
+   F. Priradenie instancie do OBJECT danej CLASS.
+   G. Volanie FUNCTION, ktora ma PARAMETER TYPE, alebo RETURN VALUE TYPE danej CLASS. Iba samotna DECLARATION takejto FUNCTION vsak nie je povazovane za pouzitie dannej CLASS.
+10. ONE DEFINITION RULE definuje nasledujuce CROSS TRANSLATION UNIT EQUIVALENCE CONSTRAINTS.
+   A. ELEMENTS, ktore mozu byt DEFINED vo viacerych TRANSLATION UNITS MUSIA byt IDENTICKE. Pod identickym sa mysli, ze musia realizovat presne ten isty CODE.
+   B. Ak tie iste ELEMENTS DEFINED vo viacerych TRANSLATION UNITS su ROZDIELNE, COMPILER nie je povinny hodit COMPILATION ERROR a chovanie takeho PROGRAMU je UNDEFINED.
+   !!! C. DEFAULT ARGUMENTS v DECLARATIONS musia byt IDENTICKE vo vsetkych TRANSLATION UNITS.
+   !!! D. Z RULE, ze tie iste TOKENS musia referovat na tu istu ENTITY existuje EXCEPTION. Ak identicke TOKENS sa odkazuju na ROZLICNE CONSTANTS, ktore vsak maju taku istu VALUE a nepouziva sa ich ADDRESS su povazovane za ekvivalentne a nedochadza k poruseniu tohto RULE.
+   E. Pri TEMPLATES NON-DEPENDENT NAMES musia byt DEFINED v case ked je TEMPLATE DEFINED a tym padom sa aj CROSS TRANSLATION UNIT EQUIVALENCE CONSTRAINTS aplikuju pri TEMPLATE DEFINITION. DEPENDENT NAMES (zavisle na TEMPLATE PARAMETERS) musia byt DEFINED az v case vytvarania instancie danej TEMPLATE, a preto CROSS TRANSLATION UNIT EQUIVALENCE CONSTRAINTS sa aplikuje v case vytvarania instancie TEMPLATE.
+//----------------------------------------------------------------------------------------------------------------------
