@@ -93,13 +93,33 @@ wstring ConvertStringToWideString(const string& Value)
 	return(Result);
 }
 //----------------------------------------------------------------------------------------------------------------------
-wstring GetTypeInfoName(const type_info& Value)
+wstring AddModifiers(const wstring& TypeName, bool IsConst, bool IsVolatile)
+{
+	wstring														FullTypeName;
+
+	if (IsConst==true)
+	{
+		FullTypeName+=L"const ";
+	}
+
+	if (IsVolatile==true)
+	{
+		FullTypeName+=L"volatile ";
+	}
+
+	FullTypeName+=TypeName;
+
+	return(FullTypeName);
+}
+//----------------------------------------------------------------------------------------------------------------------
+wstring GetTypeInfoName(const type_info& Value, bool IsConst, bool IsVolatile)
 {
 #ifdef _MSC_VER
 	string														TypeName(Value.name());
 	wstring														WideTypeName=ConvertStringToWideString(TypeName);
+	wstring														FullTypeName=AddModifiers(WideTypeName,IsConst,IsVolatile);
 
-	return(WideTypeName);
+	return(FullTypeName);
 #else
 	int															Status=0;
 	char*														Name=abi::__cxa_demangle(Value.name(),0,0,&Status);
@@ -114,7 +134,9 @@ wstring GetTypeInfoName(const type_info& Value)
 			free(Name);
 			Name=nullptr;
 
-			return(WideTypeName);
+			wstring												FullTypeName=AddModifiers(WideTypeName,IsConst,IsVolatile);
+
+			return(FullTypeName);
 		}
 		catch(...)
 		{
@@ -123,16 +145,18 @@ wstring GetTypeInfoName(const type_info& Value)
 
 			string												TypeName(Value.name());
 			wstring												WideTypeName=ConvertStringToWideString(TypeName);
+			wstring												FullTypeName=AddModifiers(WideTypeName,IsConst,IsVolatile);
 
-			return(WideTypeName);
+			return(FullTypeName);
 		}
 	}
 	else
 	{
 		string													TypeName(Value.name());
 		wstring													WideTypeName=ConvertStringToWideString(TypeName);
+		wstring													FullTypeName=AddModifiers(WideTypeName,IsConst,IsVolatile);
 
-		return(WideTypeName);
+		return(FullTypeName);
 	}
 #endif
 }

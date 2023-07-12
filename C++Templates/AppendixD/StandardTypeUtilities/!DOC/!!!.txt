@@ -1,0 +1,227 @@
+//----------------------------------------------------------------------------------------------------------------------
+1. Solution demonstruje pouzitie TYPE TRAITS v C++.
+2. C++ STANDARD LIBRARY definuje TYPE TRAITS v LIBRARY [<type_traits>].
+3. Niektore TYPE TRAITS su implementovane za podpory COMPILER, a nie je ich mozne implementovat iba pomocou C++.
+4. TYPE TRAITS je mozne rozdelit do nasledujucich kategorii.
+   A. TYPE TRAITS vracajuce TYPE.
+   B. TYPE TRAITS vracajuce VALUE.
+5. TYPE TRAITS vracajuce TYPE mozu vracat kalkulovany TYPE nasledujucimi sposobmi.
+   A. CODE [TYPE_TRAIT<TEMPLATE_PARAMETERS>::type], vracia pomocou USING [type] kalkulovany TYPE.
+   B. CODE [TYPE_TRAIT_t<TEMPLATE_PARAMETERS>], priamo vracia kalkulovany TYPE.
+6. TYPE TRAITS vracajuce VALUE mozu vracat kalkulovanu VALUE nasledujucimi sposobmi.
+   A. CODE [TYPE_TRAIT<TEMPLATE_PARAMETERS>::value], vracia pomocou STATIC FIELD [value] kalkulovanu VALUE.
+   B. CODE [TYPE_TRAIT_v<TEMPLATE_PARAMETERS>], priamo vracia kalkulovanu VALUE.
+   C. CODE [TYPE_TRAIT<TEMPLATE_PARAMETERS>{}] pomocou CONVERSION [OPERATOR bool()] vracia kalkulovanu VALUE.
+   D. CODE [TYPE_TRAIT<TEMPLATE_PARAMETERS>()] pomocou OPERATOR [OPERATOR()] vracia kalkulovanu VALUE.
+7. Vsetky C++ STANDARD LIBRARY TYPE TRAITS, ktore vracaju VALUE su DERIVED zo STRUCT [template<typename TType, TType VALUE> integral_constant]. STRUCT [template<typename TType, TType Value> integral_constant] ma nasledujuce MEMBERS.
+   A. STATIC CONSTEXPR FIELD [TType value] obsahuje VALUE danho TYPE TRAIT.
+   B. USING [value_type] obsahuje TYPE danho TYPE TRAIT. Vo vacsine TYPE TRAITS, ktore vracaju VALUE je to TYPE [bool].
+   C. USING [type] TYPE samotneho TYPE TRAIT, ktore je nastaveny na TYPE [integral_constant<TType,VALUE>].
+   D. CONSTEXPR CONVERSION OPERATOR [constexpr operator value_type() const noexcept] vracia VALUE danho TYPE TRAIT.
+   E. CONSTEXPR OPERATOR [constexpr value_type operator()() const noexcept] vracia VALUE danho TYPE TRAIT.
+8. Pre TYPE [bool] definuje C++ STANDARD LIBRARY nasledujuce USINGS.
+   A. USING [template<bool VALUE> using bool_constant=integral_constant<bool,VALUE>].
+   B. USING [using true_type=bool_constant<true>].
+   C. USING [using false_type=bool_constant<false>].
+!!! 9. C++ STANDARD LIBRARIES TYPE TRAITS vracajuce VALUE TYPE [bool] su implementovane nasledovne.
+   A. Ak TYPE TRAITS vracajuce VALUE TYPE [bool] vracaju VALUE [true], tak su DERIVED z TYPE [true_type].
+   B. Ak TYPE TRAITS vracajuce VALUE TYPE [bool] vracaju VALUE [false], tak su DERIVED z TYPE [false_type].
+10. Pre TYPE TRAIT [is_void<TType>] platia nasledujuce fakty.
+   A. USING [is_void<TType>::value] vracia VALUE [true], ake je TYPE 'TType' TYPE [void].
+   B. USING [is_void<TType>::value] vracia VALUE [false], ake je TYPE 'TType' NIE JE TYPE [void].
+   C. TYPE TRAIT IGNORUJE MODIFIER [const] a MODIFIER [volatile].
+11. Pre TYPE TRAIT [is_integral<TType>] platia nasledujuce fakty.
+   A. USING [is_integral<TType>::value] vracia VALUE [true] pre TYPE [bool], CHARACTER TYPES a INTEGER TYPES.
+   B. USING [is_integral<TType>::value] vracia VALUE [false] pre vsetky ostatne TYPES.
+   C. TYPE TRAIT IGNORUJE MODIFIER [const] a MODIFIER [volatile].
+12. Pre TYPE TRAIT [is_floating_point<TType>] platia nasledujuce fakty.
+   A. USING [is_floating_point<TType>::value] vracia VALUE [true] pre FLOATING POINT TYPES.
+   B. USING [is_floating_point<TType>::value] vracia VALUE [false] pre vsetky ostatne TYPES.
+   C. TYPE TRAIT IGNORUJE MODIFIER [const] a MODIFIER [volatile].
+13. Pre TYPE TRAIT [is_array<TType>] platia nasledujuce fakty.
+   A. USING [is_array<TType>::value] vracia VALUE [true] pre C-ARRAYS, bez ohladu na to ci maju, alebo nemaju definovanu LENGTH.
+   B. USING [is_array<TType>::value] vracia VALUE [false] pre vsetky ostatne TYPES.
+   C. TYPE TRAIT IGNORUJE MODIFIER [const] a MODIFIER [volatile].
+14. Pre TYPE TRAIT [is_pointer<TType>] platia nasledujuce fakty.
+   A. USING [is_pointer<TType>::value] vracia VALUE [true] pre POINTERS, vratane POINTERS na FUNCTIONS.
+   B. USING [is_pointer<TType>::value] vracia VALUE [false] pre vsetky ostatne TYPES, vratane, C-ARRAYS, POINTERS TO MEMBERS (FIELDS a METHODS) a TYPE [nullptr_t].
+   C. TYPE TRAIT IGNORUJE MODIFIER [const] a MODIFIER [volatile].
+15. Pre TYPE TRAIT [is_null_pointer<TType>] platia nasledujuce fakty.
+   A. USING [is_null_pointer<TType>::value] vracia VALUE [true] pre	TYPE [nullptr_t].
+   B. USING [is_null_pointer<TType>::value] vracia VALUE [false] pre vsetky ostatne TYPES.
+   C. TYPE TRAIT IGNORUJE MODIFIER [const] a MODIFIER [volatile].
+16. Pre TYPE TRAIT [is_member_object_pointer<TType>] platia nasledujuce fakty.
+   A. USING [is_member_object_pointer<TType>::value] vracia VALUE [true] pre TYPE POINTER na FIELD TYPE 'TType'.
+   B. USING [is_member_object_pointer<TType>::value] vracia VALUE [false] pre vsetky ostatne TYPES.
+   C. TYPE TRAIT IGNORUJE MODIFIER [const] a MODIFIER [volatile].
+17. Pre TYPE TRAIT [is_member_function_pointer<TType>] platia nasledujuce fakty.
+   A. USING [is_member_function_pointer<TType>::value] vracia VALUE [true] pre TYPE POINTER na METHOD TYPE 'TType'.
+   B. USING [is_member_function_pointer<TType>::value] vracia VALUE [false] pre vsetky ostatne TYPES.
+   C. TYPE TRAIT IGNORUJE MODIFIER [const] a MODIFIER [volatile].
+18. Pre TYPE TRAIT [is_lvalue_reference<TType>] platia nasledujuce fakty.
+   A. USING [is_lvalue_reference<TType>::value] vracia VALUE [true] pre TYPE predstavuje LVALUE REFERENCE.
+   B. USING [is_lvalue_reference<TType>::value] vracia VALUE [false] pre vsetky ostatne TYPES.
+   C. TYPE TRAIT IGNORUJE MODIFIER [const] a MODIFIER [volatile].
+19. Pre TYPE TRAIT [is_rvalue_reference<TType>] platia nasledujuce fakty.
+   A. USING [is_rvalue_reference<TType>::value] vracia VALUE [true] pre TYPE predstavuje RVALUE REFERENCE.
+   B. USING [is_rvalue_reference<TType>::value] vracia VALUE [false] pre vsetky ostatne TYPES.
+   C. TYPE TRAIT IGNORUJE MODIFIER [const] a MODIFIER [volatile].
+20. Pre TYPE TRAIT [is_enum<TType>] platia nasledujuce fakty.
+   A. USING [is_enum<TType>::value] vracia VALUE [true] pre UNSCOPED ENUMS (KEYWORD [enum]) a SCOPED ENUMS (KEYWORD [enum class]).
+   B. USING [is_enum<TType>::value] vracia VALUE [false] pre vsetky ostatne TYPES.
+   C. TYPE TRAIT IGNORUJE MODIFIER [const] a MODIFIER [volatile].
+21. Pre TYPE TRAIT [is_class<TType>] platia nasledujuce fakty.
+   A. USING [is_class<TType>::value] vracia VALUE [true] pre CLASSES, STRUCTURES a LAMBDA EXPRESSIONS, ktore su interne implementovane ako CLASSES.
+   B. USING [is_class<TType>::value] vracia VALUE [false] pre vsetky ostatne TYPES.
+   C. TYPE TRAIT IGNORUJE MODIFIER [const] a MODIFIER [volatile].
+22. Pre TYPE TRAIT [is_union<TType>] platia nasledujuce fakty.
+   A. USING [is_union<TType>::value] vracia VALUE [true] pre UNIONS a UNION TEMPLATES.
+   B. USING [is_union<TType>::value] vracia VALUE [false] pre vsetky ostatne TYPES.
+   C. TYPE TRAIT IGNORUJE MODIFIER [const] a MODIFIER [volatile].
+23. Pre TYPE TRAIT [is_function<TType>] platia nasledujuce fakty.
+   A. USING [is_function<TType>::value] vracia VALUE [true] pre FUNCTIONS a METHODS.
+   B. USING [is_function<TType>::value] vracia VALUE [false] pre POINTERS na FUNCTIONS, LAMBDA EXPRESSIONS a pre vsetky ostatne TYPES.
+   C. TYPE TRAIT IGNORUJE MODIFIER [const] a MODIFIER [volatile].
+24. Pre TYPE TRAIT [is_reference<TType>] platia nasledujuce fakty.
+   A. USING [is_reference<TType>::value] vracia VALUE [true] pre TYPE predstavuje REFERENCE TYPE.
+   B. USING [is_reference<TType>::value] vracia VALUE [false] pre vsetky ostatne TYPES.
+   C. TYPE TRAIT IGNORUJE MODIFIER [const] a MODIFIER [volatile].
+25. Pre TYPE TRAIT [is_member_pointer<TType>] platia nasledujuce fakty.
+   A. USING [is_member_pointer<TType>::value] vracia VALUE [true] pre TYPE POINTER na FIELD TYPE 'TType' a pre TYPE POINTER na METHOD TYPE 'TType'.
+   B. USING [is_member_pointer<TType>::value] vracia VALUE [false] pre vsetky ostatne TYPES.
+   C. TYPE TRAIT IGNORUJE MODIFIER [const] a MODIFIER [volatile].
+26. Pre TYPE TRAIT [is_arithmetic<TType>] platia nasledujuce fakty.
+   A. USING [is_arithmetic<TType>::value] vracia VALUE [true] pre TYPE [bool], CHARACTER TYPES, INTEGER TYPES a FLOATING POINT TYPES.
+   B. USING [is_arithmetic<TType>::value] vracia VALUE [false] pre vsetky ostatne TYPES.
+   C. TYPE TRAIT IGNORUJE MODIFIER [const] a MODIFIER [volatile].
+27. Pre TYPE TRAIT [is_fundamental<TType>] platia nasledujuce fakty.
+   A. USING [is_fundamental<TType>::value] vracia VALUE [true] pre TYPE [bool], CHARACTER TYPES, INTEGER TYPES, FLOATING POINT TYPES, TYPE [void] a TYPE [nullptr_t].
+   B. USING [is_fundamental<TType>::value] vracia VALUE [false] pre vsetky ostatne TYPES.
+   C. TYPE TRAIT IGNORUJE MODIFIER [const] a MODIFIER [volatile].
+28. Pre TYPE TRAIT [is_scalar<TType>] platia nasledujuce fakty.
+   A. USING [is_scalar<TType>::value] vracia VALUE [true] pre TYPE [bool], CHARACTER TYPES, INTEGER TYPES, FLOATING POINT TYPES, POINTER TYPES, POINTER TO MEMBER TYPES, ENUM TYPES a TYPE [nullptr_t].
+   B. USING [is_scalar<TType>::value] vracia VALUE [false] pre vsetky ostatne TYPES.
+   C. TYPE TRAIT IGNORUJE MODIFIER [const] a MODIFIER [volatile].
+29. Pre TYPE TRAIT [is_object<TType>] platia nasledujuce fakty.
+   A. USING [is_object<TType>::value] vracia VALUE [true] pre TYPE [bool], CHARACTER TYPES, INTEGER TYPES, FLOATING POINT TYPES, POINTER TYPES, POINTER TO MEMBER TYPES, ENUM TYPES, ARRAY TYPES, CLASS TYPES, STRUCTURE TYPES, UNION TYPES a TYPE [nullptr_t].
+   B. USING [is_object<TType>::value] vracia VALUE [false] pre vsetky ostatne TYPES.
+   C. TYPE TRAIT IGNORUJE MODIFIER [const] a MODIFIER [volatile].
+30. Pre TYPE TRAIT [is_compound<TType>] platia nasledujuce fakty.
+   A. USING [is_compound<TType>::value] vracia VALUE [true] pre ENUM TYPES, ARRAY TYPES, CLASS TYPES, STRUCTUR TYPES, UNION TYPES, REFERENCE TYPES, POINTER TYPES, POINTER TO MEMBER TYPES a FUNCTION TYPES.
+   B. USING [is_compound<TType>::value] vracia VALUE [false] pre vsetky ostatne TYPES.
+   C. TYPE TRAIT IGNORUJE MODIFIER [const] a MODIFIER [volatile].
+31. Pre TYPE TRAIT [is_signed<TType>] platia nasledujuce fakty.
+   A. USING [is_signed<TType>::value] vracia VALUE [true] pre ARITHMETIC TYPES, ktore su SIGNED.
+   B. USING [is_signed<TType>::value] vracia VALUE [false] pre vsetky ostatne TYPES, vratane ENUM TYPES a TYPE [bool].
+   C. USING [is_signed<TType>::value] vracia pre TYPE [char] vracia IMPLEMENTATION DEFINED VALUE.
+   D. TYPE TRAIT IGNORUJE MODIFIER [const] a MODIFIER [volatile].
+32. Pre TYPE TRAIT [is_unsigned<TType>] platia nasledujuce fakty.
+   A. USING [is_unsigned<TType>::value] vracia VALUE [true] pre ARITHMETIC TYPES, ktore su UNSIGNED, vratane TYPE [bool].
+   B. USING [is_unsigned<TType>::value] vracia VALUE [false] pre vsetky ostatne TYPES, vratane ENUM TYPES.
+   C. USING [is_unsigned<TType>::value] vracia pre TYPE [char] vracia IMPLEMENTATION DEFINED VALUE.
+   D. TYPE TRAIT IGNORUJE MODIFIER [const] a MODIFIER [volatile].
+33. Pre TYPE TRAIT [is_const<TType>] platia nasledujuce fakty.
+   A. USING [is_const<TType>::value] vracia VALUE [true] pre CONSTANT TYPES, vratane CONSTANT POINTERS a ARRAYS obsahujucich CONSTANT VALUES.
+   B. USING [is_const<TType>::value] vracia VALUE [false] pre NON-CONSTANT TYPES, vratane NON-CONSTANT POINTERS, NON-CONSTANT REFERENCES a ARRAYS obsahujucich NON-CONSTANT VALUES. VALUE [false] je takisto vratena pre NON-CONSTANT POINTERS na CONSTANTS, NON-CONSTANT REFERENCES na CONSTANTS ci ARRAYS obsahujucich NON-CONSTANT VALUES.
+34. Pre TYPE TRAIT [is_volatile<TType>] platia nasledujuce fakty.
+   A. USING [is_volatile<TType>::value] vracia VALUE [true] pre VOLATILE TYPES, vratane VOLATILE POINTERS a ARRAYS obsahujucich VOLATILE VALUES.
+   B. USING [is_volatile<TType>::value] vracia VALUE [false] pre NON-VOLATILE TYPES, vratane NON-VOLATILE POINTERS, NON-VOLATILE REFERENCES a ARRAYS obsahujucich NON-VOLATILE VALUES. VALUE [false] je takisto vratena pre NON-VOLATILE POINTERS na VOLATILES, NON-VOLATILE REFERENCES na VOLATILES ci ARRAYS obsahujucich NON-VOLATILE VALUES.
+35. Pre TYPE TRAIT [is_aggregate<TType>] platia nasledujuce fakty.
+   A. USING [is_aggregate<TType>::value] vracia VALUE [true] pre AGGREGATE TYPES.
+   B. USING [is_aggregate<TType>::value] vracia VALUE [false] pre vsetky ostatne TYPES.
+   C. TYPE TRAIT IGNORUJE MODIFIER [const] a MODIFIER [volatile].
+36. AGGREGATE TYPES su bud C-LIKE ARRAYS, alebo USER DEFINED TYPES (CLASSES, STRUCTURES, UNIONS) s nasledujucimi obmedzeniami.
+   A. Nemaju definovany CUSTOM CONSTRUCTOR.
+   B. Nemaju PRIVATE, alebo PROTECTED FIELDS.
+   C. Nemaju NON-PUBLIC BASE CLASSES.
+   D. Nemaju VIRTUAL METHODS.
+37. Pre TYPE TRAIT [is_trivial<TType>] platia nasledujuce fakty.
+   A. USING [is_trivial<TType>::value] vracia VALUE [true] pre SCALAR TYPES, TRIVIAL CLASS TYPES, ARRAYS SCALAR TYPES a ARRAYS TRIVIAL CLASS TYPES.
+   B. USING [is_trivial<TType>::value] vracia VALUE [false] pre vsetky ostatne TYPES.
+   C. TYPE TRAIT IGNORUJE MODIFIER [const] a MODIFIER [volatile].
+38. TRIVIAL CLASS TYPES su USER DEFINED CLASSES s nasledujucimi obmedzeniami.
+   A. Nemaju definovany CUSTOM DEFAULT CONSTRUCTOR, CUSTOM CONSTRUCTOR, CUSTOM COPY CONSTRUCTOR a CUSTOM MOVE CONSTRUCTOR.
+   B. Nemaju definovany CUSTOM COPY OPERATOR [OPERATOR=] a CUSTOM MOVE OPERATOR [OPERATOR=].
+   C. Nemaju definovany CUSTOM DESTRUCTOR.
+   D. Nemaju VIRTUAL METHODS.
+   E. Nemaju VIRTUAL BASE CLASSES.
+   F. Nemaju NON TRIVIAL FIELDS.
+   G. Nemaju VOLATILE FIELDS.
+39. Pre TYPE TRAIT [is_trivial<TType>] platia nasledujuce fakty.
+   A. USING [is_trivial<TType>::value] vracia VALUE [true] pre SCALAR TYPES, TRIVIALLY COPYABLE CLASS TYPES, ARRAYS SCALAR TYPES a ARRAYS TRIVIALLY COPYABLE CLASS TYPES.
+   B. USING [is_trivial<TType>::value] vracia VALUE [false] pre vsetky ostatne TYPES.
+   C. TYPE TRAIT IGNORUJE MODIFIER [const] a MODIFIER [volatile].
+40. TRIVIALLY COPYABLE CLASS TYPES su USER DEFINED CLASSES s nasledujucimi obmedzeniami.
+   !!! A. Mozu mat definovany CUSTOM DEFAULT 
+   B. Nemaju definovany CUSTOM CONSTRUCTOR, CUSTOM COPY CONSTRUCTOR a CUSTOM MOVE CONSTRUCTOR.
+   C. Nemaju definovany CUSTOM COPY OPERATOR [OPERATOR=] a CUSTOM MOVE OPERATOR [OPERATOR=].
+   D. Nemaju definovany CUSTOM DESTRUCTOR.
+   E. Nemaju VIRTUAL METHODS.
+   F. Nemaju VIRTUAL BASE CLASSES.
+   G. Nemaju NON TRIVIAL FIELDS.
+   H. Nemaju VOLATILE FIELDS.
+41. Pre TYPE TRAIT [is_standard_layout<TType>] platia nasledujuce fakty.
+   A. USING [is_standard_layout<TType>::value] vracia VALUE [true] pre SCALAR TYPES, STANDARD LAYOUT CLASS TYPES, ARRAYS SCALAR TYPES a ARRAYS STANDARD LAYOUT CLASS TYPES.
+   B. USING [is_standard_layout<TType>::value] vracia VALUE [false] pre vsetky ostatne TYPES.
+   C. TYPE TRAIT IGNORUJE MODIFIER [const] a MODIFIER [volatile].
+42. STANDARD LAYOUT CLASS TYPES su USER DEFINED CLASSES s nasledujucimi obmedzeniami.
+   A. Maju rovnaky ACCESS MODIFIER pre vsetky FIELDS.
+   B. Nemaju VIRTUAL METHODS.
+   C. Nemaju NON STANDARD LAYOUT BASE CLASSES.
+   D. Nemaju VIRTUAL BASE CLASSES.
+   E. Nemaju NON STANDARD LAYOUT NON STATIC FIELDS.
+   F. Nemaju NON STATIC REFERENCE FIELDS.
+43. Pre TYPE TRAIT [is_empty<TType>] platia nasledujuce fakty.
+   A. USING [is_empty<TType>::value] vracia VALUE [true] pre CLASS TYPES, ktore nemaju NON-STATIC FIELDS, nemaju VIRTUAL METHODS, nemaju VIRTUAL BASE CLASSES a maju iba EMTPY BASE CLASSES.
+   B. USING [is_empty<TType>::value] vracia VALUE [false] pre vsetky ostatne TYPES.
+   C. TYPE TRAIT IGNORUJE MODIFIER [const] a MODIFIER [volatile].
+44. Pre TYPE TRAIT [is_polymorphic<TType>] platia nasledujuce fakty.
+   A. USING [is_polymorphic<TType>::value] vracia VALUE [true] pre CLASSES, ktore maju VIRTUAL METHODS.
+   B. USING [is_polymorphic<TType>::value] vracia VALUE [false] pre vsetky ostatne TYPES.
+   C. TYPE TRAIT IGNORUJE MODIFIER [const] a MODIFIER [volatile].
+45. Pre TYPE TRAIT [is_abstract<TType>] platia nasledujuce fakty.
+   A. USING [is_abstract<TType>::value] vracia VALUE [true] pre CLASSES, ktore maju PURE VIRTUAL METHODS.
+   B. USING [is_abstract<TType>::value] vracia VALUE [false] pre vsetky ostatne TYPES.
+   C. TYPE TRAIT IGNORUJE MODIFIER [const] a MODIFIER [volatile].
+46. Pre TYPE TRAIT [is_final<TType>] platia nasledujuce fakty.
+   A. USING [is_final<TType>::value] vracia VALUE [true] pre FINAL CLASSES.
+   B. USING [is_final<TType>::value] vracia VALUE [false] pre vsetky ostatne TYPES.
+   C. TYPE TRAIT IGNORUJE MODIFIER [const] a MODIFIER [volatile].
+47. Pre TYPE TRAIT [has_virtual_destructor<TType>] platia nasledujuce fakty.
+   A. USING [has_virtual_destructor<TType>::value] vracia VALUE [true] pre CLASSES, ktore maju VIRTUAL DESTRUCTORS.
+   B. USING [has_virtual_destructor<TType>::value] vracia VALUE [false] pre vsetky ostatne TYPES.
+   C. TYPE TRAIT IGNORUJE MODIFIER [const] a MODIFIER [volatile].
+48. Pre TYPE TRAIT [has_unique_object_representations<TType>] platia nasledujuce fakty.
+   A. USING [has_unique_object_representations<TType>::value] vracia VALUE [true] pre TYPES, ktore su TRIVIALLY COPIABLE a ktorych BINARY REPRESENTATION je ROVNAKA, ak obsahuju ich FIELDS tie iste VALUES. Takisto pre ARRAYS takychto CLASSES vracia TYPE TRAIT VALUE [true].
+   B. USING [has_unique_object_representations<TType>::value] vracia VALUE [false] pre vsetky ostatne TYPES.
+   C. TYPE TRAIT IGNORUJE MODIFIER [const] a MODIFIER [volatile].
+   !!! D. Pre CLASSES, pre ktore TYPE TRAIT [has_unique_object_representations<TType>::value] vracia VALUE [true] je plati, ze vzdy je pre ne mozne vypocitat validny HASH CODE.
+   !!!!! E. To, ktore SCALAR TYPES splnaju tuto podmienku je IMPLEMENTATION DEFINED.
+49. Pre TYPE TRAIT [alignment_of<TType>] platia nasledujuce fakty.
+   A. USING [alignment_of<TType>::value] TYPE [size_t] vracia pocet BYTES potrebnych na zarovnanie daneho TYPE.
+   B. USING [alignment_of<TType>::value] vracia tu istu VALUE ako OPERATOR [alignof(TYPE)].
+50. Pre TYPE TRAIT [rank<TType>] platia nasledujuce fakty.
+   A. USING [rank<TType>::value] TYPE [size_t] pre C-ARRAYS vracia pocet DIMENSIONS daneho C-ARRAY.
+   B. USING [rank<TType>::value] TYPE [size_t] vracia VALUE [0] pre vsetky ostatne TYPES.
+51. Pre TYPE TRAIT [extent<TType,INDEX>] platia nasledujuce fakty.
+   A. USING [extent<TType,INDEX>::value] TYPE [size_t] pre C-ARRAYS vracia velkost C-ARRAY pre DIMENSION [INDEX]. Ak dany ARRAY nema danu DIMENSION, tak TYPE TRAIT vracia VALUE [0].
+   B. USING [extent<TType,INDEX>::value] TYPE [size_t] vracia VALUE [0] pre vsetky ostatne TYPES.
+52. Pre TYPE TRAIT [underlying_type<TType>] platia nasledujuce fakty.
+   A. USING [underlying_type<TType>::type] vracia UNDERLYING TYPE ENUM TYPE.
+   B. USING [underlying_type<TType>::type] pre NON-ENUM TYPES je UNDEFINED.
+53. Pre TYPE TRAIT [is_invocable<TFunction,TArguments...>] platia nasledujuce fakty.
+   A. USING [is_invocable<TFunction,TArguments...>::value] vracia VALUE [true] ak TYPE [TFunction] JE mozne volat ako FUNCTION s ARGUMENTS [TArguments...]. ARGUMENTS mozu byt na PARAMETERS aj CONVERTIBLE.
+   B. USING [is_invocable<TFunction,TArguments...>::value] vracia VALUE [false] ak TYPE [TFunction] NIE JE mozne volat ako FUNCTION s ARGUMENTS [TArguments...].
+54. Pre TYPE TRAIT [is_nothrow_invocable<TFunction,TArguments...>] platia nasledujuce fakty.
+   A. USING [is_nothrow_invocable<TFunction,TArguments...>::value] vracia VALUE [true] ak TYPE [TFunction] JE mozne volat ako FUNCTION s ARGUMENTS [TArguments...] a zaroven FUNCTION [TFunction] nehadze EXCEPTIONS. ARGUMENTS mozu byt na PARAMETERS aj CONVERTIBLE.
+   B. USING [is_nothrow_invocable<TFunction,TArguments...>::value] vracia VALUE [false] ak TYPE [TFunction] NIE JE mozne volat ako FUNCTION s ARGUMENTS [TArguments...], alebo ak FUNCTION [TFunction] moze hodit EXCEPTIONS.
+55. Pre TYPE TRAIT [is_invocable_r<TReturnValue,TFunction,TArguments...>] platia nasledujuce fakty.
+   A. USING [is_invocable_r<TReturnValue,TFunction,TArguments...>::value] vracia VALUE [true] ak TYPE [TFunction] JE mozne volat ako FUNCTION s ARGUMENTS [TArguments...] a zaroven RETURN VALUE TYPE je CONVERTIBLE na TYPE [TReturnValue]. ARGUMENTS mozu byt na PARAMETERS aj CONVERTIBLE.
+   B. USING [is_invocable_r<TReturnValue,TFunction,TArguments...>::value] vracia VALUE [false] ak TYPE [TFunction] NIE JE mozne volat ako FUNCTION s ARGUMENTS [TArguments...], ktorej RETURN VALUE TYPE je CONVERTIBLE na TYPE [TReturnValue].
+56. Pre TYPE TRAIT [is_nothrow_invocable_r<TReturnValue,TFunction,TArguments...>] platia nasledujuce fakty.
+   A. USING [is_nothrow_invocable_r<TReturnValue,TFunction,TArguments...>::value] vracia VALUE [true] ak TYPE [TFunction] JE mozne volat ako FUNCTION s ARGUMENTS [TArguments...], RETURN VALUE TYPE je CONVERTIBLE na TYPE [TReturnValue] a zaroven FUNCTION [TFunction] nehadze EXCEPTIONS. ARGUMENTS mozu byt na PARAMETERS aj CONVERTIBLE.
+   B. USING [is_nothrow_invocable_r<TReturnValue,TFunction,TArguments...>::value] vracia VALUE [false] ak TYPE [TFunction] NIE JE mozne volat ako FUNCTION s ARGUMENTS [TArguments...], ktorej RETURN VALUE TYPE je CONVERTIBLE na TYPE [TReturnValue], alebo ak FUNCTION [TFunction] moze hodit EXCEPTIONS.
+57. Pre TYPE TRAIT [invoke_result<TFunction,TArguments...>] platia nasledujuce fakty.
+   A. USING [invoke_result<TFunction,TArguments...>::type] vracia RETURN VALUE TYPE, ak TYPE [TFunction] JE mozne volat ako FUNCTION s ARGUMENTS [TArguments...].
+   B. USING [invoke_result<TFunction,TArguments...>::type] nie je DEFINED ak FUNCTION [TFunction] nie je CALLABLE pre ARGUMENTS [TArguments...].
+//----------------------------------------------------------------------------------------------------------------------

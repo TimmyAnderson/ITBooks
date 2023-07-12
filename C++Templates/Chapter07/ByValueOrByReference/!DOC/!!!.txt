@@ -1,0 +1,51 @@
+//----------------------------------------------------------------------------------------------------------------------
+1. Solution demonstruje kedy do TEMPLATE FUNCTIONS prenasat PARAMETERS BY VALUE a kedy PARAMETERS BY REFERENCE.
+2. V C++ je mozne PARAMETERS do FUNCTIONS prenasat nasledujucimi sposobmi.
+   A. BY VALUE.
+   B. BY POINTER.
+   C. BY REFERENCE.
+3. Od C++ 11 je mozne prenasat PARAMETERS BY REFERENCE nasledujucimi sposobmi.
+   A. CONSTANT LVALUE REFERENCE [const TYPE&]. PARAMETER zaslany do FUNCTION NIE je mozne modifikovat.
+   B. NONCONSTANT LVALUE REFERENCE [TYPE&]. PARAMETER zaslany do FUNCTION JE mozne modifikovat.
+   C. RVALUE REFERENCE [TYPE&]. Z PARAMETER zaslany do FUNCTION JE mozne vybrat jeho INTERNAL DATA.
+4. Pre prenos PARAMATERS BY VALUE platia nasledujuce fakty.
+   A. Pre PARAMETERS prenasane BY VALUE je standardne vytvorena kopia volanim COPY CONSTRUCTOR. To moze pri velkych OBJECTS viest k PERFORMANCE HIT.
+   B. C++ dokaze mnohe volania TEMPLATE FUNCTIONS s prenosom PARAMETERS BY VALUE optimalizovat. Optimalizacia sa realizuje ak PARAMETERS su RVALUE VALUES.
+   !!! C. Od C++ 17 COMPILER je POVINNY vykonat OPTIMALIZATION pri pouziti RVALUE VALUES, aby nedochadzalo k zbytocnemu pouzitiu COPY SEMANTICS a MOVE SEMANTICS.
+   !!!!! D. Kedze sa pri prenose C-ARRAYS vykonava TYPE DECAY, tak TEMPLATE FUNCTION musi poznat dlzku ARRAY bud prenesenym v dodatocnom PARAMETER, alebo u STRINGS CHARACTER '\0'.
+5. Pri prenos PARAMETERS BY VALUE C++ vykonava TYPE DECAY. Pre TYPE DECAY platia nasledujuce fakty.
+   A. C-ARRAYS prenasane ako PARAMETERS BY VALUE su CONVERTED na POINTERS.
+   B. MODIFIER [const] a MODIFIER [volatile] su vo volanej FUNCTION IGNOROVANE.
+6. Pre prenos PARAMATERS BY REFERENCE platia nasledujuce fakty.
+   A. Pri prenose PARAMATERS BY REFERENCE sa NIKDY nevykonava kopia ARGUMENT, pretoze sa vzdy prenasa iba REFERENCE na ARGUMENT, nie samotny ARGUMENT.
+   B. Pri prenose PARAMATERS BY REFERENCE sa NIKDY nevykonava DECAY.
+   C. Ak sa prenasaju PARAMATERS BY NON-CONSTANT REFERENCE, tak FUNCTION moze modifikovat tieto PARAMATERS.
+   !!! D. Ak FUNCTION ocakava NON-CONSTANT REFERENCE PARAMETER, tak AGRUMENT NEMOZE byt RVALUE VALUE.
+   !!! E. Ak sa prenasa CONSTANT REFERENCE ARGUMENT do NON-CONSTANT REFERENCE PARAMETER TEMPLATE FUNCTION, tak C++ vykona DEDUCTION PARAMETER ako CONSTANT REFERENCE TYPE a NIE NON-CONSTANT REFERENCE.
+   !!!!! F. Kedze sa pri prenose C-ARRAYS NEVYKONAVA TYPE DECAY, tak TEMPLATE FUNCTION nemoze pouzit C-ARRAYS rozdielnej dlzky, aby boli reprezentovane tym istym TYPE PARAMETER v TEMPLATE FUNCTION, kedze dlzka C-ARRAY je sucastou jeho TYPE. Idealnym riesenim je implementacia specialnej TEMPLATE FUNCTION iba pre C-ARRAYS.
+7. Pre prenos PARAMATERS BY FORWARD REFERENCE platia nasledujuce fakty.
+   A. TEMPLATE FUNCTION pre FORWARD REFERENCE musi mat PARAMETER TYPE [TTYPE&&].
+   !!! B. Ak je PARAMETER TYPE FORWARD REFERENCE, tak ako ARGUMENT akceptuje LVALUE REFERENCE TYPES a RVALUE REFERENCE TYPES, pricom NIKDY nedochadza k volaniu COPY CONSTRUCTOR.
+8. C++ STANDARD LIBRARY definuje nasledujuce TEMPLATE FUNCTIONS, ktore umoznuju prenasat a ukladat REFERENCES ako VALUES. TEMPLATE FUNCTIONS takisto umoznuje zasielat REFERENCE TYPES do TEMPLATE FUNCTIONS BY-VALUE, kde VALUE je instancia TYPE [reference_wrapper<TType>].
+   A. TEMPLATE FUNCTION [template<typename TType> constexpr reference_wrapper<TType> ref(TType& Value) noexcept] pre TYPE 'TType' vytvara instanciu WRAPPER CLASS [reference_wrapper<TType>], ktora uklada REFERENCE na TYPE 'TType'.
+   B. TEMPLATE FUNCTION [template<typename TType> constexpr reference_wrapper<const TType> cref(const TType& Value) noexcept] pre TYPE 'TType' vytvara instanciu WRAPPER CLASS [reference_wrapper<const TType>], ktora uklada CONST REFERENCE na TYPE 'TType'.
+9. CLASS [reference_wrapper<TType>] ma nasledujuce MEMBERS.
+   A. TYPE [reference_wrapper<TType>::type] definuje TYPE OBJECT ktoreho REFERENCE si instancia CLASS [reference_wrapper<TType>].
+   B. CONSTRUCTOR [template<typename U> constexpr reference_wrapper<TType>::reference_wrapper(U&& Value) noexcept] umoznuje incializovat instanciu CLASS [reference_wrapper<TType>] REFERENCE na OBJECT.
+   C. OPERATOR [constexpr reference_wrapper& reference_wrapper<TType>::operator=(const reference_wrapper& Other) noexcept] umoznuje do instancie CLASS [reference_wrapper<TType>] priradit inu instanciu CLASS [reference_wrapper<TType>].
+   D. OPERATOR [template<typename... TArgTypes> constexpr invoke_result_t<TType&,TArgTypes...> reference_wrapper<TType>::operator() (TArgTypes&&... Args) const noexcept] umoznuje volat FUNCTION, ak instancia CLASS [reference_wrapper<TType>] obsahuje REFERENCE na FUNCTION.
+   E. CONVERSION OPERATOR [constexpr reference_wrapper<TType>::operator TType&() const noexcept] vracia ulozenu REFERENCE na OBJECT.
+   F. METHOD [constexpr TType& reference_wrapper<TType>::get() const noexcept] vracia ulozenu REFERENCE na OBJECT.
+10. Pre prenos C-ARRAYS ARGUMENTS do TEMPLATE FUNCTIONS platia nasledujuce fakty.
+   A. Ak sa prenasaju C-ARRAYS ARGUMENTS BY-VALUE, tak dochadza k TYPE DECAY, kedy sa C-ARRAY TYPE zmeni na CONST POINTER na 1. ARRAY ITEM.
+   B. Ak sa prenasaju C-ARRAYS ARGUMENTS BY-REFERENCE, tak NEDOCHADZA k TYPE DECAY.
+   !!! C. Nevyhodou prenosu C-ARRAYS ARGUMENTS BY-REFERENCE spociva v tom, ze kedze sa NEROBI DECAY, tak ak TEMPLATE FUNCTION ockava ako PARAMETERS C-ARRAYS pricom tieto TEMPLATE PARAMETERS maju ROVNAKY TYPE, tak vsetky C-ARRAY ARGUMENTS MUSIA mat ROVNAKY SIZE. Je to dosledok toho, ze pri prenose C-ARRAYS ARGUMENTS BY-REFERENCE je ARRAY SIZE sucastou PARAMETER TYPE a ak PARAMETERS maju rovnaky TYPE PARAMETER, tak C-ARRAY ARGUMENTS musia mat rovnaky SIZE.
+11. Pri pouzivani C-ARRAYS v TEMPLATE FUNCTIONS je casto jednoduchsie definovant specialne verzie TEMPLATE FUNCTIONS pre C-ARRAYS. To je mozne vykonat nasledujucimi sposobmi.
+   A. TEMPLATE FUNCTION pouziva ako PARAMETERS C-ARRAYS pomocou SYNTAX [TYPE (&PARAMETER_NAME)[ARRAY_SIZE]], kde VALUE 'TYPE' je TYPE ARRAY ITEMS, VALUE 'PARAMETER_NAME' je nazov PARAMETER a VALUE 'ARRAY_SIZE' je ARRAY SIZE.
+   B. Definuje sa specialna TEMPLATE FUNCTION pre C-ARRAYS, ktora sa pomocou TYPE TRAIT [enable_if<>] a TYPE TRAIT [is_array<>] povoli IBA pre C-ARRAYS.
+12. Ak TYPE DEDUCTION urci ako TEMPLATE PARAMETERS ako REFERENCES TYPES a jeden z tychto TYPES je pouzity ako RETURN VALUE TYPE moze dojst k problemu. Ak TEMPLATE FUNCTION vracia REFERENCE na LOCAL VARIABLE, dochadza k UNDEFINED BEHAVIOUR. Zabranit, aby COMPILER nevykonal TYPE DEDUCTION RETURN VALUE na REFERENCE TYPE je mozne nasledujucimi sposobmi.
+   A. Na RETURN VALUE TYPE aplikovat TYPE TRAIT [remove_reference<>], ktory z REFERENCE TYPE spravi NON-REFERENCE VALUE TYPE.
+   B. Ako RETURN VALUE TYPE pouzit KEYWORD [auto], ktory VZDY vykona TYPE DECAY. To znamena, ze ked bol RETURN VALUE TYPE dedukovany ako REFERENCE TYPE po vykonani TYPE DECAY dojde k jeho zmene na NON-REFERENCE VALUE TYPE.
+13. Ak TEMPLATE FUNCTION je navrhnuta aby fungovala iba s obmedzenou mnozinou TYPES je najlepsie ako jej TYPE PARAMETERS su co najviac specificke. Ak napriklad TEMPLATE FUNCTION vyzaduje ako PARAMETER [vector<TYPE>], tak by TEMPLATE PARAMETER mal mat TYPE [vector<TYPE>], a NIE TYPE [TYPE].
+14. V STANDARD LIBRARY pre C++ 11 boli prepisane viacere TEMPLATE FUNCTIONS, tak aby akceptovali FORWARD REFERENCES a mohol byt vykonany PERFECT FORWARDING. Prikladom moze byt TEMPLATE FUNCTION [template<typename TType1, typename TType2> constexpr pair<V1, V2> make_pair(TType1&& Value1, TType2&& Value2)].
+//----------------------------------------------------------------------------------------------------------------------

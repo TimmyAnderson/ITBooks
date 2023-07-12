@@ -7,6 +7,7 @@
 #include <conio.h>
 #include <crtdbg.h>
 #include <strsafe.h>
+#include <type_traits>
 #else
 #include <cxxabi.h>
 #endif
@@ -34,7 +35,7 @@ char ConvertWideCharToChar(wchar_t WideChar);
 wchar_t ConvertCharToWideChar(char Char);
 std::wstring ConvertStringToWideString(const std::string& Value);
 std::string ConvertWideStringToString(const std::wstring& Value);
-std::wstring GetTypeInfoName(const std::type_info& Value);
+std::wstring GetTypeInfoName(const std::type_info& Value, bool IsConst=false, bool IsVolatile=false);
 //----------------------------------------------------------------------------------------------------------------------
 template<typename TType,size_t N>
 size_t CountOf(TType (&)[N])
@@ -56,4 +57,6 @@ constexpr const wchar_t*										VALUE_CATEGORY<TType&&> =L"XVALUE TType&&";
 //----------------------------------------------------------------------------------------------------------------------
 // !!!!! NASLEDUJUCE MACRO sluzi na vypis VALUE CATEGORY. Dvojite ZATVORKY [()] su NUTNE, aby sa vratila okrem TYPE aj VALUE CATEGORY.
 #define SHOW_VALUE_CATEGORY(EXPRESSION) wcout << L"EXPRESSION [" << #EXPRESSION << L"] has VALUE CATEGORY [" << VALUE_CATEGORY<decltype((EXPRESSION))> << L"] !" << endl
+//----------------------------------------------------------------------------------------------------------------------
+#define MACRO_GET_TYPE_NAME(VALUE) GetTypeInfoName(typeid(VALUE),std::is_const<decltype(VALUE)>::value,std::is_volatile<decltype(VALUE)>::value)
 //----------------------------------------------------------------------------------------------------------------------
