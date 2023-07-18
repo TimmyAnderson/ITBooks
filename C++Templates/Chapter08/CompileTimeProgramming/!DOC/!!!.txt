@@ -1,0 +1,33 @@
+//----------------------------------------------------------------------------------------------------------------------
+1. Solution demonstruje COMPILE TIME PROGRAMMING v C++.
+2. C++ podporuje COMPILE TIME PROGRAMMING, ked v COMPILE TIME moze COMPILER vykonavat FUNCTIONS oznacene pomocou KEYWORD [constexpr]. Od verzie C++ 17 je mozne pouzit aj KEYWORD [if constexpr], ktory umoznuje kompilovat iba ten BRANCH, ktory splna danu CONDITION.
+3. FUNCTIONS oznacene pomocou KEYWORD [constexpr] vyrazne zjednodusuju COMPILE TIME PROGRAMMING. FUNCTIONS oznacene pomocou KEYWORD [constexpr] vsak maju nasledujuce obmedzenia.
+   A. Nemozu vykonavat alokaciu MEMORY na HEAP.
+   B. Nepodporuju COROUTINES.
+4. FUNCTIONS oznacene pomocou KEYWORD [constexpr] moze COMPILER vykonavat v COMPILE TIME i RUNTIME.
+   A. Ak niektory PARAMETER FUNCTION je znamy az v RUNTIME, tak FUNCTION je vykonana v RUNTIME.
+   B. Ak vsetky PARAMETERS FUNCTION su zname uz v COMPILE TIME, tak FUNCTION je vykonana v COMPILE TIME.
+!!!!! 5. TEMPLATE FUNCTIONS NEPODPORUJU PARTIAL SPECIALIZATIONS.
+6. SFINAE (SUBSTITUTION FAILURE IS NOT AN ERROR) je princip, ktory C++ aplikuje ak existuje viacero OVERLOADED TEMPLATE FUNCTIONS a COMPILER hlada tu najvhodnejsiu. C++ pri hladani najvhodnejsej OVERLOADED TEMPLATE FUNCTION postupuje nasledovne.
+   A. COMPILER najde vsetky TEMPLATE FUNCTIONS, ktore maju rovnaky NAME ako NAME FUNCTION, ktora je volana.
+   B. COMPILER sa pokusi subsituovat TYPES zadanych FUNCTION ARGUMENTS za PARAMETERS a RETURN VALUE danej FUNCTION.
+   C. Ak sa substitucia USPESNE PODARI, tak TEMPLATE FUNCTION je zaradena do CANDIDATE SET - mnoziny potencialnych FUNCTIONS, ktore mozu byt pre zadane ARGUMENTS volane.
+   !!!!! D. Ak substitucia ZLYHA, pretoze pri nej sa vytvori NEPLATNY C++ CONSTRUCT, tak COMPILER aplikuje princip SFINAE. Ten hovori, ze COMPILER NEGENERUJE ERROR, ale FUNCTION, ktora vygenerovala neplatny NEPLATNY C++ CONSTRUCT IGNORUJE a nezaradi ju do CANDIDATE SET.
+   !!!!! E. SFINAE sa aplikuje VZDY IBA na TEMPLATE FUNCTION DECLARATIONS, ale NIKDY NIE na TEMPLATE FUNCTION DEFINITIONS (TEMPLATE FUNCTION BODY). To znamena, ze ak TEMPLATE FUNCTION pri subsitucii FUNCTION ARGUMENTS za FUNCTION PARAMETERS NEVYTVORI NEPLATNY C++ CONSTRUCT, a zaroven je dana TEMPLATE FUNCTION vybrana ako najvhodnejsi kandidat z CANDIDATE SET, avsak pri subsitucii TEMPLATE PARAMETERS v TEMPLATE FUNCTION BODY vznikne NEPLATNY C++ CONSTRUCT, tak na tuto situaciu sa uz SFINAE NEAPLIKUJE a COMPILER hodi COMPILATION ERROR.
+7. TYPE TRAIT [enable_if<CONDITION,TYPE>] aplikuje SFINAE princip na vyradenie TEMPLATE FUNCTIONS z CANDIDATE SET.
+!!! 8. TYPE TRAIT [enable_if<CONDITION,TYPE>] sa NESMIE pouzivat tak, ze viacero OVERLOADED TEMPLATE FUNCTIONS sa lisia iba DEFAULT VALUES svojich TEMPLATE PARAMETERS. COMPILER taketo TEMPLATE FUNCTIONS povazuje za REFEDINITIONS existujucej TEMPLATE FUNCTION a hodi ERROR.
+!!! 9. Princip SFINAE moze byt pouzity aj na definovanie CONSTRAINTS, ktore musi TEMPLATE FUNCTION splnat, aby bola zaradena do CANDIDATE SET. Prikladom CONSTRAINTS mozu byt napriklad METHODS, ktore musi dany TYPE mat, aby TEMPLATE FUNCTION bola zaradena do CANDIDATE SET. Princip SFINAE sa aplikuje nasledujucim sposobom.
+   A. FUNCTION MUSI pouzit TRAILING RETURN TYPE SYNTAX, kedy RETURN VALUE TYPE je oznaceny pomocou KEYWORD [auto] a RETURN VALUE TYPE je definovany za FUNCTION DECLRATION pomocou STYNTAX [-> TYPE].
+   B. FUNCTION RETURN VALUE TYPE sa definuje pomocou KEYWORD [decltype], ktory interne pouziva OPERATOR [OPERATOR,].
+   !!!!! C. V KEYWORD [decltype] sa PRED OPERATOR [OPERATOR,] definuju vsetky CONSTRAINTS, ktore MUSI TEMPLATE FUNCTIONS splnat. Mozu to byt volania METHODS ci OPERATORS. Tieto EXPRESSIONS by MALI byt CONVERTED na TYPE [void], aby sa predislo volaniu USER DEFINED OPERATOR [OPERATOR,], ak by nahodou bol pre RETURN VALUE TYPE definovany.
+   !!!!! D. V KEYWORD [decltype] sa ZA OPERATOR [OPERATOR,] definuje EXPRESSION, ktory ma TYPE skutocneho RETURN VALUE TYPE. POZOR, musi sa jednat o EXPRESSION daneho TYPE, ktory vie KEYWORD [decltype] vyhodnotit, a nie o samotny TYPE.
+   !!!!! E. COMPILER pri vyberze z OVERLOADED TEMPLATE FUNCTIONS prechadza DECLARATIONS TEMPLATE FUNCTIONS a nahraduje definovane TEMPLATE ARGUMENTS za TEMPLATE PARAMETERS. Kedze KEYWORD [decltype] a vsetky CONSTRAINTS v nom su sucastou TEMPLATE FUNCTION DEFINITION, ak dojde k vzniku NEPLATNEHO C++ CONSTRUCT, tak sa aplikuje princip SFINAE a COMPILER NEHODI ERROR, ale vyradi danu TEMPLATE FUNCTION z CANDIDATE SET.
+!!! 10. C++ 17 definuje CONSTEXPRESSION IF. Pre CONSTEXPRESSION IF platia nasledujuce fakty.
+   A. CONSTEXPRESSION IF pouziva SYNTAX [if constexpr (CONDITION) IF_BLOCK else ELSE_BLOCK], kde VALUE 'CONDITION' je CONDITION, VALUE 'IF_BLOCK' ja IF BLOCK a VALUE 'ELSE_BLOCK' ja ELSE BLOCK.
+   !!! B. CONSTEXPRESSION IF je EVALUATED v COMPILE TIME, a preto CONDITION MUSI byt vyhodnotitelna v COMPILE TIME.
+   !!! C. Ak CONDITION ma VALUE TRUE, tak je KOMPILOVANY IBA IF BLOCK. Pre ELSE BLOCK je vykonana iba zakladna kontrola, ci neobsahuje ERRORS, ale cely ELSE BLOCK je VYRADENY z PROGRAMU.
+   !!! D. Ak CONDITION ma VALUE FALSE, tak je KOMPILOVANY IBA ELSE BLOCK. Pre IF BLOCK je vykonana iba zakladna kontrola, ci neobsahuje ERRORS, ale cely IF BLOCK je VYRADENY z PROGRAMU.
+   E. CONSTEXPRESSION IF aj v NON-TEMPLATE FUNCTIONS.
+   !!! F. Ak IF BLOCK, alebo ELSE BLOCK je vyhodeny, stale sa pren vykonava SYNTACTIC a SEMANTIC CHECKS, ako aj sa kontroluju KEYWORDS [static_assert].
+!!!!! 11. Vdaka CONSTEXPRESSION IF je mozne napriklad napisat VARIADIC TEMPLATE FUNCTIONS, ktore NEMUSIA mat SPECIAL CASE pre FINAL CASE, ked su uz vsetky PARAMETERS spracovane, pretoze pomocou CONSTEXPRESSION IF staci vykonavat RECURSION iba ak existuje aspon 1 PARAMETER na spracovanie. Kedze IF BLOCK sa KOMPILUJE iba ak CONDITION ma VALUE TRUE, tak COMPILER NEGENERUJE ERROR.
+//----------------------------------------------------------------------------------------------------------------------

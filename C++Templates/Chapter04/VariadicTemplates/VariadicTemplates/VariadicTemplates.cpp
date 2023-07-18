@@ -173,7 +173,7 @@ void TestVariadicClassNoFinalCase(void)
 //----------------------------------------------------------------------------------------------------------------------
 //----------------------------------------------------------------------------------------------------------------------
 //----------------------------------------------------------------------------------------------------------------------
-// !!!!! METHOD pouzivana pre RECURSION CASE aj .
+// !!!!! METHOD pouzivana pre RECURSION CASE aj FINAL CASE.
 template<typename TThis, typename... TTypes>
 void OperatorVariadicMethodNoFinalCase(TThis This, TTypes... Others)
 {
