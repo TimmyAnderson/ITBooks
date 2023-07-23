@@ -41,6 +41,76 @@
 #include "EEnumLong.h"
 #include "CInvocable.h"
 #include "CInvokeResult.h"
+#include "CIsConstructible.h"
+#include "CNonIsConstructible.h"
+#include "CIsTriviallyConstructible.h"
+#include "CNonIsTriviallyConstructible1.h"
+#include "CNonIsTriviallyConstructible2.h"
+#include "CNonIsTriviallyConstructible3.h"
+#include "CIsNoThrowConstructible.h"
+#include "CNonIsNoThrowConstructible.h"
+#include "CIsDefaultConstructible.h"
+#include "CNonIsDefaultConstructible.h"
+#include "CIsTriviallyDefaultConstructible.h"
+#include "CNonIsTriviallyDefaultConstructible.h"
+#include "CIsNoThrowDefaultConstructible.h"
+#include "CNonIsNoThrowDefaultConstructible1.h"
+#include "CNonIsNoThrowDefaultConstructible2.h"
+#include "CIsCopyConstructible1.h"
+#include "CIsCopyConstructible2.h"
+#include "CNonIsCopyConstructible.h"
+#include "CIsTriviallyCopyConstructible.h"
+#include "CNonIsTriviallyCopyConstructible.h"
+#include "CIsNoThrowCopyConstructible.h"
+#include "CNonIsNoThrowCopyConstructible.h"
+#include "CIsMoveConstructible1.h"
+#include "CIsMoveConstructible2.h"
+#include "CNonIsMoveConstructible.h"
+#include "CIsTriviallyMoveConstructible.h"
+#include "CNonIsTriviallyMoveConstructible.h"
+#include "CIsNoThrowMoveConstructible.h"
+#include "CNonIsNoThrowMoveConstructible.h"
+#include "CIsAssignable.h"
+#include "CNonIsAssignable.h"
+#include "CIsTriviallyAssignable.h"
+#include "CNonIsTriviallyAssignable.h"
+#include "CIsNoThrowAssignable.h"
+#include "CNonIsNoThrowAssignable.h"
+#include "CIsCopyAssignable1.h"
+#include "CIsCopyAssignable2.h"
+#include "CNonIsCopyAssignable.h"
+#include "CIsTriviallyCopyAssignable.h"
+#include "CNonIsTriviallyCopyAssignable.h"
+#include "CIsNoThrowCopyAssignable.h"
+#include "CNonIsNoThrowCopyAssignable.h"
+#include "CIsMoveAssignable1.h"
+#include "CIsMoveAssignable2.h"
+#include "CNonIsMoveAssignable.h"
+#include "CIsTriviallyMoveAssignable.h"
+#include "CNonIsTriviallyMoveAssignable.h"
+#include "CIsNoThrowMoveAssignable.h"
+#include "CNonIsNoThrowMoveAssignable.h"
+#include "CIsDestructible1.h"
+#include "CIsDestructible2.h"
+#include "CNonIsDestructible.h"
+#include "CIsTriviallyDestructible.h"
+#include "CNonIsTriviallyDestructible.h"
+#include "CIsNoThrowDestructible.h"
+#include "CNonIsNoThrowDestructible.h"
+#include "CIsSwappableWith.h"
+#include "CNonIsSwappableWith.h"
+#include "CIsNoThrowSwappableWith.h"
+#include "CNonIsNoThrowSwappableWith.h"
+#include "CIsSwappable.h"
+#include "CNonIsSwappable.h"
+#include "CIsNoThrowSwappable.h"
+#include "CNonIsNoThrowSwappable.h"
+#include "CIsBaseOfBase.h"
+#include "CIsBaseOfDerived1.h"
+#include "CIsBaseOfDerived2.h"
+#include "CIsBaseOfSuperDerived.h"
+#include "CIsConvertible.h"
+#include "CNonIsConvertible.h"
 //----------------------------------------------------------------------------------------------------------------------
 #ifdef _MSC_VER
 #pragma warning( disable : 4180 )
@@ -3637,6 +3707,15 @@ void TestTypeTraitInvokeResult(void)
 	PrintLineSeparator();
 
 	{
+		int														(*FUNCTION)(int,double) noexcept=nullptr;
+		wstring													Value=GetTypeInfoName(typeid(invoke_result<decltype(FUNCTION),int,float>::type));
+
+		wcout << L"TYPE TRAIT [invoke_result<int(*)(int,double) noexcept,int,float>::type] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+
+	{
 		void													(*FUNCTION)(int,double) noexcept=nullptr;
 		wstring													Value=GetTypeInfoName(typeid(invoke_result<decltype(FUNCTION),int,double>::type));
 
@@ -3662,6 +3741,2653 @@ void TestTypeTraitInvokeResult(void)
 		wcout << L"TYPE TRAIT [invoke_result<void(*)(int,double) noexcept,int,double,double>::type] - VALUE [" << Value << L"]." << endl;
 	}
 	*/
+
+	PrintLineSeparator();
+}
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+void TestTypeTraitIsConstructible(void)
+{
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati TRUE.
+		bool													Value=is_constructible<CIsConstructible,int,double>::value;
+
+		wcout << L"TYPE TRAIT [is_constructible<CIsConstructible,int,double>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati TRUE, lebo 2. ARGUMENT TYPE [float] je CONVERTIBLE na 2. PARAMETER TYPE [double].
+		bool													Value=is_constructible<CIsConstructible,int,float>::value;
+
+		wcout << L"TYPE TRAIT [is_constructible<CIsConstructible,int,float>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati FALSE, lebo CONSTRUCTOR s 3 PARAMETERS NEEXISTUJE.
+		bool													Value=is_constructible<CIsConstructible,int,double,int>::value;
+
+		wcout << L"TYPE TRAIT [is_constructible<CIsConstructible,int,double,int>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+}
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+void TestTypeTraitIsNoConstructible(void)
+{
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati FALSE, lebo CONSTRUCTOR s 2 PARAMETERS NEEXISTUJE.
+		bool													Value=is_constructible<CNonIsConstructible,int,double>::value;
+
+		wcout << L"TYPE TRAIT [is_constructible<CNonIsConstructible,int,double>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati TRUE, lebo CONSTRUCTOR s 0 PARAMETERS existuje.
+		bool													Value=is_constructible<CNonIsConstructible>::value;
+
+		wcout << L"TYPE TRAIT [is_constructible<CNonIsConstructible>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+}
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+void TestTypeTraitIsTriviallyConstructible(void)
+{
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati TRUE, lebo CLASS NEMA ziaden CONSTRUCTOR a tak C++ generuje DEFAULT CONSTRUCTOR.
+		bool													Value=is_trivially_constructible<CIsTriviallyConstructible>::value;
+
+		wcout << L"TYPE TRAIT [is_trivially_constructible<CIsTriviallyConstructible>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati TRUE, lebo CLASS NEMA ziaden COPY CONSTRUCTOR a tak C++ generuje DEFAULT COPY CONSTRUCTOR.
+		bool													Value=is_trivially_constructible<CIsTriviallyConstructible,const CIsTriviallyConstructible&>::value;
+
+		wcout << L"TYPE TRAIT [is_trivially_constructible<CIsTriviallyConstructible,const CIsTriviallyConstructible&>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati TRUE, lebo CLASS NEMA ziaden MOVE CONSTRUCTOR a tak C++ generuje DEFAULT MOVE CONSTRUCTOR.
+		bool													Value=is_trivially_constructible<CIsTriviallyConstructible,CIsTriviallyConstructible&&>::value;
+
+		wcout << L"TYPE TRAIT [is_trivially_constructible<CIsTriviallyConstructible,CIsTriviallyConstructible&&>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati FALSE, lebo CLASS NEMA ziaden CONSTRUCTOR a C++ NEGENERUJE DEFULAT (TRIVIAL) CONSTRUCTORS s PARAMETERS.
+		bool													Value=is_trivially_constructible<CIsTriviallyConstructible,int,double>::value;
+
+		wcout << L"TYPE TRAIT [is_trivially_constructible<CIsTriviallyConstructible,int,double>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+}
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+void TestTypeTraitIsNoTriviallyConstructible(void)
+{
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati FALSE, lebo CLASS ma FIELD, ktory NIE JE TRIVIALLY CONSTRUCTIBLE.
+		bool													Value=is_trivially_constructible<CNonIsTriviallyConstructible1>::value;
+
+		wcout << L"TYPE TRAIT [is_trivially_constructible<CNonIsTriviallyConstructible1>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati FALSE, lebo CLASS MA definovany CONSTRUCTOR s 0 PARAMETERS a tym padom NIE JE TRIVIALLY CONSTRUCTIBLE.
+		bool													Value=is_trivially_constructible<CNonIsTriviallyConstructible2>::value;
+
+		wcout << L"TYPE TRAIT [is_trivially_constructible<CNonIsTriviallyConstructible2>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati FALSE, lebo CLASS MA definovany CONSTRUCTOR s 0 PARAMETERS a tym padom NIE JE TRIVIALLY CONSTRUCTIBLE.
+		bool													Value=is_trivially_constructible<CNonIsTriviallyConstructible2,int,double>::value;
+
+		wcout << L"TYPE TRAIT [is_trivially_constructible<CNonIsTriviallyConstructible2,int,double>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati TRUE, lebo CLASS NEMA definovany COPY CONSTRUCTOR a tak je vygenerovany IMPLICIT (TRIVIAL) COPY CONSTRUCTOR.
+		bool													Value=is_trivially_constructible<CNonIsTriviallyConstructible2,const CNonIsTriviallyConstructible2&>::value;
+
+		wcout << L"TYPE TRAIT [is_trivially_constructible<CNonIsTriviallyConstructible2,const CNonIsTriviallyConstructible2&>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati TRUE, lebo CLASS NEMA definovany MOVE CONSTRUCTOR a tak je vygenerovany IMPLICIT (TRIVIAL) MOVE CONSTRUCTOR.
+		bool													Value=is_trivially_constructible<CNonIsTriviallyConstructible2,CNonIsTriviallyConstructible2&&>::value;
+
+		wcout << L"TYPE TRAIT [is_trivially_constructible<CNonIsTriviallyConstructible2,CNonIsTriviallyConstructible2&&>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati FALSE, lebo CLASS MA definovany DESTRUCTOR a tym padom NIE JE TRIVIALLY CONSTRUCTIBLE.
+		bool													Value=is_trivially_constructible<CNonIsTriviallyConstructible3>::value;
+
+		wcout << L"TYPE TRAIT [is_trivially_constructible<CNonIsTriviallyConstructible3>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati FALSE, lebo CLASS MA definovany DESTRUCTOR a tym padom NIE JE TRIVIALLY CONSTRUCTIBLE.
+		bool													Value=is_trivially_constructible<CNonIsTriviallyConstructible3,const CNonIsTriviallyConstructible3&>::value;
+
+		wcout << L"TYPE TRAIT [is_trivially_constructible<CNonIsTriviallyConstructible3,const CNonIsTriviallyConstructible3&>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati FALSE, lebo CLASS MA definovany DESTRUCTOR a tym padom NIE JE TRIVIALLY CONSTRUCTIBLE.
+		bool													Value=is_trivially_constructible<CNonIsTriviallyConstructible3,CNonIsTriviallyConstructible3&&>::value;
+
+		wcout << L"TYPE TRAIT [is_trivially_constructible<CNonIsTriviallyConstructible3,CNonIsTriviallyConstructible3&&>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+}
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+void TestTypeTraitIsNoThrowConstructible(void)
+{
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati TRUE, lebo CONSTRUCTOR s 2 PARAMETERS je DEFINED a je oznaceny pomocou KEYWORD [noexcept].
+		bool													Value=is_nothrow_constructible<CIsNoThrowConstructible,int,double>::value;
+
+		wcout << L"TYPE TRAIT [is_nothrow_constructible<CIsNoThrowConstructible,int,double>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati FALSE, lebo CONSTRUCTOR s 3 PARAMETERS NIE je DEFINED.
+		bool													Value=is_nothrow_constructible<CIsNoThrowConstructible,int,double,int>::value;
+
+		wcout << L"TYPE TRAIT [is_nothrow_constructible<CIsNoThrowConstructible,int,double,int>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati FALSE, lebo CONSTRUCTOR s 1 PARAMETER je DEFINED, ale NIE je oznaceny pomocou KEYWORD [noexcept].
+		bool													Value=is_nothrow_constructible<CIsNoThrowConstructible,int>::value;
+
+		wcout << L"TYPE TRAIT [is_nothrow_constructible<CIsNoThrowConstructible,int>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+}
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+void TestTypeTraitIsNoNoThrowConstructible(void)
+{
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati FALSE, lebo CONSTRUCTOR s 2 PARAMETERS je DEFINED, ale NIE je oznaceny pomocou KEYWORD [noexcept].
+		bool													Value=is_nothrow_constructible<CNonIsNoThrowConstructible,int,double>::value;
+
+		wcout << L"TYPE TRAIT [is_nothrow_constructible<CNonIsNoThrowConstructible,int,double>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati FALSE, lebo CONSTRUCTOR s 3 PARAMETERS NIE je DEFINED.
+		bool													Value=is_nothrow_constructible<CNonIsNoThrowConstructible,int,double,int>::value;
+
+		wcout << L"TYPE TRAIT [is_nothrow_constructible<CNonIsNoThrowConstructible,int,double,int>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati TRUE, lebo CONSTRUCTOR s 1 PARAMETER je DEFINED a je oznaceny pomocou KEYWORD [noexcept].
+		bool													Value=is_nothrow_constructible<CNonIsNoThrowConstructible,int>::value;
+
+		wcout << L"TYPE TRAIT [is_nothrow_constructible<CNonIsNoThrowConstructible,int>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+}
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+void TestTypeTraitIsDefaultConstructible(void)
+{
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati TRUE, lebo je definovany DEFAULT CONSTRUCTOR.
+		bool													Value=is_default_constructible<CIsDefaultConstructible>::value;
+
+		wcout << L"TYPE TRAIT [is_default_constructible<CIsDefaultConstructible>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati TRUE.
+		bool													Value=is_default_constructible<int>::value;
+
+		wcout << L"TYPE TRAIT [is_default_constructible<int>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+}
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+void TestTypeTraitIsNoDefaultConstructible(void)
+{
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati FALSE, lebo je definovany CONSTRUCTOR s PARAMETERS a tym padom nie je definovany DEFAULT CONSTRUCTOR.
+		bool													Value=is_default_constructible<CNonIsDefaultConstructible>::value;
+
+		wcout << L"TYPE TRAIT [is_default_constructible<CNonIsDefaultConstructible>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+}
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+void TestTypeTraitIsTriviallyDefaultConstructible(void)
+{
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati TRUE, lebo NIE je definovany DEFAULT CONSTRUCTOR a C++ vygeneruje TRIVIAL DEFAULT CONSTRUCTOR.
+		bool													Value=is_trivially_default_constructible<CIsTriviallyDefaultConstructible>::value;
+
+		wcout << L"TYPE TRAIT [is_trivially_default_constructible<CIsTriviallyDefaultConstructible>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati TRUE.
+		bool													Value=is_trivially_default_constructible<int>::value;
+
+		wcout << L"TYPE TRAIT [is_trivially_default_constructible<int>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+}
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+void TestTypeTraitIsNoTriviallyDefaultConstructible(void)
+{
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati FALSE, lebo je definovany DEFAULT CONSTRUCTOR a tym padom sa nejedna o TRIVIAL DEFAULT CONSTRUCTOR.
+		bool													Value=is_trivially_default_constructible<CNonIsTriviallyDefaultConstructible>::value;
+
+		wcout << L"TYPE TRAIT [is_trivially_default_constructible<CNonIsTriviallyDefaultConstructible>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+}
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+void TestTypeTraitIsNoThrowDefaultConstructible(void)
+{
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati TRUE, lebo je definovany DEFAULT CONSTRUCTOR a oznaceny pomocou KEYWORD [noexcept].
+		bool													Value=is_nothrow_default_constructible<CIsNoThrowDefaultConstructible>::value;
+
+		wcout << L"TYPE TRAIT [is_nothrow_default_constructible<CIsNoThrowDefaultConstructible>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati TRUE.
+		bool													Value=is_nothrow_default_constructible<int>::value;
+
+		wcout << L"TYPE TRAIT [is_nothrow_default_constructible<int>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+}
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+void TestTypeTraitIsNoNoThrowDefaultConstructible(void)
+{
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati FALSE, lebo je NIE JE definovany DEFAULT CONSTRUCTOR.
+		bool													Value=is_nothrow_default_constructible<CNonIsNoThrowDefaultConstructible1>::value;
+
+		wcout << L"TYPE TRAIT [is_nothrow_default_constructible<CNonIsNoThrowDefaultConstructible1>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati FALSE, lebo je JE definovany DEFAULT CONSTRUCTOR, ale NIE JE oznaceny pomocou KEYWORD [noexcept].
+		bool													Value=is_nothrow_default_constructible<CNonIsNoThrowDefaultConstructible2>::value;
+
+		wcout << L"TYPE TRAIT [is_nothrow_default_constructible<CNonIsNoThrowDefaultConstructible2>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+}
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+void TestTypeTraitIsCopyConstructible(void)
+{
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati TRUE, lebo je definovany COPY CONSTRUCTOR.
+		bool													Value=is_copy_constructible<CIsCopyConstructible1>::value;
+
+		wcout << L"TYPE TRAIT [is_copy_constructible<CIsCopyConstructible1>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati TRUE, lebo je GENEROVANY DEFAULT COPY CONSTRUCTOR.
+		bool													Value=is_copy_constructible<CIsCopyConstructible2>::value;
+
+		wcout << L"TYPE TRAIT [is_copy_constructible<CIsCopyConstructible2>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati TRUE.
+		bool													Value=is_copy_constructible<int>::value;
+
+		wcout << L"TYPE TRAIT [is_copy_constructible<int>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati TRUE.
+		bool													Value=is_copy_constructible<int&>::value;
+
+		wcout << L"TYPE TRAIT [is_copy_constructible<int&>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati FALSE.
+		bool													Value=is_copy_constructible<int&&>::value;
+
+		wcout << L"TYPE TRAIT [is_copy_constructible<int&&>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati TRUE.
+		bool													Value=is_copy_constructible<int*>::value;
+
+		wcout << L"TYPE TRAIT [is_copy_constructible<int*>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+}
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+void TestTypeTraitIsNoCopyConstructible(void)
+{
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati FALSE, lebo COPY CONSTRUCTOR NIE je definovany a DEFUALT COPY CONSTRUCTOR je DELETED.
+		bool													Value=is_copy_constructible<CNonIsCopyConstructible>::value;
+
+		wcout << L"TYPE TRAIT [is_copy_constructible<CNonIsCopyConstructible>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati TRUE, lebo hoci COPY CONSTRUCTOR NIE JE DEFINOVANY, C++ vygeneruje DEFUALT COPY CONSTRUCTOR.
+		bool													Value=is_copy_constructible<CIsCopyConstructible2>::value;
+
+		wcout << L"TYPE TRAIT [is_copy_constructible<CIsCopyConstructible2>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+}
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+void TestTypeTraitIsTriviallyCopyConstructible(void)
+{
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati TRUE, lebo NIE je definovany COPY CONSTRUCTOR a C++ vygeneruje DEFAULT (TRIVIAL) COPY CONSTRUCTOR.
+		bool													Value=is_trivially_copy_constructible<CIsTriviallyCopyConstructible>::value;
+
+		wcout << L"TYPE TRAIT [is_trivially_copy_constructible<CIsTriviallyCopyConstructible>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati TRUE.
+		bool													Value=is_trivially_copy_constructible<int>::value;
+
+		wcout << L"TYPE TRAIT [is_trivially_copy_constructible<int>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+}
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+void TestTypeTraitIsNoTriviallyCopyConstructible(void)
+{
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati FALSE, lebo je definovany COPY CONSTRUCTOR a tym padom sa nejedna o TRIVIAL COPY CONSTRUCTOR.
+		bool													Value=is_trivially_copy_constructible<CNonIsTriviallyCopyConstructible>::value;
+
+		wcout << L"TYPE TRAIT [is_trivially_copy_constructible<CNonIsTriviallyCopyConstructible>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+}
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+void TestTypeTraitIsNoThrowCopyConstructible(void)
+{
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati TRUE, lebo COPY CONSTRUCTOR je definovany a je oznaceny pomocou KEYWORD [noexcept].
+		bool													Value=is_nothrow_copy_constructible<CIsNoThrowCopyConstructible>::value;
+
+		wcout << L"TYPE TRAIT [is_nothrow_copy_constructible<CIsNoThrowCopyConstructible>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati TRUE.
+		bool													Value=is_nothrow_copy_constructible<int>::value;
+
+		wcout << L"TYPE TRAIT [is_nothrow_copy_constructible<int>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+}
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+void TestTypeTraitIsNoNoThrowCopyConstructible(void)
+{
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati FALSE, lebo COPY CONSTRUCTOR je definovany ale NIE je oznaceny pomocou KEYWORD [noexcept].
+		bool													Value=is_nothrow_copy_constructible<CNonIsNoThrowCopyConstructible>::value;
+
+		wcout << L"TYPE TRAIT [is_nothrow_copy_constructible<CNonIsNoThrowCopyConstructible>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+}
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+void TestTypeTraitIsMoveConstructible(void)
+{
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati TRUE, lebo je definovany MOVE CONSTRUCTOR.
+		bool													Value=is_move_constructible<CIsMoveConstructible1>::value;
+
+		wcout << L"TYPE TRAIT [is_move_constructible<CIsMoveConstructible1>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati TRUE, lebo MOVE CONSTRUCTOR NIE JE definovany, ale C++ vygeneruje DEFAULT (TRIVIAL) MOVE CONSTRUCTOR. .
+		bool													Value=is_move_constructible<CIsMoveConstructible2>::value;
+
+		wcout << L"TYPE TRAIT [is_move_constructible<CIsMoveConstructible2>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati TRUE.
+		bool													Value=is_move_constructible<int>::value;
+
+		wcout << L"TYPE TRAIT [is_move_constructible<int>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati TRUE.
+		bool													Value=is_move_constructible<int&>::value;
+
+		wcout << L"TYPE TRAIT [is_move_constructible<int&>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati TRUE.
+		bool													Value=is_move_constructible<int&&>::value;
+
+		wcout << L"TYPE TRAIT [is_move_constructible<int&&>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati TRUE.
+		bool													Value=is_move_constructible<int*>::value;
+
+		wcout << L"TYPE TRAIT [is_move_constructible<int*>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati FALSE.
+		bool													Value=is_move_constructible<void>::value;
+
+		wcout << L"TYPE TRAIT [is_move_constructible<void>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati TRUE, lebo MOVE CONSTRUCTOR NIE JE definovany, ale C++ vygeneruje DEFAULT (TRIVIAL) MOVE CONSTRUCTOR. .
+		bool													Value=is_move_constructible<CIsMoveConstructible2>::value;
+
+		wcout << L"TYPE TRAIT [is_move_constructible<CIsMoveConstructible2>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+}
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+void TestTypeTraitIsNoMoveConstructible(void)
+{
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati FALSE, lebo MOVE CONSTRUCTOR NIE je definovany a DEFUALT MOVE CONSTRUCTOR je DELETED.
+		bool													Value=is_move_constructible<CNonIsMoveConstructible>::value;
+
+		wcout << L"TYPE TRAIT [is_move_constructible<CNonIsMoveConstructible>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati TRUE, lebo MOVE CONSTRUCTOR NIE JE definovany, ale C++ vygeneruje DEFAULT (TRIVIAL) MOVE CONSTRUCTOR. .
+		bool													Value=is_move_constructible<CIsMoveConstructible2>::value;
+
+		wcout << L"TYPE TRAIT [is_move_constructible<CIsMoveConstructible2>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+}
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+void TestTypeTraitIsTriviallyMoveConstructible(void)
+{
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati TRUE, lebo NIE je definovany MOVE CONSTRUCTOR a C++ vygeneruje DEFAULT (TRIVIAL) MOVE CONSTRUCTOR.
+		bool													Value=is_trivially_move_constructible<CIsTriviallyMoveConstructible>::value;
+
+		wcout << L"TYPE TRAIT [is_trivially_move_constructible<CIsTriviallyMoveConstructible>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati TRUE.
+		bool													Value=is_trivially_move_constructible<int>::value;
+
+		wcout << L"TYPE TRAIT [is_trivially_move_constructible<int>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+}
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+void TestTypeTraitIsNoTriviallyMoveConstructible(void)
+{
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati FALSE, lebo je definovany MOVE CONSTRUCTOR a tym padom sa nejedna o TRIVIAL MOVE CONSTRUCTOR.
+		bool													Value=is_trivially_move_constructible<CNonIsTriviallyMoveConstructible>::value;
+
+		wcout << L"TYPE TRAIT [is_trivially_move_constructible<CNonIsTriviallyMoveConstructible>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+}
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+void TestTypeTraitIsNoThrowMoveConstructible(void)
+{
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati TRUE, lebo MOVE CONSTRUCTOR je definovany a je oznaceny pomocou KEYWORD [noexcept].
+		bool													Value=is_nothrow_move_constructible<CIsNoThrowMoveConstructible>::value;
+
+		wcout << L"TYPE TRAIT [is_nothrow_move_constructible<CIsNoThrowMoveConstructible>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati TRUE.
+		bool													Value=is_nothrow_move_constructible<int>::value;
+
+		wcout << L"TYPE TRAIT [is_nothrow_move_constructible<int>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+}
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+void TestTypeTraitIsNoNoThrowMoveConstructible(void)
+{
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati FALSE, lebo MOVE CONSTRUCTOR je definovany ale NIE je oznaceny pomocou KEYWORD [noexcept].
+		bool													Value=is_nothrow_move_constructible<CNonIsNoThrowMoveConstructible>::value;
+
+		wcout << L"TYPE TRAIT [is_nothrow_move_constructible<CNonIsNoThrowMoveConstructible>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+}
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+void TestTypeTraitIsAssignable(void)
+{
+	PrintLineSeparator();
+
+	{
+		// !!!!! Vrati FALSE, lebo TYPE [int] je NON-REFERENCE, NON-CLASS TYPE.
+		bool													Value=is_assignable<int,int>::value;
+
+		wcout << L"TYPE TRAIT [is_assignable<int,int>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati TRUE.
+		bool													Value=is_assignable<int&,int>::value;
+
+		wcout << L"TYPE TRAIT [is_assignable<int&,int>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati FALSE.
+		bool													Value=is_assignable<int&&,int>::value;
+
+		wcout << L"TYPE TRAIT [is_assignable<int&&,int>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati TRUE.
+		bool													Value=is_assignable<int&,int&>::value;
+
+		wcout << L"TYPE TRAIT [is_assignable<int&,int&>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati FALSE.
+		bool													Value=is_assignable<int&&,int&>::value;
+
+		wcout << L"TYPE TRAIT [is_assignable<int&&,int&>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati FALSE.
+		bool													Value=is_assignable<int&&,int&&>::value;
+
+		wcout << L"TYPE TRAIT [is_assignable<int&&,int&&>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati TRUE, lebo TYPE [double] je mozne priradit do VARIABLE TYPE [int].
+		bool													Value=is_assignable<int&,double>::value;
+
+		wcout << L"TYPE TRAIT [is_assignable<int&,double>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati TRUE, lebo TYPE [CIsAssignable] ma definovany OPERATOR [OPERATOR=] pre TYPE [CNonTrivialType].
+		bool													Value=is_assignable<CIsAssignable,CNonTrivialType>::value;
+
+		wcout << L"TYPE TRAIT [is_assignable<CIsAssignable,CNonTrivialType>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati TRUE, lebo TYPE [CIsAssignable] ma definovany OPERATOR [OPERATOR=] pre TYPE [CNonTrivialType].
+		bool													Value=is_assignable<CIsAssignable&,CNonTrivialType>::value;
+
+		wcout << L"TYPE TRAIT [is_assignable<CIsAssignable&,CNonTrivialType>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati TRUE, lebo TYPE [CIsAssignable] ma definovany OPERATOR [OPERATOR=] pre TYPE [CNonTrivialType].
+		bool													Value=is_assignable<CIsAssignable&&,CNonTrivialType>::value;
+
+		wcout << L"TYPE TRAIT [is_assignable<CIsAssignable&&,CNonTrivialType>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+}
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+void TestTypeTraitIsNoAssignable(void)
+{
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati FALSE, lebo TYPE [CNonIsAssignable] NEMA definovany OPERATOR [OPERATOR=] pre TYPE [CNonTrivialType].
+		bool													Value=is_assignable<CNonIsAssignable,CNonTrivialType>::value;
+
+		wcout << L"TYPE TRAIT [is_assignable<CNonIsAssignable,CNonTrivialType>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati TRUE, lebo TYPE [CNonIsAssignable] sice NEMA definovany COPY OPERATOR [OPERATOR=], ale ten je vygenerovany C++.
+		bool													Value=is_assignable<CNonIsAssignable,const CNonIsAssignable&>::value;
+
+		wcout << L"TYPE TRAIT [is_assignable<CNonIsAssignable,const CNonIsAssignable&>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati FALSE, lebo TYPE [void] nie je REFERENCABLE.
+		bool													Value=is_assignable<void,void*>::value;
+
+		wcout << L"TYPE TRAIT [is_assignable<void,void*>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+}
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+void TestTypeTraitIsTriviallyAssignable(void)
+{
+	PrintLineSeparator();
+
+	{
+		// !!!!! Vrati FALSE, lebo TYPE [int] je NON-REFERENCE, NON-CLASS TYPE.
+		bool													Value=is_trivially_assignable<int,int>::value;
+
+		wcout << L"TYPE TRAIT [is_trivially_assignable<int,int>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati TRUE.
+		bool													Value=is_trivially_assignable<int&,int>::value;
+
+		wcout << L"TYPE TRAIT [is_trivially_assignable<int&,int>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati FALSE.
+		bool													Value=is_trivially_assignable<int&&,int>::value;
+
+		wcout << L"TYPE TRAIT [is_trivially_assignable<int&&,int>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati TRUE.
+		bool													Value=is_trivially_assignable<int&,int&>::value;
+
+		wcout << L"TYPE TRAIT [is_trivially_assignable<int&,int&>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati FALSE.
+		bool													Value=is_trivially_assignable<int&&,int&>::value;
+
+		wcout << L"TYPE TRAIT [is_trivially_assignable<int&&,int&>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati FALSE.
+		bool													Value=is_trivially_assignable<int&&,int&&>::value;
+
+		wcout << L"TYPE TRAIT [is_trivially_assignable<int&&,int&&>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati TRUE, lebo TYPE [double] je mozne priradit do VARIABLE TYPE [int].
+		bool													Value=is_trivially_assignable<int&,double>::value;
+
+		wcout << L"TYPE TRAIT [is_trivially_assignable<int&,double>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati TRUE, lebo TYPE [CIsTriviallyAssignable] NEMA definovany COPY OPERATOR [OPERATOR=], ale C++ vygeneruje DEFAULT (TRIVIAL) COPY OPERATOR [OPERATOR=].
+		bool													Value=is_trivially_assignable<CIsTriviallyAssignable,const CIsTriviallyAssignable&>::value;
+
+		wcout << L"TYPE TRAIT [is_trivially_assignable<CIsTriviallyAssignable,const CIsTriviallyAssignable&>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati TRUE, lebo TYPE [CIsTriviallyAssignable] NEMA definovany MOVE OPERATOR [OPERATOR=], ale C++ vygeneruje DEFAULT (TRIVIAL) MOVE OPERATOR [OPERATOR=].
+		bool													Value=is_trivially_assignable<CIsTriviallyAssignable,CIsTriviallyAssignable&&>::value;
+
+		wcout << L"TYPE TRAIT [is_trivially_assignable<CIsTriviallyAssignable,CIsTriviallyAssignable&&>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+}
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+void TestTypeTraitIsNoTriviallyAssignable(void)
+{
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati TRUE, lebo TYPE [CNonIsTriviallyAssignable] NEMA definovany COPY OPERATOR [OPERATOR=], a DEFAULT COPY OPERATOR [OPERATOR=] je DELETED.
+		bool													Value=is_trivially_assignable<CNonIsTriviallyAssignable,const CNonIsTriviallyAssignable&>::value;
+
+		wcout << L"TYPE TRAIT [is_trivially_assignable<CNonIsTriviallyAssignable,const CNonIsTriviallyAssignable&>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati TRUE, lebo TYPE [CNonIsTriviallyAssignable] NEMA definovany MOVE OPERATOR [OPERATOR=], a DEFAULT MOVE OPERATOR [OPERATOR=] je DELETED.
+		bool													Value=is_trivially_assignable<CNonIsTriviallyAssignable,CNonIsTriviallyAssignable&&>::value;
+
+		wcout << L"TYPE TRAIT [is_trivially_assignable<CNonIsTriviallyAssignable,CNonIsTriviallyAssignable&&>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati FALSE, lebo TYPE [void] nie je REFERENCABLE.
+		bool													Value=is_trivially_assignable<void,void*>::value;
+
+		wcout << L"TYPE TRAIT [is_trivially_assignable<void,void*>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+}
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+void TestTypeTraitIsNoThrowAssignable(void)
+{
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati TRUE, lebo TYPE [CIsNoThrowAssignable] ma definovany OPERATOR [OPERATOR=] pre TYPE [CNonTrivialType], ktory je zaroven oznaceny KEYWORD [noexcept].
+		bool													Value=is_nothrow_assignable<CIsNoThrowAssignable&,CNonTrivialType>::value;
+
+		wcout << L"TYPE TRAIT [is_nothrow_assignable<CIsNoThrowAssignable&,CNonTrivialType>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati FALSE.
+		bool													Value=is_nothrow_assignable<int,int>::value;
+
+		wcout << L"TYPE TRAIT [is_nothrow_assignable<int,int>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati TRUE.
+		bool													Value=is_nothrow_assignable<int&,int>::value;
+
+		wcout << L"TYPE TRAIT [is_nothrow_assignable<int&,int>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati FALSE.
+		bool													Value=is_nothrow_assignable<int&&,int>::value;
+
+		wcout << L"TYPE TRAIT [is_nothrow_assignable<int&&,int>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+}
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+void TestTypeTraitIsNoNoThrowAssignable(void)
+{
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati FALSE, lebo TYPE [CNonIsNoThrowAssignable] ma definovany OPERATOR [OPERATOR=] pre TYPE [CNonTrivialType], ale NIE JE oznaceny KEYWORD [noexcept].
+		bool													Value=is_nothrow_assignable<CNonIsNoThrowAssignable&,CNonTrivialType>::value;
+
+		wcout << L"TYPE TRAIT [is_nothrow_assignable<CNonIsNoThrowAssignable&,CNonTrivialType>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati FALSE, lebo TYPE [void] nie je REFERENCABLE.
+		bool													Value=is_nothrow_assignable<void,void*>::value;
+
+		wcout << L"TYPE TRAIT [is_nothrow_assignable<void,void*>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+}
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+void TestTypeTraitIsCopyAssignable(void)
+{
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati TRUE, lebo je definovany COPY OPERATOR [OPERATOR=].
+		bool													Value=is_copy_assignable<CIsCopyAssignable1>::value;
+
+		wcout << L"TYPE TRAIT [is_copy_assignable<CIsCopyAssignable1>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati TRUE, lebo je GENEROVANY DEFAULT COPY OPERATOR [OPERATOR=].
+		bool													Value=is_copy_assignable<CIsCopyAssignable2>::value;
+
+		wcout << L"TYPE TRAIT [is_copy_assignable<CIsCopyAssignable2>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati TRUE.
+		bool													Value=is_copy_assignable<int>::value;
+
+		wcout << L"TYPE TRAIT [is_copy_assignable<int>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati TRUE.
+		bool													Value=is_copy_assignable<int&>::value;
+
+		wcout << L"TYPE TRAIT [is_copy_assignable<int&>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati TRUE.
+		bool													Value=is_copy_assignable<int&&>::value;
+
+		wcout << L"TYPE TRAIT [is_copy_assignable<int&&>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati TRUE.
+		bool													Value=is_copy_assignable<int*>::value;
+
+		wcout << L"TYPE TRAIT [is_copy_assignable<int*>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+}
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+void TestTypeTraitIsNoCopyAssignable(void)
+{
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati FALSE, lebo COPY OPERATOR [OPERATOR=] NIE je definovany a DEFUALT COPY OPERATOR [OPERATOR=] je DELETED.
+		bool													Value=is_copy_assignable<CNonIsCopyAssignable>::value;
+
+		wcout << L"TYPE TRAIT [is_copy_assignable<CNonIsCopyAssignable>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati TRUE, lebo hoci COPY OPERATOR [OPERATOR=] NIE JE DEFINOVANY, C++ vygeneruje DEFUALT COPY OPERATOR [OPERATOR=].
+		bool													Value=is_copy_assignable<CIsCopyAssignable2>::value;
+
+		wcout << L"TYPE TRAIT [is_copy_assignable<CIsCopyAssignable2>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati FALSE, lebo TYPE [void] nie je REFERENCABLE.
+		bool													Value=is_copy_assignable<void>::value;
+
+		wcout << L"TYPE TRAIT [is_copy_assignable<void>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati FALSE, lebo TYPE [int[10]] je C-ARRAY.
+		bool													Value=is_copy_assignable<int[10]>::value;
+
+		wcout << L"TYPE TRAIT [is_copy_assignable<int[10]>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+}
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+void TestTypeTraitIsTriviallyCopyAssignable(void)
+{
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati TRUE, lebo NIE je definovany COPY OPERATOR [OPERATOR=] a C++ vygeneruje DEFAULT (TRIVIAL) COPY OPERATOR [OPERATOR=].
+		bool													Value=is_trivially_copy_assignable<CIsTriviallyCopyAssignable>::value;
+
+		wcout << L"TYPE TRAIT [is_trivially_copy_assignable<CIsTriviallyCopyAssignable>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati TRUE.
+		bool													Value=is_trivially_copy_assignable<int>::value;
+
+		wcout << L"TYPE TRAIT [is_trivially_copy_assignable<int>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+}
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+void TestTypeTraitIsNoTriviallyCopyAssignable(void)
+{
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati FALSE, lebo je definovany COPY OPERATOR [OPERATOR=] a tym padom sa nejedna o TRIVIAL COPY OPERATOR [OPERATOR=].
+		bool													Value=is_trivially_copy_assignable<CNonIsTriviallyCopyAssignable>::value;
+
+		wcout << L"TYPE TRAIT [is_trivially_copy_assignable<CNonIsTriviallyCopyAssignable>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati FALSE, lebo TYPE [void] nie je REFERENCABLE.
+		bool													Value=is_trivially_copy_assignable<void>::value;
+
+		wcout << L"TYPE TRAIT [is_trivially_copy_assignable<void>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati FALSE, lebo TYPE [int[10]] je C-ARRAY.
+		bool													Value=is_trivially_copy_assignable<int[10]>::value;
+
+		wcout << L"TYPE TRAIT [is_trivially_copy_assignable<int[10]>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+}
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+void TestTypeTraitIsNoThrowCopyAssignable(void)
+{
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati TRUE, lebo COPY OPERATOR [OPERATOR=] je definovany a je oznaceny pomocou KEYWORD [noexcept].
+		bool													Value=is_nothrow_copy_assignable<CIsNoThrowCopyAssignable>::value;
+
+		wcout << L"TYPE TRAIT [is_nothrow_copy_assignable<CIsNoThrowCopyAssignable>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati TRUE.
+		bool													Value=is_nothrow_copy_assignable<int>::value;
+
+		wcout << L"TYPE TRAIT [is_nothrow_copy_assignable<int>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+}
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+void TestTypeTraitIsNoNoThrowCopyAssignable(void)
+{
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati FALSE, lebo COPY OPERATOR [OPERATOR=] je definovany ale NIE je oznaceny pomocou KEYWORD [noexcept].
+		bool													Value=is_nothrow_copy_assignable<CNonIsNoThrowCopyAssignable>::value;
+
+		wcout << L"TYPE TRAIT [is_nothrow_copy_assignable<CNonIsNoThrowCopyAssignable>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati FALSE, lebo TYPE [void] nie je REFERENCABLE.
+		bool													Value=is_nothrow_copy_assignable<void>::value;
+
+		wcout << L"TYPE TRAIT [is_nothrow_copy_assignable<void>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati FALSE, lebo TYPE [int[10]] je C-ARRAY.
+		bool													Value=is_nothrow_copy_assignable<int[10]>::value;
+
+		wcout << L"TYPE TRAIT [is_nothrow_copy_assignable<int[10]>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+}
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+void TestTypeTraitIsMoveAssignable(void)
+{
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati TRUE, lebo je definovany MOVE OPERATOR [OPERATOR=].
+		bool													Value=is_move_assignable<CIsMoveAssignable1>::value;
+
+		wcout << L"TYPE TRAIT [is_move_assignable<CIsMoveAssignable1>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati TRUE, lebo MOVE OPERATOR [OPERATOR=] NIE JE definovany, ale C++ vygeneruje DEFAULT (TRIVIAL) MOVE OPERATOR [OPERATOR=]. .
+		bool													Value=is_move_assignable<CIsMoveAssignable2>::value;
+
+		wcout << L"TYPE TRAIT [is_move_assignable<CIsMoveAssignable2>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati TRUE.
+		bool													Value=is_move_assignable<int>::value;
+
+		wcout << L"TYPE TRAIT [is_move_assignable<int>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati TRUE.
+		bool													Value=is_move_assignable<int&>::value;
+
+		wcout << L"TYPE TRAIT [is_move_assignable<int&>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati TRUE.
+		bool													Value=is_move_assignable<int&&>::value;
+
+		wcout << L"TYPE TRAIT [is_move_assignable<int&&>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati TRUE.
+		bool													Value=is_move_assignable<int*>::value;
+
+		wcout << L"TYPE TRAIT [is_move_assignable<int*>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati FALSE.
+		bool													Value=is_move_assignable<void>::value;
+
+		wcout << L"TYPE TRAIT [is_move_assignable<void>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati TRUE, lebo MOVE OPERATOR [OPERATOR=] NIE JE definovany, ale C++ vygeneruje DEFAULT (TRIVIAL) MOVE OPERATOR [OPERATOR=]. .
+		bool													Value=is_move_assignable<CIsMoveAssignable2>::value;
+
+		wcout << L"TYPE TRAIT [is_move_assignable<CIsMoveAssignable2>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+}
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+void TestTypeTraitIsNoMoveAssignable(void)
+{
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati FALSE, lebo MOVE OPERATOR [OPERATOR=] NIE je definovany a DEFUALT MOVE OPERATOR [OPERATOR=] je DELETED.
+		bool													Value=is_move_assignable<CNonIsMoveAssignable>::value;
+
+		wcout << L"TYPE TRAIT [is_move_assignable<CNonIsMoveAssignable>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati TRUE, lebo MOVE OPERATOR [OPERATOR=] NIE JE definovany, ale C++ vygeneruje DEFAULT (TRIVIAL) MOVE OPERATOR [OPERATOR=]. .
+		bool													Value=is_move_assignable<CIsMoveAssignable2>::value;
+
+		wcout << L"TYPE TRAIT [is_move_assignable<CIsMoveAssignable2>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati FALSE, lebo TYPE [void] nie je REFERENCABLE.
+		bool													Value=is_move_assignable<void>::value;
+
+		wcout << L"TYPE TRAIT [is_move_assignable<void>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati FALSE, lebo TYPE [int[10]] je C-ARRAY.
+		bool													Value=is_move_assignable<int[10]>::value;
+
+		wcout << L"TYPE TRAIT [is_move_assignable<int[10]>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+}
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+void TestTypeTraitIsTriviallyMoveAssignable(void)
+{
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati TRUE, lebo NIE je definovany MOVE OPERATOR [OPERATOR=] a C++ vygeneruje DEFAULT (TRIVIAL) MOVE OPERATOR [OPERATOR=].
+		bool													Value=is_trivially_move_assignable<CIsTriviallyMoveAssignable>::value;
+
+		wcout << L"TYPE TRAIT [is_trivially_move_assignable<CIsTriviallyMoveAssignable>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati TRUE.
+		bool													Value=is_trivially_move_assignable<int>::value;
+
+		wcout << L"TYPE TRAIT [is_trivially_move_assignable<int>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+}
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+void TestTypeTraitIsNoTriviallyMoveAssignable(void)
+{
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati FALSE, lebo je definovany MOVE OPERATOR [OPERATOR=] a tym padom sa nejedna o TRIVIAL MOVE OPERATOR [OPERATOR=].
+		bool													Value=is_trivially_move_assignable<CNonIsTriviallyMoveAssignable>::value;
+
+		wcout << L"TYPE TRAIT [is_trivially_move_assignable<CNonIsTriviallyMoveAssignable>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati FALSE, lebo TYPE [void] nie je REFERENCABLE.
+		bool													Value=is_trivially_move_assignable<void>::value;
+
+		wcout << L"TYPE TRAIT [is_trivially_move_assignable<void>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati FALSE, lebo TYPE [int[10]] je C-ARRAY.
+		bool													Value=is_trivially_move_assignable<int[10]>::value;
+
+		wcout << L"TYPE TRAIT [is_trivially_move_assignable<int[10]>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+}
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+void TestTypeTraitIsNoThrowMoveAssignable(void)
+{
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati TRUE, lebo MOVE OPERATOR [OPERATOR=] je definovany a je oznaceny pomocou KEYWORD [noexcept].
+		bool													Value=is_nothrow_move_assignable<CIsNoThrowMoveAssignable>::value;
+
+		wcout << L"TYPE TRAIT [is_nothrow_move_assignable<CIsNoThrowMoveAssignable>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati TRUE.
+		bool													Value=is_nothrow_move_assignable<int>::value;
+
+		wcout << L"TYPE TRAIT [is_nothrow_move_assignable<int>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+}
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+void TestTypeTraitIsNoNoThrowMoveAssignable(void)
+{
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati FALSE, lebo MOVE OPERATOR [OPERATOR=] je definovany ale NIE je oznaceny pomocou KEYWORD [noexcept].
+		bool													Value=is_nothrow_move_assignable<CNonIsNoThrowMoveAssignable>::value;
+
+		wcout << L"TYPE TRAIT [is_nothrow_move_assignable<CNonIsNoThrowMoveAssignable>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati FALSE, lebo TYPE [void] nie je REFERENCABLE.
+		bool													Value=is_nothrow_move_assignable<void>::value;
+
+		wcout << L"TYPE TRAIT [is_nothrow_move_assignable<void>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati FALSE, lebo TYPE [int[10]] je C-ARRAY.
+		bool													Value=is_nothrow_move_assignable<int[10]>::value;
+
+		wcout << L"TYPE TRAIT [is_nothrow_move_assignable<int[10]>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+}
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+void TestTypeTraitIsDestructible(void)
+{
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati TRUE, lebo DESTRUCTOR je definovany.
+		bool													Value=is_destructible<CIsDestructible1>::value;
+
+		wcout << L"TYPE TRAIT [is_destructible<CIsDestructible1>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati TRUE, lebo hoci DESTRUCTOR NIE je definovany, C++ definuje DEFAULT (TRIVIAL) DESTRUCTOR.
+		bool													Value=is_destructible<CIsDestructible2>::value;
+
+		wcout << L"TYPE TRAIT [is_destructible<CIsDestructible2>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati TRUE.
+		bool													Value=is_destructible<int>::value;
+
+		wcout << L"TYPE TRAIT [is_destructible<int>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati TRUE.
+		bool													Value=is_destructible<int&>::value;
+
+		wcout << L"TYPE TRAIT [is_destructible<int&>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati TRUE.
+		bool													Value=is_destructible<int&&>::value;
+
+		wcout << L"TYPE TRAIT [is_destructible<int&&>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati TRUE.
+		bool													Value=is_destructible<int*>::value;
+
+		wcout << L"TYPE TRAIT [is_destructible<int*>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati TRUE.
+		bool													Value=is_destructible<int[10]>::value;
+
+		wcout << L"TYPE TRAIT [is_destructible<int[10]>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+}
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+void TestTypeTraitIsNoDestructible(void)
+{
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati FALSE, lebo DESTRUCTOR NIE je definovany a DEFUALT DESTRUCTOR je DELETED.
+		bool													Value=is_destructible<CNonIsDestructible>::value;
+
+		wcout << L"TYPE TRAIT [is_destructible<CNonIsDestructible>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati FALSE.
+		bool													Value=is_destructible<void>::value;
+
+		wcout << L"TYPE TRAIT [is_destructible<void>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati FALSE, lebo TYPE je UNBOUNDED C-ARRAY.
+		bool													Value=is_destructible<int[]>::value;
+
+		wcout << L"TYPE TRAIT [is_destructible<int[]>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+}
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+void TestTypeTraitIsTriviallyDestructible(void)
+{
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati TRUE, lebo CLASS NEMA ziaden DESTRUCTOR a tak C++ generuje DEFAULT DESTRUCTOR.
+		bool													Value=is_trivially_destructible<CIsTriviallyDestructible>::value;
+
+		wcout << L"TYPE TRAIT [is_trivially_destructible<CIsTriviallyDestructible>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati TRUE.
+		bool													Value=is_trivially_destructible<int>::value;
+
+		wcout << L"TYPE TRAIT [is_trivially_destructible<int>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati TRUE.
+		bool													Value=is_trivially_destructible<int&>::value;
+
+		wcout << L"TYPE TRAIT [is_trivially_destructible<int&>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati TRUE.
+		bool													Value=is_trivially_destructible<int&&>::value;
+
+		wcout << L"TYPE TRAIT [is_trivially_destructible<int&&>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati TRUE.
+		bool													Value=is_trivially_destructible<int*>::value;
+
+		wcout << L"TYPE TRAIT [is_trivially_destructible<int*>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati TRUE.
+		bool													Value=is_trivially_destructible<int[10]>::value;
+
+		wcout << L"TYPE TRAIT [is_trivially_destructible<int[10]>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+}
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+void TestTypeTraitIsNoTriviallyDestructible(void)
+{
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati FALSE, lebo CLASS ma FIELD, ktory NIE JE TRIVIALLY DESTRUCTIBLE.
+		bool													Value=is_trivially_destructible<CNonIsTriviallyDestructible>::value;
+
+		wcout << L"TYPE TRAIT [is_trivially_destructible<CNonIsTriviallyDestructible>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati FALSE.
+		bool													Value=is_trivially_destructible<void>::value;
+
+		wcout << L"TYPE TRAIT [is_trivially_destructible<void>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati FALSE, lebo TYPE je UNBOUNDED C-ARRAY.
+		bool													Value=is_trivially_destructible<int[]>::value;
+
+		wcout << L"TYPE TRAIT [is_trivially_destructible<int[]>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+}
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+void TestTypeTraitIsNoThrowDestructible(void)
+{
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati TRUE, lebo DESTRUCTOR je DEFINED a je oznaceny pomocou KEYWORD [noexcept].
+		bool													Value=is_nothrow_destructible<CIsNoThrowDestructible>::value;
+
+		wcout << L"TYPE TRAIT [is_nothrow_destructible<CIsNoThrowDestructible>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati TRUE.
+		bool													Value=is_nothrow_destructible<int>::value;
+
+		wcout << L"TYPE TRAIT [is_nothrow_destructible<int>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati TRUE.
+		bool													Value=is_nothrow_destructible<int&>::value;
+
+		wcout << L"TYPE TRAIT [is_nothrow_destructible<int&>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati TRUE.
+		bool													Value=is_nothrow_destructible<int&&>::value;
+
+		wcout << L"TYPE TRAIT [is_nothrow_destructible<int&&>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati TRUE.
+		bool													Value=is_nothrow_destructible<int*>::value;
+
+		wcout << L"TYPE TRAIT [is_nothrow_destructible<int*>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati TRUE.
+		bool													Value=is_nothrow_destructible<int[10]>::value;
+
+		wcout << L"TYPE TRAIT [is_nothrow_destructible<int[10]>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+}
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+void TestTypeTraitIsNoNoThrowDestructible(void)
+{
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati TRUE, hoci DESTRUCTOR je DEFINED, ale NIE je oznaceny pomocou KEYWORD [noexcept].
+		bool													Value=is_nothrow_destructible<CNonIsNoThrowDestructible>::value;
+
+		wcout << L"TYPE TRAIT [is_nothrow_destructible<CNonIsNoThrowDestructible>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati FALSE.
+		bool													Value=is_nothrow_destructible<void>::value;
+
+		wcout << L"TYPE TRAIT [is_nothrow_destructible<void>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati FALSE, lebo TYPE je UNBOUNDED C-ARRAY.
+		bool													Value=is_nothrow_destructible<int[]>::value;
+
+		wcout << L"TYPE TRAIT [is_nothrow_destructible<int[]>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+}
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+void TestTypeTraitIsSwappableWith(void)
+{
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati FALSE.
+		bool													Value=is_swappable_with<CIsSwappableWith,CIsSwappableWith>::value;
+
+		wcout << L"TYPE TRAIT [is_swappable_with<CIsSwappableWith,CIsSwappableWith>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati TRUE, pretoze TYPE [CIsSwappableWith] DEFINUJE FUNCTION [swap()].
+		bool													Value=is_swappable_with<CIsSwappableWith&,CIsSwappableWith&>::value;
+
+		wcout << L"TYPE TRAIT [is_swappable_with<CIsSwappableWith&,CIsSwappableWith&>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati FALSE.
+		bool													Value=is_swappable_with<CIsSwappableWith&&,CIsSwappableWith&&>::value;
+
+		wcout << L"TYPE TRAIT [is_swappable_with<CIsSwappableWith&&,CIsSwappableWith&&>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati FALSE.
+		bool													Value=is_swappable_with<int,int>::value;
+
+		wcout << L"TYPE TRAIT [is_swappable_with<int,int>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati FALSE.
+		bool													Value=is_swappable_with<int&,int>::value;
+
+		wcout << L"TYPE TRAIT [is_swappable_with<int&,int>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati FALSE.
+		bool													Value=is_swappable_with<int&&,int>::value;
+
+		wcout << L"TYPE TRAIT [is_swappable_with<int&&,int>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati TRUE.
+		bool													Value=is_swappable_with<int&,int&>::value;
+
+		wcout << L"TYPE TRAIT [is_swappable_with<int&,int&>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati FALSE.
+		bool													Value=is_swappable_with<int&&,int&&>::value;
+
+		wcout << L"TYPE TRAIT [is_swappable_with<int&&,int&&>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati FALSE.
+		bool													Value=is_swappable_with<int&,long&>::value;
+
+		wcout << L"TYPE TRAIT [is_swappable_with<int&,long&>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+}
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+void TestTypeTraitIsNoSwappableWith(void)
+{
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati FALSE.
+		bool													Value=is_swappable_with<CNonIsSwappableWith,CNonIsSwappableWith>::value;
+
+		wcout << L"TYPE TRAIT [is_swappable_with<CNonIsSwappableWith,CNonIsSwappableWith>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati TRUE, pretoze hoci TYPE [CNonIsSwappableWith] NEDEFINUJE FUNCTION [swap()], tak ju definuje C++ STANDARD LIBRARY.
+		bool													Value=is_swappable_with<CNonIsSwappableWith&,CNonIsSwappableWith&>::value;
+
+		wcout << L"TYPE TRAIT [is_swappable_with<CNonIsSwappableWith&,CNonIsSwappableWith&>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati FALSE.
+		bool													Value=is_swappable_with<CNonIsSwappableWith&&,CNonIsSwappableWith&&>::value;
+
+		wcout << L"TYPE TRAIT [is_swappable_with<CNonIsSwappableWith&&,CNonIsSwappableWith&&>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati FALSE.
+		bool													Value=is_swappable_with<void,void>::value;
+
+		wcout << L"TYPE TRAIT [is_swappable_with<void,void>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+}
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+void TestTypeTraitIsNoThrowSwappableWith(void)
+{
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati FALSE.
+		bool													Value=is_nothrow_swappable_with<CIsNoThrowSwappableWith,CIsNoThrowSwappableWith>::value;
+
+		wcout << L"TYPE TRAIT [is_nothrow_swappable_with<CIsNoThrowSwappableWith,CIsNoThrowSwappableWith>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati TRUE, pretoze TYPE [CIsNoThrowSwappableWith] DEFINUJE FUNCTION [swap()] a ta JE oznacena pomocou KEYWORD [noexcept].
+		bool													Value=is_nothrow_swappable_with<CIsNoThrowSwappableWith&,CIsNoThrowSwappableWith&>::value;
+
+		wcout << L"TYPE TRAIT [is_nothrow_swappable_with<CIsNoThrowSwappableWith&,CIsNoThrowSwappableWith&>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati FALSE.
+		bool													Value=is_nothrow_swappable_with<CIsNoThrowSwappableWith&&,CIsNoThrowSwappableWith&&>::value;
+
+		wcout << L"TYPE TRAIT [is_nothrow_swappable_with<CIsNoThrowSwappableWith&&,CIsNoThrowSwappableWith&&>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati FALSE.
+		bool													Value=is_nothrow_swappable_with<int,int>::value;
+
+		wcout << L"TYPE TRAIT [is_nothrow_swappable_with<int,int>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati FALSE.
+		bool													Value=is_nothrow_swappable_with<int&,int>::value;
+
+		wcout << L"TYPE TRAIT [is_nothrow_swappable_with<int&,int>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati FALSE.
+		bool													Value=is_nothrow_swappable_with<int&&,int>::value;
+
+		wcout << L"TYPE TRAIT [is_nothrow_swappable_with<int&&,int>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati TRUE.
+		bool													Value=is_nothrow_swappable_with<int&,int&>::value;
+
+		wcout << L"TYPE TRAIT [is_nothrow_swappable_with<int&,int&>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati FALSE.
+		bool													Value=is_nothrow_swappable_with<int&&,int&&>::value;
+
+		wcout << L"TYPE TRAIT [is_nothrow_swappable_with<int&&,int&&>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati FALSE.
+		bool													Value=is_nothrow_swappable_with<int&,long&>::value;
+
+		wcout << L"TYPE TRAIT [is_nothrow_swappable_with<int&,long&>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+}
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+void TestTypeTraitIsNoNoThrowSwappableWith(void)
+{
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati FALSE.
+		bool													Value=is_nothrow_swappable_with<CNonIsNoThrowSwappableWith,CNonIsNoThrowSwappableWith>::value;
+
+		wcout << L"TYPE TRAIT [is_nothrow_swappable_with<CNonIsNoThrowSwappableWith,CNonIsNoThrowSwappableWith>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati FALSE, pretoze TYPE [CNonIsNoThrowSwappableWith] DEFINUJE FUNCTION [swap()], ale ta NIE JE oznacena pomocou KEYWORD [noexcept].
+		bool													Value=is_nothrow_swappable_with<CNonIsNoThrowSwappableWith&,CNonIsNoThrowSwappableWith&>::value;
+
+		wcout << L"TYPE TRAIT [is_nothrow_swappable_with<CNonIsNoThrowSwappableWith&,CNonIsNoThrowSwappableWith&>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati FALSE.
+		bool													Value=is_nothrow_swappable_with<CNonIsNoThrowSwappableWith&&,CNonIsNoThrowSwappableWith&&>::value;
+
+		wcout << L"TYPE TRAIT [is_nothrow_swappable_with<CNonIsNoThrowSwappableWith&&,CNonIsNoThrowSwappableWith&&>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati FALSE.
+		bool													Value=is_nothrow_swappable_with<void,void>::value;
+
+		wcout << L"TYPE TRAIT [is_nothrow_swappable_with<void,void>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+}
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+void TestTypeTraitIsSwappable(void)
+{
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati TRUE, pretoze TYPE [CIsSwappable] DEFINUJE FUNCTION [swap()].
+		bool													Value=is_swappable<CIsSwappable>::value;
+
+		wcout << L"TYPE TRAIT [is_swappable<CIsSwappable>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati TRUE.
+		bool													Value=is_swappable<CIsSwappable&>::value;
+
+		wcout << L"TYPE TRAIT [is_swappable<CIsSwappable&>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati TRUE.
+		bool													Value=is_swappable<CIsSwappable&&>::value;
+
+		wcout << L"TYPE TRAIT [is_swappable<CIsSwappable&&>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati TRUE.
+		bool													Value=is_swappable<int>::value;
+
+		wcout << L"TYPE TRAIT [is_swappable<int>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati TRUE.
+		bool													Value=is_swappable<int&>::value;
+
+		wcout << L"TYPE TRAIT [is_swappable<int&>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati TRUE.
+		bool													Value=is_swappable<int&&>::value;
+
+		wcout << L"TYPE TRAIT [is_swappable<int&&>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati TRUE.
+		bool													Value=is_swappable<int[10]>::value;
+
+		wcout << L"TYPE TRAIT [is_swappable<int[10]>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+}
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+void TestTypeTraitIsNoSwappable(void)
+{
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati TRUE, pretoze hoci TYPE [CNonIsSwappable] NEDEFINUJE FUNCTION [swap()], definuje ju C++ STANDARD LIBRARY.
+		bool													Value=is_swappable<CNonIsSwappable>::value;
+
+		wcout << L"TYPE TRAIT [is_swappable<CNonIsSwappable>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati TRUE.
+		bool													Value=is_swappable<CNonIsSwappable&>::value;
+
+		wcout << L"TYPE TRAIT [is_swappable<CNonIsSwappable&>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati TRUE.
+		bool													Value=is_swappable<CNonIsSwappable&&>::value;
+
+		wcout << L"TYPE TRAIT [is_swappable<CNonIsSwappable&&>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati FALSE.
+		bool													Value=is_swappable<void>::value;
+
+		wcout << L"TYPE TRAIT [is_swappable<void>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati FALSE.
+		bool													Value=is_swappable<int[]>::value;
+
+		wcout << L"TYPE TRAIT [is_swappable<int[]>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+}
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+void TestTypeTraitIsNoThrowSwappable(void)
+{
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati TRUE, pretoze TYPE [CIsNoThrowSwappable] DEFINUJE FUNCTION [swap()] a ta je oznacena KEYWORD [noexcept].
+		bool													Value=is_nothrow_swappable<CIsNoThrowSwappable>::value;
+
+		wcout << L"TYPE TRAIT [is_nothrow_swappable<CIsNoThrowSwappable>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati TRUE.
+		bool													Value=is_nothrow_swappable<CIsNoThrowSwappable&>::value;
+
+		wcout << L"TYPE TRAIT [is_nothrow_swappable<CIsNoThrowSwappable&>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati TRUE.
+		bool													Value=is_nothrow_swappable<CIsNoThrowSwappable&&>::value;
+
+		wcout << L"TYPE TRAIT [is_nothrow_swappable<CIsNoThrowSwappable&&>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati TRUE.
+		bool													Value=is_nothrow_swappable<int>::value;
+
+		wcout << L"TYPE TRAIT [is_nothrow_swappable<int>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati TRUE.
+		bool													Value=is_nothrow_swappable<int&>::value;
+
+		wcout << L"TYPE TRAIT [is_nothrow_swappable<int&>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati TRUE.
+		bool													Value=is_nothrow_swappable<int&&>::value;
+
+		wcout << L"TYPE TRAIT [is_nothrow_swappable<int&&>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati TRUE.
+		bool													Value=is_nothrow_swappable<int[10]>::value;
+
+		wcout << L"TYPE TRAIT [is_nothrow_swappable<int[10]>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+}
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+void TestTypeTraitIsNoNoThrowSwappable(void)
+{
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati FALSE, pretoze hoci TYPE [CNonIsNoThrowSwappable] DEFINUJE FUNCTION [swap()] NIE JE oznacena KEYWORD [noexcept].
+		bool													Value=is_nothrow_swappable<CNonIsNoThrowSwappable>::value;
+
+		wcout << L"TYPE TRAIT [is_nothrow_swappable<CNonIsNoThrowSwappable>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati FALSE, pretoze hoci TYPE [CNonIsNoThrowSwappable] DEFINUJE FUNCTION [swap()] NIE JE oznacena KEYWORD [noexcept].
+		bool													Value=is_nothrow_swappable<CNonIsNoThrowSwappable&>::value;
+
+		wcout << L"TYPE TRAIT [is_nothrow_swappable<CNonIsNoThrowSwappable&>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati FALSE, pretoze hoci TYPE [CNonIsNoThrowSwappable] DEFINUJE FUNCTION [swap()] NIE JE oznacena KEYWORD [noexcept].
+		bool													Value=is_nothrow_swappable<CNonIsNoThrowSwappable&&>::value;
+
+		wcout << L"TYPE TRAIT [is_nothrow_swappable<CNonIsNoThrowSwappable&&>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati FALSE.
+		bool													Value=is_nothrow_swappable<void>::value;
+
+		wcout << L"TYPE TRAIT [is_nothrow_swappable<void>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati FALSE.
+		bool													Value=is_nothrow_swappable<int[]>::value;
+
+		wcout << L"TYPE TRAIT [is_nothrow_swappable<int[]>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+}
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+void TestTypeTraitIsSame(void)
+{
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati TRUE.
+		bool													Value=is_same<int,int>::value;
+
+		wcout << L"TYPE TRAIT [is_same<int,int>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati FALSE.
+		bool													Value=is_same<int&,int>::value;
+
+		wcout << L"TYPE TRAIT [is_same<int&,int>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati TRUE.
+		bool													Value=is_same<int&,int&>::value;
+
+		wcout << L"TYPE TRAIT [is_same<int&,int&>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati TRUE.
+		bool													Value=is_same<int&&,int&&>::value;
+
+		wcout << L"TYPE TRAIT [is_same<int&&,int&&>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati TRUE.
+		bool													Value=is_same<int[10],int[10]>::value;
+
+		wcout << L"TYPE TRAIT [is_same<int[10],int[10]>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati FALSE.
+		bool													Value=is_same<int[10],int[5]>::value;
+
+		wcout << L"TYPE TRAIT [is_same<int[10],int[5]>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati TRUE.
+		bool													Value=is_same<int[],int[]>::value;
+
+		wcout << L"TYPE TRAIT [is_same<int[],int[]>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati TRUE.
+		bool													Value=is_same<const int,const int>::value;
+
+		wcout << L"TYPE TRAIT [is_same<const int,const int>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati FALSE.
+		bool													Value=is_same<const int,int>::value;
+
+		wcout << L"TYPE TRAIT [is_same<const int,int>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+
+	{
+		using													INT=int;
+
+		// !!! Vrati TRUE.
+		bool													Value=is_same<int,INT>::value;
+
+		wcout << L"TYPE TRAIT [is_same<int,INT>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+
+	{
+		auto													Closure1=[](int){};
+		auto													Closure2=[](int){};
+
+		// !!! Vrati FALSE.
+		bool													Value=is_same<decltype(Closure1),decltype(Closure2)>::value;
+
+		wcout << L"TYPE TRAIT [is_same<decltype(Closure1),decltype(Closure2)>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+
+	{
+		auto													Closure1=[](int){};
+		auto													Closure2=Closure1;
+
+		// !!! Vrati TRUE.
+		bool													Value=is_same<decltype(Closure1),decltype(Closure2)>::value;
+
+		wcout << L"TYPE TRAIT [is_same<decltype(Closure1),decltype(Closure2)>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+
+	{
+		// !!!!! Je TYPE [nullptr_t].
+		auto													Type1=nullptr;
+		auto													Type2=nullptr;
+
+		// !!! Vrati TRUE.
+		bool													Value=is_same<decltype(Type1),decltype(Type2)>::value;
+
+		wcout << L"TYPE TRAIT [is_same<decltype(Type1),decltype(Type2)>::value] - VALUE [" << Value << L"] TYPE 1 [" << GetTypeInfoName(typeid(Type1)) << L"] TYPE 2 [" << GetTypeInfoName(typeid(Type2)) << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+}
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+void TestTypeTraitIsBaseOf(void)
+{
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati TRUE.
+		bool													Value=is_base_of<CIsBaseOfBase,CIsBaseOfBase>::value;
+
+		wcout << L"TYPE TRAIT [is_base_of<CIsBaseOfBase,CIsBaseOfBase>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati TRUE.
+		bool													Value=is_base_of<CIsBaseOfBase,CIsBaseOfDerived1>::value;
+
+		wcout << L"TYPE TRAIT [is_base_of<CIsBaseOfBase,CIsBaseOfDerived1>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati TRUE.
+		bool													Value=is_base_of<CIsBaseOfBase,CIsBaseOfDerived2>::value;
+
+		wcout << L"TYPE TRAIT [is_base_of<CIsBaseOfBase,CIsBaseOfDerived2>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati TRUE.
+		bool													Value=is_base_of<CIsBaseOfBase,CIsBaseOfSuperDerived>::value;
+
+		wcout << L"TYPE TRAIT [is_base_of<CIsBaseOfBase,CIsBaseOfSuperDerived>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati TRUE.
+		bool													Value=is_base_of<CIsBaseOfDerived1,CIsBaseOfSuperDerived>::value;
+
+		wcout << L"TYPE TRAIT [is_base_of<CIsBaseOfDerived1,CIsBaseOfSuperDerived>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati TRUE.
+		bool													Value=is_base_of<CIsBaseOfDerived2,CIsBaseOfSuperDerived>::value;
+
+		wcout << L"TYPE TRAIT [is_base_of<CIsBaseOfDerived2,CIsBaseOfSuperDerived>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati TRUE.
+		bool													Value=is_base_of<CIsBaseOfDerived2,const CIsBaseOfSuperDerived>::value;
+
+		wcout << L"TYPE TRAIT [is_base_of<CIsBaseOfDerived2,const CIsBaseOfSuperDerived>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati TRUE.
+		bool													Value=is_base_of<const CIsBaseOfDerived2,CIsBaseOfSuperDerived>::value;
+
+		wcout << L"TYPE TRAIT [is_base_of<const CIsBaseOfDerived2,CIsBaseOfSuperDerived>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati FALSE.
+		bool													Value=is_base_of<CIsBaseOfDerived2&,CIsBaseOfSuperDerived&>::value;
+
+		wcout << L"TYPE TRAIT [is_base_of<CIsBaseOfDerived2&,CIsBaseOfSuperDerived&>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati FALSE.
+		bool													Value=is_base_of<CIsBaseOfDerived2&&,CIsBaseOfSuperDerived&&>::value;
+
+		wcout << L"TYPE TRAIT [is_base_of<CIsBaseOfDerived2&&,CIsBaseOfSuperDerived&&>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati FALSE.
+		bool													Value=is_base_of<CIsBaseOfDerived2*,CIsBaseOfSuperDerived*>::value;
+
+		wcout << L"TYPE TRAIT [is_base_of<CIsBaseOfDerived2*,CIsBaseOfSuperDerived*>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati FALSE.
+		bool													Value=is_base_of<CIsBaseOfDerived2[10],CIsBaseOfSuperDerived[10]>::value;
+
+		wcout << L"TYPE TRAIT [is_base_of<CIsBaseOfDerived2[10],CIsBaseOfSuperDerived[10]>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati FALSE.
+		bool													Value=is_base_of<int,int>::value;
+
+		wcout << L"TYPE TRAIT [is_base_of<int,int>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+}
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+void TestTypeTraitIsConvertible(void)
+{
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati TRUE, pretoze je definovany CONSTRUCTOR, ktory ma ako PARAMETER TYPE [int].
+		bool													Value=is_convertible<int,CIsConvertible>::value;
+
+		wcout << L"TYPE TRAIT [is_convertible<int,CIsConvertible>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati TRUE, pretoze je definovany CONSTRUCTOR, ktory ma ako PARAMETER TYPE [int].
+		bool													Value=is_convertible<int,const CIsConvertible>::value;
+
+		wcout << L"TYPE TRAIT [is_convertible<int,const CIsConvertible>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati TRUE, pretoze je definovany CONSTRUCTOR, ktory ma ako PARAMETER TYPE [int].
+		bool													Value=is_convertible<const int,CIsConvertible>::value;
+
+		wcout << L"TYPE TRAIT [is_convertible<const int,CIsConvertible>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+}
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+void TestTypeTraitIsNoConvertible(void)
+{
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati FALSE, pretoze NIE je definovany CONSTRUCTOR, ktory ma ako PARAMETER TYPE [int].
+		bool													Value=is_convertible<int,CNonIsConvertible>::value;
+
+		wcout << L"TYPE TRAIT [is_convertible<int,CNonIsConvertible>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati FALSE, pretoze NIE je definovany CONSTRUCTOR, ktory ma ako PARAMETER TYPE [int].
+		bool													Value=is_convertible<int,const CNonIsConvertible>::value;
+
+		wcout << L"TYPE TRAIT [is_convertible<int,const CNonIsConvertible>::value] - VALUE [" << Value << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati FALSE, pretoze NIE je definovany CONSTRUCTOR, ktory ma ako PARAMETER TYPE [int].
+		bool													Value=is_convertible<const int,CNonIsConvertible>::value;
+
+		wcout << L"TYPE TRAIT [is_convertible<const int,CNonIsConvertible>::value] - VALUE [" << Value << L"]." << endl;
+	}
 
 	PrintLineSeparator();
 }
@@ -3718,7 +6444,67 @@ int main(void)
 	//TestTypeTraitIsNoThrowInvocable();
 	//TestTypeTraitIsInvocableR();
 	//TestTypeTraitIsNoThrowInvocableR();
-	TestTypeTraitInvokeResult();
+	//TestTypeTraitInvokeResult();
+	//TestTypeTraitIsConstructible();
+	//TestTypeTraitIsNoConstructible();
+	//TestTypeTraitIsTriviallyConstructible();
+	//TestTypeTraitIsNoTriviallyConstructible();
+	//TestTypeTraitIsNoThrowConstructible();
+	//TestTypeTraitIsNoNoThrowConstructible();
+	//TestTypeTraitIsDefaultConstructible();
+	//TestTypeTraitIsNoDefaultConstructible();
+	//TestTypeTraitIsTriviallyDefaultConstructible();
+	//TestTypeTraitIsNoTriviallyDefaultConstructible();
+	//TestTypeTraitIsNoThrowDefaultConstructible();
+	//TestTypeTraitIsNoNoThrowDefaultConstructible();
+	//TestTypeTraitIsCopyConstructible();
+	//TestTypeTraitIsNoCopyConstructible();
+	//TestTypeTraitIsTriviallyCopyConstructible();
+	//TestTypeTraitIsNoTriviallyCopyConstructible();
+	//TestTypeTraitIsNoThrowCopyConstructible();
+	//TestTypeTraitIsNoNoThrowCopyConstructible();
+	//TestTypeTraitIsMoveConstructible();
+	//TestTypeTraitIsNoMoveConstructible();
+	//TestTypeTraitIsTriviallyMoveConstructible();
+	//TestTypeTraitIsNoTriviallyMoveConstructible();
+	//TestTypeTraitIsNoThrowMoveConstructible();
+	//TestTypeTraitIsNoNoThrowMoveConstructible();
+	//TestTypeTraitIsAssignable();
+	//TestTypeTraitIsNoAssignable();
+	//TestTypeTraitIsTriviallyAssignable();
+	//TestTypeTraitIsNoTriviallyAssignable();
+	//TestTypeTraitIsNoThrowAssignable();
+	//TestTypeTraitIsNoNoThrowAssignable();
+	//TestTypeTraitIsCopyAssignable();
+	//TestTypeTraitIsNoCopyAssignable();
+	//TestTypeTraitIsTriviallyCopyAssignable();
+	//TestTypeTraitIsNoTriviallyCopyAssignable();
+	//TestTypeTraitIsNoThrowCopyAssignable();
+	//TestTypeTraitIsNoNoThrowCopyAssignable();
+	//TestTypeTraitIsMoveAssignable();
+	//TestTypeTraitIsNoMoveAssignable();
+	//TestTypeTraitIsTriviallyMoveAssignable();
+	//TestTypeTraitIsNoTriviallyMoveAssignable();
+	//TestTypeTraitIsNoThrowMoveAssignable();
+	//TestTypeTraitIsNoNoThrowMoveAssignable();
+	//TestTypeTraitIsDestructible();
+	//TestTypeTraitIsNoDestructible();
+	//TestTypeTraitIsTriviallyDestructible();
+	//TestTypeTraitIsNoTriviallyDestructible();
+	//TestTypeTraitIsNoThrowDestructible();
+	//TestTypeTraitIsNoNoThrowDestructible();
+	//TestTypeTraitIsSwappableWith();
+	//TestTypeTraitIsNoSwappableWith();
+	//TestTypeTraitIsNoThrowSwappableWith();
+	//TestTypeTraitIsNoNoThrowSwappableWith();
+	//TestTypeTraitIsSwappable();
+	//TestTypeTraitIsNoSwappable();
+	//TestTypeTraitIsNoThrowSwappable();
+	//TestTypeTraitIsNoNoThrowSwappable();
+	//TestTypeTraitIsSame();
+	//TestTypeTraitIsBaseOf();
+	//TestTypeTraitIsConvertible();
+	TestTypeTraitIsNoConvertible();
 
 	ShowExitLine();
 
