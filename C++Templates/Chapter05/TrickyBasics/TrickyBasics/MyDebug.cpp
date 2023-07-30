@@ -93,31 +93,43 @@ wstring ConvertStringToWideString(const string& Value)
 	return(Result);
 }
 //----------------------------------------------------------------------------------------------------------------------
-wstring AddModifiers(const wstring& TypeName, bool IsConst, bool IsVolatile)
+wstring AddModifiers(const wstring& TypeName, bool IsArray, bool IsConst, bool IsVolatile, ERefrenceType ReferenceType, bool IsReferenceToConst, bool IsReferenceToVolatile)
 {
 	wstring														FullTypeName;
 
-	if (IsConst==true)
-	{
-		FullTypeName+=L"const ";
-	}
-
-	if (IsVolatile==true)
-	{
-		FullTypeName+=L"volatile ";
-	}
-
 	FullTypeName+=TypeName;
+
+	if (IsArray==false)
+	{
+		if (IsConst==true || IsReferenceToConst==true)
+		{
+			FullTypeName+=L" const";
+		}
+
+		if (IsVolatile==true || IsReferenceToVolatile==true)
+		{
+			FullTypeName+=L" volatile";
+		}
+	}
+
+	if (ReferenceType==ERefrenceType::E_LVALUE_REFERENCE)
+	{
+		FullTypeName+=L"&";
+	}
+	else if (ReferenceType==ERefrenceType::E_RVALUE_REFERENCE)
+	{
+		FullTypeName+=L"&&";
+	}
 
 	return(FullTypeName);
 }
 //----------------------------------------------------------------------------------------------------------------------
-wstring GetTypeInfoName(const type_info& Value, bool IsConst, bool IsVolatile)
+wstring GetTypeInfoName(const type_info& Value, bool IsArray, ERefrenceType ReferenceType, bool IsConst, bool IsVolatile, bool IsReferenceToConst, bool IsReferenceToVolatile)
 {
 #ifdef _MSC_VER
 	string														TypeName(Value.name());
 	wstring														WideTypeName=ConvertStringToWideString(TypeName);
-	wstring														FullTypeName=AddModifiers(WideTypeName,IsConst,IsVolatile);
+	wstring														FullTypeName=AddModifiers(WideTypeName,IsArray,IsConst,IsVolatile,ReferenceType,IsReferenceToConst,IsReferenceToVolatile);
 
 	return(FullTypeName);
 #else
@@ -134,7 +146,7 @@ wstring GetTypeInfoName(const type_info& Value, bool IsConst, bool IsVolatile)
 			free(Name);
 			Name=nullptr;
 
-			wstring												FullTypeName=AddModifiers(WideTypeName,IsConst,IsVolatile);
+			wstring												FullTypeName=AddModifiers(WideTypeName,IsArray,IsConst,IsVolatile,ReferenceType,IsReferenceToConst,IsReferenceToVolatile);
 
 			return(FullTypeName);
 		}
@@ -145,7 +157,7 @@ wstring GetTypeInfoName(const type_info& Value, bool IsConst, bool IsVolatile)
 
 			string												TypeName(Value.name());
 			wstring												WideTypeName=ConvertStringToWideString(TypeName);
-			wstring												FullTypeName=AddModifiers(WideTypeName,IsConst,IsVolatile);
+			wstring												FullTypeName=AddModifiers(WideTypeName,IsArray,IsConst,IsVolatile,ReferenceType,IsReferenceToConst,IsReferenceToVolatile);
 
 			return(FullTypeName);
 		}
@@ -154,7 +166,7 @@ wstring GetTypeInfoName(const type_info& Value, bool IsConst, bool IsVolatile)
 	{
 		string													TypeName(Value.name());
 		wstring													WideTypeName=ConvertStringToWideString(TypeName);
-		wstring													FullTypeName=AddModifiers(WideTypeName,IsConst,IsVolatile);
+		wstring													FullTypeName=AddModifiers(WideTypeName,IsArray,IsConst,IsVolatile,ReferenceType,IsReferenceToConst,IsReferenceToVolatile);
 
 		return(FullTypeName);
 	}

@@ -105,12 +105,12 @@ void TestOnePerProgramConstraints(void)
 
 		const type_info&										TypeInfoNonPolymorphic=typeid(ExternNonPolymorphicType);
 
-		wcout << L"OBJECT [TypeInfoNonPolymorphic] - TYPE [" << GetTypeInfoName(TypeInfoNonPolymorphic) << L"] !" << endl;
+		wcout << L"OBJECT [TypeInfoNonPolymorphic] - TYPE [" << GetTypeInfoName<decltype(TypeInfoNonPolymorphic)>() << L"] !" << endl;
 
 		// !!!!! Podla knihy by tento CODE mal hodit ERROR, ale NEHODI.
 		const type_info&										TypeInfoPolymorphic=typeid(ExternPolymorphicType);
 
-		wcout << L"OBJECT [TypeInfoPolymorphic] - TYPE [" << GetTypeInfoName(TypeInfoPolymorphic) << L"] !" << endl;
+		wcout << L"OBJECT [TypeInfoPolymorphic] - TYPE [" << GetTypeInfoName<decltype(TypeInfoPolymorphic)>() << L"] !" << endl;
 	}
 
 	PrintLineSeparator();

@@ -202,7 +202,7 @@ void TestTemporaryMaterialization(void)
 		auto													Result=TemporaryMaterializationCreateObject();
 
 		wcout << L"RESULT [" << Result.GetValue() << L"] !" << endl;
-		wcout << L"RESULT TYPE [" << GetTypeInfoName(typeid(Result)) << L"] !" << endl;
+		wcout << L"RESULT TYPE [" << GetTypeInfoName<decltype(Result)>() << L"] !" << endl;
 	}
 
 	PrintLineSeparator();

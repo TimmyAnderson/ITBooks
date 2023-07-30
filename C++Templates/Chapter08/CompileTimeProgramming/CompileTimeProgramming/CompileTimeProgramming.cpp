@@ -163,7 +163,7 @@ void TestCompileTimePartialSpecializations(void)
 template<typename TType, unsigned int SIZE>
 size_t FunctionSFINAE1(TType(&)[SIZE])
 {
-	wcout << "METHOD [size_t FunctionSFINAE1(TType(&)[SIZE])] is CALLED for TYPE [" << GetTypeInfoName(typeid(TType)) << "] and SIZE [" << SIZE << L"] !" << endl;
+	wcout << "METHOD [size_t FunctionSFINAE1(TType(&)[SIZE])] is CALLED for TYPE [" << GetTypeInfoName<TType>() << "] and SIZE [" << SIZE << L"] !" << endl;
 
 	return(SIZE);
 }
@@ -173,7 +173,7 @@ typename TType::TYPE FunctionSFINAE1(const TType& Value)
 {
 	typename TType::TYPE										Result=Value.Size();
 
-	wcout << "METHOD [typename TType::TYPE FunctionSFINAE1(const TType& Value)] is CALLED for TYPE [" << GetTypeInfoName(typeid(TType)) << "] !" << endl;
+	wcout << "METHOD [typename TType::TYPE FunctionSFINAE1(const TType& Value)] is CALLED for TYPE [" << GetTypeInfoName<TType>() << "] !" << endl;
 
 	return(Result);
 }
@@ -243,7 +243,7 @@ void TestSFINAE1(void)
 template<typename TType, unsigned int SIZE>
 size_t FunctionSFINAE2(TType(&)[SIZE])
 {
-	wcout << "METHOD [size_t FunctionSFINAE2(TType(&)[SIZE])] is CALLED for TYPE [" << GetTypeInfoName(typeid(TType)) << "] and SIZE [" << SIZE << L"] !" << endl;
+	wcout << "METHOD [size_t FunctionSFINAE2(TType(&)[SIZE])] is CALLED for TYPE [" << GetTypeInfoName<TType>() << "] and SIZE [" << SIZE << L"] !" << endl;
 
 	return(SIZE);
 }
@@ -253,7 +253,7 @@ typename TType::TYPE FunctionSFINAE2(const TType& Value)
 {
 	typename TType::TYPE										Result=Value.Size();
 
-	wcout << "METHOD [typename TType::TYPE FunctionSFINAE2(const TType& Value)] is CALLED for TYPE [" << GetTypeInfoName(typeid(TType)) << "] !" << endl;
+	wcout << "METHOD [typename TType::TYPE FunctionSFINAE2(const TType& Value)] is CALLED for TYPE [" << GetTypeInfoName<TType>() << "] !" << endl;
 
 	return(Result);
 }
@@ -340,7 +340,7 @@ void TestSFINAE2(void)
 template<typename TType,typename=enable_if<(is_same<TType,int>::value==true),void>::type>
 void FunctionSFINAEAndOverloadError(TType Value)
 {
-	wcout << "METHOD [void FunctionSFINAEAndOverloadError(TType Value)] with (ENABLE_IF for TYPE [int]) is CALLED for TYPE [" << GetTypeInfoName(typeid(TType)) << "] and VALUE [" << Value << L"] !" << endl;
+	wcout << "METHOD [void FunctionSFINAEAndOverloadError(TType Value)] with (ENABLE_IF for TYPE [int]) is CALLED for TYPE [" << GetTypeInfoName<TType>() << "] and VALUE [" << Value << L"] !" << endl;
 }
 //----------------------------------------------------------------------------------------------------------------------
 // !!! FUNCTION je mozne volat IBA pre lubovolny TYPE okrem TYPE [int].
@@ -348,7 +348,7 @@ void FunctionSFINAEAndOverloadError(TType Value)
 template<typename TType,typename=enable_if<!is_same<TType,int>::value,void>::type>
 void FunctionSFINAEAndOverloadError(TType Value)
 {
-	wcout << "METHOD [void FunctionSFINAEAndOverloadError(TType Value)] with (ENABLE_IF for OTHER than TYPE [int]) is CALLED for TYPE [" << GetTypeInfoName(typeid(TType)) << "] and VALUE [" << Value << L"] !" << endl;
+	wcout << "METHOD [void FunctionSFINAEAndOverloadError(TType Value)] with (ENABLE_IF for OTHER than TYPE [int]) is CALLED for TYPE [" << GetTypeInfoName<TType>() << "] and VALUE [" << Value << L"] !" << endl;
 }
 */
 //----------------------------------------------------------------------------------------------------------------------
@@ -356,7 +356,7 @@ void FunctionSFINAEAndOverloadError(TType Value)
 template<typename TType,typename=enable_if<(is_same<TType,int>::value==true),void>::type>
 void FunctionSFINAEAndOverload1(TType Value)
 {
-	wcout << "METHOD [void FunctionSFINAEAndOverload1(TType Value)] with (ENABLE_IF for TYPE [int]) is CALLED for TYPE [" << GetTypeInfoName(typeid(TType)) << "] and VALUE [" << Value << L"] !" << endl;
+	wcout << "METHOD [void FunctionSFINAEAndOverload1(TType Value)] with (ENABLE_IF for TYPE [int]) is CALLED for TYPE [" << GetTypeInfoName<TType>() << "] and VALUE [" << Value << L"] !" << endl;
 }
 //----------------------------------------------------------------------------------------------------------------------
 // !!! FUNCTION je mozne volat IBA pre lubovolny TYPE okrem TYPE [int].
@@ -364,7 +364,7 @@ void FunctionSFINAEAndOverload1(TType Value)
 template<typename TType,typename=void,typename=enable_if<!is_same<TType,int>::value,void>::type>
 void FunctionSFINAEAndOverload1(TType Value)
 {
-	wcout << "METHOD [void FunctionSFINAEAndOverload1(TType Value)] with (ENABLE_IF for OTHER than TYPE [int]) is CALLED for TYPE [" << GetTypeInfoName(typeid(TType)) << "] and VALUE [" << Value << L"] !" << endl;
+	wcout << "METHOD [void FunctionSFINAEAndOverload1(TType Value)] with (ENABLE_IF for OTHER than TYPE [int]) is CALLED for TYPE [" << GetTypeInfoName<TType>() << "] and VALUE [" << Value << L"] !" << endl;
 }
 
 //----------------------------------------------------------------------------------------------------------------------
@@ -373,7 +373,7 @@ void FunctionSFINAEAndOverload1(TType Value)
 template<typename TType,enable_if<(is_same<TType,int>::value==true),bool>::type = true>
 void FunctionSFINAEAndOverload2(TType Value)
 {
-	wcout << "METHOD [void FunctionSFINAEAndOverload2(TType Value)] with (ENABLE_IF for TYPE [int]) is CALLED for TYPE [" << GetTypeInfoName(typeid(TType)) << "] and VALUE [" << Value << L"] !" << endl;
+	wcout << "METHOD [void FunctionSFINAEAndOverload2(TType Value)] with (ENABLE_IF for TYPE [int]) is CALLED for TYPE [" << GetTypeInfoName<TType>() << "] and VALUE [" << Value << L"] !" << endl;
 }
 //----------------------------------------------------------------------------------------------------------------------
 // !!! FUNCTION je mozne volat IBA pre lubovolny TYPE okrem TYPE [int].
@@ -381,7 +381,7 @@ void FunctionSFINAEAndOverload2(TType Value)
 template<typename TType,enable_if<(is_same<TType,int>::value==false),bool>::type = true>
 void FunctionSFINAEAndOverload2(TType Value)
 {
-	wcout << "METHOD [void FunctionSFINAEAndOverload2(TType Value)] with (ENABLE_IF for OTHER than TYPE [int]) is CALLED for TYPE [" << GetTypeInfoName(typeid(TType)) << "] and VALUE [" << Value << L"] !" << endl;
+	wcout << "METHOD [void FunctionSFINAEAndOverload2(TType Value)] with (ENABLE_IF for OTHER than TYPE [int]) is CALLED for TYPE [" << GetTypeInfoName<TType>() << "] and VALUE [" << Value << L"] !" << endl;
 }
 //----------------------------------------------------------------------------------------------------------------------
 void TestSFINAEAndOverload(void)
@@ -456,7 +456,7 @@ auto FunctionSFINAEConditionsTesting1(TType Value) -> decltype((void)(Value.Size
 {
 	typename TType::TYPE										Result=Value.Size();
 
-	wcout << "METHOD [auto FunctionSFINAEConditionsTesting1(TType Value) -> decltype((void)(Value.Size()),TType::TYPE())] is CALLED for TYPE [" << GetTypeInfoName(typeid(TType)) << "] !" << endl;
+	wcout << "METHOD [auto FunctionSFINAEConditionsTesting1(TType Value) -> decltype((void)(Value.Size()),TType::TYPE())] is CALLED for TYPE [" << GetTypeInfoName<TType>() << "] !" << endl;
 
 	return(Result);
 }
@@ -470,7 +470,7 @@ auto FunctionSFINAEConditionsTesting2(TType Value) -> decltype((void)(TType{}.Si
 {
 	typename TType::TYPE										Result=Value.Size();
 
-	wcout << "METHOD [auto FunctionSFINAEConditionsTesting2(TType Value) -> decltype((void)(TType{}.Size()),TType::TYPE())] is CALLED for TYPE [" << GetTypeInfoName(typeid(TType)) << "] !" << endl;
+	wcout << "METHOD [auto FunctionSFINAEConditionsTesting2(TType Value) -> decltype((void)(TType{}.Size()),TType::TYPE())] is CALLED for TYPE [" << GetTypeInfoName<TType>() << "] !" << endl;
 
 	return(Result);
 }

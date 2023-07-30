@@ -6,6 +6,8 @@
 #include <iostream>
 #include <sstream>
 #include <concepts>
+#include <utility>
+#include <memory>
 #include "MyDebug.h"
 #include "CClass.h"
 #include "EEnum.h"
@@ -111,6 +113,14 @@
 #include "CIsBaseOfSuperDerived.h"
 #include "CIsConvertible.h"
 #include "CNonIsConvertible.h"
+#include "CLogicalTypeTraitsDestructible1.h"
+#include "CLogicalTypeTraitsDestructible2.h"
+#include "CLogicalTypeTraitsNonDestructible1.h"
+#include "CLogicalTypeTraitsNonDestructible2.h"
+#include "CLogicalTypeTraitsIncomplete.h"
+#include "CDeclvalConstructible.h"
+#include "CDeclvalNonConstructible.h"
+#include "CAddressOf.h"
 //----------------------------------------------------------------------------------------------------------------------
 #ifdef _MSC_VER
 #pragma warning( disable : 4180 )
@@ -130,14 +140,14 @@ void TestTypeTraitsValues(void)
 	PrintLineSeparator();
 
 	// !!! Ziskanie TYPE TRAIT TYPE pomocou USING [type].
-	conditional<true,int,double>::type							Value1;
+	using														TYPE_1=conditional<true,int,double>::type;
 
-	wcout << L"VALUE 1 - TYPE [" << GetTypeInfoName(typeid(Value1)) << L"]." << endl;
+	wcout << L"VALUE 1 - TYPE [" << GetTypeInfoName<TYPE_1>() << L"]." << endl;
 
 	// !!! Ziskanie TYPE TRAIT TYPE pomocou USING [TYPE_TRAIT_t<>].
-	conditional_t<true,int,double>								Value2;
+	using														TYPE_2=conditional_t<true,int,double>;
 
-	wcout << L"VALUE 2 - TYPE [" << GetTypeInfoName(typeid(Value2)) << L"]." << endl;
+	wcout << L"VALUE 2 - TYPE [" << GetTypeInfoName<TYPE_2>() << L"]." << endl;
 
 	PrintLineSeparator();
 
@@ -174,17 +184,17 @@ void TestTypeTraitsIntegralConstant(void)
 	// !!! Vracia TYPE [integral_constant<bool,true>].
 	using														Type1=is_floating_point<double>::type;
 
-	wcout << L"TYPE 1 [" << GetTypeInfoName(typeid(Type1)) << L"]." << endl;
+	wcout << L"TYPE 1 [" << GetTypeInfoName<Type1>() << L"]." << endl;
 
 	// !!! Vracia TYPE [integral_constant<bool,false>].
 	using														Type2=is_floating_point<int>::type;
 
-	wcout << L"TYPE 2 [" << GetTypeInfoName(typeid(Type2)) << L"]." << endl;
+	wcout << L"TYPE 2 [" << GetTypeInfoName<Type2>() << L"]." << endl;
 
 	// !!! Vracia TYPE [bool].
 	using														ValueType=is_floating_point<double>::value_type;
 
-	wcout << L"VALUE TYPE [" << GetTypeInfoName(typeid(ValueType)) << L"]." << endl;
+	wcout << L"VALUE TYPE [" << GetTypeInfoName<ValueType>() << L"]." << endl;
 
 	PrintLineSeparator();
 
@@ -3299,7 +3309,9 @@ void TestTypeTraitUnderlyingType(void)
 	PrintLineSeparator();
 
 	{
-		wstring													Value=GetTypeInfoName(typeid(underlying_type<EEnumInt>::type));
+		using													TYPE=underlying_type<EEnumInt>::type;
+
+		wstring													Value=GetTypeInfoName<TYPE>();
 
 		wcout << L"TYPE TRAIT [underlying_type<EEnumInt>::type] - VALUE [" << Value << L"]." << endl;
 	}
@@ -3307,7 +3319,9 @@ void TestTypeTraitUnderlyingType(void)
 	PrintLineSeparator();
 
 	{
-		wstring													Value=GetTypeInfoName(typeid(underlying_type<EEnumLong>::type));
+		using													TYPE=underlying_type<EEnumLong>::type;
+
+		wstring													Value=GetTypeInfoName<TYPE>();
 
 		wcout << L"TYPE TRAIT [underlying_type<EEnumLong>::type] - VALUE [" << Value << L"]." << endl;
 	}
@@ -3699,7 +3713,10 @@ void TestTypeTraitInvokeResult(void)
 
 	{
 		int														(*FUNCTION)(int,double) noexcept=nullptr;
-		wstring													Value=GetTypeInfoName(typeid(invoke_result<decltype(FUNCTION),int,double>::type));
+
+		using													TYPE=invoke_result<decltype(FUNCTION),int,double>::type;
+
+		wstring													Value=GetTypeInfoName<TYPE>();
 
 		wcout << L"TYPE TRAIT [invoke_result<int(*)(int,double) noexcept,int,double>::type] - VALUE [" << Value << L"]." << endl;
 	}
@@ -3708,7 +3725,10 @@ void TestTypeTraitInvokeResult(void)
 
 	{
 		int														(*FUNCTION)(int,double) noexcept=nullptr;
-		wstring													Value=GetTypeInfoName(typeid(invoke_result<decltype(FUNCTION),int,float>::type));
+
+		using													TYPE=invoke_result<decltype(FUNCTION),int,float>::type;
+
+		wstring													Value=GetTypeInfoName<TYPE>();
 
 		wcout << L"TYPE TRAIT [invoke_result<int(*)(int,double) noexcept,int,float>::type] - VALUE [" << Value << L"]." << endl;
 	}
@@ -3717,7 +3737,10 @@ void TestTypeTraitInvokeResult(void)
 
 	{
 		void													(*FUNCTION)(int,double) noexcept=nullptr;
-		wstring													Value=GetTypeInfoName(typeid(invoke_result<decltype(FUNCTION),int,double>::type));
+
+		using													TYPE=invoke_result<decltype(FUNCTION),int,double>::type;
+
+		wstring													Value=GetTypeInfoName<TYPE>();
 
 		wcout << L"TYPE TRAIT [invoke_result<void(*)(int,double) noexcept,int,double>::type] - VALUE [" << Value << L"]." << endl;
 	}
@@ -3725,7 +3748,9 @@ void TestTypeTraitInvokeResult(void)
 	PrintLineSeparator();
 
 	{
-		wstring													Value=GetTypeInfoName(typeid(invoke_result<CInvokeResult,int,double>::type));
+		using													TYPE=invoke_result<CInvokeResult,int,double>::type;
+
+		wstring													Value=GetTypeInfoName<TYPE>();
 
 		wcout << L"TYPE TRAIT [invoke_result<CInvokeResult,int,double>::type] - VALUE [" << Value << L"]." << endl;
 	}
@@ -3736,7 +3761,10 @@ void TestTypeTraitInvokeResult(void)
 	// !!! COMPILER hodi ERROR, pretoze FUNCTION 'FUNCTION' NEMA 3 PARAMETERS.
 	{
 		void													(*FUNCTION)(int,double) noexcept=nullptr;
-		wstring													Value=GetTypeInfoName(typeid(invoke_result<decltype(FUNCTION),int,double,double>::type));
+
+		using													TYPE=invoke_result<decltype(FUNCTION),int,double,double>::type;
+
+		wstring													Value=GetTypeInfoName<TYPE>();
 
 		wcout << L"TYPE TRAIT [invoke_result<void(*)(int,double) noexcept,int,double,double>::type] - VALUE [" << Value << L"]." << endl;
 	}
@@ -6194,7 +6222,7 @@ void TestTypeTraitIsSame(void)
 		// !!! Vrati TRUE.
 		bool													Value=is_same<decltype(Type1),decltype(Type2)>::value;
 
-		wcout << L"TYPE TRAIT [is_same<decltype(Type1),decltype(Type2)>::value] - VALUE [" << Value << L"] TYPE 1 [" << GetTypeInfoName(typeid(Type1)) << L"] TYPE 2 [" << GetTypeInfoName(typeid(Type2)) << L"]." << endl;
+		wcout << L"TYPE TRAIT [is_same<decltype(Type1),decltype(Type2)>::value] - VALUE [" << Value << L"] TYPE 1 [" << GetTypeInfoName<decltype(Type1)>() << L"] TYPE 2 [" << GetTypeInfoName<decltype(Type2)>() << L"]." << endl;
 	}
 
 	PrintLineSeparator();
@@ -6394,6 +6422,2379 @@ void TestTypeTraitIsNoConvertible(void)
 //----------------------------------------------------------------------------------------------------------------------
 //----------------------------------------------------------------------------------------------------------------------
 //----------------------------------------------------------------------------------------------------------------------
+void TestTypeTraitRemoveConst(void)
+{
+	PrintLineSeparator();
+
+	{
+		#define													MACRO_TYPE int const
+
+		using													ORIGINAL_TYPE=MACRO_TYPE;
+		using													TYPE=remove_const<ORIGINAL_TYPE>::type;
+
+		wstring													OriginalTypeName=GetTypeInfoName<ORIGINAL_TYPE>();
+		wstring													TypeName=GetTypeInfoName<TYPE>();
+
+		wcout << L"TYPE TRAIT [remove_const<int const>::type] - ORIGINAL TYPE NAME [" << OriginalTypeName << L"] TYPE NAME [" << TypeName << L"]." << endl;
+
+		#undef MACRO_TYPE
+	}
+
+	PrintLineSeparator();
+
+	{
+		#define													MACRO_TYPE int
+
+		using													ORIGINAL_TYPE=MACRO_TYPE;
+		using													TYPE=remove_const<ORIGINAL_TYPE>::type;
+
+		wstring													OriginalTypeName=GetTypeInfoName<ORIGINAL_TYPE>();
+		wstring													TypeName=GetTypeInfoName<TYPE>();
+
+		wcout << L"TYPE TRAIT [remove_const<" << MACRO_STRINGIFY_TO_WIDE_STRING(MACRO_TYPE) << L">::type] - ORIGINAL TYPE NAME [" << OriginalTypeName << L"] TYPE NAME [" << TypeName << L"]." << endl;
+
+		#undef MACRO_TYPE
+	}
+
+	PrintLineSeparator();
+
+	{
+		#define													MACRO_TYPE int const&
+
+		// !!!!! TYPE NIE JE CONST TYPE, ale NON-CONST LVALUE REFERENCE na CONST TYPE [const int].
+		using													ORIGINAL_TYPE=MACRO_TYPE;
+		using													TYPE=remove_const<ORIGINAL_TYPE>::type;
+
+		wstring													OriginalTypeName=GetTypeInfoName<ORIGINAL_TYPE>();
+		wstring													TypeName=GetTypeInfoName<TYPE>();
+
+		wcout << L"TYPE TRAIT [remove_const<" << MACRO_STRINGIFY_TO_WIDE_STRING(MACRO_TYPE) << L">::type] - ORIGINAL TYPE NAME [" << OriginalTypeName << L"] TYPE NAME [" << TypeName << L"]." << endl;
+
+		#undef MACRO_TYPE
+	}
+
+	PrintLineSeparator();
+
+	{
+		#define													MACRO_TYPE int const&&
+
+		// !!!!! TYPE NIE JE CONST TYPE, ale NON-CONST RVALUE REFERENCE na CONST TYPE [const int].
+		using													ORIGINAL_TYPE=MACRO_TYPE;
+		using													TYPE=remove_const<ORIGINAL_TYPE>::type;
+
+		wstring													OriginalTypeName=GetTypeInfoName<ORIGINAL_TYPE>();
+		wstring													TypeName=GetTypeInfoName<TYPE>();
+
+		wcout << L"TYPE TRAIT [remove_const<" << MACRO_STRINGIFY_TO_WIDE_STRING(MACRO_TYPE) << L">::type] - ORIGINAL TYPE NAME [" << OriginalTypeName << L"] TYPE NAME [" << TypeName << L"]." << endl;
+
+		#undef MACRO_TYPE
+	}
+
+	PrintLineSeparator();
+
+	{
+		#define													MACRO_TYPE int&
+
+		using													ORIGINAL_TYPE=MACRO_TYPE;
+		using													TYPE=remove_const<ORIGINAL_TYPE>::type;
+
+		wstring													OriginalTypeName=GetTypeInfoName<ORIGINAL_TYPE>();
+		wstring													TypeName=GetTypeInfoName<TYPE>();
+
+		wcout << L"TYPE TRAIT [remove_const<" << MACRO_STRINGIFY_TO_WIDE_STRING(MACRO_TYPE) << L">::type] - ORIGINAL TYPE NAME [" << OriginalTypeName << L"] TYPE NAME [" << TypeName << L"]." << endl;
+
+		#undef MACRO_TYPE
+	}
+
+	PrintLineSeparator();
+
+	{
+		#define													MACRO_TYPE int&&
+
+		using													ORIGINAL_TYPE=MACRO_TYPE;
+		using													TYPE=remove_const<ORIGINAL_TYPE>::type;
+
+		wstring													OriginalTypeName=GetTypeInfoName<ORIGINAL_TYPE>();
+		wstring													TypeName=GetTypeInfoName<TYPE>();
+
+		wcout << L"TYPE TRAIT [remove_const<" << MACRO_STRINGIFY_TO_WIDE_STRING(MACRO_TYPE) << L">::type] - ORIGINAL TYPE NAME [" << OriginalTypeName << L"] TYPE NAME [" << TypeName << L"]." << endl;
+
+		#undef MACRO_TYPE
+	}
+
+	PrintLineSeparator();
+
+	{
+		#define													MACRO_TYPE int const*
+
+		// !!!!! TYPE NIE JE CONST TYPE, ale NON-CONST POINTER na CONST TYPE [const int].
+		using													ORIGINAL_TYPE=MACRO_TYPE;
+		using													TYPE=remove_const<ORIGINAL_TYPE>::type;
+
+		wstring													OriginalTypeName=GetTypeInfoName<ORIGINAL_TYPE>();
+		wstring													TypeName=GetTypeInfoName<TYPE>();
+
+		wcout << L"TYPE TRAIT [remove_const<" << MACRO_STRINGIFY_TO_WIDE_STRING(MACRO_TYPE) << L">::type] - ORIGINAL TYPE NAME [" << OriginalTypeName << L"] TYPE NAME [" << TypeName << L"]." << endl;
+
+		#undef MACRO_TYPE
+	}
+
+	PrintLineSeparator();
+
+	{
+		#define													MACRO_TYPE int const* const
+
+		// !!!!! TYPE JE CONST POINTER TYPE na CONST TYPE [const int].
+		using													ORIGINAL_TYPE=MACRO_TYPE;
+		using													TYPE=remove_const<ORIGINAL_TYPE>::type;
+
+		wstring													OriginalTypeName=GetTypeInfoName<ORIGINAL_TYPE>();
+		wstring													TypeName=GetTypeInfoName<TYPE>();
+
+		wcout << L"TYPE TRAIT [remove_const<" << MACRO_STRINGIFY_TO_WIDE_STRING(MACRO_TYPE) << L">::type] - ORIGINAL TYPE NAME [" << OriginalTypeName << L"] TYPE NAME [" << TypeName << L"]." << endl;
+
+		#undef MACRO_TYPE
+	}
+
+	PrintLineSeparator();
+}
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+void TestTypeTraitRemoveVolatile(void)
+{
+	PrintLineSeparator();
+
+	{
+		#define													MACRO_TYPE int volatile
+
+		using													ORIGINAL_TYPE=MACRO_TYPE;
+		using													TYPE=remove_volatile<ORIGINAL_TYPE>::type;
+
+		wstring													OriginalTypeName=GetTypeInfoName<ORIGINAL_TYPE>();
+		wstring													TypeName=GetTypeInfoName<TYPE>();
+
+		wcout << L"TYPE TRAIT [remove_volatile<" << MACRO_STRINGIFY_TO_WIDE_STRING(MACRO_TYPE) << L">::type] - ORIGINAL TYPE NAME [" << OriginalTypeName << L"] TYPE NAME [" << TypeName << L"]." << endl;
+
+		#undef MACRO_TYPE
+	}
+
+	PrintLineSeparator();
+
+	{
+		#define													MACRO_TYPE int
+
+		using													ORIGINAL_TYPE=MACRO_TYPE;
+		using													TYPE=remove_volatile<ORIGINAL_TYPE>::type;
+
+		wstring													OriginalTypeName=GetTypeInfoName<ORIGINAL_TYPE>();
+		wstring													TypeName=GetTypeInfoName<TYPE>();
+
+		wcout << L"TYPE TRAIT [remove_volatile<" << MACRO_STRINGIFY_TO_WIDE_STRING(MACRO_TYPE) << L">::type] - ORIGINAL TYPE NAME [" << OriginalTypeName << L"] TYPE NAME [" << TypeName << L"]." << endl;
+
+		#undef MACRO_TYPE
+	}
+
+	PrintLineSeparator();
+
+	{
+		#define													MACRO_TYPE int volatile&
+
+		// !!!!! TYPE NIE JE VOLATILE TYPE, ale NON-VOLATILE LVALUE REFERENCE na VOLATILE TYPE [volatile int].
+		using													ORIGINAL_TYPE=MACRO_TYPE;
+		using													TYPE=remove_volatile<ORIGINAL_TYPE>::type;
+
+		wstring													OriginalTypeName=GetTypeInfoName<ORIGINAL_TYPE>();
+		wstring													TypeName=GetTypeInfoName<TYPE>();
+
+		wcout << L"TYPE TRAIT [remove_volatile<" << MACRO_STRINGIFY_TO_WIDE_STRING(MACRO_TYPE) << L">::type] - ORIGINAL TYPE NAME [" << OriginalTypeName << L"] TYPE NAME [" << TypeName << L"]." << endl;
+
+		#undef MACRO_TYPE
+	}
+
+	PrintLineSeparator();
+
+	{
+		#define													MACRO_TYPE int volatile&&
+
+		// !!!!! TYPE NIE JE VOLATILE TYPE, ale NON-VOLATILE RVALUE REFERENCE na VOLATILE TYPE [volatile int].
+		using													ORIGINAL_TYPE=MACRO_TYPE;
+		using													TYPE=remove_volatile<ORIGINAL_TYPE>::type;
+
+		wstring													OriginalTypeName=GetTypeInfoName<ORIGINAL_TYPE>();
+		wstring													TypeName=GetTypeInfoName<TYPE>();
+
+		wcout << L"TYPE TRAIT [remove_volatile<" << MACRO_STRINGIFY_TO_WIDE_STRING(MACRO_TYPE) << L">::type] - ORIGINAL TYPE NAME [" << OriginalTypeName << L"] TYPE NAME [" << TypeName << L"]." << endl;
+
+		#undef MACRO_TYPE
+	}
+
+	PrintLineSeparator();
+
+	{
+		#define													MACRO_TYPE int&
+
+		using													ORIGINAL_TYPE=MACRO_TYPE;
+		using													TYPE=remove_volatile<ORIGINAL_TYPE>::type;
+
+		wstring													OriginalTypeName=GetTypeInfoName<ORIGINAL_TYPE>();
+		wstring													TypeName=GetTypeInfoName<TYPE>();
+
+		wcout << L"TYPE TRAIT [remove_volatile<" << MACRO_STRINGIFY_TO_WIDE_STRING(MACRO_TYPE) << L">::type] - ORIGINAL TYPE NAME [" << OriginalTypeName << L"] TYPE NAME [" << TypeName << L"]." << endl;
+
+		#undef MACRO_TYPE
+	}
+
+	PrintLineSeparator();
+
+	{
+		#define													MACRO_TYPE int&&
+
+		using													ORIGINAL_TYPE=MACRO_TYPE;
+		using													TYPE=remove_volatile<ORIGINAL_TYPE>::type;
+
+		wstring													OriginalTypeName=GetTypeInfoName<ORIGINAL_TYPE>();
+		wstring													TypeName=GetTypeInfoName<TYPE>();
+
+		wcout << L"TYPE TRAIT [remove_volatile<" << MACRO_STRINGIFY_TO_WIDE_STRING(MACRO_TYPE) << L">::type] - ORIGINAL TYPE NAME [" << OriginalTypeName << L"] TYPE NAME [" << TypeName << L"]." << endl;
+
+		#undef MACRO_TYPE
+	}
+
+	PrintLineSeparator();
+
+	{
+		#define													MACRO_TYPE int volatile*
+
+		// !!!!! TYPE NIE JE VOLATILE TYPE, ale NON-VOLATILE POINTER na VOLATILE TYPE [volatile int].
+		using													ORIGINAL_TYPE=MACRO_TYPE;
+		using													TYPE=remove_volatile<ORIGINAL_TYPE>::type;
+
+		wstring													OriginalTypeName=GetTypeInfoName<ORIGINAL_TYPE>();
+		wstring													TypeName=GetTypeInfoName<TYPE>();
+
+		wcout << L"TYPE TRAIT [remove_volatile<" << MACRO_STRINGIFY_TO_WIDE_STRING(MACRO_TYPE) << L">::type] - ORIGINAL TYPE NAME [" << OriginalTypeName << L"] TYPE NAME [" << TypeName << L"]." << endl;
+
+		#undef MACRO_TYPE
+	}
+
+	PrintLineSeparator();
+
+	{
+		#define													MACRO_TYPE int volatile* volatile
+
+		// !!!!! TYPE JE VOLATILE POINTER TYPE na VOLATILE TYPE [volatile int].
+		using													ORIGINAL_TYPE=MACRO_TYPE;
+		using													TYPE=remove_volatile<ORIGINAL_TYPE>::type;
+
+		wstring													OriginalTypeName=GetTypeInfoName<ORIGINAL_TYPE>();
+		wstring													TypeName=GetTypeInfoName<TYPE>();
+
+		wcout << L"TYPE TRAIT [remove_volatile<" << MACRO_STRINGIFY_TO_WIDE_STRING(MACRO_TYPE) << L">::type] - ORIGINAL TYPE NAME [" << OriginalTypeName << L"] TYPE NAME [" << TypeName << L"]." << endl;
+
+		#undef MACRO_TYPE
+	}
+
+	PrintLineSeparator();
+}
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+void TestTypeTraitRemoveCV(void)
+{
+	PrintLineSeparator();
+
+	{
+		#define													MACRO_TYPE int const
+
+		using													ORIGINAL_TYPE=MACRO_TYPE;
+		using													TYPE=remove_cv<ORIGINAL_TYPE>::type;
+
+		wstring													OriginalTypeName=GetTypeInfoName<ORIGINAL_TYPE>();
+		wstring													TypeName=GetTypeInfoName<TYPE>();
+
+		wcout << L"TYPE TRAIT [remove_cv<" << MACRO_STRINGIFY_TO_WIDE_STRING(MACRO_TYPE) << L">::type] - ORIGINAL TYPE NAME [" << OriginalTypeName << L"] TYPE NAME [" << TypeName << L"]." << endl;
+
+		#undef MACRO_TYPE
+	}
+
+	PrintLineSeparator();
+
+	{
+		#define													MACRO_TYPE int volatile
+
+		using													ORIGINAL_TYPE=MACRO_TYPE;
+		using													TYPE=remove_cv<ORIGINAL_TYPE>::type;
+
+		wstring													OriginalTypeName=GetTypeInfoName<ORIGINAL_TYPE>();
+		wstring													TypeName=GetTypeInfoName<TYPE>();
+
+		wcout << L"TYPE TRAIT [remove_cv<" << MACRO_STRINGIFY_TO_WIDE_STRING(MACRO_TYPE) << L">::type] - ORIGINAL TYPE NAME [" << OriginalTypeName << L"] TYPE NAME [" << TypeName << L"]." << endl;
+
+		#undef MACRO_TYPE
+	}
+
+	PrintLineSeparator();
+
+	{
+		#define													MACRO_TYPE int const volatile
+
+		using													ORIGINAL_TYPE=MACRO_TYPE;
+		using													TYPE=remove_cv<ORIGINAL_TYPE>::type;
+
+		wstring													OriginalTypeName=GetTypeInfoName<ORIGINAL_TYPE>();
+		wstring													TypeName=GetTypeInfoName<TYPE>();
+
+		wcout << L"TYPE TRAIT [remove_cv<" << MACRO_STRINGIFY_TO_WIDE_STRING(MACRO_TYPE) << L">::type] - ORIGINAL TYPE NAME [" << OriginalTypeName << L"] TYPE NAME [" << TypeName << L"]." << endl;
+
+		#undef MACRO_TYPE
+	}
+
+	PrintLineSeparator();
+}
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+void TestTypeTraitAddConst(void)
+{
+	PrintLineSeparator();
+
+	{
+		#define													MACRO_TYPE int
+
+		using													ORIGINAL_TYPE=MACRO_TYPE;
+		using													TYPE=add_const<ORIGINAL_TYPE>::type;
+
+		wstring													OriginalTypeName=GetTypeInfoName<ORIGINAL_TYPE>();
+		wstring													TypeName=GetTypeInfoName<TYPE>();
+
+		wcout << L"TYPE TRAIT [add_const<" << MACRO_STRINGIFY_TO_WIDE_STRING(MACRO_TYPE) << L">::type] - ORIGINAL TYPE NAME [" << OriginalTypeName << L"] TYPE NAME [" << TypeName << L"]." << endl;
+
+		#undef MACRO_TYPE
+	}
+
+	PrintLineSeparator();
+
+	{
+		#define													MACRO_TYPE int const
+
+		using													ORIGINAL_TYPE=MACRO_TYPE;
+		using													TYPE=add_const<ORIGINAL_TYPE>::type;
+
+		wstring													OriginalTypeName=GetTypeInfoName<ORIGINAL_TYPE>();
+		wstring													TypeName=GetTypeInfoName<TYPE>();
+
+		wcout << L"TYPE TRAIT [add_const<" << MACRO_STRINGIFY_TO_WIDE_STRING(MACRO_TYPE) << L">::type] - ORIGINAL TYPE NAME [" << OriginalTypeName << L"] TYPE NAME [" << TypeName << L"]." << endl;
+
+		#undef MACRO_TYPE
+	}
+
+	PrintLineSeparator();
+
+	{
+		#define													MACRO_TYPE int&
+
+		using													ORIGINAL_TYPE=MACRO_TYPE;
+		// !!! Pre REFERENCE TYPES NIE je pridany MODIFIER [const].
+		using													TYPE=add_const<ORIGINAL_TYPE>::type;
+
+		wstring													OriginalTypeName=GetTypeInfoName<ORIGINAL_TYPE>();
+		wstring													TypeName=GetTypeInfoName<TYPE>();
+
+		wcout << L"TYPE TRAIT [add_const<" << MACRO_STRINGIFY_TO_WIDE_STRING(MACRO_TYPE) << L">::type] - ORIGINAL TYPE NAME [" << OriginalTypeName << L"] TYPE NAME [" << TypeName << L"]." << endl;
+
+		#undef MACRO_TYPE
+	}
+
+	PrintLineSeparator();
+
+	{
+		#define													MACRO_TYPE int&&
+
+		using													ORIGINAL_TYPE=MACRO_TYPE;
+		// !!! Pre REFERENCE TYPES NIE je pridany MODIFIER [const].
+		using													TYPE=add_const<ORIGINAL_TYPE>::type;
+
+		wstring													OriginalTypeName=GetTypeInfoName<ORIGINAL_TYPE>();
+		wstring													TypeName=GetTypeInfoName<TYPE>();
+
+		wcout << L"TYPE TRAIT [add_const<" << MACRO_STRINGIFY_TO_WIDE_STRING(MACRO_TYPE) << L">::type] - ORIGINAL TYPE NAME [" << OriginalTypeName << L"] TYPE NAME [" << TypeName << L"]." << endl;
+
+		#undef MACRO_TYPE
+	}
+
+	PrintLineSeparator();
+
+	{
+		#define													MACRO_TYPE int*
+
+		using													ORIGINAL_TYPE=MACRO_TYPE;
+		using													TYPE=add_const<ORIGINAL_TYPE>::type;
+
+		wstring													OriginalTypeName=GetTypeInfoName<ORIGINAL_TYPE>();
+		wstring													TypeName=GetTypeInfoName<TYPE>();
+
+		wcout << L"TYPE TRAIT [add_const<" << MACRO_STRINGIFY_TO_WIDE_STRING(MACRO_TYPE) << L">::type] - ORIGINAL TYPE NAME [" << OriginalTypeName << L"] TYPE NAME [" << TypeName << L"]." << endl;
+
+		#undef MACRO_TYPE
+	}
+
+	PrintLineSeparator();
+
+	{
+		#define													MACRO_TYPE int[10]
+
+		using													ORIGINAL_TYPE=MACRO_TYPE;
+		using													TYPE=add_const<ORIGINAL_TYPE>::type;
+
+		wstring													OriginalTypeName=GetTypeInfoName<ORIGINAL_TYPE>();
+		wstring													TypeName=GetTypeInfoName<TYPE>();
+
+		wcout << L"TYPE TRAIT [add_const<" << MACRO_STRINGIFY_TO_WIDE_STRING(MACRO_TYPE) << L">::type] - ORIGINAL TYPE NAME [" << OriginalTypeName << L"] TYPE NAME [" << TypeName << L"]." << endl;
+
+		#undef MACRO_TYPE
+	}
+
+	PrintLineSeparator();
+
+	{
+		#define													MACRO_TYPE void
+
+		using													ORIGINAL_TYPE=MACRO_TYPE;
+		using													TYPE=add_const<ORIGINAL_TYPE>::type;
+
+		wstring													OriginalTypeName=GetTypeInfoName<ORIGINAL_TYPE>();
+		wstring													TypeName=GetTypeInfoName<TYPE>();
+
+		wcout << L"TYPE TRAIT [add_const<" << MACRO_STRINGIFY_TO_WIDE_STRING(MACRO_TYPE) << L">::type] - ORIGINAL TYPE NAME [" << OriginalTypeName << L"] TYPE NAME [" << TypeName << L"]." << endl;
+
+		#undef MACRO_TYPE
+	}
+
+	PrintLineSeparator();
+}
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+void TestTypeTraitAddVolatile(void)
+{
+	PrintLineSeparator();
+
+	{
+		#define													MACRO_TYPE int
+
+		using													ORIGINAL_TYPE=MACRO_TYPE;
+		using													TYPE=add_volatile<ORIGINAL_TYPE>::type;
+
+		wstring													OriginalTypeName=GetTypeInfoName<ORIGINAL_TYPE>();
+		wstring													TypeName=GetTypeInfoName<TYPE>();
+
+		wcout << L"TYPE TRAIT [add_volatile<" << MACRO_STRINGIFY_TO_WIDE_STRING(MACRO_TYPE) << L">::type] - ORIGINAL TYPE NAME [" << OriginalTypeName << L"] TYPE NAME [" << TypeName << L"]." << endl;
+
+		#undef MACRO_TYPE
+	}
+
+	PrintLineSeparator();
+
+	{
+		#define													MACRO_TYPE int volatile
+
+		using													ORIGINAL_TYPE=MACRO_TYPE;
+		using													TYPE=add_volatile<ORIGINAL_TYPE>::type;
+
+		wstring													OriginalTypeName=GetTypeInfoName<ORIGINAL_TYPE>();
+		wstring													TypeName=GetTypeInfoName<TYPE>();
+
+		wcout << L"TYPE TRAIT [add_volatile<" << MACRO_STRINGIFY_TO_WIDE_STRING(MACRO_TYPE) << L">::type] - ORIGINAL TYPE NAME [" << OriginalTypeName << L"] TYPE NAME [" << TypeName << L"]." << endl;
+
+		#undef MACRO_TYPE
+	}
+
+	PrintLineSeparator();
+
+	{
+		#define													MACRO_TYPE int&
+
+		using													ORIGINAL_TYPE=MACRO_TYPE;
+		// !!! Pre REFERENCE TYPES NIE je pridany MODIFIER [volatile].
+		using													TYPE=add_volatile<ORIGINAL_TYPE>::type;
+
+		wstring													OriginalTypeName=GetTypeInfoName<ORIGINAL_TYPE>();
+		wstring													TypeName=GetTypeInfoName<TYPE>();
+
+		wcout << L"TYPE TRAIT [add_volatile<" << MACRO_STRINGIFY_TO_WIDE_STRING(MACRO_TYPE) << L">::type] - ORIGINAL TYPE NAME [" << OriginalTypeName << L"] TYPE NAME [" << TypeName << L"]." << endl;
+
+		#undef MACRO_TYPE
+	}
+
+	PrintLineSeparator();
+
+	{
+		#define													MACRO_TYPE int&&
+
+		using													ORIGINAL_TYPE=MACRO_TYPE;
+		// !!! Pre REFERENCE TYPES NIE je pridany MODIFIER [volatile].
+		using													TYPE=add_volatile<ORIGINAL_TYPE>::type;
+
+		wstring													OriginalTypeName=GetTypeInfoName<ORIGINAL_TYPE>();
+		wstring													TypeName=GetTypeInfoName<TYPE>();
+
+		wcout << L"TYPE TRAIT [add_volatile<" << MACRO_STRINGIFY_TO_WIDE_STRING(MACRO_TYPE) << L">::type] - ORIGINAL TYPE NAME [" << OriginalTypeName << L"] TYPE NAME [" << TypeName << L"]." << endl;
+
+		#undef MACRO_TYPE
+	}
+
+	PrintLineSeparator();
+
+	{
+		#define													MACRO_TYPE int*
+
+		using													ORIGINAL_TYPE=MACRO_TYPE;
+		using													TYPE=add_volatile<ORIGINAL_TYPE>::type;
+
+		wstring													OriginalTypeName=GetTypeInfoName<ORIGINAL_TYPE>();
+		wstring													TypeName=GetTypeInfoName<TYPE>();
+
+		wcout << L"TYPE TRAIT [add_volatile<" << MACRO_STRINGIFY_TO_WIDE_STRING(MACRO_TYPE) << L">::type] - ORIGINAL TYPE NAME [" << OriginalTypeName << L"] TYPE NAME [" << TypeName << L"]." << endl;
+
+		#undef MACRO_TYPE
+	}
+
+	PrintLineSeparator();
+
+	{
+		#define													MACRO_TYPE int[10]
+
+		using													ORIGINAL_TYPE=MACRO_TYPE;
+		using													TYPE=add_volatile<ORIGINAL_TYPE>::type;
+
+		wstring													OriginalTypeName=GetTypeInfoName<ORIGINAL_TYPE>();
+		wstring													TypeName=GetTypeInfoName<TYPE>();
+
+		wcout << L"TYPE TRAIT [add_volatile<" << MACRO_STRINGIFY_TO_WIDE_STRING(MACRO_TYPE) << L">::type] - ORIGINAL TYPE NAME [" << OriginalTypeName << L"] TYPE NAME [" << TypeName << L"]." << endl;
+
+		#undef MACRO_TYPE
+	}
+
+	PrintLineSeparator();
+
+	{
+		#define													MACRO_TYPE void
+
+		using													ORIGINAL_TYPE=MACRO_TYPE;
+		using													TYPE=add_volatile<ORIGINAL_TYPE>::type;
+
+		wstring													OriginalTypeName=GetTypeInfoName<ORIGINAL_TYPE>();
+		wstring													TypeName=GetTypeInfoName<TYPE>();
+
+		wcout << L"TYPE TRAIT [add_volatile<" << MACRO_STRINGIFY_TO_WIDE_STRING(MACRO_TYPE) << L">::type] - ORIGINAL TYPE NAME [" << OriginalTypeName << L"] TYPE NAME [" << TypeName << L"]." << endl;
+
+		#undef MACRO_TYPE
+	}
+
+	PrintLineSeparator();
+}
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+void TestTypeTraitAddCV(void)
+{
+	PrintLineSeparator();
+
+	{
+		#define													MACRO_TYPE int
+
+		using													ORIGINAL_TYPE=MACRO_TYPE;
+		using													TYPE=add_cv<ORIGINAL_TYPE>::type;
+
+		wstring													OriginalTypeName=GetTypeInfoName<ORIGINAL_TYPE>();
+		wstring													TypeName=GetTypeInfoName<TYPE>();
+
+		wcout << L"TYPE TRAIT [add_cv<" << MACRO_STRINGIFY_TO_WIDE_STRING(MACRO_TYPE) << L">::type] - ORIGINAL TYPE NAME [" << OriginalTypeName << L"] TYPE NAME [" << TypeName << L"]." << endl;
+
+		#undef MACRO_TYPE
+	}
+
+	PrintLineSeparator();
+
+	{
+		#define													MACRO_TYPE int const
+
+		using													ORIGINAL_TYPE=MACRO_TYPE;
+		using													TYPE=add_cv<ORIGINAL_TYPE>::type;
+
+		wstring													OriginalTypeName=GetTypeInfoName<ORIGINAL_TYPE>();
+		wstring													TypeName=GetTypeInfoName<TYPE>();
+
+		wcout << L"TYPE TRAIT [add_cv<" << MACRO_STRINGIFY_TO_WIDE_STRING(MACRO_TYPE) << L">::type] - ORIGINAL TYPE NAME [" << OriginalTypeName << L"] TYPE NAME [" << TypeName << L"]." << endl;
+
+		#undef MACRO_TYPE
+	}
+
+	PrintLineSeparator();
+
+	{
+		#define													MACRO_TYPE int volatile
+
+		using													ORIGINAL_TYPE=MACRO_TYPE;
+		using													TYPE=add_cv<ORIGINAL_TYPE>::type;
+
+		wstring													OriginalTypeName=GetTypeInfoName<ORIGINAL_TYPE>();
+		wstring													TypeName=GetTypeInfoName<TYPE>();
+
+		wcout << L"TYPE TRAIT [add_cv<" << MACRO_STRINGIFY_TO_WIDE_STRING(MACRO_TYPE) << L">::type] - ORIGINAL TYPE NAME [" << OriginalTypeName << L"] TYPE NAME [" << TypeName << L"]." << endl;
+
+		#undef MACRO_TYPE
+	}
+
+	PrintLineSeparator();
+
+	{
+		#define													MACRO_TYPE int const volatile
+
+		using													ORIGINAL_TYPE=MACRO_TYPE;
+		using													TYPE=add_cv<ORIGINAL_TYPE>::type;
+
+		wstring													OriginalTypeName=GetTypeInfoName<ORIGINAL_TYPE>();
+		wstring													TypeName=GetTypeInfoName<TYPE>();
+
+		wcout << L"TYPE TRAIT [add_cv<" << MACRO_STRINGIFY_TO_WIDE_STRING(MACRO_TYPE) << L">::type] - ORIGINAL TYPE NAME [" << OriginalTypeName << L"] TYPE NAME [" << TypeName << L"]." << endl;
+
+		#undef MACRO_TYPE
+	}
+
+	PrintLineSeparator();
+}
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+void TestTypeTraitMakeSigned(void)
+{
+	PrintLineSeparator();
+
+	{
+		#define													MACRO_TYPE int
+
+		using													ORIGINAL_TYPE=MACRO_TYPE;
+		using													TYPE=make_signed<ORIGINAL_TYPE>::type;
+
+		wstring													OriginalTypeName=GetTypeInfoName<ORIGINAL_TYPE>();
+		wstring													TypeName=GetTypeInfoName<TYPE>();
+
+		wcout << L"TYPE TRAIT [make_signed<" << MACRO_STRINGIFY_TO_WIDE_STRING(MACRO_TYPE) << L">::type] - ORIGINAL TYPE NAME [" << OriginalTypeName << L"] TYPE NAME [" << TypeName << L"]." << endl;
+
+		#undef MACRO_TYPE
+	}
+
+	PrintLineSeparator();
+
+	{
+		#define													MACRO_TYPE const int
+
+		using													ORIGINAL_TYPE=MACRO_TYPE;
+		using													TYPE=make_signed<ORIGINAL_TYPE>::type;
+
+		wstring													OriginalTypeName=GetTypeInfoName<ORIGINAL_TYPE>();
+		wstring													TypeName=GetTypeInfoName<TYPE>();
+
+		wcout << L"TYPE TRAIT [make_signed<" << MACRO_STRINGIFY_TO_WIDE_STRING(MACRO_TYPE) << L">::type] - ORIGINAL TYPE NAME [" << OriginalTypeName << L"] TYPE NAME [" << TypeName << L"]." << endl;
+
+		#undef MACRO_TYPE
+	}
+
+	PrintLineSeparator();
+
+	{
+		#define													MACRO_TYPE unsigned int
+
+		using													ORIGINAL_TYPE=MACRO_TYPE;
+		using													TYPE=make_signed<ORIGINAL_TYPE>::type;
+
+		wstring													OriginalTypeName=GetTypeInfoName<ORIGINAL_TYPE>();
+		wstring													TypeName=GetTypeInfoName<TYPE>();
+
+		wcout << L"TYPE TRAIT [make_signed<" << MACRO_STRINGIFY_TO_WIDE_STRING(MACRO_TYPE) << L">::type] - ORIGINAL TYPE NAME [" << OriginalTypeName << L"] TYPE NAME [" << TypeName << L"]." << endl;
+
+		#undef MACRO_TYPE
+	}
+
+	PrintLineSeparator();
+
+	{
+		#define													MACRO_TYPE signed int
+
+		using													ORIGINAL_TYPE=MACRO_TYPE;
+		using													TYPE=make_signed<ORIGINAL_TYPE>::type;
+
+		wstring													OriginalTypeName=GetTypeInfoName<ORIGINAL_TYPE>();
+		wstring													TypeName=GetTypeInfoName<TYPE>();
+
+		wcout << L"TYPE TRAIT [make_signed<" << MACRO_STRINGIFY_TO_WIDE_STRING(MACRO_TYPE) << L">::type] - ORIGINAL TYPE NAME [" << OriginalTypeName << L"] TYPE NAME [" << TypeName << L"]." << endl;
+
+		#undef MACRO_TYPE
+	}
+
+	PrintLineSeparator();
+
+	{
+		#define													MACRO_TYPE EEnumInt
+
+		using													ORIGINAL_TYPE=MACRO_TYPE;
+		using													TYPE=make_signed<ORIGINAL_TYPE>::type;
+
+		wstring													OriginalTypeName=GetTypeInfoName<ORIGINAL_TYPE>();
+		wstring													TypeName=GetTypeInfoName<TYPE>();
+
+		wcout << L"TYPE TRAIT [make_signed<" << MACRO_STRINGIFY_TO_WIDE_STRING(MACRO_TYPE) << L">::type] - ORIGINAL TYPE NAME [" << OriginalTypeName << L"] TYPE NAME [" << TypeName << L"]." << endl;
+
+		#undef MACRO_TYPE
+	}
+
+	/*
+	PrintLineSeparator();
+
+	{
+		// !!! COMPILER hodi ERROR.
+		#define													MACRO_TYPE int&
+
+		using													ORIGINAL_TYPE=MACRO_TYPE;
+		using													TYPE=make_signed<ORIGINAL_TYPE>::type;
+
+		wstring													OriginalTypeName=GetTypeInfoName<ORIGINAL_TYPE>();
+		wstring													TypeName=GetTypeInfoName<TYPE>();
+
+		wcout << L"TYPE TRAIT [make_signed<" << MACRO_STRINGIFY_TO_WIDE_STRING(MACRO_TYPE) << L">::type] - ORIGINAL TYPE NAME [" << OriginalTypeName << L"] TYPE NAME [" << TypeName << L"]." << endl;
+
+		#undef MACRO_TYPE
+	}
+	*/
+
+	/*
+	PrintLineSeparator();
+
+	{
+		// !!! COMPILER hodi ERROR.
+		#define													MACRO_TYPE wstring
+
+		using													ORIGINAL_TYPE=MACRO_TYPE;
+		using													TYPE=make_signed<ORIGINAL_TYPE>::type;
+
+		wstring													OriginalTypeName=GetTypeInfoName<ORIGINAL_TYPE>();
+		wstring													TypeName=GetTypeInfoName<TYPE>();
+
+		wcout << L"TYPE TRAIT [make_signed<" << MACRO_STRINGIFY_TO_WIDE_STRING(MACRO_TYPE) << L">::type] - ORIGINAL TYPE NAME [" << OriginalTypeName << L"] TYPE NAME [" << TypeName << L"]." << endl;
+
+		#undef MACRO_TYPE
+	}
+	*/
+
+	PrintLineSeparator();
+}
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+void TestTypeTraitMakeUnsigned(void)
+{
+	PrintLineSeparator();
+
+	{
+		#define													MACRO_TYPE int
+
+		using													ORIGINAL_TYPE=MACRO_TYPE;
+		using													TYPE=make_unsigned<ORIGINAL_TYPE>::type;
+
+		wstring													OriginalTypeName=GetTypeInfoName<ORIGINAL_TYPE>();
+		wstring													TypeName=GetTypeInfoName<TYPE>();
+
+		wcout << L"TYPE TRAIT [make_unsigned<" << MACRO_STRINGIFY_TO_WIDE_STRING(MACRO_TYPE) << L">::type] - ORIGINAL TYPE NAME [" << OriginalTypeName << L"] TYPE NAME [" << TypeName << L"]." << endl;
+
+		#undef MACRO_TYPE
+	}
+
+	PrintLineSeparator();
+
+	{
+		#define													MACRO_TYPE const int
+
+		using													ORIGINAL_TYPE=MACRO_TYPE;
+		using													TYPE=make_unsigned<ORIGINAL_TYPE>::type;
+
+		wstring													OriginalTypeName=GetTypeInfoName<ORIGINAL_TYPE>();
+		wstring													TypeName=GetTypeInfoName<TYPE>();
+
+		wcout << L"TYPE TRAIT [make_unsigned<" << MACRO_STRINGIFY_TO_WIDE_STRING(MACRO_TYPE) << L">::type] - ORIGINAL TYPE NAME [" << OriginalTypeName << L"] TYPE NAME [" << TypeName << L"]." << endl;
+
+		#undef MACRO_TYPE
+	}
+
+	PrintLineSeparator();
+
+	{
+		#define													MACRO_TYPE unsigned int
+
+		using													ORIGINAL_TYPE=MACRO_TYPE;
+		using													TYPE=make_unsigned<ORIGINAL_TYPE>::type;
+
+		wstring													OriginalTypeName=GetTypeInfoName<ORIGINAL_TYPE>();
+		wstring													TypeName=GetTypeInfoName<TYPE>();
+
+		wcout << L"TYPE TRAIT [make_unsigned<" << MACRO_STRINGIFY_TO_WIDE_STRING(MACRO_TYPE) << L">::type] - ORIGINAL TYPE NAME [" << OriginalTypeName << L"] TYPE NAME [" << TypeName << L"]." << endl;
+
+		#undef MACRO_TYPE
+	}
+
+	PrintLineSeparator();
+
+	{
+		#define													MACRO_TYPE signed int
+
+		using													ORIGINAL_TYPE=MACRO_TYPE;
+		using													TYPE=make_unsigned<ORIGINAL_TYPE>::type;
+
+		wstring													OriginalTypeName=GetTypeInfoName<ORIGINAL_TYPE>();
+		wstring													TypeName=GetTypeInfoName<TYPE>();
+
+		wcout << L"TYPE TRAIT [make_unsigned<" << MACRO_STRINGIFY_TO_WIDE_STRING(MACRO_TYPE) << L">::type] - ORIGINAL TYPE NAME [" << OriginalTypeName << L"] TYPE NAME [" << TypeName << L"]." << endl;
+
+		#undef MACRO_TYPE
+	}
+
+	PrintLineSeparator();
+
+	{
+		#define													MACRO_TYPE EEnumInt
+
+		using													ORIGINAL_TYPE=MACRO_TYPE;
+		using													TYPE=make_unsigned<ORIGINAL_TYPE>::type;
+
+		wstring													OriginalTypeName=GetTypeInfoName<ORIGINAL_TYPE>();
+		wstring													TypeName=GetTypeInfoName<TYPE>();
+
+		wcout << L"TYPE TRAIT [make_unsigned<" << MACRO_STRINGIFY_TO_WIDE_STRING(MACRO_TYPE) << L">::type] - ORIGINAL TYPE NAME [" << OriginalTypeName << L"] TYPE NAME [" << TypeName << L"]." << endl;
+
+		#undef MACRO_TYPE
+	}
+
+	/*
+	PrintLineSeparator();
+
+	{
+		// !!! COMPILER hodi ERROR.
+		#define													MACRO_TYPE int&
+
+		using													ORIGINAL_TYPE=MACRO_TYPE;
+		using													TYPE=make_unsigned<ORIGINAL_TYPE>::type;
+
+		wstring													OriginalTypeName=GetTypeInfoName<ORIGINAL_TYPE>();
+		wstring													TypeName=GetTypeInfoName<TYPE>();
+
+		wcout << L"TYPE TRAIT [make_unsigned<" << MACRO_STRINGIFY_TO_WIDE_STRING(MACRO_TYPE) << L">::type] - ORIGINAL TYPE NAME [" << OriginalTypeName << L"] TYPE NAME [" << TypeName << L"]." << endl;
+
+		#undef MACRO_TYPE
+	}
+	*/
+
+	/*
+	PrintLineSeparator();
+
+	{
+		// !!! COMPILER hodi ERROR.
+		#define													MACRO_TYPE wstring
+
+		using													ORIGINAL_TYPE=MACRO_TYPE;
+		using													TYPE=make_unsigned<ORIGINAL_TYPE>::type;
+
+		wstring													OriginalTypeName=GetTypeInfoName<ORIGINAL_TYPE>();
+		wstring													TypeName=GetTypeInfoName<TYPE>();
+
+		wcout << L"TYPE TRAIT [make_unsigned<" << MACRO_STRINGIFY_TO_WIDE_STRING(MACRO_TYPE) << L">::type] - ORIGINAL TYPE NAME [" << OriginalTypeName << L"] TYPE NAME [" << TypeName << L"]." << endl;
+
+		#undef MACRO_TYPE
+	}
+	*/
+
+	PrintLineSeparator();
+}
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+void TestTypeTraitRemoveReference(void)
+{
+	PrintLineSeparator();
+
+	{
+		#define													MACRO_TYPE int
+
+		using													ORIGINAL_TYPE=MACRO_TYPE;
+		using													TYPE=remove_reference<ORIGINAL_TYPE>::type;
+
+		wstring													OriginalTypeName=GetTypeInfoName<ORIGINAL_TYPE>();
+		wstring													TypeName=GetTypeInfoName<TYPE>();
+
+		wcout << L"TYPE TRAIT [remove_reference<" << MACRO_STRINGIFY_TO_WIDE_STRING(MACRO_TYPE) << L">::type] - ORIGINAL TYPE NAME [" << OriginalTypeName << L"] TYPE NAME [" << TypeName << L"]." << endl;
+
+		#undef MACRO_TYPE
+	}
+
+	PrintLineSeparator();
+
+	{
+		#define													MACRO_TYPE const int
+
+		using													ORIGINAL_TYPE=MACRO_TYPE;
+		using													TYPE=remove_reference<ORIGINAL_TYPE>::type;
+
+		wstring													OriginalTypeName=GetTypeInfoName<ORIGINAL_TYPE>();
+		wstring													TypeName=GetTypeInfoName<TYPE>();
+
+		wcout << L"TYPE TRAIT [remove_reference<" << MACRO_STRINGIFY_TO_WIDE_STRING(MACRO_TYPE) << L">::type] - ORIGINAL TYPE NAME [" << OriginalTypeName << L"] TYPE NAME [" << TypeName << L"]." << endl;
+
+		#undef MACRO_TYPE
+	}
+
+	PrintLineSeparator();
+
+	{
+		#define													MACRO_TYPE int&
+
+		using													ORIGINAL_TYPE=MACRO_TYPE;
+		using													TYPE=remove_reference<ORIGINAL_TYPE>::type;
+
+		wstring													OriginalTypeName=GetTypeInfoName<ORIGINAL_TYPE>();
+		wstring													TypeName=GetTypeInfoName<TYPE>();
+
+		wcout << L"TYPE TRAIT [remove_reference<" << MACRO_STRINGIFY_TO_WIDE_STRING(MACRO_TYPE) << L">::type] - ORIGINAL TYPE NAME [" << OriginalTypeName << L"] TYPE NAME [" << TypeName << L"]." << endl;
+
+		#undef MACRO_TYPE
+	}
+
+	PrintLineSeparator();
+
+	{
+		#define													MACRO_TYPE const int&
+
+		using													ORIGINAL_TYPE=MACRO_TYPE;
+		using													TYPE=remove_reference<ORIGINAL_TYPE>::type;
+
+		wstring													OriginalTypeName=GetTypeInfoName<ORIGINAL_TYPE>();
+		wstring													TypeName=GetTypeInfoName<TYPE>();
+
+		wcout << L"TYPE TRAIT [remove_reference<" << MACRO_STRINGIFY_TO_WIDE_STRING(MACRO_TYPE) << L">::type] - ORIGINAL TYPE NAME [" << OriginalTypeName << L"] TYPE NAME [" << TypeName << L"]." << endl;
+
+		#undef MACRO_TYPE
+	}
+
+	PrintLineSeparator();
+
+	{
+		#define													MACRO_TYPE int&&
+
+		using													ORIGINAL_TYPE=MACRO_TYPE;
+		using													TYPE=remove_reference<ORIGINAL_TYPE>::type;
+
+		wstring													OriginalTypeName=GetTypeInfoName<ORIGINAL_TYPE>();
+		wstring													TypeName=GetTypeInfoName<TYPE>();
+
+		wcout << L"TYPE TRAIT [remove_reference<" << MACRO_STRINGIFY_TO_WIDE_STRING(MACRO_TYPE) << L">::type] - ORIGINAL TYPE NAME [" << OriginalTypeName << L"] TYPE NAME [" << TypeName << L"]." << endl;
+
+		#undef MACRO_TYPE
+	}
+
+	PrintLineSeparator();
+
+	{
+		#define													MACRO_TYPE const int&&
+
+		using													ORIGINAL_TYPE=MACRO_TYPE;
+		using													TYPE=remove_reference<ORIGINAL_TYPE>::type;
+
+		wstring													OriginalTypeName=GetTypeInfoName<ORIGINAL_TYPE>();
+		wstring													TypeName=GetTypeInfoName<TYPE>();
+
+		wcout << L"TYPE TRAIT [remove_reference<" << MACRO_STRINGIFY_TO_WIDE_STRING(MACRO_TYPE) << L">::type] - ORIGINAL TYPE NAME [" << OriginalTypeName << L"] TYPE NAME [" << TypeName << L"]." << endl;
+
+		#undef MACRO_TYPE
+	}
+
+	PrintLineSeparator();
+}
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+void TestTypeTraitAddLValueReference(void)
+{
+	PrintLineSeparator();
+
+	{
+		#define													MACRO_TYPE int
+
+		using													ORIGINAL_TYPE=MACRO_TYPE;
+		using													TYPE=add_lvalue_reference<ORIGINAL_TYPE>::type;
+
+		wstring													OriginalTypeName=GetTypeInfoName<ORIGINAL_TYPE>();
+		wstring													TypeName=GetTypeInfoName<TYPE>();
+
+		wcout << L"TYPE TRAIT [add_lvalue_reference<" << MACRO_STRINGIFY_TO_WIDE_STRING(MACRO_TYPE) << L">::type] - ORIGINAL TYPE NAME [" << OriginalTypeName << L"] TYPE NAME [" << TypeName << L"]." << endl;
+
+		#undef MACRO_TYPE
+	}
+
+	PrintLineSeparator();
+
+	{
+		#define													MACRO_TYPE const int
+
+		using													ORIGINAL_TYPE=MACRO_TYPE;
+		using													TYPE=add_lvalue_reference<ORIGINAL_TYPE>::type;
+
+		wstring													OriginalTypeName=GetTypeInfoName<ORIGINAL_TYPE>();
+		wstring													TypeName=GetTypeInfoName<TYPE>();
+
+		wcout << L"TYPE TRAIT [add_lvalue_reference<" << MACRO_STRINGIFY_TO_WIDE_STRING(MACRO_TYPE) << L">::type] - ORIGINAL TYPE NAME [" << OriginalTypeName << L"] TYPE NAME [" << TypeName << L"]." << endl;
+
+		#undef MACRO_TYPE
+	}
+
+	PrintLineSeparator();
+
+	{
+		// !!! Aplikuje sa REFERENCE COLLAPSING RULE. LVAUE REFERENCE na LVALUE REFERENCE sa transformuje na LVALUE REFERENCE. To znamena, ze TYPE [int& &] sa transformuje na TYPE [int&].
+		#define													MACRO_TYPE int&
+
+		using													ORIGINAL_TYPE=MACRO_TYPE;
+		using													TYPE=add_lvalue_reference<ORIGINAL_TYPE>::type;
+
+		wstring													OriginalTypeName=GetTypeInfoName<ORIGINAL_TYPE>();
+		wstring													TypeName=GetTypeInfoName<TYPE>();
+
+		wcout << L"TYPE TRAIT [add_lvalue_reference<" << MACRO_STRINGIFY_TO_WIDE_STRING(MACRO_TYPE) << L">::type] - ORIGINAL TYPE NAME [" << OriginalTypeName << L"] TYPE NAME [" << TypeName << L"]." << endl;
+
+		#undef MACRO_TYPE
+	}
+
+	PrintLineSeparator();
+
+	{
+		// !!! Aplikuje sa REFERENCE COLLAPSING RULE. LVAUE REFERENCE na RVALUE REFERENCE sa transformuje na LVALUE REFERENCE. To znamena, ze TYPE [int&& &] sa transformuje na TYPE [int&].
+		#define													MACRO_TYPE int&&
+
+		using													ORIGINAL_TYPE=MACRO_TYPE;
+		using													TYPE=add_lvalue_reference<ORIGINAL_TYPE>::type;
+
+		wstring													OriginalTypeName=GetTypeInfoName<ORIGINAL_TYPE>();
+		wstring													TypeName=GetTypeInfoName<TYPE>();
+
+		wcout << L"TYPE TRAIT [add_lvalue_reference<" << MACRO_STRINGIFY_TO_WIDE_STRING(MACRO_TYPE) << L">::type] - ORIGINAL TYPE NAME [" << OriginalTypeName << L"] TYPE NAME [" << TypeName << L"]." << endl;
+
+		#undef MACRO_TYPE
+	}
+
+	PrintLineSeparator();
+
+	{
+		#define													MACRO_TYPE void
+
+		using													ORIGINAL_TYPE=MACRO_TYPE;
+		using													TYPE=add_lvalue_reference<ORIGINAL_TYPE>::type;
+
+		wstring													OriginalTypeName=GetTypeInfoName<ORIGINAL_TYPE>();
+		wstring													TypeName=GetTypeInfoName<TYPE>();
+
+		wcout << L"TYPE TRAIT [add_lvalue_reference<" << MACRO_STRINGIFY_TO_WIDE_STRING(MACRO_TYPE) << L">::type] - ORIGINAL TYPE NAME [" << OriginalTypeName << L"] TYPE NAME [" << TypeName << L"]." << endl;
+
+		#undef MACRO_TYPE
+	}
+
+	PrintLineSeparator();
+}
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+void TestTypeTraitAddRValueReference(void)
+{
+	PrintLineSeparator();
+
+	{
+		#define													MACRO_TYPE int
+
+		using													ORIGINAL_TYPE=MACRO_TYPE;
+		using													TYPE=add_rvalue_reference<ORIGINAL_TYPE>::type;
+
+		wstring													OriginalTypeName=GetTypeInfoName<ORIGINAL_TYPE>();
+		wstring													TypeName=GetTypeInfoName<TYPE>();
+
+		wcout << L"TYPE TRAIT [add_rvalue_reference<" << MACRO_STRINGIFY_TO_WIDE_STRING(MACRO_TYPE) << L">::type] - ORIGINAL TYPE NAME [" << OriginalTypeName << L"] TYPE NAME [" << TypeName << L"]." << endl;
+
+		#undef MACRO_TYPE
+	}
+
+	PrintLineSeparator();
+
+	{
+		#define													MACRO_TYPE const int
+
+		using													ORIGINAL_TYPE=MACRO_TYPE;
+		using													TYPE=add_rvalue_reference<ORIGINAL_TYPE>::type;
+
+		wstring													OriginalTypeName=GetTypeInfoName<ORIGINAL_TYPE>();
+		wstring													TypeName=GetTypeInfoName<TYPE>();
+
+		wcout << L"TYPE TRAIT [add_rvalue_reference<" << MACRO_STRINGIFY_TO_WIDE_STRING(MACRO_TYPE) << L">::type] - ORIGINAL TYPE NAME [" << OriginalTypeName << L"] TYPE NAME [" << TypeName << L"]." << endl;
+
+		#undef MACRO_TYPE
+	}
+
+	PrintLineSeparator();
+
+	{
+		// !!! Aplikuje sa REFERENCE COLLAPSING RULE. RVLAUE REFERENCE na LVALUE REFERENCE sa transformuje na LVALUE REFERENCE. To znamena, ze TYPE [int& &&] sa transformuje na TYPE [int&].
+		#define													MACRO_TYPE int&
+
+		using													ORIGINAL_TYPE=MACRO_TYPE;
+		using													TYPE=add_rvalue_reference<ORIGINAL_TYPE>::type;
+
+		wstring													OriginalTypeName=GetTypeInfoName<ORIGINAL_TYPE>();
+		wstring													TypeName=GetTypeInfoName<TYPE>();
+
+		wcout << L"TYPE TRAIT [add_rvalue_reference<" << MACRO_STRINGIFY_TO_WIDE_STRING(MACRO_TYPE) << L">::type] - ORIGINAL TYPE NAME [" << OriginalTypeName << L"] TYPE NAME [" << TypeName << L"]." << endl;
+
+		#undef MACRO_TYPE
+	}
+
+	PrintLineSeparator();
+
+	{
+		// !!! Aplikuje sa REFERENCE COLLAPSING RULE. RVLAUE REFERENCE na RVALUE REFERENCE sa transformuje na RVALUE REFERENCE. To znamena, ze TYPE [int& &&] sa transformuje na TYPE [int&&].
+		#define													MACRO_TYPE int&&
+
+		using													ORIGINAL_TYPE=MACRO_TYPE;
+		using													TYPE=add_rvalue_reference<ORIGINAL_TYPE>::type;
+
+		wstring													OriginalTypeName=GetTypeInfoName<ORIGINAL_TYPE>();
+		wstring													TypeName=GetTypeInfoName<TYPE>();
+
+		wcout << L"TYPE TRAIT [add_rvalue_reference<" << MACRO_STRINGIFY_TO_WIDE_STRING(MACRO_TYPE) << L">::type] - ORIGINAL TYPE NAME [" << OriginalTypeName << L"] TYPE NAME [" << TypeName << L"]." << endl;
+
+		#undef MACRO_TYPE
+	}
+
+	PrintLineSeparator();
+
+	{
+		#define													MACRO_TYPE void
+
+		using													ORIGINAL_TYPE=MACRO_TYPE;
+		using													TYPE=add_rvalue_reference<ORIGINAL_TYPE>::type;
+
+		wstring													OriginalTypeName=GetTypeInfoName<ORIGINAL_TYPE>();
+		wstring													TypeName=GetTypeInfoName<TYPE>();
+
+		wcout << L"TYPE TRAIT [add_rvalue_reference<" << MACRO_STRINGIFY_TO_WIDE_STRING(MACRO_TYPE) << L">::type] - ORIGINAL TYPE NAME [" << OriginalTypeName << L"] TYPE NAME [" << TypeName << L"]." << endl;
+
+		#undef MACRO_TYPE
+	}
+
+	PrintLineSeparator();
+}
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+void TestTypeTraitRemovePointer(void)
+{
+	PrintLineSeparator();
+
+	{
+		#define													MACRO_TYPE int
+
+		using													ORIGINAL_TYPE=MACRO_TYPE;
+		using													TYPE=remove_pointer<ORIGINAL_TYPE>::type;
+
+		wstring													OriginalTypeName=GetTypeInfoName<ORIGINAL_TYPE>();
+		wstring													TypeName=GetTypeInfoName<TYPE>();
+
+		wcout << L"TYPE TRAIT [remove_pointer<" << MACRO_STRINGIFY_TO_WIDE_STRING(MACRO_TYPE) << L">::type] - ORIGINAL TYPE NAME [" << OriginalTypeName << L"] TYPE NAME [" << TypeName << L"]." << endl;
+
+		#undef MACRO_TYPE
+	}
+
+	PrintLineSeparator();
+
+	{
+		#define													MACRO_TYPE int*
+
+		using													ORIGINAL_TYPE=MACRO_TYPE;
+		using													TYPE=remove_pointer<ORIGINAL_TYPE>::type;
+
+		wstring													OriginalTypeName=GetTypeInfoName<ORIGINAL_TYPE>();
+		wstring													TypeName=GetTypeInfoName<TYPE>();
+
+		wcout << L"TYPE TRAIT [remove_pointer<" << MACRO_STRINGIFY_TO_WIDE_STRING(MACRO_TYPE) << L">::type] - ORIGINAL TYPE NAME [" << OriginalTypeName << L"] TYPE NAME [" << TypeName << L"]." << endl;
+
+		#undef MACRO_TYPE
+	}
+
+	PrintLineSeparator();
+
+	{
+		#define													MACRO_TYPE const int*
+
+		using													ORIGINAL_TYPE=MACRO_TYPE;
+		using													TYPE=remove_pointer<ORIGINAL_TYPE>::type;
+
+		wstring													OriginalTypeName=GetTypeInfoName<ORIGINAL_TYPE>();
+		wstring													TypeName=GetTypeInfoName<TYPE>();
+
+		wcout << L"TYPE TRAIT [remove_pointer<" << MACRO_STRINGIFY_TO_WIDE_STRING(MACRO_TYPE) << L">::type] - ORIGINAL TYPE NAME [" << OriginalTypeName << L"] TYPE NAME [" << TypeName << L"]." << endl;
+
+		#undef MACRO_TYPE
+	}
+
+	PrintLineSeparator();
+
+	{
+		#define													MACRO_TYPE const int* const
+
+		using													ORIGINAL_TYPE=MACRO_TYPE;
+		using													TYPE=remove_pointer<ORIGINAL_TYPE>::type;
+
+		wstring													OriginalTypeName=GetTypeInfoName<ORIGINAL_TYPE>();
+		wstring													TypeName=GetTypeInfoName<TYPE>();
+
+		wcout << L"TYPE TRAIT [remove_pointer<" << MACRO_STRINGIFY_TO_WIDE_STRING(MACRO_TYPE) << L">::type] - ORIGINAL TYPE NAME [" << OriginalTypeName << L"] TYPE NAME [" << TypeName << L"]." << endl;
+
+		#undef MACRO_TYPE
+	}
+
+	PrintLineSeparator();
+
+	{
+		#define													MACRO_TYPE const int* const* const
+
+		using													ORIGINAL_TYPE=MACRO_TYPE;
+		using													TYPE=remove_pointer<ORIGINAL_TYPE>::type;
+
+		wstring													OriginalTypeName=GetTypeInfoName<ORIGINAL_TYPE>();
+		wstring													TypeName=GetTypeInfoName<TYPE>();
+
+		wcout << L"TYPE TRAIT [remove_pointer<" << MACRO_STRINGIFY_TO_WIDE_STRING(MACRO_TYPE) << L">::type] - ORIGINAL TYPE NAME [" << OriginalTypeName << L"] TYPE NAME [" << TypeName << L"]." << endl;
+
+		#undef MACRO_TYPE
+	}
+
+	PrintLineSeparator();
+}
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+void TestTypeTraitAddPointer(void)
+{
+	PrintLineSeparator();
+
+	{
+		#define													MACRO_TYPE int
+
+		using													ORIGINAL_TYPE=MACRO_TYPE;
+		using													TYPE=add_pointer<ORIGINAL_TYPE>::type;
+
+		wstring													OriginalTypeName=GetTypeInfoName<ORIGINAL_TYPE>();
+		wstring													TypeName=GetTypeInfoName<TYPE>();
+
+		wcout << L"TYPE TRAIT [add_pointer<" << MACRO_STRINGIFY_TO_WIDE_STRING(MACRO_TYPE) << L">::type] - ORIGINAL TYPE NAME [" << OriginalTypeName << L"] TYPE NAME [" << TypeName << L"]." << endl;
+
+		#undef MACRO_TYPE
+	}
+
+	PrintLineSeparator();
+
+	{
+		#define													MACRO_TYPE const int
+
+		using													ORIGINAL_TYPE=MACRO_TYPE;
+		using													TYPE=add_pointer<ORIGINAL_TYPE>::type;
+
+		wstring													OriginalTypeName=GetTypeInfoName<ORIGINAL_TYPE>();
+		wstring													TypeName=GetTypeInfoName<TYPE>();
+
+		wcout << L"TYPE TRAIT [add_pointer<" << MACRO_STRINGIFY_TO_WIDE_STRING(MACRO_TYPE) << L">::type] - ORIGINAL TYPE NAME [" << OriginalTypeName << L"] TYPE NAME [" << TypeName << L"]." << endl;
+
+		#undef MACRO_TYPE
+	}
+
+	PrintLineSeparator();
+
+	{
+		#define													MACRO_TYPE int*
+
+		using													ORIGINAL_TYPE=MACRO_TYPE;
+		using													TYPE=add_pointer<ORIGINAL_TYPE>::type;
+
+		wstring													OriginalTypeName=GetTypeInfoName<ORIGINAL_TYPE>();
+		wstring													TypeName=GetTypeInfoName<TYPE>();
+
+		wcout << L"TYPE TRAIT [add_pointer<" << MACRO_STRINGIFY_TO_WIDE_STRING(MACRO_TYPE) << L">::type] - ORIGINAL TYPE NAME [" << OriginalTypeName << L"] TYPE NAME [" << TypeName << L"]." << endl;
+
+		#undef MACRO_TYPE
+	}
+
+	PrintLineSeparator();
+
+	{
+		#define													MACRO_TYPE const int*
+
+		using													ORIGINAL_TYPE=MACRO_TYPE;
+		using													TYPE=add_pointer<ORIGINAL_TYPE>::type;
+
+		wstring													OriginalTypeName=GetTypeInfoName<ORIGINAL_TYPE>();
+		wstring													TypeName=GetTypeInfoName<TYPE>();
+
+		wcout << L"TYPE TRAIT [add_pointer<" << MACRO_STRINGIFY_TO_WIDE_STRING(MACRO_TYPE) << L">::type] - ORIGINAL TYPE NAME [" << OriginalTypeName << L"] TYPE NAME [" << TypeName << L"]." << endl;
+
+		#undef MACRO_TYPE
+	}
+
+	PrintLineSeparator();
+
+	{
+		#define													MACRO_TYPE void
+
+		using													ORIGINAL_TYPE=MACRO_TYPE;
+		using													TYPE=add_pointer<ORIGINAL_TYPE>::type;
+
+		wstring													OriginalTypeName=GetTypeInfoName<ORIGINAL_TYPE>();
+		wstring													TypeName=GetTypeInfoName<TYPE>();
+
+		wcout << L"TYPE TRAIT [add_pointer<" << MACRO_STRINGIFY_TO_WIDE_STRING(MACRO_TYPE) << L">::type] - ORIGINAL TYPE NAME [" << OriginalTypeName << L"] TYPE NAME [" << TypeName << L"]." << endl;
+
+		#undef MACRO_TYPE
+	}
+
+	PrintLineSeparator();
+
+	{
+		// !!! VYSLEDNY TYPE je TYPE [int*]. REFERENCE je odstranena.
+		#define													MACRO_TYPE int&
+
+		using													ORIGINAL_TYPE=MACRO_TYPE;
+		using													TYPE=add_pointer<ORIGINAL_TYPE>::type;
+
+		wstring													OriginalTypeName=GetTypeInfoName<ORIGINAL_TYPE>();
+		wstring													TypeName=GetTypeInfoName<TYPE>();
+
+		wcout << L"TYPE TRAIT [add_pointer<" << MACRO_STRINGIFY_TO_WIDE_STRING(MACRO_TYPE) << L">::type] - ORIGINAL TYPE NAME [" << OriginalTypeName << L"] TYPE NAME [" << TypeName << L"]." << endl;
+
+		#undef MACRO_TYPE
+	}
+
+	PrintLineSeparator();
+
+	{
+		// !!! VYSLEDNY TYPE je TYPE [int*]. REFERENCE je odstranena.
+		#define													MACRO_TYPE int&&
+
+		using													ORIGINAL_TYPE=MACRO_TYPE;
+		using													TYPE=add_pointer<ORIGINAL_TYPE>::type;
+
+		wstring													OriginalTypeName=GetTypeInfoName<ORIGINAL_TYPE>();
+		wstring													TypeName=GetTypeInfoName<TYPE>();
+
+		wcout << L"TYPE TRAIT [add_pointer<" << MACRO_STRINGIFY_TO_WIDE_STRING(MACRO_TYPE) << L">::type] - ORIGINAL TYPE NAME [" << OriginalTypeName << L"] TYPE NAME [" << TypeName << L"]." << endl;
+
+		#undef MACRO_TYPE
+	}
+
+	PrintLineSeparator();
+
+	{
+		#define													MACRO_TYPE int const* const
+
+		using													ORIGINAL_TYPE=MACRO_TYPE;
+		using													TYPE=add_pointer<ORIGINAL_TYPE>::type;
+
+		wstring													OriginalTypeName=GetTypeInfoName<ORIGINAL_TYPE>();
+		wstring													TypeName=GetTypeInfoName<TYPE>();
+
+		wcout << L"TYPE TRAIT [add_pointer<" << MACRO_STRINGIFY_TO_WIDE_STRING(MACRO_TYPE) << L">::type] - ORIGINAL TYPE NAME [" << OriginalTypeName << L"] TYPE NAME [" << TypeName << L"]." << endl;
+
+		#undef MACRO_TYPE
+	}
+
+	PrintLineSeparator();
+
+	{
+		#define													MACRO_TYPE int[10]
+
+		using													ORIGINAL_TYPE=MACRO_TYPE;
+		using													TYPE=add_pointer<ORIGINAL_TYPE>::type;
+
+		wstring													OriginalTypeName=GetTypeInfoName<ORIGINAL_TYPE>();
+		wstring													TypeName=GetTypeInfoName<TYPE>();
+
+		wcout << L"TYPE TRAIT [add_pointer<" << MACRO_STRINGIFY_TO_WIDE_STRING(MACRO_TYPE) << L">::type] - ORIGINAL TYPE NAME [" << OriginalTypeName << L"] TYPE NAME [" << TypeName << L"]." << endl;
+
+		#undef MACRO_TYPE
+	}
+
+	PrintLineSeparator();
+
+	{
+		// !!! VYSLEDNY TYPE je TYPE [void(*)(int,double)]. REFERENCE je odstranena.
+		#define													MACRO_TYPE void(&)(int,double)
+
+		using													ORIGINAL_TYPE=MACRO_TYPE;
+		using													TYPE=add_pointer<ORIGINAL_TYPE>::type;
+
+		wstring													OriginalTypeName=GetTypeInfoName<ORIGINAL_TYPE>();
+		wstring													TypeName=GetTypeInfoName<TYPE>();
+
+		wcout << L"TYPE TRAIT [add_pointer<" << MACRO_STRINGIFY_TO_WIDE_STRING(MACRO_TYPE) << L">::type] - ORIGINAL TYPE NAME [" << OriginalTypeName << L"] TYPE NAME [" << TypeName << L"]." << endl;
+
+		#undef MACRO_TYPE
+	}
+
+	PrintLineSeparator();
+
+	{
+		#define													MACRO_TYPE void(int,double)
+
+		using													ORIGINAL_TYPE=MACRO_TYPE;
+		using													TYPE=add_pointer<ORIGINAL_TYPE>::type;
+
+		wstring													OriginalTypeName=GetTypeInfoName<ORIGINAL_TYPE>();
+		wstring													TypeName=GetTypeInfoName<TYPE>();
+
+		wcout << L"TYPE TRAIT [add_pointer<" << MACRO_STRINGIFY_TO_WIDE_STRING(MACRO_TYPE) << L">::type] - ORIGINAL TYPE NAME [" << OriginalTypeName << L"] TYPE NAME [" << TypeName << L"]." << endl;
+
+		#undef MACRO_TYPE
+	}
+
+	/*
+	PrintLineSeparator();
+
+	{
+		// !!!!! Vrati POVODNY TYPE.
+		#define													MACRO_TYPE void(int,double) const
+
+		using													ORIGINAL_TYPE=MACRO_TYPE;
+		using													TYPE=add_pointer<ORIGINAL_TYPE>::type;
+
+		wstring													OriginalTypeName=GetTypeInfoName<ORIGINAL_TYPE>();
+		wstring													TypeName=GetTypeInfoName<TYPE>();
+
+		wcout << L"TYPE TRAIT [add_pointer<" << MACRO_STRINGIFY_TO_WIDE_STRING(MACRO_TYPE) << L">::type] - ORIGINAL TYPE NAME [" << OriginalTypeName << L"] TYPE NAME [" << TypeName << L"]." << endl;
+
+		#undef MACRO_TYPE
+	}
+	*/
+
+	PrintLineSeparator();
+}
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+void TestTypeTraitRemoveExtent(void)
+{
+	PrintLineSeparator();
+
+	{
+		#define													MACRO_TYPE int
+
+		using													ORIGINAL_TYPE=MACRO_TYPE;
+		using													TYPE=remove_extent<ORIGINAL_TYPE>::type;
+
+		wstring													OriginalTypeName=GetTypeInfoName<ORIGINAL_TYPE>();
+		wstring													TypeName=GetTypeInfoName<TYPE>();
+
+		wcout << L"TYPE TRAIT [remove_extent<" << MACRO_STRINGIFY_TO_WIDE_STRING(MACRO_TYPE) << L">::type] - ORIGINAL TYPE NAME [" << OriginalTypeName << L"] TYPE NAME [" << TypeName << L"]." << endl;
+
+		#undef MACRO_TYPE
+	}
+
+	PrintLineSeparator();
+
+	{
+		#define													MACRO_TYPE const int
+
+		using													ORIGINAL_TYPE=MACRO_TYPE;
+		using													TYPE=remove_extent<ORIGINAL_TYPE>::type;
+
+		wstring													OriginalTypeName=GetTypeInfoName<ORIGINAL_TYPE>();
+		wstring													TypeName=GetTypeInfoName<TYPE>();
+
+		wcout << L"TYPE TRAIT [remove_extent<" << MACRO_STRINGIFY_TO_WIDE_STRING(MACRO_TYPE) << L">::type] - ORIGINAL TYPE NAME [" << OriginalTypeName << L"] TYPE NAME [" << TypeName << L"]." << endl;
+
+		#undef MACRO_TYPE
+	}
+
+	PrintLineSeparator();
+
+	{
+		#define													MACRO_TYPE int[10]
+
+		using													ORIGINAL_TYPE=MACRO_TYPE;
+		using													TYPE=remove_extent<ORIGINAL_TYPE>::type;
+
+		wstring													OriginalTypeName=GetTypeInfoName<ORIGINAL_TYPE>();
+		wstring													TypeName=GetTypeInfoName<TYPE>();
+
+		wcout << L"TYPE TRAIT [remove_extent<" << MACRO_STRINGIFY_TO_WIDE_STRING(MACRO_TYPE) << L">::type] - ORIGINAL TYPE NAME [" << OriginalTypeName << L"] TYPE NAME [" << TypeName << L"]." << endl;
+
+		#undef MACRO_TYPE
+	}
+
+	PrintLineSeparator();
+
+	{
+		#define													MACRO_TYPE const int[10]
+
+		using													ORIGINAL_TYPE=MACRO_TYPE;
+		using													TYPE=remove_extent<ORIGINAL_TYPE>::type;
+
+		wstring													OriginalTypeName=GetTypeInfoName<ORIGINAL_TYPE>();
+		wstring													TypeName=GetTypeInfoName<TYPE>();
+
+		wcout << L"TYPE TRAIT [remove_extent<" << MACRO_STRINGIFY_TO_WIDE_STRING(MACRO_TYPE) << L">::type] - ORIGINAL TYPE NAME [" << OriginalTypeName << L"] TYPE NAME [" << TypeName << L"]." << endl;
+
+		#undef MACRO_TYPE
+	}
+
+	PrintLineSeparator();
+
+	{
+		#define													MACRO_TYPE int[10][20]
+
+		using													ORIGINAL_TYPE=MACRO_TYPE;
+		using													TYPE=remove_extent<ORIGINAL_TYPE>::type;
+
+		wstring													OriginalTypeName=GetTypeInfoName<ORIGINAL_TYPE>();
+		wstring													TypeName=GetTypeInfoName<TYPE>();
+
+		wcout << L"TYPE TRAIT [remove_extent<" << MACRO_STRINGIFY_TO_WIDE_STRING(MACRO_TYPE) << L">::type] - ORIGINAL TYPE NAME [" << OriginalTypeName << L"] TYPE NAME [" << TypeName << L"]." << endl;
+
+		#undef MACRO_TYPE
+	}
+
+	PrintLineSeparator();
+
+	{
+		#define													MACRO_TYPE int[][20]
+
+		using													ORIGINAL_TYPE=MACRO_TYPE;
+		using													TYPE=remove_extent<ORIGINAL_TYPE>::type;
+
+		wstring													OriginalTypeName=GetTypeInfoName<ORIGINAL_TYPE>();
+		wstring													TypeName=GetTypeInfoName<TYPE>();
+
+		wcout << L"TYPE TRAIT [remove_extent<" << MACRO_STRINGIFY_TO_WIDE_STRING(MACRO_TYPE) << L">::type] - ORIGINAL TYPE NAME [" << OriginalTypeName << L"] TYPE NAME [" << TypeName << L"]." << endl;
+
+		#undef MACRO_TYPE
+	}
+
+	PrintLineSeparator();
+
+	{
+		#define													MACRO_TYPE int[10][20][30]
+
+		using													ORIGINAL_TYPE=MACRO_TYPE;
+		using													TYPE=remove_extent<ORIGINAL_TYPE>::type;
+
+		wstring													OriginalTypeName=GetTypeInfoName<ORIGINAL_TYPE>();
+		wstring													TypeName=GetTypeInfoName<TYPE>();
+
+		wcout << L"TYPE TRAIT [remove_extent<" << MACRO_STRINGIFY_TO_WIDE_STRING(MACRO_TYPE) << L">::type] - ORIGINAL TYPE NAME [" << OriginalTypeName << L"] TYPE NAME [" << TypeName << L"]." << endl;
+
+		#undef MACRO_TYPE
+	}
+
+	PrintLineSeparator();
+
+	{
+		#define													MACRO_TYPE int*
+
+		using													ORIGINAL_TYPE=MACRO_TYPE;
+		using													TYPE=remove_extent<ORIGINAL_TYPE>::type;
+
+		wstring													OriginalTypeName=GetTypeInfoName<ORIGINAL_TYPE>();
+		wstring													TypeName=GetTypeInfoName<TYPE>();
+
+		wcout << L"TYPE TRAIT [remove_extent<" << MACRO_STRINGIFY_TO_WIDE_STRING(MACRO_TYPE) << L">::type] - ORIGINAL TYPE NAME [" << OriginalTypeName << L"] TYPE NAME [" << TypeName << L"]." << endl;
+
+		#undef MACRO_TYPE
+	}
+
+	PrintLineSeparator();
+}
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+void TestTypeTraitRemoveAllExtents(void)
+{
+	PrintLineSeparator();
+
+	{
+		#define													MACRO_TYPE int
+
+		using													ORIGINAL_TYPE=MACRO_TYPE;
+		using													TYPE=remove_all_extents<ORIGINAL_TYPE>::type;
+
+		wstring													OriginalTypeName=GetTypeInfoName<ORIGINAL_TYPE>();
+		wstring													TypeName=GetTypeInfoName<TYPE>();
+
+		wcout << L"TYPE TRAIT [remove_all_extents<" << MACRO_STRINGIFY_TO_WIDE_STRING(MACRO_TYPE) << L">::type] - ORIGINAL TYPE NAME [" << OriginalTypeName << L"] TYPE NAME [" << TypeName << L"]." << endl;
+
+		#undef MACRO_TYPE
+	}
+
+	PrintLineSeparator();
+
+	{
+		#define													MACRO_TYPE const int
+
+		using													ORIGINAL_TYPE=MACRO_TYPE;
+		using													TYPE=remove_all_extents<ORIGINAL_TYPE>::type;
+
+		wstring													OriginalTypeName=GetTypeInfoName<ORIGINAL_TYPE>();
+		wstring													TypeName=GetTypeInfoName<TYPE>();
+
+		wcout << L"TYPE TRAIT [remove_all_extents<" << MACRO_STRINGIFY_TO_WIDE_STRING(MACRO_TYPE) << L">::type] - ORIGINAL TYPE NAME [" << OriginalTypeName << L"] TYPE NAME [" << TypeName << L"]." << endl;
+
+		#undef MACRO_TYPE
+	}
+
+	PrintLineSeparator();
+
+	{
+		#define													MACRO_TYPE int[10]
+
+		using													ORIGINAL_TYPE=MACRO_TYPE;
+		using													TYPE=remove_all_extents<ORIGINAL_TYPE>::type;
+
+		wstring													OriginalTypeName=GetTypeInfoName<ORIGINAL_TYPE>();
+		wstring													TypeName=GetTypeInfoName<TYPE>();
+
+		wcout << L"TYPE TRAIT [remove_all_extents<" << MACRO_STRINGIFY_TO_WIDE_STRING(MACRO_TYPE) << L">::type] - ORIGINAL TYPE NAME [" << OriginalTypeName << L"] TYPE NAME [" << TypeName << L"]." << endl;
+
+		#undef MACRO_TYPE
+	}
+
+	PrintLineSeparator();
+
+	{
+		#define													MACRO_TYPE const int[10]
+
+		using													ORIGINAL_TYPE=MACRO_TYPE;
+		using													TYPE=remove_all_extents<ORIGINAL_TYPE>::type;
+
+		wstring													OriginalTypeName=GetTypeInfoName<ORIGINAL_TYPE>();
+		wstring													TypeName=GetTypeInfoName<TYPE>();
+
+		wcout << L"TYPE TRAIT [remove_all_extents<" << MACRO_STRINGIFY_TO_WIDE_STRING(MACRO_TYPE) << L">::type] - ORIGINAL TYPE NAME [" << OriginalTypeName << L"] TYPE NAME [" << TypeName << L"]." << endl;
+
+		#undef MACRO_TYPE
+	}
+
+	PrintLineSeparator();
+
+	{
+		#define													MACRO_TYPE int[10][20]
+
+		using													ORIGINAL_TYPE=MACRO_TYPE;
+		using													TYPE=remove_all_extents<ORIGINAL_TYPE>::type;
+
+		wstring													OriginalTypeName=GetTypeInfoName<ORIGINAL_TYPE>();
+		wstring													TypeName=GetTypeInfoName<TYPE>();
+
+		wcout << L"TYPE TRAIT [remove_all_extents<" << MACRO_STRINGIFY_TO_WIDE_STRING(MACRO_TYPE) << L">::type] - ORIGINAL TYPE NAME [" << OriginalTypeName << L"] TYPE NAME [" << TypeName << L"]." << endl;
+
+		#undef MACRO_TYPE
+	}
+
+	PrintLineSeparator();
+
+	{
+		#define													MACRO_TYPE int[][20]
+
+		using													ORIGINAL_TYPE=MACRO_TYPE;
+		using													TYPE=remove_all_extents<ORIGINAL_TYPE>::type;
+
+		wstring													OriginalTypeName=GetTypeInfoName<ORIGINAL_TYPE>();
+		wstring													TypeName=GetTypeInfoName<TYPE>();
+
+		wcout << L"TYPE TRAIT [remove_all_extents<" << MACRO_STRINGIFY_TO_WIDE_STRING(MACRO_TYPE) << L">::type] - ORIGINAL TYPE NAME [" << OriginalTypeName << L"] TYPE NAME [" << TypeName << L"]." << endl;
+
+		#undef MACRO_TYPE
+	}
+
+	PrintLineSeparator();
+
+	{
+		#define													MACRO_TYPE int[10][20][30]
+
+		using													ORIGINAL_TYPE=MACRO_TYPE;
+		using													TYPE=remove_all_extents<ORIGINAL_TYPE>::type;
+
+		wstring													OriginalTypeName=GetTypeInfoName<ORIGINAL_TYPE>();
+		wstring													TypeName=GetTypeInfoName<TYPE>();
+
+		wcout << L"TYPE TRAIT [remove_all_extents<" << MACRO_STRINGIFY_TO_WIDE_STRING(MACRO_TYPE) << L">::type] - ORIGINAL TYPE NAME [" << OriginalTypeName << L"] TYPE NAME [" << TypeName << L"]." << endl;
+
+		#undef MACRO_TYPE
+	}
+
+	PrintLineSeparator();
+
+	{
+		#define													MACRO_TYPE int*
+
+		using													ORIGINAL_TYPE=MACRO_TYPE;
+		using													TYPE=remove_all_extents<ORIGINAL_TYPE>::type;
+
+		wstring													OriginalTypeName=GetTypeInfoName<ORIGINAL_TYPE>();
+		wstring													TypeName=GetTypeInfoName<TYPE>();
+
+		wcout << L"TYPE TRAIT [remove_all_extents<" << MACRO_STRINGIFY_TO_WIDE_STRING(MACRO_TYPE) << L">::type] - ORIGINAL TYPE NAME [" << OriginalTypeName << L"] TYPE NAME [" << TypeName << L"]." << endl;
+
+		#undef MACRO_TYPE
+	}
+
+	PrintLineSeparator();
+}
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+void TestTypeTraitDecay(void)
+{
+	PrintLineSeparator();
+
+	{
+		#define													MACRO_TYPE int
+
+		using													ORIGINAL_TYPE=MACRO_TYPE;
+		using													TYPE=decay<ORIGINAL_TYPE>::type;
+
+		wstring													OriginalTypeName=GetTypeInfoName<ORIGINAL_TYPE>();
+		wstring													TypeName=GetTypeInfoName<TYPE>();
+
+		wcout << L"TYPE TRAIT [decay<" << MACRO_STRINGIFY_TO_WIDE_STRING(MACRO_TYPE) << L">::type] - ORIGINAL TYPE NAME [" << OriginalTypeName << L"] TYPE NAME [" << TypeName << L"]." << endl;
+
+		#undef MACRO_TYPE
+	}
+
+	PrintLineSeparator();
+
+	{
+		#define													MACRO_TYPE const int
+
+		using													ORIGINAL_TYPE=MACRO_TYPE;
+		using													TYPE=decay<ORIGINAL_TYPE>::type;
+
+		wstring													OriginalTypeName=GetTypeInfoName<ORIGINAL_TYPE>();
+		wstring													TypeName=GetTypeInfoName<TYPE>();
+
+		wcout << L"TYPE TRAIT [decay<" << MACRO_STRINGIFY_TO_WIDE_STRING(MACRO_TYPE) << L">::type] - ORIGINAL TYPE NAME [" << OriginalTypeName << L"] TYPE NAME [" << TypeName << L"]." << endl;
+
+		#undef MACRO_TYPE
+	}
+
+	PrintLineSeparator();
+
+	{
+		#define													MACRO_TYPE int*
+
+		using													ORIGINAL_TYPE=MACRO_TYPE;
+		using													TYPE=decay<ORIGINAL_TYPE>::type;
+
+		wstring													OriginalTypeName=GetTypeInfoName<ORIGINAL_TYPE>();
+		wstring													TypeName=GetTypeInfoName<TYPE>();
+
+		wcout << L"TYPE TRAIT [decay<" << MACRO_STRINGIFY_TO_WIDE_STRING(MACRO_TYPE) << L">::type] - ORIGINAL TYPE NAME [" << OriginalTypeName << L"] TYPE NAME [" << TypeName << L"]." << endl;
+
+		#undef MACRO_TYPE
+	}
+
+	PrintLineSeparator();
+
+	{
+		#define													MACRO_TYPE const int*
+
+		using													ORIGINAL_TYPE=MACRO_TYPE;
+		using													TYPE=decay<ORIGINAL_TYPE>::type;
+
+		wstring													OriginalTypeName=GetTypeInfoName<ORIGINAL_TYPE>();
+		wstring													TypeName=GetTypeInfoName<TYPE>();
+
+		wcout << L"TYPE TRAIT [decay<" << MACRO_STRINGIFY_TO_WIDE_STRING(MACRO_TYPE) << L">::type] - ORIGINAL TYPE NAME [" << OriginalTypeName << L"] TYPE NAME [" << TypeName << L"]." << endl;
+
+		#undef MACRO_TYPE
+	}
+
+	PrintLineSeparator();
+
+	{
+		#define													MACRO_TYPE int&
+
+		using													ORIGINAL_TYPE=MACRO_TYPE;
+		using													TYPE=decay<ORIGINAL_TYPE>::type;
+
+		wstring													OriginalTypeName=GetTypeInfoName<ORIGINAL_TYPE>();
+		wstring													TypeName=GetTypeInfoName<TYPE>();
+
+		wcout << L"TYPE TRAIT [decay<" << MACRO_STRINGIFY_TO_WIDE_STRING(MACRO_TYPE) << L">::type] - ORIGINAL TYPE NAME [" << OriginalTypeName << L"] TYPE NAME [" << TypeName << L"]." << endl;
+
+		#undef MACRO_TYPE
+	}
+
+	PrintLineSeparator();
+
+	{
+		#define													MACRO_TYPE const int&
+
+		using													ORIGINAL_TYPE=MACRO_TYPE;
+		using													TYPE=decay<ORIGINAL_TYPE>::type;
+
+		wstring													OriginalTypeName=GetTypeInfoName<ORIGINAL_TYPE>();
+		wstring													TypeName=GetTypeInfoName<TYPE>();
+
+		wcout << L"TYPE TRAIT [decay<" << MACRO_STRINGIFY_TO_WIDE_STRING(MACRO_TYPE) << L">::type] - ORIGINAL TYPE NAME [" << OriginalTypeName << L"] TYPE NAME [" << TypeName << L"]." << endl;
+
+		#undef MACRO_TYPE
+	}
+
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati TYPE [int*].
+		#define													MACRO_TYPE int[10]
+
+		using													ORIGINAL_TYPE=MACRO_TYPE;
+		using													TYPE=decay<ORIGINAL_TYPE>::type;
+
+		wstring													OriginalTypeName=GetTypeInfoName<ORIGINAL_TYPE>();
+		wstring													TypeName=GetTypeInfoName<TYPE>();
+
+		wcout << L"TYPE TRAIT [decay<" << MACRO_STRINGIFY_TO_WIDE_STRING(MACRO_TYPE) << L">::type] - ORIGINAL TYPE NAME [" << OriginalTypeName << L"] TYPE NAME [" << TypeName << L"]." << endl;
+
+		#undef MACRO_TYPE
+	}
+
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati TYPE [const int*].
+		#define													MACRO_TYPE const int[10]
+
+		using													ORIGINAL_TYPE=MACRO_TYPE;
+		using													TYPE=decay<ORIGINAL_TYPE>::type;
+
+		wstring													OriginalTypeName=GetTypeInfoName<ORIGINAL_TYPE>();
+		wstring													TypeName=GetTypeInfoName<TYPE>();
+
+		wcout << L"TYPE TRAIT [decay<" << MACRO_STRINGIFY_TO_WIDE_STRING(MACRO_TYPE) << L">::type] - ORIGINAL TYPE NAME [" << OriginalTypeName << L"] TYPE NAME [" << TypeName << L"]." << endl;
+
+		#undef MACRO_TYPE
+	}
+
+	PrintLineSeparator();
+
+	{
+		void													FUNCTION(int,double);
+
+		// !!! Vrati TYPE [void(*)(int,double)].
+		#define													MACRO_TYPE decltype(FUNCTION)
+
+		using													ORIGINAL_TYPE=MACRO_TYPE;
+		using													TYPE=decay<ORIGINAL_TYPE>::type;
+
+		wstring													OriginalTypeName=GetTypeInfoName<ORIGINAL_TYPE>();
+		wstring													TypeName=GetTypeInfoName<TYPE>();
+
+		wcout << L"TYPE TRAIT [decay<" << MACRO_STRINGIFY_TO_WIDE_STRING(MACRO_TYPE) << L">::type] - ORIGINAL TYPE NAME [" << OriginalTypeName << L"] TYPE NAME [" << TypeName << L"]." << endl;
+
+		#undef MACRO_TYPE
+	}
+
+	PrintLineSeparator();
+}
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+void TestTypeTraitEnableIf(void)
+{
+	PrintLineSeparator();
+
+	{
+		#define													MACRO_TYPE int
+
+		using													ORIGINAL_TYPE=MACRO_TYPE;
+		using													TYPE=enable_if<true,ORIGINAL_TYPE>::type;
+
+		wstring													OriginalTypeName=GetTypeInfoName<ORIGINAL_TYPE>();
+		wstring													TypeName=GetTypeInfoName<TYPE>();
+
+		wcout << L"TYPE TRAIT [enable_if<true," << MACRO_STRINGIFY_TO_WIDE_STRING(MACRO_TYPE) << L">::type] - ORIGINAL TYPE NAME [" << OriginalTypeName << L"] TYPE NAME [" << TypeName << L"]." << endl;
+
+		#undef MACRO_TYPE
+	}
+
+	/*
+	PrintLineSeparator();
+
+	// !!!!! COMPILER hodi ERROR, pretoze ak CONDITION vracia VALUE [false], tak TYPE [enable_if<CONDITION,TType>::type] je UNDEFINED.
+	{
+		#define													MACRO_TYPE int
+
+		using													ORIGINAL_TYPE=MACRO_TYPE;
+		using													TYPE=enable_if<false,ORIGINAL_TYPE>::type;
+
+		wstring													OriginalTypeName=GetTypeInfoName<ORIGINAL_TYPE>();
+		wstring													TypeName=GetTypeInfoName<TYPE>();
+
+		wcout << L"TYPE TRAIT [enable_if<false," << MACRO_STRINGIFY_TO_WIDE_STRING(MACRO_TYPE) << L">::type] - ORIGINAL TYPE NAME [" << OriginalTypeName << L"] TYPE NAME [" << TypeName << L"]." << endl;
+
+		#undef MACRO_TYPE
+	}
+	*/
+
+	PrintLineSeparator();
+}
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+void TestTypeTraitConditional(void)
+{
+	PrintLineSeparator();
+
+	{
+		#define													MACRO_TYPE_1 int
+		#define													MACRO_TYPE_2 double
+
+		using													ORIGINAL_TYPE_1=MACRO_TYPE_1;
+		using													ORIGINAL_TYPE_2=MACRO_TYPE_2;
+		using													TYPE=conditional<true,ORIGINAL_TYPE_1,ORIGINAL_TYPE_2>::type;
+
+		wstring													OriginalTypeName1=GetTypeInfoName<ORIGINAL_TYPE_1>();
+		wstring													OriginalTypeName2=GetTypeInfoName<ORIGINAL_TYPE_2>();
+		wstring													TypeName=GetTypeInfoName<TYPE>();
+
+		wcout << L"TYPE TRAIT [conditional<true," << MACRO_STRINGIFY_TO_WIDE_STRING(MACRO_TYPE_1) << L"," << MACRO_STRINGIFY_TO_WIDE_STRING(MACRO_TYPE_2) << L">::type] - ORIGINAL TYPE NAME 1 [" << OriginalTypeName1 << L"] ORIGINAL TYPE NAME 2 [" << OriginalTypeName2 << L"] TYPE NAME [" << TypeName << L"]." << endl;
+
+		#undef MACRO_TYPE_1
+		#undef MACRO_TYPE_2
+	}
+
+	PrintLineSeparator();
+
+	{
+		#define													MACRO_TYPE_1 int
+		#define													MACRO_TYPE_2 double
+
+		using													ORIGINAL_TYPE_1=MACRO_TYPE_1;
+		using													ORIGINAL_TYPE_2=MACRO_TYPE_2;
+		using													TYPE=conditional<false,ORIGINAL_TYPE_1,ORIGINAL_TYPE_2>::type;
+
+		wstring													OriginalTypeName1=GetTypeInfoName<ORIGINAL_TYPE_1>();
+		wstring													OriginalTypeName2=GetTypeInfoName<ORIGINAL_TYPE_2>();
+		wstring													TypeName=GetTypeInfoName<TYPE>();
+
+		wcout << L"TYPE TRAIT [conditional<false," << MACRO_STRINGIFY_TO_WIDE_STRING(MACRO_TYPE_1) << L"," << MACRO_STRINGIFY_TO_WIDE_STRING(MACRO_TYPE_2) << L">::type] - ORIGINAL TYPE NAME 1 [" << OriginalTypeName1 << L"] ORIGINAL TYPE NAME 2 [" << OriginalTypeName2 << L"] TYPE NAME [" << TypeName << L"]." << endl;
+
+		#undef MACRO_TYPE_1
+		#undef MACRO_TYPE_2
+	}
+
+	PrintLineSeparator();
+}
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+void TestTypeTraitCommonType(void)
+{
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati TYPE [int].
+		#define													MACRO_TYPE int
+
+		using													ORIGINAL_TYPE=MACRO_TYPE;
+		using													TYPE=common_type<ORIGINAL_TYPE>::type;
+
+		wstring													OriginalTypeName=GetTypeInfoName<ORIGINAL_TYPE>();
+		wstring													TypeName=GetTypeInfoName<TYPE>();
+
+		wcout << L"TYPE TRAIT [common_type<" << MACRO_STRINGIFY_TO_WIDE_STRING(MACRO_TYPE) << L">::type] - ORIGINAL TYPE NAME [" << OriginalTypeName << L"] TYPE NAME [" << TypeName << L"]." << endl;
+
+		#undef MACRO_TYPE
+	}
+
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati TYPE [int] a NIE TYPE [const int], lebo sa robi TYPE DECAY.
+		#define													MACRO_TYPE const int
+
+		using													ORIGINAL_TYPE=MACRO_TYPE;
+		using													TYPE=common_type<ORIGINAL_TYPE>::type;
+
+		wstring													OriginalTypeName=GetTypeInfoName<ORIGINAL_TYPE>();
+		wstring													TypeName=GetTypeInfoName<TYPE>();
+
+		wcout << L"TYPE TRAIT [common_type<" << MACRO_STRINGIFY_TO_WIDE_STRING(MACRO_TYPE) << L">::type] - ORIGINAL TYPE NAME [" << OriginalTypeName << L"] TYPE NAME [" << TypeName << L"]." << endl;
+
+		#undef MACRO_TYPE
+	}
+
+	PrintLineSeparator();
+
+	{
+		// !!! Vrati TYPE [int*], lebo sa robi TYPE DECAY.
+		#define													MACRO_TYPE int[10]
+
+		using													ORIGINAL_TYPE=MACRO_TYPE;
+		using													TYPE=common_type<ORIGINAL_TYPE>::type;
+
+		wstring													OriginalTypeName=GetTypeInfoName<ORIGINAL_TYPE>();
+		wstring													TypeName=GetTypeInfoName<TYPE>();
+
+		wcout << L"TYPE TRAIT [common_type<" << MACRO_STRINGIFY_TO_WIDE_STRING(MACRO_TYPE) << L">::type] - ORIGINAL TYPE NAME [" << OriginalTypeName << L"] TYPE NAME [" << TypeName << L"]." << endl;
+
+		#undef MACRO_TYPE
+	}
+
+	PrintLineSeparator();
+
+	{
+		#define													MACRO_TYPE_1 int
+		#define													MACRO_TYPE_2 float
+
+		using													ORIGINAL_TYPE_1=MACRO_TYPE_1;
+		using													ORIGINAL_TYPE_2=MACRO_TYPE_2;
+		using													TYPE=common_type<ORIGINAL_TYPE_1,ORIGINAL_TYPE_2>::type;
+
+		wstring													OriginalTypeName1=GetTypeInfoName<ORIGINAL_TYPE_1>();
+		wstring													OriginalTypeName2=GetTypeInfoName<ORIGINAL_TYPE_2>();
+		wstring													TypeName=GetTypeInfoName<TYPE>();
+
+		wcout << L"TYPE TRAIT [common_type<false," << MACRO_STRINGIFY_TO_WIDE_STRING(MACRO_TYPE_1) << L"," << MACRO_STRINGIFY_TO_WIDE_STRING(MACRO_TYPE_2) << L">::type] - ORIGINAL TYPE NAME 1 [" << OriginalTypeName1 << L"] ORIGINAL TYPE NAME 2 [" << OriginalTypeName2 << L"] TYPE NAME [" << TypeName << L"]." << endl;
+
+		#undef MACRO_TYPE_1
+		#undef MACRO_TYPE_2
+	}
+
+	PrintLineSeparator();
+
+	{
+		#define													MACRO_TYPE_1 int
+		#define													MACRO_TYPE_2 float
+		#define													MACRO_TYPE_3 double
+
+		using													ORIGINAL_TYPE_1=MACRO_TYPE_1;
+		using													ORIGINAL_TYPE_2=MACRO_TYPE_2;
+		using													ORIGINAL_TYPE_3=MACRO_TYPE_3;
+		using													TYPE=common_type<ORIGINAL_TYPE_1,ORIGINAL_TYPE_2,ORIGINAL_TYPE_3>::type;
+
+		wstring													OriginalTypeName1=GetTypeInfoName<ORIGINAL_TYPE_1>();
+		wstring													OriginalTypeName2=GetTypeInfoName<ORIGINAL_TYPE_2>();
+		wstring													OriginalTypeName3=GetTypeInfoName<ORIGINAL_TYPE_3>();
+		wstring													TypeName=GetTypeInfoName<TYPE>();
+
+		wcout << L"TYPE TRAIT [common_type<false," << MACRO_STRINGIFY_TO_WIDE_STRING(MACRO_TYPE_1) << L"," << MACRO_STRINGIFY_TO_WIDE_STRING(MACRO_TYPE_2) << L"," << MACRO_STRINGIFY_TO_WIDE_STRING(MACRO_TYPE_3) << L">::type] - ORIGINAL TYPE NAME 1 [" << OriginalTypeName1 << L"] ORIGINAL TYPE NAME 2 [" << OriginalTypeName2 << L"] ORIGINAL TYPE NAME 3 [" << OriginalTypeName3 << L"] TYPE NAME [" << TypeName << L"]." << endl;
+
+		#undef MACRO_TYPE_1
+		#undef MACRO_TYPE_2
+		#undef MACRO_TYPE_3
+	}
+
+	PrintLineSeparator();
+
+	{
+		#define													MACRO_TYPE_1 double
+		#define													MACRO_TYPE_2 float
+		#define													MACRO_TYPE_3 int
+
+		using													ORIGINAL_TYPE_1=MACRO_TYPE_1;
+		using													ORIGINAL_TYPE_2=MACRO_TYPE_2;
+		using													ORIGINAL_TYPE_3=MACRO_TYPE_3;
+		using													TYPE=common_type<ORIGINAL_TYPE_1,ORIGINAL_TYPE_2,ORIGINAL_TYPE_3>::type;
+
+		wstring													OriginalTypeName1=GetTypeInfoName<ORIGINAL_TYPE_1>();
+		wstring													OriginalTypeName2=GetTypeInfoName<ORIGINAL_TYPE_2>();
+		wstring													OriginalTypeName3=GetTypeInfoName<ORIGINAL_TYPE_3>();
+		wstring													TypeName=GetTypeInfoName<TYPE>();
+
+		wcout << L"TYPE TRAIT [common_type<false," << MACRO_STRINGIFY_TO_WIDE_STRING(MACRO_TYPE_1) << L"," << MACRO_STRINGIFY_TO_WIDE_STRING(MACRO_TYPE_2) << L"," << MACRO_STRINGIFY_TO_WIDE_STRING(MACRO_TYPE_3) << L">::type] - ORIGINAL TYPE NAME 1 [" << OriginalTypeName1 << L"] ORIGINAL TYPE NAME 2 [" << OriginalTypeName2 << L"] ORIGINAL TYPE NAME 3 [" << OriginalTypeName3 << L"] TYPE NAME [" << TypeName << L"]." << endl;
+
+		#undef MACRO_TYPE_1
+		#undef MACRO_TYPE_2
+		#undef MACRO_TYPE_3
+	}
+
+	/*
+	PrintLineSeparator();
+
+	// !!!!! COMPILER hodi ERROR, pretoze ak sa nenasiel COMMON TYPE pre TYPES, tak USING [common_type<TTypes...>::type] NIE JE DEFINOVANY.
+	{
+		#define													MACRO_TYPE_1 void
+		#define													MACRO_TYPE_2 float
+		#define													MACRO_TYPE_3 int
+
+		using													ORIGINAL_TYPE_1=MACRO_TYPE_1;
+		using													ORIGINAL_TYPE_2=MACRO_TYPE_2;
+		using													ORIGINAL_TYPE_3=MACRO_TYPE_3;
+		using													TYPE=common_type<ORIGINAL_TYPE_1,ORIGINAL_TYPE_2,ORIGINAL_TYPE_3>::type;
+
+		wstring													OriginalTypeName1=GetTypeInfoName<ORIGINAL_TYPE_1>();
+		wstring													OriginalTypeName2=GetTypeInfoName<ORIGINAL_TYPE_2>();
+		wstring													OriginalTypeName3=GetTypeInfoName<ORIGINAL_TYPE_3>();
+		wstring													TypeName=GetTypeInfoName<TYPE>();
+
+		wcout << L"TYPE TRAIT [common_type<false," << MACRO_STRINGIFY_TO_WIDE_STRING(MACRO_TYPE_1) << L"," << MACRO_STRINGIFY_TO_WIDE_STRING(MACRO_TYPE_2) << L"," << MACRO_STRINGIFY_TO_WIDE_STRING(MACRO_TYPE_3) << L">::type] - ORIGINAL TYPE NAME 1 [" << OriginalTypeName1 << L"] ORIGINAL TYPE NAME 2 [" << OriginalTypeName2 << L"] ORIGINAL TYPE NAME 3 [" << OriginalTypeName3 << L"] TYPE NAME [" << TypeName << L"]." << endl;
+
+		#undef MACRO_TYPE_1
+		#undef MACRO_TYPE_2
+		#undef MACRO_TYPE_3
+	}
+	*/
+
+	PrintLineSeparator();
+}
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+void TestTypeTraitConjunction(void)
+{
+	PrintLineSeparator();
+
+	{
+		constexpr bool											VALUE=conjunction<is_destructible<CLogicalTypeTraitsDestructible1>,is_destructible<CLogicalTypeTraitsDestructible2>>::value;
+
+		wcout << L"TYPE TRAIT [conjunction<is_destructible<CLogicalTypeTraitsDestructible1>,is_destructible<CLogicalTypeTraitsDestructible2>>::value] - VALUE [" << VALUE << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+
+	{
+		constexpr bool											VALUE=conjunction<is_destructible<CLogicalTypeTraitsDestructible1>,is_destructible<CLogicalTypeTraitsDestructible2>,is_destructible<CLogicalTypeTraitsNonDestructible1>>::value;
+
+		wcout << L"TYPE TRAIT [conjunction<is_destructible<CLogicalTypeTraitsDestructible1>,is_destructible<CLogicalTypeTraitsDestructible2>,is_destructible<CLogicalTypeTraitsNonDestructible1>>::value] - VALUE [" << VALUE << L"]." << endl;
+	}
+
+	/*
+	PrintLineSeparator();
+
+	// !!!!! COMPILER hodi ERROR, pretoze TYPE [CLogicalTypeTraitsIncomplete] je INCOMPLETE a EVALUATION INCOMPLETE TYPES vedie ku COMPILATION ERRORS.
+	{
+		constexpr bool											VALUE=conjunction<is_destructible<CLogicalTypeTraitsDestructible1>,is_destructible<CLogicalTypeTraitsDestructible2>,is_destructible<CLogicalTypeTraitsIncomplete>>::value;
+
+		wcout << L"TYPE TRAIT [conjunction<is_destructible<CLogicalTypeTraitsDestructible1>,is_destructible<CLogicalTypeTraitsDestructible2>,is_destructible<CLogicalTypeTraitsIncomplete>>::value] - VALUE [" << VALUE << L"]." << endl;
+	}
+	*/
+
+	PrintLineSeparator();
+
+	// !!!!! COMPILER CODE AKCEPTUJE a to aj napriek tomu, ze TYPE [CLogicalTypeTraitsIncomplete] je INCOMPLETE a EVALUATION INCOMPLETE TYPES vedie ku COMPILATION ERRORS. Dovodom je to, ze uz CONDITION [is_destructible<CLogicalTypeTraitsNonDestructible1>] vracia VALUE [FALSE] a tym padom CONDITION [is_destructible<CLogicalTypeTraitsIncomplete>], ktora sa nechadza az za nou NIE JE VOBEC EVALUATED.
+	{
+		constexpr bool											VALUE=conjunction<is_destructible<CLogicalTypeTraitsDestructible1>,is_destructible<CLogicalTypeTraitsDestructible2>,is_destructible<CLogicalTypeTraitsNonDestructible1>,is_destructible<CLogicalTypeTraitsIncomplete>>::value;
+
+		wcout << L"TYPE TRAIT [conjunction<is_destructible<CLogicalTypeTraitsDestructible1>,is_destructible<CLogicalTypeTraitsDestructible2>,is_destructible<CLogicalTypeTraitsNonDestructible1>,is_destructible<CLogicalTypeTraitsIncomplete>>::value] - VALUE [" << VALUE << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+
+	// !!! Kedze vsetky CONDITIONS mozu byt EVALUATED, je mozne pouzit aj OPERATOR [OPERATOR&&].
+	{
+		constexpr bool											VALUE=(is_destructible<CLogicalTypeTraitsDestructible1>::value && is_destructible<CLogicalTypeTraitsDestructible2>::value);
+
+		wcout << L"TYPE TRAIT [(is_destructible<CLogicalTypeTraitsDestructible1>::value && is_destructible<CLogicalTypeTraitsDestructible2>::value)] - VALUE [" << VALUE << L"]." << endl;
+	}
+
+	/*
+	PrintLineSeparator();
+
+	// !!!!! COMPILER HODI ERROR, pretoze pri pouziti OPERATOR [OPERATOR&&] su EVALUATED VSETKY CONDITION, vratane poslednej, ktora vsak NEMOZE byt EVALUATED.
+	{
+		constexpr bool											VALUE=(is_destructible<CLogicalTypeTraitsDestructible1>::value && is_destructible<CLogicalTypeTraitsDestructible2>::value && is_destructible<CLogicalTypeTraitsNonDestructible1>::value && is_destructible<CLogicalTypeTraitsIncomplete>::value);
+
+		wcout << L"TYPE TRAIT [(is_destructible<CLogicalTypeTraitsDestructible1>::value && is_destructible<CLogicalTypeTraitsDestructible2>::value && is_destructible<CLogicalTypeTraitsNonDestructible1>::value && is_destructible<CLogicalTypeTraitsIncomplete>::value)] - VALUE [" << VALUE << L"]." << endl;
+	}
+	*/
+
+	PrintLineSeparator();
+}
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+void TestTypeTraitDisjunction(void)
+{
+	PrintLineSeparator();
+
+	{
+		constexpr bool											VALUE=disjunction<is_destructible<CLogicalTypeTraitsDestructible1>,is_destructible<CLogicalTypeTraitsNonDestructible1>>::value;
+
+		wcout << L"TYPE TRAIT [disjunction<is_destructible<CLogicalTypeTraitsDestructible1>,is_destructible<CLogicalTypeTraitsNonDestructible1>>::value] - VALUE [" << VALUE << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+
+	{
+		constexpr bool											VALUE=disjunction<is_destructible<CLogicalTypeTraitsNonDestructible1>,is_destructible<CLogicalTypeTraitsNonDestructible2>>::value;
+
+		wcout << L"TYPE TRAIT [disjunction<is_destructible<CLogicalTypeTraitsNonDestructible1>,is_destructible<CLogicalTypeTraitsNonDestructible2>>::value] - VALUE [" << VALUE << L"]." << endl;
+	}
+
+	/*
+	PrintLineSeparator();
+
+	// !!!!! COMPILER hodi ERROR, pretoze TYPE [CLogicalTypeTraitsIncomplete] je INCOMPLETE a EVALUATION INCOMPLETE TYPES vedie ku COMPILATION ERRORS.
+	{
+		constexpr bool											VALUE=disjunction<is_destructible<CLogicalTypeTraitsNonDestructible1>,is_destructible<CLogicalTypeTraitsIncomplete>>::value;
+
+		wcout << L"TYPE TRAIT [disjunction<is_destructible<CLogicalTypeTraitsNonDestructible1>,is_destructible<CLogicalTypeTraitsIncomplete>>::value] - VALUE [" << VALUE << L"]." << endl;
+	}
+	*/
+
+	PrintLineSeparator();
+
+	// !!!!! COMPILER CODE AKCEPTUJE a to aj napriek tomu, ze TYPE [CLogicalTypeTraitsIncomplete] je INCOMPLETE a EVALUATION INCOMPLETE TYPES vedie ku COMPILATION ERRORS. Dovodom je to, ze uz CONDITION [is_destructible<CLogicalTypeTraitsDestructible1>] vracia VALUE [TRUE] a tym padom CONDITION [is_destructible<CLogicalTypeTraitsIncomplete>], ktora sa nechadza az za nou NIE JE VOBEC EVALUATED.
+	{
+		constexpr bool											VALUE=disjunction<is_destructible<CLogicalTypeTraitsDestructible1>,is_destructible<CLogicalTypeTraitsIncomplete>>::value;
+
+		wcout << L"TYPE TRAIT [disjunction<is_destructible<CLogicalTypeTraitsDestructible1>,is_destructible<CLogicalTypeTraitsIncomplete>>::value] - VALUE [" << VALUE << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+
+	// !!! Kedze vsetky CONDITIONS mozu byt EVALUATED, je mozne pouzit aj OPERATOR [OPERATOR||].
+	{
+		constexpr bool											VALUE=(is_destructible<CLogicalTypeTraitsNonDestructible1>::value || is_destructible<CLogicalTypeTraitsNonDestructible2>::value);
+
+		wcout << L"TYPE TRAIT [(is_destructible<CLogicalTypeTraitsNonDestructible1>::value || is_destructible<CLogicalTypeTraitsNonDestructible2>::value)] - VALUE [" << VALUE << L"]." << endl;
+	}
+
+	/*
+	PrintLineSeparator();
+
+	// !!!!! COMPILER HODI ERROR, pretoze pri pouziti OPERATOR [OPERATOR||] su EVALUATED VSETKY CONDITION, vratane poslednej, ktora vsak NEMOZE byt EVALUATED.
+	{
+		constexpr bool											VALUE=(is_destructible<CLogicalTypeTraitsDestructible1>::value || is_destructible<CLogicalTypeTraitsIncomplete>::value);
+
+		wcout << L"TYPE TRAIT [(is_destructible<CLogicalTypeTraitsDestructible1>::value || is_destructible<CLogicalTypeTraitsIncomplete>::value)] - VALUE [" << VALUE << L"]." << endl;
+	}
+	*/
+
+	PrintLineSeparator();
+}
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+void TestTypeTraitNegation(void)
+{
+	PrintLineSeparator();
+
+	{
+		constexpr bool											VALUE=negation<is_destructible<CLogicalTypeTraitsDestructible1>>::value;
+
+		wcout << L"TYPE TRAIT [negation<is_destructible<CLogicalTypeTraitsDestructible1>>::value] - VALUE [" << VALUE << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+
+	{
+		constexpr bool											VALUE=negation<is_destructible<CLogicalTypeTraitsNonDestructible1>>::value;
+
+		wcout << L"TYPE TRAIT [negation<is_destructible<CLogicalTypeTraitsNonDestructible1>>::value] - VALUE [" << VALUE << L"]." << endl;
+	}
+
+	/*
+	PrintLineSeparator();
+
+	// !!!!! COMPILER hodi ERROR, pretoze TYPE [CLogicalTypeTraitsIncomplete] je INCOMPLETE a EVALUATION INCOMPLETE TYPES vedie ku COMPILATION ERRORS.
+	{
+		constexpr bool											VALUE=negation<is_destructible<CLogicalTypeTraitsIncomplete>>::value;
+
+		wcout << L"TYPE TRAIT [negation<is_destructible<CLogicalTypeTraitsIncomplete>>::value] - VALUE [" << VALUE << L"]." << endl;
+	}
+	*/
+
+	PrintLineSeparator();
+}
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+void TestTypeTraitDeclval(void)
+{
+	PrintLineSeparator();
+
+	{
+		// !!! EXPRESSION [CDeclvalConstructible().GetField1()] vola v COMPILE TIME DEFAULT CONSTRUCTOR.
+		decltype(CDeclvalConstructible().GetField1())			Variable=100;
+
+		wcout << L"TYPE [" << GetTypeInfoName<decltype(Variable)>() << L"] - VALUE [" << Variable << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+
+	{
+		// !!! EXPRESSION [CDeclvalConstructible().GetField2()] vola v COMPILE TIME DEFAULT CONSTRUCTOR.
+		decltype(CDeclvalConstructible().GetField2())			Variable=123.456;
+
+		wcout << L"TYPE [" << GetTypeInfoName<decltype(Variable)>() << L"] - VALUE [" << Variable << L"]." << endl;
+	}
+
+	/*
+	PrintLineSeparator();
+
+	{
+		// !!! COMPILER hodi ERROR, pretoze TYPE [CDeclvalNonConstructible] ma DELETED DEFAULT CONSTRUCTOR.
+		decltype(CDeclvalNonConstructible().GetField2())		Variable=123.456;
+
+		wcout << L"TYPE [" << GetTypeInfoName<decltype(Variable)>() << L"] - VALUE [" << Variable << L"]." << endl;
+	}
+	*/
+
+	PrintLineSeparator();
+
+	{
+		// !!! COMPILER prebehne OK, pretoze TYPE TRAIT [declval<TType>] NEVYZADUJE volanie DEFAULT CONSTRUCTOR, ktory ma TYPE [CDeclvalNonConstructible] DELETED.
+		decltype(declval<CDeclvalNonConstructible>().GetField2())		Variable=123.456;
+
+		wcout << L"TYPE [" << GetTypeInfoName<decltype(Variable)>() << L"] - VALUE [" << Variable << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+}
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+void TestTypeTraitAddressOf(void)
+{
+	PrintLineSeparator();
+
+	{
+		CAddressOf												Object(new int(100));
+
+		PrintLineSeparator();
+
+		// !!! Vola sa CUSTOM OPERATOR [OPERATOR&].
+		int**													Pointer1=&Object;
+
+		PrintLineSeparator();
+
+		wcout << "OBJECT [" << *(Object.GetData()) << L"]." << endl;
+
+		wcout << "POINTER 1 [" << Pointer1 << L"]." << endl;
+
+		PrintLineSeparator();
+
+		// !!! NEVOLA sa CUSTOM OPERATOR [OPERATOR&].
+		CAddressOf*												Pointer2=addressof(Object);
+
+		wcout << "POINTER 2 [" << Pointer2 << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+}
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
 int main(void)
 {
 	SafeMain();
@@ -6504,7 +8905,31 @@ int main(void)
 	//TestTypeTraitIsSame();
 	//TestTypeTraitIsBaseOf();
 	//TestTypeTraitIsConvertible();
-	TestTypeTraitIsNoConvertible();
+	//TestTypeTraitIsNoConvertible();
+	//TestTypeTraitRemoveConst();
+	//TestTypeTraitRemoveVolatile();
+	//TestTypeTraitRemoveCV();
+	//TestTypeTraitAddConst();
+	//TestTypeTraitAddVolatile();
+	//TestTypeTraitAddCV();
+	//TestTypeTraitMakeSigned();
+	//TestTypeTraitMakeUnsigned();
+	//TestTypeTraitRemoveReference();
+	//TestTypeTraitAddLValueReference();
+	//TestTypeTraitAddRValueReference();
+	//TestTypeTraitRemovePointer();
+	//TestTypeTraitAddPointer();
+	//TestTypeTraitRemoveExtent();
+	//TestTypeTraitRemoveAllExtents();
+	//TestTypeTraitDecay();
+	//TestTypeTraitEnableIf();
+	//TestTypeTraitConditional();
+	//TestTypeTraitCommonType();
+	//TestTypeTraitConjunction();
+	//TestTypeTraitDisjunction();
+	//TestTypeTraitNegation();
+	//TestTypeTraitDeclval();
+	TestTypeTraitAddressOf();
 
 	ShowExitLine();
 

@@ -20,11 +20,24 @@
 #include <string>
 //----------------------------------------------------------------------------------------------------------------------
 #define MACRO_TO_STRING( Variable ) ConvertStringToWideString(#Variable)
+#define MACRO_INTERNAL_STRINGIFY_TO_WIDE_STRING(Parameter) #Parameter
+#define MACRO_STRINGIFY_TO_WIDE_STRING(Parameter) ConvertStringToWideString(MACRO_INTERNAL_STRINGIFY_TO_WIDE_STRING(Parameter))
 //----------------------------------------------------------------------------------------------------------------------
 #ifndef _MSC_VER
 #define wprintf_s wprintf
 #define printf_s printf
 #endif
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+enum class ERefrenceType
+{
+//----------------------------------------------------------------------------------------------------------------------
+	E_NO_REFERENCE=1,
+	E_LVALUE_REFERENCE=2,
+	E_RVALUE_REFERENCE=3,
+//----------------------------------------------------------------------------------------------------------------------
+};
 //----------------------------------------------------------------------------------------------------------------------
 //----------------------------------------------------------------------------------------------------------------------
 //----------------------------------------------------------------------------------------------------------------------
@@ -35,29 +48,55 @@ char ConvertWideCharToChar(wchar_t WideChar);
 wchar_t ConvertCharToWideChar(char Char);
 std::wstring ConvertStringToWideString(const std::string& Value);
 std::string ConvertWideStringToString(const std::wstring& Value);
-std::wstring GetTypeInfoName(const std::type_info& Value, bool IsConst=false, bool IsVolatile=false);
+//----------------------------------------------------------------------------------------------------------------------
+template<typename TType>
+std::wstring GetTypeInfoName(void)
+{
+	std::wstring GetTypeInfoName(const std::type_info& Value, bool IsArray, ERefrenceType ReferenceType, bool IsConst, bool IsVolatile, bool IsReferenceToConst, bool IsReferenceToVolatile);
+
+	const std::type_info&										Value=typeid(TType);
+	bool														IsArray=std::is_array<TType>::value;
+	bool														IsConst=std::is_const<TType>::value;
+	bool														IsVolatile=std::is_volatile<TType>::value;
+	bool														IsReferenceToConst;
+	bool														IsReferenceToVolatile;
+	ERefrenceType												ReferenceType;
+
+	if (std::is_lvalue_reference<TType>::value==true)
+	{
+		ReferenceType=ERefrenceType::E_LVALUE_REFERENCE;
+
+		using													NO_REFERENCE_TYPE=typename std::remove_reference<TType>::type;
+
+		IsReferenceToConst=std::is_const<NO_REFERENCE_TYPE>::value;
+		IsReferenceToVolatile=std::is_volatile<NO_REFERENCE_TYPE>::value;
+	}
+	else if (std::is_rvalue_reference<TType>::value==true)
+	{
+		ReferenceType=ERefrenceType::E_RVALUE_REFERENCE;
+
+		using													NO_REFERENCE_TYPE=typename std::remove_reference<TType>::type;
+
+		IsReferenceToConst=std::is_const<NO_REFERENCE_TYPE>::value;
+		IsReferenceToVolatile=std::is_volatile<NO_REFERENCE_TYPE>::value;
+	}
+	else
+	{
+		ReferenceType=ERefrenceType::E_NO_REFERENCE;
+		IsReferenceToConst=false;
+		IsReferenceToVolatile=false;
+	}
+
+	std::wstring												TypeInfoName=GetTypeInfoName(Value,IsArray,ReferenceType,IsConst,IsVolatile,IsReferenceToConst,IsReferenceToVolatile);
+
+	return(TypeInfoName);
+}
 //----------------------------------------------------------------------------------------------------------------------
 template<typename TType,size_t N>
 size_t CountOf(TType (&)[N])
 {
     return(std::extent<TType[N]>::value);
 }
-//----------------------------------------------------------------------------------------------------------------------
-/*
-template <typename T>
-constexpr std::wstring wrapped_type_name()
-{
-#ifdef __clang__
-    return __PRETTY_FUNCTION__;
-#elif defined(__GNUC__)
-    return __PRETTY_FUNCTION__;
-#elif defined(_MSC_VER)
-    return(ConvertStringToWideString(__FUNCSIG__));
-#else
-#error "Unsupported compiler"
-#endif
-}
-*/
 //----------------------------------------------------------------------------------------------------------------------
 //----------------------------------------------------------------------------------------------------------------------
 //----------------------------------------------------------------------------------------------------------------------
@@ -74,11 +113,9 @@ constexpr const wchar_t*										VALUE_CATEGORY<TType&&> =L"XVALUE TType&&";
 // !!!!! NASLEDUJUCE MACRO sluzi na vypis VALUE CATEGORY. Dvojite ZATVORKY [()] su NUTNE, aby sa vratila okrem TYPE aj VALUE CATEGORY.
 #define SHOW_VALUE_CATEGORY(EXPRESSION) wcout << L"EXPRESSION [" << #EXPRESSION << L"] has VALUE CATEGORY [" << VALUE_CATEGORY<decltype((EXPRESSION))> << L"] !" << endl
 //----------------------------------------------------------------------------------------------------------------------
-#define MACRO_GET_TYPE_NAME(VALUE) GetTypeInfoName(typeid(VALUE),std::is_const<decltype(VALUE)>::value,std::is_volatile<decltype(VALUE)>::value)
-//----------------------------------------------------------------------------------------------------------------------
-#ifdef _MSC_VER
-	#define MACRO_FUNCTION_PROTOTYPE ConvertStringToWideString(__FUNCSIG__)
+#ifdef _MSC_VER 
+#define MACRO_FUNCTION_PROTOTYPE ConvertStringToWideString(__FUNCSIG__)
 #else
-	#define MACRO_FUNCTION_PROTOTYPE ConvertStringToWideString(__PRETTY_FUNCTION__)
+#define MACRO_FUNCTION_PROTOTYPE ConvertStringToWideString(__PRETTY_FUNCTION__)
 #endif
 //----------------------------------------------------------------------------------------------------------------------

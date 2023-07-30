@@ -49,7 +49,7 @@ CVariadicTemplateClassDeductionGuides<TThis,TTypes...>::~CVariadicTemplateClassD
 template<typename TThis, typename... TTypes>
 void CVariadicTemplateClassDeductionGuides<TThis,TTypes...>::Print(void) const
 {
-	std::wcout << L"CVariadicTemplateClassDeductionGuides<TThis,TTypes...> - TYPE [" << GetTypeInfoName(typeid(TThis)) << L"] !" << std::endl;
+	std::wcout << L"CVariadicTemplateClassDeductionGuides<TThis,TTypes...> - TYPE [" << GetTypeInfoName<TThis>() << L"] !" << std::endl;
 
 	// !!! Vypise sa 1. FIELD.
 	std::wcout << L"CVariadicTemplateClassDeductionGuides<TThis,TTypes...> - VALUE [" << MField << L"] !" << std::endl;

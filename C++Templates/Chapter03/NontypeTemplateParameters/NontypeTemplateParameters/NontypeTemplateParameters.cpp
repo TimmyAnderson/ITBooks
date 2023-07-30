@@ -279,8 +279,8 @@ void TestTemplateClassNonTypeTemplateParametersAuto(void)
 		wcout << L"VALUES[" << Index << L"] [" << Value << L"] !" << endl;
 	}
 
-	wcout << L"TEMPLATE - TYPE [" << GetTypeInfoName(typeid(Template)) << L"] !" << endl;
-	wcout << L"TEMPLATE - TYPE.VALUES_SIZE [" << GetTypeInfoName(typeid(Template.VALUES_SIZE)) << L"] !" << endl;
+	wcout << L"TEMPLATE - TYPE [" << GetTypeInfoName<decltype(Template)>() << L"] !" << endl;
+	wcout << L"TEMPLATE - TYPE.VALUES_SIZE [" << GetTypeInfoName<decltype(Template.VALUES_SIZE)>() << L"] !" << endl;
 
 	PrintLineSeparator();
 }
@@ -295,8 +295,8 @@ void TemplateFunctionNonTypeTemplateParametersAuto(void)
 
 	wcout << L"SIZE [" << SIZE << L"] !" << endl;
 
-	wcout << L"SIZE TYPE [" << GetTypeInfoName(typeid(SIZE)) << L"] !" << endl;
-	wcout << L"SIZE_TYPE [" << GetTypeInfoName(typeid(SIZE_TYPE)) << L"] !" << endl;
+	wcout << L"SIZE TYPE [" << GetTypeInfoName<decltype(SIZE)>() << L"] !" << endl;
+	wcout << L"SIZE_TYPE [" << GetTypeInfoName<SIZE_TYPE>() << L"] !" << endl;
 }
 //----------------------------------------------------------------------------------------------------------------------
 void TestTemplateFunctionNonTypeTemplateParametersAuto(void)
@@ -318,8 +318,8 @@ void TemplateFunctionNonTypeTemplateParametersDecltypeAuto(void)
 
 	wcout << L"SIZE [" << SIZE << L"] !" << endl;
 
-	wcout << L"SIZE TYPE [" << GetTypeInfoName(typeid(SIZE)) << L"] !" << endl;
-	wcout << L"SIZE_TYPE [" << GetTypeInfoName(typeid(SIZE_TYPE)) << L"] !" << endl;
+	wcout << L"SIZE TYPE [" << GetTypeInfoName<decltype(SIZE)>() << L"] !" << endl;
+	wcout << L"SIZE_TYPE [" << GetTypeInfoName<SIZE_TYPE>() << L"] !" << endl;
 }
 //----------------------------------------------------------------------------------------------------------------------
 void TestTemplateFunctionNonTypeTemplateParametersDecltypeAuto(void)

@@ -554,7 +554,7 @@ void TestTemplateArgumentsDeductionByValueVsByReference(void)
 		CTemplateArgumentsDeductionByValue						Template(L"Timmy",12);
 
 		wcout << L"TEMPLATE - VALUE 1 [" << Template.Get1() << L"] VALUE 2 [" << Template.Get2() << L"] !" << endl;
-		wcout << L"TEMPLATE - TYPE [" << GetTypeInfoName(typeid(Template)) << L"] !" << endl;
+		wcout << L"TEMPLATE - TYPE [" << GetTypeInfoName<decltype(Template)>() << L"] !" << endl;
 	}
 
 	PrintLineSeparator();
@@ -564,7 +564,7 @@ void TestTemplateArgumentsDeductionByValueVsByReference(void)
 		CTemplateArgumentsDeductionByReference					Template(L"Timmy",12);
 
 		wcout << L"TEMPLATE - VALUE 1 [" << Template.Get1() << L"] VALUE 2 [" << Template.Get2() << L"] !" << endl;
-		wcout << L"TEMPLATE - TYPE [" << GetTypeInfoName(typeid(Template)) << L"] !" << endl;
+		wcout << L"TEMPLATE - TYPE [" << GetTypeInfoName<decltype(Template)>() << L"] !" << endl;
 	}
 
 	PrintLineSeparator();
@@ -582,7 +582,7 @@ void TestTemplateDeductionGuides(void)
 		CTemplateDeductionGuides								Template("Timmy","Anderson");
 
 		wcout << L"TEMPLATE - VALUE 1 [" << ConvertStringToWideString(Template.Get1()) << L"] VALUE 2 [" << ConvertStringToWideString(Template.Get2()) << L"] !" << endl;
-		wcout << L"TEMPLATE - TYPE [" << GetTypeInfoName(typeid(Template)) << L"] !" << endl;
+		wcout << L"TEMPLATE - TYPE [" << GetTypeInfoName<decltype(Template)>() << L"] !" << endl;
 	}
 
 	PrintLineSeparator();
@@ -593,7 +593,7 @@ void TestTemplateDeductionGuides(void)
 		CTemplateDeductionGuides								Template(L"Timmy",L"Anderson");
 
 		wcout << L"TEMPLATE - VALUE 1 [" << Template.Get1() << L"] VALUE 2 [" << Template.Get2() << L"] !" << endl;
-		wcout << L"TEMPLATE - TYPE [" << GetTypeInfoName(typeid(Template)) << L"] !" << endl;
+		wcout << L"TEMPLATE - TYPE [" << GetTypeInfoName<decltype(Template)>() << L"] !" << endl;
 	}
 
 	PrintLineSeparator();
@@ -604,7 +604,7 @@ void TestTemplateDeductionGuides(void)
 		CTemplateDeductionGuides								Template(L"Timmy",12);
 
 		wcout << L"TEMPLATE - VALUE 1 [" << Template.Get1() << L"] VALUE 2 [" << Template.Get2() << L"] !" << endl;
-		wcout << L"TEMPLATE - TYPE [" << GetTypeInfoName(typeid(Template)) << L"] !" << endl;
+		wcout << L"TEMPLATE - TYPE [" << GetTypeInfoName<decltype(Template)>() << L"] !" << endl;
 	}
 
 	PrintLineSeparator();
@@ -615,7 +615,7 @@ void TestTemplateDeductionGuides(void)
 		CTemplateDeductionGuides<wstring,int>					Template(L"Timmy",12);
 
 		wcout << L"TEMPLATE - VALUE 1 [" << Template.Get1() << L"] VALUE 2 [" << Template.Get2() << L"] !" << endl;
-		wcout << L"TEMPLATE - TYPE [" << GetTypeInfoName(typeid(Template)) << L"] !" << endl;
+		wcout << L"TEMPLATE - TYPE [" << GetTypeInfoName<decltype(Template)>() << L"] !" << endl;
 	}
 
 	PrintLineSeparator();
@@ -631,7 +631,7 @@ void TestAggregrateTemplateStructure(void)
 		SAggregrateTemplateStructure<int>						Template={12,L"Timmy"};
 
 		wcout << L"TEMPLATE - VALUE [" << Template.MValue << L"] TEXT [" << Template.MText << L"] !" << endl;
-		wcout << L"TEMPLATE - TYPE [" << GetTypeInfoName(typeid(Template)) << L"] !" << endl;
+		wcout << L"TEMPLATE - TYPE [" << GetTypeInfoName<decltype(Template)>() << L"] !" << endl;
 	}
 
 	PrintLineSeparator();
@@ -642,7 +642,7 @@ void TestAggregrateTemplateStructure(void)
 		SAggregrateTemplateStructure							Template={L"Timmy",L"Anderson"};
 
 		wcout << L"TEMPLATE - VALUE [" << Template.MValue << L"] TEXT [" << Template.MText << L"] !" << endl;
-		wcout << L"TEMPLATE - TYPE [" << GetTypeInfoName(typeid(Template)) << L"] !" << endl;
+		wcout << L"TEMPLATE - TYPE [" << GetTypeInfoName<decltype(Template)>() << L"] !" << endl;
 	}
 
 	PrintLineSeparator();

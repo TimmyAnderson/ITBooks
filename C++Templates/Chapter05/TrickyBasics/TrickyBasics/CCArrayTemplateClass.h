@@ -19,7 +19,7 @@ class CCArrayTemplateClass final
 template<typename TType>
 void CCArrayTemplateClass<TType>::Print(void)
 {
-	std::wcout << L"TEMPLATE [CCArrayTemplateClass<TType>] TYPE [" << GetTypeInfoName(typeid(TType)) << L"] !" << std::endl;
+	std::wcout << L"TEMPLATE [CCArrayTemplateClass<TType>] TYPE [" << GetTypeInfoName<TType>() << L"] !" << std::endl;
 }
 //----------------------------------------------------------------------------------------------------------------------
 //----------------------------------------------------------------------------------------------------------------------
@@ -39,7 +39,7 @@ class CCArrayTemplateClass<TType[SIZE]> final
 template<typename TType, std::size_t SIZE>
 void CCArrayTemplateClass<TType[SIZE]>::Print(void)
 {
-	std::wcout << L"TEMPLATE SPECIALIZATION [CCArrayTemplateClass<TType[SIZE]>] TYPE [" << GetTypeInfoName(typeid(TType)) << L"] SIZE [" << SIZE << L"] !" << std::endl;
+	std::wcout << L"TEMPLATE SPECIALIZATION [CCArrayTemplateClass<TType[SIZE]>] TYPE [" << GetTypeInfoName<TType>() << L"] SIZE [" << SIZE << L"] !" << std::endl;
 }
 //----------------------------------------------------------------------------------------------------------------------
 //----------------------------------------------------------------------------------------------------------------------
@@ -59,7 +59,7 @@ class CCArrayTemplateClass<TType(&)[SIZE]> final
 template<typename TType, std::size_t SIZE>
 void CCArrayTemplateClass<TType(&)[SIZE]>::Print(void)
 {
-	std::wcout << L"TEMPLATE SPECIALIZATION [CCArrayTemplateClass<TType(&)[SIZE]>] TYPE [" << GetTypeInfoName(typeid(TType)) << L"] SIZE [" << SIZE << L"] !" << std::endl;
+	std::wcout << L"TEMPLATE SPECIALIZATION [CCArrayTemplateClass<TType(&)[SIZE]>] TYPE [" << GetTypeInfoName<TType>() << L"] SIZE [" << SIZE << L"] !" << std::endl;
 }
 //----------------------------------------------------------------------------------------------------------------------
 //----------------------------------------------------------------------------------------------------------------------
@@ -79,7 +79,7 @@ class CCArrayTemplateClass<TType[]> final
 template<typename TType>
 void CCArrayTemplateClass<TType[]>::Print(void)
 {
-	std::wcout << L"TEMPLATE SPECIALIZATION [CCArrayTemplateClass<TType[]>] TYPE [" << GetTypeInfoName(typeid(TType)) << L"] !" << std::endl;
+	std::wcout << L"TEMPLATE SPECIALIZATION [CCArrayTemplateClass<TType[]>] TYPE [" << GetTypeInfoName<TType>() << L"] !" << std::endl;
 }
 //----------------------------------------------------------------------------------------------------------------------
 //----------------------------------------------------------------------------------------------------------------------
@@ -99,7 +99,7 @@ class CCArrayTemplateClass<TType(&)[]> final
 template<typename TType>
 void CCArrayTemplateClass<TType(&)[]>::Print(void)
 {
-	std::wcout << L"TEMPLATE SPECIALIZATION [CCArrayTemplateClass<TType(&)[]>] TYPE [" << GetTypeInfoName(typeid(TType)) << L"] !" << std::endl;
+	std::wcout << L"TEMPLATE SPECIALIZATION [CCArrayTemplateClass<TType(&)[]>] TYPE [" << GetTypeInfoName<TType>() << L"] !" << std::endl;
 }
 //----------------------------------------------------------------------------------------------------------------------
 //----------------------------------------------------------------------------------------------------------------------
@@ -119,6 +119,6 @@ class CCArrayTemplateClass<TType*> final
 template<typename TType>
 void CCArrayTemplateClass<TType*>::Print(void)
 {
-	std::wcout << L"TEMPLATE SPECIALIZATION [CCArrayTemplateClass<TType*>] TYPE [" << GetTypeInfoName(typeid(TType)) << L"] !" << std::endl;
+	std::wcout << L"TEMPLATE SPECIALIZATION [CCArrayTemplateClass<TType*>] TYPE [" << GetTypeInfoName<TType>() << L"] !" << std::endl;
 }
 //----------------------------------------------------------------------------------------------------------------------

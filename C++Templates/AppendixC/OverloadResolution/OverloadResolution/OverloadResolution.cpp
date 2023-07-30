@@ -180,7 +180,7 @@ void TemplateTemplateArgumentsDeduction1(TType&& Value1, TType&& Value2)
 {
 	wcout << L"TEMPLATE VALUE 1 [" << Value1 << L"] VALUE 2 [" << Value2 << L"] !" << endl;
 
-	wcout << L"TEMPLATE - TYPE [" << GetTypeInfoName(typeid(TType)) << L"] !" << endl;
+	wcout << L"TEMPLATE - TYPE [" << GetTypeInfoName<TType>() << L"] !" << endl;
 }
 //----------------------------------------------------------------------------------------------------------------------
 template<typename TType>

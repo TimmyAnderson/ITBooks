@@ -83,7 +83,7 @@ void TestParametersByValue(void)
 template<typename TType>
 void FunctionParametersByValueTypeDecay1(TType Value)
 {
-	wcout << L"PARAMETER TYPE [" << MACRO_GET_TYPE_NAME(Value) << L"] VALUE [" << Value << L"]." << endl;
+	wcout << L"PARAMETER TYPE [" << GetTypeInfoName<decltype(Value)>() << L"] VALUE [" << Value << L"]." << endl;
 }
 //----------------------------------------------------------------------------------------------------------------------
 // !!! PARAMETER je prenasany BY VALUE.
@@ -91,11 +91,11 @@ void FunctionParametersByValueTypeDecay1(TType Value)
 template<typename TType>
 void FunctionParametersByValueTypeDecay2(TType Value)
 {
-	wcout << L"1 - PARAMETER TYPE [" << MACRO_GET_TYPE_NAME(Value) << L"] VALUE [" << Value << L"]." << endl;
+	wcout << L"1 - PARAMETER TYPE [" << GetTypeInfoName<decltype(Value)>() << L"] VALUE [" << Value << L"]." << endl;
 
 	Value=L"JENNY";
 
-	wcout << L"2 - PARAMETER TYPE [" << MACRO_GET_TYPE_NAME(Value) << L"] VALUE [" << Value << L"]." << endl;
+	wcout << L"2 - PARAMETER TYPE [" << GetTypeInfoName<decltype(Value)>() << L"] VALUE [" << Value << L"]." << endl;
 }
 //----------------------------------------------------------------------------------------------------------------------
 void TestParametersByValueTypeDecay(void)
@@ -105,7 +105,7 @@ void TestParametersByValueTypeDecay(void)
 	{
 		wchar_t													CArray[]=L"Timmy";
 
-		wcout << L"ARGUMENT TYPE [" << GetTypeInfoName(typeid(CArray)) << L"] VALUE [" << CArray << L"]." << endl;
+		wcout << L"ARGUMENT TYPE [" << GetTypeInfoName<decltype(CArray)>() << L"] VALUE [" << CArray << L"]." << endl;
 
 		// !!! Vykonava sa DECAY z TYPE [wchar_t[6]] na TYPE [wchar_t].
 		FunctionParametersByValueTypeDecay1(CArray);
@@ -114,14 +114,16 @@ void TestParametersByValueTypeDecay(void)
 	PrintLineSeparator();
 
 	{
-		const wstring											Object(L"Timmy");
+		using													TYPE=const wstring;
 
-		wcout << L"1 - ARGUMENT TYPE [" << MACRO_GET_TYPE_NAME(Object) << L"] VALUE [" << Object << L"]." << endl;
+		TYPE													Object(L"Timmy");
+
+		wcout << L"1 - ARGUMENT TYPE [" << GetTypeInfoName<TYPE>() << L"] VALUE [" << Object << L"]." << endl;
 
 		// !!! Vykonava sa DECAY z TYPE [const wstring] na TYPE [wstring].
 		FunctionParametersByValueTypeDecay2(Object);
 
-		wcout << L"2 - ARGUMENT TYPE [" << MACRO_GET_TYPE_NAME(Object) << L"] VALUE [" << Object << L"]." << endl;
+		wcout << L"2 - ARGUMENT TYPE [" << GetTypeInfoName<TYPE>() << L"] VALUE [" << Object << L"]." << endl;
 	}
 
 	PrintLineSeparator();
@@ -187,7 +189,7 @@ void TestParametersByConstReference(void)
 template<typename TType>
 void FunctionParametersByConstReferenceTypeDecay1(const TType& Value)
 {
-	wcout << L"PARAMETER TYPE [" << MACRO_GET_TYPE_NAME(Value) << L"] VALUE [" << Value << L"]." << endl;
+	wcout << L"PARAMETER TYPE [" << GetTypeInfoName<decltype(Value)>() << L"] VALUE [" << Value << L"]." << endl;
 }
 //----------------------------------------------------------------------------------------------------------------------
 // !!! PARAMETER je prenasany BY CONSTANT REFERENCE.
@@ -195,7 +197,7 @@ void FunctionParametersByConstReferenceTypeDecay1(const TType& Value)
 template<typename TType>
 void FunctionParametersByConstReferenceTypeDecay2(const TType& Value)
 {
-	wcout << L"PARAMETER TYPE [" << MACRO_GET_TYPE_NAME(Value) << L"] VALUE [" << Value << L"]." << endl;
+	wcout << L"PARAMETER TYPE [" << GetTypeInfoName<decltype(Value)>() << L"] VALUE [" << Value << L"]." << endl;
 }
 //----------------------------------------------------------------------------------------------------------------------
 void TestParametersByConstReferenceTypeDecay(void)
@@ -205,7 +207,7 @@ void TestParametersByConstReferenceTypeDecay(void)
 	{
 		wchar_t													CArray[]=L"Timmy";
 
-		wcout << L"ARGUMENT TYPE [" << GetTypeInfoName(typeid(CArray)) << L"] VALUE [" << CArray << L"]." << endl;
+		wcout << L"ARGUMENT TYPE [" << GetTypeInfoName<decltype(CArray)>() << L"] VALUE [" << CArray << L"]." << endl;
 
 		// !!! NEVYKONAVA sa DECAY.
 		FunctionParametersByConstReferenceTypeDecay1(CArray);
@@ -214,9 +216,11 @@ void TestParametersByConstReferenceTypeDecay(void)
 	PrintLineSeparator();
 
 	{
-		const wstring											Object(L"Timmy");
+		using													TYPE=const wstring;
 
-		wcout << L"ARGUMENT TYPE [" << MACRO_GET_TYPE_NAME(Object) << L"] VALUE [" << Object << L"]." << endl;
+		TYPE													Object(L"Timmy");
+
+		wcout << L"ARGUMENT TYPE [" << GetTypeInfoName<TYPE>() << L"] VALUE [" << Object << L"]." << endl;
 
 		// !!! NEVYKONAVA sa DECAY.
 		FunctionParametersByConstReferenceTypeDecay2(Object);
@@ -296,7 +300,7 @@ void TestParametersByNonConstReference(void)
 template<typename TType>
 void FunctionParametersByNonConstReferenceTypeDecay1(TType& Value)
 {
-	wcout << L"PARAMETER TYPE [" << MACRO_GET_TYPE_NAME(Value) << L"] VALUE [" << Value << L"]." << endl;
+	wcout << L"PARAMETER TYPE [" << GetTypeInfoName<decltype(Value)>() << L"] VALUE [" << Value << L"]." << endl;
 }
 //----------------------------------------------------------------------------------------------------------------------
 // !!! PARAMETER je prenasany BY NON-CONSTANT REFERENCE.
@@ -304,7 +308,7 @@ void FunctionParametersByNonConstReferenceTypeDecay1(TType& Value)
 template<typename TType>
 void FunctionParametersByNonConstReferenceTypeDecay2(TType& Value)
 {
-	wcout << L"PARAMETER TYPE [" << MACRO_GET_TYPE_NAME(Value) << L"] VALUE [" << Value << L"]." << endl;
+	wcout << L"PARAMETER TYPE [" << GetTypeInfoName<decltype(Value)>() << L"] VALUE [" << Value << L"]." << endl;
 }
 //----------------------------------------------------------------------------------------------------------------------
 void TestParametersByNonConstReferenceTypeDecay(void)
@@ -314,7 +318,7 @@ void TestParametersByNonConstReferenceTypeDecay(void)
 	{
 		wchar_t													CArray[]=L"Timmy";
 
-		wcout << L"ARGUMENT TYPE [" << GetTypeInfoName(typeid(CArray)) << L"] VALUE [" << CArray << L"]." << endl;
+		wcout << L"ARGUMENT TYPE [" << GetTypeInfoName<decltype(CArray)>() << L"] VALUE [" << CArray << L"]." << endl;
 
 		// !!! NEVYKONAVA sa DECAY.
 		FunctionParametersByNonConstReferenceTypeDecay1(CArray);
@@ -323,9 +327,11 @@ void TestParametersByNonConstReferenceTypeDecay(void)
 	PrintLineSeparator();
 
 	{
-		const wstring											Object(L"Timmy");
+		using													TYPE=const wstring;
 
-		wcout << L"ARGUMENT TYPE [" << MACRO_GET_TYPE_NAME(Object) << L"] VALUE [" << Object << L"]." << endl;
+		TYPE													Object(L"Timmy");
+
+		wcout << L"ARGUMENT TYPE [" << GetTypeInfoName<TYPE>() << L"] VALUE [" << Object << L"]." << endl;
 
 		// !!! NEVYKONAVA sa DECAY.
 		FunctionParametersByNonConstReferenceTypeDecay2(Object);
@@ -451,7 +457,7 @@ void TestParametersByForwardReference(void)
 	{
 		wchar_t													CArray[]=L"Timmy";
 
-		wcout << L"ARGUMENT TYPE [" << GetTypeInfoName(typeid(CArray)) << L"] VALUE [" << CArray << L"]." << endl;
+		wcout << L"ARGUMENT TYPE [" << GetTypeInfoName<decltype(CArray)>() << L"] VALUE [" << CArray << L"]." << endl;
 
 		// !!! Nedochadza k volaniu COPY CONSTRUCTOR.
 		FunctionParametersByForwardReference1(CArray);
@@ -990,7 +996,7 @@ void TestReturnValueReferenceTypeDeduction(void)
 		// !!!!! TYPE PARAMETER ma TYPE [CClassWithCopyAndMove<wstring>&], no vdaka pouzitiu TYPE TRAIT [remove_reference<>] je RETURN VALUE TYPE [CClassWithCopyAndMove<wstring>].
 		auto													ReturnValue=TemplateFunctionReturnValueReferenceTypeDeduction1<CClassWithCopyAndMove<wstring>&>(Argument);
 
-		wcout << L"RETURN VALUE [" << ReturnValue << L"] RETURN VALUE TYPE [" << GetTypeInfoName(typeid(ReturnValue)) << L"]." << endl;
+		wcout << L"RETURN VALUE [" << ReturnValue << L"] RETURN VALUE TYPE [" << GetTypeInfoName<decltype(ReturnValue)>() << L"]." << endl;
 	}
 
 	PrintLineSeparator();
@@ -1003,7 +1009,7 @@ void TestReturnValueReferenceTypeDeduction(void)
 		// !!!!! TYPE PARAMETER ma TYPE [CClassWithCopyAndMove<int>&], no vdaka pouzitiu TYPE TRAIT [remove_reference<>] je RETURN VALUE TYPE [CClassWithCopyAndMove<int>].
 		auto													ReturnValue=TemplateFunctionReturnValueReferenceTypeDeduction1<CClassWithCopyAndMove<int>&>(Argument);
 
-		wcout << L"RETURN VALUE [" << ReturnValue << L"] RETURN VALUE TYPE [" << GetTypeInfoName(typeid(ReturnValue)) << L"]." << endl;
+		wcout << L"RETURN VALUE [" << ReturnValue << L"] RETURN VALUE TYPE [" << GetTypeInfoName<decltype(ReturnValue)>() << L"]." << endl;
 	}
 
 	PrintLineSeparator();
@@ -1016,7 +1022,7 @@ void TestReturnValueReferenceTypeDeduction(void)
 		// !!!!! TYPE PARAMETER ma TYPE [CClassWithCopyAndMove<wstring>&], no vdaka pouzitiu KEYWORD [auto], ktory robi TYPE DECAY je RETURN VALUE TYPE [CClassWithCopyAndMove<wstring>].
 		auto													ReturnValue=TemplateFunctionReturnValueReferenceTypeDeduction2<CClassWithCopyAndMove<wstring>&>(Argument);
 
-		wcout << L"RETURN VALUE [" << ReturnValue << L"] RETURN VALUE TYPE [" << GetTypeInfoName(typeid(ReturnValue)) << L"]." << endl;
+		wcout << L"RETURN VALUE [" << ReturnValue << L"] RETURN VALUE TYPE [" << GetTypeInfoName<decltype(ReturnValue)>() << L"]." << endl;
 	}
 
 	PrintLineSeparator();
@@ -1029,7 +1035,7 @@ void TestReturnValueReferenceTypeDeduction(void)
 		// !!!!! TYPE PARAMETER ma TYPE [CClassWithCopyAndMove<int>&], no vdaka pouzitiu KEYWORD [auto], ktory robi TYPE DECAY je RETURN VALUE TYPE [CClassWithCopyAndMove<int>].
 		auto													ReturnValue=TemplateFunctionReturnValueReferenceTypeDeduction2<CClassWithCopyAndMove<int>&>(Argument);
 
-		wcout << L"RETURN VALUE [" << ReturnValue << L"] RETURN VALUE TYPE [" << GetTypeInfoName(typeid(ReturnValue)) << L"]." << endl;
+		wcout << L"RETURN VALUE [" << ReturnValue << L"] RETURN VALUE TYPE [" << GetTypeInfoName<decltype(ReturnValue)>() << L"]." << endl;
 	}
 
 	PrintLineSeparator();
@@ -1093,13 +1099,13 @@ int main(void)
 	//TestParametersByNonConstReference();
 	//TestParametersByNonConstReferenceTypeDecay();
 	//TestParametersByNonConstReferenceConstArgument();
-	//TestParametersByForwardReference();
+	TestParametersByForwardReference();
 	//TestRefAndCRef();
 	//TestRefAndCRefInTemplateFunctions();
 	//TestParametersCArrays();
 	//TestParametersCArraysParameters();
 	//TestReturnValueReferenceTypeDeduction();
-	TestSpecificTypeParameters();
+	//TestSpecificTypeParameters();
 	//TestMakePairPerfectForwarding();
 
 	ShowExitLine();

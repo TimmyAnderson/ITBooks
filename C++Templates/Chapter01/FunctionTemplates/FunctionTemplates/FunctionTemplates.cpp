@@ -458,10 +458,9 @@ void TestDeducedReturnValueType(void)
 		int														Parameter1=10;
 		double													Parameter2=20.2;
 
-		const type_info&										ReturnValueType=typeid(MaxDeducedReturnValueTypeCPP11(Parameter1,Parameter2));
 		double													Result=MaxDeducedReturnValueTypeCPP11(Parameter1,Parameter2);
 
-		wcout << L"TYPE [" << GetTypeInfoName(ReturnValueType) << L"] RESULT [" << Result << L"] !" << endl;
+		wcout << L"TYPE [" << GetTypeInfoName<decltype(MaxDeducedReturnValueTypeCPP11(Parameter1,Parameter2))>() << L"] RESULT [" << Result << L"] !" << endl;
 	}
 
 	/*
@@ -470,12 +469,10 @@ void TestDeducedReturnValueType(void)
 		int														Parameter2=20;
 		const int&												ReferenceToParameter2=Parameter2;
 
-		const type_info&										ReturnValueType=typeid(MaxDeducedReturnValueTypeCPP11(Parameter1,ReferenceToParameter2));
-
 		// !!!!! COMPILER HODI WARNING, lebo sa nespravil TYPE DECAY. Ked sa nespravi TYPE DECAY, tak pri pouziti PARAMETER [int] a PARAMETER [const int&] C++ COMPILER urci pomocou DEDUCTION RETURN VALUE TYPE ako TYPE [const int&]. No a to znamena, ze FUNCTION vracia REFERENCE na LOCAL VARIABLE co je samozrejme ERROR.
 		double													Result=MaxDeducedReturnValueTypeCPP11(Parameter1,ReferenceToParameter2);
 
-		wcout << L"TYPE [" << GetTypeInfoName(ReturnValueType) << L"] RESULT [" << Result << L"] !" << endl;
+		wcout << L"TYPE [" << GetTypeInfoName<decltype(MaxDeducedReturnValueTypeCPP11(Parameter1,ReferenceToParameter2))>() << L"] RESULT [" << Result << L"] !" << endl;
 	}
 	*/
 
@@ -484,12 +481,10 @@ void TestDeducedReturnValueType(void)
 		int														Parameter2=20;
 		const int&												ReferenceToParameter2=Parameter2;
 
-		const type_info&										ReturnValueType=typeid(MaxDeducedReturnValueTypeCPP11Decay(Parameter1,ReferenceToParameter2));
-
 		// !!! RETURN VALUE TYPE je [int].
 		int														Result=MaxDeducedReturnValueTypeCPP11Decay(Parameter1,ReferenceToParameter2);
 
-		wcout << L"TYPE [" << GetTypeInfoName(ReturnValueType) << L"] RESULT [" << Result << L"] !" << endl;
+		wcout << L"TYPE [" << GetTypeInfoName<decltype(MaxDeducedReturnValueTypeCPP11Decay(Parameter1,ReferenceToParameter2))>() << L"] RESULT [" << Result << L"] !" << endl;
 	}
 
 	{
@@ -497,10 +492,9 @@ void TestDeducedReturnValueType(void)
 		double													Parameter2=20.2;
 
 		// !!! RETURN VALUE TYPE je [double].
-		const type_info&										ReturnValueType=typeid(MaxDeducedReturnValueTypeCPP14OK(Parameter1,Parameter2));
 		double													Result=MaxDeducedReturnValueTypeCPP14OK(Parameter1,Parameter2);
 
-		wcout << L"TYPE [" << GetTypeInfoName(ReturnValueType) << L"] RESULT [" << Result << L"] !" << endl;
+		wcout << L"TYPE [" << GetTypeInfoName<decltype(MaxDeducedReturnValueTypeCPP14OK(Parameter1,Parameter2))>() << L"] RESULT [" << Result << L"] !" << endl;
 	}
 
 	/*
@@ -509,10 +503,9 @@ void TestDeducedReturnValueType(void)
 		double													Parameter2=20.2;
 
 		// !!!!! COMPILER hodi ERROR, pretoze TEMPLATE FUNCTION obsahuje 2 vyskyty SYNTAX [return(EXPRESSION)], kde kazda EXPRESSION 'EXPRESSION' vracia INY TYPE.
-		const type_info&										ReturnValueType=typeid(MaxDeducedReturnValueTypeCPP14Error(Parameter1,Parameter2));
 		double													Result=MaxDeducedReturnValueTypeCPP14Error(Parameter1,Parameter2);
 
-		wcout << L"TYPE [" << GetTypeInfoName(ReturnValueType) << L"] RESULT [" << Result << L"] !" << endl;
+		wcout << L"TYPE [" << GetTypeInfoName<decltype(MaxDeducedReturnValueTypeCPP14Error(Parameter1,Parameter2))>() << L"] RESULT [" << Result << L"] !" << endl;
 	}
 	*/
 
@@ -556,10 +549,9 @@ void TestCommonReturnValueType(void)
 		double													Parameter2=20.2;
 
 		// !!! RETURN VALUE TYPE je [double].
-		const type_info&										ReturnValueType=typeid(MaxCommonReturnValueTypeCPP11(Parameter1,Parameter2));
 		double													Result=MaxCommonReturnValueTypeCPP11(Parameter1,Parameter2);
 
-		wcout << L"TYPE [" << GetTypeInfoName(ReturnValueType) << L"] RESULT [" << Result << L"] !" << endl;
+		wcout << L"TYPE [" << GetTypeInfoName<decltype(MaxCommonReturnValueTypeCPP11(Parameter1,Parameter2))>() << L"] RESULT [" << Result << L"] !" << endl;
 	}
 
 	{
@@ -567,10 +559,9 @@ void TestCommonReturnValueType(void)
 		double													Parameter2=20.2;
 
 		// !!! RETURN VALUE TYPE je [double].
-		const type_info&										ReturnValueType=typeid(MaxCommonReturnValueTypeCPP14(Parameter1,Parameter2));
 		double													Result=MaxCommonReturnValueTypeCPP14(Parameter1,Parameter2);
 
-		wcout << L"TYPE [" << GetTypeInfoName(ReturnValueType) << L"] RESULT [" << Result << L"] !" << endl;
+		wcout << L"TYPE [" << GetTypeInfoName<decltype(MaxCommonReturnValueTypeCPP14(Parameter1,Parameter2))>() << L"] RESULT [" << Result << L"] !" << endl;
 	}
 
 	PrintLineSeparator();
@@ -632,10 +623,9 @@ void TestDefaultTemplateParameters(void)
 		double													Parameter2=20.2;
 
 		// !!! RETURN VALUE TYPE je [double].
-		const type_info&										ReturnValueType=typeid(MaxDefaultTemplateValue1(Parameter1,Parameter2));
 		double													Result=MaxDefaultTemplateValue1(Parameter1,Parameter2);
 
-		wcout << L"TYPE [" << GetTypeInfoName(ReturnValueType) << L"] RESULT [" << Result << L"] !" << endl;
+		wcout << L"TYPE [" << GetTypeInfoName<decltype(MaxDefaultTemplateValue1(Parameter1,Parameter2))>() << L"] RESULT [" << Result << L"] !" << endl;
 	}
 
 	{
@@ -643,10 +633,9 @@ void TestDefaultTemplateParameters(void)
 		double													Parameter2=20.2;
 
 		// !!! RETURN VALUE TYPE je [int].
-		const type_info&										ReturnValueType=typeid(MaxDefaultTemplateValue1<int,double,int>(Parameter1,Parameter2));
 		double													Result=MaxDefaultTemplateValue1<int,double,int>(Parameter1,Parameter2);
 
-		wcout << L"TYPE [" << GetTypeInfoName(ReturnValueType) << L"] RESULT [" << Result << L"] !" << endl;
+		wcout << L"TYPE [" << GetTypeInfoName<decltype(MaxDefaultTemplateValue1<int,double,int>(Parameter1,Parameter2))>() << L"] RESULT [" << Result << L"] !" << endl;
 	}
 
 	{
@@ -654,10 +643,9 @@ void TestDefaultTemplateParameters(void)
 		double													Parameter2=20.2;
 
 		// !!! RETURN VALUE TYPE je [double].
-		const type_info&										ReturnValueType=typeid(MaxDefaultTemplateValue2(Parameter1,Parameter2));
 		double													Result=MaxDefaultTemplateValue2(Parameter1,Parameter2);
 
-		wcout << L"TYPE [" << GetTypeInfoName(ReturnValueType) << L"] RESULT [" << Result << L"] !" << endl;
+		wcout << L"TYPE [" << GetTypeInfoName<decltype(MaxDefaultTemplateValue2(Parameter1,Parameter2))>() << L"] RESULT [" << Result << L"] !" << endl;
 	}
 
 	{
@@ -665,10 +653,9 @@ void TestDefaultTemplateParameters(void)
 		double													Parameter2=20.2;
 
 		// !!! RETURN VALUE TYPE je [int].
-		const type_info&										ReturnValueType=typeid(MaxDefaultTemplateValue2<int,double,int>(Parameter1,Parameter2));
 		double													Result=MaxDefaultTemplateValue2<int,double,int>(Parameter1,Parameter2);
 
-		wcout << L"TYPE [" << GetTypeInfoName(ReturnValueType) << L"] RESULT [" << Result << L"] !" << endl;
+		wcout << L"TYPE [" << GetTypeInfoName<decltype(MaxDefaultTemplateValue2<int,double,int>(Parameter1,Parameter2))>() << L"] RESULT [" << Result << L"] !" << endl;
 	}
 
 	{
@@ -677,10 +664,9 @@ void TestDefaultTemplateParameters(void)
 
 		// !!!!! TYPE DEDUCTION vykona DEDUCTION TEMPLATE PARAMETER 'TParameter1' a TEMPLATE PARAMETER 'TParameter2' a pre TEMPLATE PARAMETER 'TReturnValue' pouzije DEFAULT VALUE.
 		// !!! RETURN VALUE TYPE je [int].
-		const type_info&										ReturnValueType=typeid(MaxDefaultTemplateValue3(Parameter1,Parameter2));
 		double													Result=MaxDefaultTemplateValue3(Parameter1,Parameter2);
 
-		wcout << L"TYPE [" << GetTypeInfoName(ReturnValueType) << L"] RESULT [" << Result << L"] !" << endl;
+		wcout << L"TYPE [" << GetTypeInfoName<decltype(MaxDefaultTemplateValue3(Parameter1,Parameter2))>() << L"] RESULT [" << Result << L"] !" << endl;
 	}
 
 	{
@@ -689,10 +675,9 @@ void TestDefaultTemplateParameters(void)
 
 		// !!!!! TYPE DEDUCTION vykona DEDUCTION TEMPLATE PARAMETER 'TParameter1' a TEMPLATE PARAMETER 'TParameter2' a pre TEMPLATE PARAMETER 'TReturnValue' sa pouzije explicitne definovany TYPE.
 		// !!! RETURN VALUE TYPE je [double].
-		const type_info&										ReturnValueType=typeid(MaxDefaultTemplateValue3<double>(Parameter1,Parameter2));
 		double													Result=MaxDefaultTemplateValue3<double>(Parameter1,Parameter2);
 
-		wcout << L"TYPE [" << GetTypeInfoName(ReturnValueType) << L"] RESULT [" << Result << L"] !" << endl;
+		wcout << L"TYPE [" << GetTypeInfoName<decltype(MaxDefaultTemplateValue3<double>(Parameter1,Parameter2))>() << L"] RESULT [" << Result << L"] !" << endl;
 	}
 
 	PrintLineSeparator();
@@ -738,10 +723,9 @@ void TestTemplateFunctionsOverloading1(void)
 		int														Parameter2=20;
 
 		// !!!!! Zavola sa NON-TEMPLATE FUNCTION.
-		const type_info&										ReturnValueType=typeid(MaxTemplateFunctionsOverloading1(Parameter1,Parameter2));
 		int														Result=MaxTemplateFunctionsOverloading1(Parameter1,Parameter2);
 
-		wcout << L"TYPE [" << GetTypeInfoName(ReturnValueType) << L"] RESULT [" << Result << L"] !" << endl;
+		wcout << L"TYPE [" << GetTypeInfoName<decltype(MaxTemplateFunctionsOverloading1(Parameter1,Parameter2))>() << L"] RESULT [" << Result << L"] !" << endl;
 	}
 
 	PrintLineSeparator();
@@ -751,10 +735,9 @@ void TestTemplateFunctionsOverloading1(void)
 		double													Parameter2=20.2;
 
 		// !!!!! Zavola sa TEMPLATE FUNCTION.
-		const type_info&										ReturnValueType=typeid(MaxTemplateFunctionsOverloading1(Parameter1,Parameter2));
 		double													Result=MaxTemplateFunctionsOverloading1(Parameter1,Parameter2);
 
-		wcout << L"TYPE [" << GetTypeInfoName(ReturnValueType) << L"] RESULT [" << Result << L"] !" << endl;
+		wcout << L"TYPE [" << GetTypeInfoName<decltype(MaxTemplateFunctionsOverloading1(Parameter1,Parameter2))>() << L"] RESULT [" << Result << L"] !" << endl;
 	}
 
 	PrintLineSeparator();
@@ -764,10 +747,9 @@ void TestTemplateFunctionsOverloading1(void)
 		char													Parameter2='B';
 
 		// !!!!! Zavola sa TEMPLATE FUNCTION.
-		const type_info&										ReturnValueType=typeid(MaxTemplateFunctionsOverloading1(Parameter1,Parameter2));
 		char													Result=MaxTemplateFunctionsOverloading1(Parameter1,Parameter2);
 
-		wcout << L"TYPE [" << GetTypeInfoName(ReturnValueType) << L"] RESULT [" << ConvertCharToWideChar(Result) << L"] !" << endl;
+		wcout << L"TYPE [" << GetTypeInfoName<decltype(MaxTemplateFunctionsOverloading1(Parameter1,Parameter2))>() << L"] RESULT [" << ConvertCharToWideChar(Result) << L"] !" << endl;
 	}
 
 	PrintLineSeparator();
@@ -777,10 +759,9 @@ void TestTemplateFunctionsOverloading1(void)
 		int														Parameter2=20;
 
 		// !!!!! Zavola sa TEMPLATE FUNCTION, lebo sa EXPLICITNE pouzila SYNTAX [<>].
-		const type_info&										ReturnValueType=typeid(MaxTemplateFunctionsOverloading1<>(Parameter1,Parameter2));
 		int														Result=MaxTemplateFunctionsOverloading1<>(Parameter1,Parameter2);
 
-		wcout << L"TYPE [" << GetTypeInfoName(ReturnValueType) << L"] RESULT [" << Result << L"] !" << endl;
+		wcout << L"TYPE [" << GetTypeInfoName<decltype(MaxTemplateFunctionsOverloading1<>(Parameter1,Parameter2))>() << L"] RESULT [" << Result << L"] !" << endl;
 	}
 
 	PrintLineSeparator();
@@ -790,10 +771,9 @@ void TestTemplateFunctionsOverloading1(void)
 		double													Parameter2=20.2;
 
 		// !!!!! Zavola sa NON-TEMPLATE FUNCTION
-		const type_info&										ReturnValueType=typeid(MaxTemplateFunctionsOverloading1<double>(Parameter1,Parameter2));
 		double													Result=MaxTemplateFunctionsOverloading1<double>(Parameter1,Parameter2);
 
-		wcout << L"TYPE [" << GetTypeInfoName(ReturnValueType) << L"] RESULT [" << Result << L"] !" << endl;
+		wcout << L"TYPE [" << GetTypeInfoName<decltype(MaxTemplateFunctionsOverloading1<double>(Parameter1,Parameter2))>() << L"] RESULT [" << Result << L"] !" << endl;
 	}
 
 	PrintLineSeparator();
@@ -803,10 +783,9 @@ void TestTemplateFunctionsOverloading1(void)
 		double													Parameter2=20.2;
 
 		// !!!!! Zavola sa NON-TEMPLATE FUNCTION, pretoze PARAMETERS su ROZDIELNE, a tak NIE JE MOZNE pouzit TEMPLATE FUNCTION, ktora predpoklada ROVNAKE TEMPLATE PARAMETER TYPES. No kedze pri NON-TEMPLATE OVERLOADING sa vykonavaju AUTOMATIC TYPE CONVERSIONS, tak sa pouzije NON-TEMPLATE FUNCTION.
-		const type_info&										ReturnValueType=typeid(MaxTemplateFunctionsOverloading1(Parameter1,Parameter2));
 		int														Result=MaxTemplateFunctionsOverloading1(Parameter1,Parameter2);
 
-		wcout << L"TYPE [" << GetTypeInfoName(ReturnValueType) << L"] RESULT [" << Result << L"] !" << endl;
+		wcout << L"TYPE [" << GetTypeInfoName<decltype(MaxTemplateFunctionsOverloading1(Parameter1,Parameter2))>() << L"] RESULT [" << Result << L"] !" << endl;
 	}
 
 	PrintLineSeparator();
@@ -846,13 +825,11 @@ void TestTemplateFunctionsOverloading2(void)
 		int														Parameter1=10;
 		double													Parameter2=20.2;
 
-		const type_info&										ReturnValueType=typeid(MaxTemplateFunctionsOverloading2(Parameter1,Parameter2));
-
 		// !!!!! Zavola sa TEMPLATE FUNCTION s 2 TEMPLATE PARAMETERS.
 		// !!! RETURN VALUE TYPE je [double].
 		double													Result=MaxTemplateFunctionsOverloading2(Parameter1,Parameter2);
 
-		wcout << L"TYPE [" << GetTypeInfoName(ReturnValueType) << L"] RESULT [" << Result << L"] !" << endl;
+		wcout << L"TYPE [" << GetTypeInfoName<decltype(MaxTemplateFunctionsOverloading2(Parameter1,Parameter2))>() << L"] RESULT [" << Result << L"] !" << endl;
 	}
 
 	PrintLineSeparator();
@@ -860,14 +837,12 @@ void TestTemplateFunctionsOverloading2(void)
 	{
 		int														Parameter1=10;
 		double													Parameter2=20.2;
-
-		const type_info&										ReturnValueType=typeid(MaxTemplateFunctionsOverloading2<long double>(Parameter1,Parameter2));
 
 		// !!!!! Zavola sa TEMPLATE FUNCTION s 3 TEMPLATE PARAMETERS.
 		// !!! RETURN VALUE TYPE je [long double].
 		long double												Result=MaxTemplateFunctionsOverloading2<long double>(Parameter1,Parameter2);
 
-		wcout << L"TYPE [" << GetTypeInfoName(ReturnValueType) << L"] RESULT [" << Result << L"] !" << endl;
+		wcout << L"TYPE [" << GetTypeInfoName<decltype(MaxTemplateFunctionsOverloading2<long double>(Parameter1,Parameter2))>() << L"] RESULT [" << Result << L"] !" << endl;
 	}
 
 	PrintLineSeparator();
@@ -876,13 +851,11 @@ void TestTemplateFunctionsOverloading2(void)
 		int														Parameter1=10;
 		double													Parameter2=20.2;
 
-		const type_info&										ReturnValueType=typeid(MaxTemplateFunctionsOverloading2<long double,int,double>(Parameter1,Parameter2));
-
 		// !!!!! Zavola sa TEMPLATE FUNCTION s 3 TEMPLATE PARAMETERS.
 		// !!! RETURN VALUE TYPE je [long double].
 		long double												Result=MaxTemplateFunctionsOverloading2<long double,int,double>(Parameter1,Parameter2);
 
-		wcout << L"TYPE [" << GetTypeInfoName(ReturnValueType) << L"] RESULT [" << Result << L"] !" << endl;
+		wcout << L"TYPE [" << GetTypeInfoName<decltype(MaxTemplateFunctionsOverloading2<long double,int,double>(Parameter1,Parameter2))>() << L"] RESULT [" << Result << L"] !" << endl;
 	}
 
 	/*
@@ -892,12 +865,10 @@ void TestTemplateFunctionsOverloading2(void)
 		int														Parameter1=10;
 		double													Parameter2=20.2;
 
-		const type_info&										ReturnValueType=typeid(MaxTemplateFunctionsOverloading2<int>(Parameter1,Parameter2));
-
 		// !!!!! COMPILER HODI ERROR, pretoze TYPE PARAMETERS [int,int,double] vyhovuje TEMPLATE s 2 i 3 PARAMETERS. Je to preto, lebo 1. a 2. PARAMETER maju rovnaky TYPE. Ak by NEBOLI ROVNAKE, tak by sa musela pouzit verzia TEMPLATE FUNCTION s 3 TEMPLATE PARAMETERS.
 		int														Result=MaxTemplateFunctionsOverloading2<int>(Parameter1,Parameter2);
 
-		wcout << L"TYPE [" << GetTypeInfoName(ReturnValueType) << L"] RESULT [" << Result << L"] !" << endl;
+		wcout << L"TYPE [" << GetTypeInfoName<decltype(MaxTemplateFunctionsOverloading2<int>(Parameter1,Parameter2))>() << L"] RESULT [" << Result << L"] !" << endl;
 	}
 	*/
 
@@ -958,13 +929,11 @@ void TestTemplateFunctionsOverloading3(void)
 		int														Parameter1=10;
 		int														Parameter2=20;
 
-		const type_info&										ReturnValueType=typeid(MaxTemplateFunctionsOverloading3(Parameter1,Parameter2));
-
 		// !!!!! Zavola sa TEMPLATE FUNCTION [TType MaxTemplateFunctionsOverloading3(TType A, TType B)].
 		// !!! RETURN VALUE TYPE je [int].
 		int														Result=MaxTemplateFunctionsOverloading3(Parameter1,Parameter2);
 
-		wcout << L"TYPE [" << GetTypeInfoName(ReturnValueType) << L"] RESULT [" << Result << L"] !" << endl;
+		wcout << L"TYPE [" << GetTypeInfoName<decltype(MaxTemplateFunctionsOverloading3(Parameter1,Parameter2))>() << L"] RESULT [" << Result << L"] !" << endl;
 	}
 
 	PrintLineSeparator();
@@ -973,13 +942,11 @@ void TestTemplateFunctionsOverloading3(void)
 		wstring													Parameter1=L"Timmy";
 		wstring													Parameter2=L"Anderson";
 
-		const type_info&										ReturnValueType=typeid(MaxTemplateFunctionsOverloading3(Parameter1,Parameter2));
-
 		// !!!!! Zavola sa TEMPLATE FUNCTION [TType MaxTemplateFunctionsOverloading3(TType A, TType B)].
 		// !!! RETURN VALUE TYPE je [wstring].
 		wstring													Result=MaxTemplateFunctionsOverloading3(Parameter1,Parameter2);
 
-		wcout << L"TYPE [" << GetTypeInfoName(ReturnValueType) << L"] RESULT [" << Result << L"] !" << endl;
+		wcout << L"TYPE [" << GetTypeInfoName<decltype(MaxTemplateFunctionsOverloading3(Parameter1,Parameter2))>() << L"] RESULT [" << Result << L"] !" << endl;
 	}
 
 	PrintLineSeparator();
@@ -990,13 +957,11 @@ void TestTemplateFunctionsOverloading3(void)
 		int*													PointerToParameter1=&Parameter1;
 		int*													PointerToParameter2=&Parameter2;
 
-		const type_info&										ReturnValueType=typeid(MaxTemplateFunctionsOverloading3(PointerToParameter1,PointerToParameter2));
-
 		// !!!!! Zavola sa TEMPLATE FUNCTION [TType* MaxTemplateFunctionsOverloading3(TType* A, TType* B)].
 		// !!! RETURN VALUE TYPE je [int*].
 		int*													Result=MaxTemplateFunctionsOverloading3(PointerToParameter1,PointerToParameter2);
 
-		wcout << L"TYPE [" << GetTypeInfoName(ReturnValueType) << L"] PARAMETER 1 [" << PointerToParameter1 << L"] PARAMETER 2 [" << PointerToParameter2 << L"] RESULT [" << Result << L"] !" << endl;
+		wcout << L"TYPE [" << GetTypeInfoName<decltype(MaxTemplateFunctionsOverloading3(PointerToParameter1,PointerToParameter2))>() << L"] PARAMETER 1 [" << PointerToParameter1 << L"] PARAMETER 2 [" << PointerToParameter2 << L"] RESULT [" << Result << L"] !" << endl;
 	}
 
 	PrintLineSeparator();
@@ -1005,13 +970,11 @@ void TestTemplateFunctionsOverloading3(void)
 		const wchar_t*											Parameter1=L"Timmy";
 		const wchar_t*											Parameter2=L"Anderson";
 
-		const type_info&										ReturnValueType=typeid(MaxTemplateFunctionsOverloading3(Parameter1,Parameter2));
-
 		// !!!!! Zavola sa NON-TEMPLATE FUNCTION [const wchar_t* MaxTemplateFunctionsOverloading3(const wchar_t* A, const wchar_t* B)].
 		// !!! RETURN VALUE TYPE je [const wchar_t*].
 		const wchar_t*											Result=MaxTemplateFunctionsOverloading3(Parameter1,Parameter2);
 
-		wcout << L"TYPE [" << GetTypeInfoName(ReturnValueType) << L"] RESULT [" << Result << L"] !" << endl;
+		wcout << L"TYPE [" << GetTypeInfoName<decltype(MaxTemplateFunctionsOverloading3(Parameter1,Parameter2))>() << L"] RESULT [" << Result << L"] !" << endl;
 	}
 
 	PrintLineSeparator();
@@ -1061,13 +1024,11 @@ void TestTemplateFunctionsOverloading4(void)
 	PrintLineSeparator();
 
 	{
-		const type_info&										ReturnValueType=typeid(MaxTemplateFunctionsOverloading4(100,200,300));
-
 		// !!!!! Zavola sa TEMPLATE FUNCTION [const TType& MaxTemplateFunctionsOverloading4(const TType& A, const TType& B, const TType& C)].
 		// !!! RETURN VALUE TYPE je [int].
 		int														Result=MaxTemplateFunctionsOverloading4(100,200,300);
 
-		wcout << L"TYPE [" << GetTypeInfoName(ReturnValueType) << L"] RESULT [" << Result << L"] !" << endl;
+		wcout << L"TYPE [" << GetTypeInfoName<decltype(MaxTemplateFunctionsOverloading4(100,200,300))>() << L"] RESULT [" << Result << L"] !" << endl;
 	}
 
 	/*
@@ -1078,7 +1039,6 @@ void TestTemplateFunctionsOverloading4(void)
 		const wchar_t*											Parameter1=L"Timmy";
 		const wchar_t*											Parameter2=L"Atreyu";
 		const wchar_t*											Parameter3=L"Jenny";
-		const type_info&										ReturnValueType=typeid(MaxTemplateFunctionsOverloading4(Parameter1,Parameter2,Parameter3));
 
 		// !!!!! Zavola sa TEMPLATE FUNCTION [const TType& MaxTemplateFunctionsOverloading4(const TType& A, const TType& B, const TType& C)].
 		// !!!!! CODE hodi RUNTIME ERROR.
@@ -1087,7 +1047,7 @@ void TestTemplateFunctionsOverloading4(void)
 		// !!! RETURN VALUE TYPE je [const wchar_t*].
 		const wchar_t*											Result=MaxTemplateFunctionsOverloading4(Parameter1,Parameter2,Parameter3);
 
-		wcout << L"TYPE [" << GetTypeInfoName(ReturnValueType) << L"] RESULT [" << Result << L"] !" << endl;
+		wcout << L"TYPE [" << GetTypeInfoName<decltype(MaxTemplateFunctionsOverloading4(Parameter1,Parameter2,Parameter3))>() << L"] RESULT [" << Result << L"] !" << endl;
 	}
 	*/
 
@@ -1139,13 +1099,11 @@ void TestTemplateFunctionsOverloading5(void)
 	PrintLineSeparator();
 
 	{
-		const type_info&										ReturnValueType=typeid(MaxTemplateFunctionsOverloading5(100,200,300));
-
 		// !!!!! Zavola sa TEMPLATE FUNCTION [TType MaxTemplateFunctionsOverloading5(TType A, TType B, TType C)].
 		// !!! RETURN VALUE TYPE je [int].
 		int														Result=MaxTemplateFunctionsOverloading5(100,200,300);
 
-		wcout << L"TYPE [" << GetTypeInfoName(ReturnValueType) << L"] RESULT [" << Result << L"] !" << endl;
+		wcout << L"TYPE [" << GetTypeInfoName<decltype(MaxTemplateFunctionsOverloading5(100,200,300))>() << L"] RESULT [" << Result << L"] !" << endl;
 	}
 
 	PrintLineSeparator();
