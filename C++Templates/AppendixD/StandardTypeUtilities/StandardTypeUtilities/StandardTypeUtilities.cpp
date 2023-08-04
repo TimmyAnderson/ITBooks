@@ -8402,6 +8402,29 @@ void TestTypeTraitConditional(void)
 	}
 
 	PrintLineSeparator();
+
+	/*
+	// !!!!! COMPILER hodi ERROR, pretoze hoci CONDITION spusti IF BRANCH, TYPE TRAIT [conditional<CONDITION,TTrue,TFalse>::type] robi VZDY EVALUATION OBOCH BRANCHES. A ELSE BRANCH generuje ILL-FORMED CODE.
+	{
+		#define													MACRO_TYPE_1 int
+		#define													MACRO_TYPE_2 enable_if<false,double>::type
+
+		using													ORIGINAL_TYPE_1=MACRO_TYPE_1;
+		using													ORIGINAL_TYPE_2=MACRO_TYPE_2;
+		using													TYPE=conditional<false,ORIGINAL_TYPE_1,ORIGINAL_TYPE_2>::type;
+
+		wstring													OriginalTypeName1=GetTypeInfoName<ORIGINAL_TYPE_1>();
+		wstring													OriginalTypeName2=GetTypeInfoName<ORIGINAL_TYPE_2>();
+		wstring													TypeName=GetTypeInfoName<TYPE>();
+
+		wcout << L"TYPE TRAIT [conditional<false," << MACRO_STRINGIFY_TO_WIDE_STRING(MACRO_TYPE_1) << L"," << MACRO_STRINGIFY_TO_WIDE_STRING(MACRO_TYPE_2) << L">::type] - ORIGINAL TYPE NAME 1 [" << OriginalTypeName1 << L"] ORIGINAL TYPE NAME 2 [" << OriginalTypeName2 << L"] TYPE NAME [" << TypeName << L"]." << endl;
+
+		#undef MACRO_TYPE_1
+		#undef MACRO_TYPE_2
+	}
+	*/
+
+	PrintLineSeparator();
 }
 //----------------------------------------------------------------------------------------------------------------------
 //----------------------------------------------------------------------------------------------------------------------
@@ -8923,13 +8946,13 @@ int main(void)
 	//TestTypeTraitRemoveAllExtents();
 	//TestTypeTraitDecay();
 	//TestTypeTraitEnableIf();
-	//TestTypeTraitConditional();
+	TestTypeTraitConditional();
 	//TestTypeTraitCommonType();
 	//TestTypeTraitConjunction();
 	//TestTypeTraitDisjunction();
 	//TestTypeTraitNegation();
 	//TestTypeTraitDeclval();
-	TestTypeTraitAddressOf();
+	//TestTypeTraitAddressOf();
 
 	ShowExitLine();
 
