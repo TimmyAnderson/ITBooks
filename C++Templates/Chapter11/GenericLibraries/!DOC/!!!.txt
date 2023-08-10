@@ -1,0 +1,83 @@
+//----------------------------------------------------------------------------------------------------------------------
+1. Solution popisuje pouzitie TEMPLATES pri vytvarani GENERIC LIBRARIES.
+2. CALLBACK je C++ ENTITY, ktoru je mozne poslat ako PARAMETER do FUNCTIONS a METHODS a ktora moze byt nasledne spatne volana.
+3. V C++ existuje viacero TYPES, ktore mozu byt vyuzite ako CALLBACKS. Tieto TYPES sa volaju FUNCTION OBJECT TYPES a ich OBJECTS su nazyvane FUNCTION OBJECTS. C++ definuje nasledujuce FUNCTION OBJECT TYPES.
+   A. POINTER TO FUNCTION TYPES.
+   B. CLASS TYPES, ktore maju OVERLOADED OPERATOR [OPERATOR()].
+   C. CLASS TYPES, ktore maju CONVERSION OPERATORS vykonavajuce CONVERSION daneho OBJECT na POINTER TO FUNCTION TYPE, alebo REFERENCE TO FUNCTION TYPE.
+4. C++ STANDARD definuje pojem CALLABLE TYPE co je ekvivalent FUNCTION OBJECT TYPE. CALLABLE OBJECT je potom instancia CALLABLE TYPE.
+5. V C++ je ako CALLABLE TYPES mozne pouzit nasledujuce TYPES.
+   A. POINTER TO FUNCTION TYPES.
+   B. REFERENCE TO FUNCTION TYPES.
+   C. CLASS TYPES, ktore maju definovany OPERATOR [OPERATOR()].
+   D. CLASS TYPES, ktore maju definovany CONVERSION OPERATOR na REFERENCE TO FUNCTION TYPE.
+   E. CLASS TYPES, ktore maju definovany CONVERSION OPERATOR na POINTER TO FUNCTION TYPE.
+   F. LAMBDA FUNCTION TYPES.
+6. Pre CALLABLE TYPES typu POINTER TO FUNCTION TYPES platia nasledujuce fakty.
+   A. Ak pri volani FUNCTION, ktora ma CALLBACK TYPE sa aplikuje OPERATOR [OPERATOR&] na FUNCTION TYPE, tak tento OPERATOR vrati priamo POINTER TO FUNCTION.
+   !!! B. Ak pri volani FUNCTION, ktora ma CALLBACK TYPE sa NEAPLIKUJE OPERATOR [OPERATOR&] na FUNCTION TYPE, tak C++ automaticky vykona DECAY FUNCTION TYPE na POINTER TO FUNCTION, ktory sa pouzije ako ARGUMENT do volanej FUNCTION.
+7. Pre CALLABLE TYPES typu REFERENCE TO FUNCTION TYPES platia nasledujuce fakty.
+   A. REFERENCE TO FUNCTION je mozne ziskat explicitnou CONVERSION FUNCTION TYPE na REFERENCE TO FUNCTION TYPE.
+   B. Ak sa pouzije REFERENCE TO FUNCTION TYPE ako CALLBACK TYPE, C++ automaticky vykona DECAY REFERENCE TO FUNCTION TYPE na POINTER TO FUNCTION, ktory sa pouzije ako ARGUMENT do volanej FUNCTION.
+8. Pre CALLABLE TYPES typu CLASS TYPES, ktore maju definovany OPERATOR [OPERATOR()] platia nasledujuce fakty.
+   A. CLASS TYPE musi mat definovany OPERATOR [OPERATOR()] s rovnakym PROTOTYPE aky sa vyzaduje pre CALLABLE TYPE.
+   B. C++ zavola tento OPERATOR pri volani CALLABLE TYPE.
+   !!! C. Odporuca sa aby OPERATOR [OPERATOR()] bol oznaceny pomocou MODIFIED [const], pretoze niektore API vyzaduju CONST REFERENCES na CALLABLE TYPES.
+9. Pre CALLABLE TYPES typu CLASS TYPES, ktore maju definovany CONVERSION OPERATOR na REFERENCE TO FUNCTION TYPE platia nasledujuce fakty.
+   A. CLASS TYPE musi mat definovany CONVERSION OPERATOR na REFERENCE TO FUNCTION TYPE, ktora ma rovnaky PROTOTYPE aky sa vyzaduje pre CALLABLE TYPE.
+   B. C++ pri volani tohto CALLABLE TYPE najprv zavola CONVERSION OPERATOR na ziskanie REFERENCE TO FUNCTION a nasledne zavola danu FUNCTION.
+10. Pre CALLABLE TYPES typu CLASS TYPES, ktore maju definovany CONVERSION OPERATOR na POINTER TO FUNCTION TYPE platia nasledujuce fakty.
+   A. CLASS TYPE musi mat definovany CONVERSION OPERATOR na POINTER TO FUNCTION TYPE, ktora ma rovnaky PROTOTYPE aky sa vyzaduje pre CALLABLE TYPE.
+   B. C++ pri volani tohto CALLABLE TYPE najprv zavola CONVERSION OPERATOR na ziskanie POINTER TO FUNCTION a nasledne zavola danu FUNCTION.
+11. Pre CALLABLE TYPES typu LAMBDA FUNCTION TYPES platia nasledujuce fakty.
+   A. LAMBDA FUNCTION TYPES su interne implementovane ako CLASSES, ktore maju definovany OPERATOR [OPERATOR()] i CONVERSION OPERATOR na POINTER TO FUNCTION TYPE.
+   !!! B. C++ vzdy preferuje volanie OPERATOR [OPERATOR()] pred volanim CONVERSION OPERATOR na POINTER TO FUNCTION TYPE pretoze OPERATOR [OPERATOR()] ma lepsi OVERLOAD MATCH.
+!!! 12. Ako CALLABLE TYPES mozu byt pouzita aj NON-STATIC METHODS. Pre pouzitie METHODS ako CALLABLE TYPES platia nasledujuce fakty.
+   A. NON-STATIC METHODS maju skryty 1. PARAMETER, ktory je THIS POINTER na OBJECT pre ktory ma byt NON-STATIC METHOD volana.
+   B. Pri volani NON-STATIC METHODS ako CALLABLE TYPES je nutne poslat THIS POINTER ako 1. PARAMETER do NON-STATIC METHOD.
+   !!! C. C++ definuje HELPER TEMPLATE FUNCTION [invoke()] a HELPER TEMPLATE FUNCTION [invoke_r()], ktore zjednodusuju pouzitie NON-STATIC METHODS ako CALLABLE TYPES.
+13. Pre HELPER TEMPLATE FUNCTION [invoke()] platia nasledujuce fakty.
+   A. TEMPLATE FUNCTION ma PROTOTYPE [template<typename TFunction, typename... TArguments> constexpr invoke_result_t<TFunction,TArguments...> invoke(TFunction&& Function, TArguments&&... Arguments) noexcept(is_nothrow_invocable_v<TFunction,TArguments...>)].
+   !!! B. Ak TEMPLATE PARAMETER 'TFunction' je POINTER na NON-STATIC METHOD, TEMPLATE FUNCTION pouzije 1. PARAMETER z TEMPLATE PARAMETER 'TArguments' ako THIS POINTER a ostatne PARAMETERS ako PARAMETERS CALLABLE OBJECT.
+   C. Ak TEMPLATE PARAMETER 'TFunction' NIE je POINTER na NON-STATIC METHOD, TEMPLATE FUNCTION pouzije vsetky PARAMETERS z TEMPLATE PARAMETER 'TArguments' ako PARAMETERS CALLABLE OBJECT.
+14. Pre HELPER TEMPLATE FUNCTION [invoke_r()] platia nasledujuce fakty.
+   A. TEMPLATE FUNCTION ma PROTOTYPE [template<typename TReturnValue, typename TFunction, typename... TArguments> constexpr TReturnValue invoke_r(TFunction&& Function, TArguments&&... Arguments) noexcept(is_nothrow_invocable_r_v<TReturnValue,TFunction,TArguments...>)].
+   !!! B. Ak TEMPLATE PARAMETER 'TFunction' je POINTER na NON-STATIC METHOD, TEMPLATE FUNCTION pouzije 1. PARAMETER z TEMPLATE PARAMETER 'TArguments' ako THIS POINTER a ostatne PARAMETERS ako PARAMETERS CALLABLE OBJECT.
+   C. Ak TEMPLATE PARAMETER 'TFunction' NIE je POINTER na NON-STATIC METHOD, TEMPLATE FUNCTION pouzije vsetky PARAMETERS z TEMPLATE PARAMETER 'TArguments' ako PARAMETERS CALLABLE OBJECT.
+   D. TEMPLATE METHOD po volani CALLABLE OBJECT vykona CONVERSION RETURN VALUE na TYPE definovany TEMPLATE PARAMETER 'TReturnValue'.
+15. C++ umoznuje pouzivat PLACEHOLDER TYPE SPECIFIERS, ktore umoznuju, aby TYPE urcil COMPILER. C++ podporuje nasledujuce typy PLACEHOLDER TYPE SPECIFIERS.
+   A. SYNTAX [TYPE_CONSTRAINT auto], kde VALUE 'TYPE_CONSTRAINT' je OPTIONAL CONCEPT NAME.
+   B. SYNTAX [TYPE_CONSTRAINT decltype(auto)], kde VALUE 'TYPE_CONSTRAINT' je OPTIONAL CONCEPT NAME.
+16. Pre PLACEHOLDER TYPE SPECIFIER [TYPE_CONSTRAINT auto] platia nasledujuce fakty.
+   A. Na KEYWORD [auto] je mozne aplikovat MODIFIER [const] a MODIFIER [&].
+   B. COMPILER vykonava TYPE DEDUCTION tak, ze urci EXPRESSION 'EXPRESSION' a nasledne aplikovanim TEMPLATE ARUGMENT DEDUCTION RULES urci TYPE tejto EXPRESSION. Tento TYPE je nasledne nahradeny za KEYWORD [auto].
+   !!! C. Ak je KEYWORD [auto] aplikovany ako LOCAL VARIABLE TYPE, tak EXPRESSION 'EXPRESSION' je rovny INICIALIZACNEJ EXPRESSION danej VARIABLE.
+   !!!!! D. Ak je KEYWORD [auto] aplikovany ako RETURN VALUE TYPE, tak EXPRESSION 'EXPRESSION' je rovny EXPRESSION za kazdym KEYWORD [return]. Ak FUNCTION obsahuje VIACERO KEYWORDS [return], COMPILER urci TYPE pre vsetky EXPRESSION, pricom VSETKY musia vratit TEN ISTY TYPE, inak COMPILER hodi ERROR.
+17. Pre PLACEHOLDER TYPE SPECIFIER [TYPE_CONSTRAINT decltype(auto)] platia nasledujuce fakty.
+   A. Na KEYWORD [decltype(auto)] je mozne aplikovat MODIFIER [const] a MODIFIER [&].
+   B. COMPILER vykonava TYPE DEDUCTION tak, ze urci EXPRESSION 'EXPRESSION' a nasledne na EXPRESSION 'EXPRESSION' aplikuje CODE KEYWORD [decltype(EXPRESSION)].
+   !!! C. Ak je KEYWORD [decltype(auto)] aplikovany ako LOCAL VARIABLE TYPE, tak EXPRESSION 'EXPRESSION' je rovny INICIALIZACNEJ EXPRESSION danej VARIABLE.
+   !!!!! D. Ak je KEYWORD [decltype(auto)] aplikovany ako RETURN VALUE TYPE, tak EXPRESSION 'EXPRESSION' je rovny EXPRESSION za kazdym KEYWORD [return]. Ak FUNCTION obsahuje VIACERO KEYWORDS [return], COMPILER urci TYPE pre vsetky EXPRESSION, pricom VSETKY musia vratit TEN ISTY TYPE, inak COMPILER hodi ERROR.
+   !!!!! E. Ak je KEYWORD [decltype(auto)] aplikovany ako RETURN VALUE TYPE, je KLUCOVE pouzit SYNTAX [return EXPRESSION], a NIE SYNTAX [return(EXPRESSION)]. Je to preto, lebo CODE [decltype(EXPRESSION)] vracia TYPE danej EXPRESSION, kym CODE [decltype((EXPRESSION))] vracia VALUE CATEGORY danej EXPRESSION. Takze napriklad CODE [decltype(100)] vrati TYPE [int], kym CODE [decltype((100))] vrati TYPE [int&].
+18. C++ definuje TYPE TRAITS, ktore umoznuje testovat TYPES ci ziskavat novy TYPE v COMPILE TIME.
+19. TYPE TRAITS su definovane v LIBRARY [<type_traits>].
+20. TYPE TRAITS je mozne rozdelit do nasledujucich kategorii.
+   A. TYPE TRAITS vracajuce TYPE.
+   B. TYPE TRAITS vracajuce VALUE.
+21. TEMPLATE FUNCTION [template<typename TType> constexpr T* addressof(TType& Parameter) noexcept] vracia ADDRESS zadaneho OBJECT a to aj vtedy, ak pre dany OBJECT je pretazeny OPERATOR [OPERATOR&]. TEMPLATE FUNCTION je definovana v LIBRARY [memory].
+22. Pre TYPE TRAIT [declval<TType>] platia nasledujuce fakty.
+   A. TYPE TRAIT je definovany v LIBRARY [utility].
+   B. VALUE [declval<TType>::type] pre NON-REFERENCE TYPES a pre RVALUE REFERENCE TYPES vracia TYPE [TType&&].
+   C. VALUE [declval<TType>::type] pre LVALUE REFERENCE TYPES vracia TYPE [TType&].
+   D. VALUE [declval<TType>::type] pre TYPE [void] vracia TYPE [void].
+   !!! E. VALUE [declval<TType>::type] vracia TYPE aj pre NON CONSTRUCTIBLE TYPES, ako napriklad TYPES, ktore maju DELETED CONSTRUCTORS.
+   !!!!! F. TYPE TRAIT je mozne pouzit IBA v UNEVALUATED CONTEXTS. Typickym pouzitim je pouzitie v OPERATOR [decltype()].
+23. C++ umoznuje vykonavat PERFECT FORWARDING nielen pre PARAMETERS TEMPLATE FUNCTIONS, ale aj pre LOCAL VARIABLES. TEMPLATE FORWARDING pre LOCAL VARIABLES v TEMPLATE FUNCTIONS sa vykonava nasledujucim sposobim.
+   A. Pomocou CODE [auto&& VARIABLE] sa definuje TEMPORARY VARIABLE 'VARIABLE', pre ktoru ma byt spraveny PERFECT FORWARDING.
+   B. Pri PERFECT FORWARDING za vola CODE [forward<decltype(VARIABLE)>(VARIABLE)], ktory vykona PERFECT FORWARING do cielovej FUNCTION.
+!!! 24. C++ pri TEMPLATE PARAMETER DEDUCTION v pripade, ze TEMPLATE PARAMETER je NON-REFERENCE TYPE a TEMPLATE ARGUMENT je REFERENCE TYPE vykona DEDUCTION NON-REFERENCE TYPE. Riesenim ako to obist je EXPLICITNE definovat REFERENCE TYPE ako TEMPLATE PARAMETER danej TEMPLATE.
+25. INCOMPLETE TYPES (TYPES, ktore su iba DECLARED, ale nie DEFINED) je mozne pouzit ako TEMPLATE PARAMETERS. Platia vsak nasledujuce obmedzenia.
+   A. INCOMPLETE TYPES v TEMPLATE CLASSES je mozne pouzit tam, kde je mozne pouzit INCOMPLETE TYPES v CLASSES. Prikladom moze byt definovanie FIELD, ktory ma POINTER TYPE na INCOMPLETE TYPE.
+   !!! B. INCOMPLETE TYPES v TEMPLATE CLASSES NIE JE mozne pouzit tam, kde NIE JE mozne pouzit INCOMPLETE TYPES v CLASSES. Prikladom moze byt pouzitie TYPE TRAITS vyzadujucich COMPLETE TYPES pri definici METHODS.
+   !!!!! C. C++ vsak umoznuje pouzitie DEFER EVALUATION na obidenie niektorych obmedzeni pouzitia INCOMPLETE TYPES v TEMPLATE CLASSES. Ak napriklad je INCOMPLETE TYPE pouzity v pouzitie TYPE TRAITS vyzadujucich COMPLETE TYPES pri definici METHODS, tak je METHOD mozne definovat ako TEMPLATE METHOD, ktora ma TEMPLATE PARAMETER, ktory ma DEFAULT VALUE nastavenu na CLASS TEMPLATE PARAMETER. V tomto pripade je mozne takuto TEMPLATE CLASS definovat aj pre INCOMPLETE TYPES. Avsak pri pouziti tejto TEMPLATE CLASS je nutne aby sa namiesto INCOMPLETE TYPE sa uz pouzil COMPLETE TYPE.
+//----------------------------------------------------------------------------------------------------------------------
