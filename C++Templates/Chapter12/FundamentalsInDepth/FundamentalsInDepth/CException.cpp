@@ -1,31 +1,49 @@
 //----------------------------------------------------------------------------------------------------------------------
-#include "CTemplateTemplateSpecialMethods1.h"
+#include "CException.h"
 //----------------------------------------------------------------------------------------------------------------------
 using namespace std;
 //----------------------------------------------------------------------------------------------------------------------
 //----------------------------------------------------------------------------------------------------------------------
 //----------------------------------------------------------------------------------------------------------------------
-CTemplateTemplateSpecialMethods1::CTemplateTemplateSpecialMethods1(const CTemplateTemplateSpecialMethods1& Value)
-	: MValue(Value.MValue)
+CException::CException(const wstring& Message)
+	: MMessage(Message)
 {
-	std::wcout << L"NON-TEMPLATE COPY CONSTRUCTOR CALLED !" << std::endl;
 }
 //----------------------------------------------------------------------------------------------------------------------
-CTemplateTemplateSpecialMethods1::CTemplateTemplateSpecialMethods1(const CTemplateTemplateSpecialMethods1&& Value) noexcept
-	: MValue(move(Value.MValue))
+CException::CException(const CException& Other)
+	: MMessage(Other.MMessage)
 {
-	std::wcout << L"NON-TEMPLATE MOVE CONSTRUCTOR CALLED !" << std::endl;
 }
 //----------------------------------------------------------------------------------------------------------------------
-CTemplateTemplateSpecialMethods1::~CTemplateTemplateSpecialMethods1(void) noexcept
+CException::CException(CException&& Other) noexcept
+	: MMessage(move(Other.MMessage))
 {
-	wcout << L"DESTRUCTOR CALLED !" << endl;
+}
+//----------------------------------------------------------------------------------------------------------------------
+CException::~CException(void)
+{
 }
 //----------------------------------------------------------------------------------------------------------------------
 //----------------------------------------------------------------------------------------------------------------------
 //----------------------------------------------------------------------------------------------------------------------
-const wstring& CTemplateTemplateSpecialMethods1::GetValue(void) const noexcept
+CException& CException::operator=(const CException& Other)
 {
-	return(MValue);
+	MMessage=Other.MMessage;
+
+	return(*this);
+}
+//----------------------------------------------------------------------------------------------------------------------
+CException& CException::operator=(CException&& Other) noexcept
+{
+	MMessage=move(Other.MMessage);
+
+	return(*this);
+}
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+const wstring& CException::GetMessage(void) const noexcept
+{
+	return(MMessage);
 }
 //----------------------------------------------------------------------------------------------------------------------

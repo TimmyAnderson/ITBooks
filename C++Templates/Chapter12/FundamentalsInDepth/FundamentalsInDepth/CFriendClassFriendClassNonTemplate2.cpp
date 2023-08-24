@@ -1,25 +1,25 @@
 //----------------------------------------------------------------------------------------------------------------------
-#include "CTemplateTemplateSpecialMethods2.h"
+#include "CFriendClassFriendClassNonTemplate2.h"
+#include <iostream>
 //----------------------------------------------------------------------------------------------------------------------
 using namespace std;
 //----------------------------------------------------------------------------------------------------------------------
 //----------------------------------------------------------------------------------------------------------------------
 //----------------------------------------------------------------------------------------------------------------------
-CTemplateTemplateSpecialMethods2::CTemplateTemplateSpecialMethods2(const CTemplateTemplateSpecialMethods2&& Value) noexcept
-	: MValue(move(Value.MValue))
+CFriendClassFriendClassNonTemplate2::CFriendClassFriendClassNonTemplate2(const CFriendClassClassMakingFriends2<CFriendClassFriendClassNonTemplate2>& Field)
+	: MField(Field)
 {
-	std::wcout << L"NON-TEMPLATE MOVE CONSTRUCTOR CALLED !" << std::endl;
 }
 //----------------------------------------------------------------------------------------------------------------------
-CTemplateTemplateSpecialMethods2::~CTemplateTemplateSpecialMethods2(void) noexcept
+CFriendClassFriendClassNonTemplate2::~CFriendClassFriendClassNonTemplate2(void) noexcept
 {
-	wcout << L"DESTRUCTOR CALLED !" << endl;
 }
 //----------------------------------------------------------------------------------------------------------------------
 //----------------------------------------------------------------------------------------------------------------------
 //----------------------------------------------------------------------------------------------------------------------
-const wstring& CTemplateTemplateSpecialMethods2::GetValue(void) const noexcept
+void CFriendClassFriendClassNonTemplate2::Print(void) const
 {
-	return(MValue);
+	// !!! TEMPLATE CLASS moze pristupovat k PRIVATE MEMBERS, pretoze bola DECLARED ako FRIEND.
+	MField.PrivatePrint();
 }
 //----------------------------------------------------------------------------------------------------------------------

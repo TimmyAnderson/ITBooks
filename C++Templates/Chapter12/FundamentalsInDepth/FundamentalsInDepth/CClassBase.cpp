@@ -1,25 +1,21 @@
 //----------------------------------------------------------------------------------------------------------------------
-#include "CTemplateTemplateSpecialMethods2.h"
-//----------------------------------------------------------------------------------------------------------------------
-using namespace std;
+#include "CClassBase.h"
 //----------------------------------------------------------------------------------------------------------------------
 //----------------------------------------------------------------------------------------------------------------------
 //----------------------------------------------------------------------------------------------------------------------
-CTemplateTemplateSpecialMethods2::CTemplateTemplateSpecialMethods2(const CTemplateTemplateSpecialMethods2&& Value) noexcept
-	: MValue(move(Value.MValue))
+CClassBase::CClassBase(const CString& Field)
+	: MField(Field)
 {
-	std::wcout << L"NON-TEMPLATE MOVE CONSTRUCTOR CALLED !" << std::endl;
 }
 //----------------------------------------------------------------------------------------------------------------------
-CTemplateTemplateSpecialMethods2::~CTemplateTemplateSpecialMethods2(void) noexcept
+CClassBase::~CClassBase(void) noexcept
 {
-	wcout << L"DESTRUCTOR CALLED !" << endl;
 }
 //----------------------------------------------------------------------------------------------------------------------
 //----------------------------------------------------------------------------------------------------------------------
 //----------------------------------------------------------------------------------------------------------------------
-const wstring& CTemplateTemplateSpecialMethods2::GetValue(void) const noexcept
+const CString& CClassBase::GetField(void) const noexcept
 {
-	return(MValue);
+	return(MField);
 }
 //----------------------------------------------------------------------------------------------------------------------

@@ -1,25 +1,26 @@
 //----------------------------------------------------------------------------------------------------------------------
-#include "CTemplateTemplateSpecialMethods2.h"
+#include "CFriendFunctionsNonTemplateClass3.h"
 //----------------------------------------------------------------------------------------------------------------------
 using namespace std;
 //----------------------------------------------------------------------------------------------------------------------
 //----------------------------------------------------------------------------------------------------------------------
 //----------------------------------------------------------------------------------------------------------------------
-CTemplateTemplateSpecialMethods2::CTemplateTemplateSpecialMethods2(const CTemplateTemplateSpecialMethods2&& Value) noexcept
-	: MValue(move(Value.MValue))
+CFriendFunctionsNonTemplateClass3::CFriendFunctionsNonTemplateClass3(const CString& Field)
+	: MField(Field)
 {
-	std::wcout << L"NON-TEMPLATE MOVE CONSTRUCTOR CALLED !" << std::endl;
 }
 //----------------------------------------------------------------------------------------------------------------------
-CTemplateTemplateSpecialMethods2::~CTemplateTemplateSpecialMethods2(void) noexcept
+CFriendFunctionsNonTemplateClass3::~CFriendFunctionsNonTemplateClass3(void) noexcept
 {
-	wcout << L"DESTRUCTOR CALLED !" << endl;
 }
 //----------------------------------------------------------------------------------------------------------------------
 //----------------------------------------------------------------------------------------------------------------------
 //----------------------------------------------------------------------------------------------------------------------
-const wstring& CTemplateTemplateSpecialMethods2::GetValue(void) const noexcept
+void FriendFunctions3Function1(int Value1, double Value2)
 {
-	return(MValue);
+	CFriendFunctionsNonTemplateClass3							Object(L"Timmy");
+
+	// !!!!! Ak je FUNCTION deklarovana ako FRIEND, moze pristupit k PRIVATE MEMBERS.
+	wcout << L"NON-TEMPLATE FUNCTION - FIELD [" << Object.MField << L"] VALUE 1 [" << Value1 << L"] VALUE 2 [" << Value2 << L"]." << endl;
 }
 //----------------------------------------------------------------------------------------------------------------------

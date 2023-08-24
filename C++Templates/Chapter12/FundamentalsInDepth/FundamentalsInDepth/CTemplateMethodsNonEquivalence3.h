@@ -5,7 +5,7 @@
 #include <iostream>
 #include <type_traits>
 //----------------------------------------------------------------------------------------------------------------------
-class CTemplateTemplateSpecialMethods3 final
+class CTemplateMethodsNonEquivalence3 final
 {
 //----------------------------------------------------------------------------------------------------------------------
 	private:
@@ -15,20 +15,20 @@ class CTemplateTemplateSpecialMethods3 final
 		const std::wstring& GetValue(void) const noexcept;
 
 	public:
-		CTemplateTemplateSpecialMethods3(const std::wstring& Value);
-		template<typename TType,typename=std::enable_if<std::is_same<TType,CTemplateTemplateSpecialMethods3>::value>::type>
-		CTemplateTemplateSpecialMethods3(const TType& Value);
-		CTemplateTemplateSpecialMethods3(const CTemplateTemplateSpecialMethods3&& Value) noexcept;
+		CTemplateMethodsNonEquivalence3(const std::wstring& Value);
+		template<typename TType,typename=std::enable_if<std::is_same<TType,CTemplateMethodsNonEquivalence3>::value>::type>
+		CTemplateMethodsNonEquivalence3(const TType& Value);
+		CTemplateMethodsNonEquivalence3(const CTemplateMethodsNonEquivalence3&& Value) noexcept;
 		// !!!!! Vdaka pouzitiu DELETE COPY CONSTRUCTOR, ktory ma aplikovany aj KEYWORD [volatile] je mozne prinutit C++, aby volal pri COPY SEMANTICS TEMPLATE CONSTRUCTOR.
-		CTemplateTemplateSpecialMethods3(const volatile CTemplateTemplateSpecialMethods3&)=delete;
-		virtual ~CTemplateTemplateSpecialMethods3(void) noexcept;
+		CTemplateMethodsNonEquivalence3(const volatile CTemplateMethodsNonEquivalence3&)=delete;
+		virtual ~CTemplateMethodsNonEquivalence3(void) noexcept;
 //----------------------------------------------------------------------------------------------------------------------
 };
 //----------------------------------------------------------------------------------------------------------------------
 //----------------------------------------------------------------------------------------------------------------------
 //----------------------------------------------------------------------------------------------------------------------
 template<typename TType,typename>
-CTemplateTemplateSpecialMethods3::CTemplateTemplateSpecialMethods3(const TType& Value)
+CTemplateMethodsNonEquivalence3::CTemplateMethodsNonEquivalence3(const TType& Value)
 	: MValue(Value.GetValue())
 {
 	std::wcout << L"TEMPLATE CONSTRUCTOR CALLED !" << std::endl;

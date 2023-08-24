@@ -1,25 +1,42 @@
 //----------------------------------------------------------------------------------------------------------------------
-#include "CTemplateTemplateSpecialMethods2.h"
+#pragma once
 //----------------------------------------------------------------------------------------------------------------------
-using namespace std;
+#include <iostream>
 //----------------------------------------------------------------------------------------------------------------------
-//----------------------------------------------------------------------------------------------------------------------
-//----------------------------------------------------------------------------------------------------------------------
-CTemplateTemplateSpecialMethods2::CTemplateTemplateSpecialMethods2(const CTemplateTemplateSpecialMethods2&& Value) noexcept
-	: MValue(move(Value.MValue))
+template<typename TType>
+class CFriendClassClassMakingFriends2 final
 {
-	std::wcout << L"NON-TEMPLATE MOVE CONSTRUCTOR CALLED !" << std::endl;
+//----------------------------------------------------------------------------------------------------------------------
+	// !!!!! Umozni CLASS [TType] pristupit k PRIVATE MEMBERS TYPE [CFriendClassClassMakingFriends2<TType>].
+	// !!!!! KEYWORD [class] sa NESMIE pouzit.
+	friend TType;
+
+	private:
+		void PrivatePrint(void) const;
+
+	public:
+		CFriendClassClassMakingFriends2(void);
+		virtual ~CFriendClassClassMakingFriends2(void) noexcept;
+//----------------------------------------------------------------------------------------------------------------------
+};
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+template<typename TType>
+CFriendClassClassMakingFriends2<TType>::CFriendClassClassMakingFriends2(void)
+{
 }
 //----------------------------------------------------------------------------------------------------------------------
-CTemplateTemplateSpecialMethods2::~CTemplateTemplateSpecialMethods2(void) noexcept
+template<typename TType>
+CFriendClassClassMakingFriends2<TType>::~CFriendClassClassMakingFriends2(void) noexcept
 {
-	wcout << L"DESTRUCTOR CALLED !" << endl;
 }
 //----------------------------------------------------------------------------------------------------------------------
 //----------------------------------------------------------------------------------------------------------------------
 //----------------------------------------------------------------------------------------------------------------------
-const wstring& CTemplateTemplateSpecialMethods2::GetValue(void) const noexcept
+template<typename TType>
+void CFriendClassClassMakingFriends2<TType>::PrivatePrint(void) const
 {
-	return(MValue);
+	std::wcout << L"MAKING FRIEND TEMPLATE CLASS 2 is CALLED." << std::endl;
 }
 //----------------------------------------------------------------------------------------------------------------------

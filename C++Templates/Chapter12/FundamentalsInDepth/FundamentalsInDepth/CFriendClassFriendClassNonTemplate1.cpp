@@ -1,25 +1,25 @@
 //----------------------------------------------------------------------------------------------------------------------
-#include "CTemplateTemplateSpecialMethods2.h"
+#include "CFriendClassFriendClassNonTemplate1.h"
+#include <iostream>
 //----------------------------------------------------------------------------------------------------------------------
 using namespace std;
 //----------------------------------------------------------------------------------------------------------------------
 //----------------------------------------------------------------------------------------------------------------------
 //----------------------------------------------------------------------------------------------------------------------
-CTemplateTemplateSpecialMethods2::CTemplateTemplateSpecialMethods2(const CTemplateTemplateSpecialMethods2&& Value) noexcept
-	: MValue(move(Value.MValue))
+CFriendClassFriendClassNonTemplate1::CFriendClassFriendClassNonTemplate1(const CFriendClassClassMakingFriends1<CString>& Field)
+	: MField(Field)
 {
-	std::wcout << L"NON-TEMPLATE MOVE CONSTRUCTOR CALLED !" << std::endl;
 }
 //----------------------------------------------------------------------------------------------------------------------
-CTemplateTemplateSpecialMethods2::~CTemplateTemplateSpecialMethods2(void) noexcept
+CFriendClassFriendClassNonTemplate1::~CFriendClassFriendClassNonTemplate1(void) noexcept
 {
-	wcout << L"DESTRUCTOR CALLED !" << endl;
 }
 //----------------------------------------------------------------------------------------------------------------------
 //----------------------------------------------------------------------------------------------------------------------
 //----------------------------------------------------------------------------------------------------------------------
-const wstring& CTemplateTemplateSpecialMethods2::GetValue(void) const noexcept
+void CFriendClassFriendClassNonTemplate1::Print(void) const
 {
-	return(MValue);
+	// !!! NON TEMPLATE CLASS moze pristupovat k PRIVATE MEMBERS, pretoze bola DECLARED ako FRIEND.
+	wcout << L"FRIEND NON TEMPLATE CLASS 1 - VALUE [" << MField.MField << L"]." << endl;
 }
 //----------------------------------------------------------------------------------------------------------------------

@@ -1,25 +1,44 @@
 //----------------------------------------------------------------------------------------------------------------------
-#include "CTemplateTemplateSpecialMethods2.h"
+#pragma once
 //----------------------------------------------------------------------------------------------------------------------
-using namespace std;
+#include <iostream>
+#include "CString.h"
 //----------------------------------------------------------------------------------------------------------------------
-//----------------------------------------------------------------------------------------------------------------------
-//----------------------------------------------------------------------------------------------------------------------
-CTemplateTemplateSpecialMethods2::CTemplateTemplateSpecialMethods2(const CTemplateTemplateSpecialMethods2&& Value) noexcept
-	: MValue(move(Value.MValue))
+template<typename TType>
+class CFriendClassFriendClassTemplate final
 {
-	std::wcout << L"NON-TEMPLATE MOVE CONSTRUCTOR CALLED !" << std::endl;
+//----------------------------------------------------------------------------------------------------------------------
+	private:
+		TType													MField;
+
+	public:
+		void Print(void) const;
+
+	public:
+		CFriendClassFriendClassTemplate(const TType& Field);
+		virtual ~CFriendClassFriendClassTemplate(void) noexcept;
+//----------------------------------------------------------------------------------------------------------------------
+};
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+template<typename TType>
+CFriendClassFriendClassTemplate<TType>::CFriendClassFriendClassTemplate(const TType& Field)
+	: MField(Field)
+{
 }
 //----------------------------------------------------------------------------------------------------------------------
-CTemplateTemplateSpecialMethods2::~CTemplateTemplateSpecialMethods2(void) noexcept
+template<typename TType>
+CFriendClassFriendClassTemplate<TType>::~CFriendClassFriendClassTemplate(void) noexcept
 {
-	wcout << L"DESTRUCTOR CALLED !" << endl;
 }
 //----------------------------------------------------------------------------------------------------------------------
 //----------------------------------------------------------------------------------------------------------------------
 //----------------------------------------------------------------------------------------------------------------------
-const wstring& CTemplateTemplateSpecialMethods2::GetValue(void) const noexcept
+template<typename TType>
+void CFriendClassFriendClassTemplate<TType>::Print(void) const
 {
-	return(MValue);
+	// !!! TEMPLATE CLASS moze pristupovat k PRIVATE MEMBERS, pretoze bola DECLARED ako FRIEND.
+	std::wcout << L"FRIEND TEMPLATE CLASS - VALUE [" << MField.MField << L"]." << std::endl;
 }
 //----------------------------------------------------------------------------------------------------------------------

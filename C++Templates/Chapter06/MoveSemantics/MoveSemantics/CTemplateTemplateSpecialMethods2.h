@@ -17,6 +17,7 @@ class CTemplateTemplateSpecialMethods2 final
 	public:
 		template<typename TType>
 		CTemplateTemplateSpecialMethods2(const TType& Value);
+		CTemplateTemplateSpecialMethods2(const CTemplateTemplateSpecialMethods2&& Value) noexcept;
 		// !!!!! Vdaka pouzitiu DELETE COPY CONSTRUCTOR, ktory ma aplikovany aj KEYWORD [volatile] je mozne prinutit C++, aby volal pri COPY SEMANTICS TEMPLATE CONSTRUCTOR.
 		CTemplateTemplateSpecialMethods2(const volatile CTemplateTemplateSpecialMethods2&)=delete;
 		virtual ~CTemplateTemplateSpecialMethods2(void) noexcept;

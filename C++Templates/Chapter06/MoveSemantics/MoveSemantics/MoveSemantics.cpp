@@ -821,8 +821,8 @@ int main(void)
 	//TestPerfectForwardingInConstructorsTemplate();
 	//TestTypeTraitEnableIf();
 	//TestPerfectForwardingInConstructorsTemplateEnableIf();
-	//TestTemplateSpecialMethods();
-	TestPerfectForwardingInConstructorsTemplateConcept();
+	TestTemplateSpecialMethods();
+	//TestPerfectForwardingInConstructorsTemplateConcept();
 
 	ShowExitLine();
 

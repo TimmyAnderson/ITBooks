@@ -1,24 +1,24 @@
 //----------------------------------------------------------------------------------------------------------------------
-#include "CTemplateTemplateSpecialMethods2.h"
+#include "CTemplateMethodsNonEquivalence2.h"
 //----------------------------------------------------------------------------------------------------------------------
 using namespace std;
 //----------------------------------------------------------------------------------------------------------------------
 //----------------------------------------------------------------------------------------------------------------------
 //----------------------------------------------------------------------------------------------------------------------
-CTemplateTemplateSpecialMethods2::CTemplateTemplateSpecialMethods2(const CTemplateTemplateSpecialMethods2&& Value) noexcept
+CTemplateMethodsNonEquivalence2::CTemplateMethodsNonEquivalence2(const CTemplateMethodsNonEquivalence2&& Value) noexcept
 	: MValue(move(Value.MValue))
 {
 	std::wcout << L"NON-TEMPLATE MOVE CONSTRUCTOR CALLED !" << std::endl;
 }
 //----------------------------------------------------------------------------------------------------------------------
-CTemplateTemplateSpecialMethods2::~CTemplateTemplateSpecialMethods2(void) noexcept
+CTemplateMethodsNonEquivalence2::~CTemplateMethodsNonEquivalence2(void) noexcept
 {
 	wcout << L"DESTRUCTOR CALLED !" << endl;
 }
 //----------------------------------------------------------------------------------------------------------------------
 //----------------------------------------------------------------------------------------------------------------------
 //----------------------------------------------------------------------------------------------------------------------
-const wstring& CTemplateTemplateSpecialMethods2::GetValue(void) const noexcept
+const wstring& CTemplateMethodsNonEquivalence2::GetValue(void) const noexcept
 {
 	return(MValue);
 }

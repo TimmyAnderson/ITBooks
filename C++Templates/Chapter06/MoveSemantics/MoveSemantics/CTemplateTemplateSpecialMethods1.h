@@ -16,6 +16,8 @@ class CTemplateTemplateSpecialMethods1 final
 	public:
 		template<typename TType>
 		CTemplateTemplateSpecialMethods1(const TType& Value);
+		CTemplateTemplateSpecialMethods1(const CTemplateTemplateSpecialMethods1& Value);
+		CTemplateTemplateSpecialMethods1(const CTemplateTemplateSpecialMethods1&& Value) noexcept;
 		virtual ~CTemplateTemplateSpecialMethods1(void) noexcept;
 //----------------------------------------------------------------------------------------------------------------------
 };

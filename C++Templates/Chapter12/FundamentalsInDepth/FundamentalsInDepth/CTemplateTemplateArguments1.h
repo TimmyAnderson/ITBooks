@@ -1,25 +1,48 @@
 //----------------------------------------------------------------------------------------------------------------------
-#include "CTemplateTemplateSpecialMethods2.h"
+#pragma once
 //----------------------------------------------------------------------------------------------------------------------
-using namespace std;
+#include <string>
+#include <sstream>
 //----------------------------------------------------------------------------------------------------------------------
-//----------------------------------------------------------------------------------------------------------------------
-//----------------------------------------------------------------------------------------------------------------------
-CTemplateTemplateSpecialMethods2::CTemplateTemplateSpecialMethods2(const CTemplateTemplateSpecialMethods2&& Value) noexcept
-	: MValue(move(Value.MValue))
+// !!! TEMPLATE ma TEMPLATE TYPE PARAMETER.
+template<typename TType>
+class CTemplateTemplateArguments1 final
 {
-	std::wcout << L"NON-TEMPLATE MOVE CONSTRUCTOR CALLED !" << std::endl;
+//----------------------------------------------------------------------------------------------------------------------
+	private:
+		TType													MField;
+
+	public:
+		std::wstring ToString(void) const;
+
+	public:
+		CTemplateTemplateArguments1(TType Field);
+		virtual ~CTemplateTemplateArguments1(void) noexcept;
+//----------------------------------------------------------------------------------------------------------------------
+};
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+template<typename TType>
+CTemplateTemplateArguments1<TType>::CTemplateTemplateArguments1(TType Field)
+	: MField(Field)
+{
 }
 //----------------------------------------------------------------------------------------------------------------------
-CTemplateTemplateSpecialMethods2::~CTemplateTemplateSpecialMethods2(void) noexcept
+template<typename TType>
+CTemplateTemplateArguments1<TType>::~CTemplateTemplateArguments1(void) noexcept
 {
-	wcout << L"DESTRUCTOR CALLED !" << endl;
 }
 //----------------------------------------------------------------------------------------------------------------------
 //----------------------------------------------------------------------------------------------------------------------
 //----------------------------------------------------------------------------------------------------------------------
-const wstring& CTemplateTemplateSpecialMethods2::GetValue(void) const noexcept
+template<typename TType>
+std::wstring CTemplateTemplateArguments1<TType>::ToString(void) const
 {
-	return(MValue);
+	std::wstringstream											Stream;
+
+	Stream << "TEMPLATE TEMPLATE ARGUMENTS 1 - FIELD [" << MField << L"].";
+
+	return(Stream.str());
 }
 //----------------------------------------------------------------------------------------------------------------------

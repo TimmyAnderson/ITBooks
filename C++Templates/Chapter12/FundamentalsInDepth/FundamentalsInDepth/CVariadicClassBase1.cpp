@@ -1,25 +1,40 @@
 //----------------------------------------------------------------------------------------------------------------------
-#include "CTemplateTemplateSpecialMethods2.h"
+#include "CVariadicClassBase1.h"
+#include <sstream>
 //----------------------------------------------------------------------------------------------------------------------
 using namespace std;
 //----------------------------------------------------------------------------------------------------------------------
 //----------------------------------------------------------------------------------------------------------------------
 //----------------------------------------------------------------------------------------------------------------------
-CTemplateTemplateSpecialMethods2::CTemplateTemplateSpecialMethods2(const CTemplateTemplateSpecialMethods2&& Value) noexcept
-	: MValue(move(Value.MValue))
+CVariadicClassBase1::CVariadicClassBase1(const CString& FieldBase1)
+	: MFieldBase1(FieldBase1)
 {
-	std::wcout << L"NON-TEMPLATE MOVE CONSTRUCTOR CALLED !" << std::endl;
 }
 //----------------------------------------------------------------------------------------------------------------------
-CTemplateTemplateSpecialMethods2::~CTemplateTemplateSpecialMethods2(void) noexcept
+CVariadicClassBase1::CVariadicClassBase1(const CVariadicClassBase1& Other)
+	: MFieldBase1(Other.MFieldBase1)
 {
-	wcout << L"DESTRUCTOR CALLED !" << endl;
+}
+//----------------------------------------------------------------------------------------------------------------------
+CVariadicClassBase1::~CVariadicClassBase1(void) noexcept
+{
 }
 //----------------------------------------------------------------------------------------------------------------------
 //----------------------------------------------------------------------------------------------------------------------
 //----------------------------------------------------------------------------------------------------------------------
-const wstring& CTemplateTemplateSpecialMethods2::GetValue(void) const noexcept
+const CString& CVariadicClassBase1::GetFieldBase1(void) const noexcept
 {
-	return(MValue);
+	return(MFieldBase1);
+}
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+wstring CVariadicClassBase1::ToString(void) const
+{
+	wstringstream												Stream;
+
+	Stream << "BASE CLASS 1 - FIELD BASE 1 [" << MFieldBase1 << L"].";
+
+	return(Stream.str());
 }
 //----------------------------------------------------------------------------------------------------------------------

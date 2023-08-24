@@ -1,24 +1,30 @@
 //----------------------------------------------------------------------------------------------------------------------
-#include "CTemplateTemplateSpecialMethods2.h"
+#include "CTemplateMethodsNonEquivalence3.h"
 //----------------------------------------------------------------------------------------------------------------------
 using namespace std;
 //----------------------------------------------------------------------------------------------------------------------
 //----------------------------------------------------------------------------------------------------------------------
 //----------------------------------------------------------------------------------------------------------------------
-CTemplateTemplateSpecialMethods2::CTemplateTemplateSpecialMethods2(const CTemplateTemplateSpecialMethods2&& Value) noexcept
+CTemplateMethodsNonEquivalence3::CTemplateMethodsNonEquivalence3(const wstring& Value)
+	: MValue(Value)
+{
+	std::wcout << L"NON-TEMPLATE CONSTRUCTOR CALLED !" << std::endl;
+}
+//----------------------------------------------------------------------------------------------------------------------
+CTemplateMethodsNonEquivalence3::CTemplateMethodsNonEquivalence3(const CTemplateMethodsNonEquivalence3&& Value) noexcept
 	: MValue(move(Value.MValue))
 {
 	std::wcout << L"NON-TEMPLATE MOVE CONSTRUCTOR CALLED !" << std::endl;
 }
 //----------------------------------------------------------------------------------------------------------------------
-CTemplateTemplateSpecialMethods2::~CTemplateTemplateSpecialMethods2(void) noexcept
+CTemplateMethodsNonEquivalence3::~CTemplateMethodsNonEquivalence3(void) noexcept
 {
 	wcout << L"DESTRUCTOR CALLED !" << endl;
 }
 //----------------------------------------------------------------------------------------------------------------------
 //----------------------------------------------------------------------------------------------------------------------
 //----------------------------------------------------------------------------------------------------------------------
-const wstring& CTemplateTemplateSpecialMethods2::GetValue(void) const noexcept
+const wstring& CTemplateMethodsNonEquivalence3::GetValue(void) const noexcept
 {
 	return(MValue);
 }
