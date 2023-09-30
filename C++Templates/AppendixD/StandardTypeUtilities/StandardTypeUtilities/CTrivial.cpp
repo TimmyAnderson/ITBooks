@@ -33,6 +33,6 @@ void CTrivial::SetField(int Field)
 //----------------------------------------------------------------------------------------------------------------------
 void CTrivial::SomeMethod(void)
 {
-	wcout << "METHOD [void SomeMethod(void)] CALLED." << endl;
+	wcout << L"METHOD [void SomeMethod(void)] CALLED." << endl;
 }
 //----------------------------------------------------------------------------------------------------------------------

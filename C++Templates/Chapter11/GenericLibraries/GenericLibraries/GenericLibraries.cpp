@@ -38,7 +38,7 @@ using namespace std;
 template<typename TIterator, typename TCallable>
 void TemplateCallableObjects(TIterator Begin, TIterator End, TCallable Callable)
 {
-	wcout << "CALLABLE TYPE [" << GetTypeInfoName<TCallable>() << L"]." << endl;
+	wcout << L"CALLABLE TYPE [" << GetTypeInfoName<TCallable>() << L"]." << endl;
 
 	size_t														Index=1;
 
@@ -51,7 +51,7 @@ void TemplateCallableObjects(TIterator Begin, TIterator End, TCallable Callable)
 //----------------------------------------------------------------------------------------------------------------------
 void FunctionObjectTypeFunction(size_t Index, double Value)
 {
-	wcout << L"FUNCTION - INDEX [" << Index << "] VALUE [" << Value << "]." << endl;
+	wcout << L"FUNCTION - INDEX [" << Index << L"] VALUE [" << Value << L"]." << endl;
 }
 //----------------------------------------------------------------------------------------------------------------------
 void TestCallableObjects(void)
@@ -62,7 +62,7 @@ void TestCallableObjects(void)
 
 	{
 		// !!! CALLABLE TYPE NIE JE POINTER na FUNCTION TYPE, ani REFERENCE na FUNCTION TYPE, ale FUNCTION TYPE.
-		wcout << "MAIN - CALLABLE TYPE [" << GetTypeInfoName<decltype(FunctionObjectTypeFunction)>() << L"]." << endl;
+		wcout << L"MAIN - CALLABLE TYPE [" << GetTypeInfoName<decltype(FunctionObjectTypeFunction)>() << L"]." << endl;
 
 		// !!! Ako FUNCTION OBJECT je pouzity FUNCTION TYPE.
 		// !!!!! FUNCTION TYPE je AUTOMATICKY DECAYED na POINTER NA FUNCTION TYPE.
@@ -73,7 +73,7 @@ void TestCallableObjects(void)
 
 	{
 		// !!! CALLABLE TYPE JE POINTER na FUNCTION TYPE.
-		wcout << "MAIN - CALLABLE TYPE [" << GetTypeInfoName<decltype(&FunctionObjectTypeFunction)>() << L"]." << endl;
+		wcout << L"MAIN - CALLABLE TYPE [" << GetTypeInfoName<decltype(&FunctionObjectTypeFunction)>() << L"]." << endl;
 
 		// !!! Ako FUNCTION OBJECT je pouzity POINTER na FUNCTION TYPE.
 		TemplateCallableObjects(Numbers.cbegin(),Numbers.cend(),&FunctionObjectTypeFunction);
@@ -86,7 +86,7 @@ void TestCallableObjects(void)
 
 		CallableType											Callback=FunctionObjectTypeFunction;
 
-		wcout << "MAIN - CALLABLE TYPE [" << GetTypeInfoName<CallableType>() << L"]." << endl;
+		wcout << L"MAIN - CALLABLE TYPE [" << GetTypeInfoName<CallableType>() << L"]." << endl;
 
 		// !!! Ako FUNCTION OBJECT je pouzity REFERENCE na FUNCTION TYPE.
 		// !!!!! REFERENCE na FUNCTION TYPE je AUTOMATICKY DECAYED na POINTER NA FUNCTION TYPE.
@@ -125,7 +125,7 @@ void TestCallableObjects(void)
 	{
 		auto													Callback=[](size_t Index, double Value)
 		{
-			wcout << L"LAMBDA FUNCTION - INDEX [" << Index << "] VALUE [" << Value << "]." << endl;
+			wcout << L"LAMBDA FUNCTION - INDEX [" << Index << L"] VALUE [" << Value << L"]." << endl;
 		};
 
 		// !!! Ako FUNCTION OBJECT je pouzita LAMBDA FUNCTION.
@@ -142,7 +142,7 @@ void TestCallableObjects(void)
 template<typename TIterator, typename TCallable, typename... TArguments>
 void TemplateCallableObjectsNonStaticMethods1(TIterator Begin, TIterator End, TCallable Callable, TArguments... Arguments)
 {
-	wcout << "CALLABLE TYPE [" << GetTypeInfoName<TCallable>() << L"]." << endl;
+	wcout << L"CALLABLE TYPE [" << GetTypeInfoName<TCallable>() << L"]." << endl;
 
 	size_t														Index=1;
 
@@ -151,7 +151,7 @@ void TemplateCallableObjectsNonStaticMethods1(TIterator Begin, TIterator End, TC
 		// !!!!! Pomocou TEMPLATE FUNCTION [invoke()] sa vola CALLABLE OBJECT, ktory moze byt bud NON-STATIC METHOD, alebo aj lubovolny iny CALLABLE OBJECT.
 		int														Result=invoke(Callable,Arguments...,Index,*Iterator);
 
-		wcout << "RESULT - INDEX [" << Index << L"] RETURN VALUE [" << Result << L"]." << endl;
+		wcout << L"RESULT - INDEX [" << Index << L"] RETURN VALUE [" << Result << L"]." << endl;
 	}
 }
 //----------------------------------------------------------------------------------------------------------------------
@@ -160,7 +160,7 @@ void TemplateCallableObjectsNonStaticMethods1(TIterator Begin, TIterator End, TC
 template<typename TIterator, typename TCallable, typename... TArguments>
 void TemplateCallableObjectsNonStaticMethods2(TIterator Begin, TIterator End, TCallable Callable, TArguments... Arguments)
 {
-	wcout << "CALLABLE TYPE [" << GetTypeInfoName<TCallable>() << L"]." << endl;
+	wcout << L"CALLABLE TYPE [" << GetTypeInfoName<TCallable>() << L"]." << endl;
 
 	size_t														Index=1;
 
@@ -169,13 +169,13 @@ void TemplateCallableObjectsNonStaticMethods2(TIterator Begin, TIterator End, TC
 		// !!!!! Pomocou TEMPLATE FUNCTION [invoke_r()] sa vola CALLABLE OBJECT, ktory moze byt bud NON-STATIC METHOD, alebo aj lubovolny iny CALLABLE OBJECT.
 		double													Result=invoke_r<double>(Callable,Arguments...,Index,*Iterator);
 
-		wcout << "RESULT - INDEX [" << Index << L"] RETURN VALUE [" << Result << L"]." << endl;
+		wcout << L"RESULT - INDEX [" << Index << L"] RETURN VALUE [" << Result << L"]." << endl;
 	}
 }
 //----------------------------------------------------------------------------------------------------------------------
 int FunctionObjectCallableObjectsNonStaticMethods(wstring Value1, wstring Value2, size_t Index, double Value)
 {
-	wcout << L"FUNCTION - VALUE 1 [" << Value1 << L"] VALUE 2 [" << Value2 << L"] INDEX [" << Index << "] VALUE [" << Value << "]." << endl;
+	wcout << L"FUNCTION - VALUE 1 [" << Value1 << L"] VALUE 2 [" << Value2 << L"] INDEX [" << Index << L"] VALUE [" << Value << L"]." << endl;
 
 	return(300);
 }
@@ -257,12 +257,12 @@ decltype(auto) TemplateCallableObjectsWithNoPerfectForwarding2(TCallable Callabl
 //----------------------------------------------------------------------------------------------------------------------
 void FunctionCallableObjectsWithNoPerfectForwarding1(const CClassWithCopyAndMoveSemantics& Value1, const CClassWithCopyAndMoveSemantics& Value2)
 {
-	wcout << L"FUNCTION - VALUE 1->FIELD 1 [" << Value1.GetField1() << L"] VALUE 1->FIELD 2 [" << Value2.GetField2() << L"] VALUE 2->FIELD 1 [" << Value1.GetField1() << "] VALUE 2->FIELD 2 [" << Value2.GetField2() << "]." << endl;
+	wcout << L"FUNCTION - VALUE 1->FIELD 1 [" << Value1.GetField1() << L"] VALUE 1->FIELD 2 [" << Value2.GetField2() << L"] VALUE 2->FIELD 1 [" << Value1.GetField1() << L"] VALUE 2->FIELD 2 [" << Value2.GetField2() << L"]." << endl;
 }
 //----------------------------------------------------------------------------------------------------------------------
 int FunctionCallableObjectsWithNoPerfectForwarding2(const CClassWithCopyAndMoveSemantics& Value1, const CClassWithCopyAndMoveSemantics& Value2)
 {
-	wcout << L"FUNCTION - VALUE 1->FIELD 1 [" << Value1.GetField1() << L"] VALUE 1->FIELD 2 [" << Value2.GetField2() << L"] VALUE 2->FIELD 1 [" << Value1.GetField1() << "] VALUE 2->FIELD 2 [" << Value2.GetField2() << "]." << endl;
+	wcout << L"FUNCTION - VALUE 1->FIELD 1 [" << Value1.GetField1() << L"] VALUE 1->FIELD 2 [" << Value2.GetField2() << L"] VALUE 2->FIELD 1 [" << Value1.GetField1() << L"] VALUE 2->FIELD 2 [" << Value2.GetField2() << L"]." << endl;
 
 	return(999);
 }
@@ -348,12 +348,12 @@ decltype(auto) TemplateCallableObjectsWithPerfectForwardingInvoke2(TCallable&& C
 //----------------------------------------------------------------------------------------------------------------------
 void FunctionCallableObjectsWithPerfectForwardingInvoke1(const CClassWithCopyAndMoveSemantics& Value1, const CClassWithCopyAndMoveSemantics& Value2)
 {
-	wcout << L"FUNCTION - VALUE 1->FIELD 1 [" << Value1.GetField1() << L"] VALUE 1->FIELD 2 [" << Value2.GetField2() << L"] VALUE 2->FIELD 1 [" << Value1.GetField1() << "] VALUE 2->FIELD 2 [" << Value2.GetField2() << "]." << endl;
+	wcout << L"FUNCTION - VALUE 1->FIELD 1 [" << Value1.GetField1() << L"] VALUE 1->FIELD 2 [" << Value2.GetField2() << L"] VALUE 2->FIELD 1 [" << Value1.GetField1() << L"] VALUE 2->FIELD 2 [" << Value2.GetField2() << L"]." << endl;
 }
 //----------------------------------------------------------------------------------------------------------------------
 int FunctionCallableObjectsWithPerfectForwardingInvoke2(const CClassWithCopyAndMoveSemantics& Value1, const CClassWithCopyAndMoveSemantics& Value2)
 {
-	wcout << L"FUNCTION - VALUE 1->FIELD 1 [" << Value1.GetField1() << L"] VALUE 1->FIELD 2 [" << Value2.GetField2() << L"] VALUE 2->FIELD 1 [" << Value1.GetField1() << "] VALUE 2->FIELD 2 [" << Value2.GetField2() << "]." << endl;
+	wcout << L"FUNCTION - VALUE 1->FIELD 1 [" << Value1.GetField1() << L"] VALUE 1->FIELD 2 [" << Value2.GetField2() << L"] VALUE 2->FIELD 1 [" << Value1.GetField1() << L"] VALUE 2->FIELD 2 [" << Value2.GetField2() << L"]." << endl;
 
 	return(999);
 }
@@ -435,12 +435,12 @@ TReturnValue TemplateCallableObjectsWithPerfectForwardingInvokeReturnValue2(TCal
 //----------------------------------------------------------------------------------------------------------------------
 void FunctionCallableObjectsWithPerfectForwardingInvokeReturnValue1(const CClassWithCopyAndMoveSemantics& Value1, const CClassWithCopyAndMoveSemantics& Value2)
 {
-	wcout << L"FUNCTION - VALUE 1->FIELD 1 [" << Value1.GetField1() << L"] VALUE 1->FIELD 2 [" << Value2.GetField2() << L"] VALUE 2->FIELD 1 [" << Value1.GetField1() << "] VALUE 2->FIELD 2 [" << Value2.GetField2() << "]." << endl;
+	wcout << L"FUNCTION - VALUE 1->FIELD 1 [" << Value1.GetField1() << L"] VALUE 1->FIELD 2 [" << Value2.GetField2() << L"] VALUE 2->FIELD 1 [" << Value1.GetField1() << L"] VALUE 2->FIELD 2 [" << Value2.GetField2() << L"]." << endl;
 }
 //----------------------------------------------------------------------------------------------------------------------
 int FunctionCallableObjectsWithPerfectForwardingInvokeReturnValue2(const CClassWithCopyAndMoveSemantics& Value1, const CClassWithCopyAndMoveSemantics& Value2)
 {
-	wcout << L"FUNCTION - VALUE 1->FIELD 1 [" << Value1.GetField1() << L"] VALUE 1->FIELD 2 [" << Value2.GetField2() << L"] VALUE 2->FIELD 1 [" << Value1.GetField1() << "] VALUE 2->FIELD 2 [" << Value2.GetField2() << "]." << endl;
+	wcout << L"FUNCTION - VALUE 1->FIELD 1 [" << Value1.GetField1() << L"] VALUE 1->FIELD 2 [" << Value2.GetField2() << L"] VALUE 2->FIELD 1 [" << Value1.GetField1() << L"] VALUE 2->FIELD 2 [" << Value2.GetField2() << L"]." << endl;
 
 	return(999);
 }
@@ -502,7 +502,7 @@ void TestPlaceholderTypeSpecifiersInitializers(void)
 
 		auto													MACRO_VALUE;
 
-		wcout << L"CODE [auto " << MACRO_STRINGIFY_TO_WIDE_STRING(MACRO_VALUE) << L"] TYPE [" << GetTypeInfoName<decltype(Value)>() << "] VALUE [" << Value << L"]." << endl;
+		wcout << L"CODE [auto " << MACRO_STRINGIFY_TO_WIDE_STRING(MACRO_VALUE) << L"] TYPE [" << GetTypeInfoName<decltype(Value)>() << L"] VALUE [" << Value << L"]." << endl;
 
 		#undef MACRO_VALUE
 	}
@@ -515,7 +515,7 @@ void TestPlaceholderTypeSpecifiersInitializers(void)
 
 		auto													MACRO_VALUE;
 
-		wcout << L"CODE [auto " << MACRO_STRINGIFY_TO_WIDE_STRING(MACRO_VALUE) << L"] TYPE [" << GetTypeInfoName<decltype(Value)>() << "] VALUE [" << Value << L"]." << endl;
+		wcout << L"CODE [auto " << MACRO_STRINGIFY_TO_WIDE_STRING(MACRO_VALUE) << L"] TYPE [" << GetTypeInfoName<decltype(Value)>() << L"] VALUE [" << Value << L"]." << endl;
 
 		#undef MACRO_VALUE
 	}
@@ -528,7 +528,7 @@ void TestPlaceholderTypeSpecifiersInitializers(void)
 
 		auto													MACRO_VALUE;
 
-		wcout << L"CODE [auto " << MACRO_STRINGIFY_TO_WIDE_STRING(MACRO_VALUE) << L"] TYPE [" << GetTypeInfoName<decltype(Value)>() << "] VALUE [" << Value << L"]." << endl;
+		wcout << L"CODE [auto " << MACRO_STRINGIFY_TO_WIDE_STRING(MACRO_VALUE) << L"] TYPE [" << GetTypeInfoName<decltype(Value)>() << L"] VALUE [" << Value << L"]." << endl;
 
 		#undef MACRO_VALUE
 	}
@@ -541,7 +541,7 @@ void TestPlaceholderTypeSpecifiersInitializers(void)
 
 		auto													MACRO_VALUE;
 
-		wcout << L"CODE [auto " << MACRO_STRINGIFY_TO_WIDE_STRING(MACRO_VALUE) << L"] TYPE [" << GetTypeInfoName<decltype(Value)>() << "] VALUE [" << Value << L"]." << endl;
+		wcout << L"CODE [auto " << MACRO_STRINGIFY_TO_WIDE_STRING(MACRO_VALUE) << L"] TYPE [" << GetTypeInfoName<decltype(Value)>() << L"] VALUE [" << Value << L"]." << endl;
 
 		#undef MACRO_VALUE
 	}
@@ -554,7 +554,7 @@ void TestPlaceholderTypeSpecifiersInitializers(void)
 
 		auto													MACRO_VALUE;
 
-		wcout << L"CODE [auto " << MACRO_STRINGIFY_TO_WIDE_STRING(MACRO_VALUE) << L"] TYPE [" << GetTypeInfoName<decltype(Value)>() << "] VALUE.SIZE [" << Value.size() << L"]." << endl;
+		wcout << L"CODE [auto " << MACRO_STRINGIFY_TO_WIDE_STRING(MACRO_VALUE) << L"] TYPE [" << GetTypeInfoName<decltype(Value)>() << L"] VALUE.SIZE [" << Value.size() << L"]." << endl;
 
 		#undef MACRO_VALUE
 	}
@@ -569,7 +569,7 @@ void TestPlaceholderTypeSpecifiersInitializers(void)
 
 		auto													MACRO_VALUE;
 
-		wcout << L"CODE [auto " << MACRO_STRINGIFY_TO_WIDE_STRING(MACRO_VALUE) << L"] TYPE [" << GetTypeInfoName<decltype(Value)>() << "] VALUE [" << Value << L"]." << endl;
+		wcout << L"CODE [auto " << MACRO_STRINGIFY_TO_WIDE_STRING(MACRO_VALUE) << L"] TYPE [" << GetTypeInfoName<decltype(Value)>() << L"] VALUE [" << Value << L"]." << endl;
 
 		#undef MACRO_VALUE
 	}
@@ -582,7 +582,7 @@ void TestPlaceholderTypeSpecifiersInitializers(void)
 
 		decltype(auto)											MACRO_VALUE;
 
-		wcout << L"CODE [decltype(auto) " << MACRO_STRINGIFY_TO_WIDE_STRING(MACRO_VALUE) << L"] TYPE [" << GetTypeInfoName<decltype(Value)>() << "] VALUE [" << Value << L"]." << endl;
+		wcout << L"CODE [decltype(auto) " << MACRO_STRINGIFY_TO_WIDE_STRING(MACRO_VALUE) << L"] TYPE [" << GetTypeInfoName<decltype(Value)>() << L"] VALUE [" << Value << L"]." << endl;
 
 		#undef MACRO_VALUE
 	}
@@ -595,7 +595,7 @@ void TestPlaceholderTypeSpecifiersInitializers(void)
 
 		decltype(auto)											MACRO_VALUE;
 
-		wcout << L"CODE [decltype(auto) " << MACRO_STRINGIFY_TO_WIDE_STRING(MACRO_VALUE) << L"] TYPE [" << GetTypeInfoName<decltype(Value)>() << "] VALUE [" << Value << L"]." << endl;
+		wcout << L"CODE [decltype(auto) " << MACRO_STRINGIFY_TO_WIDE_STRING(MACRO_VALUE) << L"] TYPE [" << GetTypeInfoName<decltype(Value)>() << L"] VALUE [" << Value << L"]." << endl;
 
 		#undef MACRO_VALUE
 	}
@@ -608,7 +608,7 @@ void TestPlaceholderTypeSpecifiersInitializers(void)
 
 		decltype(auto)											MACRO_VALUE;
 
-		wcout << L"CODE [decltype(auto) " << MACRO_STRINGIFY_TO_WIDE_STRING(MACRO_VALUE) << L"] TYPE [" << GetTypeInfoName<decltype(Value)>() << "] VALUE [" << Value << L"]." << endl;
+		wcout << L"CODE [decltype(auto) " << MACRO_STRINGIFY_TO_WIDE_STRING(MACRO_VALUE) << L"] TYPE [" << GetTypeInfoName<decltype(Value)>() << L"] VALUE [" << Value << L"]." << endl;
 
 		#undef MACRO_VALUE
 	}
@@ -623,7 +623,7 @@ void TestPlaceholderTypeSpecifiersInitializers(void)
 
 		decltype(auto)											MACRO_VALUE;
 
-		wcout << L"CODE [decltype(auto) " << MACRO_STRINGIFY_TO_WIDE_STRING(MACRO_VALUE) << L"] TYPE [" << GetTypeInfoName<decltype(Value)>() << "] VALUE [" << Value << L"]." << endl;
+		wcout << L"CODE [decltype(auto) " << MACRO_STRINGIFY_TO_WIDE_STRING(MACRO_VALUE) << L"] TYPE [" << GetTypeInfoName<decltype(Value)>() << L"] VALUE [" << Value << L"]." << endl;
 
 		#undef MACRO_VALUE
 	}
@@ -638,7 +638,7 @@ void TestPlaceholderTypeSpecifiersInitializers(void)
 
 		decltype(auto)											MACRO_VALUE;
 
-		wcout << L"CODE [decltype(auto) " << MACRO_STRINGIFY_TO_WIDE_STRING(MACRO_VALUE) << L"] TYPE [" << GetTypeInfoName<decltype(Value)>() << "] VALUE [" << Value << L"]." << endl;
+		wcout << L"CODE [decltype(auto) " << MACRO_STRINGIFY_TO_WIDE_STRING(MACRO_VALUE) << L"] TYPE [" << GetTypeInfoName<decltype(Value)>() << L"] VALUE [" << Value << L"]." << endl;
 
 		#undef MACRO_VALUE
 	}
@@ -653,7 +653,7 @@ void TestPlaceholderTypeSpecifiersInitializers(void)
 
 		decltype(auto)											MACRO_VALUE;
 
-		wcout << L"CODE [decltype(auto) " << MACRO_STRINGIFY_TO_WIDE_STRING(MACRO_VALUE) << L"] TYPE [" << GetTypeInfoName<decltype(Value)>() << "] VALUE [" << Value << L"]." << endl;
+		wcout << L"CODE [decltype(auto) " << MACRO_STRINGIFY_TO_WIDE_STRING(MACRO_VALUE) << L"] TYPE [" << GetTypeInfoName<decltype(Value)>() << L"] VALUE [" << Value << L"]." << endl;
 
 		#undef MACRO_VALUE
 	}
@@ -668,7 +668,7 @@ void TestPlaceholderTypeSpecifiersInitializers(void)
 
 		decltype(auto)											MACRO_VALUE;
 
-		wcout << L"CODE [decltype(auto) " << MACRO_STRINGIFY_TO_WIDE_STRING(MACRO_VALUE) << L"] TYPE [" << GetTypeInfoName<decltype(Value)>() << "] VALUE [" << Value << L"]." << endl;
+		wcout << L"CODE [decltype(auto) " << MACRO_STRINGIFY_TO_WIDE_STRING(MACRO_VALUE) << L"] TYPE [" << GetTypeInfoName<decltype(Value)>() << L"] VALUE [" << Value << L"]." << endl;
 
 		#undef MACRO_VALUE
 	}
@@ -784,7 +784,7 @@ void TestPlaceholderTypeSpecifiersReturnValues(void)
 
 		auto													ReturnValue=MACRO_VALUE;
 
-		wcout << L"CODE [auto " << MACRO_STRINGIFY_TO_WIDE_STRING(MACRO_VALUE) << L"] TYPE [" << GetTypeInfoName<decltype(MACRO_VALUE)>() << "] VALUE [" << ReturnValue << L"]." << endl;
+		wcout << L"CODE [auto " << MACRO_STRINGIFY_TO_WIDE_STRING(MACRO_VALUE) << L"] TYPE [" << GetTypeInfoName<decltype(MACRO_VALUE)>() << L"] VALUE [" << ReturnValue << L"]." << endl;
 
 		#undef MACRO_VALUE
 	}
@@ -797,7 +797,7 @@ void TestPlaceholderTypeSpecifiersReturnValues(void)
 
 		auto													ReturnValue=MACRO_VALUE;
 
-		wcout << L"CODE [auto " << MACRO_STRINGIFY_TO_WIDE_STRING(MACRO_VALUE) << L"] TYPE [" << GetTypeInfoName<decltype(MACRO_VALUE)>() << "] VALUE [" << ReturnValue << L"]." << endl;
+		wcout << L"CODE [auto " << MACRO_STRINGIFY_TO_WIDE_STRING(MACRO_VALUE) << L"] TYPE [" << GetTypeInfoName<decltype(MACRO_VALUE)>() << L"] VALUE [" << ReturnValue << L"]." << endl;
 
 		#undef MACRO_VALUE
 	}
@@ -810,7 +810,7 @@ void TestPlaceholderTypeSpecifiersReturnValues(void)
 
 		auto													ReturnValue=MACRO_VALUE;
 
-		wcout << L"CODE [auto " << MACRO_STRINGIFY_TO_WIDE_STRING(MACRO_VALUE) << L"] TYPE [" << GetTypeInfoName<decltype(MACRO_VALUE)>() << "] VALUE [" << ReturnValue << L"]." << endl;
+		wcout << L"CODE [auto " << MACRO_STRINGIFY_TO_WIDE_STRING(MACRO_VALUE) << L"] TYPE [" << GetTypeInfoName<decltype(MACRO_VALUE)>() << L"] VALUE [" << ReturnValue << L"]." << endl;
 
 		#undef MACRO_VALUE
 	}
@@ -823,7 +823,7 @@ void TestPlaceholderTypeSpecifiersReturnValues(void)
 
 		auto													ReturnValue=MACRO_VALUE;
 
-		wcout << L"CODE [decltype(auto) " << MACRO_STRINGIFY_TO_WIDE_STRING(MACRO_VALUE) << L"] TYPE [" << GetTypeInfoName<decltype(MACRO_VALUE)>() << "] VALUE [" << ReturnValue << L"]." << endl;
+		wcout << L"CODE [decltype(auto) " << MACRO_STRINGIFY_TO_WIDE_STRING(MACRO_VALUE) << L"] TYPE [" << GetTypeInfoName<decltype(MACRO_VALUE)>() << L"] VALUE [" << ReturnValue << L"]." << endl;
 
 		#undef MACRO_VALUE
 	}
@@ -836,7 +836,7 @@ void TestPlaceholderTypeSpecifiersReturnValues(void)
 
 		auto													ReturnValue=MACRO_VALUE;
 
-		wcout << L"CODE [decltype(auto) " << MACRO_STRINGIFY_TO_WIDE_STRING(MACRO_VALUE) << L"] TYPE [" << GetTypeInfoName<decltype(MACRO_VALUE)>() << "] VALUE [" << ReturnValue << L"]." << endl;
+		wcout << L"CODE [decltype(auto) " << MACRO_STRINGIFY_TO_WIDE_STRING(MACRO_VALUE) << L"] TYPE [" << GetTypeInfoName<decltype(MACRO_VALUE)>() << L"] VALUE [" << ReturnValue << L"]." << endl;
 
 		#undef MACRO_VALUE
 	}
@@ -849,7 +849,7 @@ void TestPlaceholderTypeSpecifiersReturnValues(void)
 
 		auto													ReturnValue=MACRO_VALUE;
 
-		wcout << L"CODE [decltype(auto) " << MACRO_STRINGIFY_TO_WIDE_STRING(MACRO_VALUE) << L"] TYPE [" << GetTypeInfoName<decltype(MACRO_VALUE)>() << "] VALUE [" << ReturnValue << L"]." << endl;
+		wcout << L"CODE [decltype(auto) " << MACRO_STRINGIFY_TO_WIDE_STRING(MACRO_VALUE) << L"] TYPE [" << GetTypeInfoName<decltype(MACRO_VALUE)>() << L"] VALUE [" << ReturnValue << L"]." << endl;
 
 		#undef MACRO_VALUE
 	}
@@ -862,7 +862,7 @@ void TestPlaceholderTypeSpecifiersReturnValues(void)
 
 		auto													ReturnValue=MACRO_VALUE;
 
-		wcout << L"CODE [decltype(auto) " << MACRO_STRINGIFY_TO_WIDE_STRING(MACRO_VALUE) << L"] TYPE [" << GetTypeInfoName<decltype(MACRO_VALUE)>() << "] VALUE [" << ReturnValue << L"]." << endl;
+		wcout << L"CODE [decltype(auto) " << MACRO_STRINGIFY_TO_WIDE_STRING(MACRO_VALUE) << L"] TYPE [" << GetTypeInfoName<decltype(MACRO_VALUE)>() << L"] VALUE [" << ReturnValue << L"]." << endl;
 
 		#undef MACRO_VALUE
 	}
@@ -877,7 +877,7 @@ void TestPlaceholderTypeSpecifiersReturnValues(void)
 
 		auto													ReturnValue=MACRO_VALUE;
 
-		wcout << L"CODE [decltype(auto) " << MACRO_STRINGIFY_TO_WIDE_STRING(MACRO_VALUE) << L"] TYPE [" << GetTypeInfoName<decltype(MACRO_VALUE)>() << "] VALUE [" << ReturnValue << L"]." << endl;
+		wcout << L"CODE [decltype(auto) " << MACRO_STRINGIFY_TO_WIDE_STRING(MACRO_VALUE) << L"] TYPE [" << GetTypeInfoName<decltype(MACRO_VALUE)>() << L"] VALUE [" << ReturnValue << L"]." << endl;
 
 		#undef MACRO_VALUE
 	}
@@ -892,7 +892,7 @@ void TestPlaceholderTypeSpecifiersReturnValues(void)
 
 		auto													ReturnValue=MACRO_VALUE;
 
-		wcout << L"CODE [decltype(auto) " << MACRO_STRINGIFY_TO_WIDE_STRING(MACRO_VALUE) << L"] TYPE [" << GetTypeInfoName<decltype(MACRO_VALUE)>() << "] VALUE [" << ReturnValue << L"]." << endl;
+		wcout << L"CODE [decltype(auto) " << MACRO_STRINGIFY_TO_WIDE_STRING(MACRO_VALUE) << L"] TYPE [" << GetTypeInfoName<decltype(MACRO_VALUE)>() << L"] VALUE [" << ReturnValue << L"]." << endl;
 
 		#undef MACRO_VALUE
 	}
@@ -995,16 +995,16 @@ void TestTypeTraitAddressOf(void)
 
 		PrintLineSeparator();
 
-		wcout << "OBJECT [" << *(Object.GetData()) << L"]." << endl;
+		wcout << L"OBJECT [" << *(Object.GetData()) << L"]." << endl;
 
-		wcout << "POINTER 1 [" << Pointer1 << L"]." << endl;
+		wcout << L"POINTER 1 [" << Pointer1 << L"]." << endl;
 
 		PrintLineSeparator();
 
 		// !!! NEVOLA sa CUSTOM OPERATOR [OPERATOR&].
 		CAddressOf*												Pointer2=addressof(Object);
 
-		wcout << "POINTER 2 [" << Pointer2 << L"]." << endl;
+		wcout << L"POINTER 2 [" << Pointer2 << L"]." << endl;
 	}
 
 	PrintLineSeparator();

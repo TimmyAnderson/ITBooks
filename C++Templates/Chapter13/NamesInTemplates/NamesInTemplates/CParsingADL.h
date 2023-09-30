@@ -47,7 +47,7 @@ namespace ParsingADL
 	template<int VALUE>
 	void ParsingADLTemplateFunction1(CParsingADL Value)
 	{
-		std::wcout << "FUNCTION 1 - CParsingADL.Value [" << Value.GetValue() << L"] VALUE [" << VALUE << L"]." << std::endl;
+		std::wcout << L"FUNCTION 1 - CParsingADL.Value [" << Value.GetValue() << L"] VALUE [" << VALUE << L"]." << std::endl;
 	}
 //----------------------------------------------------------------------------------------------------------------------
 	template<typename TType>
@@ -59,7 +59,7 @@ namespace ParsingADL
 	template<int VALUE>
 	void ParsingADLTemplateFunction2(CParsingADL Value)
 	{
-		std::wcout << "FUNCTION 2 - CParsingADL.Value [" << Value.GetValue() << L"] VALUE [" << VALUE << L"]." << std::endl;
+		std::wcout << L"FUNCTION 2 - CParsingADL.Value [" << Value.GetValue() << L"] VALUE [" << VALUE << L"]." << std::endl;
 	}
 //----------------------------------------------------------------------------------------------------------------------
 }

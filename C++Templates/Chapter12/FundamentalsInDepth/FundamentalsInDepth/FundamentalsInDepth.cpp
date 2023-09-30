@@ -212,7 +212,7 @@ void TestTemplateUnion(void)
 	{
 		UTemplateUnion<int,double>								Union(100);
 
-		wcout << "UNION FIELD 1 [" << Union.GetField1() << L"] !" << endl;
+		wcout << L"UNION FIELD 1 [" << Union.GetField1() << L"] !" << endl;
 	}
 
 	PrintLineSeparator();
@@ -220,7 +220,7 @@ void TestTemplateUnion(void)
 	{
 		UTemplateUnion<int,double>								Union(123.456);
 
-		wcout << "UNION FIELD 2 [" << Union.GetField2() << L"] !" << endl;
+		wcout << L"UNION FIELD 2 [" << Union.GetField2() << L"] !" << endl;
 	}
 
 	PrintLineSeparator();
@@ -231,19 +231,19 @@ void TestTemplateUnion(void)
 template<typename TType>
 void TemplateTemplateDefaultParameters1(TType Value=100)
 {
-	wcout << "FUNCTION 1 - VALUE [" << Value << L"] !" << endl;
+	wcout << L"FUNCTION 1 - VALUE [" << Value << L"] !" << endl;
 }
 //----------------------------------------------------------------------------------------------------------------------
 template<typename TType>
 void TemplateTemplateDefaultParameters2(TType Value=TType())
 {
-	wcout << "FUNCTION 2 - VALUE [" << Value << L"] !" << endl;
+	wcout << L"FUNCTION 2 - VALUE [" << Value << L"] !" << endl;
 }
 //----------------------------------------------------------------------------------------------------------------------
 template<typename TType>
 void TemplateTemplateDefaultParameters3(TType Value=TType{})
 {
-	wcout << "FUNCTION 3 - VALUE [" << Value << L"] !" << endl;
+	wcout << L"FUNCTION 3 - VALUE [" << Value << L"] !" << endl;
 }
 //----------------------------------------------------------------------------------------------------------------------
 void TestTemplateDefaultParameters(void)
@@ -1719,7 +1719,7 @@ void TemplateTemplateArgumentsEquivalence(CTemplateArgumentEquivalence<int,VALUE
 {
 	wcout << MACRO_FUNCTION_PROTOTYPE << endl;
 
-	wcout << "FUNCTION 1 - " << Value.ToString() << endl;
+	wcout << L"FUNCTION 1 - " << Value.ToString() << endl;
 }
 /**/
 //----------------------------------------------------------------------------------------------------------------------
@@ -1731,7 +1731,7 @@ void TemplateTemplateArgumentsEquivalence(CTemplateArgumentEquivalence<int,VALUE
 {
 	wcout << MACRO_FUNCTION_PROTOTYPE << endl;
 
-	wcout << "FUNCTION 2 - " << Value.ToString() << endl;
+	wcout << L"FUNCTION 2 - " << Value.ToString() << endl;
 }
 */
 //----------------------------------------------------------------------------------------------------------------------
@@ -1773,12 +1773,12 @@ void TestTemplateMethodsNonEquivalence(void)
 	{
 		CTemplateMethodsNonEquivalence1							Object(L"Timmy");
 
-		wcout << "OBJECT [" << Object.GetValue() << L"] !" << endl;
+		wcout << L"OBJECT [" << Object.GetValue() << L"] !" << endl;
 
 		// !!!!! NEVOLA sa TEMPLATE COPY CONSTRUCTOR, pretoze TEMPLATE COPY/MOVE CONSTRUCTORS a TEMPLATE OPERATOR [COPY/MOVE OPERATOR=] su C++ IGNOROVANE, a namiesto nich su volane DEFAULT COPY/MOVE CONSTRUCTORS a DEFAULT OPERATOR [COPY/MOVE OPERATOR=], ktore generuje COMPILER.
 		CTemplateMethodsNonEquivalence1							CopyObject(Object);
 
-		wcout << "COPY OBJECT [" << CopyObject.GetValue() << L"] !" << endl;
+		wcout << L"COPY OBJECT [" << CopyObject.GetValue() << L"] !" << endl;
 	}
 
 	PrintLineSeparator();
@@ -1786,12 +1786,12 @@ void TestTemplateMethodsNonEquivalence(void)
 	{
 		CTemplateMethodsNonEquivalence2							Object(L"Timmy");
 
-		wcout << "OBJECT [" << Object.GetValue() << L"] !" << endl;
+		wcout << L"OBJECT [" << Object.GetValue() << L"] !" << endl;
 
 		// !!!!! Vdaka pouzitiu DELETE COPY CONSTRUCTOR, ktory ma aplikovany aj KEYWORD [volatile] je mozne prinutit C++, aby volal pri COPY SEMANTICS TEMPLATE CONSTRUCTOR.
 		CTemplateMethodsNonEquivalence2							CopyObject(Object);
 
-		wcout << "COPY OBJECT [" << CopyObject.GetValue() << L"] !" << endl;
+		wcout << L"COPY OBJECT [" << CopyObject.GetValue() << L"] !" << endl;
 	}
 
 	PrintLineSeparator();
@@ -1799,12 +1799,12 @@ void TestTemplateMethodsNonEquivalence(void)
 	{
 		CTemplateMethodsNonEquivalence3							Object(wstring(L"Timmy"));
 
-		wcout << "OBJECT [" << Object.GetValue() << L"] !" << endl;
+		wcout << L"OBJECT [" << Object.GetValue() << L"] !" << endl;
 
 		// !!!!! Vdaka pouzitiu DELETE COPY CONSTRUCTOR, ktory ma aplikovany aj KEYWORD [volatile] je mozne prinutit C++, aby volal pri COPY SEMANTICS TEMPLATE CONSTRUCTOR.
 		CTemplateMethodsNonEquivalence3							CopyObject(Object);
 
-		wcout << "COPY OBJECT [" << CopyObject.GetValue() << L"] !" << endl;
+		wcout << L"COPY OBJECT [" << CopyObject.GetValue() << L"] !" << endl;
 	}
 
 	PrintLineSeparator();
@@ -1821,7 +1821,7 @@ void TestVariadicTemplates(void)
 
 		Object.Print(L"CLASS 1");
 
-		wcout << "NUMBER OF TEMPLATE PARAMETERS [" << CVariadicTemplateClass<CString,int>::SIZE << L"] !" << endl;
+		wcout << L"NUMBER OF TEMPLATE PARAMETERS [" << CVariadicTemplateClass<CString,int>::SIZE << L"] !" << endl;
 	}
 
 	PrintLineSeparator();
@@ -1831,7 +1831,7 @@ void TestVariadicTemplates(void)
 
 		Object.Print(L"CLASS 2");
 
-		wcout << "NUMBER OF TEMPLATE PARAMETERS [" << CVariadicTemplateClass<CString,CString,int>::SIZE << L"] !" << endl;
+		wcout << L"NUMBER OF TEMPLATE PARAMETERS [" << CVariadicTemplateClass<CString,CString,int>::SIZE << L"] !" << endl;
 	}
 
 	PrintLineSeparator();
@@ -1844,7 +1844,7 @@ void TestVariadicTemplates(void)
 
 		Object.Print(L"CLASS EXPANSION PACK 1");
 
-		wcout << "NUMBER OF TEMPLATE PARAMETERS [" << CVariadicTemplateClassPackExpansion<CString,double,int>::SIZE << L"] !" << endl;
+		wcout << L"NUMBER OF TEMPLATE PARAMETERS [" << CVariadicTemplateClassPackExpansion<CString,double,int>::SIZE << L"] !" << endl;
 	}
 
 	PrintLineSeparator();
@@ -1857,7 +1857,7 @@ void TestVariadicTemplates(void)
 
 		Object.Print(L"CLASS EXPANSION PACK 2");
 
-		wcout << "NUMBER OF TEMPLATE PARAMETERS [" << CVariadicTemplateClassPackExpansion<CString,CString,int>::SIZE << L"] !" << endl;
+		wcout << L"NUMBER OF TEMPLATE PARAMETERS [" << CVariadicTemplateClassPackExpansion<CString,CString,int>::SIZE << L"] !" << endl;
 	}
 
 	PrintLineSeparator();
@@ -1896,7 +1896,7 @@ void TestExpansionPack(void)
 template<typename TType, typename... TTypes>
 void PrintTemplateFunctionParameterPack(size_t Index, TType Parameter, TTypes... Parameters)
 {
-	wcout << "INDEX [" << Index << L"] PARAMETER [" << Parameter << L"] !" << endl;
+	wcout << L"INDEX [" << Index << L"] PARAMETER [" << Parameter << L"] !" << endl;
 
 	if constexpr (sizeof...(Parameters)>0)
 	{
@@ -1914,7 +1914,7 @@ void TemplateFunctionParameterPack(TTypes... Parameters)
 	}
 	else
 	{
-		wcout << "NO PARAMETERS." << endl;
+		wcout << L"NO PARAMETERS." << endl;
 	}
 }
 //----------------------------------------------------------------------------------------------------------------------
@@ -1940,7 +1940,7 @@ void TestFunctionParameterPack(void)
 template<typename TType, typename... TTypes>
 void InternalTemplateMultipleParameterPacksExpansion(size_t Index, TType Parameter, TTypes... Parameters)
 {
-	wcout << "INDEX [" << Index << L"] PARAMETER [" << Parameter << L"] !" << endl;
+	wcout << L"INDEX [" << Index << L"] PARAMETER [" << Parameter << L"] !" << endl;
 
 	if constexpr (sizeof...(Parameters)>0)
 	{
@@ -1960,7 +1960,7 @@ void TemplateMultipleParameterPacksExpansion(TTypes... Values)
 	}
 	else
 	{
-		wcout << "NO PARAMETERS." << endl;
+		wcout << L"NO PARAMETERS." << endl;
 	}
 }
 //----------------------------------------------------------------------------------------------------------------------

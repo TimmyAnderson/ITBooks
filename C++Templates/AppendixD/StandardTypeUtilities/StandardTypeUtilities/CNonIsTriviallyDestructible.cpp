@@ -40,6 +40,6 @@ void CNonIsTriviallyDestructible::SetField3(const CNonTrivialType& Field3)
 //----------------------------------------------------------------------------------------------------------------------
 void CNonIsTriviallyDestructible::SomeMethod(void)
 {
-	wcout << "METHOD [void SomeMethod(void)] CALLED." << endl;
+	wcout << L"METHOD [void SomeMethod(void)] CALLED." << endl;
 }
 //----------------------------------------------------------------------------------------------------------------------

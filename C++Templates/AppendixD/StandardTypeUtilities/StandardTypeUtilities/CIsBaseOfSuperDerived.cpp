@@ -8,6 +8,6 @@ using namespace std;
 //----------------------------------------------------------------------------------------------------------------------
 void CIsBaseOfSuperDerived::SomeMethodSuperDerived(void)
 {
-	wcout << "METHOD [void SomeMethodSuperDerived(void)] CALLED." << endl;
+	wcout << L"METHOD [void SomeMethodSuperDerived(void)] CALLED." << endl;
 }
 //----------------------------------------------------------------------------------------------------------------------

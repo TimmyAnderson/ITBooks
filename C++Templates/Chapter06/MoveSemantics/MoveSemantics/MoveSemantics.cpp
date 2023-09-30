@@ -472,7 +472,7 @@ void TestPerfectForwardingInConstructorsNoTemplate(void)
 		// !!! Vola sa COPY CONSTRUCTOR pre TYPE [wstring].
 		CPerfectForwardingInConstructorNoTemplate				Object(Text);
 
-		wcout << "OBJECT [" << Object.GetValue() << L"] !" << endl;
+		wcout << L"OBJECT [" << Object.GetValue() << L"] !" << endl;
 	}
 
 	PrintLineSeparator();
@@ -481,7 +481,7 @@ void TestPerfectForwardingInConstructorsNoTemplate(void)
 		// !!! Vola sa MOVE CONSTRUCTOR pre TYPE [wstring].
 		CPerfectForwardingInConstructorNoTemplate				Object(L"LOCAL OBJECT");
 
-		wcout << "OBJECT [" << Object.GetValue() << L"] !" << endl;
+		wcout << L"OBJECT [" << Object.GetValue() << L"] !" << endl;
 	}
 
 	PrintLineSeparator();
@@ -492,7 +492,7 @@ void TestPerfectForwardingInConstructorsNoTemplate(void)
 		// !!! Vola sa COPY CONSTRUCTOR pre TYPE [CPerfectForwardingInConstructorNoTemplate].
 		CPerfectForwardingInConstructorNoTemplate				Object(SourceObject);
 
-		wcout << "OBJECT [" << Object.GetValue() << L"] !" << endl;
+		wcout << L"OBJECT [" << Object.GetValue() << L"] !" << endl;
 	}
 
 	PrintLineSeparator();
@@ -503,7 +503,7 @@ void TestPerfectForwardingInConstructorsNoTemplate(void)
 		// !!! Vola sa MOVE CONSTRUCTOR pre TYPE [CPerfectForwardingInConstructorNoTemplate].
 		CPerfectForwardingInConstructorNoTemplate				Object(move(SourceObject));
 
-		wcout << "OBJECT [" << Object.GetValue() << L"] !" << endl;
+		wcout << L"OBJECT [" << Object.GetValue() << L"] !" << endl;
 	}
 
 	PrintLineSeparator();
@@ -521,7 +521,7 @@ void TestPerfectForwardingInConstructorsTemplate(void)
 		// !!! Vola sa COPY CONSTRUCTOR pre TYPE [wstring].
 		CPerfectForwardingInConstructorTemplate					Object(Text);
 
-		wcout << "OBJECT [" << Object.GetValue() << L"] !" << endl;
+		wcout << L"OBJECT [" << Object.GetValue() << L"] !" << endl;
 	}
 
 	PrintLineSeparator();
@@ -530,7 +530,7 @@ void TestPerfectForwardingInConstructorsTemplate(void)
 		// !!! Vola sa MOVE CONSTRUCTOR pre TYPE [wstring].
 		CPerfectForwardingInConstructorTemplate					Object(L"LOCAL OBJECT");
 
-		wcout << "OBJECT [" << Object.GetValue() << L"] !" << endl;
+		wcout << L"OBJECT [" << Object.GetValue() << L"] !" << endl;
 	}
 
 	/*
@@ -542,7 +542,7 @@ void TestPerfectForwardingInConstructorsTemplate(void)
 
 		CPerfectForwardingInConstructorTemplate					Object(SourceObject);
 
-		wcout << "OBJECT [" << Object.GetValue() << L"] !" << endl;
+		wcout << L"OBJECT [" << Object.GetValue() << L"] !" << endl;
 	}
 	*/
 
@@ -554,7 +554,7 @@ void TestPerfectForwardingInConstructorsTemplate(void)
 		// !!! Vola sa MOVE CONSTRUCTOR pre TYPE [CPerfectForwardingInConstructorTemplate&&].
 		CPerfectForwardingInConstructorTemplate					Object(move(SourceObject));
 
-		wcout << "OBJECT [" << Object.GetValue() << L"] !" << endl;
+		wcout << L"OBJECT [" << Object.GetValue() << L"] !" << endl;
 	}
 
 	PrintLineSeparator();
@@ -566,7 +566,7 @@ void TestPerfectForwardingInConstructorsTemplate(void)
 template<typename TType>
 enable_if<(sizeof(TType)<=4),TType>::type TemplateTypeTraitEnableIf1(TType Value)
 {
-	wcout << "ENABLE IF 1 - VALUE [" << Value << L"] !" << endl;
+	wcout << L"ENABLE IF 1 - VALUE [" << Value << L"] !" << endl;
 
 	return(Value);
 }
@@ -576,7 +576,7 @@ enable_if<(sizeof(TType)<=4),TType>::type TemplateTypeTraitEnableIf1(TType Value
 template<typename TType, typename=enable_if<(sizeof(TType)<=4),TType>::type>
 TType TemplateTypeTraitEnableIf2(TType Value)
 {
-	wcout << "ENABLE IF 2 - VALUE [" << Value << L"] !" << endl;
+	wcout << L"ENABLE IF 2 - VALUE [" << Value << L"] !" << endl;
 
 	return(Value);
 }
@@ -590,7 +590,7 @@ using															EnableIfSizeofIsLessOrEqual4=enable_if<(sizeof(TType)<=4),TT
 template<typename TType, typename=EnableIfSizeofIsLessOrEqual4<TType>>
 TType TemplateTypeTraitEnableIf3(TType Value)
 {
-	wcout << "ENABLE IF 3 - VALUE [" << Value << L"] !" << endl;
+	wcout << L"ENABLE IF 3 - VALUE [" << Value << L"] !" << endl;
 
 	return(Value);
 }
@@ -603,7 +603,7 @@ void TestTypeTraitEnableIf(void)
 		int														ValueInt=100;
 		int														Result=TemplateTypeTraitEnableIf1(ValueInt);
 
-		wcout << "RESULT [" << Result << L"] !" << endl;
+		wcout << L"RESULT [" << Result << L"] !" << endl;
 	}
 
 	/*
@@ -614,7 +614,7 @@ void TestTypeTraitEnableIf(void)
 		double													ValueDouble=123.456;
 		double													Result=TemplateTypeTraitEnableIf1(ValueDouble);
 
-		wcout << "RESULT [" << Result << L"] !" << endl;
+		wcout << L"RESULT [" << Result << L"] !" << endl;
 	}
 	*/
 
@@ -624,7 +624,7 @@ void TestTypeTraitEnableIf(void)
 		int														ValueInt=100;
 		int														Result=TemplateTypeTraitEnableIf2(ValueInt);
 
-		wcout << "RESULT [" << Result << L"] !" << endl;
+		wcout << L"RESULT [" << Result << L"] !" << endl;
 	}
 
 	/*
@@ -635,7 +635,7 @@ void TestTypeTraitEnableIf(void)
 		double													ValueDouble=123.456;
 		double													Result=TemplateTypeTraitEnableIf2(ValueDouble);
 
-		wcout << "RESULT [" << Result << L"] !" << endl;
+		wcout << L"RESULT [" << Result << L"] !" << endl;
 	}
 	*/
 
@@ -645,7 +645,7 @@ void TestTypeTraitEnableIf(void)
 		int														ValueInt=100;
 		int														Result=TemplateTypeTraitEnableIf3(ValueInt);
 
-		wcout << "RESULT [" << Result << L"] !" << endl;
+		wcout << L"RESULT [" << Result << L"] !" << endl;
 	}
 
 	/*
@@ -656,7 +656,7 @@ void TestTypeTraitEnableIf(void)
 		double													ValueDouble=123.456;
 		double													Result=TemplateTypeTraitEnableIf3(ValueDouble);
 
-		wcout << "RESULT [" << Result << L"] !" << endl;
+		wcout << L"RESULT [" << Result << L"] !" << endl;
 	}
 	*/
 
@@ -675,7 +675,7 @@ void TestPerfectForwardingInConstructorsTemplateEnableIf(void)
 		// !!! Vola sa COPY CONSTRUCTOR pre TYPE [wstring].
 		CPerfectForwardingInConstructorTemplateEnableIf			Object(Text);
 
-		wcout << "OBJECT [" << Object.GetValue() << L"] !" << endl;
+		wcout << L"OBJECT [" << Object.GetValue() << L"] !" << endl;
 	}
 
 	PrintLineSeparator();
@@ -684,7 +684,7 @@ void TestPerfectForwardingInConstructorsTemplateEnableIf(void)
 		// !!! Vola sa MOVE CONSTRUCTOR pre TYPE [wstring].
 		CPerfectForwardingInConstructorTemplateEnableIf			Object(L"LOCAL OBJECT");
 
-		wcout << "OBJECT [" << Object.GetValue() << L"] !" << endl;
+		wcout << L"OBJECT [" << Object.GetValue() << L"] !" << endl;
 	}
 
 	PrintLineSeparator();
@@ -696,7 +696,7 @@ void TestPerfectForwardingInConstructorsTemplateEnableIf(void)
 		// !!! Vola sa MOVE CONSTRUCTOR pre TYPE [const CPerfectForwardingInConstructorTemplateEnableIf&].
 		CPerfectForwardingInConstructorTemplateEnableIf			Object(SourceObject);
 
-		wcout << "OBJECT [" << Object.GetValue() << L"] !" << endl;
+		wcout << L"OBJECT [" << Object.GetValue() << L"] !" << endl;
 	}
 
 	PrintLineSeparator();
@@ -707,7 +707,7 @@ void TestPerfectForwardingInConstructorsTemplateEnableIf(void)
 		// !!! Vola sa MOVE CONSTRUCTOR pre TYPE [CPerfectForwardingInConstructorTemplateEnableIf&&].
 		CPerfectForwardingInConstructorTemplateEnableIf			Object(move(SourceObject));
 
-		wcout << "OBJECT [" << Object.GetValue() << L"] !" << endl;
+		wcout << L"OBJECT [" << Object.GetValue() << L"] !" << endl;
 	}
 
 	PrintLineSeparator();
@@ -725,8 +725,8 @@ void TestTemplateSpecialMethods(void)
 		// !!!!! NEVOLA sa TEMPLATE COPY CONSTRUCTOR, pretoze TEMPLATE COPY/MOVE CONSTRUCTORS a TEMPLATE OPERATOR [COPY/MOVE OPERATOR=] su C++ IGNOROVANE, a namiesto nich su volane DEFAULT COPY/MOVE CONSTRUCTORS a DEFAULT OPERATOR [COPY/MOVE OPERATOR=], ktore generuje COMPILER.
 		CTemplateTemplateSpecialMethods1						CopyObject(Object);
 
-		wcout << "OBJECT [" << Object.GetValue() << L"] !" << endl;
-		wcout << "COPY OBJECT [" << CopyObject.GetValue() << L"] !" << endl;
+		wcout << L"OBJECT [" << Object.GetValue() << L"] !" << endl;
+		wcout << L"COPY OBJECT [" << CopyObject.GetValue() << L"] !" << endl;
 	}
 
 	PrintLineSeparator();
@@ -737,8 +737,8 @@ void TestTemplateSpecialMethods(void)
 		// !!!!! Vdaka pouzitiu DELETE COPY CONSTRUCTOR, ktory ma aplikovany aj KEYWORD [volatile] je mozne prinutit C++, aby volal pri COPY SEMANTICS TEMPLATE CONSTRUCTOR.
 		CTemplateTemplateSpecialMethods2						CopyObject(Object);
 
-		wcout << "OBJECT [" << Object.GetValue() << L"] !" << endl;
-		wcout << "COPY OBJECT [" << CopyObject.GetValue() << L"] !" << endl;
+		wcout << L"OBJECT [" << Object.GetValue() << L"] !" << endl;
+		wcout << L"COPY OBJECT [" << CopyObject.GetValue() << L"] !" << endl;
 	}
 
 	PrintLineSeparator();
@@ -749,8 +749,8 @@ void TestTemplateSpecialMethods(void)
 		// !!!!! Vdaka pouzitiu DELETE COPY CONSTRUCTOR, ktory ma aplikovany aj KEYWORD [volatile] je mozne prinutit C++, aby volal pri COPY SEMANTICS TEMPLATE CONSTRUCTOR.
 		CTemplateTemplateSpecialMethods3						CopyObject(Object);
 
-		wcout << "OBJECT [" << Object.GetValue() << L"] !" << endl;
-		wcout << "COPY OBJECT [" << CopyObject.GetValue() << L"] !" << endl;
+		wcout << L"OBJECT [" << Object.GetValue() << L"] !" << endl;
+		wcout << L"COPY OBJECT [" << CopyObject.GetValue() << L"] !" << endl;
 	}
 
 	PrintLineSeparator();
@@ -768,7 +768,7 @@ void TestPerfectForwardingInConstructorsTemplateConcept(void)
 		// !!! Vola sa COPY CONSTRUCTOR pre TYPE [wstring].
 		CPerfectForwardingInConstructorTemplateConcept			Object(Text);
 
-		wcout << "OBJECT [" << Object.GetValue() << L"] !" << endl;
+		wcout << L"OBJECT [" << Object.GetValue() << L"] !" << endl;
 	}
 
 	PrintLineSeparator();
@@ -777,7 +777,7 @@ void TestPerfectForwardingInConstructorsTemplateConcept(void)
 		// !!! Vola sa MOVE CONSTRUCTOR pre TYPE [wstring].
 		CPerfectForwardingInConstructorTemplateConcept			Object(L"LOCAL OBJECT");
 
-		wcout << "OBJECT [" << Object.GetValue() << L"] !" << endl;
+		wcout << L"OBJECT [" << Object.GetValue() << L"] !" << endl;
 	}
 
 	PrintLineSeparator();
@@ -789,7 +789,7 @@ void TestPerfectForwardingInConstructorsTemplateConcept(void)
 		// !!! Vola sa MOVE CONSTRUCTOR pre TYPE [const CPerfectForwardingInConstructorTemplateConcept&].
 		CPerfectForwardingInConstructorTemplateConcept			Object(SourceObject);
 
-		wcout << "OBJECT [" << Object.GetValue() << L"] !" << endl;
+		wcout << L"OBJECT [" << Object.GetValue() << L"] !" << endl;
 	}
 
 	PrintLineSeparator();
@@ -800,7 +800,7 @@ void TestPerfectForwardingInConstructorsTemplateConcept(void)
 		// !!! Vola sa MOVE CONSTRUCTOR pre TYPE [CPerfectForwardingInConstructorTemplateConcept&&].
 		CPerfectForwardingInConstructorTemplateConcept			Object(move(SourceObject));
 
-		wcout << "OBJECT [" << Object.GetValue() << L"] !" << endl;
+		wcout << L"OBJECT [" << Object.GetValue() << L"] !" << endl;
 	}
 
 	PrintLineSeparator();

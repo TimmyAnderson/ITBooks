@@ -42,7 +42,7 @@ std::wstring CTemplateTemplateArguments2<TType1,TType2>::ToString(void) const
 {
 	std::wstringstream											Stream;
 
-	Stream << "TEMPLATE TEMPLATE ARGUMENTS 2 - FIELD 1 [" << MField1 << L"]  FIELD 2 [" << MField2 << L"].";
+	Stream << L"TEMPLATE TEMPLATE ARGUMENTS 2 - FIELD 1 [" << MField1 << L"]  FIELD 2 [" << MField2 << L"].";
 
 	return(Stream.str());
 }

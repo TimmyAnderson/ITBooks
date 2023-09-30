@@ -16,6 +16,6 @@ CFunctionObjectTypeConversionToReferenceToFunction::operator CallableType(void) 
 //----------------------------------------------------------------------------------------------------------------------
 void CFunctionObjectTypeConversionToReferenceToFunction::MyCallback(size_t Index, double Value)
 {
-	wcout << L"CONVERSION OPERATOR TO REFERENCE TO FUNCTION - INDEX [" << Index << "] VALUE [" << Value << "]." << endl;
+	wcout << L"CONVERSION OPERATOR TO REFERENCE TO FUNCTION - INDEX [" << Index << L"] VALUE [" << Value << L"]." << endl;
 }
 //----------------------------------------------------------------------------------------------------------------------

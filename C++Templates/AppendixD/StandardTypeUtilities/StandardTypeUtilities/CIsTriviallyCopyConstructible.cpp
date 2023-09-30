@@ -37,6 +37,6 @@ void CIsTriviallyCopyConstructible::SetField2(double Field2)
 //----------------------------------------------------------------------------------------------------------------------
 void CIsTriviallyCopyConstructible::SomeMethod(void)
 {
-	wcout << "METHOD [void SomeMethod(void)] CALLED." << endl;
+	wcout << L"METHOD [void SomeMethod(void)] CALLED." << endl;
 }
 //----------------------------------------------------------------------------------------------------------------------

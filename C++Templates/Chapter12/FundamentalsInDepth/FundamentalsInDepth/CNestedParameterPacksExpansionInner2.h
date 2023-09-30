@@ -44,7 +44,7 @@ std::wstring CNestedParameterPacksExpansionInner2<TType1,TType2,TType3>::ToStrin
 {
 	std::wstringstream											Stream;
 
-	Stream << "INNER CLASS 2 - FIELD 1 [" << MField1 << L"] FIELD 2 [" << MField2 << L"] FIELD 3 [" << MField3 << L"].";
+	Stream << L"INNER CLASS 2 - FIELD 1 [" << MField1 << L"] FIELD 2 [" << MField2 << L"] FIELD 3 [" << MField3 << L"].";
 
 	return(Stream.str());
 }

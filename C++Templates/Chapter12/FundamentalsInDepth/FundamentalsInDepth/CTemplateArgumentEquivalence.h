@@ -63,7 +63,7 @@ std::wstring CTemplateArgumentEquivalence<TType,VALUE>::ToString(void) const
 {
 	std::wstringstream											Stream;
 
-	Stream << "TEMPLATE - FIELD [" << MField << L"] VALUE [" << VALUE << L"].";
+	Stream << L"TEMPLATE - FIELD [" << MField << L"] VALUE [" << VALUE << L"].";
 
 	return(Stream.str());
 }

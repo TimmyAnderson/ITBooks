@@ -33,7 +33,7 @@ class CCompileTimePartialSpecializations<NUMBER,true>
 	public:
 		void Print(void)
 		{
-			std::wcout << "VALUE [" << NUMBER << L"] is a PRIME !!!" << std::endl;
+			std::wcout << L"VALUE [" << NUMBER << L"] is a PRIME !!!" << std::endl;
 		}
 //----------------------------------------------------------------------------------------------------------------------
 };
@@ -47,7 +47,7 @@ class CCompileTimePartialSpecializations<NUMBER,false>
 	public:
 		void Print(void)
 		{
-			std::wcout << "VALUE [" << NUMBER << L"] is NOT a PRIME !!!" << std::endl;
+			std::wcout << L"VALUE [" << NUMBER << L"] is NOT a PRIME !!!" << std::endl;
 		}
 //----------------------------------------------------------------------------------------------------------------------
 };

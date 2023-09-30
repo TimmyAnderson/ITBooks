@@ -47,6 +47,6 @@ void CIsDestructible2::SetField3(const CNonTrivialType& Field3)
 //----------------------------------------------------------------------------------------------------------------------
 void CIsDestructible2::SomeMethod(void)
 {
-	wcout << "METHOD [void SomeMethod(void)] CALLED." << endl;
+	wcout << L"METHOD [void SomeMethod(void)] CALLED." << endl;
 }
 //----------------------------------------------------------------------------------------------------------------------

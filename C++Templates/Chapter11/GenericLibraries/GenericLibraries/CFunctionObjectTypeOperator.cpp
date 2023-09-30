@@ -8,6 +8,6 @@ using namespace std;
 //----------------------------------------------------------------------------------------------------------------------
 void CFunctionObjectTypeOperator::operator()(size_t Index, double Value)
 {
-	wcout << L"OPERATOR [OPERATOR()] - INDEX [" << Index << "] VALUE [" << Value << "]." << endl;
+	wcout << L"OPERATOR [OPERATOR()] - INDEX [" << Index << L"] VALUE [" << Value << L"]." << endl;
 }
 //----------------------------------------------------------------------------------------------------------------------

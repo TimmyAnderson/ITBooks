@@ -41,6 +41,6 @@ void CNonIsSwappableWith::SetField2(double Field2)
 //----------------------------------------------------------------------------------------------------------------------
 void CNonIsSwappableWith::SomeMethod(void)
 {
-	wcout << "METHOD [void SomeMethod(void)] CALLED." << endl;
+	wcout << L"METHOD [void SomeMethod(void)] CALLED." << endl;
 }
 //----------------------------------------------------------------------------------------------------------------------

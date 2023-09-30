@@ -60,6 +60,6 @@ void CNonIsNoThrowMoveConstructible::SetField3(const CNonTrivialType& Field3)
 //----------------------------------------------------------------------------------------------------------------------
 void CNonIsNoThrowMoveConstructible::SomeMethod(void)
 {
-	wcout << "METHOD [void SomeMethod(void)] CALLED." << endl;
+	wcout << L"METHOD [void SomeMethod(void)] CALLED." << endl;
 }
 //----------------------------------------------------------------------------------------------------------------------

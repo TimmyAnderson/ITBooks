@@ -8,6 +8,6 @@ using namespace std;
 //----------------------------------------------------------------------------------------------------------------------
 void CIsBaseOfBase::SomeMethodBase(void)
 {
-	wcout << "METHOD [void SomeMethodBase(void)] CALLED." << endl;
+	wcout << L"METHOD [void SomeMethodBase(void)] CALLED." << endl;
 }
 //----------------------------------------------------------------------------------------------------------------------

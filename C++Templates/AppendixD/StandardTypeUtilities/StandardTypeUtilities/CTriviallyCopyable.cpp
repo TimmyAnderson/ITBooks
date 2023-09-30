@@ -33,6 +33,6 @@ void CTriviallyCopyable::SetField(int Field)
 //----------------------------------------------------------------------------------------------------------------------
 void CTriviallyCopyable::SomeMethod(void)
 {
-	wcout << "METHOD [void SomeMethod(void)] CALLED." << endl;
+	wcout << L"METHOD [void SomeMethod(void)] CALLED." << endl;
 }
 //----------------------------------------------------------------------------------------------------------------------

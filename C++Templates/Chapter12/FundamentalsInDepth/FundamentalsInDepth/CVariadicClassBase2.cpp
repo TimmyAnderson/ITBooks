@@ -33,7 +33,7 @@ wstring CVariadicClassBase2::ToString(void) const
 {
 	wstringstream												Stream;
 
-	Stream << "BASE CLASS 2 - FIELD BASE 2 [" << MFieldBase2 << L"].";
+	Stream << L"BASE CLASS 2 - FIELD BASE 2 [" << MFieldBase2 << L"].";
 
 	return(Stream.str());
 }

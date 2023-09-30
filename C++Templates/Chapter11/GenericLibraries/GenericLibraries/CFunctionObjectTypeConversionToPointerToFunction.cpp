@@ -15,6 +15,6 @@ CFunctionObjectTypeConversionToPointerToFunction::operator CallableType(void) co
 //----------------------------------------------------------------------------------------------------------------------
 void CFunctionObjectTypeConversionToPointerToFunction::MyCallback(size_t Index, double Value)
 {
-	wcout << L"CONVERSION OPERATOR TO POINTER TO FUNCTION - INDEX [" << Index << "] VALUE [" << Value << "]." << endl;
+	wcout << L"CONVERSION OPERATOR TO POINTER TO FUNCTION - INDEX [" << Index << L"] VALUE [" << Value << L"]." << endl;
 }
 //----------------------------------------------------------------------------------------------------------------------

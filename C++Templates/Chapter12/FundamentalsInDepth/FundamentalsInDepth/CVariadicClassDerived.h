@@ -74,7 +74,7 @@ std::wstring CVariadicClassDerived<TBaseTypes...>::ToString(void) const
 {
 	std::wstringstream											Stream;
 
-	Stream << "DERIVED CLASS - FIELD DERIVED [" << MFieldDerived << L"].";
+	Stream << L"DERIVED CLASS - FIELD DERIVED [" << MFieldDerived << L"].";
 
 	if constexpr (sizeof...(TBaseTypes)>0)
 	{

@@ -1,0 +1,1 @@
+g++-12 -m64 -std=c++2b -fconcepts -pthread -fexceptions -pedantic -Wall -Wextra -Wno-parentheses -o Program.exe MyDebug.cpp CException.cpp CString.cpp Instantiation.cpp CImplementationSchemes1.cpp CImplementationSchemes2.cpp CManualInstantiation.cpp CExplicitInstantiationDeclaration.cpp

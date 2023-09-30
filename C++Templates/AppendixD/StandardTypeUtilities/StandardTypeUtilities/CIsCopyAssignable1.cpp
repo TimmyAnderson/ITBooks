@@ -63,6 +63,6 @@ void CIsCopyAssignable1::SetField3(const CNonTrivialType& Field3)
 //----------------------------------------------------------------------------------------------------------------------
 void CIsCopyAssignable1::SomeMethod(void)
 {
-	wcout << "METHOD [void SomeMethod(void)] CALLED." << endl;
+	wcout << L"METHOD [void SomeMethod(void)] CALLED." << endl;
 }
 //----------------------------------------------------------------------------------------------------------------------

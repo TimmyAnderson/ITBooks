@@ -31,20 +31,20 @@ template<typename TType1, typename TType2>
 UTemplateUnion<TType1,TType2>::UTemplateUnion(TType1 Value)
 	: MField1(Value)
 {
-	std::wcout << "UNION CONSTRUCTOR 1 CALLED !" << std::endl;
+	std::wcout << L"UNION CONSTRUCTOR 1 CALLED !" << std::endl;
 }
 //----------------------------------------------------------------------------------------------------------------------
 template<typename TType1, typename TType2>
 UTemplateUnion<TType1,TType2>::UTemplateUnion(TType2 Value)
 	: MField2(Value)
 {
-	std::wcout << "UNION CONSTRUCTOR 2 CALLED !" << std::endl;
+	std::wcout << L"UNION CONSTRUCTOR 2 CALLED !" << std::endl;
 }
 //----------------------------------------------------------------------------------------------------------------------
 template<typename TType1, typename TType2>
 UTemplateUnion<TType1,TType2>::~UTemplateUnion(void) noexcept
 {
-	std::wcout << "UNION DESTRUCTOR CALLED !" << std::endl;
+	std::wcout << L"UNION DESTRUCTOR CALLED !" << std::endl;
 }
 //----------------------------------------------------------------------------------------------------------------------
 //----------------------------------------------------------------------------------------------------------------------

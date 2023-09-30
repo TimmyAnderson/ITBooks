@@ -43,7 +43,7 @@ std::wstring CTemplateTemplateParameters2<TType1,TType2,TType3>::ToString(void) 
 {
 	std::wstringstream											Stream;
 
-	Stream << "TEMPLATE TEMPLATE PARAMETERS 2 - FIELD 1 [" << MField1 << L"] FIELD 2 [" << MField2 << L"] FIELD 3 [" << MField3.ToString() << L"].";
+	Stream << L"TEMPLATE TEMPLATE PARAMETERS 2 - FIELD 1 [" << MField1 << L"] FIELD 2 [" << MField2 << L"] FIELD 3 [" << MField3.ToString() << L"].";
 
 	return(Stream.str());
 }

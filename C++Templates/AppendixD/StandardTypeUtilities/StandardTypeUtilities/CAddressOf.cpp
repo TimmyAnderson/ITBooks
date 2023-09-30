@@ -9,12 +9,12 @@ using namespace std;
 CAddressOf::CAddressOf(int* Data)
 	: MPadding(nullptr), MData(Data)
 {
-	wcout << "CONSTRUCTOR [~CAddressOf(void)] CALLED. THIS [" << this << L"]." << endl;
+	wcout << L"CONSTRUCTOR [~CAddressOf(void)] CALLED. THIS [" << this << L"]." << endl;
 }
 //----------------------------------------------------------------------------------------------------------------------
 CAddressOf::~CAddressOf(void)
 {
-	wcout << "DESTRUCTOR [~CAddressOf(void)] CALLED." << endl;
+	wcout << L"DESTRUCTOR [~CAddressOf(void)] CALLED." << endl;
 
 	delete(MData);
 
@@ -25,7 +25,7 @@ CAddressOf::~CAddressOf(void)
 //----------------------------------------------------------------------------------------------------------------------
 int** CAddressOf::operator&(void)
 {
-	wcout << "OPERATOR [int** operator&(void)] CALLED." << endl;
+	wcout << L"OPERATOR [int** operator&(void)] CALLED." << endl;
 
 	return(&MData);
 }

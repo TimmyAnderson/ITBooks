@@ -25,7 +25,7 @@ class CInjectedClassNamesVariadicTemplateClass final
 template<typename TType, typename... TTypes>
 void CInjectedClassNamesVariadicTemplateClass<TType,TTypes...>::PrintType(const CString& Text) const
 {
-	std::wcout << Text << " - VARIADIC TEMPLATE CLASS TYPE [" << GetTypeInfoName<decltype(*this)>() << "]." << std::endl;
+	std::wcout << Text << L" - VARIADIC TEMPLATE CLASS TYPE [" << GetTypeInfoName<decltype(*this)>() << L"]." << std::endl;
 }
 //----------------------------------------------------------------------------------------------------------------------
 //----------------------------------------------------------------------------------------------------------------------

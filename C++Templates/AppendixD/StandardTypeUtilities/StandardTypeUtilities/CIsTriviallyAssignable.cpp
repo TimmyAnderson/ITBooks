@@ -20,6 +20,6 @@ void CIsTriviallyAssignable::SetField(int Field)
 //----------------------------------------------------------------------------------------------------------------------
 void CIsTriviallyAssignable::SomeMethod(void)
 {
-	wcout << "METHOD [void SomeMethod(void)] CALLED." << endl;
+	wcout << L"METHOD [void SomeMethod(void)] CALLED." << endl;
 }
 //----------------------------------------------------------------------------------------------------------------------

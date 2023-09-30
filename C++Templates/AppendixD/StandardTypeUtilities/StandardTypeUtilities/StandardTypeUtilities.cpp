@@ -8801,16 +8801,16 @@ void TestTypeTraitAddressOf(void)
 
 		PrintLineSeparator();
 
-		wcout << "OBJECT [" << *(Object.GetData()) << L"]." << endl;
+		wcout << L"OBJECT [" << *(Object.GetData()) << L"]." << endl;
 
-		wcout << "POINTER 1 [" << Pointer1 << L"]." << endl;
+		wcout << L"POINTER 1 [" << Pointer1 << L"]." << endl;
 
 		PrintLineSeparator();
 
 		// !!! NEVOLA sa CUSTOM OPERATOR [OPERATOR&].
 		CAddressOf*												Pointer2=addressof(Object);
 
-		wcout << "POINTER 2 [" << Pointer2 << L"]." << endl;
+		wcout << L"POINTER 2 [" << Pointer2 << L"]." << endl;
 	}
 
 	PrintLineSeparator();

@@ -41,7 +41,7 @@ std::wstring CTemplateTemplateArguments3<TType,VALUE>::ToString(void) const
 {
 	std::wstringstream											Stream;
 
-	Stream << "TEMPLATE TEMPLATE ARGUMENTS 3 - FIELD [" << MField << L"] VALUE [" << VALUE << L"].";
+	Stream << L"TEMPLATE TEMPLATE ARGUMENTS 3 - FIELD [" << MField << L"] VALUE [" << VALUE << L"].";
 
 	return(Stream.str());
 }

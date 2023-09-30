@@ -8,6 +8,6 @@ using namespace std;
 //----------------------------------------------------------------------------------------------------------------------
 void CIsBaseOfDerived2::SomeMethodDerived2(void)
 {
-	wcout << "METHOD [void SomeMethodDerived2(void)] CALLED." << endl;
+	wcout << L"METHOD [void SomeMethodDerived2(void)] CALLED." << endl;
 }
 //----------------------------------------------------------------------------------------------------------------------

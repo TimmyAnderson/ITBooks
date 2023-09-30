@@ -8,11 +8,11 @@ using namespace std;
 //----------------------------------------------------------------------------------------------------------------------
 void CInvocable::operator()(double Value1, double Value2) const
 {
-	wcout << "METHOD [void operator()(double Value1, double Value2) const] CALLED. VALUE 1 [" << Value1 << L"] VALUE 2 [" << Value2 << L"]." << endl;
+	wcout << L"METHOD [void operator()(double Value1, double Value2) const] CALLED. VALUE 1 [" << Value1 << L"] VALUE 2 [" << Value2 << L"]." << endl;
 }
 //----------------------------------------------------------------------------------------------------------------------
 void CInvocable::operator()(double Value1, double Value2, int Value3) const noexcept
 {
-	wcout << "METHOD [void operator()(double Value1, double Value2, int Value3) const noexcept] CALLED. VALUE 1 [" << Value1 << L"] VALUE 2 [" << Value2 << L"] VALUE 3 [" << Value3 << L"]." << endl;
+	wcout << L"METHOD [void operator()(double Value1, double Value2, int Value3) const noexcept] CALLED. VALUE 1 [" << Value1 << L"] VALUE 2 [" << Value2 << L"] VALUE 3 [" << Value3 << L"]." << endl;
 }
 //----------------------------------------------------------------------------------------------------------------------

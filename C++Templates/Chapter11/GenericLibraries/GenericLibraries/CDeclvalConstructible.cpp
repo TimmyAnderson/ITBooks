@@ -9,7 +9,7 @@ using namespace std;
 CDeclvalConstructible::CDeclvalConstructible(void)
 	: MField1(0), MField2(0.0)
 {
-	wcout << "CONSTRUCTOR [CDeclvalConstructible(void)] CALLED." << endl;
+	wcout << L"CONSTRUCTOR [CDeclvalConstructible(void)] CALLED." << endl;
 }
 //----------------------------------------------------------------------------------------------------------------------
 CDeclvalConstructible::CDeclvalConstructible(int Field1, double Field2)
@@ -47,6 +47,6 @@ void CDeclvalConstructible::SetField2(double Field2)
 //----------------------------------------------------------------------------------------------------------------------
 void CDeclvalConstructible::SomeMethod(void)
 {
-	wcout << "METHOD [void SomeMethod(void)] CALLED." << endl;
+	wcout << L"METHOD [void SomeMethod(void)] CALLED." << endl;
 }
 //----------------------------------------------------------------------------------------------------------------------

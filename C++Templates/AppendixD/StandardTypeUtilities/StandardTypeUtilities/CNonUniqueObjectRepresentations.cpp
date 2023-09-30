@@ -37,6 +37,6 @@ void CNonUniqueObjectRepresentations::SetField2(float Field2)
 //----------------------------------------------------------------------------------------------------------------------
 void CNonUniqueObjectRepresentations::SomeMethod(void)
 {
-	wcout << "METHOD [void SomeMethod(void)] CALLED." << endl;
+	wcout << L"METHOD [void SomeMethod(void)] CALLED." << endl;
 }
 //----------------------------------------------------------------------------------------------------------------------

@@ -41,6 +41,6 @@ void CNonStandardLayout::SetField2(int Field2)
 //----------------------------------------------------------------------------------------------------------------------
 void CNonStandardLayout::SomeMethod(void)
 {
-	wcout << "METHOD [void SomeMethod(void)] CALLED." << endl;
+	wcout << L"METHOD [void SomeMethod(void)] CALLED." << endl;
 }
 //----------------------------------------------------------------------------------------------------------------------

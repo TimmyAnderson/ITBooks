@@ -30,6 +30,6 @@ void CIsTriviallyDestructible::SetField2(double Field2)
 //----------------------------------------------------------------------------------------------------------------------
 void CIsTriviallyDestructible::SomeMethod(void)
 {
-	wcout << "METHOD [void SomeMethod(void)] CALLED." << endl;
+	wcout << L"METHOD [void SomeMethod(void)] CALLED." << endl;
 }
 //----------------------------------------------------------------------------------------------------------------------

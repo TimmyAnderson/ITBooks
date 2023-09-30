@@ -19,7 +19,7 @@ class CInjectedClassNamesTemplateClassInner final
 template<template<typename> typename TTemplate>
 void CInjectedClassNamesTemplateClassInner<TTemplate>::PrintType(const CString& Text) const
 {
-	std::wcout << Text << " - TEMPLATE CLASS TYPE [" << GetTypeInfoName<decltype(*this)>() << "]." << std::endl;
+	std::wcout << Text << L" - TEMPLATE CLASS TYPE [" << GetTypeInfoName<decltype(*this)>() << L"]." << std::endl;
 }
 //----------------------------------------------------------------------------------------------------------------------
 //----------------------------------------------------------------------------------------------------------------------
@@ -44,7 +44,7 @@ class CInjectedClassNamesTemplateClass final
 template<typename TType>
 void CInjectedClassNamesTemplateClass<TType>::PrintType(const CString& Text) const
 {
-	std::wcout << Text << " - TEMPLATE CLASS TYPE [" << GetTypeInfoName<decltype(*this)>() << "]." << std::endl;
+	std::wcout << Text << L" - TEMPLATE CLASS TYPE [" << GetTypeInfoName<decltype(*this)>() << L"]." << std::endl;
 }
 //----------------------------------------------------------------------------------------------------------------------
 //----------------------------------------------------------------------------------------------------------------------

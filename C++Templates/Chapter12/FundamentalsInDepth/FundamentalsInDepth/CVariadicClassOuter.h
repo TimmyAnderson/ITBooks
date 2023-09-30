@@ -44,7 +44,7 @@ class CVariadicClassOuter<TTypes...>::CVariadicClassInner final
 		template<typename TLocalType, typename... TLocalTypes>
 		void InternalPrint(size_t Index, TLocalType Value, TLocalTypes... Values)
 		{
-			std::wcout << "INNER CLASS - INDEX [" << Index << L"] TYPE [" << GetTypeInfoName<TLocalType>() << "] VALUE [" << Value << L"]." << std::endl;
+			std::wcout << L"INNER CLASS - INDEX [" << Index << L"] TYPE [" << GetTypeInfoName<TLocalType>() << L"] VALUE [" << Value << L"]." << std::endl;
 
 			if constexpr (sizeof...(Values)>0)
 			{

@@ -18,6 +18,6 @@ CEmpty::~CEmpty(void) noexcept
 //----------------------------------------------------------------------------------------------------------------------
 void CEmpty::SomeMethod(void)
 {
-	wcout << "METHOD [void SomeMethod(void)] CALLED." << endl;
+	wcout << L"METHOD [void SomeMethod(void)] CALLED." << endl;
 }
 //----------------------------------------------------------------------------------------------------------------------
