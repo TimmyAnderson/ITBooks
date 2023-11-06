@@ -1,0 +1,255 @@
+//----------------------------------------------------------------------------------------------------------------------
+1. Solution demonstruje TEMPLATE ARGUMENT DEDUCTION v C++.
+2. TEMPLATE ARGUMENT DEDUCTION je proces, kedy C++ vykonava DEDUCTION TEMPLATE PARAMETERS na zaklade zadanych TEMPLATE ARGUMENTS, aby ich nebolo treba zadavat explicitne pomocou SYNTAX [TEMPLATE_NAME<TEMPLATE_ARGUMENT_1,...TEMPLATE_ARGUMENT_N>].
+3. TEMPLATE ARGUMENT DEDUCTION sa aplikuje pri volani TEMPLATE FUNCTIONS. C++ vykonava TEMPLATE ARGUMENT DEDUCTION nasledujucim sposobom.
+   A. C++ prechadza kazdy TEMPLATE ARGUMENT jeden po druhom a snazi sa ich substituovat za TEMPLATE PARAMETERS TEMPLATE FUNCTION.
+   B. Ak sa subsitucia TEMPLATE ARGUMENT za TEMPLATE PARAMETER uspesne podari, C++ prechadza na dalsi TEMPLATE ARGUMENT a proces sa opakuje.
+   C. Ak vsetky TEMPLATE ARGUMENTS su uspesne subsituovane za TEMPLATE PARAMETERS TEMPLATE ARGUMENT DEDUCTION za uspesnu a dana TEMPLATE FUNCTION je zaradena do CANDIDATE SET vsetkych FUNCTIONS, ktore mozu byt volane.
+   D. Ak niektory TEMPLATE ARGUMENT nie je uspesne subsituovany za dany TEMPLATE PARAMETER, tak TEMPLATE ARGUMENT DEDUCTION pre danu TEMPLATE FUNCTION ZLYHA a C++ hlada alternativnu OVERLOADED TEMPLATE FUNCTION, ktoru by mohol volat.
+   !!! E. Substitucia kazdeho TEMPLATE ARGUMENT za TEMPLATE PARAMETER je NEZAVISLA na inych TEMPLATE ARGUMENTS.
+   !!!!! F. Zlyhanie TEMPLATE ARGUMENT DEDUCTION NESPOSOBUJE COMPILATION ERROR, ale proces SUBSTITUTION FAILURE IS NOT AN ERROR (SFINAE), kedy C++ hlada dalsiu OVERLOADED TEMPLATE FUNCTION, ktoru by mohol pre dane TEMPLATE ARGUMENTS volat.
+!!!!! 4. TEMPLATE ARGUMENT DEDUCTION NIKDY nevykona DEDUCTION REFERENCE TYPES. Ak je TEMPLATE ARGUMENT LVALUE REFERENCE TYPE, alebo RVALUE REFERENCE TYPE, tak DEDUCED TYPE je NON-REFERENCE TYPE.
+!!! 5. Pri TEMPLATE ARGUMENT DEDUCTION C++ moze vykonavat TYPE DECAYING. Pre TYPE DECAYING pri TEMPLATE ARGUMENT DEDUCTION platia nasledujuce fakty.
+   !!!!! A. Ak je TEMPLATE PARAMETER TYPE REFERENCE TYPE, tak sa NIKDY NEVYKONAVA TYPE DECAYING.
+   !!! B. Ak je TEMPLATE PARAMETER TYPE VALUE TYPE a TEMPLATE ARGUMENT je C-ARRAY TYPE, tak C-ARRAY TYPE je AUTOMATICKY CONVERTED na POINTER.
+   !!! C. Ak je TEMPLATE PARAMETER TYPE VALUE TYPE a TEMPLATE ARGUMENT je FUNCTION REFERENCE TYPE, tak FUNCTION REFERENCE TYPE je AUTOMATICKY CONVERTED na POINTER na FUNCTION.
+   !!! D. Ak je TEMPLATE PARAMETER TYPE VALUE TYPE a TEMPLATE ARGUMENT ma aplikovany MODIFIER [const], alebo MODIFIER [volatile], tak tieto MODIFIERS su IGNOROVANE.
+6. Pri TEMPLATE ARGUMENT DEDUCTION C++ dokaze vykonavat DEDUCTION aj v COMPLEX TYPE DECLARATIONS, ktorym sa hovori DEDUCTION CONTEXTS. Medzi DEDUCTION CONTEXT patria napriklad tieto DECLARATIONS.
+   A. POINTER DECLARATION [TType*].
+   B. C-ARRAY DECLARATION [TType(&Array)[SIZE]].
+   C. POINTER na METHOD DECLARATION [TType1 (TType2::*PointerToMethod)(const TType3&) const, const TType2& Object, TType3 Value].
+7. Nie vsetky TYPE DECLARATIONS su DEDUCTION CONTEXTS. Pre niektore TYPE DECLARATIONS C++ nedokaze vykonat korektnu TEMPLATE ARGUMENT DEDUCTION. Prikladom su tieto DECLARATIONS.
+   A. QUALIFIED TYPE NAMES. Prikladom je DECLARATION [TEMPLATE_NAME<TYPE_PARAMETER>::NAME], kedy C++ NEDOKAZE vykonat DEDUCTION TYPE PARAMETER 'TYPE_PARAMETER'.
+   B. NON-TYPE EXPRESSIONS, ktore nie su iba NON-TYPE PARAMETERS. Prikladom je DECLARATION [TEMPLATE_NAME<VALUE+1>], kde pre VALUE 'VALUE' C++ NEDOKAZE spravit DEDUCTION. Inym prikladom je DECLARATION [int(&)[sizeof(TEMPLATE_NAME<TYPE_PARAMETER>)]], kde TYPE PARAMETER 'TYPE_PARAMETER' NEBUDE DEDUCED.
+8. C++ nevykonava TEMPLATE ARGUMENT DEDUCTION iba z ARGUMENT zadanych pri volani TEMPLATE FUNCTION, ale TEMPLATE ARGUMENT DEDUCTION moze vykonat aj z FUNCTION TYPE. K tomuto TEMPLATE ARGUMENT DEDUCTION dochadza v nasledujucich situaciach.
+   A. Ked je ziskavana ADDRESS TEMPLATE FUNCTION.
+   B. Ked je volany TEMPLATE CONVERSION OPERATOR.
+   C. Pri urcovani PARTIAL ORDERING medzi OVERLOADED TEMPLATE FUNCTIONS.
+   D. Pri MATCHING EXPLICIT SPECIALIZATION na TEMPLATE FUNCTION.
+   E. Pri MATCHING EXPLICIT INSTANTIATION na TEMPLATE FUNCTION.
+   F. Pri MATCHING TEMLATE FRIEND FUNCTION SPECIALZATION na TEMPLATE FUNCTION.
+   G. Pri MATCHING TEMPLATE OPERATOR [OPERATOR DELETE] a TEMPLATE OPERATOR [OPERATOR DELETE[]] k TEMPLATE PLACEMENT OPERATOR [OPERATOR NEW] a TEMPLATE PLACEMENT OPERATOR [OPERATOR NEW[]].
+9. Ak ma TEMPLATE ako TEMPLATE PARAMETER TYPE [initializer_list<TYPE>], tak C++ dokaze vykonat DEDUCTION TYPE 'TYPE'. Zaroven vykonava kontrolu ci su vsetky ITEMS v TYPE [initializer_list<TYPE>] rovnakeho TYPE. Ak nie, je hodeny ERROR.
+10. Ak ma TEMPLATE ako TEMPLATE ARGUMENT TYPE [initializer_list<TYPE>], pricom vsak TEMPLATE NEMA TEMPLATE PARAMETER TYPE [initializer_list<TYPE>], tak C++ hodi ERROR.
+11. C++ vykonava TEMPLATE ARGUMENT DEDUCTION aj pre TEMPLATE PARAMETERS PACKS. V pripade TEMPLATE PARAMETERS PACKS vsak uz neplati, ze 1 TEMPLATE PARAMETER zodpoveda 1 TEMPALTE ARGUMENTS, ale 1 TEMPLATE PARAMETERS PACK zodpoveda 'N' TEMPLATE ARGUMENTS.
+12. C++ dokaze pri TEMPLATE ARGUMENT DEDUCTION pre TEMPLATE PARAMETERS PACKS vykonavat aj COMPLEX DEDUCTIONS, ked TEMPLATE PARAMETERS PACKS su sucastou zlozitejsich EXPRESSIONS.
+13. USER DEFINED LITERALS mozu byt DEFINED nasledujucimi sposobmi.
+   A. Pomocou NON-TEMPLATE FUNCTION.
+   B. Pomocou TEMPLATE FUNCTION.
+14. Ak je USER DEFINED LITERAL definovany ako TEMPLATE FUNCTION, platia nasledujuce fakty.
+   A. TEMPLATE FUNCTION musi mat VARIADIC TEMPLATE NON-TYPE PARAMETER TYPE [char].
+   B. TEMPLATE FUNCTION NESMIE mat PARAMETERS.
+!!! 15. C++ NEUMOZNUJE deklarovat REFERENCE na REFERENCE. Pri pokuse deklarovat REFERENCE na REFERENCE COMPILER hodi ERROR.
+!!! 16. C++ UMOZNUJE pouzivat REFERENCE na REFERENCE v nasledujucich situaciach.
+   A. Ked TYPE vznika ako kompozicia TYPE ALIASES.
+   B. Pri substitucii TEMPLATE PARAMETERS.
+   C. Pri pouziti KEYWORD [decltype()].
+17. C++ pri pouziti REFERENCE na REFERENCE aplikuju REFERENCE COLLAPSING RULES. Pre REFERENCE COLLAPSING RULES platia nasledujuce fakty.
+   A. C++ odstrani najvrchnejsi MODIFIER [const], alebo  MODIFIER [volatile]. Vnutorne MODIFIER [const], alebo  MODIFIER [volatile] vsak ostavaju zachovane.
+   B. LVAUE REFERENCE na LVALUE REFERENCE sa transformuje na LVALUE REFERENCE. To znamena, ze TYPE [int& &] sa transformuje na TYPE [int&].
+   C. RVLAUE REFERENCE na LVALUE REFERENCE sa transformuje na LVALUE REFERENCE. To znamena, ze TYPE [int& &&] sa transformuje na TYPE [int&].
+   D. LVAUE REFERENCE na RVALUE REFERENCE sa transformuje na LVALUE REFERENCE. To znamena, ze TYPE [int&& &] sa transformuje na TYPE [int&].
+   !!! E. RVLAUE REFERENCE na RVALUE REFERENCE sa transformuje na RVALUE REFERENCE. To znamena, ze TYPE [int& &&] sa transformuje na TYPE [int&&].
+   !!!!! F. Pri REFERENCE COLLAPSING plati, ze IBA RVLAUE REFERENCE na RVALUE REFERENCE sa transformuje na RVALUE REFERENCE. Vsetky ostatne REFERENCES sa transformuju na LVALUE REFERNCES.
+18. C++ definuje FORWARDING REFERENCES. FORWARDING REFERENCE je v TEMPLATE RVALUE REFERENCE na TEMPLATE PARAMETER.
+!!!!! 19. C++ pre FORWARDING REFERENCES robi specificky TEMPLATE ARGUMENT DEDUCTION.
+   A. Pri FORWARDING REFERENCES TEMPLATE ARGUMENT DEDUCTION berie do uvahy nielen TYPE TEMPLATE ARGUMENT, ale aj to ci TEMPLATE ARGUMENT je LVALUE REFERENCE, alebo RVALUE REFERENCE.
+   B. Ak pri FORWARDING REFERENCES je TEMPLATE ARGUMENT LVALUE REFERENCE, tak za TEMPLATE PARAMETER je substituovany LVALUE REFRENCE. Kedze vsak PARAMETER TEMPLATE FUNCTION je FORWARDING REFERENCE a teda RVALUE REFERENCE, po aplikovani REFERENCE COLLAPSING RULES je vysledny TYPE LVALUE REFERENCE.
+   C. Ak pri FORWARDING REFERENCES je TEMPLATE ARGUMENT iny ako LVALUE REFERENCE, tak za TEMPLATE PARAMETER je substituovany NON-REFERENCE TYPE. Kedze vsak PARAMETER TEMPLATE FUNCTION je FORWARDING REFERENCE a teda RVALUE REFERENCE, tak vysledny TYPE je RVALUE REFERENCE.
+!!! 20. FUNCTION v C++ vykonava PERFECT FORWARDING ak su splnene nasledujuce podmienky.
+   A. FUNCTION 'F1()' ma PARAMETER 'PARAMETER', ktory je bud LVALUE REFERENCE TYPE [CONST TYPE&], LVALUE REFERENCE TYPE [TYPE&], alebo RVALUE REFERENCE TYPE [TYPE&&].
+   B. FUNCTION 'F1()' vola FUNCTION 'F2()' pricom jej ako ARGUMENT posiela PARAMETER 'PARAMETER'.
+   !!! C. K PERFECT FORWARDING dochadza ak pri volani FUNCTION 'F2()' sa NEVYTVARA kopia PARAMETER 'PARAMETER'.
+   !!! D. K PERFECT FORWARDING dochadza vtedy ak FUNCTION 'F2()' ma OVERLOADED VERSIONS pre TYPE [CONST TYPE&], TYPE [TYPE&], alebo TYPE [TYPE&&], pricom C++ zavola tu VERSION, ktora zodpoveda TYPE PARAMETER 'PARAMETER'.
+21. PERFECT FORWARDING sa pre TEMPLATE FUNCTIONS implementuje nasledujucim sposobom.
+   A. FORWARDING FUNCTION musi mat PARAMETER 'PARAMETER', ktory je TYPE LVALUE REFERENCE [TYPE&&].
+   B. Pri volani TARGET FUNCTION 'TARGET_FUNCTION()' sa pre FORWARDED PARAMETER musi pouzit CODE [TARGET_FUNCTION(static_cast<TYPE&&>(PARAMETER))].
+   !!!!! C. Pouzitie CODE [TARGET_FUNCTION(static_cast<TYPE&&>(PARAMETER))] sposobi, ze ak TYPE 'TYPE' bol LVALUE REFERENCE [CONST TYEPE&], alebo LVALUE REFERENCE [TYEPE&], tak vdaka REFERENCE COLLAPSING RULES TYPE PARAMETER 'PARAMETER' ostane na TYPE LVALUE REFERENCE [CONST TYEPE&], alebo LVALUE REFERENCE [TYEPE&].
+   !!!!! D. Pouzitie CODE [TARGET_FUNCTION(static_cast<TYPE&&>(PARAMETER))] sposobi, ze ak TYPE 'TYPE' bol RVALUE REFERENCE [TYEPE&&], tak vdaka REFERENCE COLLAPSING RULES TYPE PARAMETER 'PARAMETER' ostane na TYPE RVALUE REFERENCE [CONST TYEPE&], alebo LVALUE REFERENCE [TYEPE&&].
+   !!!!! E. Bez pouzitia CODE [TARGET_FUNCTION(static_cast<TYPE&&>(PARAMETER))] by C++ pri volani FUNCTION 'TARGET_FUNCTION()' AUTOMATICKY konvertovalo PARAMETER 'PARAMETER' na LVALUE REFERENCE a to aj vtedy, ak by PARAMETER 'PARAMETER' bol TYPE RVALUE REFERENCE. Toto je BEZPECNOSTNA FEATUERE C++ LANGUAGE, ktora vyzaduje, aby ak sa ma RVALUE REFERENCE pouzit ako RVALUE REFERENCE, tak ju VZDY nutne vykonat EXPLICITNY CAST na RVALUE REFERENCE. Dokonca aj vtedy, ak TYPE danej EXPRESSION uz je RVALUE REFERENCE. Je to preto, aby sa zabranilo nezelanej destrukcii VALUE, ak by sa omylom pouzila ako RVALUE REFERENCE, kde MOVE CONSTRUCTOR, alebo MOVE OPERATOR [OPERATOR=] mozu povodnu VALUE danej EXPRESSION zlikvidovat.
+   !!! F. Alternativou voci pouzitiu CODE [TARGET_FUNCTION(static_cast<TYPE&&>(PARAMETER))] je pouzitie FUNCTION [constexpr TType&& forward(remove_reference_t<TType>& Value) noexcept], alebo FUNCTION [constexpr TType&& forward(remove_reference_t<TType>&& Value) noexcept], ktore interne vykonavaju tento CODE. Ich pouzitie vsak robi CODE citatelnejsim.
+   G. PERFECT FORWARDING je mozne vykonavat aj pre VARIADIC TEMPLATES.
+22. PERFECT FORWARDING je mozne implementovat aj pre RETURN VALUES. PERFECT FORWARDING pre RETURN VALUES je mozne implementovat nasledujucimi sposobmi.
+   A. Pomocou SYNTAXE [decltype(EXPRESSION)].
+   B. Pomocou SYNTAXE [decltype(auto)].
+23. PERFECT FORWARDING sa pomocou SYNTAXE [decltype(EXPRESSION)] implementuje nasledovne.
+   A. Ako RETURN VALUE sa pouzije CODE [auto].
+   B. Na definovanie RETURN VALUE TYPE sa pouzije TRAILING RETURN TYPE SYNTAX.
+   C. V TRAILING RETURN TYPE SYNTAX sa vola TARGET FUNCTION pomocou CODE CODE [TARGET_FUNCTION(static_cast<TYPE&&>(PARAMETER))].
+   D. CODE [TARGET_FUNCTION(static_cast<TYPE&&>(PARAMETER))] musi byt pouzity aj v KEYWORD [return].
+24. PERFECT FORWARDING sa pomocou SYNTAXE [decltype(auto)] implementuje nasledovne.
+   A. Ako RETURN VALUE sa pouzije CODE [auto(decltype)].
+   B. CODE [TARGET_FUNCTION(static_cast<TYPE&&>(PARAMETER))] musi byt pouzity aj v KEYWORD [return].
+   !!! C. C++ vykona DEDUCTION RETURN VALUE TYPE z CODE v KEYWORD [return].
+25. SFINAE (SUBSTITUTION FAILURE IS NOT AN ERROR) je princip, ktory C++ aplikuje ak existuje viacero OVERLOADED TEMPLATE FUNCTIONS a COMPILER hlada tu najvhodnejsiu. C++ pri hladani najvhodnejsej OVERLOADED TEMPLATE FUNCTION postupuje nasledovne.
+   A. COMPILER najde vsetky TEMPLATE FUNCTIONS, ktore maju rovnaky NAME ako NAME FUNCTION, ktora je volana.
+   B. COMPILER sa pokusi subsituovat TYPES zadanych FUNCTION ARGUMENTS za PARAMETERS a RETURN VALUE danej FUNCTION.
+   C. Ak sa substitucia USPESNE PODARI, tak TEMPLATE FUNCTION je zaradena do CANDIDATE SET - mnoziny potencialnych FUNCTIONS, ktore mozu byt pre zadane ARGUMENTS volane.
+   !!!!! D. Ak substitucia ZLYHA, pretoze pri nej sa vytvori NEPLATNY C++ CONSTRUCT, tak COMPILER aplikuje princip SFINAE. Ten hovori, ze COMPILER NEGENERUJE ERROR, ale FUNCTION, ktora vygenerovala neplatny NEPLATNY C++ CONSTRUCT IGNORUJE a nezaradi ju do CANDIDATE SET.
+   !!!!! E. SFINAE sa aplikuje VZDY IBA na TEMPLATE FUNCTION DECLARATIONS, ale NIKDY NIE na TEMPLATE FUNCTION DEFINITIONS (TEMPLATE FUNCTION BODY). To znamena, ze ak TEMPLATE FUNCTION pri subsitucii FUNCTION ARGUMENTS za FUNCTION PARAMETERS NEVYTVORI NEPLATNY C++ CONSTRUCT, a zaroven je dana TEMPLATE FUNCTION vybrana ako najvhodnejsi kandidat z CANDIDATE SET, avsak pri subsitucii TEMPLATE PARAMETERS v TEMPLATE FUNCTION BODY vznikne NEPLATNY C++ CONSTRUCT, tak na tuto situaciu sa uz SFINAE NEAPLIKUJE a COMPILER hodi COMPILATION ERROR.
+!!! 26. SFINAE C++ vykonava iba v IMMEDIATE CONTEXTS. Iba pre IMMEDIATE CONTEXTS C++ ignoruje COMPILATION ERRORS. V pripade, ze pri TEMPLATE ARGUMENT DEDUCTION dojde k ERROR, ktora je MIMO IMMEDIATE CONTEXT, tak sa princip SFINAE NEAPLIKUJE a COMPILER generuje ERROR.
+!!! 27. IMMEDIATE CONTEXT ma velmi zlozitu definiciu, a preto je jednoduchsie definovat CO NIE JE IMMEDIATE CONTEXT. Plati, ze ak TEMPLATE ARGUMENT DEDUCTION vyzaduje vykonanie niektorej z nasledujucich cinnosti, tak CODE NIE JE IMMEDIATE CONTEXT a ERROR, ktory vznikne mimo IMMEDIATE CONTEXT je povazovany NIE za SFINAE, ale za COMPILATION ERROR.
+   A. DEFINITION TEMPLATE CLASS.
+   B. DEFINITION TEMPLATE FUNCTION a TEMPLATE METHOD.
+   C. INITIALIZER TEMPLATE VARIABLE.
+   D. DEFAULT ARGUMENT.
+   E. DEFAULT MEMBER INITIALIZER.
+   F. DEFINITION SPECIAL MEMBER FUNCTIONS.
+!!!!! 28. Aplikacia SFINAE IBA v IMMEDIATE CONTEXTS znamena, ze ak TEMPLATE ARGUMENT DEDUCTION vyzaduje napriklad pristup k DEFINITION TEMPLATE CLASS, alebo DEFINITION TEMPLATE FUNCTION pricom DEFINITION TEMPLATE CLASS, alebo DEFINITION TEMPLATE FUNCTION sposobi COMPILATION ERROR, tak tato ERROR NIE JE IGNOROVANA ako SFINAE ERROR, ale COMPILER je vrati ako COMPILATION ERROR.
+29. TEMPLATE ARGUMENT DEDUCTION sa standardne snazi, aby TEMPLATE PARAMETER a TEMPLATE ARGUMENT boli identicke. Existuju vsak aj pripady kedy C++ pri TEMPLATE ARGUMENT DEDUCTION umoznuje, aby TEMPLATE PARAMETERS a TEMPLATE ARGUMENTS boli rozdielne.
+   A. Ak TEMPLATE PARAMETER je deklarovany ako REFERENCE, tak TEMPLATE PARAMETER moze mat aplikovane aj dodatocne MODIFIER [const] a MODIFIER [volatile] ako povodny TEMPLATE ARGUMENT.
+   B. Ak TEMPLATE ARGUMENT je POINTER TYPE, alebo POINTER TO MEMBER TYPE, tak moze byt konvertovany na TEMPLATE PARAMETER, ktory ma aplikovane aj dodatocne MODIFIER [const] a MODIFIER [volatile].
+   C. Pokial sa TEMPLATE ARGUMENT DEDUCTION nevykonava pre CONVERSION OPERATOR TEMPLATE, TEMPLATE PARAMETER moze byt BASE CLASS TYPE, ale TEMPLATE ARGUMENT je DERIVED CLASS TYPE.
+   !!! D. Ak TEMPLATE FUNCTION PARAMETER obsahuje TEMPLATE PARAMETER v NON-DEDUCED CONTEXTS, tak vsetky IMPLICIT CONVERSIONS su mozne.
+   !!! E. Ak TEMPLATE FUNCTION PARAMETER obsahuje TEMPLATE PARAMETER v NON-DEDUCED CONTEXTS, tak IMPLICIT CONVERSIONS NIE SU MOZNE.
+   !!! F. Ak TEMPLATE FUNCTION ma viacero TEMPLATE FUNCTION PARAMETERS pricom ako TEMPLATE ARGUMENTS su pouzite rozlicne DERIVED CLASSES, ktore maju spolocnu BASE CLASS, tak TEMPLATE ARGUMENT DEDUCTION nezvazuje ani CONVERSION z DERIVED CLASS na BASE CLASS.
+30. Pred C++ 17 COMPILER nevykonaval TEMPLATE ARGUMENT DEDUCTION pre TEMPLATE CLASSES pri volani CONSTRUCTORS. Od verzie C++ 17 vsak uz COMPILER vykonava TEMPLATE ARGUMENT DEDUCTION pre TEMPLATE CLASSES pri volani CONSTRUCTORS.
+31. C++ NEPOUZIVA DEFAULT ARGUMENTS pri TEMPLATE ARGUMENT DEDUCTION. To znamena, ze ak dany TEMPLATE PARAMETER nie je explicitne zadany, tak C++ nepouzije DEFAULT ARGUMENT na urcenie jeho VALUE a ak ju nedokaze urcit inak, COMPILER hodi ERROR.
+32. C++ IGNORUJE DEFAULT TEMPLATE ARGUMENTS, ak sa realne nepouziju. To znamena, ze ak sa vola TEMPLATE FUNCTION, ktora ma vsetky TEMPLATE ARGUMENTS definovane, tak sa DEFAULT TEMPLATE ARGUMENTS ignoruju a to dokonca aj v tom pripade, ak by ich vytvorenie sposobilo COMPILATION ERROR.
+33. C++ NEVYUZIVA EXCEPTION SPECIFICATIONS pri TEMPLATE ARGUMENT DEDUCTION.
+34. C++ umoznuje explicitne specifikovanie TEMPLATE FUNCTION PARAMETERS. Platia nasledujuce fakty.
+   A. Explicitne specifikovanie TEMPLATE FUNCTION PARAMETERS je nutne, ak dany TEMPLATE PARAMETER nie je sucastou PARAMETER LIST TEMPLATE FUNCTION. Napriklad ak je pouzity iba ako RETURN VALUE TYPE, aleba iba interne v ramci TEMPLATE FUNCTION.
+   B. Explicitne specifikovanie TEMPLATE FUNCTION PARAMETERS je mozne aj pre tie TEMPLATE PARAMETERS, ktore mozu byt DEDUCED.
+   C. Pre explicitne specifikovane TEMPLATE FUNCTION PARAMETERS C++ vykonava vsetky CONVERSIONS.
+   !!! D. C++ umoznuje explicitne specifikovanie iba NIEKTORYCH TEMPLATE FUNCTION PARAMETERS. Tie vsak musia byt na zaciatku TEMPLATE PARAMETER LIST. Ostatne TEMPLATE FUNCTION PARAMETERS su DEDUCED.
+   !!! E. C++ umoznuje aj PRAZNY ZOZNAM explicitne specifikovanych TEMPLATE FUNCTION PARAMETERS pomocou SYNTAX [TEMPLATE_FUNCTION<>(PARAMETERS)]. Tato SYNAX ma vyznam ak existuje aj NON-TEMPLATE OVERLOADED VERSION danej FUNCTION. Bez pouzitia tejto SYNTAXE C++ vzdy preferuje NON-TEMPLATE FUNCTION. S pouzitim tejto SYNTAXE C++ VZDY preferuje TEMPLATE FUNCTION.
+   F. Pri pouziti explicitne specifikovanych TEMPLATE FUNCTION PARAMETERS aplikuje SFINAE.
+   G. Explicitne specifikovanie TEMPLATE FUNCTION PARAMETERS je mozne aj pre VARIADIC TEMPLATE FUNCTIONS a to vratane iba ciastocneho specifikovania TEMPLATE FUNCTION PARAMETERS.
+35. C++ 11 umoznuje vykonat TYPE DEDUCTION z VARIABLE INITIALIZERS a EXPRESSIONS.
+36. C++ definuje SPECIFIER [auto], ktorym umoznuje C++ vykonat TYPE DEDUCTION VARIABLE na zaklade jej INITIALIZER EXPRESSION. Pre SPECIFIER [auto] platia nasledujuce fakty.
+   A. SPECIFIER [auto] umoznuje C++ vykonat TYPE DEDUCTION VARIABLE na zaklade jej INITIALIZER EXPRESSION.
+   B. SPECIFIER [auto] je mozne pouzit na NAMESPACE SCOPE a LOCAL SCOPE.
+   !!! C. SPECIFIER [auto] NEMOZE byt pouzity v zozname FUNCTION PARAMETERS.
+   !!! D. C++ pre SPECIFIER [auto] vykonava ROVNAKU DEDUCTION ako pri TEMPLATE ARGUMENT DEDUCTION.
+   !!!!! E. Kedze TEMPLATE ARGUMENT DEDUCTION NIKDY neprodukuje REFERENCE TYPE SPECIFIER [auto] je mozne definovat ako LVALUE REFERENCE [auto&], alebo RVALUE REFERENCE [auto&&].
+   !!!!! F. V pripade pouzitia RVALUE REFERENCE [auto&&] je VARIABLE FORWARDING REFERENCE a aplikuju sa na nu pravidla TEMPLATE ARGUMENT DEDUCTION pre VARIABLE FORWARDING REFERENCES.
+   G. Pre SPECIFIER [auto] je mozne pouzit aj MODIFIER [const] a MODIFIER [volatile].
+   H. SPECIFIER [auto] je mozne deklarovat aj ako POINTER [auto*], alebo POINTER na MEMBER.
+!!!!! 37. Pre SPECIFIER [auto] vykonava C++ nasledujucu DEDUCTION.
+   A. C++ vygeneruje PSEUDO TEMPLATE FUNCTION, ktora ma 1 TEMPLATE PARAMETER. Ak SPECIFIER [auto] je REFERENCE, alebo POINTER, tak PSEUDO TEMPLATE FUNCTION ma ako PARAMETER REFERENCE, alebo POINTER.
+   B. C++ nasledne simuluje volanie tejto PSEUDO TEMPLATE FUNCTION pre INITIALIZER EXPRESSION, ktora bola zadana pre VARIABLE na ktoru je aplikovany SPECIFIER [auto].
+   C. C++ vykona standardnu TEMPLATE ARGUMENT DEDUCTION a vrateny TYPE je nadradeny za SPECIFIER [auto].
+38. SPECIFIER [auto] je mozne pouzit aj na DEDUCTION RETURN VALUE TYPE danej FUNCTION. C++ podporuje nasledujuce SYNTAXES.
+   A. SYNTAX [auto FUNCTION_NAME(PARAMETERS) BODY].
+   B. SYNTAX [auto FUNCTION_NAME(PARAMETERS) -> auto BODY]. Tato SYNTAX aj ked je platna, nema velky vyznam, kedze je tam zbytocny KEYWORD [auto] v TRAILING RETURN TYPE.
+39. SPECIFIER [auto] je mozne pouzit aj na DEDUCTION RETURN VALUE TYPE danej LAMBDA FUNCTION. C++ podporuje nasledujuce SYNTAXES.
+   A. SYNTAX [[CAPTURE] (PARAMETERS) BODY].
+   B. SYNTAX [[CAPTURE] (PARAMETERS) -> auto BODY]. Tato SYNTAX aj ked je platna, nema velky vyznam, kedze je tam zbytocny KEYWORD [auto] v TRAILING RETURN TYPE.
+40. Pre SPECIFIER [auto] pouzity na DEDUCTION RETURN VALUE TYPE danej FUNCTION platia nasledujuce fakty.
+   A. C++ vykonava analyzu TYPES vsetkych EXPRESSIONS v CODE [return(EXPRESSION)], ktore sa vo FUNCTION BODY nachadzaju. Z nich urci RETURN VALUE TYPE.
+   !!! B. Vsetky EXPRESSIONS v CODE [return(EXPRESSION)] MUSIA vracat ROVNAKY TYPE. Ak nevracaju, tak COMPILER generuje ERROR.
+   C. SPECIFIER [auto] je mozne pouzit aj na DEDUCTION RETURN VALUE TYPE pre LAMBDA FUNCTIONS.
+   D. C++ umoznuje pouzit SPECIFIER [auto] aj vo FUNCION DECLARATIONS. Taketo FUNCION DECLARATIONS vsak maju iba limitovane pouzitie. Najrozumnejsie pouzitie je pri DECLARATION METHODS, kde je rozumne rozdelit CODE na METHOD DECLARATION a METHOD DEFINITION.
+41. SPECIFIER [auto] je mozne pouzit aj na DEDUCTION TYPE NON-TYPE TEMPLATE PARAMETERS. Platia nasledujuce fakty.
+   A. SPECIFIER [auto] pouziva SYNTAX [auto TEMPLATE_PARAMETER].
+   B. C++ vykona DEDUCTION TYPE na zaklade TEMPLATE ARGUMENT.
+   C. SPECIFIER [auto] je mozne pouzit aj vo VARIADIC TEMPLATES, kde SPECIFIER [auto] znamena, ze kazdy TEMPLATE PARAMETER moze mat INY TYPE.
+42. KEYWORD [decltype()] ma v C++ 2 odlisne vyznamy.
+   A. KEYWORD [decltype(ENTITY_NAME)] vracia TYPE ENTITY 'ENTITY_NAME'. ENTITY moze byt VARIABLE, FUNCTION, ENUMERATOR, DATA MEMBER.
+   B. KEYWORD [decltype((EXPRESSION))] vracia VALUE CATEGORY EXPRESSION 'EXPRESSION'.
+43. Pre KEYWORD [decltype(ENTITY_NAME)], ktory vracia TYPE ENTITY platia nasledujuce fakty.
+   A. Pouziva sa SYNTAX [decltype(ENTITY_NAME)], kde VALUE 'ENTITY_NAME' je nazov ENTITY.
+   B. Ako ENTITY moze byt VARIABLE, FUNCTION, ENUMERATOR, DATA MEMBER.
+44. Pre KEYWORD [decltype((EXPRESSION))], ktory vracia VALUE CATEGORY EXPRESSION platia nasledujuce fakty.
+   A. Pouziva sa SYNTAX [decltype((EXPRESSION))], kde VALUE 'EXPRESSION' je EXPRESSION, ktoreho VALUE CATEGORY sa ma zistit.
+   !!! B. EXPRESSION 'EXPRESSION' MUSI byt uzatvoreny v ZATVORKACH [()].
+   C. Ak EXPRESSION 'EXPRESSION' je LVALUE EXPRESSION tak SYNTAX [decltype((EXPRESSION))] vracia TYPE [TYPE&] EXPRESSION 'EXPRESSION'.
+   !!! D. Ak EXPRESSION 'EXPRESSION' je XVALUE EXPRESSION (pouzitie FUNCTION [move()]) tak SYNTAX [decltype((EXPRESSION))] vracia TYPE [TYPE&&] EXPRESSION 'EXPRESSION'.
+   !!! E. Ak EXPRESSION 'EXPRESSION' je PRVALUE EXPRESSION (pouzitie LITERAL) tak SYNTAX [decltype((EXPRESSION))] vracia TYPE [TYPE] EXPRESSION 'EXPRESSION'.
+!!!!! 45. Vzhladom na to, ze C++ KEYWORD [auto] NIKDY NEVYPRODUKUJE REFERENCE TYPE, C++ 14 zaviedol novy KEYWORD [decltype(auto)]. Pre KEYWORD [decltype(auto)] platia nasledujuce fakty.
+   A. KEYWORD [decltype(auto)] podobne ako KEYWORD [auto] vykonava DEDUCTION TYPE DEDUCTION VARIABLE na zaklade jej INITIALIZER EXPRESSION, ale zaroven na INITIALIZER EXPRESSION aplikuje KEYWORD [decltype()].
+   !!!!! B. Zasadnym rozdielom KEYWORD [decltype(auto)] oproti KEYWORD [auto], ze KEYWORD [decltype(auto)] moze vratit aj REFERENCE TYPES.
+   C. KEYWORD [decltype(auto)] je mozne aplikovat aj ako RETURN VALUE TYPE.
+   !!! D. Na KEYWORD [decltype(auto)] NIE JE mozne aplikovat MODIFIER [const], MODIFIER [volatile], ani LVALUE REFERENCE MODIFIER [&], RVALUE REFERENCE MODIFIER [&&] ci POINTER MODIFIER [*].
+   !!!!! E. KEYWORD [decltype(auto)] pre PRVALUES (LITERALS) vracia NON-REFERENCE TYPE.
+   F. C++ 17 umoznuje pouzit KEYWORD [decltype(auto)] aj na NON-TYPE TEMPLATE PARAMETERS.
+46. Pre TEMPLATE ARGUMENT DEDUCTION INITIALIZER LIST platia nasledujuce fakty.
+   A. C++ NEDOKAZE vykonat TEMPLATE ARGUMENT DEDUCTION, ak je TEMPLATE ARGUMENT INITIALIZER LIST a TEMPLATE PARAMETER NEMA TYPE [initializer_list<TYPE>]. COMPILER hodi ERROR.
+   B. KEYWORD [auto] pre INITIALIZER LIST vrati TYPE [initializer_list<TYPE>].
+   C. C++ vyzaduje, aby INITIALIZER LISTS boli vzdy inicializovane pomocou CHARACTER [=]. To znamena, ze je nutne pouzit SYNTAX [VARIABLE={VALUE_1,...,VALUE_N}].
+   !!! D. C++ NEUMOZNUJNE vratit INITIALIZER LIST ako RETURN VALUE TYPE. Interne totizto pouziva LOCAL ARRAY, ktore je po skonceni volania FUNCTION odstraneny z MEMORY.
+   E. KEYWORD [auto] je mozne pouzit aj na TYPE DEDUCTION viacerych VARIABLES. DEDUCTION uspeje iba ak maju vsetky VARIABLES rovnaky TYPE, pricom sa vsak mozu lisit v MODIFIERS ako MODIFIER [&].
+   F. Ak sa KEYWORD [auto] pouzije ako RETURN VALUE TYPE, tak vsetky KEYWORDS [return] v danej FUNCTION MUSIA vracate ten isty TYPE. Inak dojde ku COMPILATION ERROR.
+   !!! G. Ak sa KEYWORD [auto] pouzije ako RETURN VALUE TYPE v RECUSIVE FUNCTION, tak je nutne, aby KEYWORD [return] pre zaverecny CASE, kde sa da identifikovat TYPE bol PRED KEYWORD [return] pouzitom na RECURSION. Ak je poradie prehodene COMPILER hodi ERROR.
+   H. Ak sa KEYWORD [auto] pouzije ako RETURN VALUE TYPE pricom FUNCTION nema ziaden KEYWORD [return], alebo ma prazdny KEYWORD [return], tak DEDUCED TYPE je TYPE [void].
+   I. Ak sa KEYWORD [auto] pouzije ako RETURN VALUE TYPE pre TEMPLATE FUNCTION, tak pri pouziti TEMPLATE FUNCTION musi byt TEMPLATE FUNCTION okamzite INSTANTIATED.
+47. C++ 17 podporuje STRUCTURED BINDINGS. Pre STRUCTURED BINDINGS platia nasledujuce fakty.
+   A. STRUCTURED BINDINGS umoznuju vytvaranie ALIASES na CLASS FIELDS, C-ARRAY ITEMS a TUPLE ITEMS.
+   B. STRUCTURED BINDINGS maju SYNTAX [MODIFIERS auto REFERENCE_QUALIFIER=EXPRESSION], kde VALUE 'MODIFIERS' moze byt MODIFIER [const], alebo MODIFIER [volatile], VALUE 'REFERENCE_QUALIFIER' je OPTIONAL REFERENCE QUALIFIER [&], alebo OPTIONAL REFERENCE QUALIFIER [&&] a VALUE 'EXPRESSION' urcuje OBJECT pre ktory sa vytvaraju ALIASES.
+   !!!!! C. STRUCTURED BINDINGS vytvaraju ALIASES nie VARIABLES. To znamena, ze vysledkom su ALIASES vytvorene pomocou KEYWORD [using] a NIE NOVE VARIABLES.
+!!! 48. STRUCTURED BINDINGS su implementovane nasledovne.
+   !!! A. C++ pre CODE [auto [ALIAS_1,...,ALIAS_N]=EXPRESSION] vytvori TEMPORARY VARIABLE pomocou CODE [auto TEMPORARY_VARIABLE=EXPRESSION].
+   !!! B. C++ nasledovne pre vsetky ALIASES generuje CODE [using ALIAS_X=EXPRESSION.ITEM], kde VALUE 'ALIAS_X' je nazvy ALIAS a VALUE 'EXPRESSION.ITEM' je ITEM daneho OBJECT pre ktory sa vytvara ALIAS.
+!!!!! 49. STRUCTURED BINDINGS umoznuje pouzitie MODIFIER [const], MODIFIER [volatile], OPTIONAL OPTIONAL REFERENCE QUALIFIER [&] a OPTIONAL REFERENCE QUALIFIER [&&]. Pouzitie tychto MODIFIERS a QUALIFIERS meni sposob ako C++ generuje TEMPORARY VARIABLE.
+   A. Pre NON-REFERENCES sa pre CODE [auto [ALIAS_1,...,ALIAS_N]=EXPRESSION] generuje TEMPORARY VARIABLE pomocou CODE [auto TEMPORARY_VARIABLE=EXPRESSION]. V tomto pripade sa teda vytvara KOPIA povodneho OBJECT.
+   !!! B. Pre LVALUE REFERENCES sa pre CODE [auto& [ALIAS_1,...,ALIAS_N]=EXPRESSION] generuje TEMPORARY VARIABLE pomocou CODE [auto& TEMPORARY_VARIABLE=EXPRESSION].
+   !!! C. Pre CONST LVALUE REFERENCES sa pre CODE [const auto& [ALIAS_1,...,ALIAS_N]=EXPRESSION] generuje TEMPORARY VARIABLE pomocou CODE [const auto& TEMPORARY_VARIABLE=EXPRESSION].
+   !!! D. Pre RVALUE REFERENCES sa pre CODE [auto&& [ALIAS_1,...,ALIAS_N]=EXPRESSION] generuje TEMPORARY VARIABLE pomocou CODE [auto&& TEMPORARY_VARIABLE=EXPRESSION].
+50. C++ 17 podporuje STRUCTURED BINDINGS pre nasledujuce typy EXPRESSIONS.
+   A. CLASS TYPES.
+   B. C-ARRAYS.
+   C. TUPLE LIKE CLASSES.
+51. Pre STRUCTURED BINDING pre CLASS TYPES platia nasledujuce fakty.
+   A. STRUCTURED BINDING umoznuje vytvarat ALIAS na NON-STATIC CLASS FIELDS.
+   B. Pocet ALIASES pouzitych v STRUCTURED BINDING musi byt rovnaky ako pocet CLASS FIELDS.
+   !!! C. CLASS FIELDS MUSIA byt ACCESSIBLE a NESMU mat ZIADNE INACCESSIBLE FIELDS.
+   !!!!! D. STRUCTURED BINDING berie aj NON-STATIC CLASS FIELDS z PUBLIC BASE CLASSES. Avsak plati obmedzenie, ze DERIVED CLASS moze mat FIELDS iba v jednej z CLASSES (DERIVED ci BASE CLASSES). Ak ich ma vo viacerych COMPILER hodi ERROR.
+52. Pre STRUCTURED BINDING pre C-ARRAYS platia nasledujuce fakty.
+   A. STRUCTURED BINDING umoznuje vytvarat ALIASES pre C-ARRAYS.
+   B. Pocet ALIASES pouzitych v STRUCTURED BINDING musi byt rovnaky ako pocet C-ARRAY ITEMS.
+   !!!!! C. V pripade, ze FUNCTION vracia REFERENCE na C-ARRAY na ktory sa vykonava STRUCTURED BINDING, pricom STRUCTURED BINDING vyzaduje NON-REFERENCE, tak dochadza k KOPIROVANIU C-ARRAY z FUNCTION do CALLER.
+53. Pre STRUCTURED BINDING pre TUPLE LIKE CLASSES platia nasledujuce fakty.
+   A. CLASS musi splnat TUPLE INTERFACE.
+   B. Pre CLASS musi definovana SPECIALIZATION [tuple_size<TYPE>], kde VALUE 'TYPE' je TYPE CLASS pre ktoru sa vytvaraju ALIASES. Tato CLASS MUSI mat definovany STATIC FIELD INTEGER TYPE [value], ktory vracia pocet ALIASES.
+   C. Pre kazdy ALIAS musi definovana SPECIALIZATION [tuple_element<INDEX,TYPE>], kde VALUE 'INDEX' je ALIAS INDEX a VALUE 'TYPE' je TYPE CLASS pre ktoru sa vytvaraju ALIASES. Tato CLASS MUSI mat definovany USING [type] vracajuci TYPE daneho ALIAS.
+   !!! D. Pre CLASS MUSI byt definovana bud METHOD [get<>()], alebo FUNCTION [get<>()], ktora vrati VALUE daneho ALIAS.
+   !!!!! E. Pre TUPLE LIKE CLASSES sa nevytvaraju ALIASES, ale skutocne REFERENCE VARIABLES, ktore su inicializovane.
+54. C++ implemenetuje LAMBDA EXPRESSIONS ako INTERNAL CLASSES, ktore maju implementovany OPERATOR [OPERATOR()], ktory obsahuje CODE LAMBDA FUNCTION. INTERNAL CLASS generovana z LAMBDA EXPRESSIONS ma nasledujuce MEMBERS.
+   !!! A. INTERNAL CLASS ma pre kazdu VARIABLE v CAPTURE LIST nezavisly FIELD do ktorej sa ulozi hodnota danej VARIABLE z CAPTURE LIST.
+   B. INTERNAL CLASS ma definovany DEFAULT CONSTRUCTOR.
+   C. INTERNAL CLASS ma definovany DESTRUCTOR.
+   D. INTERNAL CLASS ma definovany COPY OPERATOR [OPERATOR=].
+   !!! E. INTERNAL CLASS ma definovany CONVERSION OPERATOR na POINTER na FUNCTION. Tento CONVERSION OPERATOR je definovany IBA ak CAPTURE LIST je PRAZDNY.
+   !!!!! F. INTERNAL CLASS ma definovany OPERATOR [OPERATOR()], ktory obsahuje CODE LAMBDA EXPRESSION.
+!!! 55. Ak LAMBDA EXPRESSION obsahuje v PARAMETER LIST KEYWORD [auto], tak C++ generuje INTERNAL CLASS nasledovne.
+   A. C++ generuje podobnu INTERNAL CLASS ako pre bezne LAMBDA EXPRESSIONS. Tato INTERNAL CLASS DEFAULT CONSTRUCTOR, DESTRUCTOR, COPY OPERATOR [OPERATOR=] a CONVERSION OPERATOR na POINTER na FUNCTION.
+   !!! B. Zasadnym rozdielom je OPERATOR [OPERATOR()]. OPERATOR [OPERATOR()] je TEMPLATE MEMBER OPERATOR, ktory ma pre KAZDY KEYWORD [auto] definovany nezavisly TEMPLATE PARAMETER. Pri volani LAMBDA EXPRESSION sa vola OPERATOR [OPERATOR()] pricom sa vykona TEMPLATE ARGUMENT DEDUCTION, kde TEMPLATE PARAMETERS su substituovane za TEMPLATE ARGUMENTS.
+   !!!!! C. Kedze OPERATOR [OPERATOR()] je TEMPLATE MEMBER OPERATOR, tak takuto LAMBDA EXPRESSION je mozne pouzit pre lubovolny TEMPLATE ARGUEMENT.
+56. TEMPLATE ALIASES su transparentne pri TEMPLATE ARGUMENT DEDUCTION. Vzdy ked sa pouzije TEMPLATE ALIAS v CODE, tak je nahradeny jeho TYPE a pre ten je nasledne vykonana TEMPLATE ARGUMENT DEDUCTION.
+57. C++ 17 umoznuje TEMPLATE ARGUMENT DEDUCTION pre TEMPLATE CLASSES. Platia nasledujuce fakty.
+   A. TEMPLATE ARGUMENT DEDUCTION pre TEMPLATE CLASSES sa vykonava pomocou DEDUCTION GUIDES.
+   !!! B. TEMPLATE ARGUMENT DEDUCTION pre TEMPLATE CLASSES je mozna iba pre VSETKY TEMPLATE PARAMETERS. Nie je mozne niektore TEMPLATE PARAMETER speficikovat EXPLICITNE pomocou SYNTAX [<>] a ostatne nechat na DEDUCTION. Toto C++ NEAKCEPTUJE.
+   C. Pre DEDUCTION GUIDES sa aplikuje princip SFINAE. To znamena, ze ak dojde pri ich pouziti k ERROR, COMPILER to neoznaci ako ERROR, ale skusa dalsie DEDUCTION GUIDES.
+   D. TEMPLATE ARGUMENT DEDUCTION pre TEMPLATE CLASSES sa NEROBI, ale TEMPLATE CLASS je INJECTED CLASS NAME. To znamena, ze TEMPLATE ARGUMENT DEDUCTION sa NEROBI v METHODS TEMPLATE CLASS pre samotnu TEMPLATE CLASS.
+   !!!!! E. DEDUCTION GUIDES sa pouzivaju IBA na urcenie TYPE PARAMETERS TEMPLATE CLASS, NIE na volanie CONSTRUCTOR. C++ potom ako pouzije DEDUCTION GUIDES na urcenie TYPES TEMPLATE PARAMETERS nasledne robi klasicky OVERLOAD RESOLUTION pre urcenie, ktory CONSTRUCTOR je pre dany TEMPLATE CLASS s DEDUCED TEMPLATE PARAMETERS najlepsi.
+58. C++ podporuje nasledujuce type DEDUCTION GUIDES.
+   A. IMPLICIT DEDUCTION GUIDES.
+   B. USER DEFINED DEDUCTION GUIDES.
+59. Pre IMPLICIT DEDUCTION GUIDES platia nasledujuce fakty.
+   A. C++ generuje IMPLICIT DEDUCTION GUIDE pre kazdy CONSTRUCTOR, alebo TEMPLATE CONSTRUCTOR, ktory TEMPLATE CLASS definuje.
+   B. IMPLICIT DEDUCTION GUIDE ma v TEMPLATE PARAMETER LIST [template<TEMPLATE_PARAMETER_LIST>] vsetky TEMPLATE CLASS PARAMETERS. V pripade, ze CONSTRUCTOR je TEMPLATE CONSTRUCTOR, tak za TEMPLATE CLASS PARAMETERS nasleduju TEMPLATE CONSTRUCTOR PARAMETERS.
+   C. IMPLICIT DEDUCTION GUIDE ma v PARAMETERS [TEMPLATE_NAME(PARAMETERS)] zoznam vsetkych PARAMETERS prebratych z CONSTRCUTOR.
+   D. IMPLICIT DEDUCTION GUIDE ma v GUIDED TYPE [-> TEMPLATE_ID] ma po nazve TEMPLATE vsetky TEMPLATE ARGUMENTS pre TEMPLATE CLASS.
+   !!! E. V IMPLICIT DEDUCTION GUIDES sa specialna DEDUCTION pre FORWARDING REFERENCES NEAPLIKUJE ako je tomu pri TEMPLATE ARGUMENT DEDUCTION ak FUNCTION ma ako PARAMETER FORWARDING REFERENCE.
+60. Pre TEMPLATE ARGUMENT DEDUCTION pre TEMPLATE CLASSES pomocou USER DEFINED DEDUCTION GUIDES platia nasledujuce fakty.
+   A. USER DEFINED DEDUCTION GUIDES pouziva SYNTAX [EXPLICIT TEMPLATE_NAME(PARAMETERS) -> TEMPLATE_ID], kde VALUE 'EXPLICIT' je OPTIONAL KEYWORD [explicit], VALUE 'TEMPLATE_NAME' je TEMPLATE NAME, VALUE 'PARAMETERS' su TEMPLATE PARAMETERS a VALUE 'TEMPLATE_ID' je TEMPLATE ID, ktora sa ma pre dane TEMPLATE PARAMETERS vytvorit.
+   B. USER DEFINED DEDUCTION GUIDES mozu byt same TEMPLATES, takze mozu mat vlastne TEMPLATE PARAMETERS.
+   !!! C. Ak USER DEFINED DEDUCTION GUIDE je oznaceny KEYWORD [explicit], tak sa NEPOUZIVA pre COPY INITIALIZATION SYNTAX [VARIABLE=VALUE]. Na pouzitie EXPLICIT USER DEFINED DEDUCTION GUIDES je NUTNE pouzit SYNTAX [VARIABLE(VALUE)], alebo SYNTAX [VARIABLE{VALUE}].
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+VALUE CATEGORIES.
+
+1. V C++ existuju 3 zakladne VALUE CATEGORIES.
+   A. LVALUE. Typickym prikladom LVALUE je VARIABLE NAME.
+   B. XVALUE. Typickym prikladom XVALUE je EXPRESSION na ktoru je aplikovana FUNCTION [move()].
+   C. PRVALUE. Typickym prikladom PRVALUE je LITERAL EXPRESSION.
+2. TEMPLATE ARGUMENT DEDUCTION takmer vzdy berie do uvahy iba TYPE TEMPLATE ARGUMENT, ale nie to ci je REFERENCE TYPE. Vynimkou je iba FORWARDING REFERENCE (TEMPLATE PARAMETER ma TYPE [TYPE&&]), kedy sa berie do uvahy ci je TEMPLATE ARGUMENT LVALUE, alebo nie.
+3. Kedze KEYWORD [auto] interne vyuziva TEMPLATE ARGUMENT DEDUCTION, tak KEYWORD [auto] NIKDY nevracia REFERENCE TYPE. Ten je mozne docielit iba aplikovanim MODIFIER [auto&], alebo MODIFIER [auto&&].
+4. KEYWORD [decltype(EXPRESSION)] vracia presny TYPE EXPRESSION 'EXPRESSION'. Ak je EXPRESSION 'EXPRESSION' je REFERENCE TYPE, tak KEYWORD [decltype(EXPRESSION)] vracia REFERENCE TYPE.
+!!!!! 5. KEYWORD [decltype(EXPRESSION)] pre PRVALUE vracia NON-REFERENCE TYPE.
+!!!!! 6. KEYWORD [decltype(EXPRESSION)] moze vracat TYPE danej EXPRESSION, alebo jej VALUE CATEGORY. Jediny rozdiel medzi tymito pouzitiami je nasledujuci.
+   A. KEYWORD [decltype(ENTITY_NAME)] vracia pre LVALUES NON-REFERENCE TYPE. To znamena, ze CODE [decltype(VARIABLE)] vrati NON-REFERENCE TYPE VARIABLE 'VARIABLE'. Teda TYPE [TYPE].
+   B. KEYWORD [decltype((EXPRESSION))] vracia pre LVALUES REFERENCE TYPE. To znamena, ze CODE [decltype(VARIABLE)] vrati LVALUE REFERENCE TYPE VARIABLE 'VARIABLE'. Teda TYPE [TYPE&].
+   C. Pre XVALUES a PRVALUES vracaju obe pouzitia KEYWORD [decltype(EXPRESSION)] ten isty TYPE.
+//----------------------------------------------------------------------------------------------------------------------
