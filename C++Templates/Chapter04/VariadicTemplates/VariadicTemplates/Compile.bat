@@ -1,1 +1,1 @@
-g++-12 -m64 -std=c++2b -fconcepts -pthread -fexceptions -pedantic -Wall -Wextra -o Program.exe MyDebug.cpp VariadicTemplates.cpp SNode.cpp CVariadicClassUsing.cpp CVariadicClassUsingEqual.cpp CVariadicClassUsingHash.cpp
+g++-13 -m64 -std=gnu++2b -fconcepts -pthread -fexceptions -pedantic -Wall -Wextra -o Program.exe MyDebug.cpp VariadicTemplates.cpp SNode.cpp CVariadicClassUsing.cpp CVariadicClassUsingEqual.cpp CVariadicClassUsingHash.cpp

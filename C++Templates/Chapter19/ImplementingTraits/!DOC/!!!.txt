@@ -1,0 +1,27 @@
+//----------------------------------------------------------------------------------------------------------------------
+1. Solution demonstruje implementaciu TYPE TRAITS.
+2. TYPE TRAITS su COMPILE TIME TEMPLATE BASED INTERFACES, ktore umoznuju ziskavat informacie o TYPES, alebo vytvarat nove modifikovane TYPES.
+3. C++ STANDARD LIBRARY poskytuje LIBRARY [<type_traits>], ktora obsahuje standardizovane TYPE TRAITS.
+4. FIXED TRAITS su TRAITS, ktore su pouzite v CODE danej TEMPLATE, bez toho aby boli prenesene ako TEMPLATE PARAMETER.
+5. PARAMETRIZED TRAITS su TRAITS, ktore su pouzite v CODE danej TEMPLATE pricom ich TYPE je zaslany pomocou TEMPLATE PARAMETER. To znamena, ze su vymenitelne.
+6. POLICIES su specialne typy TRAITS, ktore obsahuju EXECUTABLE CODE. Spravidla su implementovane ako METHODS TEMPLATE CLASSES, alebo ako TEMPLATE FUNCTIONS.
+7. TYPE FUNCTIONS su TEMPLATES (spravidla TEMPLATE CLASSES), ktore maju ako PARAMETERS TEMPLATE PARAMETERS a vracaju ako RETURN VALUE novy TYPE, alebo VALUE.
+8. Pre TYPE TRAIT [declval<TType>] platia nasledujuce fakty.
+   !!!!! A. TYPE TRAIT sa pouziva v METAPROGRAMMING na vratenie VALUE daneho TYPE bez toho, aby dany TYPE musel mat definovany DEFAULT CONSTRUCTOR.
+   B. TYPE TRAIT je definovany v LIBRARY [utility].
+   C. VALUE [declval<TType>::type] pre NON-REFERENCE TYPES a pre RVALUE REFERENCE TYPES vracia TYPE [TType&&].
+   D. VALUE [declval<TType>::type] pre LVALUE REFERENCE TYPES vracia TYPE [TType&].
+   E. VALUE [declval<TType>::type] pre TYPE [void] vracia TYPE [void].
+   !!! F. VALUE [declval<TType>::type] vracia TYPE aj pre NON CONSTRUCTIBLE TYPES, ako napriklad TYPES, ktore maju DELETED CONSTRUCTORS.
+   !!!!! G. Kedze TYPE TRAIT NEMA DEFINITION iba DECLARATION je ho mozne pouzit IBA v UNEVALUATED CONTEXTS. Typickym pouzitim je pouzitie v OPERATOR [decltype()].
+9. SFINAE (SUBSTITUTION FAILURE IS NOT AN ERROR) umoznuje v METAPROGRAMMING implementovat TRAITS, ktore mozu testovat ci dany TYPE na pozadovany OPERATOR, alebo pozadovanu METHOD. SFINAE TRAITS su implementovane nasledovne.
+   A. Definuje sa TEMPLATE CLASS, ktora reprezentuje SFINAE TRAIT.
+   !!! B. TEMPLATE CLASS ma dvojicu DECLARATIONS OVERLOADED TEMPLATE METHODS, kde kazda vracia iny RETURN VALUE TYPE.
+   !!! C. 1. DECLARATION OVERLOADED TEMPLATE METHOD obsahuje CONDITION, ktoru ma SFINAE TRAIT testovat. Spravidla je CONDITION vykonana v DEFAULT ARGUMENT UNNAMED TEMPLATE TYPE PARAMETER. Ak napriklad SFINAE TRAIT ma testovat ci dany TYPE ma danu METHOD, tak DEFAULT ARGUMENT TEMPLATE PARAMETER obsahuje CODE [decltype(TYPE().METHOD(PARAMETERS))]. Tento CODE sposobi, ze ak TYPE [TYPE] ma METHOD [METHOD], tak CODE uspesne zbehne. Ak nie, C++ povazuje ERROR za SFINAE a skusa 2. OVERLOADED TEMPLATE METHOD.
+   D. 2. DECLARATION OVERLOADED TEMPLATE METHOD neobsahuje CONDITION a ako PARAMETERS ma spravidla ELLIPSIS, aby ak je COMPILER vybrana bola VZDY HORSI MATCH ako 1. DECLARATION OVERLOADED TEMPLATE METHOD.
+   !!! E. TEMPLATE CLASS obsahuje STATIC CONSTEXPR VARIABLE, ktora vola OVERLOADED TEMPLATE METHODS a zaroven testuje RETURN VALUE TYPE. Na zaklade RETURN VALUE TYPE urci ci dany TYPE obsahuje danu METHOD, alebo nie.
+10. SFINAE (SUBSTITUTION FAILURE IS NOT AN ERROR) TRAIT je mozne alternativne definovat aj pomocou TEMPLATE CLASS SPECIALIZATIONS.
+   A. Definuje PRIMARY TEMPLATE CLASS, ktora sa TEMPLATE PARAMETER, ktory sa pouzije na aplikovanie CONDITION. PRIMARY TEMPLATE CLASS sluzi ako FALSE CASE. Je pouziva vtedy ako TRUE CASE zlyha.
+   B. Definuje TEMPLATE CLASS SPECIALIZATION, ktora v DEFAULT ARGUMENT TEMPLATE CLASS z PRIMARY TEMPLATE CLASS vykona CONDITION.
+   !!! C. Ak CONDITION v TEMPLATE CLASS SPECIALIZATION vyhovuje, tak sa pouzije TEMPLATE CLASS SPECIALIZATION, ktora vracia TRUE VALUE. Ak CONDITION v TEMPLATE CLASS SPECIALIZATION ZLYHA, C++ na zaklade SFINAE zrusi celu TEMPLATE CLASS SPECIALIZATION a pouzije PRIMARY TEMPLATE CLASS, ktora vracia FALSE VALUE.
+//----------------------------------------------------------------------------------------------------------------------
