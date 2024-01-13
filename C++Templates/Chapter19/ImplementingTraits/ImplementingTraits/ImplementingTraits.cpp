@@ -66,6 +66,29 @@
 #include "STypeClassificationHasOperatorLess.h"
 #include "STypeClassificationHasVariousMembers.h"
 #include "SDetectingMembersTraitUsingGenericLambdas.h"
+#include "SOtherTraitsIfThenElse.h"
+#include "CHasType.h"
+#include "CHasNotType.h"
+#include "SUseType.h"
+#include "CMethodThrowMethod.h"
+#include "CMethodNoThrowMethod.h"
+#include "CMethodNoMethod.h"
+#include "SOtherTraitsIsNoThrowMyMethod1.h"
+#include "SOtherTraitsIsNoThrowMyMethod2.h"
+#include "STypeClassificationIsFundamentalType.h"
+#include "STypeClassificationIsPointerType.h"
+#include "STypeClassificationIsLReferenceType.h"
+#include "STypeClassificationIsRReferenceType.h"
+#include "STypeClassificationIsReferenceType.h"
+#include "STypeClassificationIsArrayType.h"
+#include "CPointerToMember.h"
+#include "STypeClassificationIsMemberPointerType.h"
+#include "STypeClassificationIsFunctionType.h"
+#include "STypeClassificationIsClassType.h"
+#include "CTypes.h"
+#include "STypeClassificationIsEnumType.h"
+#include "SPolicyTraitConstType.h"
+#include "CTypesForPolicyTraitConstTypes.h"
 //----------------------------------------------------------------------------------------------------------------------
 #ifdef _MSC_VER
 #pragma warning( disable : 4804 )
@@ -1925,6 +1948,1033 @@ void TestDetectingMembersTraitUsingGenericLambdas(void)
 //----------------------------------------------------------------------------------------------------------------------
 //----------------------------------------------------------------------------------------------------------------------
 //----------------------------------------------------------------------------------------------------------------------
+void TestOtherTraitsIfThenElse(void)
+{
+	PrintLineSeparator();
+
+	{
+		constexpr bool											Condition=true;
+
+		using													Type1=int;
+		using													Type2=double;
+
+		using													ResultType=SOtherTraitsIfThenElse<Condition,Type1,Type2>::TYPE;
+
+		wcout << L"IF THEN ELSE - CONDITION [" << Condition << L"] TYPE 1 [" << GetTypeInfoName<Type1>() << L"] TYPE 2 [" << GetTypeInfoName<Type2>() << L"] RESULT TYPE [" << GetTypeInfoName<ResultType>() << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+
+	{
+		constexpr bool											Condition=false;
+
+		using													Type1=int;
+		using													Type2=double;
+
+		using													ResultType=SOtherTraitsIfThenElse<Condition,Type1,Type2>::TYPE;
+
+		wcout << L"IF THEN ELSE - CONDITION [" << Condition << L"] TYPE 1 [" << GetTypeInfoName<Type1>() << L"] TYPE 2 [" << GetTypeInfoName<Type2>() << L"] RESULT TYPE [" << GetTypeInfoName<ResultType>() << L"]." << endl;
+	}
+
+	/*
+	PrintLineSeparator();
+
+	{
+		// !!!!! COMPILER hodi ERROR, pretoze pre TYPE TRAIT su VZDY EVALUATED TRUE CASE aj FALSE CASE. A TYPE [CHasNotType] NEMA USING [TYPE].
+		using													ResultType=SOtherTraitsIfThenElse<true,CHasType::TYPE,CHasNotType::TYPE>::TYPE;
+
+		wcout << L"IF THEN ELSE - RESULT TYPE [" << GetTypeInfoName<ResultType>() << L"]." << endl;
+	}
+	*/
+
+	PrintLineSeparator();
+
+	{
+		using													IfThenElseHelper=typename SOtherTraitsIfThenElse<true,SUseType<CHasType>,SUseType<CHasNotType>>::TYPE::USE_TYPE;
+		using													ResultType=typename IfThenElseHelper::TYPE;
+
+		wcout << L"IF THEN ELSE - RESULT TYPE [" << GetTypeInfoName<ResultType>() << L"]." << endl;
+	}
+
+	/*
+	PrintLineSeparator();
+
+	{
+		using													IfThenElseHelper=typename SOtherTraitsIfThenElse<false,SUseType<CHasType>,SUseType<CHasNotType>>::TYPE::USE_TYPE;
+
+		// !!!!! COMPILER hodi ERROR, pretoze TYPE [CHasNotType] NEMA USING [TYPE].
+		using													ResultType=typename IfThenElseHelper::TYPE;
+
+		wcout << L"IF THEN ELSE - RESULT TYPE [" << GetTypeInfoName<ResultType>() << L"]." << endl;
+	}
+	*/
+
+	PrintLineSeparator();
+}
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+void TestOtherTraitsNoThrow(void)
+{
+	PrintLineSeparator();
+
+	{
+		using													Type=CMethodThrowMethod;
+
+		constexpr bool											Result=SOtherTraitsIsNoThrowMyMethod1<Type>::VALUE;
+
+		wcout << L"NO THROW 1 - TYPE [" << GetTypeInfoName<Type>() << L"] RESULT [" << Result << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+
+	{
+		using													Type=CMethodNoThrowMethod;
+
+		constexpr bool											Result=SOtherTraitsIsNoThrowMyMethod1<Type>::VALUE;
+
+		wcout << L"NO THROW 1 - TYPE [" << GetTypeInfoName<Type>() << L"] RESULT [" << Result << L"]." << endl;
+	}
+
+	/*
+	PrintLineSeparator();
+
+	{
+		using													Type=CMethodNoMethod;
+
+		// !!!!! COMPILER hodi ERROR, pretoze TYPE [CMethodNoMethod] NEMA METHOD [void MyMethod(void)].
+		constexpr bool											Result=SOtherTraitsIsNoThrowMyMethod1<Type>::VALUE;
+
+		wcout << L"NO THROW 1 - TYPE [" << GetTypeInfoName<Type>() << L"] RESULT [" << Result << L"]." << endl;
+	}
+	*/
+
+	PrintLineSeparator();
+
+	{
+		using													Type=CMethodThrowMethod;
+
+		constexpr bool											Result=SOtherTraitsIsNoThrowMyMethod2<Type>::VALUE;
+
+		wcout << L"NO THROW 2 - TYPE [" << GetTypeInfoName<Type>() << L"] RESULT [" << Result << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+
+	{
+		using													Type=CMethodNoThrowMethod;
+
+		constexpr bool											Result=SOtherTraitsIsNoThrowMyMethod2<Type>::VALUE;
+
+		wcout << L"NO THROW 2 - TYPE [" << GetTypeInfoName<Type>() << L"] RESULT [" << Result << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+
+	{
+		using													Type=CMethodNoMethod;
+
+		constexpr bool											Result=SOtherTraitsIsNoThrowMyMethod2<Type>::VALUE;
+
+		wcout << L"NO THROW 2 - TYPE [" << GetTypeInfoName<Type>() << L"] RESULT [" << Result << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+}
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+// !!!!! Definuje sa TEMPLATE ALIAS pre TYPE TRAIT [STypeFunctionRemoveConst<TType>].
+template<typename TType>
+using															AliasTypeFunctionRemoveConst=STypeFunctionRemoveConst<TType>::Type;
+//----------------------------------------------------------------------------------------------------------------------
+void TestOtherTraitsTemplateAliases(void)
+{
+	PrintLineSeparator();
+
+	{
+		using													OriginalType=const int;
+
+		// !!! Pouzije sa TYPE TRAIT.
+		using													ModifiedType=STypeFunctionRemoveConst<OriginalType>::Type;
+
+		wcout << L"TYPE TRAIT - REMOVE CONST - ORIGINAL TYPE [" << GetTypeInfoName<OriginalType>() << L"] MODIFIED TYPE [" << GetTypeInfoName<ModifiedType>() << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+
+	{
+		using													OriginalType=const int;
+
+		// !!!!! Pouzije sa TEMPLATE ALIAS.
+		using													ModifiedType=AliasTypeFunctionRemoveConst<OriginalType>;
+
+		wcout << L"TEMPLATE ALIAS - REMOVE CONST - ORIGINAL TYPE [" << GetTypeInfoName<OriginalType>() << L"] MODIFIED TYPE [" << GetTypeInfoName<ModifiedType>() << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+}
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+// !!!!! Definuje sa TEMPLATE VARIABLE pre TYPE TRAIT [STypeFunctionIsSame<TType1,TType2>].
+template<typename TType1, typename TType2>
+constexpr bool													VariableTypeFunctionIsSame=STypeFunctionIsSame<TType1,TType2>::VALUE;
+//----------------------------------------------------------------------------------------------------------------------
+void TestOtherTraitsTemplateVariables(void)
+{
+	PrintLineSeparator();
+
+	{
+		using													Type1=int;
+		using													Type2=int;
+
+		// !!! Pouzije sa TYPE TRAIT.
+		constexpr bool											IsSame=STypeFunctionIsSame<Type1,Type2>::VALUE;
+
+		wcout << L"TYPE TRAIT - IS SAME - TYPE 1 [" << GetTypeInfoName<Type1>() << L"] TYPE 2 [" << GetTypeInfoName<Type2>() << L"] IS SAME [" << IsSame << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+
+	{
+		using													Type1=double;
+		using													Type2=int;
+
+		// !!! Pouzije sa TYPE TRAIT.
+		constexpr bool											IsSame=STypeFunctionIsSame<Type1,Type2>::VALUE;
+
+		wcout << L"TYPE TRAIT - IS SAME - TYPE 1 [" << GetTypeInfoName<Type1>() << L"] TYPE 2 [" << GetTypeInfoName<Type2>() << L"] IS SAME [" << IsSame << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+
+	{
+		using													Type1=int;
+		using													Type2=int;
+
+		// !!!!! Pouzije sa TEMPLATE VARIABLE.
+		constexpr bool											IsSame=VariableTypeFunctionIsSame<Type1,Type2>;
+
+		wcout << L"TEMPLATE VARIABLE - IS SAME - TYPE 1 [" << GetTypeInfoName<Type1>() << L"] TYPE 2 [" << GetTypeInfoName<Type2>() << L"] IS SAME [" << IsSame << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+
+	{
+		using													Type1=double;
+		using													Type2=int;
+
+		// !!!!! Pouzije sa TEMPLATE VARIABLE.
+		constexpr bool											IsSame=VariableTypeFunctionIsSame<Type1,Type2>;
+
+		wcout << L"TEMPLATE VARIABLE - IS SAME - TYPE 1 [" << GetTypeInfoName<Type1>() << L"] TYPE 2 [" << GetTypeInfoName<Type2>() << L"] IS SAME [" << IsSame << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+}
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+void TestTypeClassificationIsFundamentalTypes(void)
+{
+	PrintLineSeparator();
+
+	{
+		using													Type=int;
+
+		constexpr bool											IsFundamentalType=STypeClassificationIsFundamentalType<Type>::VALUE;
+
+		wcout << L"IS FUNDAMENTAL TYPE - TYPE [" << GetTypeInfoName<Type>() << L"] VALUE [" << IsFundamentalType << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+
+	{
+		using													Type=const int;
+
+		// !!! Vrati FALSE.
+		constexpr bool											IsFundamentalType=STypeClassificationIsFundamentalType<Type>::VALUE;
+
+		wcout << L"IS FUNDAMENTAL TYPE - TYPE [" << GetTypeInfoName<Type>() << L"] VALUE [" << IsFundamentalType << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+
+	{
+		using													Type=double;
+
+		constexpr bool											IsFundamentalType=STypeClassificationIsFundamentalType<Type>::VALUE;
+
+		wcout << L"IS FUNDAMENTAL TYPE - TYPE [" << GetTypeInfoName<Type>() << L"] VALUE [" << IsFundamentalType << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+
+	{
+		using													Type=const double;
+
+		// !!! Vrati FALSE.
+		constexpr bool											IsFundamentalType=STypeClassificationIsFundamentalType<Type>::VALUE;
+
+		wcout << L"IS FUNDAMENTAL TYPE - TYPE [" << GetTypeInfoName<Type>() << L"] VALUE [" << IsFundamentalType << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+
+	{
+		using													Type=CString;
+
+		// !!! Vrati FALSE.
+		constexpr bool											IsFundamentalType=STypeClassificationIsFundamentalType<Type>::VALUE;
+
+		wcout << L"IS FUNDAMENTAL TYPE - TYPE [" << GetTypeInfoName<Type>() << L"] VALUE [" << IsFundamentalType << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+}
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+template<typename TType>
+void PrintTypeClassificationIsPointerType(void)
+{
+	constexpr bool												IsPointerType=STypeClassificationIsPointerType<TType>::VALUE;
+
+	if constexpr (IsPointerType==true)
+	{
+		using													BaseType=STypeClassificationIsPointerType<TType>::BASE;
+
+		wcout << L"IS POINTER TYPE - TYPE [" << GetTypeInfoName<TType>() << L"] VALUE [" << IsPointerType << L"] BASE TYPE [" << GetTypeInfoName<BaseType>() << L"]." << endl;
+	}
+	else
+	{
+		wcout << L"IS POINTER TYPE - TYPE [" << GetTypeInfoName<TType>() << L"] VALUE [" << IsPointerType << L"]." << endl;
+	}
+}
+//----------------------------------------------------------------------------------------------------------------------
+void TestTypeClassificationIsPointerTypes(void)
+{
+	PrintLineSeparator();
+
+	{
+		using													Type=int;
+
+		PrintTypeClassificationIsPointerType<Type>();
+	}
+
+	PrintLineSeparator();
+
+	{
+		using													Type=int*;
+
+		PrintTypeClassificationIsPointerType<Type>();
+	}
+
+	PrintLineSeparator();
+
+	{
+		using													Type=const int*;
+
+		PrintTypeClassificationIsPointerType<Type>();
+	}
+
+	PrintLineSeparator();
+}
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+template<typename TType>
+void PrintTypeClassificationIsLReferenceTypes(void)
+{
+	constexpr bool												IsLReferenceType=STypeClassificationIsLReferenceType<TType>::VALUE;
+
+	if constexpr (IsLReferenceType==true)
+	{
+		using													BaseType=STypeClassificationIsLReferenceType<TType>::BASE;
+
+		wcout << L"IS LREFERENCE TYPE - TYPE [" << GetTypeInfoName<TType>() << L"] VALUE [" << IsLReferenceType << L"] BASE TYPE [" << GetTypeInfoName<BaseType>() << L"]." << endl;
+	}
+	else
+	{
+		wcout << L"IS LREFERENCE TYPE - TYPE [" << GetTypeInfoName<TType>() << L"] VALUE [" << IsLReferenceType << L"]." << endl;
+	}
+}
+//----------------------------------------------------------------------------------------------------------------------
+void TestTypeClassificationIsLReferenceTypes(void)
+{
+	PrintLineSeparator();
+
+	{
+		using													Type=int;
+
+		PrintTypeClassificationIsLReferenceTypes<Type>();
+	}
+
+	PrintLineSeparator();
+
+	{
+		using													Type=int&;
+
+		PrintTypeClassificationIsLReferenceTypes<Type>();
+	}
+
+	PrintLineSeparator();
+
+	{
+		using													Type=const int&;
+
+		PrintTypeClassificationIsLReferenceTypes<Type>();
+	}
+
+	PrintLineSeparator();
+
+	{
+		using													Type=int&&;
+
+		PrintTypeClassificationIsLReferenceTypes<Type>();
+	}
+
+	PrintLineSeparator();
+}
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+template<typename TType>
+void PrintTypeClassificationIsRReferenceTypes(void)
+{
+	constexpr bool												IsRReferenceType=STypeClassificationIsRReferenceType<TType>::VALUE;
+
+	if constexpr (IsRReferenceType==true)
+	{
+		using													BaseType=STypeClassificationIsRReferenceType<TType>::BASE;
+
+		wcout << L"IS RREFERENCE TYPE - TYPE [" << GetTypeInfoName<TType>() << L"] VALUE [" << IsRReferenceType << L"] BASE TYPE [" << GetTypeInfoName<BaseType>() << L"]." << endl;
+	}
+	else
+	{
+		wcout << L"IS RREFERENCE TYPE - TYPE [" << GetTypeInfoName<TType>() << L"] VALUE [" << IsRReferenceType << L"]." << endl;
+	}
+}
+//----------------------------------------------------------------------------------------------------------------------
+void TestTypeClassificationIsRReferenceTypes(void)
+{
+	PrintLineSeparator();
+
+	{
+		using													Type=int;
+
+		PrintTypeClassificationIsRReferenceTypes<Type>();
+	}
+
+	PrintLineSeparator();
+
+	{
+		using													Type=int&&;
+
+		PrintTypeClassificationIsRReferenceTypes<Type>();
+	}
+
+	PrintLineSeparator();
+
+	{
+		using													Type=const int&&;
+
+		PrintTypeClassificationIsRReferenceTypes<Type>();
+	}
+
+	PrintLineSeparator();
+
+	{
+		using													Type=int&;
+
+		PrintTypeClassificationIsRReferenceTypes<Type>();
+	}
+
+	PrintLineSeparator();
+}
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+template<typename TType>
+void PrintTypeClassificationIsReferenceTypes(void)
+{
+	constexpr bool												IsReferenceType=STypeClassificationIsReferenceType<TType>::VALUE;
+
+	if constexpr (IsReferenceType==true)
+	{
+		using													BaseType=STypeClassificationIsReferenceType<TType>::BASE;
+
+		wcout << L"IS REFERENCE TYPE - TYPE [" << GetTypeInfoName<TType>() << L"] VALUE [" << IsReferenceType << L"] BASE TYPE [" << GetTypeInfoName<BaseType>() << L"]." << endl;
+	}
+	else
+	{
+		wcout << L"IS REFERENCE TYPE - TYPE [" << GetTypeInfoName<TType>() << L"] VALUE [" << IsReferenceType << L"]." << endl;
+	}
+}
+//----------------------------------------------------------------------------------------------------------------------
+void TestTypeClassificationIsReferenceTypes(void)
+{
+	PrintLineSeparator();
+
+	{
+		using													Type=int;
+
+		PrintTypeClassificationIsReferenceTypes<Type>();
+	}
+
+	PrintLineSeparator();
+
+	{
+		using													Type=int&;
+
+		PrintTypeClassificationIsReferenceTypes<Type>();
+	}
+
+	PrintLineSeparator();
+
+	{
+		using													Type=const int&;
+
+		PrintTypeClassificationIsReferenceTypes<Type>();
+	}
+
+	PrintLineSeparator();
+
+	{
+		using													Type=int&&;
+
+		PrintTypeClassificationIsReferenceTypes<Type>();
+	}
+
+	PrintLineSeparator();
+
+	{
+		using													Type=const int&&;
+
+		PrintTypeClassificationIsReferenceTypes<Type>();
+	}
+
+	PrintLineSeparator();
+}
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+template<typename TType>
+void PrintTypeClassificationIsArrayTypes(void)
+{
+	constexpr bool												IsArrayType=STypeClassificationIsArrayType<TType>::VALUE;
+
+	if constexpr (IsArrayType==true)
+	{
+		using													BaseType=STypeClassificationIsArrayType<TType>::ARRAY_BASE_TYPE;
+
+		constexpr size_t										Size=STypeClassificationIsArrayType<TType>::ARRAY_SIZE;
+
+		wcout << L"IS ARRAY TYPE - TYPE [" << GetTypeInfoName<TType>() << L"] VALUE [" << IsArrayType << L"] BASE TYPE [" << GetTypeInfoName<BaseType>() << L"] SIZE [" << Size << L"]." << endl;
+	}
+	else
+	{
+		wcout << L"IS ARRAY TYPE - TYPE [" << GetTypeInfoName<TType>() << L"] VALUE [" << IsArrayType << L"]." << endl;
+	}
+}
+//----------------------------------------------------------------------------------------------------------------------
+void TestTypeClassificationIsArrayTypes(void)
+{
+	PrintLineSeparator();
+
+	{
+		using													Type=int;
+
+		PrintTypeClassificationIsArrayTypes<Type>();
+	}
+
+	PrintLineSeparator();
+
+	{
+		using													Type=int[100];
+
+		PrintTypeClassificationIsArrayTypes<Type>();
+	}
+
+	PrintLineSeparator();
+
+	{
+		using													Type=int[];
+
+		PrintTypeClassificationIsArrayTypes<Type>();
+	}
+
+	PrintLineSeparator();
+}
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+template<typename TType>
+void PrintTypeClassificationIsMemberPointerTypes(void)
+{
+	constexpr bool												IsMemberPointerFieldType=STypeClassificationIsMemberPointerType<TType>::VALUE;
+
+	if constexpr (IsMemberPointerFieldType==true)
+	{
+		using													ClassType=STypeClassificationIsMemberPointerType<TType>::CLASS_TYPE;
+		using													MemberType=STypeClassificationIsMemberPointerType<TType>::MEMBER_TYPE;
+
+		wcout << L"IS MEMBER POINTER TYPE - TYPE [" << GetTypeInfoName<TType>() << L"] VALUE [" << IsMemberPointerFieldType << L"] CLASS TYPE [" << GetTypeInfoName<ClassType>() << L"] MEMBER TYPE [" << GetTypeInfoName<MemberType>() << L"]." << endl;
+	}
+	else
+	{
+		wcout << L"IS MEMBER POINTER TYPE - TYPE [" << GetTypeInfoName<TType>() << L"] VALUE [" << IsMemberPointerFieldType << L"]." << endl;
+	}
+}
+//----------------------------------------------------------------------------------------------------------------------
+void TestTypeClassificationIsMemberPointerTypes(void)
+{
+	PrintLineSeparator();
+
+	{
+		using													Type=int;
+
+		PrintTypeClassificationIsMemberPointerTypes<Type>();
+	}
+
+	PrintLineSeparator();
+
+	{
+		using													Type=int CPointerToMember::*;
+
+		PrintTypeClassificationIsMemberPointerTypes<Type>();
+	}
+
+	PrintLineSeparator();
+
+	{
+		using													Type=double CPointerToMember::*;
+
+		PrintTypeClassificationIsMemberPointerTypes<Type>();
+	}
+
+	PrintLineSeparator();
+
+	{
+		using													Type=void (CPointerToMember::*)(void);
+
+		PrintTypeClassificationIsMemberPointerTypes<Type>();
+	}
+
+	PrintLineSeparator();
+
+	{
+		using													Type=void (CPointerToMember::*)(int,double);
+
+		PrintTypeClassificationIsMemberPointerTypes<Type>();
+	}
+
+	PrintLineSeparator();
+}
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+template<typename TType>
+void PrintTypeClassificationIsFunctionTypes(void)
+{
+	constexpr bool												IsFunctionType=STypeClassificationIsFunctionType<TType>::VALUE;
+
+	if constexpr (IsFunctionType==true)
+	{
+		using													ReturnValueType=STypeClassificationIsFunctionType<TType>::RETURN_VALUE;
+		using													ParametersType=STypeClassificationIsFunctionType<TType>::PARAMETERS;
+
+		constexpr bool											IsVariadicFunction=STypeClassificationIsFunctionType<TType>::IS_VARIADIC;
+
+		wcout << L"IS FUNCTION TYPE - TYPE [" << GetTypeInfoName<TType>() << L"] VALUE [" << IsFunctionType << L"] RETURN VALUE TYPE [" << GetTypeInfoName<ReturnValueType>() << L"] PARAMETERS TYPE [" << GetTypeInfoName<ParametersType>() << L"] IS VARIADIC FUNCTION [" << IsVariadicFunction << L"]." << endl;
+	}
+	else
+	{
+		wcout << L"IS FUNCTION TYPE - TYPE [" << GetTypeInfoName<TType>() << L"] VALUE [" << IsFunctionType << L"]." << endl;
+	}
+}
+//----------------------------------------------------------------------------------------------------------------------
+template<typename TType>
+void PrintTypeClassificationIsFunctionTypesNoType(void)
+{
+	constexpr bool												IsFunctionType=STypeClassificationIsFunctionType<TType>::VALUE;
+
+	if constexpr (IsFunctionType==true)
+	{
+		using													ReturnValueType=STypeClassificationIsFunctionType<TType>::RETURN_VALUE;
+		using													ParametersType=STypeClassificationIsFunctionType<TType>::PARAMETERS;
+
+		constexpr bool											IsVariadicFunction=STypeClassificationIsFunctionType<TType>::IS_VARIADIC;
+
+		wcout << L"IS FUNCTION TYPE - VALUE [" << IsFunctionType << L"] RETURN VALUE TYPE [" << GetTypeInfoName<ReturnValueType>() << L"] PARAMETERS TYPE [" << GetTypeInfoName<ParametersType>() << L"] IS VARIADIC FUNCTION [" << IsVariadicFunction << L"]." << endl;
+	}
+	else
+	{
+		wcout << L"IS FUNCTION TYPE - VALUE [" << IsFunctionType << L"]." << endl;
+	}
+}
+//----------------------------------------------------------------------------------------------------------------------
+void TestTypeClassificationIsFunctionTypes(void)
+{
+	PrintLineSeparator();
+
+	{
+		using													Type=int;
+
+		PrintTypeClassificationIsFunctionTypes<Type>();
+	}
+
+	PrintLineSeparator();
+
+	{
+		using													Type=void(void);
+
+		PrintTypeClassificationIsFunctionTypes<Type>();
+	}
+
+	PrintLineSeparator();
+
+	{
+		using													Type=int(int);
+
+		PrintTypeClassificationIsFunctionTypes<Type>();
+	}
+
+	PrintLineSeparator();
+
+	{
+		using													Type=int(double,CString);
+
+		PrintTypeClassificationIsFunctionTypes<Type>();
+	}
+
+	PrintLineSeparator();
+
+	{
+		using													Type=void(...);
+
+		PrintTypeClassificationIsFunctionTypes<Type>();
+	}
+
+	PrintLineSeparator();
+
+	{
+		using													Type=int(double,CString,...);
+
+		PrintTypeClassificationIsFunctionTypes<Type>();
+	}
+
+	PrintLineSeparator();
+
+	{
+		using													Type=int(double,CString) const;
+
+		PrintTypeClassificationIsFunctionTypesNoType<Type>();
+	}
+
+	PrintLineSeparator();
+
+	{
+		using													Type=int(double,CString,...) const;
+
+		PrintTypeClassificationIsFunctionTypesNoType<Type>();
+	}
+
+	PrintLineSeparator();
+
+	{
+		// !!!!! Aplikovany MODIFIER [&].
+		using													Type=int(CString,int) &;
+
+		PrintTypeClassificationIsFunctionTypesNoType<Type>();
+	}
+
+	PrintLineSeparator();
+
+	{
+		// !!!!! Aplikovany MODIFIER [const] a MODIFIER [&].
+		using													Type=int(CString,int) const&;
+
+		PrintTypeClassificationIsFunctionTypesNoType<Type>();
+	}
+
+	PrintLineSeparator();
+
+	{
+		// !!!!! Aplikovany MODIFIER [&&].
+		using													Type=int(CString,int) &&;
+
+		PrintTypeClassificationIsFunctionTypesNoType<Type>();
+	}
+
+	PrintLineSeparator();
+
+	{
+		// !!!!! Aplikovany MODIFIER [const] a MODIFIER [&&].
+		using													Type=int(CString,int) const&&;
+
+		PrintTypeClassificationIsFunctionTypesNoType<Type>();
+	}
+
+	PrintLineSeparator();
+
+	{
+		// !!!!! Aplikovany MODIFIER [&].
+		using													Type=int(CString,int,...) &;
+
+		PrintTypeClassificationIsFunctionTypesNoType<Type>();
+	}
+
+	PrintLineSeparator();
+
+	{
+		// !!!!! Aplikovany MODIFIER [const] a MODIFIER [&].
+		using													Type=int(CString,int,...) const&;
+
+		PrintTypeClassificationIsFunctionTypesNoType<Type>();
+	}
+
+	PrintLineSeparator();
+
+	{
+		// !!!!! Aplikovany MODIFIER [&&].
+		using													Type=int(CString,int,...) &&;
+
+		PrintTypeClassificationIsFunctionTypesNoType<Type>();
+	}
+
+	PrintLineSeparator();
+
+	{
+		// !!!!! Aplikovany MODIFIER [const] a MODIFIER [&&].
+		using													Type=int(CString,int,...) const&&;
+
+		PrintTypeClassificationIsFunctionTypesNoType<Type>();
+	}
+
+	PrintLineSeparator();
+}
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+void TestTypeClassificationIsClassTypes(void)
+{
+	PrintLineSeparator();
+
+	{
+		using													Type=int;
+
+		constexpr bool											IsClassType=STypeClassificationIsClassType<Type>::VALUE;
+
+		wcout << L"IS CLASS TYPE - TYPE [" << GetTypeInfoName<Type>() << L"] VALUE [" << IsClassType << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+
+	{
+		using													Type=CClass;
+
+		constexpr bool											IsClassType=STypeClassificationIsClassType<Type>::VALUE;
+
+		wcout << L"IS CLASS TYPE - TYPE [" << GetTypeInfoName<Type>() << L"] VALUE [" << IsClassType << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+
+	{
+		using													Type=SStruct;
+
+		// !!!!! Vrati TRUE.
+		constexpr bool											IsClassType=STypeClassificationIsClassType<Type>::VALUE;
+
+		wcout << L"IS CLASS TYPE - TYPE [" << GetTypeInfoName<Type>() << L"] VALUE [" << IsClassType << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+
+	{
+		using													Type=EEnum;
+
+		constexpr bool											IsClassType=STypeClassificationIsClassType<Type>::VALUE;
+
+		wcout << L"IS CLASS TYPE - TYPE [" << GetTypeInfoName<Type>() << L"] VALUE [" << IsClassType << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+
+	{
+		using													Type=EEnumClass;
+
+		constexpr bool											IsClassType=STypeClassificationIsClassType<Type>::VALUE;
+
+		wcout << L"IS CLASS TYPE - TYPE [" << GetTypeInfoName<Type>() << L"] VALUE [" << IsClassType << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+
+	{
+		using													Type=UUnion;
+
+		// !!!!! Vrati TRUE.
+		constexpr bool											IsClassType=STypeClassificationIsClassType<Type>::VALUE;
+
+		wcout << L"IS CLASS TYPE - TYPE [" << GetTypeInfoName<Type>() << L"] VALUE [" << IsClassType << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+}
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+void TestTypeClassificationIsEnumTypes(void)
+{
+	PrintLineSeparator();
+
+	{
+		using													Type=int;
+
+		constexpr bool											IsEnumType=STypeClassificationIsEnumType<Type>::VALUE;
+
+		wcout << L"IS ENUM TYPE - TYPE [" << GetTypeInfoName<Type>() << L"] VALUE [" << IsEnumType << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+
+	{
+		using													Type=CClass;
+
+		constexpr bool											IsEnumType=STypeClassificationIsEnumType<Type>::VALUE;
+
+		wcout << L"IS CLASS TYPE - TYPE [" << GetTypeInfoName<Type>() << L"] VALUE [" << IsEnumType << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+
+	{
+		using													Type=SStruct;
+
+		constexpr bool											IsEnumType=STypeClassificationIsEnumType<Type>::VALUE;
+
+		wcout << L"IS ENUM TYPE - TYPE [" << GetTypeInfoName<Type>() << L"] VALUE [" << IsEnumType << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+
+	{
+		using													Type=EEnum;
+
+		// !!!!! Vrati TRUE.
+		constexpr bool											IsEnumType=STypeClassificationIsEnumType<Type>::VALUE;
+
+		wcout << L"IS ENUM TYPE - TYPE [" << GetTypeInfoName<Type>() << L"] VALUE [" << IsEnumType << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+
+	{
+		using													Type=EEnumClass;
+
+		// !!!!! Vrati TRUE.
+		constexpr bool											IsEnumType=STypeClassificationIsEnumType<Type>::VALUE;
+
+		wcout << L"IS ENUM TYPE - TYPE [" << GetTypeInfoName<Type>() << L"] VALUE [" << IsEnumType << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+
+	{
+		using													Type=UUnion;
+
+		constexpr bool											IsEnumType=STypeClassificationIsEnumType<Type>::VALUE;
+
+		wcout << L"IS ENUM TYPE - TYPE [" << GetTypeInfoName<Type>() << L"] VALUE [" << IsEnumType << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+}
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+template<typename TType1, typename TType2, typename TType3, typename TType4, typename TType5>
+void PolicyTraitConstTypesFunction(typename SPolicyTraitConstType<TType1>::TYPE Value1, typename SPolicyTraitConstType<TType2>::TYPE Value2, typename SPolicyTraitConstType<TType3>::TYPE Value3, typename SPolicyTraitConstType<TType4>::TYPE Value4, typename SPolicyTraitConstType<TType5>::TYPE Value5)
+{
+	wcout << L"CONST TYPE - FUNCTION - TYPE 1 [" << GetTypeInfoName<decltype(Value1)>() << L"] TYPE 2 [" << GetTypeInfoName<decltype(Value2)>() << L"] TYPE 3 [" << GetTypeInfoName<decltype(Value3)>() << L"] TYPE 4 [" << GetTypeInfoName<decltype(Value4)>() << L"] TYPE 5 [" << GetTypeInfoName<decltype(Value5)>() << L"]." << endl;
+}
+//----------------------------------------------------------------------------------------------------------------------
+void TestPolicyTraitConstTypes(void)
+{
+	PrintLineSeparator();
+
+	{
+		using													SourceType=int;
+		using													DestinationType=SPolicyTraitConstType<SourceType>::TYPE;
+
+		wcout << L"CONST TYPE - SOURCE TYPE [" << GetTypeInfoName<SourceType>() << L"] DESTINATION TYPE [" << GetTypeInfoName<DestinationType>() << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+
+	{
+		using													SourceType=CShortType;
+		using													DestinationType=SPolicyTraitConstType<SourceType>::TYPE;
+
+		wcout << L"CONST TYPE - SOURCE TYPE [" << GetTypeInfoName<SourceType>() << L"] DESTINATION TYPE [" << GetTypeInfoName<DestinationType>() << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+
+	{
+		using													SourceType=CLongType;
+		using													DestinationType=SPolicyTraitConstType<SourceType>::TYPE;
+
+		wcout << L"CONST TYPE - SOURCE TYPE [" << GetTypeInfoName<SourceType>() << L"] DESTINATION TYPE [" << GetTypeInfoName<DestinationType>() << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+
+	{
+		using													SourceType=CLongTypeWithCopyConstructor;
+		using													DestinationType=SPolicyTraitConstType<SourceType>::TYPE;
+
+		wcout << L"CONST TYPE - SOURCE TYPE [" << GetTypeInfoName<SourceType>() << L"] DESTINATION TYPE [" << GetTypeInfoName<DestinationType>() << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+
+	{
+		using													SourceType=CLongTypeWithMoveConstructor;
+		using													DestinationType=SPolicyTraitConstType<SourceType>::TYPE;
+
+		wcout << L"CONST TYPE - SOURCE TYPE [" << GetTypeInfoName<SourceType>() << L"] DESTINATION TYPE [" << GetTypeInfoName<DestinationType>() << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+
+	{
+		using													SourceType=CLongTypeExcluded;
+		using													DestinationType=SPolicyTraitConstType<SourceType>::TYPE;
+
+		wcout << L"CONST TYPE - SOURCE TYPE [" << GetTypeInfoName<SourceType>() << L"] DESTINATION TYPE [" << GetTypeInfoName<DestinationType>() << L"]." << endl;
+	}
+
+	PrintLineSeparator();
+
+	{
+		CShortType												Value1{};
+		CLongType												Value2;
+		CLongTypeWithCopyConstructor							Value3;
+		CLongTypeWithMoveConstructor							Value4;
+		CLongTypeExcluded										Value5{};
+
+		PolicyTraitConstTypesFunction<CShortType,CLongType,CLongTypeWithCopyConstructor,CLongTypeWithMoveConstructor,CLongTypeExcluded>(Value1,Value2,Value3,Value4,Value5);
+	}
+
+	PrintLineSeparator();
+}
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
 int main(void)
 {
 	SafeMain();
@@ -1956,7 +3006,22 @@ int main(void)
 	//TestDetectingMembersTraitHasFunctionGetValue();
 	//TestDetectingMembersTraitHasOperatorLess();
 	//TestDetectingMembersTraitHasVariousMembers();
-	TestDetectingMembersTraitUsingGenericLambdas();
+	//TestDetectingMembersTraitUsingGenericLambdas();
+	//TestOtherTraitsIfThenElse();
+	//TestOtherTraitsNoThrow();
+	//TestOtherTraitsTemplateAliases();
+	//TestOtherTraitsTemplateVariables();
+	//TestTypeClassificationIsFundamentalTypes();
+	//TestTypeClassificationIsPointerTypes();
+	//TestTypeClassificationIsLReferenceTypes();
+	//TestTypeClassificationIsRReferenceTypes();
+	//TestTypeClassificationIsReferenceTypes();
+	//TestTypeClassificationIsArrayTypes();
+	//TestTypeClassificationIsMemberPointerTypes();
+	//TestTypeClassificationIsFunctionTypes();
+	//TestTypeClassificationIsClassTypes();
+	//TestTypeClassificationIsEnumTypes();
+	TestPolicyTraitConstTypes();
 
 	ShowExitLine();
 
