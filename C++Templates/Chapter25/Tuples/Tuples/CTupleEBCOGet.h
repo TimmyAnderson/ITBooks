@@ -1,111 +1,69 @@
 //----------------------------------------------------------------------------------------------------------------------
 #pragma once
 //----------------------------------------------------------------------------------------------------------------------
-#include <sstream>
-#include "MyDebug.h"
-#include "CString.h"
+#include <stdio.h>
 //----------------------------------------------------------------------------------------------------------------------
 //----------------------------------------------------------------------------------------------------------------------
 //----------------------------------------------------------------------------------------------------------------------
 template<typename... TTypes>
-class CTuple;
+class CTupleEBCO;
 //----------------------------------------------------------------------------------------------------------------------
 //----------------------------------------------------------------------------------------------------------------------
 //----------------------------------------------------------------------------------------------------------------------
+// !!!!! PRIMARY TEMPLATE CLASS, ktora implementuje STATIC METHOD, ktora vracia VALUE danej TUPLE na zaklade jej INDEXU.
+// !!!!! Pouzitie TEMPLATE CLASS je WORKAROUND, kedze C++ NEUMOZNUJE definovat PARTIAL SPECIALIZATIONS pre TEMPLATE FUNCTIONS a TEMPLATE METHODS.
+template<size_t INDEX>
+class CTupleEBCOGet
+{
+//----------------------------------------------------------------------------------------------------------------------
+	public:
+		template<typename THead, typename... TTail>
+		static const auto& Get(const CTupleEBCO<THead,TTail...>& Tuple);
+//----------------------------------------------------------------------------------------------------------------------
+};
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+template<size_t INDEX>
+template<typename THead, typename... TTail>
+const auto& CTupleEBCOGet<INDEX>::Get(const CTupleEBCO<THead,TTail...>& Tuple)
+{
+	// !!! Rekurzivne sa vola METHOD GET, az kym INDEX neklesne na 0.
+	const auto&													Value=CTupleEBCOGet<INDEX-1>::Get(Tuple.GetTail());
+
+	return(Value);
+}
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+// !!!!! TEMPLATE CLASS SPECIALIZATION, ktora implementuje STATIC METHOD, ktora vracia VALUE danej TUPLE na zaklade jej INDEXU.
 template<>
-class CTuple<> final
+class CTupleEBCOGet<0>
 {
 //----------------------------------------------------------------------------------------------------------------------
+	public:
+		template<typename THead, typename... TTail>
+		static const THead& Get(const CTupleEBCO<THead,TTail...>& Tuple);
 //----------------------------------------------------------------------------------------------------------------------
 };
 //----------------------------------------------------------------------------------------------------------------------
 //----------------------------------------------------------------------------------------------------------------------
 //----------------------------------------------------------------------------------------------------------------------
-template<typename TType, typename... TTypes>
-class CTuple<TType,TTypes...> final
+template<typename THead, typename... TTail>
+const THead& CTupleEBCOGet<0>::Get(const CTupleEBCO<THead,TTail...>& Tuple)
 {
-//----------------------------------------------------------------------------------------------------------------------
-#ifdef _MSC_VER
-	template<typename... TLocalTypes>
-	friend class CTuple;
-#else
-	template<typename... TLocalTypes>
-	friend void CTuple<TLocalTypes...>::PrintInternal(size_t Index, std::wstringstream& Stream) const;
-#endif
+	const THead&												Head=Tuple.GetHead();
 
-	private:
-		TType													MValue;
-		CTuple<TTypes...>										MValues;
-
-	private:
-		void PrintInternal(size_t Index, std::wstringstream& Stream) const;
-
-	public:
-		const TType& GetValue(void) const noexcept;
-		const CTuple<TTypes...>& GetValues(void) const noexcept;
-
-	public:
-		CString Print(const CString& Value) const;
-
-	public:
-		CTuple(TType Value, TTypes... Values);
-		virtual ~CTuple(void) noexcept;
-//----------------------------------------------------------------------------------------------------------------------
-};
-//----------------------------------------------------------------------------------------------------------------------
-//----------------------------------------------------------------------------------------------------------------------
-//----------------------------------------------------------------------------------------------------------------------
-template<typename TType, typename... TTypes>
-CTuple<TType,TTypes...>::CTuple(TType Value, TTypes... Values)
-	: MValue(Value), MValues(Values...)
-{
-}
-//----------------------------------------------------------------------------------------------------------------------
-template<typename TType, typename... TTypes>
-CTuple<TType,TTypes...>::~CTuple(void) noexcept
-{
+	return(Head);
 }
 //----------------------------------------------------------------------------------------------------------------------
 //----------------------------------------------------------------------------------------------------------------------
 //----------------------------------------------------------------------------------------------------------------------
-template<typename TType, typename... TTypes>
-void CTuple<TType,TTypes...>::PrintInternal(size_t Index, std::wstringstream& Stream) const
+template<size_t INDEX, typename... TTypes>
+const auto& Get(const CTupleEBCO<TTypes...>& Tuple)
 {
-	Stream << L"\tINDEX [" << Index << L"] TYPE [" << GetTypeInfoName<decltype(MValue)>() << L"] VALUE [" << MValue << L"]." << std::endl;
+	const auto&													Value=CTupleEBCOGet<INDEX>::Get(Tuple);
 
-	if constexpr (sizeof...(TTypes)>0)
-	{
-		MValues.PrintInternal(Index+1,Stream);
-	}
-}
-//----------------------------------------------------------------------------------------------------------------------
-//----------------------------------------------------------------------------------------------------------------------
-//----------------------------------------------------------------------------------------------------------------------
-template<typename TType, typename... TTypes>
-const TType& CTuple<TType,TTypes...>::GetValue(void) const noexcept
-{
-	return(MValue);
-}
-//----------------------------------------------------------------------------------------------------------------------
-template<typename TType, typename... TTypes>
-const CTuple<TTypes...>& CTuple<TType,TTypes...>::GetValues(void) const noexcept
-{
-	return(MValues);
-}
-//----------------------------------------------------------------------------------------------------------------------
-//----------------------------------------------------------------------------------------------------------------------
-//----------------------------------------------------------------------------------------------------------------------
-template<typename TType, typename... TTypes>
-CString CTuple<TType,TTypes...>::Print(const CString& Value) const
-{
-	std::wstringstream											Stream;
-
-	Stream << Value << std::endl;
-
-	PrintInternal(1,Stream);
-
-	CString														Text(Stream.str());
-
-	return(Text);
+	return(Value);
 }
 //----------------------------------------------------------------------------------------------------------------------

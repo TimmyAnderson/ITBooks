@@ -1,19 +1,14 @@
 //----------------------------------------------------------------------------------------------------------------------
 #pragma once
 //----------------------------------------------------------------------------------------------------------------------
-#include <sstream>
-#include "MyDebug.h"
-#include "CString.h"
+#include "CCompileTimeValue.h"
+#include "CTupleTypeListInterface.h"
 //----------------------------------------------------------------------------------------------------------------------
 //----------------------------------------------------------------------------------------------------------------------
 //----------------------------------------------------------------------------------------------------------------------
-template<typename... TTypes>
-class CTuple;
-//----------------------------------------------------------------------------------------------------------------------
-//----------------------------------------------------------------------------------------------------------------------
-//----------------------------------------------------------------------------------------------------------------------
-template<>
-class CTuple<> final
+// !!!!! DEFINITION VALUE LIST.
+template<typename TType, TType... VALUES>
+struct CValueList
 {
 //----------------------------------------------------------------------------------------------------------------------
 //----------------------------------------------------------------------------------------------------------------------
@@ -21,91 +16,64 @@ class CTuple<> final
 //----------------------------------------------------------------------------------------------------------------------
 //----------------------------------------------------------------------------------------------------------------------
 //----------------------------------------------------------------------------------------------------------------------
-template<typename TType, typename... TTypes>
-class CTuple<TType,TTypes...> final
+// !!!!! IMPLEMENTACIE VALUE LIST OPERATIONS, ktore boli definovane povodne pre TYPE LIST.
+// !!!!! Kedze OPERATIONS pre TYPE LIST su definovane ako TEMPLATE CLASSES, pre VALUE LIST staci definovat ich TEMPLATE CLASS SPECIALIZATIONS, aby tieto OPERATIONS boli implementovane aj pre VALUE LISTS.
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+template<typename TType, TType... VALUES>
+struct CTupleTypeListIsEmpty<CValueList<TType,VALUES...>>
 {
 //----------------------------------------------------------------------------------------------------------------------
-#ifdef _MSC_VER
-	template<typename... TLocalTypes>
-	friend class CTuple;
-#else
-	template<typename... TLocalTypes>
-	friend void CTuple<TLocalTypes...>::PrintInternal(size_t Index, std::wstringstream& Stream) const;
-#endif
-
-	private:
-		TType													MValue;
-		CTuple<TTypes...>										MValues;
-
-	private:
-		void PrintInternal(size_t Index, std::wstringstream& Stream) const;
-
 	public:
-		const TType& GetValue(void) const noexcept;
-		const CTuple<TTypes...>& GetValues(void) const noexcept;
-
-	public:
-		CString Print(const CString& Value) const;
-
-	public:
-		CTuple(TType Value, TTypes... Values);
-		virtual ~CTuple(void) noexcept;
+		static constexpr bool									VALUE=(sizeof...(VALUES)==0);
 //----------------------------------------------------------------------------------------------------------------------
 };
 //----------------------------------------------------------------------------------------------------------------------
 //----------------------------------------------------------------------------------------------------------------------
 //----------------------------------------------------------------------------------------------------------------------
-template<typename TType, typename... TTypes>
-CTuple<TType,TTypes...>::CTuple(TType Value, TTypes... Values)
-	: MValue(Value), MValues(Values...)
+template<typename TType, TType Head, TType... Tail>
+struct CTupleTypeListFrontType<CValueList<TType,Head,Tail...>>
 {
-}
 //----------------------------------------------------------------------------------------------------------------------
-template<typename TType, typename... TTypes>
-CTuple<TType,TTypes...>::~CTuple(void) noexcept
-{
-}
-//----------------------------------------------------------------------------------------------------------------------
-//----------------------------------------------------------------------------------------------------------------------
-//----------------------------------------------------------------------------------------------------------------------
-template<typename TType, typename... TTypes>
-void CTuple<TType,TTypes...>::PrintInternal(size_t Index, std::wstringstream& Stream) const
-{
-	Stream << L"\tINDEX [" << Index << L"] TYPE [" << GetTypeInfoName<decltype(MValue)>() << L"] VALUE [" << MValue << L"]." << std::endl;
+	public:
+		using													TYPE=CCompileTimeValue<TType,Head>;
 
-	if constexpr (sizeof...(TTypes)>0)
-	{
-		MValues.PrintInternal(Index+1,Stream);
-	}
-}
+	public:
+		static constexpr TType									VALUE=Head;
+//----------------------------------------------------------------------------------------------------------------------
+};
 //----------------------------------------------------------------------------------------------------------------------
 //----------------------------------------------------------------------------------------------------------------------
 //----------------------------------------------------------------------------------------------------------------------
-template<typename TType, typename... TTypes>
-const TType& CTuple<TType,TTypes...>::GetValue(void) const noexcept
+template<typename TType, TType... VALUES, TType New>
+struct CTupleTypeListPushFrontType<CValueList<TType,VALUES...>,CCompileTimeValue<TType,New>>
 {
-	return(MValue);
-}
 //----------------------------------------------------------------------------------------------------------------------
-template<typename TType, typename... TTypes>
-const CTuple<TTypes...>& CTuple<TType,TTypes...>::GetValues(void) const noexcept
+	public:
+		using													TYPE=CValueList<TType,New,VALUES...>;
+//----------------------------------------------------------------------------------------------------------------------
+};
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+template<typename TType, TType... VALUES, TType New>
+struct CTupleTypeListPushBackType<CValueList<TType,VALUES...>,CCompileTimeValue<TType,New>>
 {
-	return(MValues);
-}
+//----------------------------------------------------------------------------------------------------------------------
+	public:
+		using													TYPE=CValueList<TType,VALUES...,New>;
+//----------------------------------------------------------------------------------------------------------------------
+};
 //----------------------------------------------------------------------------------------------------------------------
 //----------------------------------------------------------------------------------------------------------------------
 //----------------------------------------------------------------------------------------------------------------------
-template<typename TType, typename... TTypes>
-CString CTuple<TType,TTypes...>::Print(const CString& Value) const
+template<typename TType, TType Head, TType... Tail>
+struct CTupleTypeListPopFrontType<CValueList<TType,Head,Tail...>>
 {
-	std::wstringstream											Stream;
-
-	Stream << Value << std::endl;
-
-	PrintInternal(1,Stream);
-
-	CString														Text(Stream.str());
-
-	return(Text);
-}
+//----------------------------------------------------------------------------------------------------------------------
+	public:
+		using													TYPE=CValueList<TType,Tail...>;
+//----------------------------------------------------------------------------------------------------------------------
+};
 //----------------------------------------------------------------------------------------------------------------------

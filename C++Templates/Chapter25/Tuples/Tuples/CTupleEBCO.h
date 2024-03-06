@@ -1,19 +1,101 @@
 //----------------------------------------------------------------------------------------------------------------------
 #pragma once
 //----------------------------------------------------------------------------------------------------------------------
-#include <sstream>
-#include "MyDebug.h"
-#include "CString.h"
+#include <iostream>
+#include "CTupleEBCOElement.h"
+#include "CTupleEBCOOperatorPrint.h"
+#include "CTupleEBCOGetFast.h"
 //----------------------------------------------------------------------------------------------------------------------
 //----------------------------------------------------------------------------------------------------------------------
 //----------------------------------------------------------------------------------------------------------------------
 template<typename... TTypes>
-class CTuple;
+class CTupleEBCO;
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+// !!! 1. BASE CLASS je TUPLE ELEMENT, ktory obsahuje HEAD a 2. BASE CLASS je TUPLE s TAIL ELEMENTS.
+template<typename THead, typename... TTail>
+class CTupleEBCO<THead,TTail...> : public CTupleEBCOElement<sizeof...(TTail),THead>, public CTupleEBCO<TTail...>
+{
+//----------------------------------------------------------------------------------------------------------------------
+	template<size_t INDEX, typename... TTupleElements>
+	friend auto TupleGetFast(CTupleEBCO<TTupleElements...>& Tuple) -> decltype(GetElementID<sizeof...(TTupleElements)-INDEX-1>(Tuple));
+
+	private:
+		using													HeadElement=CTupleEBCOElement<sizeof...(TTail),THead>;
+
+	public:
+		const THead& GetHead(void) const;
+		const CTupleEBCO<TTail...>& GetTail(void) const;
+
+	public:
+		THead& GetHead(void);
+		CTupleEBCO<TTail...>& GetTail(void);
+
+	public:
+		CTupleEBCO(void);
+		CTupleEBCO(THead Head, TTail... TailValues);
+		//virtual ~CTupleEBCO(void) noexcept;
+//----------------------------------------------------------------------------------------------------------------------
+};
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+template<typename THead, typename... TTail>
+CTupleEBCO<THead,TTail...>::CTupleEBCO(void)
+	: CTupleEBCOElement<sizeof...(TTail),THead>(), CTupleEBCO<TTail...>()
+{
+}
+//----------------------------------------------------------------------------------------------------------------------
+template<typename THead, typename... TTail>
+CTupleEBCO<THead,TTail...>::CTupleEBCO(THead Head, TTail... TailValues)
+	: CTupleEBCOElement<sizeof...(TTail),THead>(Head), CTupleEBCO<TTail...>(TailValues...)
+{
+}
+//----------------------------------------------------------------------------------------------------------------------
+/*
+template<typename THead, typename... TTail>
+CTupleEBCO<THead,TTail...>::~CTupleEBCO(void) noexcept
+{
+}
+*/
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+template<typename THead, typename... TTail>
+const THead& CTupleEBCO<THead,TTail...>::GetHead(void) const
+{
+	const THead&												Head=static_cast<const HeadElement*>(this)->Get();
+
+	return(Head);
+}
+//----------------------------------------------------------------------------------------------------------------------
+template<typename THead, typename... TTail>
+const CTupleEBCO<TTail...>& CTupleEBCO<THead,TTail...>::GetTail(void) const
+{
+	return(*this);
+}
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+template<typename THead, typename... TTail>
+THead& CTupleEBCO<THead,TTail...>::GetHead(void)
+{
+	THead&														Head=static_cast<HeadElement*>(this)->Get();
+
+	return(Head);
+}
+//----------------------------------------------------------------------------------------------------------------------
+template<typename THead, typename... TTail>
+CTupleEBCO<TTail...>& CTupleEBCO<THead,TTail...>::GetTail(void)
+{
+	return(*this);
+}
 //----------------------------------------------------------------------------------------------------------------------
 //----------------------------------------------------------------------------------------------------------------------
 //----------------------------------------------------------------------------------------------------------------------
 template<>
-class CTuple<> final
+class CTupleEBCO<>
 {
 //----------------------------------------------------------------------------------------------------------------------
 //----------------------------------------------------------------------------------------------------------------------
@@ -21,91 +103,11 @@ class CTuple<> final
 //----------------------------------------------------------------------------------------------------------------------
 //----------------------------------------------------------------------------------------------------------------------
 //----------------------------------------------------------------------------------------------------------------------
-template<typename TType, typename... TTypes>
-class CTuple<TType,TTypes...> final
+template<typename... TTypes>
+std::wostream& operator<<(std::wostream& Stream, const CTupleEBCO<TTypes...>& Tuple)
 {
-//----------------------------------------------------------------------------------------------------------------------
-#ifdef _MSC_VER
-	template<typename... TLocalTypes>
-	friend class CTuple;
-#else
-	template<typename... TLocalTypes>
-	friend void CTuple<TLocalTypes...>::PrintInternal(size_t Index, std::wstringstream& Stream) const;
-#endif
+	PrintTuple(Stream,Tuple,true);
 
-	private:
-		TType													MValue;
-		CTuple<TTypes...>										MValues;
-
-	private:
-		void PrintInternal(size_t Index, std::wstringstream& Stream) const;
-
-	public:
-		const TType& GetValue(void) const noexcept;
-		const CTuple<TTypes...>& GetValues(void) const noexcept;
-
-	public:
-		CString Print(const CString& Value) const;
-
-	public:
-		CTuple(TType Value, TTypes... Values);
-		virtual ~CTuple(void) noexcept;
-//----------------------------------------------------------------------------------------------------------------------
-};
-//----------------------------------------------------------------------------------------------------------------------
-//----------------------------------------------------------------------------------------------------------------------
-//----------------------------------------------------------------------------------------------------------------------
-template<typename TType, typename... TTypes>
-CTuple<TType,TTypes...>::CTuple(TType Value, TTypes... Values)
-	: MValue(Value), MValues(Values...)
-{
-}
-//----------------------------------------------------------------------------------------------------------------------
-template<typename TType, typename... TTypes>
-CTuple<TType,TTypes...>::~CTuple(void) noexcept
-{
-}
-//----------------------------------------------------------------------------------------------------------------------
-//----------------------------------------------------------------------------------------------------------------------
-//----------------------------------------------------------------------------------------------------------------------
-template<typename TType, typename... TTypes>
-void CTuple<TType,TTypes...>::PrintInternal(size_t Index, std::wstringstream& Stream) const
-{
-	Stream << L"\tINDEX [" << Index << L"] TYPE [" << GetTypeInfoName<decltype(MValue)>() << L"] VALUE [" << MValue << L"]." << std::endl;
-
-	if constexpr (sizeof...(TTypes)>0)
-	{
-		MValues.PrintInternal(Index+1,Stream);
-	}
-}
-//----------------------------------------------------------------------------------------------------------------------
-//----------------------------------------------------------------------------------------------------------------------
-//----------------------------------------------------------------------------------------------------------------------
-template<typename TType, typename... TTypes>
-const TType& CTuple<TType,TTypes...>::GetValue(void) const noexcept
-{
-	return(MValue);
-}
-//----------------------------------------------------------------------------------------------------------------------
-template<typename TType, typename... TTypes>
-const CTuple<TTypes...>& CTuple<TType,TTypes...>::GetValues(void) const noexcept
-{
-	return(MValues);
-}
-//----------------------------------------------------------------------------------------------------------------------
-//----------------------------------------------------------------------------------------------------------------------
-//----------------------------------------------------------------------------------------------------------------------
-template<typename TType, typename... TTypes>
-CString CTuple<TType,TTypes...>::Print(const CString& Value) const
-{
-	std::wstringstream											Stream;
-
-	Stream << Value << std::endl;
-
-	PrintInternal(1,Stream);
-
-	CString														Text(Stream.str());
-
-	return(Text);
+	return(Stream);
 }
 //----------------------------------------------------------------------------------------------------------------------
