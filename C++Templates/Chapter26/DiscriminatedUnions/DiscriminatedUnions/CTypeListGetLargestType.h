@@ -5,37 +5,49 @@
 #include "CTypeListIsEmpty.h"
 #include "CTypeListFront.h"
 #include "CTypeListPopFront.h"
+#include "STraitsIfThenElse.h"
 //----------------------------------------------------------------------------------------------------------------------
 //----------------------------------------------------------------------------------------------------------------------
 //----------------------------------------------------------------------------------------------------------------------
-// !!! 1. TEMPLATE PARAMETER je TYPE LIST a 2. TEMPLATE PARAMETER OPERATION, ktora sa ma aplikovat na kazdu dvojicu TYPES v TYPE LIST a 3. TEMPLATE PARAMETER je INITIAL TYPE.
-template<typename TTypeList, template<typename,typename> class TOperation, typename TType, bool EMPTY=CTypeListIsEmpty<TTypeList>>
-class CTypeListAccumulateType;
+// !!! 1. TEMPLATE PARAMETER je TYPE LIST a 2. TEMPLATE PARAMETER urcuje ci je TYPE LIST EMPTY.
+// !!! PRIMARY TEMPLATE CLASS DECLARATION.
+template<typename TTypeList, bool Empty=CTypeListIsEmpty<TTypeList>>
+class CTypeListGetLargestTypeType;
 //----------------------------------------------------------------------------------------------------------------------
 //----------------------------------------------------------------------------------------------------------------------
 //----------------------------------------------------------------------------------------------------------------------
-// !!!!! OPERATION odstrani FRONT TYPE z TYPE LIST a aplikuje OPERATION na FRONT TYPE a INITIAL TYPE (ktory sa pri rekurzivnom prechode stale meni).
-template<typename TTypeList, template<typename,typename> class TOperation, typename TType>
-class CTypeListAccumulateType<TTypeList,TOperation,TType,false> : public CTypeListAccumulateType<CTypeListPopFront<TTypeList>,TOperation,typename TOperation<TType,CTypeListFront<TTypeList>>::TYPE>
+// !!! TEMPLATE CLASS SPECIALIZATION pre NON-EMPTY TYPE LISTS.
+template<typename TTypeList>
+class CTypeListGetLargestTypeType<TTypeList,false>
 {
 //----------------------------------------------------------------------------------------------------------------------
+	private:
+		// !!! 1. TYPE.
+		using													Contender=CTypeListFront<TTypeList>;
+
+		// !!! Najde TYPE, ktory ma v TYPE LIST bez 1. TYPE najvacsiu dlzku.
+		using													Best=typename CTypeListGetLargestTypeType<CTypeListPopFront<TTypeList>>::TYPE;
+
+	public:
+		using													TYPE=STraitsIfThenElseUsing<(sizeof(Contender)>=sizeof(Best)),Contender,Best>;
 //----------------------------------------------------------------------------------------------------------------------
 };
 //----------------------------------------------------------------------------------------------------------------------
 //----------------------------------------------------------------------------------------------------------------------
 //----------------------------------------------------------------------------------------------------------------------
-template<typename TTypeList, template<typename,typename> class TOperation, typename TType>
-class CTypeListAccumulateType<TTypeList,TOperation,TType,true>
+// !!! TEMPLATE CLASS SPECIALIZATION pre EMPTY TYPE LISTS.
+template<typename TTypeList>
+class CTypeListGetLargestTypeType<TTypeList,true>
 {
 //----------------------------------------------------------------------------------------------------------------------
 	public:
-		// !!! Vracia INITIAL TYPE.
-		using													TYPE=TType;
+		// !!! NAJMENSI mozny TYPE.
+		using													TYPE=char;
 //----------------------------------------------------------------------------------------------------------------------
 };
 //----------------------------------------------------------------------------------------------------------------------
 //----------------------------------------------------------------------------------------------------------------------
 //----------------------------------------------------------------------------------------------------------------------
-template<typename TTypeList, template<typename,typename> class TOperation, typename TType>
-using															CTypeListAccumulate=typename CTypeListAccumulateType<TTypeList,TOperation,TType>::TYPE;
+template<typename TTypeList>
+using															CTypeListGetLargestType=typename CTypeListGetLargestTypeType<TTypeList>::TYPE;
 //----------------------------------------------------------------------------------------------------------------------

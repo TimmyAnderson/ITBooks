@@ -1,22 +1,23 @@
 //----------------------------------------------------------------------------------------------------------------------
 #pragma once
 //----------------------------------------------------------------------------------------------------------------------
-#include "CTypeList.h"
+#include <stdio.h>
+#include "STraitsIfThenElse.h"
+#include "SIntegralConstant.h"
+#include "STypeFunctionIsSame.h"
 #include "CTypeListIsEmpty.h"
 #include "CTypeListFront.h"
 #include "CTypeListPopFront.h"
 //----------------------------------------------------------------------------------------------------------------------
 //----------------------------------------------------------------------------------------------------------------------
 //----------------------------------------------------------------------------------------------------------------------
-// !!! 1. TEMPLATE PARAMETER je TYPE LIST a 2. TEMPLATE PARAMETER OPERATION, ktora sa ma aplikovat na kazdu dvojicu TYPES v TYPE LIST a 3. TEMPLATE PARAMETER je INITIAL TYPE.
-template<typename TTypeList, template<typename,typename> class TOperation, typename TType, bool EMPTY=CTypeListIsEmpty<TTypeList>>
-class CTypeListAccumulateType;
+template<typename TTypeList, typename TType, size_t INDEX=0, bool EMPTY=CTypeListIsEmpty<TTypeList>>
+class CTypeListFindIndexOfType;
 //----------------------------------------------------------------------------------------------------------------------
 //----------------------------------------------------------------------------------------------------------------------
 //----------------------------------------------------------------------------------------------------------------------
-// !!!!! OPERATION odstrani FRONT TYPE z TYPE LIST a aplikuje OPERATION na FRONT TYPE a INITIAL TYPE (ktory sa pri rekurzivnom prechode stale meni).
-template<typename TTypeList, template<typename,typename> class TOperation, typename TType>
-class CTypeListAccumulateType<TTypeList,TOperation,TType,false> : public CTypeListAccumulateType<CTypeListPopFront<TTypeList>,TOperation,typename TOperation<TType,CTypeListFront<TTypeList>>::TYPE>
+template<typename TTypeList, typename TType, size_t INDEX>
+class CTypeListFindIndexOfType<TTypeList,TType,INDEX,false> : public STraitsIfThenElseUsing<STypeFunctionIsSame<CTypeListFront<TTypeList>,TType>::VALUE,SIntegralConstant<size_t,INDEX>,CTypeListFindIndexOfType<CTypeListPopFront<TTypeList>,TType,INDEX+1>>
 {
 //----------------------------------------------------------------------------------------------------------------------
 //----------------------------------------------------------------------------------------------------------------------
@@ -24,18 +25,10 @@ class CTypeListAccumulateType<TTypeList,TOperation,TType,false> : public CTypeLi
 //----------------------------------------------------------------------------------------------------------------------
 //----------------------------------------------------------------------------------------------------------------------
 //----------------------------------------------------------------------------------------------------------------------
-template<typename TTypeList, template<typename,typename> class TOperation, typename TType>
-class CTypeListAccumulateType<TTypeList,TOperation,TType,true>
+template<typename TTypeList, typename TType, size_t INDEX>
+class CTypeListFindIndexOfType<TTypeList,TType,INDEX,true>
 {
 //----------------------------------------------------------------------------------------------------------------------
-	public:
-		// !!! Vracia INITIAL TYPE.
-		using													TYPE=TType;
 //----------------------------------------------------------------------------------------------------------------------
 };
-//----------------------------------------------------------------------------------------------------------------------
-//----------------------------------------------------------------------------------------------------------------------
-//----------------------------------------------------------------------------------------------------------------------
-template<typename TTypeList, template<typename,typename> class TOperation, typename TType>
-using															CTypeListAccumulate=typename CTypeListAccumulateType<TTypeList,TOperation,TType>::TYPE;
 //----------------------------------------------------------------------------------------------------------------------

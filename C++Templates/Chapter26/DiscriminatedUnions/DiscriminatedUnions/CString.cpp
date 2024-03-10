@@ -1,41 +1,51 @@
 //----------------------------------------------------------------------------------------------------------------------
-#pragma once
+#include "CString.h"
 //----------------------------------------------------------------------------------------------------------------------
-#include "CTypeList.h"
-#include "CTypeListIsEmpty.h"
-#include "CTypeListFront.h"
-#include "CTypeListPopFront.h"
+using namespace std;
 //----------------------------------------------------------------------------------------------------------------------
 //----------------------------------------------------------------------------------------------------------------------
 //----------------------------------------------------------------------------------------------------------------------
-// !!! 1. TEMPLATE PARAMETER je TYPE LIST a 2. TEMPLATE PARAMETER OPERATION, ktora sa ma aplikovat na kazdu dvojicu TYPES v TYPE LIST a 3. TEMPLATE PARAMETER je INITIAL TYPE.
-template<typename TTypeList, template<typename,typename> class TOperation, typename TType, bool EMPTY=CTypeListIsEmpty<TTypeList>>
-class CTypeListAccumulateType;
-//----------------------------------------------------------------------------------------------------------------------
-//----------------------------------------------------------------------------------------------------------------------
-//----------------------------------------------------------------------------------------------------------------------
-// !!!!! OPERATION odstrani FRONT TYPE z TYPE LIST a aplikuje OPERATION na FRONT TYPE a INITIAL TYPE (ktory sa pri rekurzivnom prechode stale meni).
-template<typename TTypeList, template<typename,typename> class TOperation, typename TType>
-class CTypeListAccumulateType<TTypeList,TOperation,TType,false> : public CTypeListAccumulateType<CTypeListPopFront<TTypeList>,TOperation,typename TOperation<TType,CTypeListFront<TTypeList>>::TYPE>
+CString::CString(void)
+	: MField()
 {
+}
 //----------------------------------------------------------------------------------------------------------------------
-//----------------------------------------------------------------------------------------------------------------------
-};
-//----------------------------------------------------------------------------------------------------------------------
-//----------------------------------------------------------------------------------------------------------------------
-//----------------------------------------------------------------------------------------------------------------------
-template<typename TTypeList, template<typename,typename> class TOperation, typename TType>
-class CTypeListAccumulateType<TTypeList,TOperation,TType,true>
+CString::CString(const wchar_t* Field)
+	: MField(Field)
 {
+}
 //----------------------------------------------------------------------------------------------------------------------
-	public:
-		// !!! Vracia INITIAL TYPE.
-		using													TYPE=TType;
+CString::CString(const wstring& Field)
+	: MField(Field)
+{
+}
 //----------------------------------------------------------------------------------------------------------------------
-};
+CString::~CString(void) noexcept
+{
+}
 //----------------------------------------------------------------------------------------------------------------------
 //----------------------------------------------------------------------------------------------------------------------
 //----------------------------------------------------------------------------------------------------------------------
-template<typename TTypeList, template<typename,typename> class TOperation, typename TType>
-using															CTypeListAccumulate=typename CTypeListAccumulateType<TTypeList,TOperation,TType>::TYPE;
+bool operator==(const CString& Value1, const CString& Value2)
+{
+	bool														Result=(Value1.GetField()==Value2.GetField());
+
+	return(Result);
+}
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+const wstring& CString::GetField(void) const noexcept
+{
+	return(MField);
+}
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+wostream& operator<<(wostream& Stream, const CString& Value)
+{
+	Stream << Value.MField;
+
+	return(Stream);
+}
 //----------------------------------------------------------------------------------------------------------------------
