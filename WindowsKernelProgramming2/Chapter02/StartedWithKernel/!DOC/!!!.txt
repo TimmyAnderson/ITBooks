@@ -1,0 +1,47 @@
+//----------------------------------------------------------------------------------------------------------------------
+1. Solution implementuje jednoduchy DRIVER.
+2. Na vyvoj WINDOWS DRIVERS je nutne pouzit nasledujuce TOOLS.
+   A. VISUAL STUDIO so zapnutym C++ OPTION.
+   B. WINDOWS SDK so zapnutou OPTION DEBUGGING TOOLS FOR WINDOWS.
+   !!! C. WINDOWS DDK. Verzie WINDOWS SDK a WINDOWS DDK sa MUSIA zhodovat.
+   D. SYSINTERNALS TOOLS.
+3. Na vytvorenie WINDOWS DRIVER sa pouziva PROJECT TEMPLATE [EMPTY WDM DRIVER].
+4. Po vytvoreni PROJECT z PROJECT TEMPLATE [EMPTY WDM DRIVER] je mozne odstranit FILE [StartedWithKernel.INF], pretoze nie je potrebny.
+5. KERNEL FUNCTIONS su DECLARED v HEADER FILE [ntddk.h].
+6. ENTRY FUNCTION do WINDOWS DRIVER je FUNCTION [DriverEntry()]. Pre FUNCTION [DriverEntry()] platia nasledujuce fakty.
+   A. FUNCTION [DriverEntry()] ma PROTOTYPE [NTSTATUS DriverEntry(PDRIVER_OBJECT DriverObject, PUNICODE_STRING RegistryPath)].
+   B. FUNCTION [DriverEntry()] musi mat pouzity C-LINKAGE pomocou CODE [extern "C"].
+   C. FUNCTION [DriverEntry()] v pripade uspesnej inicializacie DRIVER musi vratit RETURN VALUE [STATUS_SUCCESS].
+7. Vo FUNCTION [DriverEntry()] je mozne zaregistrovat DRIVER UNLOAD FUNCTION. Pre DRIVER UNLOAD FUNCTION platia nasledujuce fakty.
+   A. DRIVER UNLOAD FUNCTION ma PROTOTYPE [void SampleUnload(PDRIVER_OBJECT DriverObject)].
+   !!! B. DRIVER UNLOAD FUNCTION ma za ulohu odstrani RESOURCES, ktore boli inicializovane vo FUNCTION [DriverEntry()]. Ak nejake RESOURCES NIE SU UVOLNENE, tak su LEAKED az do SYSTEM REBOOT.
+   C. DRIVER UNLOAD FUNCTION sa registruje priradenim POINTER na DRIVER UNLOAD FUNCTION do FIELD [DRIVER_OBJECT::DriverUnload] vo FUNCTION [DriverEntry()].
+!!! 8. Standardne je C++ COMPILER nastaveny na FLAG [TREAT WARNINGS AS ERRORS]. Ten okrem ineho sposobuje, ze UNREFERENCED PARAMETERS su oznacene ako WARNINGS, ktore sposobia ERRORS. Ak niektore PARAMETERS NIE SU pouzite, je v CODE danej FUNCTION mozne pouzit MACRO [UNREFERENCED_PARAMETER()], ktore sposobi, ze COMPILER nebude hadzat ERROR.
+9. Testovacie WINDOWS DRIVERS by mali byt VZDY DEPLOYED vo VIRTUAL MACHINE, aby nehrozil pad SYSTEMU.
+10. Instalacia a spustanie DRIVERS vyzaduje volanie SERVICE MANAGER FUNCTION [CreateService()]. Alternativne je mozne pouzit WINDOWS TOOL [SC.EXE].
+11. WINDOWS TOOL [SC.EXE] vykonava instalaciu WINDOWS DRIVER pomocou COMMAND LINE COMMAND [sc create DRIVER_NAME type= kernel binPath= PATH]. Platia nasledujuce fakty.
+   A. VALUE [DRIVER_NAME] obsahuje nazov DRIVER NAME.
+   !!! B. VALUE [PATH] obsahuje PATH k .SYS FILE daneho DRIVER. PATH MUSI byt FULL PATH.
+   C. V TEXTE [type= kernel] NESMIE byt medzera medzi TEXT [type] a CHARACTER [=], a zaroven MUSI byt medzera medzi CHARACTER [=] a TEXT [kernel].
+   D. V TEXTE [binPath= PATH] NESMIE byt medzera medzi TEXT [binPath] a CHARACTER [=], a zaroven MUSI byt medzera medzi CHARACTER [=] a VALUE [PATH].
+   E. Po nainstalovani DRIVER je do REGISTRY pridany KEY [HKLM\System\CurrentControlSet\Services\DRIVER_NAME].
+   !!! F. Vo WINDOWS x64 MUSIA byt vsetky DRIVERS SIGNED. Toto obmedzenie je mozne obist spustenym COMMAND LINE COMMAND [bcdedit /set testsigning on]. Po vykonani COMMAND je potrebny REBOOT.
+12. WINDOWS TOOL [SC.EXE] vykonava odinstalaciu WINDOWS DRIVER pomocou COMMAND LINE COMMAND [sc delete DRIVER_NAME]. Platia nasledujuce fakty.
+   A. VALUE [DRIVER_NAME] obsahuje nazov DRIVER NAME.
+   B. Po odinstalovani DRIVER je z REGISTRY odstraneny KEY [HKLM\System\CurrentControlSet\Services\DRIVER_NAME].
+13. WINDOWS TOOL [SC.EXE] vykonava spustenie WINDOWS DRIVER pomocou COMMAND LINE COMMAND [sc start DRIVER_NAME]. Platia nasledujuce fakty.
+   A. VALUE [DRIVER_NAME] obsahuje nazov DRIVER NAME.
+   !!! B. Po spusteni DRIVER je mozne DRIVER najst pomocou SYSINTERNALS TOOL [PROCESS EXPLORER]. DRIVER je vidiet ak sa klepne na PROCESS [System] a zobrazia sa DLL, ktore v nom bezia. Jedna z DLL je DRIVER.
+14. WINDOWS TOOL [SC.EXE] vykonava zastavenie WINDOWS DRIVER pomocou COMMAND LINE COMMAND [sc stop DRIVER_NAME]. Platia nasledujuce fakty.
+   A. VALUE [DRIVER_NAME] obsahuje nazov DRIVER NAME.
+   B. Po zastaveni DRIVER je DRIVER PROCESS zmizne zo SYSINTERNALS TOOL [PROCESS EXPLORER].
+15. DRIVERS umoznuju zapisovat LOGS pomocou FUNCTION [ULONG DbgPrint(PCSTR Format, ...)].
+!!! 16. MACRO [void KdPrint(_X_)] umoznuje zapisovat DRIVER LOGS, ak je DRIVER COMPILED s DEBUG FLAG. TEXT v MACRO [void KdPrint(_X_)] by ma byt VZDY v DVOJITYCH ZATVOTRKACH [KdPrint(("SOME TEXT !!!"))], aby COMPILER nehodil ERROR.
+!!! 17. Standardne su DEBUG LOGS vypnute. Ich zapnute je nutne vykonat zmenou REGISTRY.
+   A. V REGISTRY KEY [HKLM\SYSTEM\CurrentControlSet\Control\Session Manager] sa vytvori novy REGISTRY KEY [Debug Print Filter].
+   B. Do REGISTRY KEY [Debug Print Filter] sa vlozi DWORD VALUE [DEFAULT] s VALUE [8].
+   C. Vykona sa RESTART.
+!!! 18. LOGS je mozne vidiet pomocou SYSINTERNALS TOOL [DEBUG VIEW], ktory je nutne nastavit nasledovne.
+   A. Zapnut OPTION [Capture -> Capture Kernel], aby sa zobrazovali KERNEL LOGS.
+   B. Zapnut OPTION [Capture -> Enable Verbose Kernel Output], aby sa zobrazovali detailne KERNEL LOGS.
+//----------------------------------------------------------------------------------------------------------------------

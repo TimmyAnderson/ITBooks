@@ -1,0 +1,522 @@
+//----------------------------------------------------------------------------------------------------------------------
+1. Solution demonstruje zaklady KERNEL PROGRAMMING.
+2. KERNEL PROGRAMMING sa lisi od USER MODE PROGRAMMING v niekolkych zasadnych veciach.
+   A. UNAHNDLED EXCEPTIONS sposobia pad celeho SYSTEMU.
+   B. Ak DRIVER neuvolni vsetky RESOURCES, dochadza k LEAK, ktory sa odstrani az pri REBOOT.
+   C. RETURN VALUES v KERNEL PROGRAMMING by takmer NIKDY NEMALI BYT IGNOROVANE, ale mali by byt spracovane a osetrene v pripade vzniku ERRORS.
+   D. KERNEL MODE CODE moze bezat nielen v IRQL=0 ako USER MODE CODE, ale aj IRQL>=2.
+   E. BAD CONDING v KERNEL PROGRAMMING ma efekt na vykonnost celeho SYSTEMU, a nie len daneho PROCESSU.
+   F. DEBUGGING v KERNEL PROGRAMMING sa robi VZDY na inej MACHINE. Spravidla sa pouziva VIRTUAL MACHINE.
+   G. V KERNEL PROGRAMMING nie je mozne pouzit vacsinu standardnych C/C++ LIBRARIES.
+   H. V KERNEL PROGRAMMING NIE JE mozne pouzit C++ EXCEPTIONS. No je mozne pouzit STRUCTURED EXCEPTION HANDLING.
+   I. V KERNEL PROGRAMMING NIE JE mozne pouzit vacsinu C++ FEATURES, kedze tam nebezi C++ RUNTIME.
+3. KERNEL CODE moze byt vytvoreny v lubovolnej verzii C++, no kedze v KERNEL MODE nie je pristupny C++ RUNTIME, platia pre pouzitie C++ v KERNEL MODE nasledujuce obmedzenia.
+   A. V KERNEL MODE NIE JE mozne pouzit DEFAULT OPERATOR [OPERATOR new] a DEFAULT OPERATOR [OPERATOR delete]. C++ vsak umoznuje definovat CUSTOM OPERATOR [OPERATOR new] a CUSTOM OPERATOR [OPERATOR delete].
+   B. V KERNEL MODE pre GLOBAL VARIABLES NON-DEFAULT CONSTRUCTORS NIE su volane.
+   C. V KERNEL MODE NIE je mozne pouzit C++ EXCEPTIONS. No je mozne pouzit STRUCTURED EXCEPTION HANDLING.
+   D. V KERNEL MODE NIE je mozne pouzit C++ STANDARD LIBRARY.
+4. Pre DEBUGGING KERNEL MODE CODE platia nasledujuce fakty.
+   A. DEBUGGING KERNEL MODE CODE sa robi vzdy na INEJ MACHINE ako ta na ktorej bezi DEBUGGER vo VISUAL STUDIO.
+   B. Na DEBUGGING KERNEL MODE CODE sa spravidla pouziva VIRTUAL MACHINE, ktora musi byt s HOST MACHINE prepojena cez nejaku CONNECTION.
+   C. Ak dojde k vzniku BREAKPOINT, tak MACHINE na ktorej bezi DRIVER je FROZEN. To znamena, ze cely operacny system je zablokovany, az kym nie je CODE opatovne spusteny.
+5. KERNEL MODE CODE moze byt COMPILED v nasledujucich BUILDS.
+   A. DEBUG BUILD (oznacovany aj ako CHECKED BUILD) je BUILD v ktorom je definovany PREPROCESSOR SYMBOL [DBG] a nastaveny na VALUE [1]. V tomto BUILD su vypnute vsetky OPTIMALIZATIONS.
+   B. RELEASE BUILD (oznacovany aj ako FREE BUILD) je BUILD v ktorom su zapnute vsetky OPTIMALIZATIONS.
+6. KERNEL API definuje mnozstvo KERNEL FUNCTIONS, ktore sa lisia svojim PREFIX. KERNEL API definuje nasledujuce PREFIXES.
+   A. PREFIX [Ex] oznacuje [GENERAL EXECUTIVE FUNCTIONS].
+   B. PREFIX [Ke] oznacuje [GENERAL KERNEL FUNCTIONS].
+   C. PREFIX [Mm] oznacuje [MEMORY MANAGER FUNCTIONS].
+   D. PREFIX [Rtl] oznacuje [GENERAL RUNTIME LIBRARY FUNCTIONS].
+   E. PREFIX [FsRtl] oznacuje [FILE SYSTEM RUNTIME LIBRARY FUNCTIONS].
+   F. PREFIX [Flt] oznacuje [FILE SYSTEM MINI-FILTER LIBRARY FUNCTIONS].
+   G. PREFIX [Ob] oznacuje [OBJECT MANAGER FUNCTIONS].
+   H. PREFIX [Io] oznacuje [I/O MANAGER FUNCTIONS].
+   I. PREFIX [Se] oznacuje [SECURITY FUNCTIONS].
+   J. PREFIX [Ps] oznacuje [PROCESS MANAGER FUNCTIONS].
+   K. PREFIX [Po] oznacuje [POWER MANAGER FUNCTIONS].
+   L. PREFIX [Wmi] oznacuje [WINDOWS MANAGEMENT INSTRUMENTATION FUNCTIONS].
+   M. PREFIX [Zw] oznacuje [NATIVE API WRAPPERS FUNCTIONS].
+   N. PREFIX [Hal] oznacuje [HARDWARE ABSTRACTION LAYER FUNCTIONS].
+   O. PREFIX [Cm] oznacuje [CONFIGURATION MANAGER (REGISTRY) FUNCTIONS].
+7. KERNEL API definuje FUNCTIONS s PREFIXOM [Zw]. Pre tieto FUNCTIONS platia nasledujuce fakty.
+   A. KERNEL FUNCTIONS s PREFIXOM [Zw] su MIRROR KERNEL FUNCTIONS s PREFIXOM [Nt], ktore su BRIDGE medzi USER MODE a KERNEL MODE.
+   !!! B. FUNCTIONS s PREFIXOM [Nt] su definovane v USER MODE v LIBRARY [NTDLL.DLL], aby ich USER MODE mohol volat. Tie nasledne volaju rovnako pomenovane FUNCTIONS s PREFIXOM [Nt], ktore su vsak uz KERNEL MODE FUNCTIONS implementovane v MODULE [Executive].
+   !!! C. KERNEL FUNCTIONS s PREFIXOM [Nt] ak su volane s USER MODE vykonavaju rozlicne CHECKS, ktore su potrebne iba v pripade, ze su volane z USER MODE. To ci KERNEL FUNCTIONS s PREFIXOM [Nt] su volane z USER MODE urcuje FLAG [KTHREAD::PreviousMode], ktoreho VALUE je mozne ziskat volanim KERNEL FUNCTION [ExGetPreviousMode()].
+   !!!!! D. KERNEL FUNCTIONS s PREFIXOM [Zw] su urcene na volanie z KERNEL MODE, kedy mnohe CHECKS, ktore KERNEL FUNCTIONS s PREFIXOM [Nt] vykonavaju nie su potrebne. Na to, aby sa tieto zbytocne CHECKS nerobili, kazda KERNEL FUNCTION s PREFIXOM [Zw] najprv nastavi FLAG [KTHREAD::PreviousMode] na VALUE [KernelMode] a nasledne vola zodpovedajucu KERNEL FUNCTION s PREFIXOM [Nt]. Vdaka nastaveniu FLAG [KTHREAD::PreviousMode] na VALUE [KernelMode] tieto FUNCTIONS uz NEROBIA CHECKS, ktore pri volani z KERNEL MODE NIE su potrebne.
+   E. V KERNEL MODE CODE by sa NIKDY nemali volat KERNEL FUNCTIONS s PREFIXOM [Nt], ale vzdy zodpovedajuce KERNEL FUNCTIONS s PREFIXOM [Zw].
+8. KERNEL FUNCTIONS vracaju ERRORS pomocou RETURN VALUES. Pre ERRORS vratene v RETURN VALUES platia nasledujuce fakty.
+   A. RETURN VALUE TYPE indikujuci ERROR je TYPE [NTSTATUS]. Je to 32 BIT INTEGER VALUE.
+   !!! B. VALUE [STATUS_SUCCESS(0)] indikuje, ze KERNEL FUNCTION skoncila uspesne. Podobne aj vsetky KLADNE VALUES indikuju, ze FUNCTION skoncila uspesne.
+   C. ERROR VALUES su definovane v HEADER FILE [NTSTATUS.H].
+   !!! D. MACRO [NT_SUCCESS()] umoznuje otestovat ci KERNEL FUNCTION skoncila uspesne, alebo zlyhala. MACRO testuje ci VALUE je KLADNA.
+   !!! E. ERROR CODES TYPE [NTSTATUS] su pri volani z USER MODE konvertovane na VALUES [ERROR_XXX], ktore su pristupne z USER MODE. VALUES TYPE [NTSTATUS] a VALUES TYPE [ERROR_XXX] NIE su rovnake a ani medzi nimi NEEXISTUJE MAPPING 1:1.
+   F. Odporuca sa, aby CUSTOM KERNEL FUNCTIONS, ktore obsahuje DRIVER takisto pouzivali tuto konvenciu a ERRORS vracali v RETURN VALUE ako TYPE [NTSTATUS].
+9. KERNEL DRIVERS definuju viacere TYPES pre pracu so STRINGS.
+   A. TYPE [char[]].
+   B. TYPE [wchar_t[]].
+   C. TYPE [ANSI_STRING].
+   D. TYPE [UNICODE_STRING].
+10. TYPE [ANSI_STRING] je STRUCTURE, ktora ma nasledujuce MEMBERS.
+   A. FIELD [USHORT Length] obsahuje dlzku STRING ulozenu vo FIELD [Buffer]. Dlzka je v BYTES. Dlzka je v BYTES a NEOBSAHUJE NULL TERMINATOR.
+   B. FIELD [USHORT MaximumLength] obsahuje dlzku BUFFER vo FIELD [Buffer].  Dlzka je v BYTES. Plati, ze [MaximumLength>=Length].
+   C. FIELD [PCHAR Buffer] obsahuje POINTER na BUFFER.
+11. TYPE [UNICODE_STRING] je STRUCTURE, ktora ma nasledujuce MEMBERS.
+   A. FIELD [USHORT Length] obsahuje dlzku STRING ulozenu vo FIELD [Buffer]. Dlzka je v BYTES a NEOBSAHUJE NULL TERMINATOR.
+   B. FIELD [USHORT MaximumLength] obsahuje dlzku BUFFER vo FIELD [Buffer].  Dlzka je v BYTES. Plati, ze [MaximumLength>=Length].
+   C. FIELD [PWSTR Buffer] obsahuje POINTER na BUFFER.
+12. WINDOWS KERNEL definuje mnozstvo KERNEL FUNCTIONS na pracu so STRINGS.
+   A. FUNCTION [RtlInitUnicodeString()].
+   B. FUNCTION [RtlCopyUnicodeString()].
+   C. FUNCTION [RtlCompareUnicodeString()].
+   D. FUNCTION [RtlEqualUnicodeString()].
+   E. FUNCTION [RtlAppendUnicodeStringToString()].
+   F. FUNCTION [RtlAppendUnicodeToString()].
+13. Pre FUNCTION [RtlInitUnicodeString()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [NTSYSAPI VOID RtlInitUnicodeString(PUNICODE_STRING DestinationString, PCWSTR SourceString)].
+   B. PARAMETER [PUNICODE_STRING DestinationString] obsahuje DESTINATION UNICODE STRING.
+   C. PARAMETER [PCWSTR SourceString] obsahuje SOURCE STRING z ktoreho ma byt UNICODE STRING nainicializovany. STRING MUSI byt NULL TERMINATED.
+   D. FUNCTION inicializuje UNICODE STRING hodnotou STRING TYPE [PCWSTR].
+   !!! E. FUNCTION KOPIRUJE PARAMETER [SourceString] do FIELD [DestinationString::Buffer]. Samotny BUFFER vsak NEALOKUJE. Iba pouziva PARAMETER [SourceString].
+   F. FUNCTION nastavi FIELD [DestinationString::Length] na dlzku STRING v BYTES BEZ NULL TERMINATOR.
+   G. FUNCTION nastavi FIELD [DestinationString::MaximumLength] na dlzku STRING v BYTES VRATANE NULL TERMINATOR.
+14. Pre FUNCTION [RtlCopyUnicodeString()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [NTSYSAPI VOID RtlCopyUnicodeString(PUNICODE_STRING DestinationString, PCUNICODE_STRING SourceString)].
+   B. PARAMETER [PUNICODE_STRING DestinationString] obsahuje DESTINATION UNICODE STRING.
+   C. PARAMETER [PCUNICODE_STRING SourceString] obsahuje SOURCE UNICODE STRING.
+   D. FUNCTION kopiruje obsah FIELD [SourceString::Buffer] do FIELD [DestinationString::Buffer]. Pocet skopirovanych BYTES urcuje VALUE [MIN(SourceString::Length,DestinationString::MaximumLength)].
+   !!! E. PARAMETER [DestinationString] MUSI byt pred volanim FUNCTION korektne inicializovany, aby nedoslo k BUFFER OVERRUNS.
+   F. FUNCTION NEMODIFIKUJE FIELD [DestinationString::Buffer] ani FIELD [DestinationString::MaximumLength].
+15. Pre FUNCTION [RtlCompareUnicodeString()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [NTSYSAPI LONG RtlCompareUnicodeString(PCUNICODE_STRING String1, PCUNICODE_STRING String2, BOOLEAN CaseInSensitive)].
+   B. PARAMETER [PCUNICODE_STRING String1] obsahuje UNICODE STRING 1.
+   C. PARAMETER [PCUNICODE_STRING String2] obsahuje UNICODE STRING 2.
+   D. PARAMETER [BOOLEAN CaseInSensitive] urcuje ci porovnanie NEMA byt CASE SENSITIVE.
+   E. RETURN VALUE TYPE [LONG] obsahuje vysledok porovnania oboch STRINGS.
+   F. FUNCTION porovnava PARAMETER [String1] a PARAMETER [String2]. VALUE [<0] znamena, ze PARAMETER [String1] je MENSI ako PARAMETER [String2]. VALUE [>0] znamena, ze PARAMETER [String1] je VACSI ako PARAMETER [String2]. VALUE [==0] znamena, ze PARAMETER [String1] je ROVNAKY ako PARAMETER [String2].
+16. Pre FUNCTION [RtlEqualUnicodeString()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [NTSYSAPI BOOLEAN RtlEqualUnicodeString(PCUNICODE_STRING String1, PCUNICODE_STRING String2, BOOLEAN CaseInSensitive)].
+   B. PARAMETER [PCUNICODE_STRING String1] obsahuje UNICODE STRING 1.
+   C. PARAMETER [PCUNICODE_STRING String2] obsahuje UNICODE STRING 2.
+   D. PARAMETER [BOOLEAN CaseInSensitive] urcuje ci porovnanie NEMA byt CASE SENSITIVE.
+   E. RETURN VALUE TYPE [BOOLEAN] obsahuje vysledok porovnania na rovnost oboch STRINGS.
+   F. FUNCTION porovnava PARAMETER [String1] a PARAMETER [String2] ci su zhodne. VALUE [TRUE] znamena, ze PARAMETER [String1] je ROVNAKY ako PARAMETER [String2]. VALUE [FALSE] znamena, ze PARAMETER [String1] je ROZNY ako PARAMETER [String2].
+17. Pre FUNCTION [RtlAppendUnicodeStringToString()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [NTSYSAPI NTSTATUS RtlAppendUnicodeStringToString(PUNICODE_STRING Destination, PCUNICODE_STRING Source)].
+   B. PARAMETER [PUNICODE_STRING DestinationString] obsahuje DESTINATION UNICODE STRING.
+   C. PARAMETER [PCUNICODE_STRING Source] obsahuje SOURCE UNICODE STRING.
+   D. RETURN VALUE TYPE [NTSTATUS] obsahuje informaciu ci FUNCTION skoncila uspesne.
+   E. FUNCTION kopiruje BYTES z FIELD [Source::Buffer] do FIELD [DestinationString::Buffer].
+   F. FUNCTION zvysuje VALUE FIELD [DestinationString::Length] o pocet pridanych BYTES.
+18. Pre FUNCTION [RtlAppendUnicodeToString()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [NTSYSAPI NTSTATUS RtlAppendUnicodeToString(PUNICODE_STRING Destination, PCWSTR Source)].
+   B. PARAMETER [PUNICODE_STRING DestinationString] obsahuje DESTINATION UNICODE STRING.
+   C. PARAMETER [PCWSTR Source] obsahuje SOURCE STRING.
+   D. RETURN VALUE TYPE [NTSTATUS] obsahuje informaciu ci FUNCTION skoncila uspesne.
+   E. FUNCTION kopiruje BYTES z PARAMETER [Source] do FIELD [DestinationString::Buffer]. NULL TERMINATOR nie je kopirovany.
+   F. FUNCTION zvysuje VALUE FIELD [DestinationString::Length] o pocet pridanych BYTES.
+   G. Ak PARAMETER [DestinationString] nema dost miesta na nakopirovanie vsetkych CHARACTERS, ostava PARAMETER [DestinationString] NEZMENENY.
+19. WINDOWS KERNEL definuje aj FUCTIONS pre pracu s C-STRINGS. Patria sem FUNCTIONS ako FUNCTION [wcscpy_s], FUNCTION [wcscat_s], FUNCTION [wcslen], FUNCTION [wcschr], FUNCTION [strcpy], ci FUNCTION [strcpy_s].
+!!! 20. WINDOWS KERNEL definuje HEADER [dontuse.H], ktory sposobi COMPILATION ERRORS, ak sa pouziju NON-SAFE, alebo DEPRECATED FUNCTIONS.
+21. WINDOWS KERNEL umoznuje DYNAMIC MEMORY ALLOCATION. Pre DYNAMIC MEMORY ALLOCATION platia nasledujuca fakty.
+   A. DYNAMIC MEMORY ALLOCATION je preferovany sposob alokacie vacsich blokov MEMORY, pretoze KERNEL THREAD STACK ma velmi limitovanu dlzku.
+   B. WIDNOWS KERNEL podporuje viacero POOLS, v ktorych je mozne vykonat DYNAMIC MEMORY ALLOCATION.
+   C. S kazdym alokovanym blokom MEMORY je mozne asociovat TAG. TAGS sluzia na diagnostiku MEMORY LEAKS.
+22. WINDOWS KERNEL podporuje nasledujuce typy POOLS pre DYNAMIC MEMORY ALLOCATION.
+   A. FLAG [POOL_FLAG_PAGED] oznacuje PAGED POOL. MEMORY z PAGED POOL moze WINDOWS kedykolvek presunut z PHYSICAL MEMORY do PAGE FILE. Pokus o pristup k takejto MEMORY sposoby PAGE FAULT.
+   B. FLAG [POOL_FLAG_NON_PAGED] oznacuje NON-PAGED POOL. MEMORY z NON-PAGED POOL nie je NIKDY presunuta do PAGE FILE a VZDY ostava v PHYSICAL MEMORY, co znamena, ze je VZDY pristupna.
+   C. FLAG [POOL_FLAG_NON_PAGED_EXECUTE] oznacuje EXECUTABLE NON-PAGED POOL. MEMORY z NON-PAGED POOL nie je NIKDY presunuta do PAGE FILE a VZDY ostava v PHYSICAL MEMORY, co znamena, ze je VZDY pristupna.
+23. S kazdym alokovanym blokom MEMORY je mozne asociovat TAG. Pre TAGS platia nasledujuce fakty.
+   A. TAGS sluzia na identifikovanie ktory DRIVER ci cast KERNEL dany MEMORY BLOCK alokoval. Typicky sa pouziva pri hladani MEMORY LEAKS.
+   B. TAG ma vzdy 4 BYTES.
+   C. TAG musi obsahovat 4 ASCII CHARACTERS, inak DRIVER VERIFIER vyhlasi ERROR.
+   !!! D. TAGS je mozne prezerat pomocou WDK TOOL [Poolmon], alebo pomocou ALL TOOLS TOOL [PoolMonXv2]. ALL TOOLS TOOL [PoolMonXv2] si drzi aj historiu alokacie MEMORY a tak je mozne polahky zistit ci vsetka alokovana MEMORY bola aj uvolena.
+24. WINDOWS KERNEL definuje mnozstvo KERNEL FUNCTIONS pre DYNAMIC MEMORY ALLOCATION.
+   A. FUNCTION [ExAllocatePool2()].
+   B. FUNCTION [ExAllocatePoolQuotaZero()].
+   C. FUNCTION [ExFreePoolWithTag()].
+25. Pre FUNCTION [ExAllocatePool2()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [DECLSPEC_RESTRICT PVOID ExAllocatePool2(POOL_FLAGS Flags, SIZE_T NumberOfBytes, ULONG Tag)].
+   B. PARAMETER [POOL_FLAGS Flags] obsahuje FLAGS, ktore urcuju v ktorej POOL ma byt MEMORY ALLOCATED, ci ma byt asociovana s QUOTE daneho PROCESS a dalsie detaily.
+   C. PARAMETER [SIZE_T NumberOfBytes] urcuje pocet BYTES, ktore maju byt ALLOCATED.
+   D. PARAMETER [ULONG Tag] definuje TAG alokovaneho MEMORY BLOCK.
+   E. RETURN VALUE TYPE [PVOID] obsahuje alokovany MEMORY BLOCK, alebo NULL, ake alokacia zlyhala.
+   F. FUNCTION alokuje MEMORY z daneho POOL, pricom vracia POINTER na alokovany MEMORY BLOCK.
+26. Pre FUNCTION [ExAllocatePoolQuotaZero()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [PVOID ExAllocatePoolQuotaZero(POOL_TYPE PoolType, SIZE_T NumberOfBytes, ULONG Tag)].
+   B. PARAMETER [POOL_TYPE PoolType] obsahuje FLAGS, ktore urcuju v ktorej POOL ma byt MEMORY ALLOCATED, ci ma byt asociovana s QUOTE daneho PROCESS a dalsie detaily.
+   C. PARAMETER [SIZE_T NumberOfBytes] urcuje pocet BYTES, ktore maju byt ALLOCATED.
+   D. PARAMETER [ULONG Tag] definuje TAG alokovaneho MEMORY BLOCK.
+   E. RETURN VALUE TYPE [PVOID] obsahuje alokovany MEMORY BLOCK, alebo NULL, ake alokacia zlyhala.
+   F. FUNCTION alokuje MEMORY z daneho POOL, pricom vracia POINTER na alokovany MEMORY BLOCK. Vrateny MEMORY BLOCK je inicializovany na VALUES [0].
+27. Pre FUNCTION [ExFreePoolWithTag()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [void ExFreePoolWithTag(PVOID P, ULONG Tag)].
+   B. PARAMETER [PVOID P] POINTER na MEMORY BLOCK, ktory ma byt uvolneny.
+   C. PARAMETER [ULONG Tag] definuje TAG alokovaneho MEMORY BLOCK.
+   D. FUNCTION uvolnuje dynamicky alokovanu MEMORY z daneho POOL.
+28. WINDOWS KERNEL podporuje CIRCULAR DOUBLY LINKED LISTS v mnohych svojich INTERNAL STRUCTURES. Pre CIRCULAR DOUBLY LINKED LISTS platia nasledujuce fakty.
+   A. Na to aby CUSTOM STRUCTURE mohla byt pouzita ako RECORD v CIRCULAR DOUBLY LINKED LISTS je potrebne, aby tato CUSTOM STRUCTURE obsahovala vlozenu STRUCTURE TYPE [_LIST_ENTRY]. Pre STRUCTURE TYPE [_LIST_ENTRY] existuje TYPEDEF [LIST_ENTRY].
+   B. STRUCTURE TYPE [_LIST_ENTRY] obsahuje POINTER na predchadzajuci a nasledujuci ITEM v danej CIRCULAR DOUBLY LINKED LISTS.
+   C. STRUCTURE TYPE [_LIST_ENTRY] moze byt vlozena kdekolvek v CUSTOM STRUCTURE. To znamena, ze CUSTOM MEMBERS sa mozu nachadzat PRED aj ZA MEMBER TYPE [_LIST_ENTRY].
+   !!! D. MACRO [CONTAINING_RECORD()] umoznuje pre POINTER [LIST_ENTRY*] ziskat POINTER na CUSTOM STRUCTURE, ktora obsahuje dany POINTER [LIST_ENTRY*]. To znamena, ze MACRO umoznuje ziskat POINTER na PARENT CUSTOM STRUCTURE, ktore obsahuje POINTER [LIST_ENTRY*].
+29. STRUCTURE [_LIST_ENTRY] ma nasledujuce MEMBERS.
+   A. FIELD [_LIST_ENTRY* Flink] obsahuje POINTER na PREDOSLY RECORD v CIRCULAR DOUBLY LINKED LIST.
+   B. FIELD [_LIST_ENTRY* Blink] obsahuje POINTER na NASLEDUJUCI RECORD v CIRCULAR DOUBLY LINKED LIST.
+30. Pre MACRO [CONTAINING_RECORD()] platia nasledujuce fakty.
+   A. MACRO ma PROTOTYPE [PCHAR CONTAINING_RECORD(Address, Type, Field)].
+   B. PARAMETER [Address] obsahuje POINTER na STRUCTURE TYPE [_LIST_ENTRY], ktora sa nachadza ako CHILD STRUCTURE v PARENT TYPE [Type].
+   C. PARAMETER [Type] obsahuje PARENT TYPE, ktory obsahuje CHILD STRUCTURE TYPE [_LIST_ENTRY].
+   D. PARAMETER [Field] obsahuje FIELD TYPE [_LIST_ENTRY] v ktorom PARENT TYPE [Type] uklada CHILD STRUCTURE TYPE [_LIST_ENTRY].
+   E. RETURN VALUE TYPE [PCHAR] obsahuje POINTER na zaciatok PARENT CUSTOM STRUCTURE [Type], ktora vo FIELD [Field] TYPE [_LIST_ENTRY].
+   F. MACRO vracia POINTER na zaciatok PARENT CUSTOM STRUCTURE [Type], ktora vo FIELD [Field] TYPE [_LIST_ENTRY].
+   !!!!! H. LIST HEAD aj napriek tomu, ze ma LINKS na ostatne RECORDS v LIST NIE JE sucastou LIST. Ak LIST obsahuje iba HEAD, tak je PRAZDNY. LIST HEAD je iba ZARAZKA.
+   !!!!! I. LIST [HEAD----AAA----BBB] ma 2 RECORDS a to RECORD [AAA] a RECORD [BBB].
+31. WINDOWS KERNEL definuje KERNEL FUNCTIONS pre CIRCULAR DOUBLY LINKED LISTS.
+   A. FUNCTION [InitializeListHead()].
+   B. FUNCTION [InsertHeadList()].
+   C. FUNCTION [InsertTailList()].
+   D. FUNCTION [IsListEmpty()].
+   E. FUNCTION [RemoveHeadList()].
+   F. FUNCTION [RemoveTailList()].
+   G. FUNCTION [RemoveEntryList()].
+   H. FUNCTION [ExInterlockedInsertHeadList()].
+   I. FUNCTION [ExInterlockedInsertTailList()].
+   J. FUNCTION [ExInterlockedRemoveHeadList()].
+32. Pre FUNCTION [InitializeListHead()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [void InitializeListHead(PLIST_ENTRY ListHead)].
+   B. PARAMETER [PLIST_ENTRY ListHead] obsahuje POINTER na STRUCTURE TYPE [LIST_ENTRY], ktora reprezentuje HEAD daneho CIRCULAR DOUBLY LINKED LIST.
+   C. FUNCTION nastavi FIELD [ListHead->Flink] a FIELD [ListHead->Blink], aby odkazovali na PARAMETER [ListHead] cim spravi z RECORD HEAD RECORD.
+   !!! D. LIST je po volani FUNCTION PRAZDNY.
+33. Pre FUNCTION [InsertHeadList()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [void InsertHeadList(PLIST_ENTRY ListHead, PLIST_ENTRY Entry)].
+   B. PARAMETER [PLIST_ENTRY ListHead] obsahuje POINTER na STRUCTURE TYPE [LIST_ENTRY], ktora reprezentuje HEAD daneho CIRCULAR DOUBLY LINKED LIST.
+   C. PARAMETER [PLIST_ENTRY Entry] obsahuje novy RECORD, ktory ma byt pridany do daneho CIRCULAR DOUBLY LINKED LIST.
+   D. FUNCTION vlozi novy RECORD [Entry] na HEAD CIRCULAR DOUBLY LINKED LIST.
+   E. FUNCTION pridava do LIST [HEAD----BBB----AAA], kde [ListHead=HEAD], [CURRENT_HEAD=BBB] a [CURRENT_TAIL=AAA] HEAD RECORD [Entry] cim vznika LIST [HEAD----Entry----BBB----AAA]. Tym spravi z RECORD [Entry] novy HEAD.
+   F. FUNCTION nastavi [Entry->Blink = ListHead (HEAD)].
+   G. FUNCTION nastavi [Entry->Flink = ListHead->Flink (CURRENT_HEAD=BBB)].
+   H. FUNCTION nastavi [ListHead->Flink->Blink (CURRENT_HEAD->Blink=BBB->Blink) = Entry].
+   I. FUNCTION nastavi [ListHead->Flink (HEAD->Flink) = Entry].
+34. Pre FUNCTION [InsertTailList()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [void InsertTailList(PLIST_ENTRY ListHead, PLIST_ENTRY Entry)].
+   B. PARAMETER [PLIST_ENTRY ListHead] obsahuje POINTER na STRUCTURE TYPE [LIST_ENTRY], ktora reprezentuje HEAD daneho CIRCULAR DOUBLY LINKED LIST.
+   C. PARAMETER [PLIST_ENTRY Entry] obsahuje novy RECORD, ktory ma byt pridany do daneho CIRCULAR DOUBLY LINKED LIST.
+   D. FUNCTION vlozi novy RECORD [Entry] na TAIL CIRCULAR DOUBLY LINKED LIST.
+   E. FUNCTION pridava do LIST [HEAD----BBB----AAA], kde [ListHead=HEAD], [CURRENT_HEAD=BBB] a [CURRENT_TAIL=AAA] TAIL RECORD [Entry] cim vznika LIST [Entry----HEAD----BBB----AAA]. Tym spravi z RECORD [Entry] novy TAIL.
+   F. FUNCTION nastavi [Entry->Blink = ListHead->Blink (CURRENT_TAIL=AAA)].
+   G. FUNCTION nastavi [Entry->Flink = ListHead (HEAD)].
+   H. FUNCTION nastavi [ListHead->Blink->Flink (CURRENT_TAIL->Flink=AAA->Flink) = Entry].
+   I. FUNCTION nastavi [ListHead->Blink (HEAD->Blink) = Entry].
+35. Pre FUNCTION [IsListEmpty()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [BOOLEAN IsListEmpty(const LIST_ENTRY *ListHead)].
+   B. PARAMETER [const LIST_ENTRY *ListHead] obsahuje POINTER na STRUCTURE TYPE [LIST_ENTRY], ktora reprezentuje HEAD daneho CIRCULAR DOUBLY LINKED LIST.
+   C. RETURN VALUE TYPE [BOOLEAN] vracia informaciu ci LIST je prazdny.
+   D. FUNCTION vracia informaciu ci LIST je prazdny. LIST je prazdny, ak obsahuje IBA HEAD, ale ZIADNE RECORDS. V tomto pripade plati CONDITION [ListHead->Flink==ListHead].
+36. Pre FUNCTION [RemoveHeadList()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [PLIST_ENTRY RemoveHeadList(PLIST_ENTRY ListHead)].
+   B. PARAMETER [PLIST_ENTRY ListHead] obsahuje POINTER na STRUCTURE TYPE [LIST_ENTRY], ktora reprezentuje HEAD daneho CIRCULAR DOUBLY LINKED LIST.
+   C. RETURN VALUE TYPE [PLIST_ENTRY] vracia POINTER na odstraneny RECORD.
+   D. FUNCTION odstrani z HEAD CIRCULAR DOUBLY LINKED LIST. Ak je LIST EMPTY, tak FUNCTION nic nespravi.
+   E. FUNCTION odstranuje z LIST [HEAD----CCC----BBB----AAA], kde [ListHead=HEAD], [CURRENT_HEAD=CCC], [CURRENT_HEAD+1=BBB] a [CURRENT_TAIL=AAA] HEAD RECORD cim vznika LIST [HEAD----BBB----AAA]. Tym spravi z RECORD, ktory nasleduje za odstranenym HEAD novy HEAD.
+   F. FUNCTION nastavi [ListHead->Flink->Flink->Blink (CURRENT_HEAD+1->Blink=BBB->Blink) = ListHead (HEAD)].
+   G. FUNCTION nastavi [ListHead->Flink (HEAD->Flink) = ListHead->Flink->Flink (BBB)].
+37. Pre FUNCTION [RemoveTailList()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [PLIST_ENTRY RemoveTailList(PLIST_ENTRY ListHead)].
+   B. PARAMETER [PLIST_ENTRY ListHead] obsahuje POINTER na STRUCTURE TYPE [LIST_ENTRY], ktora reprezentuje HEAD daneho CIRCULAR DOUBLY LINKED LIST.
+   C. RETURN VALUE TYPE [PLIST_ENTRY] vracia POINTER na odstraneny RECORD.
+   D. FUNCTION odstrani z TAIL CIRCULAR DOUBLY LINKED LIST. Ak je LIST EMPTY, tak FUNCTION nic nespravi.
+   E. FUNCTION odstranuje z LIST [HEAD----CCC----BBB----AAA], kde [ListHead=HEAD], [CURRENT_HEAD=CCC], [CURRENT_TAIL-1=BBB] a [CURRENT_TAIL=AAA] TAIL RECORD cim vznika LIST [HEAD----CCC----BBB]. Tym spravi z RECORD, ktory sa nachadzal pred odstranenym TAIL novy TAIL.
+   F. FUNCTION nastavi [ListHead->Blink->Blink->Flink (CURRENT_TAIL-1->Flink=BBB->Flink) = ListHead (HEAD)].
+   G. FUNCTION nastavi [ListHead->Blink (HEAD->Blink) = ListHead->Blink->Blink (CURRENT_TAIL-1=BBB)].
+38. Pre FUNCTION [RemoveEntryList()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [BOOLEAN RemoveEntryList(PLIST_ENTRY Entry)].
+   B. PARAMETER [PLIST_ENTRY Entry] obsahuje POINTER na STRUCTURE TYPE [LIST_ENTRY], ktora sa ma z LIST odstranit.
+   C. RETURN VALUE TYPE [BOOLEAN] vracia informaciu ci LIST bude po odstraneni RECORD prazdny.
+   D. FUNCTION odstrani RECORDS z CIRCULAR DOUBLY LINKED LIST.
+   E. FUNCTION odstranuje z LIST [HEAD----CCC----BBB----AAA], kde [ListHead=HEAD], [CURRENT_HEAD=CCC] a [CURRENT_TAIL=AAA] RECORD [Entry] cim vznika LIST [HEAD----CCC----AAA].
+   F. FUNCTION nastavi [Entry->Flink->Blink (AAA->Blink) = Entry->Blink (CCC)].
+   G. FUNCTION nastavi [Entry->Blink->Flink (CCC->Flink) = Entry->Flink (AAA)].
+39. Pre FUNCTION [ExInterlockedInsertHeadList()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [PLIST_ENTRY ExInterlockedInsertHeadList(PLIST_ENTRY ListHead, PLIST_ENTRY ListEntry, PKSPIN_LOCK Lock)].
+   B. PARAMETER [PLIST_ENTRY ListHead] obsahuje POINTER na STRUCTURE TYPE [LIST_ENTRY], ktora reprezentuje HEAD daneho CIRCULAR DOUBLY LINKED LIST.
+   C. PARAMETER [PLIST_ENTRY Entry] obsahuje novy RECORD, ktory ma byt pridany do daneho CIRCULAR DOUBLY LINKED LIST.
+   D. PARAMETER [PKSPIN_LOCK Lock] obshauje LOCK, ktory sa pouzije na atomicky pristup k LIST.
+   E. RETURN VALUE TYPE [PLIST_ENTRY] obsahuje POINTER na PRVY RECORD PRED pridanim noveho RECORD do LIST.
+   F. FUNCTION vykonava tu istu operaciu ako FUNCTION [InsertHeadList()], ale robi ju ATOMICKY.
+40. Pre FUNCTION [ExInterlockedInsertTailList()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [PLIST_ENTRY ExInterlockedInsertTailList(PLIST_ENTRY ListHead, PLIST_ENTRY ListEntry, PKSPIN_LOCK Lock)].
+   B. PARAMETER [PLIST_ENTRY ListHead] obsahuje POINTER na STRUCTURE TYPE [LIST_ENTRY], ktora reprezentuje HEAD daneho CIRCULAR DOUBLY LINKED LIST.
+   C. PARAMETER [PLIST_ENTRY Entry] obsahuje novy RECORD, ktory ma byt pridany do daneho CIRCULAR DOUBLY LINKED LIST.
+   D. PARAMETER [PKSPIN_LOCK Lock] obshauje LOCK, ktory sa pouzije na atomicky pristup k LIST.
+   E. RETURN VALUE TYPE [PLIST_ENTRY] obsahuje POINTER na POSLEDNY RECORD PRED pridanim noveho RECORD do LIST.
+   F. FUNCTION vykonava tu istu operaciu ako FUNCTION [InsertTailList()], ale robi ju ATOMICKY.
+41. Pre FUNCTION [ExInterlockedRemoveHeadList()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [PLIST_ENTRY ExInterlockedRemoveHeadList(PLIST_ENTRY ListHead, PKSPIN_LOCK Lock)].
+   B. PARAMETER [PLIST_ENTRY ListHead] obsahuje POINTER na STRUCTURE TYPE [LIST_ENTRY], ktora reprezentuje HEAD daneho CIRCULAR DOUBLY LINKED LIST.
+   C. PARAMETER [PKSPIN_LOCK Lock] obshauje LOCK, ktory sa pouzije na atomicky pristup k LIST.
+   D. RETURN VALUE TYPE [PLIST_ENTRY] vracia POINTER na odstraneny RECORD.
+   E. FUNCTION vykonava tu istu operaciu ako FUNCTION [RemoveHeadList()], ale robi ju ATOMICKY.
+42. STRUCTURE [DRIVER_OBJECT] umoznuje inicializovat DRIVER DISPATCH FUNCTIONS TYPE [DRIVER_DISPATCH], ktore su volane pri rozlicnych EVENTS, ktore sa v DRIVER vyskytnu. Pre STRUCTURE [DRIVER_OBJECT] platia nasledujuce fakty.
+   A. STRUCTURE [DRIVER_OBJECT] je SEMI DOCUMENTED STRUCTURE, ktorej niektore casti su DOCUMENTED.
+   B. Instancia STRUCTURE [DRIVER_OBJECT] je vytvorena a inicializovana KERNEL.
+   C. Instancia STRUCTURE [DRIVER_OBJECT] je zasielana ako PARAMETER do FUNCTION [NTSTATUS DriverEntry(PDRIVER_OBJECT DriverObject, PUNICODE_STRING RegistryPath)] a CUSTOM FUNCTION [void FunctionDriverUnload(PDRIVER_OBJECT DriverObject)].
+   D. Instancia STRUCTURE [DRIVER_OBJECT] umoznuju nastavenie CUSTOM DISPATCH FUNCTIONS, ktore reaguju na EVENTS, ktore sa v DRIVER vyskytnu.
+   !!! E. FIELD [DRIVER_OBJECT::MajorFunction] je pre kazdu DISPATCH FUNCTION interne inicializovana na FUNCTION [IopInvalidDeviceRequest()], ktora vracia RETURN VALUE indikujuci, ze dana DISPATCH FUNCTION nie je danym DRIVER implementovana.
+43. STRUCTURE [DRIVER_OBJECT] ma nasledujuce MEMBERS.
+   A. FIELD [PDRIVER_UNLOAD DriverUnload] obsahuje POINTER na DRIVER UNLOAD CALLBACK FUNCTION.
+   B. FIELD [PDRIVER_DISPATCH MajorFunction[IRP_MJ_MAXIMUM_FUNCTION+1]] je ARRAY obsahujuci POINTERS na DISPATCH FUNCTIONS. Indexom do ARRAY su VALUES [IRP_MJ_*].
+44. KERNEL definuje nasledujuce VALUES identifikujuce MAJOR DISPATCH FUNCTIONS.
+   A. VALUE [IRP_MJ_CREATE] identifikuje DISPATCH FUNCTION pre CREATE OPERATION. DISPATCH FUNCTION je typicky volana pri volani USER MODE FUNCTION [CreateFile()], alebo KERNEL FUNCTION [ZwCreateFile()].
+   B. VALUE [IRP_MJ_CLOSE] identifikuje DISPATCH FUNCTION pre CLOSE OPERATION. DISPATCH FUNCTION je typicky volana pri volani USER MODE FUNCTION [CloseHandle()], alebo KERNEL FUNCTION [ZwClose()].
+   C. VALUE [IRP_MJ_READ] identifikuje DISPATCH FUNCTION pre READ OPERATION. DISPATCH FUNCTION je typicky volana pri volani USER MODE FUNCTION [ReadFile()], alebo KERNEL FUNCTION [ZwReadFile()].
+   D. VALUE [IRP_MJ_WRITE] identifikuje DISPATCH FUNCTION pre WRITE OPERATION. DISPATCH FUNCTION je typicky volana pri volani USER MODE FUNCTION [WriteFile()], alebo KERNEL FUNCTION [ZwWriteFile()].
+   E. VALUE [IRP_MJ_DEVICE_CONTROL] identifikuje DISPATCH FUNCTION pre GENERIC OPERATION. DISPATCH FUNCTION je typicky volana pri volani USER MODE FUNCTION [DeviceIoControl()], alebo KERNEL FUNCTION [ZwDeviceIoControlFile()].
+   F. VALUE [IRP_MJ_INTERNAL_DEVICE_CONTROL] identifikuje DISPATCH FUNCTION pre GENERIC KERNEL OPERATION. OPERATION je pristupna iba z KERNEL MODE.
+   G. VALUE [IRP_MJ_SHUTDOWN] identifikuje DISPATCH FUNCTION pre SHUTDOWN OPERATION. DISPATCH FUNCTION je volana ked dojde k SYSTEM SHUTDOWN, pricom DRIVER zaregistrovat SHUTDOWN NOTIFICATION volanim KERNEL FUNCTION [IoRegisterShutdownNotification()].
+   H. VALUE [IRP_MJ_CLEANUP] identifikuje DISPATCH FUNCTION pre CLEANUP OPERATION. DISPATCH FUNCTION je volana ked je LAST HANDLE daneho FILE OBJECT uvolneny, pricom vsak FILE OBJECT REFERENCE COUNT je NENULOVY. Typicky k tomu dochadza, ked je uzatvarany PROCESS pouzivajuci dany FILE OBJECT, no ine PROCESSES dany FILE OBJECT stale pouzivaju.
+   I. VALUE [IRP_MJ_PNP] identifikuje DISPATCH FUNCTION pre PLUG AND PLAY OPERATION. DISPATCH FUNCTION je volana ked PLUG AND PLAY MANAGER indikuje zmenu stavu daneho DRIVER.
+   J. VALUE [IRP_MJ_POWER] identifikuje DISPATCH FUNCTION pre POWER OPERATION. DISPATCH FUNCTION je volana ked POWER MANAGER indikuje zmenu stavu daneho DRIVER.
+45. KERNEL definuje STRUCTURE [OBJECT_ATTRIBUTES], ktora sa pouziva pri praci z OBJECTS v OBJECT MANAGER. Pre STRUCTURE platia nasledujuce fakty.
+   A. STRUCTURE [OBJECT_ATTRIBUTES] obsahuje informacie o OBJECT v OBJECT MANAGER ku ktoremu sa pristupit volanim niektorej z KERNEL FUNCTIONS.
+   B. STRUCTURE [OBJECT_ATTRIBUTES] obsahuje OBJECT NAME a ATTRIBUTES s ktorymi sa ma k danemu OBJECT pristupovat.
+   C. STRUCTURE [OBJECT_ATTRIBUTES] je PARAMETER mnohych KERNEL FUNCTIONS pracujucich s OBJECTS.
+   D. STRUCTURE [OBJECT_ATTRIBUTES] sa inicializuje bud pomocou MACRO [InitializeObjectAttributes()], alebo MACRO [RTL_CONSTANT_OBJECT_ATTRIBUTES()].
+   E. Kedze nie kazdy OBJECT ma priradeny OBJECT NAME, pre mnohe OBJECTS sa FIELD [OBJECT_ATTRIBUTES::ObjectName] NEPOUZIVA.
+46. STRUCTURE [OBJECT_ATTRIBUTES] ma nasledujuce MEMBERS.
+   A. FIELD [ULONG Length] obsahuje dlzku STRUCTURE v BYTES.
+   B. FIELD [HANDLE RootDirectory] obsahuje HANDLE na OPTIONAL DIRECTORY v OBJECT MANAGER NAMESPACE v pripade, ze OBJECT NAME vo FIELD [OBJECT_ATTRIBUTES::ObjectName] je RELATIVE. Ak FIELD [OBJECT_ATTRIBUTES::ObjectName] obsahuje FULLY QUALIFIED NAME, tak FIELD [OBJECT_ATTRIBUTES::RootDirectory] by mal byt nastaveny na NULL.
+   C. FIELD [PUNICODE_STRING ObjectName] obsahuje OBJECT NAME. Pre tie OBJECTS, ktore nemaju NAME, ako napriklad PROCESSES, musi byt FIELD nastaveny na NULL.
+   D. FIELD [ULONG Attributes] obsahuje ATTRIBUTES a ktormi sa ma pristupovat k danemu OBJECT.
+   E. FIELD [PVOID SecurityDescriptor] obsahuje OPTIONAL SECURITY DESCRIPTOR (STRUCTURE [SECURITY_DESCRIPTOR]), ktory sa aplikuje pre novovytvoreny OBJECT. VALUE [NULL] znamena, ze sa pouzije DEFAULT SECURITY DESCRIPTOR odvodeny od CALLER'S TOKEN.
+   F. FIELD [PVOID SecurityQualityOfService] obsahuje OPTIONAL SET SECURITY ATTRIBUTES (STRUCTURE [SECURITY_QUALITY_OF_SERVICE]), ktory sa pouziva pri IMPERSINATION a CONTEXT TRACKING MODE. Pre vacsinu OBJECTS sa nepouziva.
+47. FIELD [OBJECT_ATTRIBUTES::Attributes] moze obsahovat nasledujuce VALUES.
+   A. VALUE [OBJ_INHERIT] znamena, ze vrateny OBJECT HANDLE daneho OBJECT ma byt INHERITABLE.
+   B. VALUE [OBJ_PERMANENT] znamena, ze OBJECT ma byt oznaceny ako PERMANENT. PERMANENT OBJECTS maju osobitny COUNTER, ktory zabranuje predcasnemu uvolneniu daneho OBJECT, aj ked su vsetky HANDLES, ktore nan odkazuju uzatvorene.
+   C. VALUE [OBJ_EXCLUSIVE] znamena, ze ak sa vytvara novy OBJECT tak ma byt oznaceny ako EXCLUSIVE, co znamena, ze ziadne dalsie HANDLES nan nemozu byt otvorene. V pripade, ze OBJECT uz existuje, tak sa otvori ako EXCLUSIVE iba ako bol OBJECT s tymto ATTRIBUTE vytvoreny.
+   D. VALUE [OBJ_CASE_INSENSITIVE] znamena, ze ked sa otvara HANDLE na existujuci OBJECT tak sa ma pouzit CASE INSENSIVE SEARCH pri vyhladavani OBJECT NAME. Ak ATTRIBUTE nie je nastaveny, pouzije sa CASE SENSIVE SEARCH pri vyhladavani OBJECT NAME.
+   E. VALUE [OBJ_OPENIF] znamena, ze ak sa otvara existujuci OBJECT pricom ten NEEXISTUJE, tak sa hodi ERROR.
+   F. VALUE [OBJ_OPENLINK] znamena, ze ak sa otvara OBJECT, ktory reprezentuje SYMBOLIC LINK, tak sa otvori samotny OBJECT reprezentujuci SYMBOLIC LINK, namiesto OBJECT na ktory SYMBOLIC LINK odkazuje.
+   G. VALUE [OBJ_KERNEL_HANDLE] znamena, ze HANDLE na OBJECT je KERNEL HANDLE, ktory nie je asociovany so ziadnym PROCESS a moze byt pouzity vylucne iba v KERNEL MODE.
+   H. VALUE [OBJ_FORCE_ACCESS_CHECK] znamena, ze sa maju vykonat vsetky SECURITY CHECKS, aj ked je k OBJECT pristupovane s nastavenym ATTRIBUTE [OBJ_KERNEL_HANDLE].
+   I. VALUE [OBJ_IGNORE_IMPERSONATED_DEVICEMAP] znamena, ze sa ma pouzit PROCESS DEVICE MAP, namiesto USER DEVICE MAP pri vykonavani IMPERSINATION.
+   J. VALUE [OBJ_DONT_REPARSE] znamena, ze sa nema nasledovat REPARSE POINT ak sa objavi, ale namiesto toho sa ma vratit RETURN VALUE [STATUS_REPARSE_POINT_ENCOUNTERED].
+!!!!! 48. STRUCTURE [DEVICE_OBJECT] reprezentuje DEVICE OBJECT. Pre DEVICE OBJECTS platia nasledujuce fakty.
+   A. DEVICE OBJECT je zakladny OBJECT, ktory vytvara DRIVER a sluzi na komunikaciu DRIVER CLIENTS s danym DRIVER.
+   !!! B. DEVICE OBJECT reprezentuje COMMUNICATION ENDPOINT s ktorym mozu DRIVER CLIENTS komunikovat. Ak by DRIVER nevytvoril ziaden DEVICE OBJECT tak by DRIVER CLIENTS nemali ako s danym DRIVER komunikovat.
+   !!! C. DEVICE OBJECT definuje NAME prostrednictvom ktoreho mozu DRIVER CLIENTS komunikovat s DRIVER.
+   D. DEVICE OBJECT je reprezentovany SEMI DOCUMENTED STRUCTURE [DEVICE_OBJECT].
+   !!! E. DEVICE OBJECTS su vytvarane pomocou KERNEL FUNCTION [IoCreateDevice()]. KERNEL FUNCTION [IoCreateDevice()] ma ako PARAMETER TYPE [DRIVER_OBJECT], ktory obsahuje FIELD [DRIVER_OBJECT::DeviceObject] reprezentujuci LINKED LIST vsetkych DEVICE OBJECTS, ktore DRIVER vytvoril.
+   !!!!! F. DEVICE OBJECT po volani KERNEL FUNCTION [IoCreateDevice()] je vlozeny do LINKED LIST vo FIELD [DRIVER_OBJECT::DeviceObject]. Plati, ze 1 DRIVER moze vytvorit viacero DEVICE OBJECTS opakovanym volanim KERNEL FUNCTION [IoCreateDevice()]. Kazdy novy DEVICE OBJECT je zaradeny na HEAD LINKED LIST, co znamena, ze prvy vytvoreny DEVICE OBJECT je na TAIL LINKED LIST.
+   G. USER MODE CODE moze pristupovat o DEVICE OBJECT daneho DRIVER pomocou FUNCTION [CreateFile()], ktora otvara DEVICE OBJECT daneho DRIVER a vytvara nan instanciu STRUCTURE [FILE_OBJECT].
+   H. DEVICE OBJECT sa uvolnuje volanim KERNEL FUNCTION [IoDeleteDevice()].
+!!! 49. Pre otvorenie DEVICE OBJECT daneho DRIVER platia nasledujuce fakty.
+   A. DEVICE OBJECT daneho DRIVER sa otvara pomocou USER MODE FUNCTION [CreateFile()].
+   B. FUNCTION [CreateFile()] ma ako PRVY PARAMETER DEVICE OBJECT NAME, ktorym sa identifikuje DEVICE OBJECT daneho DRIVER.
+   C. FUNCTION [CreateFile()] po otvoreni DEVICE OBJECT vytvara pren instanciu STRUCTURE [FILE_OBJECT].
+   !!! D. FUNCTION [CreateFile()] nepozaduje priamo DEVICE OBJECT NAME, ale SYMBOLIC LINK NAME. SYMBOLIC LINKS su KERNEL OBJECTS, ktore sluzia ako POINTERS na ine KERNEL OBJECTS.
+50. Pre SYMBOLIC LINKS platia nasledujuce fakty.
+   A. SYMBOLIC LINKS su KERNEL OBJECTS, ktore sluzia ako POINTERS na ine KERNEL OBJECTS.
+   B. SYMBOLIC LINKS sluzia na pristup k DEVICE OBJECTS daneho DRIVER. Su to NAME ALIASES k skutocnym DEVICE OBJECTS.
+   C. SYMBOLIC LINKS sa pouzivaju ako 1. PARAMETER FUNCTION [CreateFile()].
+   D. SYMBOLIC LINKS su ulozene v OBJECT MANAGER DIRECTORY [??].
+   E. SYMBOLIC LINKS je mozne prezerat pomocou SYSINTERNALS TOOL [WinObj], kde sa SYMBOLIC LINKS v DIRECTORY [GLOBAL??].
+   F. SYMBOLIC LINKS mozu byt vytvorene manualne, alebo pri registracii HW DRIVERS volanim KERNEL FUNCTION [IoRegisterDeviceInterface()] kedy su SYMBOLIC LINKS generovane automaticky.
+   G. SYMBOLIC LINKS spravidla odkazuju na DEVICES, ktore su v OBJECT MANAGER DIRECTORY [\Device].
+   !!! H. SYMBOLIC LINKS pri otvarani pomocou FUNCTION [CreateFile()] MUSIA pouzit PREFIX [\\.\], aby PASER dokazal indetifikovat, ze sa jedna o SYMBOLIC LINK.
+!!! 51. WINDOWS umoznuje otvarat DEVICE OBJECTS DRIVERS aj BEZ pouzitia SYMBOLIC LINKS. V USER MODE na to sluzi USER MODE FUNCTION [NtCreateFile()], alebo USER MODE FUNCTION [NtOpenFile()]. V KERNEL MODE na to sluzi KERNEL MODE FUNCTION [ZwCreateFile()].
+52. Pre FUNCTION [NtOpenFile()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [NTSTATUS NtOpenFile(PHANDLE FileHandle, ACCESS_MASK DesiredAccess, POBJECT_ATTRIBUTES ObjectAttributes, PIO_STATUS_BLOCK IoStatusBlock, ULONG ShareAccess, ULONG OpenOptions)].
+   B. PARAMETER [PHANDLE FileHandle] obsahuje POINTER na HANDLE na DEVICE OBJECT, ktory FUNCTION vrati pri uspesnom otvoreni DEVICE OBJECT.
+   C. PARAMETER [ACCESS_MASK DesiredAccess] obsahuje typ ACCESS, ktory ma byt pouzity.
+   D. PARAMETER [POBJECT_ATTRIBUTES ObjectAttributes] obsahuje OBJECT ATTRIBUTES, ktore sa pouziju na pristup k DEVICE OBJECT.
+   E. PARAMETER [PIO_STATUS_BLOCK IoStatusBlock] obsahuje vysledok OPERATION vykonanej nad DEVICE OBJECT.
+   F. PARAMETER [ULONG ShareAccess] obsahuje SHARE ACCESS, ktory sa pouzije pri pristupe k DEVICE OBJECT.
+   G. PARAMETER [ULONG OpenOptions] obsahuje OPTIONS, ktore sa aplikuju pri otvarani DEVICE OBJECT.
+   H. RETURN VALUE TYPE [NTSTATUS] obsahuje informaciu ci FUNCTION skoncila uspesne.
+   !!! I. FUNCTION otvara DEVICE OBJECT BEZ nutnosti pouzitia SYMBOLIC LINK.
+   J. FUNCTION je definovana v HEADER [winternl.H] a LIBRARY [ntdll.DLL].
+   !!! K. FUNCTION je sucastou NATIVE API, ktore MICROSOFT neodporuca pouzivat, ale kedze je DOCUMENTED, tak ju pouzivat je mozne.
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+Vysvetlenie funkcionality CIRCULAR DOUBLY LINKED LISTS.
+
+1. Po zavolani FUNCTION [InitializeListHead()] vyzera CIRCULAR DOUBLY LINKED LIST nasledovne.
+   !!! A. LIST ma iba HEAD a tym padom je povazovany za prazdny.
+   B. HEAD ma nastaveny FIELD [HEAD->Blink] a FIELD [HEAD->Flink] na sam seba, vdaka comu je prazdny.
+   
+-----HEAD-----
+|            |
+--------------
+
+
+Stav pred volanim FUNCTION [InitializeListHead()].
+
+ListHead=NULL.
+FIRST_ITEM=NULL.
+LAST_ITEM=NULL.
+
+
+Stav po volani FUNCTION [InitializeListHead()].
+
+ListHead=HEAD.
+FIRST_ITEM=HEAD.
+LAST_ITEM=HEAD.
+
+
+HEAD->Blink=HEAD.
+HEAD->Flink=HEAD.
+
+
+2. Zavola sa FUNCTION [InsertHeadList()], kde PARAMETER [ListHead=HEAD] a PARAMETER [Entry=AAA].
+   A. Pred vykonanim FUNCTION je FIRST RECORD nastaveny na RECORD [HEAD].
+   B. Pred vykonanim FUNCTION je LAST RECORD nastaveny na RECORD [HEAD].
+   C. LIST po volani FUNCTION obsahuje 1 RECORD [AAA].
+   D. RECORD [AAA] sa po volani FUNCTION stava novym FIRST RECROD.
+
+
+-----HEAD-----AAA-----
+|                    |
+----------------------
+
+
+Stav pred volanim FUNCTION [InsertHeadList()].
+
+ListHead=HEAD.
+FIRST_ITEM=HEAD.
+LAST_ITEM=HEAD.
+Entry=AAA.
+
+
+Stav po volani FUNCTION [InsertHeadList()].
+
+ListHead=HEAD.
+FIRST_ITEM=AAA.
+LAST_ITEM=AAA.
+
+
+HEAD->Blink=AAA.
+HEAD->Flink=AAA.
+
+AAA->Blink=HEAD.
+AAA->Flink=HEAD.
+
+
+3. Zavola sa FUNCTION [InsertHeadList()], kde PARAMETER [ListHead=HEAD] a PARAMETER [Entry=BBB].
+   A. Pred vykonanim FUNCTION je FIRST RECORD nastaveny na RECORD [AAA].
+   B. Pred vykonanim FUNCTION je LAST RECORD nastaveny na RECORD [AAA].
+   C. LIST po volani FUNCTION obsahuje 2 RECORDS a to RECORD [AAA] a RECORD [BBB].
+   D. RECORD [BBB] sa po volani FUNCTION stava novym FIRST RECROD.
+
+
+-----HEAD-----BBB----AAA-----
+|                           |
+-----------------------------
+
+
+Stav pred volanim FUNCTION [InsertHeadList()].
+
+ListHead=HEAD.
+FIRST_ITEM=AAA.
+LAST_ITEM=AAA.
+Entry=BBB.
+
+
+Stav po volani FUNCTION [InsertHeadList()].
+
+ListHead=HEAD.
+FIRST_ITEM=BBB.
+LAST_ITEM=AAA.
+
+
+HEAD->Blink=AAA.
+HEAD->Flink=BBB.
+
+BBB->Blink=HEAD.
+BBB->Flink=AAA.
+
+AAA->Blink=BBB.
+AAA->Flink=HEAD.
+
+
+4. Zavola sa FUNCTION [InsertHeadList()], kde PARAMETER [ListHead=HEAD] a PARAMETER [Entry=CCC].
+   A. Pred vykonanim FUNCTION je FIRST RECORD nastaveny na RECORD [BBB].
+   B. Pred vykonanim FUNCTION je LAST RECORD nastaveny na RECORD [AAA].
+   C. LIST po volani FUNCTION obsahuje 3 RECORDS a to RECORD [AAA], RECORD [BBB] a RECORD [CCC].
+   D. RECORD [CCC] sa po volani FUNCTION stava novym FIRST RECROD.
+
+
+-----HEAD-----CCC-----BBB----AAA-----
+|                                   |
+-------------------------------------
+
+
+Stav pred volanim FUNCTION [InsertHeadList()].
+
+ListHead=HEAD.
+FIRST_ITEM=BBB.
+LAST_ITEM=AAA.
+Entry=CCC.
+
+
+Stav po volani FUNCTION [InsertHeadList()].
+
+ListHead=HEAD.
+FIRST_ITEM=CCC.
+LAST_ITEM=AAA.
+
+
+HEAD->Blink=AAA.
+HEAD->Flink=CCC.
+
+CCC->Blink=HEAD.
+CCC->Flink=BBB.
+
+BBB->Blink=CCC.
+BBB->Flink=AAA.
+
+AAA->Blink=BBB.
+AAA->Flink=HEAD.
+
+
+5. Zavola sa FUNCTION [InsertTailList()], kde PARAMETER [ListHead=HEAD] a PARAMETER [Entry=DDD].
+   A. Pred vykonanim FUNCTION je FIRST RECORD nastaveny na RECORD [CCC].
+   B. Pred vykonanim FUNCTION je LAST RECORD nastaveny na RECORD [AAA].
+   C. LIST po volani FUNCTION obsahuje 4 RECORDS a to RECORD [AAA], RECORD [BBB], RECORD [CCC] a RECORD [DDD].
+   D. RECORD [DDD] sa po volani FUNCTION stava novym LAST RECROD.
+
+
+-----HEAD-----CCC-----BBB----AAA----DDD-----
+|                                          |
+--------------------------------------------
+
+
+Stav pred volanim FUNCTION [InsertTailList()].
+
+ListHead=HEAD.
+FIRST_ITEM=CCC.
+LAST_ITEM=AAA.
+Entry=DDD.
+
+
+Stav po volani FUNCTION [InsertTailList()].
+
+ListHead=HEAD.
+FIRST_ITEM=CCC.
+LAST_ITEM=DDD.
+
+
+HEAD->Blink=DDD.
+HEAD->Flink=CCC.
+
+CCC->Blink=HEAD.
+CCC->Flink=BBB.
+
+BBB->Blink=CCC.
+BBB->Flink=AAA.
+
+AAA->Blink=BBB.
+AAA->Flink=DDD.
+
+DDD->Blink=AAA.
+DDD->Flink=HEAD.
+//----------------------------------------------------------------------------------------------------------------------

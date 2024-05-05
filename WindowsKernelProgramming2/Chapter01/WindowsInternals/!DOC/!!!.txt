@@ -1,0 +1,221 @@
+//----------------------------------------------------------------------------------------------------------------------
+1. Solution popisuje niektore casti WINDOWS potrebne pri KERNEL PROGRAMMING.
+2. PROCESS je CONTAINMENT a MANAGEMENT OBJECT, ktory reprezentuje RUNNING INSTANCE daneho PROGRAMU.
+3. PROCESS nevykonava beh PROGRAMU. To vykonavaju THREADS, ktore su s PROCESS asociovane.
+4. PROCESS je tvoreny nasledujucimi ELEMENTS.
+   A. EXECUTABLE PROGRAM. EXECUTABLE PROGRAM vo vacsine pripadov je EXECUTABLE IMAGE, ktory obsahuje EXECUTABLE CODE a DATA. Niektore specializovane KERNEL PROCESSES vsak nemusia mat EXECUTABLE PROGRAM.
+   B. PRIVATE VIRTUAL SPACE. PRIVATE VIRTUAL SPACE sluzi na alokaciu MEMORY pre dany PROCESS.
+   C. ACCESS TOKEN. ACCESS TOKEN (PRIMARY TOKEN) obsahuje SECURITY CONTEXT daneho PROCESS. SECURITY CONTEXT pouzivaju THREADS na pristup k OBJECTS.
+   D. PRIVATE HANDLE TABLE. PRIVATE HANDLE TABLE obsahuje tabulku HANDLES na EXECUTIVE OBJECTS ako napriklad EVENTS, SEMAPHORES ci FILES.
+   E. THEADS. PROCESS moze obsahovat 1-N THREADS v ktorych je vykonavany CODE.
+   F. PROCESS ID. PROCESS ID pocas behu daneho PROCESS ho unikatne identifikuje v ramci WINDOWS.
+5. Kazdy PROCESS vo WINDOWS ma vlastny VIRTUAL ADDRESS SPACE. Pre VIRTUAL ADDRESS SPACE platia nasledujuce fakty.
+   A. VIRTUAL ADDRESS SPACE je kontinualny ADDRESS SPACE, do ktoreho moze byt mapovana VIRTUAL MEMORY.
+   B. VIRTUAL ADDRESS SPACE je PRIVATE. To znamena, ze PROCESSES nemozu priamo pristupovat k VIRTUAL ADDRESS SPACE inych PROCESSES.
+   C. Pri spusteni PROCESSU je VIRTUAL ADDRESS SPACE prazdny.
+   D. Velkost ADDRESS SPACE zavisi od PROCESSOR ARCHITECTURE. Pre 32 BIT PROCESSES je velkost ADDRESS SPACE 2-4 GB (podla nastavenia LARGEADDRESSAWARE LINKER FLAG v PE HEADER). Pre 64 BIT PROCESSES je velkost ADDRESS SPACE 128 TB.
+6. MEMORY vo WINDOWS je VIRTUAL. To znamena, ze medzi ADDRESS vo VIRTUAL ADDRESS SPACE a realnou poziciou, kde je MEMORY ulozena existuje MAPPING. MEMORY moze byt alokovana na nasledujucich miestach.
+   A. V PHYSICAL MEMORY, ktora je ulozena v RAM.
+   B. V PAGE FILE, ktory sa uklada na DISKU.
+7. VIRTUAL MEMORY je spravovana WINDOWS. To znamena, ze z hladiska PROGRAM EXECUTION pre PROGRAM je transparentne ci je MEMORY alokovana v PHYSICAL MEMORY, alebo PAGE FILE. WINDOWS vykonava automaticku TRANSLATION z PAGE FILE do PHYSICAL MEMORY v pripade, ze MEMORY je alokovana v PAGE FILE.
+!!! 8. TRANSLATION z PAGE FILE do PHYSICAL MEMORY vykonava WINDOWS v nasledujucich krokoch.
+   A. Ak je MEMORY BUFFER ulozeny v PAGE FILE co je indikovane FLAGS v PAGE ENTRIES PAGE TRANSLATION TABLE, ktore prisluchaju danemu MEMORY BUFFER, CPU vyvola PAGE FAULT EXCEPTION.
+   B. MEMORY MANAGER zachyti PAGE FAULT EXCEPTION a spusti PAGE FILE HANDLER.
+   C. PAGE FILE HANDLER nacita MEMORY PAGES zodpovedajuce danemu MEMORY BUFFER z PAGE FILE na DISKU do PHYSICAL MEMORY.
+   D. PAGE FILE HANDLER vykona UPDATE v PAGE ENTRIES v PAGE TRANSLATION TABLE.
+   E. MEMORY MANAGER instruuje CPU, aby sa pokusil pristupit k MEMORY BUFFER, ktory je uz teraz ulozeny v PHYSICAL MEMORY opat.
+9. Jednotka MEMORY MANAGEMENT je MEMORY PAGE. Pre MEMORY PAGE platia nasledujuce fakty.
+   A. MEMORY PAGE je najmensia mozna oblast MEMORY, ktora moze byt MAPPED do VIRTUAL ADDRESS SPACE.
+   B. Pre kazdu MEMORY PAGE si WINDOWS drzi informacie o jej STATE (ci je v PHYSICAL MEMORY, alebo PAGE FILE) ako aj jej PROTECTION STATE.
+   C. Velkost MEMORY PAGE je urcena CPU ARCHITECTURE. Na niektorych CPU moze byt CONFIGURED.
+10. WINDOWS podporuje nasledujuce typy MEMORY PAGES.
+   A. SMALL PAGE.
+   B. LARGE PAGE.
+   C. HUGE PAGE.
+11. Pre SMALL PAGES platia nasledujuce fakty.
+   A. SMALL PAGES su podporovane vsetkymi WINDOWS ARCHITECTURES.
+   B. SMALL PAGES maju velkost 4 KB.
+   C. Informacie o SMALL PAGES su ukladane v PAGE TRANSLATION TABLE.
+12. Pre LARGE PAGES platia nasledujuce fakty.
+   A. LARGE PAGE maju velkost 2 MB (x86,x64,ARM64), alebo 4 MB (ARM).
+   B. Informacie o LARGE PAGES su ukladane v PAGE DIRECTORY ENTRIES. To znamena, ze sa pre MAPPING NEPOUZIVA PAGE TRANSLATION TABLE.
+   C. Mapovanie LARGE PAGES je rychlejsie a optimalnejsie vyuzivaju TRANSLATION LOOKASIDE BUFFER co je CACHE obsahujuca nedavo TRANSLATED PAGES.
+   !!! D. LARGE PAGES su VZDY NON-PAGEABLE. To znamena, ze VZDY musia byt ulozene v kontinualnom bloku v PHYSICAL MEMORY. To pri velkej fragmentacii MEMORY moze viest MEMORY FAILURES.
+13. Pre HUGE PAGES platia nasledujuce fakty.
+   A. HUGE PAGES su LARGE PAGES, ktore maju velkost vacsiu ako 1 GB.
+   !!! B. HUGE PAGES su VZDY NON-PAGEABLE. To znamena, ze VZDY musia byt ulozene v kontinualnom bloku v PHYSICAL MEMORY. To pri velkej fragmentacii MEMORY moze viest MEMORY FAILURES.
+14. PAGES mozu byt v jednom z nasledujucich STATES.
+   A. FREE STATE.
+   B. COMMITTED STATE.
+   C. RESERVED STATE.
+15. Pre PAGES vo FREE STATE platia nasledujuce fakty.
+   A. PAGES vo FREE STATE nie su alokovane. To znamena, ze nemaju priradanu ziadnu VIRTUAL MEMROY.
+   B. Pokus o pristup k PAGE vo FREE STATE skonci generovanim ACCESS VIOLATION EXCEPTION.
+16. Pre PAGES v COMMITTED STATE platia nasledujuce fakty.
+   A. PAGES v COMMITTED STATE maju alokovanu MEMORY.
+   B. PAGES mozu byt alokovane v PHYSICAL MEMORY, alebo PAGE FILE.
+   C. Pristup k PAGES v COMMITTED STATE sposobi pristup k alokovanej MEMORY.
+17. Pre PAGES v RESERVED STATE platia nasledujuce fakty.
+   A. PAGES v RESERVED STATE NEMAJU alokovanu MEMORY.
+   B. Pokus o pristup k PAGE vo RESERVED STATE skonci generovanim ACCESS VIOLATION EXCEPTION.
+   !!! C. ADDRESS SPACE PAGES v RESERVED STATE je vsak RESERVED a PAGES v tomto ADDRESS SPACE moze byt COMMITTED volanim USER MODE FUNCTION [VirtualAlloc()], alebo KERNEL MODE FUNCTION [NtAllocateVirtualMemory()] s ADDRESS odkazujucou na PAGES v RESERVED STATE.
+   D. PAGES v RESERVED STATE umoznuju buducu alokaciu MEMORY a kontinualnom ADDRESS SPACE.
+18. SYSTEM MEMORY je MEMORY v ktorej je ulozeny WINDOWS KERNEL. Pre SYSTEM MEMORY platia nasledujuce fakty.
+   A. SYSTEM MEMORY je MEMORY v ktorej je ulozeny WINDOWS KERNEL, HARDWARE ABSTRACTION LAYER a vsetky DRIVERS.
+   B. SYSTEM MEMORY je SHARED medzi vsetkymi PROCESSES.
+   C. SYSTEM MEMORY je MAPPED do ADDRESS SPACE kazdeho PROCESS, pricom ADDRESSES su SHARED medzi PROCESSES.
+   D. Pokus o pristup k SYSTEM MEMORY z USER MODE vedie k ACCESS VIOLATION EXCEPTION.
+   !!! E. Ak DRIVER neuvolni SYSTEM MEMORY, tak ta je LEAKED az do restartu systemu.
+19. SYSTEM MEMORY je MAPPED do ADDRESS SPACE nasledujucim sposobom.
+   A. V 32 BIT SYSTEMS je SYSTEM MEMORY mapovana do hornych 2 GB ADDRESS SPACE.
+   B. V 32 BIT SYSTEMS s INCREASE USER VIRTUAL ADDRESS SPACE je SYSTEM MEMORY mapovana do hornej casti ADDRESS SPACE, ktora nie je rezervovana pre USER MODE. To znamena, ze ak napriklad 3 GB su rezervovane pre USER MODE, tak hodny 1 GB je ADDRESS SPACE pre SYSTEM MEMORY.
+   C. V 32 BIT SYSTEMS je SYSTEM MEMORY mapovana do najvyssich 128 TB ADDRESS SPACE.
+20. THREAD je ENTITY, ktora vykonava CODE. Pre THREADS platia nasledujuce fakty.
+   A. THREADS su obsiahnute PROCESSES, pricom vyuzivaju RESOURCES, ktore RESOURCES daneho PROCESS ako VIRTUAL MEMORY ci HANDLES na KERNEL OBJECTS.
+   B. THREADS maju CURRENT ACCESS MODE, ktory moze byt nastaveny na USER MODE, alebo KERNEL MODE.
+   C. THREADS maju EXECUTION CONTEXT obsahujuci CURRENT EXECUTION STATE ci REGISTERS STATES.
+   D. THREADS moze mat 1, alebo 2 STACKS pre ukladanie LOCAL VARIABLES.
+   E. THREADS obsahuju THREAD LOCAL STORAGE ARRAYS do ktorych mozu THREADS ukladat svoje PRIVATE THREAD DATA nezavisle na inych THREADS.
+   F. THREADS maju BASE PRIORITY a CURRENT DYNAMIC PRIORITY.
+   G. THREADS maju PROCESSOR AFFINITY, ktora urcuje zoznam PROCESSORS na ktorych moze byt dany THREAD spusteny.
+21. THREADS sa mozu nachadzat v niektorom z nasledujucich STATES.
+   A. RUNNING STATE. THREAD aktualne bezi na LOGICAL PROCESSOR.
+   B. READY STATE. THREAD je SCHEDULED na spustenie, ale pre nedostatok LOGICAL PROCESSORS nemoze byt spusteny.
+   C. WATING STATE. THREAD nie je spusteny a caka na EVENT, ktory by ho spustil.
+22. Kazdy THREADS moze mat nasledujuce typy STACKS.
+   A. KERNEL STACK.
+   B. USER MODE STACK.
+23. Pre THREAD KERNEL STACKS platia nasledujuce fakty.
+   A. Kazdy THREAD ma aspon 1 KERNEL STACK na ukladanie LOCAL VARIABLES v KERNEL MODE.
+   B. KERNEL STACK ma 12 KB na 32 BIT SYSTEMS a 24 KB na 64 BIT SYSTEMS.
+   C. KERNEL STACK je VZDY ulozene v PHYSICAL MEMORY ak je v RUNNING STATE, alebo READY STATE.
+24. Pre THREAD USER MODE STACKS platia nasledujuce fakty.
+   A. STACK je alokovany iba ak THREADS bezi v USER MODE.
+   B. USER MODE STACK ma BY-DEFAULT 1 MB (VALUE moze byt zmenena), hoci pri vytvoreni THREADS je COMMITED iba niekolko PAGES a ostatne su RESERVED.
+   C. USER MODE STACK moze byt PAGED OUT do PAGE FILE.
+25. WINDOWS alokuje MEMORY pre USER MODE STACKS nasledujucim sposobom.
+   A. Pri vytvoreni THREAD je pre celu pozadovanu velkost USER MODE STACK rezervovany ADDRESS SPACE. ADDRESS SPACE je v RESERVED STATE, co znamena, ze nie je COMMITED, ale iba RESERVED co zabezpecuje, ze USER MODE STACK bude mat kontinualny ADDRESS SPACE.
+   B. Pri vytvoreni THREAD je mala cast RESERVED ADDRESS SPACE COMMITED. Jej velkost je niekolko PAGES.
+   !!! C. Posledna COMMITED PAGE ma nastaveny FLAG [PAGE_GUARD].
+   !!!!! D. V pripade, ze sa aktualne COMMITED PAGES zaplnia az po COMMITED PAGE s FLAG [PAGE_GUARD], tak vdaka tomuto FLAG WINDOWS vyvola PAGE-GUARD EXCEPTION. WINDOWS pri vzniku PAGE-GUARD EXCEPTION vykona COMMIT dalsich PAGES, pricom na poslednej nastavi FLAG [PAGE_GUARD].
+   E. Vdaka tomuto mechanizmu je pre THREADS, ktore vyuzivaju iba malu cast RESERVERD ADDRESS SPACE COMMITED iba mala cast MEMORY a nedochadza tak k plytvaniu MEMORY, ktora sa nepouziva.
+26. Velkost USER MODE STACK je konfigurovatelna.
+   A. Prvy THREAD PROCESSU vytvoreny v USER MODE ma RESRVED SIZE a COMMITED SIZE nastaveny v PE FILE.
+   B. Ostatne THREADS PROCESSU vytvorene v USER MODE mozu definovat vlastny SIZE pomocou FUNCTION [CreateThread()]. Tato FUNCTION vsak umoznuje podla hodnoty FLAGS nastavit iba RESRVED SIZE, alebo COMMITED SIZE, nie vsak obidve SIZES.
+!!! 27. WINDOWS mnohe cinnosti iniciovane z USER MODE ako napriklad vytvorenie THREAD, alokovanie MEMORY ci praca s FILES robi v KERNEL MODE. V taktom pripade musi dojst k prechodu z USER MODE do KERNEL MODE. Napriklad operacia READ FILE je realizovana nasledovne.
+   A. Ak USER MODE potrebuje nacitat FILE zavola WIN32 API FUNCTION [CreateFile()]. FUNCTION [CreateFile()] je implementovana v USER MODE v DLL [KERNEL32.DLL]. Kedze FUNCTION [CreateFile()] bezi v USER MODE, tak NEMOZE priamo vykonat pristup k FILE. To je mozne iba v KERNEL MODE.
+   B. FUNCTION [CreateFile()] vykona ERROR CHECKING a zavola USER MODE FUNCTION [NtCreateFile()], ktora je implementovana v DLL [NTDLL.DLL]. DLL [NTDLL.DLL] je sucastou NATIVE API a je to najnizsia uroven CODE, ktory bezi v USER MODE.
+   !!! C. FUNCTION [NtCreateFile()] vykona TRANSITION z USER MODE do KERNEL MODE.
+   D. FUNCTION [NtCreateFile()] pred vykonanim TRANSITION do KERNEL MODE nastavi CALLED SYSTEM SERVICE NUMBER do CPU REGISTER (standardne EAX). CALLED SYSTEM SERVICE NUMBER urcuje KERNEL MODE FUNCTION, ktora sa po TRANSITION do KERNEL MODE ma zavolat.
+   !!! F. FUNCTION [NtCreateFile()] zavola CPU INSTRUCTION [SYSENTER] (na 32 BIT SYSTEMS), alebo CPU INSTRUCTION [SYSCALL] (na 32 BIT SYSTEMS). CPU INSTRUCTION [SYSENTER] (na 32 BIT SYSTEMS), alebo CPU INSTRUCTION [SYSCALL] prinuti CPU vykonat TRANSITION do KERNEL MODE.
+   G. V KERNEL MODE je zavolana SYSTEM SERVICE DISPATCHER ROUTINE.
+   !!! H. SYSTEM SERVICE DISPATCHER ROUTINE nacita VALUE CALLED SYSTEM SERVICE NUMBER z CPU REGISTER a pouzije tuto VALUE ako LOOKUP do SYSTEM SERVICE DISPATCH TABLE. Tato TABLE obsahuje vsetky KERNEL FUNCTIONS (SYSTEM SERVICES), ktore mozu byt volane z USER MODE.
+   !!! I. V pripade FILE READ sa pre dany CALLED SYSTEM SERVICE NUMBER vola KERNEL MODE verzia FUNCTION [NtCreateFile()]. FUNCTION [NtCreateFile()] bezi v KERNEL MODE PROCESS [NTOSKRNL.EXE]. FUNCTION [NtCreateFile()] je sucastou KERNEL IO MANAGER a ma ROVNAKY NAME, rovnake PARAMETERS a RETURN VALUE ako USER MODE FUNCTION [NtCreateFile()].
+   J. KERNEL MODE FUNCTION [NtCreateFile()] spusti prislusny DRIVER, ktory vykona IO OPERATION.
+   !!! K. Po skonceni volania KERNEL MODE FUNCTION [NtCreateFile()] sa ukonci CPU INSTRUCTION [SYSENTER], alebo CPU INSTRUCTION [SYSCALL] a THREAD pokracuje vykonavanim CPU INSTRUCTIONS za CPU INSTRUCTION [SYSENTER], alebo CPU INSTRUCTION [SYSCALL].
+28. WINDOWS je tvoreny nasledujucimi USER MODE a KERNEL MODE COMPONENTS.
+   A. COMPONENT [USER PROCESSES].
+   B. COMPONENT [SERVICE PROCESSES].
+   C. COMPONENT [SYSTEM PROCESSES].
+   D. COMPONENT [SUBSYSTEM PROCESS].
+   E. COMPONENT [SUBSYTEM DLLs].
+   F. COMPONENT [NTDLL.DLL].
+   G. COMPONENT [WIN32K.SYS].
+   H. COMPONENT [EXECUTIVE].
+   I. COMPONENT [KERNEL].
+   J. COMPONENT [DEVICE DRIVERS].
+   K. COMPONENT [HARDWARE ABSTRACTION LAYER].
+   L. COMPONENT [HYPER-V HYPERVISOR].
+   M. COMPONENT [WINDOWS SUBSYSTEM FOR LINUX].
+29. Pre COMPONENT [USER PROCESSES] platia nasledujuce fakty.
+   A. COMPONENT [USER PROCESSES] je USER MODE COMPONENT.
+   B. COMPONENT [USER PROCESSES] predstavuje bezne PROGRAMS, ktore su spustene v USER MODE ako PROCESSES.
+30. Pre COMPONENT [SERVICE PROCESSES] platia nasledujuce fakty.
+   A. COMPONENT [SYSTEM PROCESSES] je USER MODE COMPONENT.
+   B. COMPONENT [SYSTEM PROCESSES] je UMBRELA TERM pre vsetky SERVICE PROCESSES. 
+   C. SERVICE PROCESSES su normalne WINDOWS PROCESSES, ktorych LIFETIME spravovana pomocou SERVICE CONTROL MANAGER.
+   D. SERVICE CONTROL MANAGER moze spustat a zastavovat SERVICE PROCESSES, alebo im posielat MESSAGES.
+   E. SERVICE PROCESSES spravidla bezia pod niektorych so specializovanych WINDOWS ACCOUNTS ako je WINDOWS ACCOUNT [LOCAL SYSTEM], WINDOWS ACCOUNT [NETWORK SERVICE], alebo WINDOWS ACCOUNT [LOCAL SERVICE].
+31. Pre COMPONENT [SYSTEM PROCESSES] platia nasledujuce fakty.
+   A. COMPONENT [SYSTEM PROCESSES] je USER MODE COMPONENT.
+   B. COMPONENT [SYSTEM PROCESSES] je UMBRELA TERM pre vsetky SYSTEM PROCESSES. 
+   C. SYSTEM PROCESSES zabezpecuju interne fungovanie WINDOWS. Patria sem PROCESSES ako PROCESS [SMSS.EXE], PROCESS [LSASS.EXE], PROCESS [WINLOGON.EXE], alebo PROCESS [SERVICES.EXE].
+   D. Niektore zo SYSTEM PROCESSES su NATIVE PROCESSES, ktore pouzivaju iba NATIVE API (implementovane v LIBRARY [NTDLL.DLL]).
+   E. Pad niektorych zo SYSTEM PROCESSES sposobi pad celeho WINDOWS.
+32. Pre COMPONENT [SUBSYSTEM PROCESS] platia nasledujuce fakty.
+   A. COMPONENT [SUBSYSTEM PROCESS] je USER MODE COMPONENT.
+   B. COMPONENT [SUBSYSTEM PROCESS] bezi v IMAGE [CSRSS.EXE].
+   C. COMPONENT [SUBSYSTEM PROCESS] je HELPER PROCESS pre KERNEL, ktory vykonava MANAGEMENT vsetkych PROCESSES, ktore bezia WINDOWS SUBSYSTEM.
+   D. COMPONENT [SUBSYSTEM PROCESS] je kriticky PROCESS celeho WINDOWS. Ak spadne, tak spadne cely WINDOWS.
+   E. COMPONENT [SUBSYSTEM PROCESS] bezi vo WINDOWS vzdy 1 pre kazdu LOGGED ON USER SESSION a 1 pre SESSION 0, ktora sa spusta pred prihlasenim prveho USER.
+33. Pre COMPONENT [SUBSYTEM DLLs] platia nasledujuce fakty.
+   A. COMPONENT [SUBSYTEM DLLs] je USER MODE COMPONENT.
+   B. COMPONENT [SUBSYTEM DLLs] reprezentuje DYNAMIC LINK LIBRARIES, ktore implementuju API daneho SYBSYSTEM.
+   !!! C. SUBSYSTEM je ABSTRACT VIEW na CAPABILITIES, ktore vystavuje KERNEL.
+   !!!!! D. V sucasnosti WINDOWS podporuje iba 1 SUBSYSTEM nazyvany WINDOWS SUBSYSTEM. V minulosti WINDOWS podporoval aj POSIX SUBSYSTEM a OS/2 SUBSYSTEM.
+   E. Medzi SUBSYTEM DLLs patria LIBRARIES ako LIBRARY [KERNEL32.DLL], LIBRARY [USER32.DLL], LIBRARY [GDI32.DLL], LIBRARY [ADVAPI32.DLL], LIBRARY [COMBASE.DLL] a mnohe ine.
+34. Pre COMPONENT [NTDLL.DLL] platia nasledujuce fakty.
+   A. COMPONENT [NTDLL.DLL] je USER MODE COMPONENT.
+   B. COMPONENT [NTDLL.DLL] je SYSTEM WIDE DLL implementujuca WINDOWS NATIVE API.
+   C. COMPONENT [NTDLL.DLL] je najnizsia uroven USER MODE, ktora zabezpecuje prechod medzi USER MODE a KERNEL MODE.
+   D. COMPONENT [NTDLL.DLL] implementuje COMPONENTS ako COMPONENT [HEAP MANAGER], COMPONENT [IMAGE LOADER], alebo casti USER MODE THREAD POOL.
+35. Pre COMPONENT [WIN32K.SYS] platia nasledujuce fakty.
+   A. COMPONENT [DEVICE DRIVERS] je KERNEL MODE COMPONENT.
+   B. COMPONENT [DEVICE DRIVERS] je KERNEL MODULE (WINDOWS DRIVER), ktory implementuje klasicky WINDOWS GRAPHIC INTERFACE nazyvany aj GRAPHIC DEVICE INTERFACE.
+   C. COMPONENT [DEVICE DRIVERS] implementuje celu funkcionalitu WIN32 API GRAPHIC DEVICE INTERFACE FUNCTIONS ako napriklad FUNCTION [CreateWindowEx()], FUNCTION [GetMessage()], alebo FUNCTION [PostMessage()].
+   D. Ostatne casti WINDOWS maju spravidla nemaju ziadnu vedomost o USER INTERFACE.
+36. Pre COMPONENT [EXECUTIVE] platia nasledujuce fakty.
+   A. COMPONENT [EXECUTIVE] je KERNEL MODE COMPONENT.
+   B. COMPONENT [EXECUTIVE] je najvyssia cast KERNEL MODE casti WINDOWS nazyvana aj NTOSKRNL.EXE.
+   C. COMPONENT [EXECUTIVE] obsahuje vacsinu CODE WINDOWS KERNEL.
+   D. COMPONENT [EXECUTIVE] obsahuje mnozstvo MANAGERS ako napriklad MANAGER [OBJECT MANAGER], MANAGER [MEMORY MANAGER], MANAGER [I/O MANAGER], MANAGER [PLUG&PLAY MANAGER], MANAGER [POWER MANAGER], alebo MANAGER [CONFIGURATION MANAGER].
+37. Pre COMPONENT [KERNEL] platia nasledujuce fakty.
+   A. COMPONENT [KERNEL] je KERNEL MODE COMPONENT.
+   B. COMPONENT [KERNEL] implementuje najzakladnejsie a casovo najcitlivejsie casti KERNEL ako napriklad THREAD SCHEDULING, INTERRUPT AND EXECUTION DISPATCHING, ci implementaciu roznych KERNEL PRIMITIVES ako napriklad MUTEXES a SEMPAHORES.
+   C. COMPONENT [KERNEL] je scasti implementovana v CPU SPEFICIC LANGUAGE pre priamy pristup k vsetkym FEATURES daneho CPU.
+38. Pre COMPONENT [DEVICE DRIVERS] platia nasledujuce fakty.
+   A. COMPONENT [DEVICE DRIVERS] je KERNEL MODE COMPONENT.
+   B. COMPONENT [DEVICE DRIVERS] su LOADABLE KERNEL MODULES, ktore vykonavaju obsluhu HW DEVICES, alebo implementuju funkcionalitu SW DRIVERS.
+39. Pre COMPONENT [HARDWARE ABSTRACTION LAYER] platia nasledujuce fakty.
+   A. COMPONENT [HARDWARE ABSTRACTION LAYER] je KERNEL MODE COMPONENT.
+   B. COMPONENT [HARDWARE ABSTRACTION LAYER] je WRAPPER poskytujuci abstraktne API pre zbytok KERNELU nad castami HW, ktore su najblizsie CPU.
+   C. COMPONENT [HARDWARE ABSTRACTION LAYER] poskytuje unifikovany pristup k HW ako su napriklad INTERRUPT CONTROLLERS ci DMA CONTROLLER bez toho, aby ostatne KERNEL COMPONENTS vratane DEVICE DRIVERS museli poznat HW DETAILS konkretneho HW na ktorom WINDOWS bezi.
+40. Pre COMPONENT [HYPER-V HYPERVISOR] platia nasledujuce fakty.
+   A. COMPONENT [HYPER-V HYPERVISOR] je KERNEL MODE COMPONENT.
+   B. COMPONENT [HYPER-V HYPERVISOR] podporuje VIRTUALIZATION BASED SECURITY pre OPERATING SYSTEM beziaci ako VIRTUAL MACHINE v HYPER-V.
+   C. COMPONENT [HYPER-V HYPERVISOR] podporuje 2 VIRTUAL TRUST LEVELS. LEVEL 0 pozostava s NORMAL USER MODE a NORMAL KERNEL MODE. LEVEL 1 pozostava zo SECURE KERNEL a ISOLATED USER MODE.
+41. Pre COMPONENT [WINDOWS SUBSYSTEM FOR LINUX] platia nasledujuce fakty.
+   A. COMPONENT [WINDOWS SUBSYSTEM FOR LINUX] je USER MODE aj KERNEL MODE COMPONENT.
+   B. COMPONENT [WINDOWS SUBSYSTEM FOR LINUX] umoznuje beh LINUX PROGRAMS na WINDOWS.
+   C. COMPONENT [WINDOWS SUBSYSTEM FOR LINUX] pouziva HYBRID VIRTUAL MACHINE TECHNOLOGY, ktora umoznuje instalaciu LINUX SYSTEM. V LINUX SYSTEM je mozne pouzivat WINDOWS RESOURCES ako napriklad FILE SYSTEM.
+42. WINDOWS KERNEL vystavuje mnozstvo KERNEL OBJECTS, ktore su vytvorene v KERNEL MODE, ale nepriamo cez HANDLES su pristupne aj v USER MODE. Pre KERNEL OBJECTS platia nasledujuce fakty.
+   A. KERNEL OBJECTS su vzdy vytvarane samotnym KERNEL v KERNEL MODE. Vytvara ich OBJECT MANAGER. Iniciovanie na vytvorenie KERNEL OBJECT moze prist aj z USER MODE volanim prislusnej USER MODE FUNCTION.
+   !!! B. KERNEL OBJECTS su z USER MODE pristupne pomocou HANDLES. HANDLE je INDEX do TABLE, ktora je spravovana na PROCESS BASIS. To znamena, ze rozne PROCESSES mozu mat rozneho hodnoty HANDLES odkazujucich na ten isty KERNEL OBJECT.
+   C. KERNEL OBJECTS su vzdy ulozene v SYSTEM MEMORY a namapovane do SYSTEM ADDRESS SPACE kazdeho PROCESSU, ktory vsak nie je priamo dostupny z USER MODE.
+   D. KERNEL OBJECTS su REFERENCE COUNTED. 
+   !!! E. Kazdy KERNEL OBJECT ma definovany TYPE. To znamena, ze WINDOWS definuje limitovany pocet KERNEL OBJECTS definovanim TYPE pre kazdy jeden. Tieto TYPES su definovane v C++ HEADERS a v KERNEL MODE je k nim mozne priamo pristupovat.
+   !!!!! F. V KERNEL MODE je mozne KERNEL OBJECTS pouzivat bud pomocou HANDLES, alebo PRIAMO pomcou POINTER na KERNEL OBJECT.
+43. OBJECT MANAGER vykonava REFERENCE COUNTING KERNEL OBJECTS nasledujucim sposobom.
+   A. OBJECT MANAGER si pre KERNEL OBJECT drzi pocet REFERENCES na dany KERNEL OBJECT a zaroven aj pocet HANDLES, ktore v danom PROCESS referuju na dany KERNEL OBJECT.
+   B. Ak je vytvoreny novy KERNEL OBJECT (napriklad pre MUTEX volanim FUNCTION [CreateMutex()]) je pocet REFERENCES nastaveny na 1.
+   C. Ak je vytvorena REFERENCE na existujuci KERNEL OBJECT (napriklad pre MUTEX volanim FUNCTION [OpenMutex()]), tak je pocet REFERENCES inkrementovany o 1.
+   C. Ak je HANDLE na KERNEL OBJECT uvolneny, je pocet HANDLES dekrementovnay.
+   D. Ak je REFERENCE na KERNEL OBJECT dereferencovana (je to mozne iba v KERNEL MODE), je pocet REFERENCES na KERNEL OBJECT dekrementovnay.
+   E. Ak pocet REFERENCES na KERNEL OBJECT klesne na 0, OBJECT MANAGER uvolni KERNEL OBJECT.
+   !!! F. Ak KERNEL DRIVER zabudne dekrementovat pocet REFERENCES na KERNEL OBJECT hoci dany KERNEL OBJECT uz nepouziva, dochadza k TRVALEMU LEAK, ktory sa odstrani az pri REBOOT.
+44. KERNEL MODE umoznuje pristupovat ku KERNEL OBJECTS bud pomocou HANDLES, alebo pomocou POINTERS na KERNEL OBJECT. Pre pristup cez POINTERS na KERNEL OBJECT platia nasledujuce fakty.
+   A. Ziskat POINTER na KERNEL OBJECT v KERNEL MODE je mozne volanim specializovanej KERNEL MODE FUNCTION.
+   B. Ak USER MODE zasle do KERNEL MODE HANDLE na KERNEL OBJECT, KERNEL MODE moze tento HANDLE na KERNEL OBJECT konvertovat na POINTER na KERNEL OBJECT pomocou KERNEL FUNCTION [ObReferenceObjectByHandle()].
+   C. Ak FUNCTION [ObReferenceObjectByHandle()] uspesne vrati POINTER na KERNEL OBJECT, OBJECT MANAGER automaticky inkrementuje pocet REFERENCES na tento KERNEL OBJECT, aby KERNEL OBJECT nemohol byt predcasne uvolneny.
+   D. Pocet REFERENCES na KERNEL OBJECT moze byt v KERNEL MODE dekrementovny volanim KERNEL MODE FUNCTION [ObDerefenceObject()]. Ak pocet REFERENCES klesne na 0, OBJECT MANAGER dany KERNEL OBJECT uvolni.
+   !!! E. Ak KERNEL DRIVER zabudne dekrementovat pocet REFERENCES na KERNEL OBJECT hoci dany KERNEL OBJECT uz nepouziva, dochadza k TRVALEMU LEAK, ktory sa odstrani az pri REBOOT.
+45. Niektore KERNEL OBJECTS mozu ma definovane NAMES. Pre KERNEL OBJECT NAMES platia nasledujuce fakty.
+   A. Ak ma KERNEL OBJECT NAME, je pristupny z USER MODE pomocou tohto STRING NAME.
+   B. Niektore KERNEL OBJECTS ako PROCESSES ci THREADS nemaju KERNEL OBJECT NAME, alebo maju ciselny KERNEL OBJECT ID na zaklade ktorych su identifikovane.
+   !!! C. KERNEL k KERNEL OBJECT NAME pridava PREFIX [\Sessions\VALUE\BaseNamedObjects\], kde VALUE 'VALUE' je cislo SESSION v ktorej bol KERNEL OBJECT vytovreny. Z toho vyplyva, ze KERNEL OBJECTS su SESSION RELATIVE.
+   !!! D. Ak je KERNEL OBJECT vytvoreny s NAME s PREFIX [Global], ak je vytvoreny do SESSION 0, ktora je SHARED medzi jednotlivymi SESSIONS.
+   E. Pre FILES FILE NAME nie je identicky s KERNEL OBJECT NAME, ktory dany FILE reprezentuje.
+   F. KERNEL OBJECTS s NAMES je mozne prezerat pomocou SYSINTERNALS TOOL [WinObj].
+   G. Kazdy PROCESS ma PRIVATE HANDLE TABLE, ktoru je mozne vidiet cez SYSINTERNALS TOOL [Process Explorer].
+46. KERNEL OBJECTS maju ACCESS MASK, ktora urcuje, ktore OPERATIONS je mozne nad danym KERNEL OBJECT mozne vykonavat.
+//----------------------------------------------------------------------------------------------------------------------
