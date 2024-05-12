@@ -1,0 +1,90 @@
+//----------------------------------------------------------------------------------------------------------------------
+1. Solution demonstruje vytvorenie jednoducheho DRIVER, ktory umoznuje nastavit lubovolnu PRIORITY danemu THREAD.
+2. FUNCTION [DriverEntry()] je ENTRY POINT kazdeho DRIVER. FUNCTION [DriverEntry()] spravidla vykonava tieto cinnosti.
+   A. Nastavi [DRIVER_OBJECT::DriverUnload] na UNLOAD ROUTINE, ktora sa vola pri uvolneni DRIVER.
+   B. Nastavi vsetky potrebne DISPATCH ROUTINES.
+   C. Vytvori DEVICE OBJECT.
+   D. Vytvori SYMBOLIC LINK na DEVICE OBJECT.
+3. DISPATCH ROUTINES su ROUTINES cez ktore komunikuje DRIVER CLIENT s DRIVER. Pre DISPATCH ROUTINES platia nasledujuce fakty.
+   A. DISPATCH ROUTINES sa ukladaju vo FIELD [PDRIVER_DISPATCH MajorFunction] STRUCTURE [DRIVER_OBJECT].
+   B. Kazda DISPATCH ROUTINE ma TYPE [DRIVER_DISPATCH] a PROTOTYPE [NTSTATUS DRIVER_DISPATCH(_DEVICE_OBJECT *DeviceObject, _IRP *Irp)].
+   C. STRUCTURE [_IRP] obsahje DATA, ktore su zasielane do DISPATCH ROUTINES z DRIVER CLIENTS.
+4. USER MODE CLIENT moze pristupovat k DRIVERS volanim nasledujucich USER MODE FUNCTIONS.
+   A. USER MODE FUNCTION [ReadFile()].
+   B. USER MODE FUNCTION [WriteFile()].
+   C. USER MODE FUNCTION [DeviceIoControl()].
+5. DEVICE OBJECT reprezentuje INTERFACE pomocou ktoreho mozu DRIVER CLIENTS pristupovat k DRIVERS. Pre DEVICE OBJECTS platia nasledujuce fakty.
+   A. DEVICE OBJECT je zakladny OBJECT, ktory vytvara DRIVER a sluzi na komunikaciu DRIVER CLIENTS s danym DRIVER.
+   !!! B. DEVICE OBJECT reprezentuje COMMUNICATION ENDPOINT s ktorym mozu DRIVER CLIENTS komunikovat. Ak by DRIVER nevytvoril ziaden DEVICE OBJECT tak by DRIVER CLIENTS nemali ako s danym DRIVER komunikovat.
+   !!! C. DEVICE OBJECT definuje NAME prostrednictvom ktoreho mozu DRIVER CLIENTS komunikovat s DRIVER.
+   D. DEVICE OBJECT je reprezentovany SEMI DOCUMENTED STRUCTURE [DEVICE_OBJECT].
+   !!! E. DEVICE OBJECTS su vytvarane pomocou KERNEL FUNCTION [IoCreateDevice()]. KERNEL FUNCTION [IoCreateDevice()] ma ako PARAMETER TYPE [DRIVER_OBJECT], ktory obsahuje FIELD [DRIVER_OBJECT::DeviceObject] reprezentujuci LINKED LIST vsetkych DEVICE OBJECTS, ktore DRIVER vytvoril.
+   !!!!! F. DEVICE OBJECT po volani KERNEL FUNCTION [IoCreateDevice()] je vlozeny do LINKED LIST vo FIELD [DRIVER_OBJECT::DeviceObject]. Plati, ze 1 DRIVER moze vytvorit viacero DEVICE OBJECTS opakovanym volanim KERNEL FUNCTION [IoCreateDevice()]. Kazdy novy DEVICE OBJECT je zaradeny na HEAD LINKED LIST, co znamena, ze prvy vytvoreny DEVICE OBJECT je na TAIL LINKED LIST.
+   G. USER MODE CODE moze pristupovat o DEVICE OBJECT daneho DRIVER pomocou FUNCTION [CreateFile()], ktora otvara DEVICE OBJECT daneho DRIVER a vytvara nan instanciu STRUCTURE [FILE_OBJECT].
+   H. DEVICE OBJECT sa uvolnuje volanim KERNEL FUNCTION [IoDeleteDevice()].
+   !!! I. DEVICE OBJECT vytvoreny pomocou FUNCTION [IoCreateDevice()] je vytvoreny v NON-PAGED MEMORY POOL.
+6. Pre FUNCTION [IoCreateDevice()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [NTSTATUS IoCreateDevice(PDRIVER_OBJECT DriverObject, ULONG DeviceExtensionSize, PUNICODE_STRING DeviceName, DEVICE_TYPE DeviceType, ULONG DeviceCharacteristics, BOOLEAN Exclusive, PDEVICE_OBJECT* DeviceObject)].
+   B. PARAMETER [PDRIVER_OBJECT DriverObject] obsahuje POINTER na DRIVER OBJECT do ktoreho LINKED LIST bude DEVICE OBJECT ulozeny.
+   C. PARAMETER [ULONG DeviceExtensionSize] obsahuje pocet BYTES, ktore ma FUNCTION alokovat za STRUCTURE [DEVICE_OBJECT]. Tieto EXTRA BYTES je mozne pouzit na ulozenie EXTRA INFORMATION o danom DEVICE OBJECT.
+   D. PARAMETER [PUNICODE_STRING DeviceName] obsahuje INTERNAL DEVICE NAME. Vacsina DRIVERS vytvara pre DEVICE NAMES SYMBOLIC LINKS. DEVICE NAMES by mali pouzivat PREFIX [\Device].
+   E. PARAMETER [DEVICE_TYPE DeviceType] obsahuje TYPE daneho DRIVER. Pre SW DRIVERS sa pouziva VALUE [FILE_DEVICE_UNKNOWN].
+   F. PARAMETER [ULONG DeviceCharacteristics] obsahuje zoznam FLAGS, ktore blizsie popisuju vlastnosti daneho DRIVER.
+   H. PARAMETER [BOOLEAN Exclusive] urcuje ci FILE OBJECT na dany DRIVER moze byt otvoreny viackrat.
+   !!! I. PARAMETER [PDEVICE_OBJECT *DeviceObject] obsahuje POINTER na vytvoreny DEVICE OBJECT, ktory je alokovany v NON-PAGED MEMORY POOL.
+   J. RETURN VALUE TYPE [NTSTATUS] obsahuje informaciu ci FUNCTION skoncila uspesne.
+   !!! K. FUNCTION vytvara instanciu STRUCTURE [DEVICE_OBJECT] a zaradzuje ho na HEAD LINKED LIST, ktory je sucastou STRUCTURE [DRIVER_OBJECT].
+   L. Instancia STRUCTURE [DEVICE_OBJECT] je alokovana v NON-PAGED MEMORY POOL.
+7. Pre FUNCTION [IoDeleteDevice()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [void IoDeleteDevice(PDEVICE_OBJECT DeviceObject)].
+   B. PARAMETER [PDEVICE_OBJECT DeviceObject] obsahuje POINTER na DEVICE OBJECT, ktory sa ma odstranit. DEVICE OBJECT sa zaroven odstrani aj z LINKED LIST, ktory je sucastou STRUCTURE [DRIVER_OBJECT].
+   C. FUNCTION uvolnuje instanciu STRUCTURE [DEVICE_OBJECT] a zaroven odstranuje DEVICE OBJECT z LINKED LIST, ktory je sucastou STRUCTURE [DRIVER_OBJECT].
+!!! 8. Ak CUSTOM FUNCTION [DriverEntry()] vrati ERROR CODE, tak CUSTOM FUNCTION [DriverUnload()] sa NEVOLA. A preto FUNCTION [DriverEntry()] musi vykonat kompletny CLEANUP.
+9. Pre SYMBOLIC LINKS platia nasledujuce fakty.
+   A. SYMBOLIC LINKS su KERNEL OBJECTS, ktore sluzia ako POINTERS na ine KERNEL OBJECTS.
+   B. SYMBOLIC LINKS sluzia na pristup k DEVICE OBJECTS daneho DRIVER. Su to NAME ALIASES k skutocnym DEVICE OBJECTS.
+   C. SYMBOLIC LINKS sa pouzivaju ako 1. PARAMETER FUNCTION [CreateFile()].
+   D. SYMBOLIC LINKS su ulozene v OBJECT MANAGER DIRECTORY [??].
+   E. SYMBOLIC LINKS je mozne prezerat pomocou SYSINTERNALS TOOL [WinObj], kde sa SYMBOLIC LINKS v DIRECTORY [GLOBAL??].
+   F. SYMBOLIC LINKS mozu byt vytvorene manualne, alebo pri registracii HW DRIVERS volanim KERNEL FUNCTION [IoRegisterDeviceInterface()] kedy su SYMBOLIC LINKS generovane automaticky.
+   G. SYMBOLIC LINKS spravidla odkazuju na DEVICES, ktore su v OBJECT MANAGER DIRECTORY [\Device].
+   !!! H. SYMBOLIC LINKS pri otvarani pomocou FUNCTION [CreateFile()] MUSIA pouzit PREFIX [\\.\], aby PASER dokazal indetifikovat, ze sa jedna o SYMBOLIC LINK.
+   I. SYMBOLIC LINKS sa vytvaraju volanim KERNEL FUNCTION [IoCreateSymbolicLink()].
+   J. SYMBOLIC LINKS sa uvolnuju volanim KERNEL FUNCTION [IoDeleteSymbolicLink()].
+10. Pre FUNCTION [IoDeleteDevice()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [NTSTATUS IoCreateSymbolicLink(PUNICODE_STRING SymbolicLinkName, PUNICODE_STRING DeviceName)].
+   B. PARAMETER [PUNICODE_STRING SymbolicLinkName] obsahuje nazov SYMBOLIC LINK.
+   C. PARAMETER [PUNICODE_STRING DeviceName] obsahuje nazov DEVICE OBJECT pre ktory ma byt SYMBOLIC LINK vytvoreny.
+   D. RETURN VALUE TYPE [NTSTATUS] obsahuje informaciu ci FUNCTION skoncila uspesne.
+   E. FUNCTION vytvara SYMBOLIC LINK pre dany DEVICE OBJECT.
+11. Pre FUNCTION [IoDeleteSymbolicLink()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [NTSTATUS IoDeleteSymbolicLink(PUNICODE_STRING SymbolicLinkName)].
+   B. PARAMETER [PUNICODE_STRING SymbolicLinkName] obsahuje nazov SYMBOLIC LINK.
+   C. RETURN VALUE TYPE [NTSTATUS] obsahuje informaciu ci FUNCTION skoncila uspesne.
+   D. FUNCTION vytvara odstranuje SYMBOLIC LINK.
+12. Kazda DISPATCH ROUTINE ma ako PARAMETER STRUCTURE [IRP]. Pre STRUCTURE IRP platia nasledujuce fakty.
+   A. STRUCTURE [IRP] reprezentuje REQUEST IO OPERATION, ktoru ma DRIVER vykonat.
+   B. STRUCTURE [IRP] obsahuje informacie o type IO OPERATION, ktora je od DRIVER pozadovana, ako aj PARAMETERS vo forme BUFFER.
+   C. STRUCTURE [IRP] je SEMI-DOCUMENTED STRUCTURE.
+   D. Instancie STRUCTURE [IRP] su vytvarane niektorym z EXECUTIVE MANAGERS ako je IO MANAGER, PLUG AND PLAY MANAGER a POWER MANAGER.
+   E. STRUCTURE [IRP] je rozsirena o 1-N instancii STRUCTURE [IO_STACK_LOCATION], kde VALUE 'N' je rovna poctu DRIVERS v DRIVER STACK. To znamena, ze ak IRP presla cez 'N' DRIVERS, tak IRP je rozsirena o N instancii STRUCTURE [IO_STACK_LOCATION].
+   F. STRUCTURE [IRP] je uzatvarana a uvolnovana volanim KERNEL FUNCTION [IofCompleteRequest()].
+   G. FIELD [IRP::IoStatus] obsahuje informacie o vysledku IO OPERATION.
+   H. FUNCTION [IoGetCurrentIrpStackLocation] umoznuje ziskat instanciu STRUCTURE [IO_STACK_LOCATION] pre CURRENT DRIVER.
+13. Pre FUNCTION [IofCompleteRequest()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [void IofCompleteRequest(PIRP Irp, CCHARPriorityBoost)].
+   B. PARAMETER [PIRP Irp] obsahuje IRP, ktore ma byt ukoncene.
+   C. PARAMETER [CCHARPriorityBoost] obsahuje PRIORITY BOOST, ktory ma byt vykonany pre THREAD, ktory ukoncuje dany IRP.
+   !!! D. FUNCTION ukoncuje danu IRP, notifikuje EXECUTIVE MANAGER, ktory IRP vytvoril, ze IRP je ukonceny a nasledne odstranuje IRP z MEMORY.
+14. Pre FUNCTION [IoGetCurrentIrpStackLocation()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [PIO_STACK_LOCATION IoGetCurrentIrpStackLocation(PIRP Irp)].
+   B. PARAMETER [PIRP Irp] obsahuje IRP, pre ktore ma byt vratena instancia STRUCTURE [IO_STACK_LOCATION] pre CURRENT DRIVER.
+   C. RETURN VALUE TYPE [PIO_STACK_LOCATION] obsahuje POINTER na STRUCTURE [IO_STACK_LOCATION] pre CURRENT DRIVER.
+   D. FUNCTION vracia instanciu STRUCTURE [IO_STACK_LOCATION] pre CURRENT DRIVER.
+!!! 15. STRUCTURE [IO_STACK_LOCATION] obsahuje FIELD [IO_STACK_LOCATION::Parameters] co je rozsiahly UNION, kde pre kazdy typ DISPACH ROUTINE obsahuje PARAMETERS danej IO OPERATION.
+16. Nastavenie THREAD PRIORITY sa robi v nasledujucich krokoch.
+   !!! A. Zavola sa KERNEL FUNCTION [PsLookupThreadByThreadId()], ktora pre THREAD ID vrati instanciu STRUCTURE [_KTHREAD]. Zaroven FUNCTION zvysuje INTERNY COUNTER pre STRUCTURE [_KTHREAD], aby pri predcasnom uvolneni THREAD nedoslo k uvolneniu instancie STRUCTURE [_KTHREAD] a k vzniku DANGLING POINTER.
+   B. Zavola sa FUNCTION [KeSetPriorityThread()], ktora nastavi THREAD PRIORITY.
+   !!! C. Zavola sa FUNCTION [ObfDereferenceObject()], ktora dereferencuje INTERNAL COUNTER STRUCTURE [_KTHREAD] cim umozni jej uvolnenie.
+!!!!! 17. CLIENT PROGRAM moze byt spusteny na MACHINE, kde nie je nainstalovany VISUAL STUDIO C++ DEBUG RUNTIME tym, ze PROJECT bude pouzivat STATIC LIBRARY namiesto DLL. Toto nastavenie sa robit v [PROJECT PROPERTIES -> C/C++ -> Code Generation -> Runtime Library]. Alternativou je spravit RELEASE BUILD, ktory vyzaduje VISUAL STUDIO C++ RELEASE RUNTIME.
+//----------------------------------------------------------------------------------------------------------------------
