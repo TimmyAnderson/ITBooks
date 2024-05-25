@@ -1,0 +1,380 @@
+//----------------------------------------------------------------------------------------------------------------------
+1. Solution demonstruje DEBUGGING a TRACING KERNEL DRIVERS.
+2. Pri DEBUGGING KERNEL DRIVERS nie je DEBUGGED iba samotny DRIVER, ale cely OPERATING SYSTEM.
+3. DEBUGGING TOOLS FOR WINDOWS je PACKAGE obsahujuci DEBUGGERS a TOOLS, ktore je mozne pouzit na DEBUGGING USER MODE PROCESSES i KERNEL. DEBUGGING TOOLS FOR WINDOWS obsahuje nasledujuce DEBUGGERS.
+   A. DEBUGGER [Cdb.exe] je konzolovy USER MODE DEBUGGER. Jedinym rozdielom oproti DEBUGGER [Ntsd.exe] je to, ze pri spusteni nevytvara novy CONSOLE WINDOW, ale bezi v existujucom.
+   B. DEBUGGER [Ntsd.exe] je konzolovy USER MODE DEBUGGER. Jedinym rozdielom oproti DEBUGGER [Cdb.exe] je to, ze pri spusteni vytvara novy CONSOLE WINDOW.
+   C. DEBUGGER [Kd.exe] je konzolovy KERNEL MODE DEBUGGER, ktory sa pripaja na inu MACHINE, ktorej KERNEL je DEBUGGED.
+   D. DEBUGGER [WinDbg.exe] je WINDOWS USER MODE a KERNEL MODE DEBUGGER. Umoznuje vybrat ci bude sluzit na USER MODE DEBUGGING, alebo KERNEL MODE DEBUGGING.
+4. Vsetky DEBUGGERS vo WINDOWS interne vyuzivaju ten isty ENGINE, ktory je implementovany v DLL [DbgEng.DLL].
+5. DEBUGGING TOOLS FOR WINDOWS obsahuje aj viacero TOOLS.
+   A. TOOL [Gflags.exe] je GLOBAL FLAGS TOOL, ktory umoznuje nastavit niektore KERNEL FLAGS a IMAGE FLAGS.
+   B. TOOL [ADPlus.exe] umoznuje generovat DUMP FILE pre PROCESS, ktory spadol, alebo je HANG.
+   C. TOOL [Kill.exe] umoznuje spravit KILL PROCESS na zaklade ID, NAME, alebo PATTERN.
+   D. TOOL [Dumpchk.exe] je TOOL na kontrolu vygenerovanych DUMP FILES.
+   E. TOOL [TList.exe] vracia zoznam beziacich PROCESSES.
+   F. TOOL [Umdh.exe] analyzuje HEAP ALLOCATIONS v USER MODE PROCESSES.
+   G. TOOL [UsbView.exe] zobrazuje hierarchicky pohlad na USB DEVICES a USB HUBS.
+6. DEBUGGER [WinDbg.exe] umoznuje zadavat nasledujuce typy COMMANDS.
+   A. INTRINSIC COMMANDS. Su to COMMANDS, ktore su priamo sucastou DEBUGGER ENGINE. Tieto COMMANDS su vykonavane nad DEBUGGED PROCESS.
+   B. META COMMANDS. COMMANDS zacinaju CHARACTER [.]. Tieto COMMANDS su vykonavane nad DEBUGGING ENVIRONMENT, a nie priamo nad DEBUGGED PROCESS.
+   C. EXTENSION COMMANDS. COMMANDS zacinaju CHARACTER [!]. Tieto COMMANDS su implementovane v specializovanych EXTERNAL DLL a poskytuju vacsinu funkcionality DEBUGGER [WinDbg.exe]. Niektore EXTERNAL DLL su natiahnute pri spustani DEBUGGER [WinDbg.exe], kym ine CUSTOM EXTERNAL DLL mozu byt dotiahnute pomocou META COMMAND [.load].
+7. Pre MODULES (DLL, EXE) je pre mozne vyrazne zjednodusit ich DEBUGGING, ak su natiahnute ich SYMBOLS. Pre SYMBOLS platia nasledujuce fakty.
+   A. SYMBOLS obsahuju informacie o LOCAL a GLOBAL VARIABLES, PUBLIC a PRIVATE FUNCTIONS a PUBLIC a PRIVATE TYPES, ktore dany MODULE obsahuje.
+   B. SYMBOLS mozu PUBLIC, ked obsahuju iba informacie o PUBLIC VARIABLES, PUBLIC TYPES a PUBLIC FUNCTIONS, alebo PRIVATE SYMBOLS, ktore obsahuju aj informacie o LOCAL VARIABLES, PRIVATE FUNCTIONS ci PRIVATE TYPES.
+   C. SYMBOLS su vytvarane pri kompilacii daneho MODULE. MICROSOFT umoznuje stiahnut PUBLIC SYMBOLS pre MICROSOFT MODULES z MICROSOFT SERVERS.
+   D. SYMBOLS pre CUSTOM MODULES je mozne ziskat ako vysledok kompilacie daneho MODULE.
+   E. WINDOWS umoznuje definovat ENVIRONMENT VARIABE [_NT_SYMBOL_PATH], ktora definuje URL na MICROSOFT SYMBOL SERVER. ENVIRONMENT VARIABE [_NT_SYMBOL_PATH] ma STRUCTURE [SRV*LOCAL_PATH*http://msdl.microsoft.com/download/symbols], kde VALUE [LOCAL_PATH] obsahuje PATH na LOCAL CACHE, kde sa budu SYMBOLS ukladat.
+8. Kazdy MODULE DEBUGGED PROCESS v DEBUGGER [WinDbg.exe] moze byt z hladiska toho ci ma nacitane SYMBOLS v jednom z nasledujucich STATES.
+   A. STATE [DEFERRED]. SYMBOLS pre dany MODULE zatial nie su potrebne a zatial neboli nacitane. Ak to bude potrebne, tak SYMBOLS budu docitane. Tento STATE je DEFAULT STATE.
+   B. STATE [PDB SYMBOLS]. SYMBOLS su pre dany MODULE nacitane.
+   C. STATE [PRIVATE PDB SYMBOLS]. SYMBOLS, vratane PRIVATE SYMBOLS su pre tento MODULE nacitane. MICROSOFT vo pre vacsinu svojich MODULES nezverejnuje ich PRIVATE SYMBOLS. PRIVATE SYMBOLS su dostupne pre CUSTOM MODULES, ktore vygeneroval VISUAL STUDIO.
+   D. STATE [EXPORT SYMBOLS]. Pre MODULE boli nacitane iba EXPORT SYMBOLS z EXPORTES SYMBOL TABLE. Nacitane SYMBOLS nemusia byt spravne sparovane s jednotlivymi VARIABLES, FUNCTIONS ci TYPES, kedze neexistuje jednoznacna vazba medzi SYMBOL a VARIABLES, FUNCTIONS ci TYPES a DEBUGGER sa ich snazi najlepsie ako vie sparovat.
+   E. STATE [NO SYMBOLS]. SYMBOLS ani EXPORT SYMBOLS neboli nacitane. EXE MODULES a SYS MODULES (DRIVERS) neobsahuju EXPORT SYMBOLS.
+9. WINDOWS umoznuje 2 sposoby KERNEL DEBUGGING.
+   A. LOCAL KERNEL DEBUGGING.
+   B. FULL KERNEL DEBUGGING.
+10. Pre LOCAL KERNEL DEBUGGING platia nasledujuce fakty.
+   A. LOCAL KERNEL DEBUGGING sa robi na LOCAL MACHINE. Nie je potrebna REMOTE MACHINE.
+   B. Pri LOCAL KERNEL DEBUGGING NIE JE mozne vyvolat BREAKPOINT, pretoze vyvolanie BREAKPOINT by znamenalo zastavit cely OPERATING SYSTEM.
+   C. Pri LOCAL KERNEL DEBUGGING je mozne prezerat stav KERNEL ci MEMORY, avsak s tym obmedzenim, ze sa jedna iba o SNAPSHOT stavu v ktorom bol KERNEL ked doslo k vykonaniu DEBUGGING COMMAND. To znamena, ze MEMORY je aktualne uz ina.
+   D. Na vykonanie LOCAL KERNEL DEBUGGING je treba spustit COMMAND [bcdedit /debug on].
+   E. LOCAL KERNEL DEBUGGING je mozne vykonat iba ak je v BIOS vypnuty SECURE BOOT.
+11. Pre FULL KERNEL DEBUGGING platia nasledujuce fakty.
+   A. FULL KERNEL DEBUGGING sa robi na REMOTE MACHINE.
+   B. Pri FULL KERNEL DEBUGGING JE mozne vyvolat BREAKPOINT. V pripade jeho vyvolania je REMOTE MACHINE zastavena pomocou DEBUGGER a je mozne monitorovat jej stav.
+   C. FULL KERNEL DEBUGGING je mozne vykonat iba ak je v REMOTE MACHINE vypnuty SECURE BOOT.
+   D. Pri FULL KERNEL DEBUGGING je nutne mat medzi LOCAL MACHINE a REMOTE MACHINE COMMUNICATION CHANNEL. Pre WINDOWS od verzie 8 je mozne pouzit NETWORK a pre vsetky je mozne pouzit COM PORT.
+12. Pre FULL KERNEL DEBUGGING pomocou COM PORT je treba vykonat nasledujuce SETTINGS.
+   A. Na REMOTE MACHINE je treba vykonat nasledujuce SETTINGS.
+      A. Do VIRTUAL MACHINE v ktorej bezi REMOTE MACHINE pridat COM PORT, ktory bude presmerovany na NAMED PIPE.
+      B. Spustit COMMAND [bcdedit /debug on].
+      C. Spustit COMMAND [bcdedit /dbgsettings serial debugport:COM_PORT baudrate:115200], kde VALUE [COM_PORT] je cislo COM PORT.
+	  D. Vykonat RESTART.
+   B. Na REMOTE MACHINE je treba vykonat nasledujuce SETTINGS.
+      A. Spustit DEBUGGER [WinDbg.exe].
+	  B. Vybrat COMMAND [File->Kernel Debug] a odtial vybrat zalozku COM.
+	  C. Nastavit nazov COM PORT.
+13. Pre FULL KERNEL DEBUGGING pomocou NETWORK je treba vykonat nasledujuce SETTINGS.
+   A. Na REMOTE MACHINE je treba vykonat nasledujuce SETTINGS.
+      A. Spustit COMMAND [bcdedit /debug on].
+      B. Spustit COMMAND [bcdedit /dbgsettings net hostip:LOCAL_MACHINE_IP_ADDRESS port:PORT key:A.B.C.D], kde VALUE [LOCAL_MACHINE_IP_ADDRESS] je IP ADDRESS LOCAL MACHINE, VALUE [PORT] je cislo PORTU a VALUE [A.B.C.D] obsahuje KEY. KEY moze byt napriklad aj VALUE [1.2.3.4].
+	  C. Vykonat RESTART.
+   B. Na REMOTE MACHINE je treba vykonat nasledujuce SETTINGS.
+      A. Spustit DEBUGGER [WinDbg.exe].
+	  B. Vybrat COMMAND [File->Kernel Debug] a odtial vybrat zalozku NET.
+	  C. Nastavit nazov PORT NUMBER a KEY, aby zodpovedali nastaveniu v REMOTE MACHINE.
+14. Nastavenie DEBUG SETTINGS na REMOTE MACHINE je mozne skontrolovat pomocou COMMAND [bcdedit /dbgsettings].
+15. Na to aby DEBUGGER mohol vykonat DEBUGGING DRIVER su potrebne nasledujuce FILES.
+   A. DRIVER [.SYS] FILE, ktory obsahuje samotny DRIVER.
+   B. DRIVER [.PDB] FILE, ktory obsahuje SYMBOLS daneho DRIVER pre DEBUGGER. Tento FILE musi byt v rovnakom DIRECTORY ako [.SYS] FILE.
+16. DRIVERS mozu pouzivat ASSERTS. Pre ASSERTS platia nasledujuce fakty.
+   !!! A. ASSERTS su COMPILED IBA v DEBUG BUILD. To znamena, ze cele MACRO [VOID NT_ASSERT(Expression)] je v RELEASE BUILD ignorovane, a nie je pridane do CODE.
+   B. ASSERT sa v DRIVER CODE vykonava pomocou MACRO [VOID NT_ASSERT(Expression)].
+   C. ASSERT kontroluje BOOLEAN CONDITION. Ak ma BOOLEAN CONDITION VALUE [TRUE], nic sa nestane. Ak ma BOOLEAN CONDITION VALUE [FALSE], MACRO [VOID NT_ASSERT(Expression)] generuje EXCEPTION [STATUS_ASSERTION_FAILURE].
+   D. Ak ASSERT vyvola EXCEPTION [STATUS_ASSERTION_FAILURE], tak v pripapde, ze REMOTE MACHINE nie je v DEBUG MODE, dojde k BUGCHECK.
+   E. Ak ASSERT vyvola EXCEPTION [STATUS_ASSERTION_FAILURE], tak v pripapde, ze REMOTE MACHINE je v DEBUG MODE a JE pripojeny DEBUGGER, DEBUGGER zachyti BREAKPOINT.
+   F. Ak ASSERT vyvola EXCEPTION [STATUS_ASSERTION_FAILURE], tak v pripapde, ze REMOTE MACHINE je v DEBUG MODE a NIE JE pripojeny DEBUGGER, tak REMOTE MACHINE je FROZEN a DEBUGGER je mozne k nemu nasledne pripojit na zistenie, kde doslo k zlyaniu ASSERT.
+!!!!! 17. Ked REMOTE MACHINE hodi pri ASSERT EXCEPTION [STATUS_ASSERTION_FAILURE], aj ked nie je pripojeny DEBUGGER, je mozne zistit presne miesto, kde k ASSERT prislo. Treba vykonat nasledujuce operacie.
+   A. Spustit DEBUGGER [WinDbg.exe] a pripojit sa na KERNEL REMOTE MACHINE.
+   B. DEBUGGER zobrazi informaciu, ze doslo k ASSERTTION FAILURE.
+   C. Pomocou COMMAND [.reload] je mozne nacitat SYMBOLS z [.PDB] FILE DRIVER v ktorom doslo k ASSERTTION FAILURE.
+   D. Po nacitani SYMBOLS DEBUGGER zobrazi SOURCE CODE s presnym miestom kde k ASSERTTION FAILURE doslo.
+   !!! E. ASSERTTION FAILURES je mozne v DEBUGGER ignorovat pomocou COMMAND [ahi].
+18. LOGS sa v KERNEL PROGRAMMING vykonavaju nasledujucimi sposobmi.
+   A. Volanim FUNCTION [DbgPrintEx()]. FUNCTION sa moze volat aj pomocou MACRO [KdPrintEx()].
+   B. Volanim FUNCTION [DbgPrint()], ktora interne vola FUNCTION [DbgPrintEx()]. FUNCTION sa moze volat aj pomocou MACRO [KdPrint()].
+19. Pre LOGS v KERNEL PROGRAMMING platia nasledujuce fakty.
+   A. FUNCTION [DbgPrintEx()] zapisuje do LOGU iba prvych 512 CHARACTERS.
+   B. FUNCTION [DbgPrintEx()] je relativne POMALA.
+   C. LOG je mozne prezerat pomocou TOOL [DebugView].
+20. Pre FUNCTION [DbgPrintEx()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [NTSYSAPI ULONG DbgPrintEx(ULONG ComponentId, ULONG Level, PCSTR Format, ...)].
+   B. PARAMETER [ULONG ComponentId] definuje COMPONENT ID, ktora zapisuje dany LOG RECORD. WINDOWS v HEADER [dpfilter.h] definuje standardne COMPONENT IDs. Pre CUSTOM DRIVERS sa spravidla pouziva VALUE [DPFLTR_IHVDRIVER_ID].
+   C. PARAMETER [ULONG Level] definuje LEVEL ID daneho LOG RECORD. WINDOWS v HEADER [dpfilter.h] definuje standardne LEVEL IDs.
+   D. PARAMETER [PCSTR Format] obsahuje FORMAT TEXT STRING, ktory sa zapisuje do LOG RECORD.
+   E. PARAMETER [...] obsahuje OPTIONAL PARAMETERS, ktore su vlozene do TEXT STRING.
+   F. RETURN VALUE TYPE [ULONG] vracia NTSTATUS ERROR CODE.
+   G. FUNCTION pridava novy LOG RECORD do LOG.
+21. WINDOWS to ci dany LOG RECORD zapise do LOG urcuje na zaklade nasledujucich VALUES.
+   A. VALUE [COMPONENT_ID]. VALUE pre dany LOG RECORD je definovana pri volani FUNCTION [DbgPrintEx()].
+   B. VALUE [LEVEL_ID]. VALUE pre dany LOG RECORD je definovana pri volani FUNCTION [DbgPrintEx()].
+   C. VALUE [LEVEL_OF_COMPONENT]. VALUE je ulozena v REGISTRY ale je ju viacerymi sposobmi mozme zmenit.
+22. VALUE [LEVEL_ID] je interpretovana nasledovne.
+   A. Ak VALUE [LEVEL_ID] je v INTERVALE <0,31>, tak skutocna VALUE [LEVEL_ID] je nastavena ako EXPRESSION [1<<LEVEL_ID].
+   B. Ak VALUE [LEVEL_ID] NIE je v INTERVALE <0,31>, tak skutocna VALUE [LEVEL_ID] ostava nezmenena.
+23. WINDOWS dany LOG RECORDS zapise do LOG, ak plati aspon jedna z nasledujucich CONDITIONS. VALUE [LEVEL_ID] je VALUE, ktora sa zadava ako PARAMETER do FUNCTION [DbgPrintEx()] a VALUE [RESULT_LEVEL_ID] je interpretovala VALUE [LEVEL_ID].
+   A. Ak pre LEVEL ID daneho LOG RECORDS plati CONDITION [(LEVEL_ID & LEVEL_OF_COMPONENT)!=0], tak sa LOG RECORD zapise do LOG.
+   B. Ak pre LEVEL ID daneho LOG RECORDS plati CONDITION [(RESULT_LEVEL_ID & LEVEL_OF_COMPONENT)!=0], tak sa LOG RECORD zapise do LOG.
+   C. Ak nie je splnena ziadna z CONDITIONS, LOG RECORD sa zahodi.
+24. VALUE [LEVEL_OF_COMPONENT] je mozne nastavit nasledujucimi sposobmi.
+   A. Pomocou REGISTRY. VALUE sa zapisuje do REGISTRY KEY [HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Session Manager\Debug Print Filter] pricom VALUE musi obsahovat COMPONENT ID BEZ PREFIX [DPFLTR_] a POSFIX [_ID].
+   B. Spustenim COMMAND [ed Kd_COMPONENT_ID_Mask VALUE] v DEBUGGER [WinDbg.exe], kde VALUE [COMPONENT_ID] JE COMPONENT ID BEZ PREFIX [DPFLTR_] a POSFIX [_ID].
+   C. Volanim USER MODE FUNCTION [NtSetDebugFilterState()], alebo KERNEL MODE FUNCTION [DbgSetDebugFilterState()].
+25. Pre FUNCTION [vDbgPrintEx()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [NTSYSAPI ULONG vDbgPrintEx(ULONG ComponentId, ULONG Level, PCCH Format, va_list arglist)].
+   B. PARAMETER [ULONG ComponentId] definuje COMPONENT ID, ktora zapisuje dany LOG RECORD. WINDOWS v HEADER [dpfilter.h] definuje standardne COMPONENT IDs. Pre CUSTOM DRIVERS sa spravidla pouziva VALUE [DPFLTR_IHVDRIVER_ID].
+   C. PARAMETER [ULONG Level] definuje LEVEL ID daneho LOG RECORD. WINDOWS v HEADER [dpfilter.h] definuje standardne LEVEL IDs.
+   D. PARAMETER [PCSTR Format] obsahuje FORMAT TEXT STRING, ktory sa zapisuje do LOG RECORD.
+   E. PARAMETER [va_list arglist] obsahuje OPTIONAL PARAMETERS, ktore su vlozene do TEXT STRING.
+   F. RETURN VALUE TYPE [ULONG] vracia NTSTATUS ERROR CODE.
+   G. FUNCTION pridava novy LOG RECORD do LOG.
+26. Pre FUNCTION [vDbgPrintExWithPrefix()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [NTSYSAPI ULONG vDbgPrintExWithPrefix(PCCH Prefix, ULONG ComponentId, ULONG Level, PCCH Format, va_list arglist)].
+   B. PARAMETER [PCCH Prefix] obsahuje PREFIX STRING, ktory sa vlozi do TEXT RECORD.
+   C. PARAMETER [ULONG ComponentId] definuje COMPONENT ID, ktora zapisuje dany LOG RECORD. WINDOWS v HEADER [dpfilter.h] definuje standardne COMPONENT IDs. Pre CUSTOM DRIVERS sa spravidla pouziva VALUE [DPFLTR_IHVDRIVER_ID].
+   D. PARAMETER [ULONG Level] definuje LEVEL ID daneho LOG RECORD. WINDOWS v HEADER [dpfilter.h] definuje standardne LEVEL IDs.
+   E. PARAMETER [PCSTR Format] obsahuje FORMAT TEXT STRING, ktory sa zapisuje do LOG RECORD.
+   F. PARAMETER [va_list arglist] obsahuje OPTIONAL PARAMETERS, ktore su vlozene do TEXT STRING.
+   G. RETURN VALUE TYPE [ULONG] vracia NTSTATUS ERROR CODE.
+   H. FUNCTION pridava novy LOG RECORD do LOG s PREFIX.
+27. EVENT TRACING FOR WINDOWS (ETW) poskytuje alternativny mechanizmus zapisu LOGS. Pre EVENT TRACING FOR WINDOWS platia nasledujuce fakty.
+   A. EVENT TRACING FOR WINDOWS LOGS je mozne zachytavat LIVE, alebo ukladat do LOG FILE.
+   B. EVENT TRACING FOR WINDOWS je vysoko vykonny a moze generovat velke mnozstvo LOGS kazdu sekundu.
+   C. EVENT TRACING FOR WINDOWS LOGS maju SEMANTICS. To znamena, ze umoznuju ukladat data v tvare KEY-VALUE a podla KEYS je mozne vyhladavat LOG RECORDS.
+28. EVENT TRACING FOR WINDOWS vyzaduje registraciu EVENT TRACING FOR WINDOWS PROVIDER. EVENT TRACING FOR WINDOWS PROVIDE je GUID, ktory musi DRIVER registrovat pri spusteni DRIVER a odregistrovat pri zastaveni DRIVER.
+   A. FUNCTION [TraceLoggingRegister()] vykonava REGISTRATION EVENT TRACING FOR WINDOWS PROVIDER. Vola sa vo FUNCTION [DriverEntry()].
+   B. FUNCTION [TraceLoggingUnregister()] vykonava REGISTRATION EVENT TRACING FOR WINDOWS PROVIDER. Vola sa vo FUNCTION [DriverUnload()].
+29. FUNCTION [TraceLoggingRegister()] a FUNCTION [TraceLoggingUnregister()] vyzaduju HANDLE pre TRACE LOGGING. Ten sa vytvara pomocou MACRO [TRACELOGGING_DEFINE_PROVIDER()].
+30. Pre FUNCTION [TraceLoggingRegister()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [TLG_STATUS TraceLoggingRegister(TraceLoggingHProvider hProvider)].
+   B. PARAMETER [TraceLoggingHProvider hProvider] obsahuje HANDLE pre TRACE LOGGING.
+   C. RETURN VALUE TYPE [TLG_STATUS] vracia v KERNEL MODE NTSTATUS ERROR CODE.
+   D. FUNCTION registruje TRACE LOGGING PROVIER.
+31. Pre FUNCTION [TraceLoggingUnregister()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [void TraceLoggingUnregister(TraceLoggingHProvider hProvider)].
+   B. PARAMETER [TraceLoggingHProvider hProvider] obsahuje HANDLE pre TRACE LOGGING.
+   C. FUNCTION odregistruje TRACE LOGGING PROVIER.
+32. Pre MACRO [TRACELOGGING_DEFINE_PROVIDER()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [void TRACELOGGING_DEFINE_PROVIDER(handleVariable, providerName, providerId, __VA_ARGS__)].
+   B. PARAMETER [handleVariable] obsahuje nazov HANDLE pre TRACE LOGGING. MACRO vygeneruje VARIABLE s tymto NAME.
+   C. PARAMETER [providerName] obsahuje TRACE LOGGING PROVIDER NAME.
+   D. PARAMETER [providerId] obsahuje GUID daneho TRACE LOGGING PROVIDER.
+   E. PARAMETER [__VA_ARGS__] obsahuje OPTIONAL PARAMETERS pre niektore typy TRACE LOGGING PROVIDERS.
+   F. MACRO vytvara HANDLE pre TRACE LOGGING a definuje ho ako VARIABLE.
+33. LOGS do EVENT TRACING FOR WINDOWS sa zapisuju pomocou sady MACROS.
+   A. MACRO [TraceLoggingWrite()] zapisuje LOG do EVENT TRACING FOR WINDOWS.
+   B. MACRO [TraceLoggingLevel()] definuje LOG LEVEL LOG RECORD v EVENT TRACING FOR WINDOWS.
+   C. MACRO [TraceLoggingValue()] zapisuje VALUE do EVENT TRACING FOR WINDOWS LOG. Jej TYPE je urceny pomocou C++ DEDUCTION.
+   D. MACRO [TraceLoggingUnicodeString()] zapisuje VALUE TYPE [PUNICODE_STRING] do EVENT TRACING FOR WINDOWS LOG.
+   E. MACRO [TraceLoggingNTStatus()] zapisuje VALUE TYPE [NTSTATUS] do EVENT TRACING FOR WINDOWS LOG.
+   F. MACRO [TraceLoggingInt32()] zapisuje VALUE TYPE [INT32] do EVENT TRACING FOR WINDOWS LOG.
+   G. MACRO [TraceLoggingUInt32()] zapisuje VALUE TYPE [UINT32] do EVENT TRACING FOR WINDOWS LOG.
+34. Pre MACRO [TraceLoggingWrite()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [void TraceLoggingWrite(hProvider,eventName,__VA_ARGS__)].
+   B. PARAMETER [hProvider] obsahuje HANDLE na PROIVDER pre EVENT TRACING FOR WINDOWS.
+   C. PARAMETER [eventName] obsahuje LOG TEXT daneho LOG.
+   D. PARAMETER [__VA_ARGS__] obsahuje OPTIONAL PARAMETERS pre LOG.
+   E. MACRO zapisuje LOG do EVENT TRACING FOR WINDOWS.
+35. Pre MACRO [TraceLoggingLevel()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [void TraceLoggingLevel(eventLevel)].
+   B. PARAMETER [eventLevel] obsahuje EVENT LEVEL daneho LOG.
+   C. MACRO nastavuje EVENT LEVEL LOG do EVENT TRACING FOR WINDOWS.
+36. Pre MACRO [TraceLoggingValue()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [void TraceLoggingValue(value,__VA_ARGS__)].
+   B. PARAMETER [value] obsahuje VALUE, ktora sa uklada do daneho LOG.
+   C. PARAMETER [__VA_ARGS__] obsahuje OPTIONAL PARAMETERS pre LOG VALUE.
+   D. MACRO pridava VALUE do LOG pre EVENT TRACING FOR WINDOWS. TYPE danej VALUE je urceny pomocou C++ DEDUCTION.
+37. LOGS pre EVENT TRACING FOR WINDOWS je mozne prezerat pomocou TOOL [TraceView], ktory je sucastou WDK.
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+COMMANDS DEBUGGER [WinDbg.exe].
+
+1. DEBUGGER [WinDbg.exe] definuje nasledujuce COMMANDS.
+   1. COMMAND [~].
+   2. COMMAND [.symfix].
+   3. COMMAND [lm].
+   4. COMMAND [.reload].
+   5. COMMAND [!sym].
+   6. COMMAND [k].
+   7. COMMAND [?].
+   8. COMMAND [!teb].
+   9. COMMAND [dt].
+   10. COMMAND [bp].
+   11. COMMAND [bc].
+   12. COMMAND [bd].
+   13. COMMAND [be].
+   14. COMMAND [bl].
+   15. COMMAND [g].
+   16. COMMAND [r].
+   17. COMMAND [db].
+   18. COMMAND [du].
+   19. COMMAND [p].
+   20. COMMAND [t].
+   21. COMMAND [u].
+   22. COMMAND [!error].
+   23. COMMAND [.detach].
+   24. COMMAND [q].
+   25. COMMAND [!process].
+   26. COMMAND [!job].
+   27. COMMAND [.process].
+   28. COMMAND [!thread].
+   29. COMMAND [!pcr].
+   30. COMMAND [!vm].
+   31. COMMAND [!running].
+   32. COMMAND [bu].
+   33. COMMAND [ahi].
+   34. COMMAND [ed].
+2. Pre COMMAND [~] platia nasledujuce fakty.
+   A. COMMAND patri medzi INTRINSIC COMMANDS.
+   B. COMMAND [~] vracia informacie o vsetkych THREADS v DEBUGGED PROCESS.
+   C. COMMAND [~] v zozname THREADS oznacuje pomocou CHARACTER [.] THREAD, ktory je nastaveny ako CURRENT THREAD pre ktory sa vykoanvaju COMMANDS a pomocou CHARACTER [#] THREAD, ktory sposobil posledny BREAKPOINT.
+   D. COMMAND [~INDEXs] umoznuje nastavenie THREAD s INDEX [INDEX] za CURRENT THREAD.
+   E. COMMAND [~INDEXCOMMAND] umoznuje spustenie COMMAND [COMMAND] na THREAD s INDEX [INDEX].
+3. Pre COMMAND [.symfix] platia nasledujuce fakty.
+   A. COMMAND patri medzi META COMMANDS.
+   B. COMMAND [.symfix] nacitava SYMBOLS pre vsetky MODULES DEBUGGED PROCESS.
+4. Pre COMMAND [lm] platia nasledujuce fakty.
+   A. COMMAND patri medzi INTRINSIC COMMANDS.
+   B. COMMAND [lm] vracia informacie o vsetkych nacitanych MODULES DEBUGGED PROCESS.
+5. Pre COMMAND [.reload] platia nasledujuce fakty.
+   A. COMMAND patri medzi META COMMANDS.
+   B. COMMAND [.reload /f MODULE_NAME.DLL] nacitava SYMBOLS pre MODULE [MODULE_NAME.DLL].
+   B. COMMAND [.reload /user MODULE_NAME.DLL] nacitava USER MODE SYMBOLS pre MODULE [MODULE_NAME.DLL]. COMMAND funguje iba ak je nastaveny PROCESS CONTEXT na dany PROCESS pomocou COMMAND [.command].
+6. Pre COMMAND [!sym] platia nasledujuce fakty.
+   A. COMMAND patri medzi EXTENSION COMMANDS.
+   B. COMMAND [!sym noisy] zobrazuje detailne informacie o nacitavani SYMBOLS so SYMBOL SERVERS, alebo LOCAL PATHS.
+7. Pre COMMAND [k] platia nasledujuce fakty.
+   A. COMMAND patri medzi INTRINSIC COMMANDS.
+   B. COMMAND [k] vracia STACK CURRENT THREAD.
+8. Pre COMMAND [?] platia nasledujuce fakty.
+   A. COMMAND patri medzi INTRINSIC COMMANDS.
+   B. COMMAND [? VALUE] prevadza HEXADECIMAL VALUE [VALUE] na DECIMAL a HEXADECIMAL VALUE.
+   C. COMMAND [? 0nVALUE] prevadza DECIMAL VALUE [VALUE] na DECIMAL a HEXADECIMAL VALUE.
+   D. COMMAND [? 0yVALUE] prevadza BINARY VALUE [VALUE] na DECIMAL a HEXADECIMAL VALUE.
+9. Pre COMMAND [!teb] platia nasledujuce fakty.
+   A. COMMAND patri medzi EXTENSION COMMANDS.
+   B. COMMAND [!teb] zobrazuje detailne informacie THREAD ENVIRONMENT BLOCK STRUCTURE pre CURRENT THREAD.
+   C. COMMAND [!teb ADDRESS] zobrazuje detailne informacie THREAD ENVIRONMENT BLOCK STRUCTURE pre THREAD ENVIRONMENT BLOCK STRUCTURE na ADDRESS [ADDRESS].
+   D. THREAD ENVIRONMENT BLOCK STRUCTURE obsahuje nasledujuce informacie.
+      A. FIELD [StackBase] obsahuje STACK BASE ADDRESS daneho THREAD.
+      B. FIELD [StackLimit] obsahuje STACK LIMIT daneho THREAD.
+      C. FIELD [ClientId] obsahuje PROCESS ID a THREAD ID.
+      D. FIELD [LastErrorValue] obsahuje posledny WIN32 ERROR CODE, ktory vracia USER MODE FUNCTION [GetLastError()].
+      E. FIELD [TlsStorage] obsahuje adresu THREAD LOCAL STORAGE ARRAY daneho THREAD.
+      F. FIELD [PEB Address] obsahuje adresu PROCESS ENVIRONMENT BLOCK.
+      G. FIELD [LastStatusValue] obsahuje poslednu VALUE [NTSTATUS], ktoru vratila KERNEL FUNCTION.
+10. Pre COMMAND [dt] platia nasledujuce fakty.
+   A. COMMAND patri medzi INTRINSIC COMMANDS.
+   B. COMMAND [dt MODULE_NAME!STRUCTURE_NAME] vracia informacie o FIELDS STRUCTURE [STRUCTURE_NAME], ktora je definovana v MODULE [MODULE_NAME].
+   C. COMMAND [dt MODULE_NAME!STRUCTURE_NAME ADDRESS] vracia informacie FIELD VALUES STRUCTURE [STRUCTURE_NAME] na ADDRESS [ADDRESS], ktora je definovana v MODULE [MODULE_NAME].
+11. Pre COMMAND [bp] platia nasledujuce fakty.
+   A. COMMAND patri medzi INTRINSIC COMMANDS.
+   B. COMMAND [bp MODULE_NAME!FUNCTION_NAME+ADDRESS] pridava novy BREAKPOINT do FUNCTION [FUNCTION_NAME] v MODULE [MODULE_NAME] na relativne ADDRESS [ADDRESS] od zaciatku FUNCTION.
+12. Pre COMMAND [bc] platia nasledujuce fakty.
+   A. COMMAND patri medzi INTRINSIC COMMANDS.
+   B. COMMAND [bc BREAKPOINT_INDEX] odstranuje BREAKPOINT s BREAKPOINT INDEX [BREAKPOINT_INDEX].
+13. Pre COMMAND [bd] platia nasledujuce fakty.
+   A. COMMAND patri medzi INTRINSIC COMMANDS.
+   B. COMMAND [bd BREAKPOINT_INDEX] vykonava DISABLE BREAKPOINT s BREAKPOINT INDEX [BREAKPOINT_INDEX].
+14. Pre COMMAND [be] platia nasledujuce fakty.
+   A. COMMAND patri medzi INTRINSIC COMMANDS.
+   B. COMMAND [be BREAKPOINT_INDEX] vykonava ENABLE BREAKPOINT s BREAKPOINT INDEX [BREAKPOINT_INDEX].
+15. Pre COMMAND [bl] platia nasledujuce fakty.
+   A. COMMAND patri medzi INTRINSIC COMMANDS.
+   B. COMMAND [bl] zobrazuje vsetky BREAKPOINTS aj s ich BREAKPOINT INDEXES.
+16. Pre COMMAND [g] platia nasledujuce fakty.
+   A. COMMAND patri medzi INTRINSIC COMMANDS.
+   B. COMMAND [g] spusta DEBUGGED PROCESS, ktory je v BREAKPOINT.
+   C. KEY [F5] je SHORTCUT pre COMMAND [g].
+17. Pre COMMAND [r] platia nasledujuce fakty.
+   A. COMMAND patri medzi INTRINSIC COMMANDS.
+   B. COMMAND [r REGISTER_NAME] zobrazuje VALUE REGISTER [REGISTER_NAME].
+18. Pre COMMAND [db] platia nasledujuce fakty.
+   A. COMMAND patri medzi INTRINSIC COMMANDS.
+   B. COMMAND [db MEMORY_LOCATION] zobrazuje obsah MEMORY LOCATION [MEMORY_LOCATION] ako pole BYTES.
+19. Pre COMMAND [du] platia nasledujuce fakty.
+   A. COMMAND patri medzi INTRINSIC COMMANDS.
+   B. COMMAND [du MEMORY_LOCATION] zobrazuje obsah MEMORY LOCATION [MEMORY_LOCATION] ako pole UNICODE CHARACTERS.
+20. Pre COMMAND [p] platia nasledujuce fakty.
+   A. COMMAND patri medzi INTRINSIC COMMANDS.
+   B. COMMAND [p] vykonava STEP OVER nad DEBUGGED PROCESS.
+   C. KEY [F10] je SHORTCUT pre COMMAND [p].
+21. Pre COMMAND [t] platia nasledujuce fakty.
+   A. COMMAND patri medzi INTRINSIC COMMANDS.
+   B. COMMAND [t] vykonava STEP INTO nad DEBUGGED PROCESS.
+   C. KEY [F11] je SHORTCUT pre COMMAND [t].
+22. Pre COMMAND [u] platia nasledujuce fakty.
+   A. COMMAND patri medzi INTRINSIC COMMANDS.
+   B. COMMAND [u] vypise najblizsie CPU INSTRUCTION v PROCESS.
+23. Pre COMMAND [!error] platia nasledujuce fakty.
+   A. COMMAND patri medzi EXTENSION COMMANDS.
+   B. COMMAND [!error ERROR_CODE] zobrazuje textovy popis ERROR s ERROR CODE [ERROR_CODE].
+24. Pre COMMAND [.detach] platia nasledujuce fakty.
+   A. COMMAND patri medzi META COMMANDS.
+   B. COMMAND [.detach] odpoji DEBUGGER od DEBUGGED PROCES, ktory dalej pokracuje v behu.
+25. Pre COMMAND [q] platia nasledujuce fakty.
+   A. COMMAND patri medzi INTRINSIC COMMANDS.
+   B. COMMAND [q] ukoncuje DEBUGGER. DEBUGGED PROCES je TERMINATED.
+26. Pre COMMAND [!process] platia nasledujuce fakty.
+   A. COMMAND patri medzi EXTENSION COMMANDS.
+   !!! B. COMMAND sa da pouzit IBA pri KERNEL DEBUGGING.
+   C. COMMAND [!process PROCESS_IDENTIFIER FLAGS IMAGE_NAME] zobrazuje informacie o PROCESSES. COMMAND ma nasledujuce PARAMETERS.
+      A. PARAMETER [PROCESS_IDENTIFIER] obsahuje IDENTIFIER daneho PROCESSU. To moze byt bud KERNEL ADDRESS daneho PROCESSU (v skutocnosti je to KERNEL ADDRESS STRUCTURE [EPROCESS] daneho PROCESSU), alebo PROCESS ID daneho PROCESSU. VALUE [0] znamena, ze sa zobrazuju informacie o vsetkych PROCESSES beziacich vo WINDOWS.
+      B. PARAMETER [FLAGS] obsahuje FLAGS ake data sa maju o kazdom PROCESSE zobrazovat.
+      C. PARAMETER [IMAGE_NAME] obsahuje IMAGE NAME blizsie identifikujuci informacie o ktorych PROCESSES sa maju zobrazovat.
+   D. COMMAND [!process] zobrazuje o PROCESSE nasledujuce informacie.
+      A. VALUE [SessionId] obsahuje SESSION ID SESSION pod ktorou PROCESS bezi.
+      B. VALUE [Cid] obsahuje unikatny CLIENT ID daneho PROCESSU.
+      C. VALUE [Peb] obsahuje USER MODE ADDRESS PROCESS ENVIRONMENT BLOCK (PEB). USER MODE ADDRESS je v USER SPACE, nie v KERNEL SPACE.
+      D. VALUE [ParentCid] obsahuje unikatny CLIENT ID PARENT PROCESS daneho PROCESSU. Tento PARENT ID uz moze byt neplatny, alebo priradeny inemu PROCESSU, ak PARENT PROCESS uz skoncil.
+      E. VALUE [DirBase] obsahuje PHYSICAL ADDRESS MASTER PAGE DIRECTORY pre tento PROCESS. MASTER PAGE DIRECTORY sa pouziva na preklad VIRTUAL ADDRESSES na PHYSICAL ADDRESSES.
+      F. VALUE [ObjectTable] obsahuje POINTER na PRIVATE HANDLE TABLE daneho PROCESSU.
+      G. VALUE [HandleCount] obsahuje pocet HANDLES v PRIVATE HANDLE TABLE daneho PROCESSU.
+      H. VALUE [Image] obsahuje EXECUTABLE NAME daneho PROCESSU. Ak EXECUTABLE neexistuje, tak je obsahuje specialny SYSTEM NAME.
+27. Pre COMMAND [!job] platia nasledujuce fakty.
+   A. COMMAND patri medzi EXTENSION COMMANDS.
+   B. COMMAND [!job PROCESS_IDENTIFIER FLAGS] zobrazuje informacie o JOB KERNEL OBJECT. COMMAND ma nasledujuce PARAMETERS.
+      A. PARAMETER [PROCESS_IDENTIFIER] obsahuje IDENTIFIER daneho PROCESSU. To moze byt bud KERNEL ADDRESS (v skutocnosti je to KERNEL ADDRESS STRUCTURE [EPROCESS]), alebo KERNEL ADDRESS THREADU s ktorym je dany JOB asociovany.
+      B. PARAMETER [FLAGS] obsahuje FLAGS ake data sa maju o danom JOB zobrazovat.
+28. Pre COMMAND [.process] platia nasledujuce fakty.
+   A. COMMAND patri medzi META COMMANDS.
+   !!! B. COMMAND [.process FLAGS PROCESS_ADDRESS] nastavuje PROCESS identifikovany pomocou PROCESS ADDRESS [PROCESS_ADDRESS], aby sa stal IMPLICIT PROCESS pre ktory su vykonavane vsetky dalsie PROCESS RELATED COMMANDS. Ak PARAMETER [FLAGS] obsahuje FLAG [/p], tak dojde k prekladu vsetkych TRANSITION PAGE TABLE ENTRIES pre dany PROCESS na PHYSICAL ADDRESSES.
+29. Pre COMMAND [!thread] platia nasledujuce fakty.
+   A. COMMAND patri medzi EXTENSION COMMANDS.
+   B. COMMAND [!thread COMMAND_FLAGS THREAD_IDENTIFIER FLAGS IMAGE_NAME] zobrazuje informacie o THREADE. COMMAND ma nasledujuce PARAMETERS.
+      A. PARAMETER [COMMAND_FLAGS] ak obsahuje FLAG [-t], tak PARAMETER [THREAD_IDENTIFIER] obsahuje THREAD ID a nie THREAD ADDRESS.
+      B. PARAMETER [THREAD_IDENTIFIER] obsahuje IDENTIFIER daneho THREADU. To moze byt bud KERNEL ADDRESS daneho THREADU (v skutocnosti je to KERNEL ADDRESS STRUCTURE [ETHREAD]), alebo THREAD ID daneho THREADU (ak PARAMETER [COMMAND_FLAGS] obsahuje FLAG [-t]).
+      C. PARAMETER [FLAGS] obsahuje FLAGS ake data sa maju o kazdom THREADE zobrazovat.
+30. Pre COMMAND [!pcr] platia nasledujuce fakty.
+   A. COMMAND patri medzi EXTENSION COMMANDS.
+   B. COMMAND [!pcr PROCESSOR_INDEX] zobrazuje PROCESS CONTROL REGION pre PROCESSOR s INDEX [PROCESSOR_INDEX].
+31. Pre COMMAND [!vm] platia nasledujuce fakty.
+   A. COMMAND patri medzi EXTENSION COMMANDS.
+   B. COMMAND [!vm FLAGS] zobrazuje DISPLAY MEMORY STATISTICS pre SYSTEM a PROCESSES. PARAMETER [FLAGS] urcuje ake detaily sa maju zobrazit.
+32. Pre COMMAND [!running] platia nasledujuce fakty.
+   A. COMMAND patri medzi EXTENSION COMMANDS.
+   B. COMMAND [!running] zobrazuje informacie o THREADS beziacich na vsetkych PROCESSORS.
+33. Pre COMMAND [bu] platia nasledujuce fakty.
+   A. COMMAND patri medzi INTRINSIC COMMANDS.
+   B. COMMAND [bu MODULE_NAME!FUNCTION_NAME+ADDRESS] vytvara UNRESOLVED BREAKPOINT. WINDOWS pri nacitani kazdeho noveho MODULE sa pokusa spravit RESOLVING UNRESOLVED BREAKPOINT. To umoznuje chytit BREAKPOINT aj v MODULE (DRIVER), ktory este nebol nahrany do WINDOWS.
+   !!!!! C. COMMAND [bu MODULE_NAME!FUNCTION_NAME+ADDRESS] vytvara UNRESOLVED BREAKPOINT. WINDOWS pri nacitani kazdeho noveho MODULE sa pokusa spravit RESOLVING UNRESOLVED BREAKPOINT. To umoznuje chytit BREAKPOINT aj v MODULE (DRIVER), ktory este nebol nahrany do WINDOWS.
+34. Pre COMMAND [ahi] platia nasledujuce fakty.
+   A. COMMAND patri medzi INTRINSIC COMMANDS.
+   B. COMMAND [ahi] ignoruje vzniknutu ASSERTION FAILURE.
+35. Pre COMMAND [ed] platia nasledujuce fakty.
+   A. COMMAND patri medzi INTRINSIC COMMANDS.
+   B. COMMAND [ed Kd_COMPONENT_ID_Mask VALUE] nastavuje DWORD VALUE [LEVEL_OF_COMPONENT] pre COMPONENT ID [COMPONENT_ID] na VALUE [VALUE]. VALUE [COMPONENT_ID] musi byt BEZ PREFIX [DPFLTR_] a POSFIX [_ID].
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+Vlastnosti DEBUGGER [WinDbg.exe].
+
+!!! 1. POSITIONS v CODE sa urcuju vo FORMATE [MODULE_NAME!FUNCTION_NAME+OFFSET], kde VALUE [MODULE_NAME] je nazov MODULE, VALUE [FUNCTION_NAME] je nazov FUNCTION a VALUE [OFFSET] je OFFSET v danej FUNCTION.
+2. DEBUGGER je CASE INSENSITIVE. NAMES pouzite v COMMANDS nemusia respektovat CASE jednotlivych CHARACTERS.
+3. Na VALUES ulozenych v REGISTERS sa je mozne odkazovat pomocou SYNTAX [@REGISTER_NAME], kde VALUE [REGISTER_NAME] je nazov REGISTER.
+4. Na PLATFORM x64 su INTEGER a POINTER PARAMETERS ukladane do REGISTERS v nasledujucom poradi.
+   A. REGISTER [RCX].
+   B. REGISTER [RDX].
+   C. REGISTER [R8].
+   D. REGISTER [R9].
+5. Na PLATFORM x64 sa RETURN VALUES z FUNCTIONS ukladaju do REGISTER [EAX], alebo REGISTER [RAX].
+6. KEY [Control-Break] umoznuje zastavit DEBUGGED PROCESS.
+7. Ak je DEBUGGED PROCESS ukonceny, DEBUGER automaticky vyvola BREAKPOINT.
+8. Pri DRIVER DEBUGGING ak je potrebne vykona DEBUGGING casti DRIVER CODE, ktory sa spusti hned po spusteni DRIVER, je nutne vykonat nasledujuce kroky.
+   A. Pomocou DEBUGGER sa pripojit na KERNEL na REMOTE MACHINE, kde je uz DRIVER REGISTERED, ale nie je spusteny.
+   !!! B. V DEBUGGER spustit COMMAND [bu MODULE_NAME!FUNCTION_NAME+ADDRESS], kde VALUE [MODULE_NAME] reprezentuje nazov DRIVER bez EXTENSTION [.SYS], VALUE [FUNCTION_NAME] je nazov FUNCTION, ktora ma byt DEBUGGED a VALUE [ADDRESS] je relativna ADDRESS v CODE od zaciatku FUNCTION.
+   !!!!! C. COMMAND [bu MODULE_NAME!FUNCTION_NAME+ADDRESS] vytvara UNRESOLVED BREAKPOINT. WINDOWS pri nacitani kazdeho noveho MODULE sa pokusa spravit RESOLVING UNRESOLVED BREAKPOINT. To umoznuje chytit BREAKPOINT aj v MODULE (DRIVER), ktory este nebol nahrany do WINDOWS.
+   !!! D. Po zachyteni BREAKPOINT sa odporuca spustit COMMAND [.reload], aby boli SYMBOLS pre dany DRIVER nahrane.
+//----------------------------------------------------------------------------------------------------------------------
