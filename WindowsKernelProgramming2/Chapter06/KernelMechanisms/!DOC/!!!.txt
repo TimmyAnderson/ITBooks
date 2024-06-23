@@ -1,0 +1,789 @@
+//----------------------------------------------------------------------------------------------------------------------
+1. Solution demonstruje zakladne mechanizmy KERNEL ako napriklad IRQL ci LOCKING.
+2. INTERRUPT je mechanizmus ktorym HW DEVICES notifikuju CPU o skonceni IO OPERATION. Ak HW DEVICE skonci IO OPERATION, vykona nasledujuce kroky.
+   A. HW DEVICE, ktory skoncil IO OPERATION zasle INTERRUPT.
+   B. INTERRUPT je zachyteny INTERRUPT CONTROLLER HW DEVICE, ktory preposle INTERRUPT do CPU.
+   C. CPU ako dosledok vzniku INTERRUPT spusti asociovanu INTERRUPT SERVICE ROUTINE (ISR), ktora dany INTERRUPT spracuje.
+!!! 3. Kazdy CPU ma asociovanu INTERRUPT REQUEST LEVEL (IRQL). Pre INTERRUPT REQUEST LEVEL platia nasledujuce fakty.
+   A. INTERRUPT REQUEST LEVEL urcuje INTERRUPT PRIORITY v ktorej dane CPU v danej chvili bezi.
+   B. Hodnotu INTERRUPT REQUEST LEVEL pre INTERRUPT zaslany danym HW DEVICE urcuje HAL.
+   C. INTERRUPT REQUEST LEVEL je na CPU spravidla implementovana ako REGISTER. Teda ako osobitny STORAGE na CPU.
+   D. CODE beziaci na danom INTERRUPT REQUEST LEVEL moze byt INTERRUPTED iba INTERRUPT SERVICE ROUTINE, ktora ma VYSSI INTERRUPT REQUEST LEVEL ako aktualny.
+4. INTERRUPT REQUEST LEVEL sa aplikuje nasledujucim sposobom.
+   A. THREAD ktory bezi na danom CPU bezi v [IRQL=0].
+   B. HW DEVICE zasle na CPU INTERRUPT, ktoremu HAL priradi [IRQL=5].
+   !!! C. Kedze [5>0], WINDOWS ulozi CPU CONTEXT (REGISTERS) na CURRENT THREAD KERNEL STACK a zvysi IRQL na [IRQL=5].
+   D. CPU zacne vykonat prislusnu INTERRUPT SERVICE ROUTINE pre INTERRUPT s IRQL [IRQL=5].
+   E. CPU po skonceni INTERRUPT SERVICE ROUTINE s IRQL [IRQL=5], je IRQL vrateny na povodnu [IRQL=0] a z CURRENT THREAD KERNEL STACK je obnoveny CPU CONTEXT.
+   F. CPU pokracuje vo vykonavani CODE na IRQL [IRQL=0].
+5. INTERRUPTS mozu byt prerusene INTERRUPTS s vyssim INTERRUPT REQUEST LEVEL.
+   A. THREAD ktory bezi na danom CPU bezi v [IRQL=0].
+   B. HW DEVICE zasle na CPU INTERRUPT, ktoremu HAL priradi [IRQL=5].
+   !!! C. Kedze [5>0], WINDOWS ulozi CPU CONTEXT (REGISTERS) na CURRENT THREAD KERNEL STACK a zvysi IRQL na [IRQL=5].
+   D. CPU zacne vykonat prislusnu INTERRUPT SERVICE ROUTINE pre INTERRUPT s IRQL [IRQL=5].
+   !!! E. Ak pocas vykonavania INTERRUPT SERVICE ROUTINE pre IRQL [IRQL=5] pride iny INTERRUPT s IRQL [IRQL<=5], tak tento NEMOZE vykonat INTERRUPT INTERRUPT SERVICE ROUTINE beziacej v IRQL [IRQL=5].
+   !!!!! F. Ak pocas vykonavania INTERRUPT SERVICE ROUTINE pre IRQL [IRQL=5] pride INTERRUPT s IRQL [IRQL=8], WINDOWS ulozi CPU CONTEXT (REGISTERS) na CURRENT THREAD KERNEL STACK a zvysi IRQL na [IRQL=8].
+   !!! G. CPU zacne vykonat prislusnu INTERRUPT SERVICE ROUTINE pre INTERRUPT s IRQL [IRQL=8].
+   H. CPU po skonceni INTERRUPT SERVICE ROUTINE s IRQL [IRQL=8], je IRQL vrateny na povodnu [IRQL=5] a z CURRENT THREAD KERNEL STACK je obnoveny CPU CONTEXT.
+   !!! I. CPU pokracuje vo vykovavani INTERRUPT SERVICE ROUTINE pre INTERRUPT s IRQL [IRQL=5].
+   J. CPU po skonceni INTERRUPT SERVICE ROUTINE s IRQL [IRQL=5], je IRQL vrateny na povodnu [IRQL=0] a z CURRENT THREAD KERNEL STACK je obnoveny CPU CONTEXT.
+   K. CPU pokracuje vo vykonavani CODE na IRQL [IRQL=0].
+6. Medzi THREADS a INTERRUPTS je nasledujuci vztah.
+   A. WINDOWS nema specificky THREAD v ktorom by sa spracovavali INTERRUPT SERVICE ROUTINES. INTERRUPT SERVICE ROUTINES su VZDY spracovane CURRENT THREAD, ktory na danom CPU prave bezi.
+   !!!!! B. Po zvyseni IRQL na [IRQL>=DISPATCH_LEVEL] na CPU NEMOZE dojst ku THREAD CONTEXT SWITCH. CODE bezi na CURRENT THREAD. Je to preto, lebo THREAD SCHEDULER na kazdom CPU bezi v [IRQL=DISPATCH_LEVEL]. A kedze CPU moze byt INTERRUPTED iba VYSSIM IRQL tak po spusteni INTERRUPT SERVICE ROUTINE, ktora VZDY bezi s [IRQL>=DISPATCH_LEVEL] na danom THREADE uz NEMOZE byt spusteny THREAD SCHEDULER a tym padom NEMOZE dojst k THREAD CONTEXT SWITCH.
+   !!!!! C. Ak THREAD bezi v IRQL [IRQL>=DISPATCH_LEVEL] tak moze pristupovat IBA k PHYSICAL MEMORY. Pokus o pristup k PAGED MEMORY skonci SYSTEM CRASH.
+   !!!!! D. Ak THREAD bezi v IRQL [IRQL>=DISPATCH_LEVEL] tak moze vykonat WAITING nad KERNEL OBJECT ak je [TIMEOUT!=0]. Je to preto, lebo na danom CPU uz NEMOZE byt spusteny THREAD SCHEDULER, ktory bezi v IRQL [IRQL=DISPATCH_LEVEL] a tym padom by LOCKED THREAD nemal kto prebudit. Preto pokus o WAITING nad KERNEL OBJECT v IRQL [IRQL>=DISPATCH_LEVEL] skonci SYSTEM CRASH. WINDOWS vsak umoznuje WAITING nad KERNEL OBJECT ak je [TIMEOUT=0].
+   E. Vykonavanie INTERRUPT SERVICE ROUTINES pre dany THREAD neznizuje THREAD QUANTUM.
+7. WINDOWS podporuje nasledujuce typy INTERRUPT REQUEST LEVELS.
+   A. LEVEL [PASSIVE_LEVEL=0] je normalny IRQL v ktorom bezi vsetok USER MODE CODE a vacsina KERNEL MODE CODE. THREAD SCHEDULING bezi v tomto IRQL normalne.
+   B. LEVEL [APC_LEVEL=1] sluzi na spustenie ASYNCHRONOUS PROCEDURE CALLS. THREAD SCHEDULING bezi v tomto IRQL normalne.
+   !!! C. LEVEL [DISPATCH_LEVEL=2] neumoznuje spustit THREAD SCHEDULING, kedze THREAD SCHEDULER bezi v [DISPATCH_LEVEL=2]. Zaroven nie je mozny pristup k PAGED MEMORY, ani vykonat WAITING na KERNEL OBJECTS.
+   !!! D. LEVELS [DEVICE_IRQLS=<3,11>] suzia na vykonavanie INTERRUPT SERVICE ROUTINES pre jednotlive HW DEVICES. Platia rovnake obmedzenia ako pre LEVEL [DISPATCH_LEVEL=2].
+   !!! E. LEVEL [HIGH_LEVEL=15] je najvyssi mozne LEVEL. Platia rovnake obmedzenia ako pre LEVEL [DISPATCH_LEVEL=2].
+8. DEBUGGER [WinDbg.exe] podporuje nasledujuce COMMANDS pre pracu s INTERRUPTS.
+   A. COMMAND [!irql] vracia INTERRUPT REQUEST LEVEL daneho CPU.
+   B. COMMAND [!idt] vracia zoznam registrovanych INTERRUPTS na danom SYSTEME.
+9. WINDOWS KERNEL umoznuje pracovat s IRQL pomocou nasledujucich FUNCTION.
+   A. FUNCTION [KfRaiseIrql()] ZVYSUJE aktualnu hodnotu IRQL.
+   B. FUNCTION [KeLowerIrql()] ZNIZUJE aktualnu hodnotu IRQL.
+   C. FUNCTION [KeGetCurrentIrql()] vracia aktualnu hodnotu IRQL.
+10. Pre FUNCTION [KfRaiseIrql()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [NTKERNELAPI KIRQL KfRaiseIrql(KIRQL NewIrql)].
+   B. PARAMETER [KIRQL NewIrql] urcuje hodnotu IRQL na ktoru sa ma IRQL zvysit.
+   C. RETURN VALUE TYPE [KIRQL] vracia povodnu hodnotu IRQL.
+   D. FUNCTION zvysuje IRQL na novu hodnotu.
+11. Pre FUNCTION [KeLowerIrql()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [NTKERNELAPI VOID KeLowerIrql(KIRQL NewIrql)].
+   B. PARAMETER [KIRQL NewIrql] urcuje hodnotu IRQL na ktoru sa ma IRQL znizit.
+   C. FUNCTION znizuje IRQL na novu hodnotu.
+12. Pre FUNCTION [KeGetCurrentIrql()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [NTHALAPI KIRQL KeGetCurrentIrql(void)].
+   B. RETURN VALUE TYPE [KIRQL] vracia aktualnu hodnotu IRQL.
+   C. FUNCTION vracia aktualnu hodnotu IRQL.
+13. Pre programovu zmenu IRQL platia nasledujuce fakty.
+   A. FUNCTION [KfRaiseIrql()] by mala IRQL ZVYSIT, inak dojde k SYSTEM CRASH.
+   B. FUNCTION [KeLowerIrql()] by mala IRQL ZNIZIT, inak dojde k SYSTEM CRASH.
+   C. CUSTOM FUNCTION by mala VZDY pri zmene IRQL pred svojim ukoncenim ju vratit na povodnu VALUE.
+14. Vztah medzi IRQL a THREAD PRIORITY je nasledujuci.
+   A. IRQL je ATTRIBUTE CPU, kym THREAD PRIORITY je ATTRIBUTE THREAD.
+   B. THREAD PRIORITY sa aplikuje iba ak je IRQL [IRQL<2], pretoze THREAD SCHEDULER bezi na IRQL [IRQL=2].
+   C. Ak je IRQL v [IRQL>=2], tak CPU bezi neustale v tom istom THREADE, ktory nemoze byt CONTEXT SWITCHED.
+   D. CPU by malo v IRQL [IRQL>=2] stravit co najmanej casu.
+   !!! E. WINDOWS zobrazuje cas CPU straveneho v IRQL [IRQL>=2] pomocou PSEUDOPROCESS [System Interrupts] (v TOOL [Process Explorer] ma NAME [Interrupts]), ktoreho PARAMETERS je mozne zobrazit v TOOL [Task Manager], alebo TOOL [Process Explorer].
+15. Kazda IO OPERATION sa vo WINDOWS vykonava nasledujucim sposobom.
+   A. USER MODE CODE spusti vykonanie IO OPERATION napriklad pomocou FUNCTION [ReadFile()].
+   B. FUNCTION [ReadFile()] inicializuje IO OPERATION vytvorenim IRP, ktore je odoslane do KERNEL MODE.
+   !!! C. V pripade, ze IO OPERATION je realizovana ASYNCHRONNE, tak THREAD moze po skonceni FUNCTION [ReadFile()] okamzite pokracovat v dalsom CODE.
+   D. V KERNEL MODE IRP prechadza cez vsetky DRIVERS az kym sa nedostane k DISK DRIVER, ktory ma nacitat data z DISKU.
+   E. DISK DRIVER inicuje IO OPERATION na DISKU.
+   F. CPU, ktory inicioval IO OPERATION moze pokracovat v cinnosti.
+   !!! G. ked DISK dokonci IO OPERATION vyvola INTERRUPT.
+   H. INTERRUPT CONTROLLER vyberie CPU, ktory dany INTERRUPT spracuje vyvolanim INTERRUPT SERVICE ROUTINE.
+   !!!!! I. INTERRUPT SERVICE ROUTINE je spustena v IRQL [DEVICE_IRQLS]. V tomto IRQL je mozne realizovat iba velmi obmedzene mnozstvo KERNEL FUNCTIONS.
+   !!! J. INTERRUPT SERVICE ROUTINE kontaktuje DISK a nacita vysledky IO OPERATION.
+   !!!!! K. Po nacitani vysledkov IO OPERATION by INTERRUPT SERVICE ROUTINE mala volat KERNEL FUNCTION [IoCompleteRequest()] na ukoncenie IRP, ktore iniciovali IO OPERATION. Problem je v tom, ze KERNEL FUNCTION [IoCompleteRequest()] moze bezat IBA v IRQL [DISPATCH_LEVEL], nie vsak v IRQL [DEVICE_IRQLS]. Ak by sa DRIVER pokusil zavolat KERNEL FUNCTION [IoCompleteRequest()] v IRQL [DEVICE_IRQLS], dojde k SYSTEM CRASH.
+   !!!!! L. Riesenim problem s volanim KERNEL FUNCTION [IoCompleteRequest()] v IRQL [DEVICE_IRQLS] je pouzitie DEFERRED PROCEDURE CALL (DPC), kde DEFERRED PROCEDURE bezi v IRQL [DISPATCH_LEVEL] a tym padom moze volat KERNEL FUNCTION [IoCompleteRequest()].
+!!! 16. Dovod pre ktory NIE JE mozne volat FUNCTION [IoCompleteRequest()] v IRQL [DISPATCH_LEVEL] je ten, ze FUNCTION [IoCompleteRequest()] je pomerne casovo narocna a jej beh v IRQL [DEVICE_IRQLS] by znemoznil spracovanie INTERRUPS s nizsim alebo rovnym IRQL na pomerne dlhu dobu.
+!!!!! 17. INTERRUPT SERVICE ROUTINE nemoze riesit volanie FUNCTION [IoCompleteRequest()] znizenim IRQL na IRQL [DISPATCH_LEVEL], pretoze by to mohlo viest k DEADLOCKS.
+18. Pre DEFERRED PROCEDURE CALLS platia nasledujuce fakty.
+   A. DEFERRED PROCEDURE CALLS umoznuju v INTERRUPT SERVICE ROUTINES, ktore bezia v IRQL [DEVICE_IRQLS] zaregistrovat vykonanie CODE, ktory pobezi v IRQL [DISPATCH_LEVEL].
+   B. DEFERRED PROCEDURE CALLS su reprezentovane STRUCTURE [KDPC], ktora musi byt alokovana na NON-PAGED MEMORY a inicializovana pomocou FUNCTION [KeInitializeDpc()].
+   C. DEFERRED PROCEDURE CALLS umoznuju vlozit poziadavku na vykonanie DEFERRED PROCEDURE pomocou FUNCTION [KeInsertQueueDpc()], ktora moze byt volana pre lubovolne IRQL, teda aj v INTERRUPT SERVICE ROUTINES.
+   D. DEFERRED PROCEDURES su vykonavane vzdy v IRQL [DISPATCH_LEVEL] a teda mozu volat daleko vacsi pocet KERNEL FUNCTIONS ako je mozne volat v INTERRUPT SERVICE ROUTINES.
+   E. DEFERRED PROCEDURES mozu byt vykonane aj na inom CPU ako CURRENT CPU volanim FUNCTION [KeSetTargetProcessorDpc()].
+!!! 19. DEFERRED PROCEDURE CALLS su implementovane nasledovne.
+   A. Kazdy CPU ma asociovanu vlastnu DEFERRED PROCEDURE CALLS QUEUE.
+   B. BY-DEFAULT, FUNCTION [KeInsertQueueDpc()] uklada REQUEST na vykonanie DEFERRED PROCEDURE do DEFERRED PROCEDURE CALLS QUEUE pre CURRENT CPU.
+   C. Ked vsetky INTERRUPT SERVICE ROUTINES, ktore na danom CPU mali byt vykonane skoncia, WINDOWS vykona kontrolu ci v DEFERRED PROCEDURE CALLS QUEUE nie su nejake REQUESTS.
+   !!! D. Ak sa v DEFERRED PROCEDURE CALLS QUEUE nachadzaju REQUESTS, tak WINDOWS znizi IRQL na IRQL [DISPATCH_LEVEL] a vykona vsetky REQUESTS v DEFERRED PROCEDURE CALLS QUEUE volanim prislusnych DEFERRED PROCEDURES. Volania DEFERRED PROCEDURES sa vykonavaju pomocou ALGORITH FIRST IN FIRST OUT.
+   E. Ak su vsetky REQUESTS v DEFERRED PROCEDURE CALLS QUEUE spracovane, WINDOWS znizi IRQL na IRQL [0].
+20. Pre FUNCTION [KeInitializeDpc()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [void KeInitializeDpc(PRKDPC Dpc, PKDEFERRED_ROUTINE DeferredRoutine, PVOID DeferredContext)].
+   B. PARAMETER [PRKDPC Dpc] obsahuje STRUCTURE [KDPC], ktora musi byt alokovana na NON-PAGED MEMORY.
+   C. PARAMETER [PKDEFERRED_ROUTINE DeferredRoutine] obsahuje POINTER na CALLBACK FUNCTION, ktora sa vyvola ako DEFERRED PROCEDURE. DEFERRED PROCEDURE ma PROTOTYPE [void KdeferredRoutine(_KDPC *Dpc, PVOID DeferredContext, PVOID SystemArgument1, PVOID SystemArgument2)].
+   D. PARAMETER [PVOID DeferredContext] obsahuje POINTER na CUSTOM DATA, ktore budu zaslane do DEFERRED PROCEDURE.
+   E. FUNCTION registruje STRUCTURE [KDPC], aby bola pouzitelna pre DEFERRED PROCEDURE CALLS.
+21. Pre FUNCTION [KeInsertQueueDpc()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [BOOLEAN KeInsertQueueDpc(PRKDPC Dpc, PVOID SystemArgument1, PVOID SystemArgument2)].
+   B. PARAMETER [PRKDPC Dpc] obsahuje STRUCTURE [KDPC], ktora reprezentuje OBJECT [KDPC].
+   C. PARAMETER [PVOID SystemArgument1] urcuje DRIVER SPECIFIC CONTEXT DATA.
+   D. PARAMETER [PVOID SystemArgument2] urcuje DRIVER SPECIFIC CONTEXT DATA.
+   E. RETURN VALUE TYPE [BOOLEAN] vracia informaciu ci REQUEST na vykonanie DEFERRED PROCEDURE bol ulozeny do DEFERRED PROCEDURE CALLS QUEUE. REQUEST na vykonanie DEFERRED PROCEDURE NIE JE vlozeny do DEFERRED PROCEDURE CALLS QUEUE, ak sa OBJECT [KDPC] uz v DEFERRED PROCEDURE CALLS QUEUE nachadza.
+   F. FUNCTION ulozi do REQUEST na vykonanie DEFERRED PROCEDURE do DEFERRED PROCEDURE CALLS QUEUE.
+22. Pre FUNCTION [KeRemoveQueueDpc()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [BOOLEAN KeRemoveQueueDpc(PRKDPC Dpc)].
+   B. PARAMETER [PRKDPC Dpc] obsahuje STRUCTURE [KDPC], ktora ma byt odstranena z DEFERRED PROCEDURE CALLS QUEUE.
+   C. RETURN VALUE TYPE [BOOLEAN] vracia informaciu ci z DEFERRED PROCEDURE CALLS QUEUE bol odstraneny REQUEST na vykonanie DEFERRED PROCEDURE.
+   D. FUNCTION odstrani REQUEST na vykonanie DEFERRED PROCEDURE z DEFERRED PROCEDURE CALLS QUEUE.
+23. WINDOWS umoznuje vyuzivat DEFERRED PROCEDURE CALLS aj pri pouzivani TIMERS.
+   A. TIMER vyuzivajuci DEFERRED PROCEDURE CALLS je reprzentovany STRUCTURE [KTIMER], ktora musi byt alokovana v NON-PAGED MEMORY.
+   B. TIMER sa inicializuje volanim FUNCTION [KeInitializeTimer()].
+   C. TIMER sa nastavi na spustenie DEFERRED PROCEDURE volanim FUNCTION [KeSetTimer()].
+   !!! D. Ked exspiruje TIMEOUT, TIMER vlozi do DEFERRED PROCEDURE CALLS QUEUE novy REQUEST na spustenie DEFERRED PROCEDURE. Ta je spustena ako DEFERRED PROCEDURE v IRQL [DISPATCH_LEVEL].
+   !!! E. Vyhodou pouzitia DEFERRED PROCEDURE CALLS v TIMER je to, ze DEFERRED PROCEDURE je spustena v IRQL [DISPATCH_LEVEL] a teda predtym ako sa na danom CPU spusti CODE v IRQL [0].
+   F. OBJECT [KTIMER] je WAITABLE a je pren moze volat WAIT FUNCTION [KeWaitForSingleObject()].
+   !!!!! G. Pouzitie DEFERRED PROCEDURE CALLS v TIMER je OPTIONAL. Ak sa v TIMER NEPOUZIJE STRUCTURE [KDPC], tak TIMER sluzi iba ako WAITABLE OBJECT.
+   !!! H. TIMER je pri ukoceni DRIVER v CUSTOM FUNCTION [DriverUnload()] zastavit volanim FUNCTION [KeCancelTimer()].
+24. Pre FUNCTION [KeInitializeTimer()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [void KeInitializeTimer(PKTIMER Timer)].
+   B. PARAMETER [PKTIMER Timer] obsahuje STRUCTURE [KTIMER], ktora musi byt alokovana na NON-PAGED MEMORY.
+   C. FUNCTION registruje STRUCTURE [KTIMER], aby bola pouzitelna ako TIMER.
+25. Pre FUNCTION [KeSetTimer()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [BOOLEAN KeSetTimer(PKTIMER Timer, LARGE_INTEGER DueTime, PKDPC Dpc)].
+   B. PARAMETER [PKTIMER Timer] obsahuje TIMER, ktory sa ma nastavit na spustenie.
+   C. PARAMETER [LARGE_INTEGER DueTime] urcuje ABSOLUTE TIME (kladna VALUE), alebo RELATIVE TIME (zaporna VALUE) kedy ma TIMER EXSPIROVAT.
+   D. PARAMETER [PKDPC Dpc] obsahuje OPTIONAL STRUCTURE [KDPC], ktora urcuje DEFERRED PROCEDURE CALLS QUEUE do ktorej sa ma ulozit REQUEST na vykonanie DEFERRED PROCEDURE po exspiracii TIMER.
+   E. RETURN VALUE TYPE [BOOLEAN] vracia informaciu ci REQUEST na spustenie TIMER bol ulozeny do TIMER QUEUE. REQUEST na spustenie TIMER NIE JE vlozeny do TIMER QUEUE QUEUE, ak sa OBJECT [KTIMER] uz v TIMER QUEUE nachadza.
+   F. FUNCTION nastavuje ABSOLUTE, alebo RELATIVE kedy ma TIMER EXSPIROVAT. Ak je pouzita STRUCTURE [KDPC], tak sa po exspiracii TIMER vyvola DEFERRED PROCEDURE. Kedze TIMER je WAITABLE OBJECT, je mozne nan aplikovat WAIT FUNCTIONS.
+26. Pre FUNCTION [KeCancelTimer()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [BOOLEAN KeCancelTimer(PKTIMER Timer)].
+   B. PARAMETER [PKTIMER Timer] obsahuje TIMER, ktory ma byt zastaveny.
+   C. RETURN VALUE TYPE [BOOLEAN] vracia informaciu ci TIMER OBJECT bol zaradeny do TIMER QUEUE.
+   D. FUNCTION zastavuje volanie TIMER.
+27. ASYNCHRONOUS PROCEDURE CALLS (APC) je mechanizmus umoznujuci vykonat CALLBACK FUNCTIONS na konkretnom THREADE. Pre ASYNCHRONOUS PROCEDURE CALLS platia nasledujuce fakty.
+   A. ASYNCHRONOUS PROCEDURE CALLS umoznuje vyvolat CALLBACK FUNCTION na konkretnom THREADE.
+   B. Kazdy THREAD ma ASYNCHRONOUS PROCEDURE CALLS QUEUE do ktorej sa ukladaju REQUESTS na vykonanie ASYNCHRONOUS PROCEDURE CALLS.
+   C. ASYNCHRONOUS PROCEDURE CALLS mozu bezat v USER MODE, alebo v KERNEL MODE.
+28. WINDOWS podporuje 3 typy ASYNCHRONOUS PROCEDURE CALLS.
+   A. USER MODE APC.
+   B. NORMAL KERNEL MODE APC.
+   C. SPECIAL KERNEL MODE APC.
+29. Pre USER MODE APC platia nasledujuce fakty.
+   A. USER MODE APC sa vykonavaju iba ak je THREAD v ALERTABLE STATE.
+   !!! B. THREAD je v ALERTABLE STATE vtedy, ak sa volala niektora z WAIT FUNCTIONS (napriklad FUNCTION [WaitForSingleObjectEx()]) pricom bol nastaveny priznak, aby WAITING bol ALERTABLE.
+   !!!!! C. Ked je THREAD v ALERTABLE STATE, tak WINDOWS zistuje ci APC QUEUE neobsahuje nejake REQUESTS na vykonanie APC a ak ano, tak ich vykona a to aj napriek tomu, ze THREAD je vo WAITING STATE.
+   D. USER MODE APC sa vykonavaju v IRQL [PASSIVE_LEVEL].
+30. Pre NORMAL KERNEL MODE APC platia nasledujuce fakty.
+   A. NORMAL KERNEL MODE APC sa vykonavaju v KERNEL MODE v IRQL [PASSIVE_LEVEL].
+   B. NORMAL KERNEL MODE APC sa vykonaju pred vykonanim USER MODE CODE a USER MODE APC.
+   C. NORMAL KERNEL MODE APC je UNDOCUMENTED.
+31. Pre SPECIAL KERNEL MODE APC platia nasledujuce fakty.
+   A. SPECIAL KERNEL MODE APC sa vykonavaju v KERNEL MODE v IRQL [APC_LEVEL].
+   B. SPECIAL KERNEL MODE APC sa vykonaju pred vykonanim USER MODE CODE, USER MODE APC a NORMAL KERNEL MODE APC.
+   C. SPECIAL KERNEL MODE APC sa pouzivaju IO MANAGER na ukocenie IO OPERATIONS.
+   D. SPECIAL KERNEL MODE APC je UNDOCUMENTED.
+!!! 32. USER MODE CODE moze pouzivat USER MODE APC nasledujucim sposobom.
+   A. THREAD inicializuje vykonanie ASYNCHRONOUS IO OPERATION pomocou FUNCTION [ReadFileEx()], alebo FUNCTION [WriteFileEx()].
+   B. Ked ASYNCHRONOUS IO OPERATION skonci, do APC QUEUE asociovanej s THREAD, ktory inicioval ASYNCHRONOUS IO OPERATION vlozi REQUEST na vykonanie USER MODE APC.
+   !!! C. Ked sa THREAD dostane do ALERTABLE STATE (napriklad volanim FUNCTION [WaitForSingleObjectEx()]), THREAD hoci je vo WAITING STATE, vykona USER MODE APC, ktora ukonci ASYNCHRONOUS IO OPERATION.
+   !!! D. USER MODE CODE moze aj explicitne poziadat o vykonanie USER MODE APC volanim USER MODE FUNCTION [QueueUserAPC()].
+33. KERNEL umoznuje THREADU vstupit do specialneho REGION, ktory obmedzuje, ktore APC mozu v danom REGION byt vykonavane. WINDOWS definuje nasledujuce REGIONS.
+   A. CRITICAL REGIONS.
+   B. GUARDED REGIONS.
+34. Pre CRITICAL REGIONS platia nasledujuce fakty.
+   !!! A. CRITICAL REGIONS su REGIONS v ktorych MOZU bezat IBA SPECIAL KERNEL MODE APC. USER MODE APC a NORMAL KERNEL MODE APC v CRITICAL REGIONS bezat NEMOZU.
+   B. Do CRITICAL REGIONS sa vstupuje volanim FUNCTION [KeEnterCriticalRegion()].
+   C. Z CRITICAL REGIONS sa vystupuje volanim FUNCTION [KeLeaveCriticalRegion()].
+   D. CRITICAL REGIONS su RECURSIVE.
+35. Pre GUARDED REGIONS platia nasledujuce fakty.
+   !!! A. GUARDED REGIONS su REGIONS v ktorych NEMOZU bezat ZIADNE APC.
+   B. Do GUARDED REGIONS sa vstupuje volanim FUNCTION [KeEnterGuardedRegion()].
+   C. Z GUARDED REGIONS sa vystupuje volanim FUNCTION [KeLeaveGuardedRegion()].
+   D. GUARDED REGIONS su RECURSIVE.
+36. Pre FUNCTION [KeEnterCriticalRegion()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [void KeEnterCriticalRegion(void)].
+   B. FUNCTION umoznuje CODE vstupit do CRITICAL REGION.
+37. Pre FUNCTION [KeLeaveCriticalRegion()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [void KeLeaveCriticalRegion(void)].
+   B. FUNCTION umoznuje CODE vystupit z CRITICAL REGION.
+38. Pre FUNCTION [KeEnterGuardedRegion()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [void KeEnterGuardedRegion(void)].
+   B. FUNCTION umoznuje CODE vstupit do GUARDED REGION.
+39. Pre FUNCTION [KeLeaveGuardedRegion()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [void KeLeaveGuardedRegion(void)].
+   B. FUNCTION umoznuje CODE vystupit z GUARDED REGION.
+40. WINDOWS KERNEL podporuje spracovanie EXCEPTIONS pomocou STRUCTURED EXCEPTION HANDLING (SEH). Pre STRUCTURED EXCEPTION HANDLING platia nasledujuce fakty.
+   A. STRUCTURED EXCEPTION HANDLING je podporovany v USER MODE aj KERNEL MODE.
+   !!! B. EXCEPTIONS v STRUCTURED EXCEPTION HANDLING su zachytavane pomocou INTERRUPT DISPATCH TABLE. INTERRUPT DISPATCH TABLE okrem mapovania INTERRUPTS na prislusne INTERRUPT SERVICE ROUTINES obsahuje aj mapovanie EXCEPTIONS na EXCEPTION HANDLERS, ktore su vyvolane pri vzniku danej EXCEPTION.
+   C. EXCEPTIONS moze generovat priamo CPU, alebo KERNEL na zaklade vzniknutej CPU EXCEPTION.
+   D. Pri vzniku EXCEPTION WINDOWS hlada BLOCK [__except], ktory by danu EXCEPTION mohol spracovat. Ak ho nenajde v CURRENT FUNCTION, postupuje nahor CALL STACK v hladani BLOCK [__except]. Ak sa BLOCK [__except] vobec nenajde, dojde k SYSTEM CRASH.
+   E. Spracovanie EXCEPTIONS moze byt NESTED. To znamena, ze jednotlive BLOCKS pracujuce s EXCEPTIONS mozu byt NESTED.
+   !!! F. EXCEPTIONS mozu byt vyvolane volanim FUNCTION [ExRaiseStatus()].
+41. DEBUGGER [WinDbg.exe] podporuje COMMAND [!idt], ktory zobrazuje obsah INTERRUPT DISPATCH TABLE. Tak okrem mapovania INTERRUPTS na prislusne INTERRUPT SERVICE ROUTINES obsahuje aj mapovanie EXCEPTIONS na EXCEPTION HANDLERS, ktore su vyvolane pri vzniku danej EXCEPTION.
+42. Priklady EXCEPTIONS v STRUCTURED EXCEPTION HANDLING.
+   A. EXCEPTION [DIVISION BY ZERO] - VALUE [0]. EXCEPTION je generovana priamo CPU pri pokuse o delenie 0.
+   B. EXCEPTION [BREAKPOINT] - VALUE [3]. EXCEPTION generovana CPU je odoslana na pripojeny KERNEL DEBUGGER.
+   C. EXCEPTION [INVALID OPCODE] - VALUE [6]. EXCEPTION generovana CPU vznika ak CODE obsahuje neplatnu instrukciu pre CPU.
+   D. EXCEPTION [FAULT PAGE] - VALUE [14]. EXCEPTION generovana CPU vznika ak v PAGE TABLE ENTRY prekladajuca danu PAGE z VIRTUAL MEMORY na PHYSICAL MEMORY ma priznak [VALID] nastaveny na VALUE [0] co znamena, ze dana PAGE sa nenachadza v PHYSICAL MEMORY, ale vo VIRTUAL MEMORY.
+   !!! E. EXCEPTION [ACCESS VIOLATION]. EXCEPTION generovana KERNEL vznika vtedy, ak MEMORY MANAGER zachytil EXCEPTION [FAULT PAGE], pricom zistil, ze dana PAGE sa nenachaza ani vo VIRTUAL MEMORY a tym padom je NEPLATNA.
+43. VISUAL C++ rozsiril C a C++ o nasledujuce KEYWORDS, ktore umoznuju pracu s EXCPTIONS v STRUCTURED EXCEPTION HANDLING.
+   A. KEYWORD [__try] oznacuje zaciatok bloku v ktorom moze vznikut EXCEPTION.
+   B. KEYWORD [__except] oznacuje zaciatok bloku v ktorom dochadza k spracovaniu zachytenych EXCEPTIONS.
+   C. KEYWORD [__finally] oznacuje zaciatok bloku ktory sa vykona bez ohladu na to ci BLOCK [__try] prebehol normalne, alebo doslo k vzniku EXCEPTION.
+   D. KEYWORD [__leave] umoznuje okamzite skoncit BLOCK [__try] a skoncit na BLOCK BLOCK [__finally].
+44. VISUAL C++ umoznuje nasledujuce kombinacie pouzitia EXCEPTION KEYWORDS.
+   A. KEYWORD [__try] nasledovany KEYWORD [__except].
+   B. KEYWORD [__try] nasledovany KEYWORD [__finally].
+45. KEYWORD [__except] umoznuje definovat EXPRESSION, ktora urcuje ci dana EXCEPTION ma byt danym BLOCK [__except] spracovana. Platia nasledujuce fakty.
+   A. KEYWORD [__except] ma SYNTAX [__except(EXPRESSION){BLOCK_EXCEPT}], kde VALUE 'EXPRESSION' obsahuje EXPRESSION, ktora urci ci sa EXCEPTION ma spracovat v BLOCK 'BLOCK_EXCEPT'.
+   B. EXPRESSION moze obsahovat volanie MACRO [GetExceptionCode()], ktora vracia identifikator vznikutej EXCEPTION.
+   C. EXPRESSION musi vratit bud VALUE [EXCEPTION_CONTINUE_EXECUTION], VALUE [EXCEPTION_CONTINUE_SEARCH], alebo VALUE [EXCEPTION_EXECUTE_HANDLER].
+46. EXPRESSION v KEYWORD [__except] moze vracat jednu z nasledujucich VALUES.
+   A. VALUE [EXCEPTION_CONTINUE_EXECUTION] znamena, ze CODE danu EXCEPTION IGNORUJE a CODE ma pokracovat dalej v CODE v mieste kde EXCEPTION vznikla.
+   B. VALUE [EXCEPTION_CONTINUE_SEARCH] znamena, ze EXCEPTION NEMA byt spracovana v BLOCK [__except] a WINDOWS ma pokracovat v hladani ineho BLOCK [__except] v STACKU.
+   C. VALUE [EXCEPTION_EXECUTE_HANDLER] znamena, ze EXCEPTION MA byt spracovana v BLOCK [__except]. WINDOWS okamzite zacne vykonavat BLOCK [__except] a po jeho skonceni pokracuje v CODE za BLOCK [__except].
+47. Pre MACRO [GetExceptionCode()] platia nasledujuce fakty.
+   A. MACRO ma PROTOTYPE [DWORD GetExceptionCode(void)].
+   B. RETURN VALUE TYPE [DWORD] vracia CODE vzniknutej EXCEPTION v STRUCTURED EXCEPTION HANDLING.
+   C. MACRO vracia CODE vzniknutej EXCEPTION v STRUCTURED EXCEPTION HANDLING.
+!!!!! 48. KERNEL umoznuje spracovat EXCEPTION [ACCESS VIOLATION] v KERNEL nasledujucim sposobom.
+   !!! A. Ak EXCEPTION [ACCESS VIOLATION] vznikne pri pristupe k USER MODE MEMORY, KERNEL umoznuje takuto EXCEPTION zachytit. Dovodom je, ze USER MODE CODE moze do KERNEL MODE CODE poslat neplatnu MEMORY ADDRESS, alebo tato MEMORY ADDRESS mohla byt medzicasom vymazana. Ak by KERNEL neumoznil zachytit EXCEPTION [ACCESS VIOLATION], tak by doslo k SYSTEM CRASH a lubovolny USER MODE PROGRAM by mohol sposobit SYSTEM CRASH zaslanim neplatnej USER MODE ADDRESS do KERNEL.
+   B. Ak EXCEPTION [ACCESS VIOLATION] vznikne pri pristupe k USER MODE MEMORY, KERNEL NEUMOZNI takuto EXCEPTION zachytit a vyvola SYSTEM CRASH.
+49. Pre FUNCTION [ExRaiseStatus()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [void ExRaiseStatus(NTSTATUS Status)].
+   B. PARAMETER [NTSTATUS Status] urcuje CODE EXCEPTION, ktora sa ma hodit.
+   C. FUNCTION umoznuje hodit EXCEPTION v STRUCTURED EXCEPTION HANDLING.
+50. WINDOWS umoznuje v KERNEL MODE vyvolat SYSTEM CRASH. Platia nasledujuce fakty.
+   A. SYSTEM CRASH sa vyvolava volanim FUNCTION [KeBugCheckEx()].
+   B. SYSTEM CRASH ma CODE a OPTIONAL PARAMETERS. Ak CODE je niektory z oficialne definovanych WINDOWS CODES, potom OPTIONAL PARAMETERS musia mat taku istu semantiku ako ich definuje dany CODE.
+51. Pre FUNCTION [KeBugCheckEx()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [void KeBugCheckEx(ULONG BugCheckCode, ULONG_PTR BugCheckParameter1, ULONG_PTR BugCheckParameter2, ULONG_PTR BugCheckParameter3, ULONG_PTR BugCheckParameter4)].
+   B. PARAMETER [ULONG BugCheckCode] obsahuje BUG CHECK CODE.
+   C. PARAMETER [ULONG_PTR BugCheckParameter1] obsahuje OPTIONAL PARAMETER pre dany BUG CHECK CODE.
+   D. PARAMETER [ULONG_PTR BugCheckParameter2] obsahuje OPTIONAL PARAMETER pre dany BUG CHECK CODE.
+   E. PARAMETER [ULONG_PTR BugCheckParameter3] obsahuje OPTIONAL PARAMETER pre dany BUG CHECK CODE.
+   F. PARAMETER [ULONG_PTR BugCheckParameter4] obsahuje OPTIONAL PARAMETER pre dany BUG CHECK CODE.
+   G. FUNCTION vyvola vznik BUG CHECK.
+52. C++ umoznuje v KERNEL MODE vyuzit techniku RESOURCE AQUSITION IS INITIALIZATION (RAII) na bezpecnejsiu pracu s RESOURCES.
+!!!!! 53. Zasadnym problemom RESOURCE AQUSITION IS INITIALIZATION (RAII) v KERNEL MODE je to, ze pri vzniku EXCEPTION v STRUCTURED EXCEPTION HANDLING sa DESTRUCTOR daneho OBJECT NEZAVOLA. Je to dosledok toho, ze v KERNEL MODE C++ nepodporuje C++ RUNTIME a C++ COMPILER nie je integrovany s STRUCTURED EXCEPTION HANDLING. Takze DESTRUCTOR sa pri vzniku EXCEPTION NEZAVOLA a tym padom ani NEDOJDE k uvolneniu RESOURCE alokovanom v CONSTRUCTOR.
+54. Ak dojde k SYSTEM CRASH a zaroven je ku KERNEL pripojeny DEBUGGER, tak DEBUGGER hodi BREAKPOINT, aby bolo mozne analyzovat vznik SYSTEM CRASH.
+55. WINDOWS umoznuje pri vzniku SYSTEM CRASH generovat MEMORY DUMP. Pre generovanie MEMORY DUMP platia nasledujuce fakty.
+   A. Po vzniku SYSTEM CRASH je MEMORY DUMP zapisany na ZACIATOK PAGE FILE. Je to preto, lebo PAGE FILE je vzdy otvoreny a preto nie je treba vela operacii nad DISKOM, ktore by eventualne mohli sposobit dalsie skody.
+   B. Po RESTART, ak WINDOWS zisti, ze je MEMORY DUMP zapisany na ZACIATOK PAGE FILE, tak tento MEMORY DUMP prekopiruje do nastaveneho DUMP FILE.
+56. WINDOWS umoznuje generovat nasledujuce typy MEMORY DUMPS.
+   A. SMALL MEMORY DUMP. SMALL MEMORY DUMP ma dlzku iba 256 KB a obsahuje iba informacie o THREADE, ktory sposobil CRASH. To spravidla nepostacuje na uspesny DEBUGGING.
+   B. KERNEL MEMORY DUMP. KERNEL MEMORY DUMP obsahuje celu KERNEL MODE MEMORY, avsak neobsahuje USER MODE MEMORY. To spravidla staci na DEBUGGING, kedze USER MODE CODE nemoze priamo sposobit SYSTEM CRASH.
+   C. COMPLETE MEMORY DUMP. COMPLETE MEMORY DUMP obsahuje celu KERNEL MODE MEMORY a celu USER MODE MEMORY. MEMORY je ulozena kompletne, bez akejkolvek optimalizacie. To sposobuje generovanie obrovskeho DUMP FILE.
+   !!! D. AUTMATIC MEMORY DUMP. AUTMATIC MEMORY DUMP obsahuje celu KERNEL MODE MEMORY, ale NIE USER MODE MEMORY. Zaroven vsak WINDOWS pri spusteni alokuje v PAGE FILE dostatocny priestor, aby sa don vosie cely DUMP FILE, cim znizuje pravdepodobnost straty informacii pri SYSTEM CRASH. Toto je DEFAULT MODE.
+   E. ACTIVE MEMORY DUMP. COMPLETE MEMORY DUMP obsahuje celu KERNEL MODE MEMORY a celu USER MODE MEMORY avsak so zapnutymi optiamalizaciami. Optimalizacie zabranuju zapisu UNUSED PAGES a ak SYSTEM vykonaval HOSTING VIRTUAL MACHINE, tak nie je zapisana ani MEMORY, ktoru vyuzivaju HOSTED VIRTUAL MACHINES.
+57. MEMORY DUMP moze byt analyzovany nasledujucim sposobom.
+   A. Spusti sa DEBUGGER [WinDbg.exe].
+   B. Nacita sa DUMP FILE pomocou COMMAND [FILE -> OPEN CRASH DUMP].
+   C. Spusti sa COMMAND [!analyze -v], ktory vykona analyzu DUMP FILE.
+   !!!!! D. Prida sa PATH, ktory obsahuje DRIVER FILE [.SYS] a DRIVER FILE [.PDB] pomocou COMMAND [.sympath+ PATH], kde VALUE 'PATH' je PATH. Vdaka tomu sa nacitaju SYMBOLS pre DRIVER, ktory je DEBUGGER.
+   !!!!! E. Po nacitani SYMBOLS je mozne v DEBUGGER pomocou COMMAND [FILE -> OPEN SOURCE FILE] nacitat SOURCE FILE a zobrazit v nom presne miesto, kde doslo k vzniku SYSTEM CRASH.
+   !!! F. DEBUGGER otvorenim MEMORY DUMP spusta novu DEBUGGING SESSION v ktorej je mozne pouzit takmer vsetky DEBUGGER COMMANDS. Vynimkou su COMMANDS pre pridavanie BREAKPOINTS ci spustenie SESSION, ktore nie su povolene, kedze sa jedna iba o MEMORY DUMP, a nie realny DEBUGGING.
+58. MEMORY DUMP je mozne kedykolvek vygenerovat pomocou DEBUGGER [WinDbg.exe] spustenim COMMAND [.dump].
+59. SYSINTERNALS TOOL [NotMyFault] umoznuje vygenerovat MEMORY DUMP a zaroven spustit SYSTEM CRASH. Vyuziva sa to v sitaciach, ked je WINDOWS takmer UNRESPONSIVE.
+60. WINDOWS KERNEL podporuje INTERLOCKED OPERATIONS. Pre INTERLOCKED OPERATIONS platia nasledujuce fakty.
+   A. INTERLOCKED OPERATIONS su vykonavane ATOMICKY. To znamena, ze v danom case vykonava danu OPERATION VZDY iba 1 THREAD.
+   B. INTERLOCKED OPERATIONS su implementovane ako FUNCTIONS, no v skutocnosti su to INTRINSICS FUNCTIONS, ktore COMPILER preklada ako CPU INSTRUCTIONS.
+   C. INTERLOCKED OPERATIONS umoznuju implementaciu LOCK FREE ALGORITHMS.
+61. Pre FUNCTION [InterlockedCompareExchange()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [LONG CDECL_NON_WVMPURE InterlockedCompareExchange(volatile LONG* Destination, LONG ExChange, LONG Comperand)].
+   B. PARAMETER [volatile LONG* Destination] obsahuje POINTER na INTERLOCKED VARIABLE.
+   C. PARAMETER [LONG ExChange] obsahuje NEW VALUE na ktoru sa ma INTERLOCKED VARIABLE nastavit.
+   D. PARAMETER [LONG Comperand] obsahuje COMPARE VALUE, ktora sa ma porovnat s INTERLOCKED VARIABLE.
+   !!! E. RETURN VALUE TYPE [LONG] vracia POVODNU VALUE INTERLOCKED VARIABLE bez ohladu na to ci INTERLOCKED VARIABLE VALUE bola FUNCTION zmenana, alebo nie.
+   !!! F. FUNCTION ATOMICKY nastavuje INTERLOCKED VARIABLE [Destination] na NEW VALUE [ExChange], ak na zaciatku OPERATION INTERLOCKED VARIABLE [Destination] obsahovala COMPARE VALUE [Comperand]. Ak INTERLOCKED VARIABLE [Destination] na zaciatku OPERATION NEOBSAHOVALA COMPARE VALUE [Comperand], tak FUNCTION nic nespravi. FUNCTION VZDY vracia POVODNU VALUE INTERLOCKED VARIABLE [Destination].
+   G. KERNEL obsahuje VERSIONS tejto FUNCTION pre TYPE [SHORT], TYPE [LONG64], a TYPE [PVOID].
+62. Pre FUNCTION [InterlockedExchange()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [LONG InterlockedExchange(volatile LONG* Target, LONG Value)].
+   B. PARAMETER [volatile LONG* Target] obsahuje POINTER na INTERLOCKED VARIABLE.
+   C. PARAMETER [LONG Value] obsahuje NEW VALUE na ktoru sa ma INTERLOCKED VARIABLE nastavit.
+   !!! D. RETURN VALUE TYPE [LONG] vracia POVODNU VALUE INTERLOCKED VARIABLE.
+   !!! E. FUNCTION ATOMICKY nastavuje INTERLOCKED VARIABLE [Target] na NEW VALUE [Value].
+   F. KERNEL obsahuje VERSIONS tejto FUNCTION pre TYPE [CHAR], TYPE [SHORT], TYPE [LONG64] a TYPE [PVOID].
+63. Pre FUNCTION [_InlineInterlockedAdd()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [LONG _InlineInterlockedAdd(volatile LONG* Addend, LONG Value)].
+   B. PARAMETER [volatile LONG* Addend] obsahuje POINTER na INTERLOCKED VARIABLE.
+   C. PARAMETER [LONG Value] obsahuje VALUE o ktoru sa ma INTERLOCKED VARIABLE zvysit.
+   !!! D. RETURN VALUE TYPE [LONG] vracia vysledok aritmetickej OPERATION.
+   !!! E. FUNCTION ATOMICKY zvysuje VALUE INTERLOCKED VARIABLE [Addend] o VALUE [Value].
+   F. KERNEL obsahuje VERSIONS tejto FUNCTION pre TYPE [LONG64].
+64. Pre FUNCTION [_InterlockedExchangeAdd()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [long __cdecl _InterlockedExchangeAdd(volatile long* _Addend, long _Value)].
+   B. PARAMETER [volatile long* _Addend] obsahuje POINTER na INTERLOCKED VARIABLE.
+   C. PARAMETER [long Value] obsahuje VALUE o ktoru sa ma INTERLOCKED VARIABLE zvysit.
+   !!! D. RETURN VALUE TYPE [long] vracia POVODNU VALUE INTERLOCKED VARIABLE.
+   !!! E. FUNCTION ATOMICKY zvysuje VALUE INTERLOCKED VARIABLE [_Addend] o VALUE [_Value].
+   F. KERNEL obsahuje VERSIONS tejto FUNCTION pre TYPE [char] a TYPE [LONG64].
+   G. Pre FUNCTION je definovane MACRO [InterlockedExchangeAdd()].
+65. Pre FUNCTION [_InterlockedIncrement()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [LONG _InterlockedIncrement(volatile LONG* Addend)].
+   B. PARAMETER [LONG* Addend] obsahuje POINTER na INTERLOCKED VARIABLE.
+   !!! C. RETURN VALUE TYPE [LONG] vracia vysledok aritmetickej OPERATION.
+   !!! D. FUNCTION ATOMICKY inkrementuje VALUE INTERLOCKED VARIABLE [Addend].
+   E. KERNEL obsahuje VERSIONS tejto FUNCTION pre TYPE [SHORT] a TYPE [LONG64].
+   F. Pre FUNCTION je definovane MACRO [InterlockedIncrement()].
+66. Pre FUNCTION [_InterlockedDecrement()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [LONG _InterlockedDecrement(volatile LONG* Addend)].
+   B. PARAMETER [LONG* Addend] obsahuje POINTER na INTERLOCKED VARIABLE.
+   !!! C. RETURN VALUE TYPE [LONG] vracia vysledok aritmetickej OPERATION.
+   !!! D. FUNCTION ATOMICKY dekrementuje VALUE INTERLOCKED VARIABLE [Addend].
+   E. KERNEL obsahuje VERSIONS tejto FUNCTION pre TYPE [SHORT] a TYPE [LONG64].
+   F. Pre FUNCTION je definovane MACRO [InterlockedDecrement()].
+67. WINDOWS KERNEL definuje sadu DISPACHER OBJECTS, ktore sa nazyvaju aj WAITABLE OBJECTS. Pre DISPACHER OBJECTS platia nasledujuce fakty.
+   A. DISPACHER OBJECTS su WAITABLE. To znamena, ze na ne je mozne aplikovat WAIT FUNCTIONS, ktore zablokuju RUNNING THREAD, az kym DISPACHER OBJECT nie je SIGNALED. Potom je WAIT ukonceny.
+   B. DISPACHER OBJECTS mozu byt v SIGNALED STATE, ked WAIT FUNCTION hned skonci, alebo v NON-SIGNALED STATE, kedy WAIT FUNCTION zablokuje THREAD, az kym dany DISPACHER OBJECT nie je v SIGNALED STATE.
+   C. THREAD, ktory je vo WAITING STATE nepouziva CPU.
+   D. K WAIT FUNCTIONS patri FUNCTION [KeWaitForSingleObject()] a FUNCTION [KeWaitForMultipleObjects()].
+68. Pre FUNCTION [KeWaitForSingleObject()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [NTSTATUS KeWaitForSingleObject(PVOID Object, KWAIT_REASON WaitReason, KPROCESSOR_MODE WaitMode, BOOLEAN Alertable, PLARGE_INTEGER Timeout)].
+   B. PARAMETER [PVOID Object] obsahuje DISPACHER OBJECT na ktory ma FUNCTION cakat.
+   C. PARAMETER [KWAIT_REASON WaitReason] obsahuje dovod pre WAIT. Ak sa jedna o WAIT, ktory vznikol v dosledku volania USER MODE CODE musi sa pouzit VALUE [KWAIT_REASON::UserRequest] a ak vznikol v dosledku volania KERNEL MODE CODE musi sa pouzit VALUE [KWAIT_REASON::Executive].
+   D. PARAMETER [KPROCESSOR_MODE WaitMode] urcuje MODE daneho WAIT. Moze sa pouzit VALUE [MODE::UserMode], alebo VALUE [MODE::KernelMode].
+   E. PARAMETER [BOOLEAN Alertable] urcuje ci WAIT ma byt ALTERABLE. Ak je WAIT ALERTABLE, tak moze byt kedykolvek preruseny volanim ASYNCHRONOUS PROCEDURE CALL.
+   F. PARAMETER [PLARGE_INTEGER Timeout] urcuje TIMEOUT daneho WAIT. VALUE [NULL] znamena, ze WAIT ma byt nekonecny. Pozitivna VALUE urcuje ABSOLUTE TIME v 100ns od polnoci 1.1.1601. Negativna VALUE urcuje RELATIVE TIME v 100ns.
+   G. RETURN VALUE TYPE [NTSTATUS] vracia vysledok WAIT OPERATION. Pre vsetky RETURN VALUES MACRO [NT_SUCCESS()] VZDY vrati VALUE [TRUE]. RETURN VALUE moze nadobudat nasledujuce VALUES.
+      A. RETURN VALUE [STATUS_SUCCESS] sa vracia ak PARAMETER [WaitType] je nastaveny na VALUE [WAIT_TYPE::WaitAll] a vsetky DISPATCHER OBJECTS boli SIGALED.
+      B. RETURN VALUE [STATUS_ALERTED] sa vracia ak bol do WAIT naruseny prichodom ALERT.
+      C. RETURN VALUE [STATUS_USER_APC] sa vracia ak bol do WAIT naruseny volanim ASYNCHRONOUS PROCEDURE CALL.
+      D. RETURN VALUE [STATUS_TIMEOUT] sa vracia ak doslo k exspiracii TIMEOUT.
+      E. RETURN VALUE [STATUS_ABANDONED] sa sa vracia ak MUTEX bol ABANDONED.
+   H. FUNCTION vykonava WAIT pre jeden DISPACHER OBJECT.
+69. Pre FUNCTION [KeWaitForMultipleObjects()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [NTSTATUS KeWaitForMultipleObjects(ULONG Count, PVOID Object[], WAIT_TYPE WaitType, KWAIT_REASON WaitReason, KPROCESSOR_MODE WaitMode, BOOLEAN Alertable, PLARGE_INTEGER Timeout, PKWAIT_BLOCK WaitBlockArray)].
+   B. PARAMETER [ULONG Count] obsahuje pocet DISPACHER OBJECTS na ktore ma FUNCTION cakat.
+   C. PARAMETER [PVOID Object[]] obsahuje pole DISPACHER OBJECTS na ktore ma FUNCTION cakat. Jeho dlzka musi zodpoveda PARAMETER [Count].
+   D. PARAMETER [WAIT_TYPE WaitType] urcuje ci FUNCTION ma cakat na to az bude SINGALIZED aspon 1 DISPACHER OBJECT (WAIT_TYPE::WaitAny), alebo ma cakat na to az budu SINGALIZED VSETKYCH DISPACHER OBJECTS (WAIT_TYPE::WaitAll).
+   E. PARAMETER [KWAIT_REASON WaitReason] obsahuje dovod pre WAIT. Ak sa jedna o WAIT, ktory vznikol v dosledku volania USER MODE CODE musi sa pouzit VALUE [KWAIT_REASON::UserRequest] a ak vznikol v dosledku volania KERNEL MODE CODE musi sa pouzit VALUE [KWAIT_REASON::Executive].
+   F. PARAMETER [KPROCESSOR_MODE WaitMode] urcuje MODE daneho WAIT. Moze sa pouzit VALUE [MODE::UserMode], alebo VALUE [MODE::KernelMode].
+   G. PARAMETER [BOOLEAN Alertable] urcuje ci WAIT ma byt ALTERABLE. Ak je WAIT ALERTABLE, tak moze byt kedykolvek preruseny volanim ASYNCHRONOUS PROCEDURE CALL.
+   H. PARAMETER [PLARGE_INTEGER Timeout] urcuje TIMEOUT daneho WAIT. VALUE [NULL] znamena, ze WAIT ma byt nekonecny. Pozitivna VALUE urcuje ABSOLUTE TIME v 100ns od polnoci 1.1.1601. Negativna VALUE urcuje RELATIVE TIME v 100ns.
+   I. PARAMETER [PKWAIT_BLOCK WaitBlockArray] obsahuje ARRAY OBJECTS [KWAIT_BLOCK], ktoreho velkost zodpoveda PARAMETER [Count]. Tento ARRAY sa pouziva pre interne potreby WAIT FUNCTION. V pripade ze pocet DISPATCHER OBJECTS je [<=THREAD_WAIT_OBJECTS], tak je mozne pouzit VALUE [NULL], pretoze pre tento pocet DISPATCHER OBJECTS alokuje WINDOWS interne svoj ARRAY.
+   J. RETURN VALUE TYPE [NTSTATUS] vracia vysledok WAIT OPERATION. Pre vsetky RETURN VALUES MACRO [NT_SUCCESS()] VZDY vrati VALUE [TRUE]. RETURN VALUE moze nadobudat nasledujuce VALUES.
+      A. RETURN VALUE [STATUS_SUCCESS] sa vracia ak PARAMETER [WaitType] je nastaveny na VALUE [WAIT_TYPE::WaitAll] a vsetky DISPATCHER OBJECTS boli SIGALED.
+      B. RETURN VALUE [STATUS_ALERTED] sa vracia ak bol do WAIT naruseny prichodom ALERT.
+      C. RETURN VALUE [STATUS_USER_APC] sa vracia ak bol do WAIT naruseny volanim ASYNCHRONOUS PROCEDURE CALL.
+      D. RETURN VALUE [STATUS_TIMEOUT] sa vracia ak doslo k exspiracii TIMEOUT.
+      E. RETURN VALUE [STATUS_WAIT_0] az RETURN VALUE [STATUS_WAIT_63] sa vracaju ak ak PARAMETER [WaitType] je nastaveny na VALUE [WAIT_TYPE::WaitAll] a DISPATCHER OBJECT s danym INDEX bol SIGNALED.
+      F. RETURN VALUE [STATUS_ABANDONED_WAIT_0] az RETURN VALUE [STATUS_ABANDONED_WAIT_63] sa vracaju ak niektory z DISPATCHER OBJECTS je MUTEX a tento MUTEX bol ABANDONED.
+   K. FUNCTION vykonava WAIT pre viacero DISPACHER OBJECTS.
+!!!!! 70. WAIT FUNCTIONS musia cakat na DISPATCHER OBJECTS, a NIE na HANDLES na DISPATCHER OBJECTS. Pre HANDLE je mozne ziskat prislusny DISPATCHER OBJECT volanim FUNCTION [ObReferenceObjectByHandle()].
+!!!!! 71. THREAD HANDLE je iba HANDLE na DISPATCHER OBJECT, ale NIE samotny DISPATCHER OBJECT a tym padom ho nemozno pouzit vo WAIT FUNCTIONS. Na to je nutne ziskat DISPATCHER OBJECT [KTHREAD] volanim KERNEL FUNCTION [ObReferenceObjectByHandle()]. OBJECT TYPE [KTHREAD] uz je mozne pouzit vo WAIT FUNCTIONS.
+72. WINDOWS definuje nasledujuce KERNEL OBJECTS.
+   A. PROCESS. PROCESS je SIGNALED ak je ukonceny.
+   B. THREAD. THREAD je SIGNALED ak je ukonceny.
+   C. MUTEX. MUTEX je SIGNALED ak je uvolneny.
+   D. EVENT. EVENT je SIGNALED ak je nastaveny.
+   E. SEMAPHORE. SEMAPHORE je SIGNALED ak je [COUNTER>0].
+   F. TIMER. TIMER je SIGNALED ak je EXPIRED.
+   G. FILE. FILE je SIGNALED ak skoncila ASYNCHRONOUS IO OPERATION.
+73. MUTEXES umoznuju implementovat CRITICAL SECTION, co je SECTION v CODE ku ktoremu v danom case moze pristupovat iba 1 THREAD. Pre MUTEXES platia nasledujuce fakty.
+   A. MUTEX je v SIGNALED STATE, ak nie je drzany ziadnym THREADOM.
+   B. MUTEX je v NON-SIGNALED STATE, ak niektory THREAD drzi MUTEX.
+   C. Prechod zo SIGNALED STATE do NON-SIGNALED STATE sa vykonava pomocou WAIT FUNCTIONS. Ak WAIT FUNCTIONS su volane nad MUTEXES, tak WAIT FUNCTIONS skoncia iba ak bol MUTEX SIGNALED, pricom WAIT FUNCTIONS pred svojim koncom zmenia stav MUTEX do NON-SIGNALED STATE.
+   D. Prechod z NON-SIGNALED STATE do SIGNALED STATE sa vykonava pomocou FUNCTION [KeReleaseMutex()].
+   !!! E. Iba ten THREAD, ktory drzi MUTEX (zmenil jeho STATE na NON-SIGNALED STATE) ho moze moze zmenit na SIGNALED STATE volanim FUNCTION [KeReleaseMutex()].
+   F. MUTEX je reprezentovany DISPATCHER OBJECT TYPE [KMUTEX]. OBJECT MUSI byt alokovany v NON-PAGED MEMORY.
+   G. DISPATCHER OBJECT TYPE [KMUTEX] musi byt pred pouzitim inicializovany bud volanim FUNCTION [KeInitializeMutex()], alebo FUNCTION [KeInitializeMutant()].
+   !!! H. MUTEXES su RECURSIVE. To znamena, ze THREAD, ktory drzi MUTEXT moze opakovane volat WAIT FUNCTION. No nasledne ho aj musi zodpovedajuci pocet krat aj uvolnit volanim FUNCTION [KeReleaseMutex()], aby sa MUTEX zmeni do SIGNALED STATE.
+   !!! I. Ak MUTEX drzi MUTEX a skonci, bez toho, aby volanim FUNCTION [KeReleaseMutex()] ho vratil do SIGNALED STATE, MUTEX sa dostane do ABANDONED STATE. Pre ABANDONED STATE platia nasledujuce fakty.
+      A. Ked je MUTEX v ABANDONED STATE, tak MUTEX je automaticky nastaveny to SIGNALED STATE, aby nedoslo k DEADLOCK.
+	  !!! B. PRVE volanie WAIT FUNCTION vsak nevrati regulerny STATUS, ale RETURN VALUE [STATUS_ABANDONED_WAIT_0] az RETURN VALUE [STATUS_ABANDONED_WAIT_63]. NASLEDNE volania WAIT FUNCTIONS uz vratia normalny STATE.
+   !!!!! J. Volanie FUNCTION [KeReleaseMutex()] by malo byt realizovane v TRY-FINALLY BLOCK, aby pri vzniku EXCEPTION nedoslo k neuvolneniu MUTEX.
+74. Pre FUNCTION [KeInitializeMutex()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [void KeInitializeMutex(PRKMUTEX Mutex, ULONG Level)].
+   B. PARAMETER [PRKMUTEX Mutex] obsahuje MUTEX, ktory ma byt inicializovany.
+   C. PARAMETER [ULONG Level] je RESEVED VALUE, ktora by mala byt nastavena na 0.
+   D. FUNCTION inicializuje MUTEX a nastavuje ho do SIGNALED STATE.
+75. Pre FUNCTION [KeInitializeMutant()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [void KeInitializeMutant(PRKMUTANT Mutant, BOOLEAN InitialOwner)].
+   B. PARAMETER [PRKMUTEX Mutex] obsahuje MUTEX, ktory ma byt inicializovany.
+   C. PARAMETER [BOOLEAN InitialOwner] urcuje ci CURRENT THREAD ma drzat MUTEX a teda MUTEX ma byt v SIGNALED, alebo NON-SIGNALED STATE.
+   D. FUNCTION inicializuje MUTEX a nastavuje ho do NON-SIGNALED STATE, pricom CURRENT THREAD je nastaveny ako drzitel MUTEX.
+76. Pre FUNCTION [KeReleaseMutex()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [LONG KeReleaseMutex(PRKMUTEX Mutex, BOOLEAN Wait)].
+   B. PARAMETER [PRKMUTEX Mutex] obsahuje MUTEX, ktoreho STATE sa ma zmenit na SIGNALED STATE.
+   C. PARAMETER [BOOLEAN Wait] urcuje ci FUNCTION ma znizit IRQL na IRQL [PASSIVE_LEVEL], ktore interne FUNCTION zvysila na IRQL [DISPATCH_LEVEL]. VALUE [TRUE], ktora ponechava IRQL na IRQL [DISPATCH_LEVEL] sa pouziva vtedy, ked sa hned po zavolani tejto FUNCTION vola niektora z WAIT FUNCTIONS. Je to drobna optimalizacia, pretoze sa IRQL nemusi zbytocne znizovat, kedze WAIT FUNCTION ho opat zvysuju na IRQL [DISPATCH_LEVEL].
+   D. RETURN VALUE TYPE [LONG] vracia POVODNU VALUE MUTEX COUNTER.
+   E. FUNCTION pre dany THREAD znizuje MUTEX COUNTER, pricom ak COUNTER dosiahne VALUE [0], tak sa MUTEX prepne do SIGNALED STATE.
+77. Pre FUNCTION [KeReadStateMutex()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [LONG KeReadStateMutex(PRKMUTEX Mutex)].
+   B. PARAMETER [PRKMUTEX Mutex] obsahuje MUTEX, ktoreho STATE ma byt vrateny.
+   C. RETURN VALUE TYPE [LONG] vracia VALUE [1], ak je MUTEX v SIGNALED STATE.
+   D. FUNCTION vracia informaciu ci je MUTEX v SINGALED STATE, alebo NON-SINGALED STATE.
+78. Pre FUNCTION [KeQueryOwnerMutant()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [VOID KeQueryOwnerMutant(PKMUTANT Mutant, PCLIENT_ID ClientId)].
+   B. PARAMETER [PRKMUTEX Mutex] obsahuje MUTEX, ktoreho THREAD ID, ktory vlastni MUTEX ma byt vrateny.
+   C. PARAMETER [PCLIENT_ID ClientId] obsahuje POINTER na THREAD ID, ktory sa naplni THREAD ID toho THREAD, ktory vlastni MUTEX.
+   D. FUNCTION vracia THREAD ID toho THREAD, ktory vlastni MUTEX.
+   !!! E. FUNCTION je UNDOCUMENTED.
+79. FAST MUTEXES su optimalizovanou verziou MUTEXES. Pre FAST MUTEXES platia nasledujuce fakty.
+   !!! A. FAST MUTEX NIE JE DISPATCHER OBJECT, a preto nan NEMOZU byt aplikovane WAIT FUNCTIONS.
+   B. FAST MUTEX je v SIGNALED STATE, ak nie je drzany ziadnym THREADOM.
+   C. FAST MUTEX je v NON-SIGNALED STATE, ak niektory THREAD drzi FAST MUTEX.
+   D. Prechod zo SIGNALED STATE do NON-SIGNALED STATE sa vykonava pomocou FUNCTION [ExAcquireFastMutex()], alebo FUNCTION [ExAcquireFastMutexUnsafe()]. Ak ACQUIRE FUNCTIONS su volane nad FAST MUTEXES, tak ACQUIRE FUNCTIONS skoncia iba ak bol FAST MUTEX SIGNALED, pricom ACQUIRE FUNCTIONS pred svojim koncom zmenia stav FAST MUTEX do NON-SIGNALED STATE.
+   E. Prechod z NON-SIGNALED STATE do SIGNALED STATE sa vykonava pomocou FUNCTION [ExReleaseFastMutex()], alebo FUNCTION [ExReleaseFastMutexUnsafe()].
+   !!! F. ACQUIRE FUNCTIONS NEUMOZNUJU definovat TIMEOUT. WAIT trva, az kym sa FAST MUTEX nedostane do SIGNALED STATE.
+   !!! G. Iba ten THREAD, ktory drzi FAST MUTEX (zmenil jeho STATE na NON-SIGNALED STATE) ho moze moze zmenit na SIGNALED STATE volanim FUNCTION [ExReleaseFastMutex()], alebo FUNCTION [ExReleaseFastMutexUnsafe()].
+   !!!!! H. Ked THREAD ziska FAST MUTEX, tak jeho IRQL je zvysene na IRQL [APC_LEVEL], aby sa zabranilo prichodu ASYNCHRONOUS PROCEDURE CALLS. Z toho vsak vyplyva obmedzenie, ze ak THREAD drzi FAST MUTEXT, NESMIE vykonat IO OPERATIONS, pretoze ich spracovanie vyzaduje volanie ASYNCHRONOUS PROCEDURE CALLS. Ak by THREAD vyvola IO OPERATION kym drzi FAST MUTEX, dojde k DEAD LOCK, pretoze THREAD, ktory ma IRQL [APC_LEVEL] NEUMOZNUJE vyvolat ASYNCHRONOUS PROCEDURE CALLS.
+   I. FAST MUTEX je reprezentovany OBJECT TYPE [FAST_MUTEX]. OBJECT MUSI byt alokovany v NON-PAGED MEMORY.
+   J. OBJECT TYPE [FAST_MUTEX] musi byt pred pouzitim inicializovany bud volanim FUNCTION [ExInitializeFastMutex()].
+   !!! K. FAST MUTEXES NIE su RECURSIVE.
+80. Pre FUNCTION [ExInitializeFastMutex()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [void ExInitializeFastMutex(PFAST_MUTEX FastMutex)].
+   !!! B. PARAMETER [PFAST_MUTEX FastMutex] obsahuje FAST MUTEX, ktory ma byt inicializovany. OBJECT MUSI byt zarovnany na 32 BITS na x86 PLATFORMS a na 64 BITS na x64 PLATFORMS.
+   C. FUNCTION inicializuje FAST MUTEX a nastavuje ho do SIGNALED STATE.
+81. Pre FUNCTION [ExAcquireFastMutex()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [void ExAcquireFastMutex(PFAST_MUTEX FastMutex)].
+   B. PARAMETER [PFAST_MUTEX FastMutex] obsahuje FAST MUTEX, na ktory sa ma cakat kym sa nedostane do SINGALED STATE.
+   !!! C. FUNCTION pre dany THREAD caka az kym sa FAST MUTEX nedostane do SIGALED STATE. Nasledne priradi FAST MUTEXT CURRENT THREAD a nastavi FAST MUTEX na NON-SIGNALED STATE a zvysi IRQL na IRQL [APC_LEVEL], aby sa zabranilo prichodu ASYNCHRONOUS PROCEDURE CALLS.
+   D. FAST MUTEX ziskany touto FUNCTION musi byt uvolneny volanim FUNCTION [ExReleaseFastMutex()].
+82. Pre FUNCTION [ExAcquireFastMutexUnsafe()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [void ExAcquireFastMutexUnsafe(PFAST_MUTEX FastMutex)].
+   B. PARAMETER [PFAST_MUTEX FastMutex] obsahuje FAST MUTEX, na ktory sa ma cakat kym sa nedostane do SINGALED STATE.
+   !!! C. FUNCTION pre dany THREAD caka az kym sa FAST MUTEX nedostane do SIGALED STATE. Nasledne priradi FAST MUTEXT CURRENT THREAD a nastavi FAST MUTEX na NON-SIGNALED STATE. FUNCTION vsak NEMENI IRQL na IRQL [APC_LEVEL] a mala by sa pouziva IBA ak je IRQL na IRQL [APC_LEVEL].
+   D. FAST MUTEX ziskany touto FUNCTION musi byt uvolneny volanim FUNCTION [ExReleaseFastMutexUnsafe()].
+83. Pre FUNCTION [ExReleaseFastMutex()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [void ExReleaseFastMutex(PFAST_MUTEX FastMutex)].
+   B. PARAMETER [PFAST_MUTEX FastMutex] obsahuje FAST MUTEX, ktoreho STATE sa ma zmenit na SINGALED STATE.
+   !!! C. FUNCTION pre dany THREAD zmeni STATE FAST MUTEX na SIGALED STATE. Nasledne vrati IRQL na VALUE, na ktorej bolo pri volani FUNCTION [ExAcquireFastMutex()].
+   D. FAST MUTEX uvolneny touto FUNCTION musi byt ziskany volanim FUNCTION [ExAcquireFastMutex()].
+84. Pre FUNCTION [ExReleaseFastMutexUnsafe()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [void ExReleaseFastMutexUnsafe(PFAST_MUTEX FastMutex)].
+   B. PARAMETER [PFAST_MUTEX FastMutex] obsahuje FAST MUTEX, ktoreho STATE sa ma zmenit na SINGALED STATE.
+   !!! C. FUNCTION pre dany THREAD zmeni STATE FAST MUTEX na SIGALED STATE. FUNCTION NEMENI IRQL.
+   D. FAST MUTEX uvolneny touto FUNCTION musi byt ziskany volanim FUNCTION [ExAcquireFastMutexUnsafe()].
+85. SEMAPHORES su DISPATCHER OBJECTS, ktore umoznuju implementovat funkcionalitu, ked k danemu RESOURCES ma pristup iba prvych 'N' THREADS a pri dalsej poziadavke je ziadajuci THREAD BLOCKED. Pre SEMAPHORES platia nasledujuce fakty.
+   A. SEMAPHORE ma interny COUNTER, ktory urcuje ci je SEMAPOHRE v SIGANLED STATE, alebo NON-SIGNALED STATE.
+   B. SEMAPHORE je v SIGNALED STATE, ak jeho interny [COUNTER>0].
+   C. SEMAPHORE je v NON-SIGNALED STATE, ak jeho interny [COUNTER==0].
+   D. Dekrementacia interneho COUNTER a pripadny prechod zo SIGNALED STATE do NON-SIGNALED STATE sa vykonava pomocou WAIT FUNCTIONS. Ak je pred volanim WAIT FUNCTION interny [COUNTER>0], tak WAIT FUNCTIONS okamzite skoncia a COUNTER je dekrementovany. Ak je pred volanim WAIT FUNCTION interny [COUNTER==0], tak WAIT FUNCTIONS zablokuju dany THREAD.
+   E. Inkrementacia interneho COUNTER a prechod z NON-SIGNALED STATE do SIGNALED STATE sa vykonava pomocou FUNCTION [KeReleaseSemaphore()].
+   !!!!! F. Klucovy rozdiel medzi MUTEXES a SEMAPHORES je v tom, ze pri MUTEXES je OWNERSHIP asociovany s THREADOM. Inak povedane, ten THREAD, ktory ziskal OWNERSHIP daneho MUTEX ho musi aj uvolnit. V pripade SEMAPHORES moze jeden THREAD decrementovat hodnotu COUNTER a iny THREAD moze inkrementovat hodnotu COUNTER. To umoznuje implementovat napriklad PRODUCER CONSUMER PATTERN, kde viacerho THREADS moze ukladat do SHARED QUEUE svoje REQUESTS a ine THREADS mozu zo SHARED QUEUE tieto REQUESTS vyberat a spracovat ich. SEMAPHORE urcuje maximalny pocet REQUESTS, ktore mozu byt v danom cast v QUEUE ulozenych. Ak je pocet prekroceny, tak THREAD, ktory sa pokusa vlozit novy REQUEST do SHARED QUEUE je BLOCKED.
+   G. SEMAPHORE je reprezentovany DISPATCHER OBJECT TYPE [KSEMAPHORE]. OBJECT MUSI byt alokovany v NON-PAGED MEMORY.
+   H. DISPATCHER OBJECT TYPE [KSEMAPHORE] musi byt pred pouzitim inicializovany volanim FUNCTION [KeInitializeSemaphore()].
+   I. Hodnotu interneho COUNTER je mozne ziskat volanim FUNCTION [KeReadStateSemaphore()].
+86. Pre FUNCTION [KeInitializeSemaphore()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [void KeInitializeSemaphore(PRKSEMAPHORE Semaphore, LONG Count, LONG Limit)].
+   B. PARAMETER [PRKSEMAPHORE Semaphore] obsahuje SEMAPHORE, ktory ma byt inicializovany.
+   C. PARAMETER [LONG Count] urcuje aktualnu hodnotu interneho COUNTER.
+   D. PARAMETER [LONG Limit] urcuje maximalnu hodnotu interneho COUNTER.
+   E. FUNCTION inicializuje SEMAPHORE.
+87. Pre FUNCTION [KeReleaseSemaphore()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [LONG KeReleaseSemaphore(PRKSEMAPHORE Semaphore, KPRIORITY Increment, LONG Adjustment, BOOLEAN Wait)].
+   B. PARAMETER [PRKSEMAPHORE Semaphore] obsahuje SEMAPHORE, ktoreho interny COUNTER sa ma inkrementovat.
+   C. PARAMETER [KPRIORITY Increment] obsahuje PRIORITY BOOST, ktora sa ma dat THREAD, ktory ako prvy uspesne zavola WAIT FUNCTIONS po skonceni volania tejto FUNCTION. Spravidla sa pouziva VALUE [1].
+   D. PARAMETER [LONG Adjustment] obsahuje VALUE o ktoru sa ma interny COUNTER inkrementovat.
+   E. PARAMETER [BOOLEAN Wait] urcuje ci FUNCTION ma znizit IRQL na IRQL [PASSIVE_LEVEL], ktore interne FUNCTION zvysila na IRQL [DISPATCH_LEVEL]. VALUE [TRUE], ktora ponechava IRQL na IRQL [DISPATCH_LEVEL] sa pouziva vtedy, ked sa hned po zavolani tejto FUNCTION vola niektora z WAIT FUNCTIONS. Je to drobna optimalizacia, pretoze sa IRQL nemusi zbytocne znizovat, kedze WAIT FUNCTION ho opat zvysuju na IRQL [DISPATCH_LEVEL].
+   F. RETURN VALUE TYPE [LONG] vracia POVODNU VALUE interneho COUNTER.
+   G. FUNCTION inkrementuje VALUE interneho COUNTER cim prepina STATE daneho SEMAPHORE do SIGALED STATE.
+88. Pre FUNCTION [KeReadStateSemaphore()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [LONG KeReadStateSemaphore(PRKSEMAPHORE Semaphore)].
+   B. PARAMETER [PRKSEMAPHORE Semaphore] obsahuje SEMAPHORE, ktoreho COUNTER VALUE ma byt vratena.
+   C. RETURN VALUE TYPE [LONG] vracia VALUE interneho COUNTER daneho SEMAPHORE.
+   D. FUNCTION vracia VALUE interneho COUNTER daneho SEMAPHORE.
+89. EVENTS su DISPATCHER OBJECTS, ktore umoznuju riadit FLOW medzi viacerymi THREADS. Pre 
+   A. EVENT ma internu BOOLEAN VALUE, ktora urcuje ci je EVENT v SIGANLED STATE, alebo NON-SIGNALED STATE.
+   B. SEMAPHORE je v SIGNALED STATE, ak jeho interna [VALUE==TRUE].
+   C. SEMAPHORE je v NON-SIGNALED STATE, ak jeho interna [VALUE==FALSE].
+   D. WINDOWS podporuje nasledujuce typy EVENTS.
+      A. MANUAL RESET EVENT. MANUAL RESET EVENT je EVENT, ktory po nastaveni do SIGNALED STATE v nom ostava, az kym nie je explicitne prepnuty do NON-SINGALED STATE. To znamena, ze ak viacero THREADS v danom case pomocou WAIT FUNCTIONS cakalo na SINGALED STATE, vsetky THREADS su UNBLOCKED.
+      B. AUTO RESET EVENT. AUTO RESET EVENT je EVENT, ktory ak je v SIGNALED STATE, tak pri volani WAIT FUNCTIONS ho WAIT FUNCTIONS automaticky prepnu do NON-SINGALED STATE. To znamena, ze ak viacero THREADS v danom case pomocou WAIT FUNCTIONS cakalo na SINGALED STATE, tak iba 1. THREAD je UNBLOCKED a ostatne ostavaju BLOCKED.
+   E. Prechod zo SIGNALED STATE do NON-SIGNALED STATE sa vykonava pomocou WAIT FUNCTIONS, alebo volanim FUNCTION [KeResetEvent()], alebo FUNCTION [KeClearEvent()].
+   F. Prechod z NON-SIGNALED STATE do SIGNALED STATE sa vykonava pomocou FUNCTION [KeSetEvent()].
+   G. Stav EVENT je mozne ziskat volanim FUNCTION [KeReadStateEvent()].
+   H. EVENT je reprezentovany DISPATCHER OBJECT TYPE [KEVENT]. OBJECT MUSI byt alokovany v NON-PAGED MEMORY.
+   I. DISPATCHER OBJECT TYPE [KEVENT] musi byt pred pouzitim inicializovany volanim FUNCTION [KeInitializeEvent()].
+90. Pre FUNCTION [KeInitializeEvent()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [void KeInitializeEvent(PRKEVENT Event, EVENT_TYPE Type, BOOLEAN State)].
+   !!! B. PARAMETER [PRKEVENT Event] obsahuje EVENT, ktory ma byt inicializovany.
+   !!! C. PARAMETER [EVENT_TYPE Type] obsahuje typ daneho EVENT. Moze byt nastaveny na MANUAL RESET EVENT (EVENT_TYPE::NotificationEvent), alebo AUTO RESET EVENT (EVENT_TYPE::SynchronizationEvent).
+   !!! D. PARAMETER [BOOLEAN State] obsahuje pociatocny STATE daneho EVENT. VALUE [TRUE] znamena, ze EVENT je v SIGNALED STATE. VALUE [FALSE] znamena, ze EVENT je v NON-SIGNALED STATE.
+   E. FUNCTION inicializuje EVENT a nastavuje ho do SIGNALED STATE, alebo NON-SINGALED STATE.
+91. Pre FUNCTION [KeSetEvent()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [LONG KeSetEvent(PRKEVENT Event, KPRIORITY Increment, BOOLEAN Wait)].
+   !!! B. PARAMETER [PRKEVENT Event] obsahuje EVENT, ktory ma byt nastaveny do SIGNALED STATE.
+   C. PARAMETER [KPRIORITY Increment] obsahuje PRIORITY BOOST, ktora sa ma dat THREAD, ktory vykona prve uspesne volanie WAIT FUNCTIONS po zavolani tejto FUNCTION.
+   D. PARAMETER [BOOLEAN Wait] urcuje ci FUNCTION ma znizit IRQL na IRQL [PASSIVE_LEVEL], ktore interne FUNCTION zvysila na IRQL [DISPATCH_LEVEL]. VALUE [TRUE], ktora ponechava IRQL na IRQL [DISPATCH_LEVEL] sa pouziva vtedy, ked sa hned po zavolani tejto FUNCTION vola niektora z WAIT FUNCTIONS. Je to drobna optimalizacia, pretoze sa IRQL nemusi zbytocne znizovat, kedze WAIT FUNCTION ho opat zvysuju na IRQL [DISPATCH_LEVEL].
+   E. RETURN VALUE TYPE [LONG] vracia povodnu VALUE daneho EVENT. VALUE [TRUE] znamena, ze EVENT je v SIGNALED STATE. VALUE [FALSE] znamena, ze EVENT je v NON-SIGNALED STATE.
+   F. FUNCTION nastavuje EVENT do SIGNALED STATE.
+92. Pre FUNCTION [KeResetEvent()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [LONG KeResetEvent(PRKEVENT Event)].
+   !!! B. PARAMETER [PRKEVENT Event] obsahuje EVENT, ktory ma byt nastaveny do NON-SIGNALED STATE.
+   C. RETURN VALUE TYPE [LONG] vracia povodnu VALUE daneho EVENT. VALUE [TRUE] znamena, ze EVENT je v SIGNALED STATE. VALUE [FALSE] znamena, ze EVENT je v NON-SIGNALED STATE.
+   D. FUNCTION nastavuje EVENT do NON-SIGNALED STATE.
+93. Pre FUNCTION [KeClearEvent()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [void KeClearEvent(PRKEVENT Event)].
+   !!! B. PARAMETER [PRKEVENT Event] obsahuje EVENT, ktory ma byt nastaveny do NON-SIGNALED STATE.
+   D. FUNCTION nastavuje EVENT do NON-SIGNALED STATE. FUNCTION je o malicko optimalnejsia ako FUNCTION [KeResetEvent()], pretoze nevracia RETURN VALUE.
+94. Pre FUNCTION [KeReadStateEvent()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [LONG KeReadStateEvent(PRKEVENT Event)].
+   !!! B. PARAMETER [PRKEVENT Event] obsahuje EVENT, ktoreho STATE ma byt vrateny.
+   C. RETURN VALUE TYPE [LONG] vracia STATE daneho EVENT. VALUE [TRUE] znamena, ze EVENT je v SIGNALED STATE. VALUE [FALSE] znamena, ze EVENT je v NON-SIGNALED STATE.
+   D. FUNCTION vracia STATE daneho EVENT. VALUE [TRUE] znamena, ze EVENT je v SIGNALED STATE. VALUE [FALSE] znamena, ze EVENT je v NON-SIGNALED STATE.
+95. EVENTS mozu mat prideleny NAMES. Platia nasledujuce fakty.
+   A. Kazdy EVENT moze mat prideleny 1 NAME.
+   B. EVENTS je mozne otvarat pomocou NAMES. Vdaka tomu je mozne vykonavat SYNCHRONIZATION medzi viacerymi DRIVERS, kde kazdy DRIVER otvori EVENT podla rovnakeho NAME a ziska pristup k tomu istemu EVENT.
+   C. FUNCTION [IoCreateNotificationEvent()] umoznuje otvorit NAMED MANUAL RESET EVENT.
+   D. FUNCTION [IoCreateSynchronizationEvent()] umoznuje otvorit NAMED AUTO RESET EVENT.
+96. Pre FUNCTION [IoCreateNotificationEvent()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [PKEVENT IoCreateNotificationEvent(PUNICODE_STRING EventName, PHANDLE EventHandle)].
+   B. PARAMETER [PUNICODE_STRING EventName] obsahuje EVENT NAME. NAME MUSI obsahovat FULL PATH NAME v OBJECT MANAGER NAMESPACE.
+   C. PARAMETER [PHANDLE EventHandle] obsahuje POINTER na EVENT HANDLE, ktory sa vrati, ak sa EVENT uspesne vytvoril, alebo otvoril uz existujuci EVENT.
+   D. RETURN VALUE TYPE [PKEVENT] vracia novovytvoreny EVENT, alebo ak uz EVENT s danym NAME existuje, tak existujuci EVENT.
+   E. FUNCTION vytvara NAMED MANUAL RESET EVENT. Ak EVENT s danym NAME uz existuje, tak vrati existujuci EVENT. EVENT je v SIGNALED STATE.
+   !!! F. EVENT HANDLE v PARAMETER [EventHandle] musi byt uzatvoreny ked uz sa dany EVENT NEPOUZIVA.
+97. Pre FUNCTION [IoCreateSynchronizationEvent()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [PKEVENT IoCreateSynchronizationEvent(PUNICODE_STRING EventName, PHANDLE EventHandle)].
+   B. PARAMETER [PUNICODE_STRING EventName] obsahuje EVENT NAME. NAME MUSI obsahovat FULL PATH NAME v OBJECT MANAGER NAMESPACE.
+   C. PARAMETER [PHANDLE EventHandle] obsahuje POINTER na EVENT HANDLE, ktory sa vrati, ak sa EVENT uspesne vytvoril, alebo otvoril uz existujuci EVENT.
+   D. RETURN VALUE TYPE [PKEVENT] vracia novovytvoreny EVENT, alebo ak uz EVENT s danym NAME existuje, tak existujuci EVENT.
+   E. FUNCTION vytvara NAMED AUTO RESET EVENT. Ak EVENT s danym NAME uz existuje, tak vrati existujuci EVENT. EVENT je v SIGNALED STATE.
+   !!! F. EVENT HANDLE v PARAMETER [EventHandle] musi byt uzatvoreny ked uz sa dany EVENT NEPOUZIVA.
+98. WINDOWS v OBJECT MANAGER NAMESPACE [KernelObjects] definuje mnozinu NAMED MANUAL RESET EVENTS, ktore je mozne pouzit na zachytenie roznych EVENTS suvisiacich s MEMORY, ktorych vznik je mozne detekovat. WINDOWS definuje nasledujuce NAMED MANUAL RESET EVENTS.
+   A. EVENT [HighMemoryCondition] indikuje, ze WINDOWS ma VELA PHYSICAL MEMORY.
+   B. EVENT [LowMemoryCondition] indikuje, ze WINDOWS ma MALO PHYSICAL MEMORY.
+   C. EVENT [HighPagedPoolCondition] indikuje, ze WINDOWS ma VELA FREE PAGED POOL MEMORY.
+   D. EVENT [LowPagedPoolCondition] indikuje, ze WINDOWS ma MALO FREE PAGED POOL MEMORY.
+   E. EVENT [HighNonPagedPoolCondition] indikuje, ze WINDOWS ma VELA FREE NON-PAGED POOL MEMORY.
+   F. EVENT [LowNonPagedPoolCondition] indikuje, ze WINDOWS ma MALO FREE NON-PAGED POOL MEMORY.
+   G. EVENT [HighCommitCondition] indikuje, ze WINDOWS ma VELA FREE MEMORY v RAM a PAGING FILE.
+   H. EVENT [LowCommitCondition] indikuje, ze WINDOWS ma MALO FREE MEMORY v RAM a PAGING FILE.
+   I. EVENT [MaximumCommitCondition] indikuje, ze WINDOWS takmer vycerpal MEMORY a PAGE FILE nemoze viac narast.
+99. WINDOWS podporuje EXECUTIVE RESOURCES. Pre EXECUTIVE RESOURCES platia nasledujuce fakty.
+   A. EXECUTIVE RESOURCE je synchronizacna primitiva, ktora umoznuje implementovat MULTIPLE READERS, SINGLE WRITER PATTERN. To znamena, ze v danom case moze ku SHARED RESOURCE pristupovat 1-N READERS, alebo 1 WRITER.
+   B. EXECUTIVE RESOURCE si udrzuje zoznam READER THREADS a WRITER THREADS, ktore su BLOCKED a cakaju na vykonanie.
+   !!! C. EXECUTIVE RESOURCE NIE JE DISPATCHER OBJECT a tym padom nan NIE JE mozne aplikovat WAIT FUNCTIONS.
+   D. THREAD ziada o READ ACCESS k SHARED RESOURCE volanim FUNCTION [ExAcquireResourceSharedLite()]. V pripade, ze je SHARED RESOURCE prideleny WRITER THREAD, tak FUNCTION moze (na zaklade VALUE PARAMETER [Wait]) vykonat WAITING.
+   E. THREAD ziada o WRITE ACCESS k SHARED RESOURCE volanim FUNCTION [ExAcquireResourceExclusiveLite()]. V pripade, ze je SHARED RESOURCE prideleny READER THREADS, alebo WRITER THREAD, tak FUNCTION moze (na zaklade VALUE PARAMETER [Wait]) vykonat WAITING.
+   F. THREAD uvolnuje vlastnictvo SHARED RESOURCE volanim FUNCTION [ExReleaseResourceLite()].
+   !!!!! G. Pred ziskanim ACCESS k SHARED RESOUCE volanim FUNCTION [ExAcquireResourceSharedLite()], alebo FUNCTION [ExAcquireResourceExclusiveLite()] je NUTNE zabranit vyvolavaniu NORMAL KERNEL APC volanim FUNCTION [KeEnterCriticalRegion()].
+   !!!!! H. Po uvolneni ACCESS k SHARED RESOUCE volanim FUNCTION [ExReleaseResourceLite()] je NUTNE opatovne povolit vyvolavanie NORMAL KERNEL APC volanim FUNCTION [KeLeaveCriticalRegion()].
+   I. FUNCTION [ExEnterCriticalRegionAndAcquireResourceShared()] kombinuje volanie FUNCTION [KeEnterCriticalRegion()] a FUNCTION [ExAcquireResourceSharedLite()].
+   J. FUNCTION [ExEnterCriticalRegionAndAcquireResourceExclusive()] kombinuje volanie FUNCTION [KeEnterCriticalRegion()] a FUNCTION [ExAcquireResourceExclusiveLite()].
+   K. FUNCTION [ExReleaseResourceAndLeaveCriticalRegion()] kombinuje volanie FUNCTION [ExReleaseResourceLite()] a FUNCTION [KeLeaveCriticalRegion()].
+   L. EXECUTIVE RESOURCE je reprezentovany OBJECT TYPE [ERESOURCE]. OBJECT MUSI byt alokovany v NON-PAGED MEMORY.
+   M. OBJECT TYPE [ERESOURCE] sa inicializuje volanim FUNCTION [ExInitializeResourceLite()].
+   !!! N. OBJECT TYPE [ERESOURCE] je NUTNE UVOLNIT volanim FUNCTION [ExDeleteResourceLite()].
+   O. Pocet WAITING READ THREADS je mozne ziskat volanim FUNCTION [ExGetSharedWaiterCount()].
+   P. Pocet WAITING WRITE THREADS je mozne ziskat volanim FUNCTION [ExGetExclusiveWaiterCount()].
+100. Pre FUNCTION [ExInitializeResourceLite()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [NTSTATUS ExInitializeResourceLite(PERESOURCE Resource)].
+   B. PARAMETER [PERESOURCE Resource] je MEMORY, ktora musi byt o SIZE [sizeof(ERESOURCE)] a MUSI byt alokovana v NONPAGED MEMORY. Zaroven MEMORY MUSI byt ALIGNED na 4 BYTES na x86 PLATFORMS a 8 BYTES na x64 PLATFORMS.
+   C. RETURN VALUE TYPE [NTSTATUS] vracia vysledok OPERATION. VZDY vracia VALUE [STATUS_SUCCESS].
+   D. FUNCTION inicializuje EXECUTIVE RESOURCE STRUCTURE [ERESOURCE].
+101. Pre FUNCTION [ExDeleteResourceLite()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [NTSTATUS ExDeleteResourceLite(PERESOURCE Resource)].
+   B. PARAMETER [PERESOURCE Resource] je POINTER na STRUCTURE [ERESOURCE], ktora ma byt uvolnena.
+   C. RETURN VALUE TYPE [NTSTATUS] vracia vysledok OPERATION. VZDY vracia VALUE [STATUS_SUCCESS].
+   D. FUNCTION uvolnuje EXECUTIVE RESOURCE STRUCTURE [ERESOURCE].
+102. Pre FUNCTION [ExAcquireResourceSharedLite()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [BOOLEAN ExAcquireResourceSharedLite(PERESOURCE Resource, BOOLEAN Wait)].
+   B. PARAMETER [PERESOURCE Resource] je POINTER na STRUCTURE [ERESOURCE].
+   C. PARAMETER [BOOLEAN Wait] urcuje ci FUNCTION na vykonat WAIT, ak pristup k SHARED RESOURCE je aktualne BLOCKED.
+   D. RETURN VALUE TYPE [BOOLEAN] vracia informaciu ci READ ACCESS k SHARED RESOURCE bol, alebo nebol ziskany.
+   E. FUNCTION sa pokusi ziskat READ ACCESS k SHARED RESOURCE. Ak to v danej chvili nie je mozne, tak na zaklade VALUE PARAMETER [Wait] vykonava WAIT, alebo okamzite skonci.
+   !!!!! F. Pre zavolanim FUNCTION MUSI byt vypnute volanie NORMAL KERNEL APC voalnim FUNCTION [KeEnterCriticalRegion()].
+103. Pre FUNCTION [ExAcquireResourceExclusiveLite()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [BOOLEAN ExAcquireResourceExclusiveLite(PERESOURCE Resource, BOOLEAN Wait)].
+   B. PARAMETER [PERESOURCE Resource] je POINTER na STRUCTURE [ERESOURCE].
+   C. PARAMETER [BOOLEAN Wait] urcuje ci FUNCTION na vykonat WAIT, ak pristup k SHARED RESOURCE je aktualne BLOCKED.
+   D. RETURN VALUE TYPE [BOOLEAN] vracia informaciu ci WRITE ACCESS k SHARED RESOURCE bol, alebo nebol ziskany.
+   E. FUNCTION sa pokusi ziskat WRITE ACCESS k SHARED RESOURCE. Ak to v danej chvili nie je mozne, tak na zaklade VALUE PARAMETER [Wait] vykonava WAIT, alebo okamzite skonci.
+   !!!!! F. Pre zavolanim FUNCTION MUSI byt vypnute volanie NORMAL KERNEL APC voalnim FUNCTION [KeEnterCriticalRegion()].
+104. Pre FUNCTION [ExReleaseResourceLite()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [void ExReleaseResourceLite(PERESOURCE Resource)].
+   B. PARAMETER [PERESOURCE Resource] je POINTER na STRUCTURE [ERESOURCE].
+   C. FUNCTION sa uvolnuje ACCESS k SHARED RESOURCE.
+   !!!!! D. Po zavolani FUNCTION MUSI byt zapnute volanie NORMAL KERNEL APC voalnim FUNCTION [KeLeaveCriticalRegion()].
+105. Pre FUNCTION [ExEnterCriticalRegionAndAcquireResourceShared()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [PVOID ExEnterCriticalRegionAndAcquireResourceShared(PERESOURCE Resource)].
+   B. PARAMETER [PERESOURCE Resource] je POINTER na STRUCTURE [ERESOURCE].
+   C. RETURN VALUE TYPE [PVOID] vracia POINTER na OPAQUE STRUCTURE, ktory MUSI byt IGNOROVANY.
+   D. FUNCTION vstupi do CRITICAL REGION volanim [KeEnterCriticalRegion()] a nasledne sa pokusi ziskat READ ACCESS k SHARED RESOURCE.
+106. Pre FUNCTION [ExEnterCriticalRegionAndAcquireResourceExclusive()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [PVOID ExEnterCriticalRegionAndAcquireResourceExclusive(PERESOURCE Resource)].
+   B. PARAMETER [PERESOURCE Resource] je POINTER na STRUCTURE [ERESOURCE].
+   C. RETURN VALUE TYPE [PVOID] vracia POINTER na OPAQUE STRUCTURE, ktory MUSI byt IGNOROVANY.
+   D. FUNCTION vstupi do CRITICAL REGION volanim FUNCTION [KeEnterCriticalRegion()] a nasledne sa pokusi ziskat WRITE ACCESS k SHARED RESOURCE.
+107. Pre FUNCTION [ExReleaseResourceAndLeaveCriticalRegion()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [void ExReleaseResourceAndLeaveCriticalRegion(PERESOURCE Resource)].
+   B. PARAMETER [PERESOURCE Resource] je POINTER na STRUCTURE [ERESOURCE].
+   C. FUNCTION uvolni SHARED RESOURCE a nasledne vystupi z CRITICAL REGION volanim FUNCTION [KeLeaveCriticalRegion()].
+108. Pre FUNCTION [ExGetSharedWaiterCount()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [ULONG ExGetSharedWaiterCount(PERESOURCE Resource)].
+   B. PARAMETER [PERESOURCE Resource] je POINTER na STRUCTURE [ERESOURCE].
+   C. RETURN VALUE TYPE [ULONG] vracia pocet THREADS aktualne cakajucich na ziskanie READ ACCESS.
+   D. FUNCTION vracia pocet THREADS aktualne cakajucich na ziskanie READ ACCESS.
+109. Pre FUNCTION [ExGetExclusiveWaiterCount()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [ULONG ExGetExclusiveWaiterCount(PERESOURCE Resource)].
+   B. PARAMETER [PERESOURCE Resource] je POINTER na STRUCTURE [ERESOURCE].
+   C. RETURN VALUE TYPE [ULONG] vracia pocet THREADS aktualne cakajucich na ziskanie WRITE ACCESS.
+   D. FUNCTION vracia pocet THREADS aktualne cakajucich na ziskanie WRITE ACCESS.
+!!! 110. THREAD WAITING NIE JE mozne pouzit ak je IRQL daneho CPU nastavene na IRQL [>=DISPATCH_LEVEL]. Je to preto, lebo ak je IRQL nastavena na IRQL [>=DISPATCH_LEVEL], tak THREAD SCHEDULER a tym padom aj cely koncept THREADS na danom CPU je VYPNUTY. Je to dosledom toho, ze THREADS SCHEDULER bezi na IRQL [DISPATCH_LEVEL], takze ak je CPU uz v IRQL [DISPATCH_LEVEL], tak THREAD SCHEDULER na danom CPU vobec nebezi.
+!!! 111. THREAD WAITING pre IRQL [>=DISPATCH_LEVEL] sa vykonava pomocou SPIN LOCKS. Pre SPIN LOCKS platia nasledujuce fakty.
+   A. SPIN LOCKS namiesto THREAD WAITING pri pristupe k SHARED RESOURCE pouzivaju CPU SPINNING, kedy CPU WAIT realizuje tym, ze vykonava dookola CHECK OPERATION, ktora kontroluje ci CPU ziskalo pristup k SHARED RESOURCE.
+   B. SPIN LOCKS je mozne pouzit na lubovolnom IRQL.
+   !!!!! C. Klucova podmienka pouzitia SPIN LOCKS je ze VZDY pred POKUSOM ziskat SPIN LOCK musi byt IRQL na danom CPU dvihnute na NAJVYSSIU MOZU UROVEN IRQL, ktory moze pristupovat k SHARED RESOURCE. To znamena, ze ak k SHARED RESOURCE pristupuje CODE v IRQL [PASSIVE_LEVEL], IRQL [DISPATCH_LEVEL] a IRQL [DEVICE_IRQLS], tak PRED ZISKANIM SPIN LOCK je VZDY NUTNE dvihnut IRQL na IRQL [DEVICE_IRQLS]. Iba tak je zabezpecene, ze NEDOJDE k DEADLOCKS.
+   D. SPIN LOCKS sa inicializuju pomocou FUNCTION [KeInitializeSpinLock()].
+   E. SPIN LOCKS sa ziskavaju a uvolnuju pomocou nasledujucich FUNCTIONS.
+      A. MACRO [KeAcquireSpinLock()] umoznuje ZISKAT SPIN LOCK pre IRQL [<=DISPATCH_LEVEL]. UVOLNENIE SPIN LOCK sa robi pomocou FUNCTION [KeReleaseSpinLock()].
+      B. FUNCTION [KeAcquireSpinLockAtDpcLevel()] umoznuje ZISKAT SPIN LOCK pre IRQL [>=DISPATCH_LEVEL]. UVOLNENIE SPIN LOCK sa robi pomocou FUNCTION [KeReleaseSpinLockFromDpcLevel()]. Tieto FUNCTION NEMENIA IRQL, ktore UZ MUSI byt nastavene na urovni IRQL [>=DISPATCH_LEVEL].
+      C. FUNCTION [KeAcquireInterruptSpinLock()] umoznuje ZISKAT SPIN LOCK pre IRQL [<=DEVICE_IRQLS]. UVOLNENIE SPIN LOCK sa robi pomocou FUNCTION [KeReleaseInterruptSpinLock()].
+      D. FUNCTION [KeSynchronizeExecution()] umoznuje ZISKAT SPIN LOCK pre IRQL [<=DEVICE_IRQLS]. FUNCTION ziska SPIN LOCK, vykona zadanu CALLBACK FUNCTION a nasledne uvolni SPIN LOCK.
+      E. FUNCTION [ExInterlockedInsertHeadList()], FUNCTION [ExInterlockedInsertTailList()] a FUNCTION [ExInterlockedRemoveHeadList()] umoznuju ZISKAT SPIN LOCK pre IRQL [==HIGH_LEVEL].
+   F. SPIN LOCK je reprezentovany OBJECT TYPE [KSPIN_LOCK]. OBJECT MUSI byt alokovany v NON-PAGED MEMORY.
+   !!! G. Pokus o rekurzivne ziskanie SPIN LOCKS znamena vznik DEADLOCK.
+!!!!! 112. SPIN LOCKS MUSIA VZDY zdvihnut IRQL na NAJVYSSIU MOZU UROVEN IRQL, ktory moze pristupovat k SHARED RESOURCE. Dovody su nasledujuce.
+   !!! A. CPU 'X' by ziskal INTERRUPT SPIN LOCK na IRQL [DISPATCH_LEVEL] BEZ TOHO, aby dvihol IRQL na IRQL [DEVICE_IRQLS].
+   B. Doslo by k vzniku INTERRUPT, ktory vyzaduje spusenie INTERRUPT SERVICE ROUTINE.
+   !!! C. WINDOWS by spustil INTERRUPT SERVICE ROUTINE na CPU 'X' na IRQL [DEVICE_IRQLS].
+   !!! D. Kedze IRQL [DEVICE_IRQLS>DISPATCH_LEVEL], tak by CPU 'X' prestal vykonavat CODE na urovni IRQL [DISPATCH_LEVEL], ale prusil by ho volanim INTERRUPT SERVICE ROUTINE. Avsak CODE na IRQL [DISPATCH_LEVEL] by STALE DRZAL SPIN LOCK.
+   !!!!! E. Ak by sa INTERRUPT SERVICE ROUTINE na CPU 'X' pokusil ziskat SPIN LOCK, ktory drzi CODE beziaci na IRQL [DISPATCH_LEVEL] dojde k DEADLOCK.
+   !!!!! F. Tym, ze WINODWS VZDY dvihne IRQL na IRQL [DEVICE_IRQLS] zabrani, aby na CPU 'X' bol preruseny INTERRUPT SERVICE ROUTINE a doslo k DEADLOCK.
+   !!!!! G. Volanie INTERRUPT SERVICE ROUTINE na CPU 'Y' NIE JE PROBLEM, pretoze pri pokuse ziskat SPIN LOCK na CPU 'Y' bude CPU 'Y' vykonavat SPINNING a cakat az kym CPU 'X' neuvolni SPIN LOCK.
+113. Pre FUNCTION [KeInitializeSpinLock()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [void KeInitializeSpinLock(PKSPIN_LOCK SpinLock)].
+   B. PARAMETER [PKSPIN_LOCK SpinLock] obsahuje SPIN LOCK, ktory ma byt inicializovany.
+   C. FUNCTION inicializuje SPIN LOCK a zaroven ho nastavuje do UNOWNED STATE.
+114. Pre MACRO [KeAcquireSpinLock()] platia nasledujuce fakty.
+   A. MACRO ma PROTOTYPE [void KeAcquireSpinLock(PKSPIN_LOCK SpinLock, KIRQL* OldIrql)].
+   B. PARAMETER [PKSPIN_LOCK SpinLock] obsahuje SPIN LOCK.
+   !!! C. PARAMETER [KIRQL* OldIrql] sa nastavi na povodnu IRQL VALUE. Tato VALUE sa pouziva vo FUNCTION [KeReleaseSpinLock()].
+   !!! D. MACRO zvysi IRQL na IRQL [DISPATCH_LEVEL] a nasledne ziska SPIN LOCK.
+   !!! E. MACRO sa vola na IRQL [<=DISPATCH_LEVEL].
+   F. SPIN LOCK ziskany tymto MACRO sa musi uvolnit volanim FUNCTION [KeReleaseSpinLock()].
+115. Pre FUNCTION [KeReleaseSpinLock()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [VOID KeReleaseSpinLock(PKSPIN_LOCK SpinLock, KIRQL NewIrql)].
+   B. PARAMETER [PKSPIN_LOCK SpinLock] obsahuje SPIN LOCK.
+   !!! C. PARAMETER [KIRQL OldIrql] obsahuje IRQL na ktory bolo nastavene CPU pred volanim MACRO [KeAcquireSpinLock()].
+   !!! D. FUNCTION uvolni SPIN LOCK a nasledne znizi IRQL na VALUE v PARAMETER [NewIrql].
+   !!! E. FUNCTION sa vola na IRQL [DISPATCH_LEVEL] na ktoru ju nastavilo MACRO [KeAcquireSpinLock()].
+   F. SPIN LOCK uvolneny touto FUNCTION musi byt ziskany volanim MACRO [KeAcquireSpinLock()].
+116. Pre FUNCTION [KeAcquireSpinLockAtDpcLevel()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [void KeAcquireSpinLockAtDpcLevel(PKSPIN_LOCK SpinLock)].
+   B. PARAMETER [PKSPIN_LOCK SpinLock] obsahuje SPIN LOCK.
+   !!! C. FUNCTION ziska SPIN LOCK, pricom NEMENI IRQL.
+   !!! D. FUNCTION MUSI byt volana na IRQL [>=DISPATCH_LEVEL].
+   E. SPIN LOCK ziskany touto FUNCTION sa musi uvolnit volanim FUNCTION [KeReleaseSpinLockFromDpcLevel()].
+117. Pre FUNCTION [KeReleaseSpinLockFromDpcLevel()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [void KeReleaseSpinLockFromDpcLevel(PKSPIN_LOCK SpinLock)].
+   B. PARAMETER [PKSPIN_LOCK SpinLock] obsahuje SPIN LOCK.
+   !!! C. FUNCTION uvolni SPIN LOCK bez toho aby zmenila IRQL.
+   !!! D. FUNCTION MUSI byt volana na IRQL [DISPATCH_LEVEL].
+   E. SPIN LOCK uvolneny touto FUNCTION musi byt ziskany volanim FUNCTION [KeAcquireSpinLockAtDpcLevel()].
+118. Pre FUNCTION [KeAcquireInterruptSpinLock()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [KIRQL KeAcquireInterruptSpinLock(PKINTERRUPT Interrupt)].
+   B. PARAMETER [PKINTERRUPT Interrupt] obsahuje INTERRUPT OBJECT, ktory interne obsahuje SPIN LOCK.
+   C. RETURN VALUE TYPE [KIRQL] vracia povodnu hodnotu IRQL.
+   !!!!! D. FUNCTION dvihne IRQL na IRQL [DEVICE_IRQLS], ktory je asociovany s danym OBJECT [PKINTERRUPT] a nasledne ziska SPIN LOCK asociovany s OBJECT [PKINTERRUPT].
+   !!! E. FUNCTION MUSI byt volana na IRQL [<=DEVICE_IRQLS].
+   F. SPIN LOCK ziskany touto FUNCTION sa musi uvolnit volanim FUNCTION [KeReleaseInterruptSpinLock()].
+119. Pre FUNCTION [KeReleaseInterruptSpinLock()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [void KeReleaseInterruptSpinLock(PKINTERRUPT Interrupt, KIRQL OldIrql)].
+   B. PARAMETER [PKINTERRUPT Interrupt] obsahuje INTERRUPT OBJECT, ktory interne obsahuje SPIN LOCK.
+   C. PARAMETER [KIRQL OldIrql] obsahuje IRQL, na ktoru bol CPU nastaveny pred volanim FUNCTION [KeAcquireInterruptSpinLock()] a ktoru tato FUNCTION vracia ako RETURN VALUE.
+   !!! D. FUNCTION uvolni SPIN LOCK a nasledne znizi IRQL na VALUE, ktoru obsahuje PARAMETER [OldIrql].
+   !!! E. FUNCTION MUSI byt volana na IRQL [DEVICE_IRQLS], ktory je asociovany s danym OBJECT [PKINTERRUPT].
+   F. SPIN LOCK uvolneny touto FUNCTION musi byt ziskany volanim FUNCTION [KeAcquireInterruptSpinLock()].
+120. Pre FUNCTION [KeSynchronizeExecution()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [BOOLEAN KeSynchronizeExecution(PKINTERRUPT Interrupt, PKSYNCHRONIZE_ROUTINE SynchronizeRoutine, PVOID SynchronizeContext)].
+   B. PARAMETER [PKINTERRUPT Interrupt] obsahuje INTERRUPT OBJECT, ktory interne obsahuje SPIN LOCK.
+   C. PARAMETER [PKSYNCHRONIZE_ROUTINE SynchronizeRoutine] obsahuje CALLBACK, ktory sa ziska po zvyseni IRQL a ziskani SPIN LOCK.
+   D. PARAMETER [PVOID SynchronizeContext] obsahuje CALLBACK PARAMETER, ktory za zasle co CALLBACK FUNCTION.
+   E. RETURN VALUE TYPE [BOOLEAN] vracia VALUE [TRUE] ak OPERATION uspela a VALUE [FALSE] ak OPERATION zlyhala.
+   !!!!! F. FUNCTION vykonava nasledujuce cinnosti.
+      A. Dvihne IRQL na IRQL [DEVICE_IRQLS], ktory je asociovany s danym OBJECT [PKINTERRUPT].
+	  B. Ziska SPIN LOCK, ktory je asociovany s danym OBJECT [PKINTERRUPT]
+	  C. Zavola CALLBACK FUNCTION.
+	  D. Uvolni SPIN LOCK, ktory je asociovany s danym OBJECT [PKINTERRUPT]
+      E. Znizi IRQL na VALUE pred volanim tejto FUNCTION.
+   !!! G. FUNCTION MUSI byt volana na IRQL [<=DEVICE_IRQLS].
+121. QUEUED SPIN LOCKS su SPIN LOCKS pre ktore platia nasledujuce fakty.
+   A. QUEUED SPIN LOCKS su SPIN LOCKS, ktore pouzivaju ine FUNCTIONS na ziskanie a uvolnenie SPIN LOCKS. Ale napriklad inicializacia SPIN LOCKS sa robi pomocou rovnakej FUNCTION [KeInitializeSpinLock()].
+   B. QUEUED SPIN LOCKS si drzia QUEUE do ktorych ukladaju CPU, ktore poziadali o pristup k SHARED RESOURCES. Tieto REQUESTS su pri uvolneni SPIN LOCK vyberane FIFO sposobom. To znamena, ze QUEUED SPIN LOCKS garantuju poradie v akom na REQUESTS na pristup k SHARED RESOURCE realizovane. Bezne SPIN LOCKS pouzivaju nahodny pristup.
+   !!! C. QUEUED SPIN LOCKS dvihaju IRQL na IRQL [DISPATCH_LEVEL] a tym padom NEMOZU byt pouzite na synchronizaciu INTERRUPT SERVICE ROUTINES.
+   D. QUEUED SPIN LOCKS sa ziskavaju a uvolnuju pomocou nasledujucich FUNCTIONS.
+      A. FUNCTION [KeAcquireInStackQueuedSpinLock()] umoznuje ZISKAT QUEUED SPIN LOCK pre IRQL [<=DISPATCH_LEVEL]. UVOLNENIE SPIN LOCK sa robi pomocou FUNCTION [KeReleaseInStackQueuedSpinLock()].
+      B. FUNCTION [KeAcquireInStackQueuedSpinLockAtDpcLevel()] umoznuje ZISKAT SPIN LOCK pre IRQL [==DISPATCH_LEVEL]. UVOLNENIE SPIN LOCK sa robi pomocou FUNCTION [KeReleaseInStackQueuedSpinLockFromDpcLevel()]. Tieto FUNCTION NEMENIA IRQL, ktore UZ MUSI byt nastavene na urovni IRQL [==DISPATCH_LEVEL].
+122. Pre FUNCTION [KeAcquireInStackQueuedSpinLock()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [void KeAcquireInStackQueuedSpinLock(PKSPIN_LOCK SpinLock, PKLOCK_QUEUE_HANDLE LockHandle)].
+   B. PARAMETER [PKSPIN_LOCK SpinLock] obsahuje SPIN LOCK.
+   C. PARAMETER [PKLOCK_QUEUE_HANDLE LockHandle] obsahuje OPAQUE STRUCTURE, ktora musi byt pouzita pri volani FUNCTION [KeReleaseInStackQueuedSpinLock()].
+   !!! D. FUNCTION zvysi IRQL na IRQL [DISPATCH_LEVEL] a nasledne ziska QUEUED SPIN LOCK.
+   !!! E. FUNCTION sa vola na IRQL [<=DISPATCH_LEVEL].
+   F. QUEUED SPIN LOCK ziskany touto FUNCTION sa musi uvolnit volanim FUNCTION [KeReleaseInStackQueuedSpinLock()].
+123. Pre FUNCTION [KeReleaseInStackQueuedSpinLock()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [void KeReleaseInStackQueuedSpinLock(PKLOCK_QUEUE_HANDLE LockHandle)].
+   B. PARAMETER [PKLOCK_QUEUE_HANDLE LockHandle] obsahuje OPAQUE STRUCTURE, ktoru inicializovala FUNCTION [KeAcquireInStackQueuedSpinLock()].
+   !!! C. FUNCTION uvolni SPIN LOCK a nasledne znizi IRQL na IRQL na ktorom bol CPU pred volanim FUNCION [KeAcquireInStackQueuedSpinLock()].
+   !!! D. FUNCTION sa vola na IRQL [DISPATCH_LEVEL] na ktoru ju nastavila FUNCTION [KeAcquireInStackQueuedSpinLock()].
+   E. QUEUED SPIN LOCK uvolneny touto FUNCTION musi byt ziskany volanim FUNCTION [KeAcquireInStackQueuedSpinLock()].
+124. Pre FUNCTION [KeAcquireInStackQueuedSpinLockAtDpcLevel()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [void KeAcquireInStackQueuedSpinLockAtDpcLevel(PKSPIN_LOCK SpinLock, PKLOCK_QUEUE_HANDLE LockHandle)].
+   B. PARAMETER [PKSPIN_LOCK SpinLock] obsahuje SPIN LOCK.
+   C. PARAMETER [PKLOCK_QUEUE_HANDLE LockHandle] obsahuje OPAQUE STRUCTURE, ktora musi byt pouzita pri volani FUNCTION [KeReleaseInStackQueuedSpinLockFromDpcLevel()].
+   !!! D. FUNCTION ziska QUEUED SPIN LOCK, pricom NEMENI IRQL.
+   !!! E. FUNCTION MUSI byt volana na IRQL [==DISPATCH_LEVEL].
+   F. QUEUED SPIN LOCK ziskany touto FUNCTION sa musi uvolnit volanim FUNCTION [KeReleaseInStackQueuedSpinLockFromDpcLevel()].
+125. Pre FUNCTION [KeReleaseInStackQueuedSpinLockFromDpcLevel()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [void KeReleaseInStackQueuedSpinLockFromDpcLevel(PKLOCK_QUEUE_HANDLE LockHandle)].
+   B. PARAMETER [PKLOCK_QUEUE_HANDLE LockHandle] obsahuje OPAQUE STRUCTURE, ktoru inicializovala FUNCTION [KeAcquireInStackQueuedSpinLockAtDpcLevel()].
+   !!! C. FUNCTION uvolni QUEUED SPIN LOCK bez toho aby zmenila IRQL.
+   !!! D. FUNCTION MUSI byt volana na IRQL [DISPATCH_LEVEL].
+   E. QUEUED SPIN LOCK uvolneny touto FUNCTION musi byt ziskany volanim FUNCTION [KeAcquireInStackQueuedSpinLockAtDpcLevel()].
+126. KERNEL implementuje THREAD POOL. Pre KERNEL THREAD POOL platia nasledujuce fakty.
+   A. THREAD POOL vykonava registrovane WORK ITEMS. Kazdy WORK ITEM obsahuje CALLBACK FUNCTION, ktora sa ma vykonat v THREAD POOL.
+   B. THREAD POOL vykonava WORK ITEMS na IRQL [PASSIVE_LEVEL].
+   C. WORK ITEMS su reprezentovane STRUCTURE [_IO_WORKITEM].
+   D. WORK ITEMS mozu byt alokovane STATICKY, alebo DYNAMICKY.
+   E. STATICKA alokacia a dealokacia WORK ITEMS sa robi v nasledujucich krokoch.
+      A. Alokuje sa MEMORY pre STRUCTURE [_IO_WORKITEM].
+	  B. STRUCTURE [_IO_WORKITEM] sa inicializuje volanim FUNCTION [IoAllocateWorkItem()].
+	  C. WORK ITEM sa pouzije volanim FUNCTION [IoQueueWorkItem()], alebo FUNCTION [IoQueueWorkItemEx()].
+	  D. WORK ITEM je uvolneny volanim FUNCTION [IoFreeWorkItem()].
+	  E. Alokovana MEMORY sa uvolni.
+   F. DYNAMICKA alokacia a dealokacia WORK ITEMS sa robi v nasledujucich krokoch.
+      A. Ziska sa velkost MEMORY potrebnej na alokaciu volanim FUNCTION [IoSizeofWorkItem()].
+	  B. Alokuje sa MEMORY o dlzke, ktoru vratila FUNCTION [IoSizeofWorkItem()].
+	  C. Volanim FUNCTION [IoInitializeWorkItem()] sa alokovana MEMORY inicializuje.
+	  D. WORK ITEM sa pouzije volanim FUNCTION [IoQueueWorkItem()], alebo FUNCTION [IoQueueWorkItemEx()].
+	  E. WORK ITEM je uvolneny volanim FUNCTION [IoUninitializeWorkItem()].
+	  F. Alokovana MEMORY sa uvolni.
+	G. WORK ITEM CALLBACK ma nasledujuce TYPES a PROTOTYPES.
+	   A. TYPE [IO_WORKITEM_ROUTINE] ma PROTOTYPE [void WorkItem(PDEVICE_OBJECT DeviceObject, PVOID Context)] a pouziva sa vo FUNCTION [IoQueueWorkItem()].
+	   B. TYPE [IO_WORKITEM_ROUTINE_EX] ma PROTOTYPE [void IoWorkitemRoutineEx(PVOID IoObject, PVOID Context, PIO_WORKITEM IoWorkItem)] a pouziva sa vo FUNCTION [IoQueueWorkItemEx()].
+	H. KERNEL podpouje viacero THREAD POOLS, ktore su definovane v STRUCTURE [_WORK_QUEUE_TYPE]. DRIVERS by mali pouzivat THREAD POOL [_WORK_QUEUE_TYPE::DelayedWorkQueue].
+	!!!!! I. S WORK ITEMS sa pracuje nasledujucim sposobom.
+	   A. WORK ITEM sa alokuje a inicializuje bud STATICKY (volanim FUNCTION [IoAllocateWorkItem()]), alebo DYNAMICKY (volanim FUNCTION [IoSizeofWorkItem()] a FUNCTION [IoInitializeWorkItem()]).
+	   B. WORK ITEM je priradena CALLBACK FUNCTION volanim FUNCTION [IoQueueWorkItem()], alebo FUNCTION [IoQueueWorkItemEx()].
+	   !!! C. KERNEL zaradi WORK ITEM do QUEUE.
+	   D. THREAD POOL po nejakom case vytiahne WORK ITEM z QUEUE a spusti CALLBACK FUNCTION.
+	   !!!!! E. Uz v case volania CALLBACK FUNCTION je mozne WORK ITEM uvolnit volanim FUNCTION [IoFreeWorkItem()], alebo FUNCTION [IoUninitializeWorkItem()].
+	   !!!!! F. Jednoduchy sposob ako uvolnit WORK ITEM je priradit CALLBACK FUNCTION do WORK ITEM pomocou FUNCTION [IoQueueWorkItemEx()]. Ta ma ako PARAMETER samotny WORK ITEM, ktory je mozne PRIAMO v CALLBACK FUNCTION UVOLNIT volanim FUNCTION [IoFreeWorkItem()], alebo FUNCTION [IoUninitializeWorkItem()].
+	J. DRIVER NESMIE zaradit tu istu instanciu OBJECT [_IO_WORKITEM] do QUEUE pretoze dojde k MEMORY CORRUPTION.
+	!!! K. WORK ITEM FUNCTION [IoAllocateWorkItem()] a WORK ITEM FUNCTION [IoInitializeWorkItem()] asociuju s WORK ITEM DEVICE OBJECT, alebo DRIVER OBJECT, aby sa zabranilo uvolneniu DRIVER skor nez je WORK ITEM vykonany.
+127. Pre FUNCTION [IoAllocateWorkItem()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [PIO_WORKITEM IoAllocateWorkItem(PDEVICE_OBJECT DeviceObject)].
+   !!! B. PARAMETER [PDEVICE_OBJECT DeviceObject] obsahuje DEVICE OBJECT s ktorym bude WORK ITEM asociovany. To zabranuje, aby bol DRIVER odstraneny skor, ako je WORK ITEM vykonany.
+   C. RETURN VALUE TYPE [PIO_WORKITEM] vracia alokovany WORK ITEM. VALUE [NULL] je vratena ak nie je dostatok RESOURCES na alokovanie WORK ITEM.
+   D. FUNCTION alokuje WORK ITEM a asociuje ho s DEVICE OBJECT.
+   !!! E. WORK ITEM alokovany touto FUNCTION musi byt uvolneny volanim FUNCTION [IoFreeWorkItem()].
+128. Pre FUNCTION [IoFreeWorkItem()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [void IoFreeWorkItem(PIO_WORKITEM IoWorkItem)].
+   B. PARAMETER [PIO_WORKITEM IoWorkItem] obsahuje WORK ITEM, ktory ma byt uvolneny.
+   C. FUNCTION uvolni WORK ITEM.
+   !!! D. WORK ITEM uvolneny touto FUNCTION musi byt alokovany volanim FUNCTION [IoAllocateWorkItem()].
+129. Pre FUNCTION [IoSizeofWorkItem()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [ULONG IoSizeofWorkItem(void)].
+   B. RETURN VALUE TYPE [ULONG] vracia pocet BYTES, ktore je nutne alokovat pre WORK ITEM.
+   C. FUNCTION vracia pocet BYTES, ktore je nutne alokovat pre WORK ITEM.
+130. Pre FUNCTION [IoInitializeWorkItem()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [void IoInitializeWorkItem(PVOID IoObject, PIO_WORKITEM IoWorkItem)].
+   !!! B. PARAMETER [PVOID IoObject] obsahuje DRIVER OBJECT, alebo DEVICE OBJECT s ktorym bude WORK ITEM asociovany. To zabranuje, aby bol DRIVER odstraneny skor, ako je WORK ITEM vykonany.
+   !!! C. PARAMETER [PIO_WORKITEM IoWorkItem] obsahuje WORK ITEM, ktory ma byt inicializovany. MEMORY MUSI byt alokovany na NON-PAGED MEMORY.
+   D. FUNCTION inicializuje WORK ITEM a asociuje ho s DRIVER OBJECT, alebo DEVICE OBJECT.
+   !!! E. WORK ITEM alokovany touto FUNCTION musi byt uvolneny volanim FUNCTION [IoUninitializeWorkItem()].
+131. Pre FUNCTION [IoUninitializeWorkItem()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [void IoUninitializeWorkItem(PIO_WORKITEM IoWorkItem)].
+   B. PARAMETER [PIO_WORKITEM IoWorkItem] obsahuje WORK ITEM, ktory ma byt uvolneny.
+   C. FUNCTION uvolni WORK ITEM.
+   !!! D. WORK ITEM uvolneny touto FUNCTION musi byt alokovany volanim FUNCTION [IoInitializeWorkItem()].
+132. Pre FUNCTION [IoQueueWorkItem()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [void IoQueueWorkItem(PIO_WORKITEM IoWorkItem, PIO_WORKITEM_ROUTINE WorkerRoutine, WORK_QUEUE_TYPE QueueType, PVOID Context)].
+   B. PARAMETER [PIO_WORKITEM IoWorkItem] obsahuje WORK ITEM, ktory ma byt vlozeny do QUEUE.
+   C. PARAMETER [PIO_WORKITEM_ROUTINE WorkerRoutine] obsahuje CALLBACK FUNCTION, ktora ma byt volana pre dany WORK ITEM.
+   D. PARAMETER [WORK_QUEUE_TYPE QueueType] obsahuje typ THREAD POOL QUEUE do ktorej ma byt WORK ITEM vlozeny.
+   E. PARAMETER [PVOID Context] obsahuje CUSTOM PARAMETER, ktory bude zaslany do CALLBACK FUNCTION.
+   F. FUNCTION ulovi WORK ITEM do QUEUE.
+133. Pre FUNCTION [IoQueueWorkItemEx()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [void IoQueueWorkItemEx(PIO_WORKITEM IoWorkItem, PIO_WORKITEM_ROUTINE_EX WorkerRoutine, WORK_QUEUE_TYPE QueueType, PVOID Context)].
+   B. PARAMETER [PIO_WORKITEM IoWorkItem] obsahuje WORK ITEM, ktory ma byt vlozeny do QUEUE.
+   C. PARAMETER [PIO_WORKITEM_ROUTINE_EX WorkerRoutine] obsahuje CALLBACK FUNCTION, ktora ma byt volana pre dany WORK ITEM.
+   D. PARAMETER [WORK_QUEUE_TYPE QueueType] obsahuje typ THREAD POOL QUEUE do ktorej ma byt WORK ITEM vlozeny.
+   E. PARAMETER [PVOID Context] obsahuje CUSTOM PARAMETER, ktory bude zaslany do CALLBACK FUNCTION.
+   F. FUNCTION ulovi WORK ITEM do QUEUE.
+//----------------------------------------------------------------------------------------------------------------------
