@@ -1,0 +1,442 @@
+//----------------------------------------------------------------------------------------------------------------------
+1. Solution demonstruje pouzitie IO REQUEST PACKETS, ako aj LAYERING DRIVERS vo WINDOWS.
+2. Ulohou kazdeho DRIVER je spracovavat REQUESTS. REQUESTS su reprezentovane pomocou IO REQUEST PACKETS (IRP). Pre IRP platia nasledujuce fakty.
+   A. IRP je reprezentovany STRUCTURE [IRP].
+   B. IRP su vzdy alokovane v NON-PAGED MEMORY.
+   C. IRP mozu byt posielane z USER MODE do DRIVERS, alebo DRIVERS si mozu v DEVICE STACKS posielat IRP navzajom.
+   !!! D. IRP su alokovane bude niektorym z KERNEL MANAGERS (IO MANAGER, PLUG AND PLAY MANAGER, POWER MANAGER), alebo ich alokuje DRIVER, ak chce IRP poslat do dalsieho DRIVER v DEVICE STACK.
+   !!! E. Entita, ktora alokovala IRP je zodpovedna za jeho uvolnenie z MEMORY.
+   F. IRP je v MEMORY nasledovany <1,N> IO STACK LOCATIONS.
+   G. IO STACK LOCATION je reprezentovany STRUCTURE [IO_STACK_LOCATION].
+   !!! H. Pri vytvarani IRP musi CALLER VZDY specifikovat pocet IO STACK LOCATIONS, ktore sa alokuju v MEMORY HNED za samotnym IRP.
+   !!! I. Pocet IO STACK LOCATIONS je rovny poctu DEVICE OBJECTS v DEVICE STACK.
+   J. DRIVER pracuje iba so svojim IO STACK LOCATION. POINTER nan moze ziskat volanim FUNCTION [IoGetCurrentIrpStackLocation()].
+   H. Informacie o REQUEST su rozdelene medzi STRUCTURE [IRP] a STRUCTURE [IO_STACK_LOCATION].
+3. Pre FUNCTION [IoGetCurrentIrpStackLocation()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [PIO_STACK_LOCATION IoGetCurrentIrpStackLocation(PIRP Irp)].
+   B. PARAMETER [PIRP Irp] obsahuje IRP, pre ktore sa ma CURRENT IO STACK LOCATION vratit.
+   C. RETURN VALUE TYPE [PIO_STACK_LOCATION] vracia STRUCTURE [IO_STACK_LOCATION] pre CURRENT DEVICE OBJECT v DEVICE OBJECT STACK.
+   D. FUNCTION vracia STRUCTURE [IO_STACK_LOCATION] pre CURRENT DEVICE OBJECT v DEVICE OBJECT STACK.
+4. WINDOWS organizuje DRIVERS do DEVICE OBJECT STACKS. Pre DEVICE OBJECT STACKS platia nasledujuce fakty.
+   A. DRIVERS vystavuju DEVICE OBJECTS. DEVICE OBJECTS su organizovane v podobe DEVICE OBJECT STACKS.
+   B. DEVICE OBJECT STACK je STACK DEVICE OBJECTS. IRP vstupujuci do DEVICE OBJECT STACK prechadza jednotlivymi DEVICE OBJECTS od NAJVYSSIEHO po NAJNIZSI DEVICE OBJECT. Po spracovani IRP zas IRP prechadza od NAJNIZSIEHO po NAJVYSSI DEVICE OBJECT.
+   C. DEVICE OBJECT STACK obsahuje DEVICE OBJECTS v nasledujucom poradi.
+      A. UPPER FILTER DEVICE OBJECTS (FIDO). DEVICE OBJECT STACKS mozu obsahovat <0,N> UPPER FIDO.
+	  B. FUNCTIONAL DEVICE OBJECT (FDO). DEVICE OBJECT STACKS obsahuju 1 FDO.
+      C. LOWER FILTER DEVICE OBJECTS (FIDO). DEVICE OBJECT STACKS mozu obsahovat <0,N> UPPER FIDO.
+	  D. PHYSICAL DEVICE OBJECT (PDO). DEVICE OBJECT STACKS obsahuju 1 PDO.
+	D. DEVICE OBJECT STACKS su vytvarane PLUG AND PLAY MANAGER smerom zdola nahor.
+5. Pre PHYSICAL DEVICE OBJECTS platia nasledujuce fakty.
+   A. PDO je vzdy vytvarany BUS DRIVER toho BUS ku ktoremu je dane HW DEVICE pripojeny.
+   B. PDO sa vzdy nachadza na BOTTOM DEVICE OBJECT STACK.
+6. Pre FUNCTIONAL DEVICE OBJECTS platia nasledujuce fakty.
+   A. FDO je vytvarany 'skutocnym' DRIVER, ktory ovlada dane HW DEVICE.
+   B. FDO sa nachadza nad PDO v DEVICE OBJECT STACK.
+7. Pre FILTER DEVICE OBJECTS platia nasledujuce fakty.
+   A. FILTER DEVICE OBJECTS su vytvarane FILTER DRIVERS.
+   B. FILTER DEVICE OBJECTS sa mozu nachadzat v DEVICE OBJECT STACK medzi PDO a FDO, alebo medzi FDO a vrcholom DEVICE OBJECT STACK.
+   C. FILTER DEVICE OBJECTS su OPTIONAL.
+!!!!! 8. WINDOWS vytvara DEVICE OBJECT STACKS nasledujucim sposobom.
+   A. WINDOWS nacita a spusti BUS DRIVERS pre vsetky BUSES, ktore sa v SYSTEME nachadzaju.
+   B. BUS DRIVER zisti, ze je k BUS pripojeny neznamy HW DEVICE.
+   C. BUS DRIVER pre nezname HW DEVICE vytvori PHYSICAL DEVICE OBJECT pomocou FUNCTION [IoCreateDevice()].
+   D. BUS DRIVER notifikuje PLUG AND PLAY MANAGER, ze objavil novy HW DEVICE volanim FUNCTION [IoInvalidateDeviceRelations()].
+   E. PLUG AND PLAY MANAGER si vyziada od BUS DRIVER zoznam vsetkych uz vytvorenych PDO a do tohto zoznamu prida PDO pre neznamy HW DEVICE.
+   !!! F. PLUG AND PLAY MANAGER si od BUS DRIVER vyziada podrobnosti o neznamom HW DEVICE ako je VENDOR ID a DEVICE ID tvoriace FULL HARDWARE DEVICE ID. BUS DRIVER dokaze tieto zakladne informacie z neznameho HW DEVICE ziskat pomocou standardneho PROTOCOL.
+   G. Na zaklade ziskaneho FULL HARDWARE DEVICE ID PLUG AND PLAY MANAGER nacita v REGISTRY PATH [HKLM\SYSTEM\CurrentControlSet\Enum\BUS_TYPE\FULL_HARDWARE_DEVICE_ID].
+   H. Na zaklade informacii v REGISTRY PATH [HKLM\SYSTEM\CurrentControlSet\Enum\BUS_TYPE\FULL_HARDWARE_DEVICE_ID] PLUG AND PLAY MANAGER nacita prislusny DRIVER.
+   I. Najdeny DRIVER vytvori FDO volanim FUNCTION [IoCreateDevice()], ktory nasledne prida do DEVICE OBJECT STACK volanim FUNCTION [IoAttachDeviceToDeviceStack()].
+!!!!! 9. V pripade ze DEVICE OBJECT STACK obsahuje LOWER FILTER DRIVERS, tak PLUG AND PLAY MANAGER postupuje nasledovne.
+   A. PLUG AND PLAY MANAGER nacita z REGISTRY VALUE [HKLM\SYSTEM\CurrentControlSet\Enum\BUS_TYPE\FULL_HARDWARE_DEVICE_ID\ClassGUID].
+   B. PLUG AND PLAY MANAGER nacita pre najdenu VALUE [HKLM\SYSTEM\CurrentControlSet\Enum\BUS_TYPE\FULL_HARDWARE_DEVICE_ID\ClassGUID] REGISTRY KEY [HKLM\SYSTEM\CurrentControlSet\Control\Classes\LowerFilters]. Tento REGISTRY KEY moze obsahovat viacero VALUES.
+   C. PLUG AND PLAY MANAGER pre kazdu VALUE v REGISTRY KEY [HKLM\SYSTEM\CurrentControlSet\Control\Classes\LowerFilters] nacita REGISTRY PATH [HKLM\SYSTEM\CurrentControlSet\Services\DRIVER_NAME].
+   D. PLUG AND PLAY MANAGER pre kazdy REGISTRY PATH [HKLM\SYSTEM\CurrentControlSet\Services\DRIVER_NAME] najde LOWER FILTER DRIVER a nacita ho do MEMORY.
+   !!! E. Nacitany LOWER FILTER DRIVER vytvori LOWER FIDO volanim FUNCTION [IoCreateDevice()], ktory nasledne prida do DEVICE OBJECT STACK volanim FUNCTION [IoAttachDeviceToDeviceStack()].
+!!!!! 10. V pripade ze DEVICE OBJECT STACK obsahuje UPPER FILTER DRIVERS, tak PLUG AND PLAY MANAGER postupuje nasledovne.
+   A. PLUG AND PLAY MANAGER nacita z REGISTRY VALUE [HKLM\SYSTEM\CurrentControlSet\Enum\BUS_TYPE\FULL_HARDWARE_DEVICE_ID\ClassGUID].
+   B. PLUG AND PLAY MANAGER nacita pre najdenu VALUE [HKLM\SYSTEM\CurrentControlSet\Enum\BUS_TYPE\FULL_HARDWARE_DEVICE_ID\ClassGUID] REGISTRY KEY [HKLM\SYSTEM\CurrentControlSet\Control\Classes\UpperFilters]. Tento REGISTRY KEY moze obsahovat viacero VALUES.
+   C. PLUG AND PLAY MANAGER pre kazdu VALUE v REGISTRY KEY [HKLM\SYSTEM\CurrentControlSet\Control\Classes\UpperFilters] nacita REGISTRY PATH [HKLM\SYSTEM\CurrentControlSet\Services\DRIVER_NAME].
+   D. PLUG AND PLAY MANAGER pre kazdy REGISTRY PATH [HKLM\SYSTEM\CurrentControlSet\Services\DRIVER_NAME] najde UPPER FILTER DRIVER a nacita ho do MEMORY.
+   !!! E. Nacitany UPPER FILTER DRIVER vytvori UPPER FIDO volanim FUNCTION [IoCreateDevice()], ktory nasledne prida do DEVICE OBJECT STACK volanim FUNCTION [IoAttachDeviceToDeviceStack()].
+!!! 11. IRP je spracovavane v DEVICE OBJECT STACK nasledujucim sposobom.
+   A. IRP je vytvorene niektorym z MANAGERS. Najcastejsie je to EXECUTIVE MANAGER. Spolu so STRUCTURE [IRP] je vytvorenych v MEMORY aj [N] instancii STRUCTURE [IO_STACK_LOCATION]. VALUE [N] zodpoveda poctu DEVICE OBJECTS v DEVICE OBJECT STACK.
+   B. MANAGER inicializuje 1. instanciu STRUCTURE [IO_STACK_LOCATION] a cele IRP zasle do NAJVYSSIEHO DEVICE OBJECT v DEVICE OBJECT STACK.
+   C. DRIVER, ktory vytvori NAJVYSSI DEVICE OBJECT v DEVICE OBJECT STACK obdrzi IRP.
+   !!! D. Kazdy DRIVER moze spracovat IRP nasledujucimi sposobmi.
+      A. IRP poslat do DEVICE OBJECT NIZSIE v DEVICE OBJECT STACK. DRIVER moze OPTIONALLY zaregistrovat CALLBACK ROUTINE, ktora sa vyvola po spracovani IRP, ked sa IRP vracia smerom NAHOR cez DRIVERS v DEVICE OBJECT STACK.
+	  B. IRP plne spracovat a ukoncit ho.
+	  C. Spustit asynchronne spracovanie IRP.
+   E. DRIVER predtym nez zasle IRP do DEVICE OBJECT NIZSIE v DEVICE OBJECT STACK musi pre nasledujuci DRIVER inicializovat jeho STRUCTURE [IO_STACK_LOCATION].
+   F. IRP je spracovavane vzdy smerom ZHORA NADOL v DEVICE OBJECT STACK. PDO, ktory je na dne DEVICE OBJECT STACK vykonava fyzicku komunikaciu z HW DEVICE a po jej skonceni ukonci IRP.
+   !!! G. Po ukonceni IRP v ktoromkolvek DRIVER sa IRP vracia SMEROM NAHOR v DEVICE OBJECT STACK. Ak niektore z DRIVERS zaregistrovali CALLBACK ROUTINES, tak tieto ROUTINE su pocas prechodu ukonceneho IRP smerom NAHOR v DEVICE OBJECT STACK vyvolane.
+   !!! H. Kazdy DRIVER okrem DRIVER NAJNIZSIE v DEVICE OBJECT STACK moze OPTIONALLY volanim FUNCTION [IoSetCompletionRoutine()] zaregistrovat CALLBACK FUNCTION, ktora sa vyvola po ukonceni IRP, ked IRP nasledne predchadza SMEROM NAHOR cez DEVICE OBJECT STACK. To umoznuje, aby CURRENT DRIVER spracoval vysledky spracovania IRP.
+   !!!!! I. POINTER na CALLBACK FUNCTION sa uklada do instancie STRUCTURE [IO_STACK_LOCATION] pre DEVICE OBJECT NIZSIE v DEVICE OBJECT STACK, a NIE pre CURRENT DEVICE OBJECT v DEVICE OBJECT STACK. Z toho vyplyvaju nasledujuce fakty.
+      A. DRIVER na dne DEVICE OBJECT STACK NEMOZE registrovat volanie CALLBACK FUNCTION.
+      B. MANAGER, ktory vytvoril IRP, a nie je sucastou DEVICE OBJECT STACK MOZE registrovat volanie CALLBACK FUNCTION.
+12. Ak DRIVER spracovava IRP tym, ze ho zasiela do DEVICE OBJECT NIZSIE v DEVICE OBJECT STACK, musia sa vykonat nasledujce kroky.
+   A. DRIVER MUSI inicializovat STRUCTURE [IO_STACK_LOCATION] pre DEVICE OBJECT NIZSIE v DEVICE OBJECT STACK niektorou z nasledujucich FUNCTIONS.
+       A. FUNCTION [IoCopyCurrentIrpStackLocationToNext()] skopiruje obsah CURRENT instancie STRUCTURE [IO_STACK_LOCATION] do NIZSEJ instancie STRUCTURE [IO_STACK_LOCATION].
+       B. FUNCTION [IoSkipCurrentIrpStackLocation()] dekrementuje STACK COUNTER cim sposobi, ze po nasledujucom volani FUNCTION [IoCallDriver()], ktora inkrementuje STACK COUNTER bude DEVICE OBJECT NIZSIE v DEVICE OBJECT STACK referovat na tu istu instanciu STRUCTURE [IO_STACK_LOCATION] ako predosly DEVICE OBJECT v DEVICE OBJECT STACK. Tato FUNCTION je efektivnejsou alternativou FUNCTION [IoCopyCurrentIrpStackLocationToNext()] v pripade, ze CURRENT DRIVER nepotrebuje modifikovat instanciu STRUCTURE [IO_STACK_LOCATION].
+       C. FUNCTION [IoGetNextIrpStackLocation()] vrati instanciu STRUCTURE [IO_STACK_LOCATION] pre NASLEDUJUCI DEVICE OBJECT v DEVICE OBJECT STACK a CURRENT DRIVER ho moze lubovolne modifikovat predtym, nez je IRP zaslane do DEVICE OBJECT NIZSIE v DEVICE OBJECT STACK.
+   B. DRIVER zavola FUNCTION [IoCallDriver()], ktorou odosle IRP do DEVICE OBJECT NIZSIE v DEVICE OBJECT STACK.
+   !!! C. DRIVER moze OPTIONALLY volanim FUNCTION [IoSetCompletionRoutine()] zaregistrovat CALLBACK FUNCTION, ktora sa vyvola po ukonceni IRP, ked IRP nasledne predchadza SMEROM NAHOR cez DEVICE OBJECT STACK. To umoznuje, aby CURRENT DRIVER spracoval vysledky spracovania IRP.
+   !!!!! D. POINTER na CALLBACK FUNCTION sa uklada do instancie STRUCTURE [IO_STACK_LOCATION] pre DEVICE OBJECT NIZSIE v DEVICE OBJECT STACK, a NIE pre CURRENT DEVICE OBJECT v DEVICE OBJECT STACK. Z toho vyplyvaju nasledujuce fakty.
+      A. DRIVER na dne DEVICE OBJECT STACK NEMOZE registrovat volanie CALLBACK FUNCTION.
+      B. MANAGER, ktory vytvoril IRP, a nie je sucastou DEVICE OBJECT STACK MOZE registrovat volanie CALLBACK FUNCTION.
+13. Ak DRIVER spracovava IRP tym, ze ho okamzite spracuje, musia sa vykonat nasledujce kroky.
+   A. DRIVER vykona cinnost, ktora suvisi so spracovanim IRP.
+   B. DRIVER zavola FUNCTION [IoCompleteRequest()] cim sa spracovanie IRP okamzite ukonci a IRP je nasledne odoslane na spracovanie do DEVICE OBJECTS VYSSIE v DEVICE OBJECT STACK.
+14. Ak DRIVER spracovava IRP tym, iniciuje ASYNCHRONNE SPRACOVANIE IRP, musia sa vykonat nasledujce kroky.
+   A. DRIVER vykona cinnosti suvisiace s ASYNCHRONNYM SPRACOVANIM IRP.
+   B. DRIVER zavola FUNCTION [IoMarkIrpPending()], ktora indikuje, ze IRP bude spracovane ASYNCHRONNE.
+   C. DRIVER vrati z DISPATCH ROUTINE RETURN VALUE [STATUS_PENDING] cim sa indikuje, ze IRP bude spracovane ASYNCHRONNE.
+15. Pre FUNCTION [IoCopyCurrentIrpStackLocationToNext()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [void IoCopyCurrentIrpStackLocationToNext(PIRP Irp)].
+   B. PARAMETER [PIRP Irp] obsahuje IRP, ktoreho STACK instancii STRUCTURE [IO_STACK_LOCATION] ma byt modifikovany.
+   C. FUNCTION skopiruje instanciu STRUCTURE [IO_STACK_LOCATION] pre CURRENT DEVICE OBJECT v DEVICE OBJECT STACK do pozicie pre DEVICE OBJECT, ktory sa nachadza o 1 miesto NIZSIE v DEVICE OBJECT STACK.
+16. Pre FUNCTION [IoSkipCurrentIrpStackLocation()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [void IoSkipCurrentIrpStackLocation(PIRP Irp)].
+   B. PARAMETER [PIRP Irp] obsahuje IRP, ktoreho STACK instancii STRUCTURE [IO_STACK_LOCATION] ma byt modifikovany.
+   C. FUNCTION dekrementuje STACK COUNTER cim sposobi, ze po nasledujucom volani FUNCTION [IoCallDriver()], ktora inkrementuje STACK COUNTER bude DEVICE OBJECT NIZSIE v DEVICE OBJECT STACK referovat na tu istu instanciu STRUCTURE [IO_STACK_LOCATION] ako CURRENT DEVICE OBJECT v DEVICE OBJECT STACK.
+   !!! D. Tato FUNCTION je efektivnejsou alternativou FUNCTION [IoCopyCurrentIrpStackLocationToNext()] v pripade, ze CURRENT DRIVER nepotrebuje modifikovat instanciu STRUCTURE [IO_STACK_LOCATION].
+   !!!!! E. Tuto FUNCTION NIE JE MOZNE POUZIT, ak CURRENT DRIVER potrebuje registrovat CALLBACK FUNCTION pre IRP. Je to preto, lebo POINTER na CALLBACK FUNCTION sa uklada do instancie STRUCTURE [IO_STACK_LOCATION] pre DEVICE OBJECT NIZSIE v DEVICE OBJECT STACK, ktory po volani tejto FUNCTION prestane existovat.
+17. Pre FUNCTION [IoGetNextIrpStackLocation()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [PIO_STACK_LOCATION IoGetNextIrpStackLocation(PIRP Irp)].
+   B. PARAMETER [PIRP Irp] obsahuje IRP, ktoreho STACK instancii STRUCTURE [IO_STACK_LOCATION] ma byt modifikovany.
+   C. RETURN VALUE TYPE [PIO_STACK_LOCATION] vracia STRUCTURE [IO_STACK_LOCATION] zodpovedajuca DEVICE OBJECT, ktory sa nachadza o 1 miesto NIZSIE v DEVICE OBJECT STACK ako CURRENT DEVICE OBJECT.
+   D. FUNCTION vracia STRUCTURE [IO_STACK_LOCATION] zodpovedajuca DEVICE OBJECT, ktory sa nachadza o 1 miesto NIZSIE v DEVICE OBJECT STACK ako CURRENT DEVICE OBJECT.
+18. Pre FUNCTION [IoSetCompletionRoutine()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [void IoSetCompletionRoutine(PIRP Irp, PIO_COMPLETION_ROUTINE CompletionRoutine, PVOID Context, BOOLEAN InvokeOnSuccess, BOOLEAN InvokeOnError, BOOLEAN InvokeOnCancel)].
+   B. PARAMETER [PIRP Irp] obsahuje IRP pre ktore chce DRIVER, alebo MANAGER nastavit volanie CALLBACK FUNCTION.
+   C. PARAMETER [PIO_COMPLETION_ROUTINE CompletionRoutine] obsahuje CALLBACK FUNCTION, ktora sa ma volat pri ukonceni IRP.
+   D. PARAMETER [PVOID Context] obsahuje PARAMETER, ktory sa posle do CALLBACK FUNCTION.
+   E. PARAMETER [BOOLEAN InvokeOnSuccess] obsahuje informaciu ci sa ma CALLBACK FUNCTION volat ak IRP bola spracovana USPESNE.
+   F. PARAMETER [BOOLEAN InvokeOnError] obsahuje informaciu ci sa ma CALLBACK FUNCTION volat ak IRP bola spracovana NEUSPESNE.
+   G. PARAMETER [BOOLEAN InvokeOnCancel] obsahuje informaciu ci sa ma CALLBACK FUNCTION volat ak IRP bola CANCELLED.
+   H. FUNCTION registruje volanie CALLBACK FUNCTION pre CURRENT DRIVER, alebo pre MANAGER, ktory vytvoril IRP.
+   !!!!! I. POINTER na CALLBACK FUNCTION sa uklada do instancie STRUCTURE [IO_STACK_LOCATION] pre DEVICE OBJECT NIZSIE v DEVICE OBJECT STACK, a NIE pre CURRENT DEVICE OBJECT v DEVICE OBJECT STACK. Z toho vyplyvaju nasledujuce fakty.
+      A. DRIVER na dne DEVICE OBJECT STACK NEMOZE registrovat volanie CALLBACK FUNCTION.
+      B. MANAGER, ktory vytvoril IRP, a nie je sucastou DEVICE OBJECT STACK MOZE registrovat volanie CALLBACK FUNCTION.
+19. Pre FUNCTION [IofCompleteRequest()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [void IofCompleteRequest(PIRP Irp, CCHARPriorityBoost)].
+   B. PARAMETER [PIRP Irp] obsahuje IRP, ktore ma byt ukoncene.
+   C. PARAMETER [CCHARPriorityBoost] obsahuje PRIORITY BOOST, ktory ma byt vykonany pre THREAD, ktory ukoncuje dany IRP.
+   !!! D. FUNCTION ukoncuje danu IRP, pricom spusti proces v ktorom su notifikovane vsetky DEVICE OBJECTS VYSSIE v DEVICE OBJECT STACK.
+   E. Pre FUNCTION je definovane MACRO [IoCompleteRequest()].
+20. Pre FUNCTION [IoMarkIrpPending()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [void IoMarkIrpPending(PIRP Irp)].
+   B. PARAMETER [PIRP Irp] obsahuje IRP, ktore ma byt modifikovane.
+   C. FUNCTION oznaci IRP za IRP, ktore bude spracovane ASYNCHRONNE.
+21. Pre FUNCTION [IofCallDriver()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [NTSTATUS IofCallDriver(PDEVICE_OBJECT DeviceObject, PIRP Irp)].
+   B. PARAMETER [PDEVICE_OBJECT DeviceObject] obsahuje DEVICE OBJECT do ktoreho ma byt IRP zaslane.
+   C. PARAMETER [PIRP Irp] obsahuje IRP, ktore ma byt zaslane.
+   D. RETURN VALUE TYPE [NTSTATUS] obsahuje informaciu ci FUNCTION skoncila uspesne.
+   E. FUNCTION odosiela IRP do definovaneho DEVICE OBJECT.
+   !!! F. Pred pouzitim FUNCTION musi DRIVER nastavit instanciu STRUCTURE [IO_STACK_LOCATION] pre DEVICE OBJECT NIZSIE v DEVICE OBJECT STACK a pripade aj nastavit volanie CALLBACK FUNCTION, ak je to nutne.
+   G. Pre tuto FUNCTION je definovane MACRO [IoCallDriver()].
+22. Zasielani IRP do LOWER DRIVER sa vykonava v nasledujucich krokoch.
+   A. CURRENT DRIVER musi pripravit STACK LOCATION pre LOWER DRIVER. Spravidla sa to robi FUNCTION [IoCopyCurrentIrpStackLocationToNext()] po volani ktorej je mozne nastavit PARAMETER STACK LOCATION pre LOWER DRIVER.
+   !!! B. OPTIONALLY CURRENT DRIVER moze zavolat CALLBACK FUNCTION volanim FUNCTION [IoSetCompletionRoutine()]. CALLBACK FUNCTION sa zavola po skonceni IRP niektorym z DRIVERS NIZSIE v DEVICE OBJECT STACK, ked IRP prechadza DEVICE OBJECT STACK zdola nahor.
+   C. CURRENT DRIVER zavola FUNCTION [IoCallDriver()], ktora odosle IRP do LOWER DRIVER.
+   D. Po skonceni volania FUNCTION [IoCallDriver()] musi CURRENT DRIVER vratit STATUS CODE, ktory vratila FUNCTION [IoCallDriver()].
+23. Ak LOWEST DRIVER spracovava IRP asynchronne, musi vykonat nasledujuce cinnosti.
+   A. Pre IRP zavola FUNCTION [IoMarkIrpPending()] cim sa IRP oznaci ako IRP, ktore bude spravane asynchronne.
+   B. Iniciuje asynchronne spracovanie IRP na DEVICE OBJECT.
+   C. Ako STATUS CODE vracia VALUE [STATUS_PENDING] co je indikacia, ze sa spustilo asynchronne spracovanie IRP.
+   !!!!! D. Ak UPPER DRIVER nastavi COMPLETION ROUTINE musi v COMPLETION ROUTINE VZDY skontrolovat FLAG [PendingReturned]. Ak je nastaveny, MUSI COMPLETION ROUTINE volat FUNCTION [IoMarkIrpPending()].
+24. STRUCTURE [_IRP] ma nasledujuce MEMBERS.
+   A. FIELD [PMDL MdlAddress] obsahuje POINTER na MEMORY DESCRIPTOR LIST (MDL). MDL je KERNEL STRUCTURE, ktora popisuje BUFFER v RAM. FIELD sa primarne pouziva pri DIRECT I/O.
+   B. FIELD [union AssociatedIrp] obsahuje nasledujuce MEMBERS z ktorych je validny vzdy iba jeden.
+      !!! A. FIELD [_IRP* MasterIrp] obsahuje POINTER na MASTER IRP. MASTER IRP je koncept, kedy viacero ASSOCIATED IRP ma jedno MASTER IRP. Toto MASTER IRP je automaticky ukoncene, ak su ukoncene vsetky ASSOCIATED IRP.
+	  !!! B. FIELD [LONG IrpCount] obsahuje pre MASTER IRP pocet ASSOCIATED IRP, ktore su s tymto MASTER IRP zviazane.
+	  C. FIELD [PVOID SystemBuffer] obsahuje POINTER na NON-PAGED MEMORY BUFFER, ktory sa pouziva pri BUFFERED I/O.
+   C. FIELD [IO_STATUS_BLOCK IoStatus] obsahuje STRUCTURE [IO_STATUS_BLOCK], ktora obsahuje nasledujuce FIELDS.
+      A. FIELD [NTSTATUS Status] obsahuje vysledok IO OPERATION, ktoru IRP inicioval.
+	  B. FIELD [ULONG_PTR Information] obsahuje genericku informaciu, ktora sa lisi od typu IRP. Pre READ OPERATION a WRITE OPERATION tento FIELD obsahuje pocet prenesenych BYTES.
+   D. FIELD [PKEVENT UserEvent] obsahuje POINTER na EVENT OBJECT, ktory alokoval USER MODE CODE v STRUCTURE [OVERLAPPED] pri spusteni ASYNCHRONOUS OPERATION.
+   E. FIELD [PDRIVER_CANCEL CancelRoutine] obsahuje POINTER na CANCEL ROUTINE, ktora sa vola ak je IRP CANCELLED. IRP moze byt CANCELLED volanim USER MODE FUNCTION [CancelIo()], alebo volanim USER MODE FUNCTION [CancelIoEx()].
+   F. FIELD [PVOID UserBuffer] obsahuje POINTER na RAW BUFFER na USER BUFFER. BUFFER ma polymorfny vyznam a zavisi od typu IRP. Pre READ OPERATION a WRITE OPERATION tento FIELD obsahuje USER BUFFER. Pre DEVICE IO CONTROL OPERATION tento FIELD obsahuje OUTPUT BUFFER.
+25. STRUCTURE [_IO_STACK_LOCATION] obsahuje STACK LOCATIONS, ktore su asociovane s IRP. STRUCTURE [_IO_STACK_LOCATION] ma nasledujuce MEMBERS.
+   A. FIELD [UCHAR MajorFunction] obsahuje identifikator MAJOR FUNCTION.
+   B. FIELD [UCHAR MinorFunction] obsahuje identifikator MINOR FUNCTION. Niektore MAJOR FUNCTIONS maju aj MINOR FUNCTIONS.
+   C. FIELD [union Parameters] obsahuje obrovsky union s PARAMETERS pre rozlicne typy MAJOR FUNCTIONS.
+   D. FIELD [PDEVICE_OBJECT DeviceObject] obsahuje POINTER na DEVICE OBJECT.
+   E. FIELD [PFILE_OBJECT FileObject] obsahuje POINTER na FILE OBJECT asociovany s IRP.
+   !!!!! F. FIELD [PIO_COMPLETION_ROUTINE CompletionRoutine] obsahuje POINTER na COMPLETION ROUTINE PREDCHADZAJUCEHO DEVICE OBJECT v DEVICE OBJECT STACK. To znamena, ze CURRENT DEVICE OBJECT uklada POINTER na COMPLETION ROUTINE do instancie STRUCTURE [_IO_STACK_LOCATION] pre NASLEDUJUCI DEVICE OBJECT v DEVICE OBJECT STACK.
+   !!! G. FIELD [PVOID Context] obsahuje PARAMETER do COMPLETION ROUTINE PREDCHADZAJUCEHO DEVICE OBJECT v DEVICE OBJECT STACK.
+26. DEBUGER [WinDbg.exe] definuje COMMANDS, ktorymi je mozne hladat IRP a prezerat ich obsah.
+   A. COMMAND [!irpfind].
+   B. COMMAND [!irp].
+27. Pre COMMAND [!irpfind] platia nasledujuce fakty.
+   A. COMMAND patri medzi EXTENSION COMMANDS.
+   B. COMMAND [!irpfind] umoznuje vyhladat IRP, ktore sa nachadzaju v SYSTEME na zaklade roznych kriterii.
+   C. COMMAND [!irpfind POOL_TYPE RESTART_ADDRESS CRITERIA DATA] vyhladava IRP podla zadanych kriterii. COMMAND ma nasledujuce PARAMETERS.
+      A. PARAMETER [POOL_TYPE] obsahuje typ MEMORY POOL kde maju byt IRP vyhladavane.
+      B. PARAMETER [RESTART_ADDRESS] obsahuje ADDRESS od ktorej sa ma spustit hladanie IRP podla ich ADDRESSES.
+      C. PARAMETER [CRITERIA] obsahuje dodatocne CRITERIA daneho IRP SEARCH.
+      D. PARAMETER [DATA] obsahuje DATA pre CRITERIA.
+28. Pre COMMAND [!irp] platia nasledujuce fakty.
+   A. COMMAND patri medzi EXTENSION COMMANDS.
+   B. COMMAND [!irp ADDRESS DETAIL] umoznuje vypisat podrobnosti o IRP. COMMAND ma nasledujuce PARAMETERS.
+      A. PARAMETER [ADDRESS] obsahuje ADDRESS daneho IRP.
+      B. PARAMETER [DETAIL] obsahuje uroven vypisovanych DETAILS o IRP.
+29. DRIVER spracovava IRP v DISPATCH ROUTINES. Pre DISPATCH ROUTINES platia nasledujuce fakty.
+   A. Kazda DISPATCH ROUTINE ma ten isty TYPE [DRIVER_DISPATCH], ktory ma PROTOTYPE [NTSTATUS DRIVER_DISPATCH(PDEVICE_OBJECT DeviceObject, PIRP Irp)].
+   B. DISPATCH ROUTINES sa nastavuju v CUSTOM FUNCTION [DriverEntry()] vo FIELD [DRIVER_OBJECT::MajorFunction]. Tento FIELD obsahuje ARRAY TYPE [DRIVER_DISPATCH] pre kazdu jednu DISPATCH ROUTINE, ktora moze byt nastavena.
+   !!! C. DISPATCH ROUTINES v DEVICE OBJECT na VRCHOLE DEVICE OBJECT STACK su NAJCASTEJSIE volane v THREAD CONTEXT USER MODE THREAD, ktory inicioval vytvorenie IRP volanim USER MODE FUNCTION. Pre tieto DEVICE OBJECTS bezia DISPATCH ROUTINES v IRQL [PASSIVE_LEVEL].
+   !!! D. DEVICE OBJECT NIZSIE v DEVICE OBJECT STACK uz mozu byt volane v ARBITRARY THREAD, ak DEVICE OBJECTS vyssie v DEVICE OBJECT STACK napriklad zavolali DISPATCH ROUTINE zo SYSTEM THREAD. Pre tieto DEVICE OBJECTS mozu DISPATCH ROUTINES bezat aj v inom IRQL ako napriklad IRQL [DISPATCH_LEVEL].
+   !!! E. DISPATCH ROUTINES musia pred spracovanim IRP VZDY skontrolovat jeho PARAMETERS a BUFFERS. V pripade, ze obsahuju neplatne VALUES, DISPATCH ROUTINES musia okamzite ukoncit dane IRP, bez dalsieho spracovania.
+30. V SOFTWARE DRIVERS sa najcastejsie pouzivaju tieto DISPATCH ROUTINE.
+   A. DISPATCH ROUTINE pre IRP MAJOR FUNCTION [IRP_MJ_CREATE].
+   B. DISPATCH ROUTINE pre IRP MAJOR FUNCTION [IRP_MJ_CLOSE].
+   C. DISPATCH ROUTINE pre IRP MAJOR FUNCTION [IRP_MJ_READ].
+   D. DISPATCH ROUTINE pre IRP MAJOR FUNCTION [IRP_MJ_WRITE].
+   E. DISPATCH ROUTINE pre IRP MAJOR FUNCTION [IRP_MJ_DEVICE_CONTROL].
+   F. DISPATCH ROUTINE pre IRP MAJOR FUNCTION [IRP_MJ_INTERNAL_DEVICE_CONTROL].
+31. Pre DISPATCH ROUTINE pre IRP MAJOR FUNCTION [IRP_MJ_CREATE] platia nasledujuce fakty.
+   A. DISPATCH ROUTINE je volana z USER MODE pri pouziti USER MODE FUNCTION [CreateFile()].
+   B. DISPATCH ROUTINE je volana z KERNEL MODE pri pouziti KERNEL MODE FUNCTION [ZwCreateFile()].
+   !!! C. DISPATCH ROUTINE zabezpecuje otvorenie HANDLE na DEVICE. Bez tejto DISPATCH ROUTINE by NEBOLO mozne otvorit HANDLE na DEVICE.
+   D. DISPATCH ROUTINE spravidla iba okamzite ukoncuje IRP so SUCCESS STATUS.
+32. Pre DISPATCH ROUTINE pre IRP MAJOR FUNCTION [IRP_MJ_CLOSE] platia nasledujuce fakty.
+   A. DISPATCH ROUTINE je volana z USER MODE pri pouziti USER MODE FUNCTION [CloseHandle()].
+   B. DISPATCH ROUTINE je volana z KERNEL MODE pri pouziti KERNEL MODE FUNCTION [ZwClose()].
+   !!! C. DISPATCH ROUTINE zabezpecuje uzatvorenie HANDLE na DEVICE.
+   D. DISPATCH ROUTINE spravidla iba okamzite ukoncuje IRP so SUCCESS STATUS. V pripade, ze DISPATCH ROUTINE pre pre IRP MAJOR FUNCTION [IRP_MJ_CREATE] alokovala nejake RESOURCES, tak ich uvolni.
+33. Pre DISPATCH ROUTINE pre IRP MAJOR FUNCTION [IRP_MJ_READ] platia nasledujuce fakty.
+   A. DISPATCH ROUTINE je volana z USER MODE pri pouziti USER MODE FUNCTION [ReadFile()].
+   B. DISPATCH ROUTINE je volana z KERNEL MODE pri pouziti KERNEL MODE FUNCTION [ZwReadFile()].
+   C. DISPATCH ROUTINE cita data z HW DEVICE.
+34. Pre DISPATCH ROUTINE pre IRP MAJOR FUNCTION [IRP_MJ_WRITE] platia nasledujuce fakty.
+   A. DISPATCH ROUTINE je volana z USER MODE pri pouziti USER MODE FUNCTION [WriteFile()].
+   B. DISPATCH ROUTINE je volana z KERNEL MODE pri pouziti KERNEL MODE FUNCTION [ZwWriteFile()].
+   C. DISPATCH ROUTINE zapisuje data do HW DEVICE.
+35. Pre DISPATCH ROUTINE pre IRP MAJOR FUNCTION [IRP_MJ_DEVICE_CONTROL] platia nasledujuce fakty.
+   A. DISPATCH ROUTINE je volana z USER MODE pri pouziti USER MODE FUNCTION [DeviceIoControl()].
+   B. DISPATCH ROUTINE je volana z KERNEL MODE pri pouziti KERNEL MODE FUNCTION [ZwDeviceIoControlFile()].
+   C. DISPATCH ROUTINE spracovava CUSTOM RQUEST na HW DEVICE.
+36. Pre DISPATCH ROUTINE pre IRP MAJOR FUNCTION [IRP_MJ_INTERNAL_DEVICE_CONTROL] platia nasledujuce fakty.
+   A. DISPATCH ROUTINE je volana z KERNEL MODE pri ak iny DRIVER vytvori IRP s MAJOR FUNCTION [IRP_MJ_INTERNAL_DEVICE_CONTROL].
+   B. DISPATCH ROUTINE spracovava CUSTOM RQUEST na HW DEVICE.
+   C. DISPATCH ROUTINE je podobna DISPATCH ROUTINE pre IRP MAJOR FUNCTION [IRP_MJ_DEVICE_CONTROL] s tym rozdielom, ze moze byt volana iba z KERNEL MODE.
+37. Pre IRP COMPLETION platia nasledujuce fakty.
+   A. IRP COMPLETION sa robi pomocou FUNCTION [IoCompleteRequest()].
+   !!!!! B. Okamzite po zavolani FUNCTION [IoCompleteRequest()] je IRP uvolneny z MEMORY, a preto sa po volani FUNCTION [IoCompleteRequest()] NESMIE pristupovat k FIELDS daneho IRP.
+   C. Ak sa IRP COMPLETION robi v DISPATCH ROUTINE, potom DISPATCH ROUTINE by mala vrati ten isty STATUS, aky sa nastavi vo FIELD [IRP::IoStatus::Status].
+   D. Pri IRP COMPLETION by sa mal nastavit FIELD [IRP::IoStatus::Information]. Jeho vyznam zavisi od typu IRP.
+   !!! E. FUNCTION [IoCompleteRequest()] moze nastavit THREAD PRIORITY BOOST. THREAD PRIORITY BOOST zvysi THREAD PRIORITY, ktory inicoval IRP na zadanu VALUE. THREAD PRIORITY moze byt zvysena aj o niekolko VALUES, pricom THREAD PRIORITY postupne klesa s kazdym dalsim THREAD QUANTUM o 1 VALUE, az kym neklesne na povodnu VALUE. To znamena, ze prve THREAD QUANTUM ma nastavenu THREAD PRIORITY na VALUE nastavenu vo FUNCTION [IoCompleteRequest()] a kazde dalsie THREAD QUANTUM ma THREAD PRIORITY o 1 VALUE NIZSIE, az kym sa THREAD PRIORITY nedostane na THREAD PRIORITY s ktorou bol IRP volane. THREAD PRIORITY BOOST nemoze byt vacsi ako 15.
+38. IRP mozu prenasat BUFFERS z USER MODE do KERNEL MODE. Pre tieto BUFFERS platia nasledujuce fakty.
+   A. USER MODE BUFFER je v KERNEL MODE validny IBA ak je k nemu pristupovane v IRQL [PASSIVE_LEVEL] co je pripad volania DISPATCH ROUTINES, ale uz nie napriklad volania DEFERRED PROCEDURE CALLS, ktore bezia v IRQL [DISPATCH_LEVEL].
+   B. USER MODE BUFFER je v KERNEL MODE validny IBA ak je k nemu pristupovane z USER MODE THREAD, ktory ma mapovany USER ADDRESS SPACE do PROCESS, ktory IO OPERATION spusil. To je pripad NAJVRCHNEJSICH DEVICE OBJECTS v DEVICE OBJECT STACKS. Ak vsak sa k USER BUFFER pristupuje k DRIVERS NIZSIE v DEVICE OBJECT STACK, DRIVERS VYSSIE v DEVICE OBJECT STACK mohli odoslat IRP zo SYSTEM THREAD, ktory nema pristup k USER ADDRESS SPACE a tym padom pristup k USER MODE BUFFER nie je mozny.
+   !!! C. Kazdy pristup k USER MODE BUFFER by mal byt osetreny v TRY-CATCH BLOCK. Je to nutne preto, lebo USER MODE PROCESS, ktory spustil IO OPERATION a vytvoril IRP moze predtym ako k tomuto USER MODE BUFFER pristupi KERNEL DRIVER tento USER MODE BUFFER uvolnit, alebo cely PROCESS moze byt ukonceny. Preto je pri pristupe k USER MODE BUFFERS NUTNE pouzit TRY-CATCH BLOCK.
+39. KERNEL umoznuje bezpecny pristup k USER MODE BUFFERS nasledujucimi sposobmi.
+   A. BUFFERED IO MODE.
+   B. DIRECT IO MODE.
+   C. NEITHER IO MODE.
+40. Pre BUFFERED IO MODE platia nasledujuce fakty.
+   A. BUFFERED IO MODE sa nastavuje nastavenim FLAG [DO_BUFFERED_IO] vo FIELD [DEVICE_OBJECT::Flags].
+   B. BUFFERED IO MODE pri IO OPERATION alokuje v NON-PAGED MEMORY KERNEL MODE BUFFER do ktoreho ulozi USER MODE BUFFER. A opacne po skonceni IO OPERATION sa obsah NON-PAGED MEMORY KERNEL MODE BUFFER prekopiruje do USER MODE BUFFER.
+   C. Kedze DRIVERS v BUFFERED IO MODE pracuju s NON-PAGED MEMORY KERNEL MODE BUFFERS, tak k tymto BUFFFERS mozu pristupovat z ARBITRARY THREADS a aj pre IRQL [>=DISPATCH_LEVEL], kedze BUFFERS su v NON-PAGED MEMORY.
+   D. Vyhodou BUFFERED IO MODE je jednoduche pouzitie, kedze DRIVERS pracuju uz len s NON-PAGED MEMORY KERNEL MODE BUFFER a mozu ho lubovolne pouzivat.
+   E. Pre velmi velke BUFFERS je BUFFERED IO MODE pomalsia, pretoze vyzaduje alokaciu a kopirovanie dlhych BUFFERS medzi USER MODE ADDRESS SPACE a KERNEL MODE ADDRESS SPACE.
+41. Pre BUFFERED IO MODE je READ OPERATION realizovana nasledovne.
+   A. Ak USER MODE CODE vola READ OPERATION, IO MANAGER alokuje v NON-PAGED MEMORY KERNEL MODE BUFFER, ktory ma rovnaku dlzku ako USER MODE BUFFER.
+   B. POINTER na KERNEL MODE BUFFER je ulozeny do FIELD [IRP::AssociatedIrp::SystemBuffer] a dlzke KERNEL MODE BUFFER je ulozena do FIELD [IO_STACK_LOCATION::Parameters::Read::Length].
+   C. Zavola sa DISPATCH ROUTINE pre READ OPERATION.
+   D. DRIVER spusti READ OPERATION.
+   !!! E. Po skonceni READ OPERATION, DRIVER zapise jej vysledky do KERNEL MODE BUFFFER. Kedze KERNEL MODE BUFFFER je NON-PAGED MEMORY a je v SYSTEM ADDRESS SPACE, DRIVER k nemu moze pristupovat z LUBOVOLNEHO THREAD a LUBOVOLNEHO IRQL.
+   F. DRIVER ulozi pocet nacitanych BYTES v READ OPERATION do FIELD [IRP::IoStatus::Information] a nasledne zavola FUNCTION [IoCompleteRequest()] cim ukonci IRP.
+   !!! G. IO MANAGER vykona SCHEDULING SPECIAL KERNEL ASYNCHRONOUS PROCEDURE CALL na tom THREAD, ktory spustil READ OPERATION.
+   !!! H. Ked THREAD ziska CPU, ako prve spusti SPECIAL KERNEL ASYNCHRONOUS PROCEDURE CALL.
+   !!!!! I. SPECIAL KERNEL ASYNCHRONOUS PROCEDURE CALL nakopiruje data z NON-PAGED MEMORY KERNEL MODE BUFFER do USER MODE BUFFER. Kedze THREAD je THREAD patriaci PROCESSU, ktory inicioval READ OPERATION, tak ma pristup k ADDRESS SPACE daneho PROCESSU a tym padom aj k USER MODE BUFFER. A kedze SPECIAL KERNEL ASYNCHRONOUS PROCEDURE CALLS bezia v IRQL [APC_LEVEL], tak pripadne PAGE FAULTS USER MODE BUFFER su riesene operacnym systemom.
+   J. Po nakopirovani KERNEL MODE BUFFER do USER MODE BUFFER je KERNEL MODE BUFFER uvolneny z MEMORY.
+   K. USER MODE CODE moze dalej pokracovat pri spracovani vysledkov READ OPERATION.
+42. Pre BUFFERED IO MODE je WRITE OPERATION realizovana nasledovne.
+   A. Ak USER MODE CODE vola WRITE OPERATION, IO MANAGER alokuje v NON-PAGED MEMORY KERNEL MODE BUFFER, ktory ma rovnaku dlzku ako USER MODE BUFFER.
+   B. POINTER na KERNEL MODE BUFFER je ulozeny do FIELD [IRP::AssociatedIrp::SystemBuffer] a dlzke KERNEL MODE BUFFER je ulozena do FIELD [IO_STACK_LOCATION::Parameters::Write::Length].
+   !!!!! C. IO MANAGER prekopiruje obsah USER MODE BUFFER do NON-PAGED MEMORY KERNEL MODE BUFFER.
+   D. Zavola sa DISPATCH ROUTINE pre WRITE OPERATION.
+   E. DRIVER spusti WRITE OPERATION. Kedze KERNEL MODE BUFFFER je NON-PAGED MEMORY a je v SYSTEM ADDRESS SPACE, DRIVER k nemu moze pristupovat z LUBOVOLNEHO THREAD a LUBOVOLNEHO IRQL.
+   !!! F. Po skonceni WRITE OPERATION, DRIVER ulozi pocet nacitanych BYTES vo WRITE OPERATION do FIELD [IRP::IoStatus::Information] a nasledne zavola FUNCTION [IoCompleteRequest()] cim ukonci IRP.
+   G. KERNEL MODE BUFFER uvolneny z MEMORY.
+   H. USER MODE CODE moze dalej pokracovat pri spracovani vysledkov WRITE OPERATION.
+43. Pre DIRECT IO MODE platia nasledujuce fakty.
+   A. DIRECT IO MODE sa nastavuje nastavenim FLAG [DO_DIRECT_IO] vo FIELD [DEVICE_OBJECT::Flags].
+   B. DIRECT IO MODE pri IO OPERATION alokuje vykona nasledujuce cinnosti.
+      A. Vykona LOCK USER MODE BUFFER, aby nemohol byt uvolneny z MEMORY.
+	  B. Vykona PAGING USER MODE BUFFER do PHYCHICAL MEMORY, aby BUFFER mohol byt pouzity pre lubovolne IRQL.
+	  C. Vytvori LIST STRUCTURES [MDL], ktory popisuje USER MODE BUFFER v PHYSICAL MEMORY.
+   C. DRIVERS pred pouzitim USER MODE BUFFERS MUSIA volat FUNCTION [MmGetSystemAddressForMdlSafe()], ktora vykona MAPPING USER MODE ADDRESS SPACE do KERNEL MODE SYSTEM ADDRESS SPACE, ktory umoznuje pristupovat k BUFFER z ARBITRARY THREAD.
+   D. Vyhodou DIRECT IO MODE je, ze NEDOCHADZA ku kopirovaniu BUFFERS a tym padom je tento MODE efektivnejsi.
+44. Pre DIRECT IO MODE su READ OPERATIONS a WRITE OPERATIONS realizovane nasledovne.
+   A. Pred vykonanim IO OPERATION vykona IO MANAGER validaciu USER MODE BUFFER a vykona PAGING USER MODE BUFFER do PHYSICAL MEMORY.
+   B. IO MANAGER pomocou KERNEL FUNCTION [MmProbeAndLockPages()] vykona LOCK USER MODE BUFFER, aby nemohol byt PAGED z PHYSICAL MEMORY do PAGE FILE. Vdaka tomu je USER MODE BUFFER pristupny z LUBOVOLNEHO IRQL.
+   C. IO MANAGER vytvori LIST STRUCTURES [MDL]. Tento LIST obsahuje popis USER MODE BUFFER v PHYSICAL MEMORY, pretoze v PHYSICAL MEMORY NEMUSI byt BUFFER ulozeny v celku na jednom mieste, alebo jednotlive PAGES mozu byt ulozene na roznych poziciach v PHYSICAL MEMORY.
+   D. Vytvoreny LIST STRUCTURES [MDL] je ulozeny do FIELD [IRP::MdlAddress].
+   E. Dlzka USER MODE BUFFER je ulozena nasledovne.
+      A. Pre READ OPERATIONS je dlzka USER MODE BUFFER ulozena do FIELD [IO_STACK_LOCATION::Parameters::Read::Length].
+      B. Pre WRITE OPERATIONS je dlzka USER MODE BUFFER ulozena do FIELD [IO_STACK_LOCATION::Parameters::Write::Length].
+   !!!!!! F. DRIVERS pred pristupom k USER MODE BUFFER MUSIA volat FUNCTION [MmGetSystemAddressForMdlSafe()]. Tato FUNCTION namapuje LIST STRUCTURES [MDL] do KERNEL MODE SYSTEM ADDRESS SPACE vdaka comu je k USER MODE BUFFER mozne pristupovat z LUBOVOLNEHO THREAD.
+   G. DRIVER vykona IO OPERATION pri ktorej moze pristupovat k USER MODE BUFFER namapovanom v KERNEL MODE SYSTEM ADDRESS SPACE.
+   !!! H. Po skonceni IO OPERATION, DRIVER ulozi pocet nacitanych, alebo zapisanych BYTES v IO OPERATION do FIELD [IRP::IoStatus::Information] a nasledne zavola FUNCTION [IoCompleteRequest()] cim ukonci IRP.
+   !!! I. Po ukonceni IRP IO MANAGER vykona nasledujuce cinnosti.
+      A. AUTOMATICKY odstrani mapovanie USER MODE BUFFER do KERNEL MODE SYSTEM ADDRESS SPACE.
+	  B. Uvolni LIST STRUCTURES [MDL].
+	  C. Vykona UNLOCK USER MODE BUFFER, cim sposobi, ze USER MODE BUFFER moze byt PAGED z PHYSICAL MEMORY do PAGE FILE.
+45. Pre FUNCTION [MmProbeAndLockPages()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [void MmProbeAndLockPages(PMDL MemoryDescriptorList, KPROCESSOR_MODE AccessMode, LOCK_OPERATION Operation)].
+   B. PARAMETER [PMDL MemoryDescriptorList] obsahuje LIST STRUCTURES [MDL] popisujuci BUFFER ktoreho PAGES maju byt LOCKED a zaroven ulozene v PHYSICAL MEMORY.
+   C. PARAMETER [KPROCESSOR_MODE AccessMode] obsahuje ACCESS MODE USER MODE BUFFER. Urcuje ci BUFFER je USER MODE BUFFER, alebo KERNEL MODE BUFFER.
+   D. PARAMETER [LOCK_OPERATION Operation] urcuje typ LOCK OPERATION, ktora ma byt vykonana nad BUFFER.
+   E. FUNCTION vykonava presun MEMORY PAGES z VIRTUAL MEMORY do PHYSICAL MEMORY a zaroven vykona LOCK danych PAGES, aby tieto nemohli byt presunute spat do VIRTUAL MEMORY a ostali tak v PHYSICAL MEMORY.
+   F. MEMORY PAGES LOCKED touto FUNCTION musia byt UNLOCKED volanim FUNCTION [MmUnlockPages()].
+46. Pre FUNCTION [MmUnlockPages()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [void MmUnlockPages(PMDL MemoryDescriptorList)].
+   B. PARAMETER [PMDL MemoryDescriptorList] obsahuje LIST STRUCTURES [MDL] popisujuci BUFFER ktoreho PAGES maju byt UNLOCKED z PHYSICAL MEMORY.
+   C. FUNCTION vykonava UNLOCKING MEMORY PAGES, ktore boli LOCKED v PHYSICAL MEMORY.
+   D. MEMORY PAGES UNLOCKED touto FUNCTION musia byt LOCKED volanim FUNCTION [MmProbeAndLockPages()].
+47. Pre FUNCTION [MmGetSystemAddressForMdlSafe()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [PVOID MmGetSystemAddressForMdlSafe(PMDL Mdl, ULONG Priority)].
+   B. PARAMETER [PMDL Mdl] obsahuje LIST STRUCTURES [MDL] popisujuci BUFFER ktoreho PAGES maju byt MAPPED do KERNEL MODE SYSTEM ADDRESS SPACE.
+   C. PARAMETER [ULONG Priority] urcuje PRIORITY daneho MAPPING v pripade, ze SYSTEM ma nedostatok MEMORY. S nizsou prioritou sa zvysuje pravdepodobnost, ze pri nedostatku MEMORY v SYSTEME, FUNCTION nevykona MAPPING.
+   D. RETURN VALUE TYPE [PVOID] vracia POINTER na BUFFER mapovany v KERNEL MODE SYSTEM ADDRESS SPACE. V pripade nedostatku RESOURCES FUNCTION vracia VALUE [NULL].
+   E. FUNCTION vykona MAPPING BUFFER, ktory je popisany LIST STRUCTURES [MDL] do KERNEL MODE SYSTEM ADDRESS SPACE cim zabezpeci, ze k BUFFER je mozne pristupovat z ARBITRARY THREAD.
+   !!! F. FUNCTION je mozne volat OPAKOVANE. Pri opakovanom volani sa vrati uz namapovana ADDRESS.
+48. Pre NEITHER IO MODE platia nasledujuce fakty.
+   A. NEITHER IO MODE ja nastaveny, ak FIELD [DEVICE_OBJECT::Flags] NEOBSAHUJE FLAG [DO_BUFFERED_IO], alebo FLAG [DO_DIRECT_IO].
+   !!! B. Pri pouziti NEITHER IO MODE je pri READ OPERATIONS a WRITE OPERATIONS preneseny z USER MODE do KERNEL MODE USER MODE BUFFER a je ulohou DRIVER zabezpecit, aby k nemu mohol bezpecne pristupit z lubovolneho IRQL a lubovolneho THREAD. IO MANAGER do tohto procesu NIJAKO NEVSTUPUJE.
+   C. Pri NEITHER IO MODE sa nerobi ani kontrola ci USER MODE BUFFER obsahuje POINTER na validny MEMORY BLOCK.
+   !!!!! D. NEITHER IO MODE je bezpecne mozne pouzit IBA v DRIVERS pre DEVICE OBJECTS, ktore su NAJVYSSIE v DEVICE OBJECT STACK.
+   !!! E. Pre READ OPERATION aj pre WRITE OPERATION je USER MODE BUFFER ulozeny vo FIELD [IRP::UserBuffer].
+   !!! F. Pre READ OPERATION pred pouzitim USER MODE BUFFER vo FIELD [IRP::UserBuffer] by sa tento mal otestovat pomocou FUNCTION [ProbeForRead()].
+   !!! G. Pre WRITE OPERATION pred pouzitim USER MODE BUFFER vo FIELD [IRP::UserBuffer] by sa tento mal otestovat pomocou FUNCTION [ProbeForWrite()].
+49. Pre FUNCTION [ProbeForRead()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [void ProbeForRead(const volatile VOID* Address, SIZE_T Length, ULONG Alignment)].
+   B. PARAMETER [const volatile VOID* Address] obsahuje ADDRESS, ktore platnost ma byt VALIDATED.
+   C. PARAMETER [SIZE_T Length] obsahuje POCET BYTES, ktorych platnost ma byt VALIDATED.
+   D. PARAMETER [ULONG Alignment] obsahuje ALIGNMENT, ktoreho platnost ma byt VALIDATED.
+   E. FUNCTION testuje ci USER MODE BUFFER je ACCESSIBLE pre READ. Ak nie je, FUNCTION hodi EXCEPTION. V pripade neplatnosti ADDRESS sa hodi EXCEPTION [STATUS_ACCESS_VIOLATION]. V pripade neplatnosti ALIGNMENT sa hodi EXCEPTION [STATUS_DATATYPE_MISALIGNMENT].
+50. Pre FUNCTION [ProbeForWrite()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [void ProbeForWrite(volatile VOID* Address, SIZE_T Length, ULONG Alignment)].
+   B. PARAMETER [const volatile VOID* Address] obsahuje ADDRESS, ktore platnost ma byt VALIDATED.
+   C. PARAMETER [SIZE_T Length] obsahuje POCET BYTES, ktorych platnost ma byt VALIDATED.
+   D. PARAMETER [ULONG Alignment] obsahuje ALIGNMENT, ktoreho platnost ma byt VALIDATED.
+   E. FUNCTION testuje ci USER MODE BUFFER je ACCESSIBLE pre WRITE. Ak nie je, FUNCTION hodi EXCEPTION. V pripade neplatnosti ADDRESS sa hodi EXCEPTION [STATUS_ACCESS_VIOLATION]. V pripade neplatnosti ALIGNMENT sa hodi EXCEPTION [STATUS_DATATYPE_MISALIGNMENT].
+   !!!!! F. V DOCUMENTATION sa pise, ze namiesto FUNCTION [ProbeForWrite()] by sa mala pouzivat FUNCTION [ProbeForRead()] aj pre WRITE OPERATIONS.
+51. WINDOWS umoznuje zasielat do DRIVERS DEVICE CONTROL IO OPERATIONS.
+   A. IRP s MAJOR FUNCTION [IRP_MJ_DEVICE_CONTROL] je odosielane volanim USER MODE FUNCTION [DeviceIoControl()].
+   B. IRP s MAJOR FUNCTION [IRP_MJ_INTERNAL_DEVICE_CONTROL] je odosielane volanim KERNEL MODE FUNCTION [ZwDeviceIoControlFile()].
+52. Pre DEVICE CONTROL IO OPERATIONS platia nasledujuce fakty.
+   A. WINDOWS umoznuje zasielat DEVICE CONTROL IO OPERATIONS roznych typov, ktore sa lisia na zaklade PARAMETER [Function].
+   B. DEVICE CONTROL IO OPERATIONS maju INPUT BUFFER aj OUTPUT BUFFER. DEVICE CONTROL IO OPERATION moze teda odoslat do DRIVER INPUT BUFFER a DRIVER moze odpovedat naplnenim OUTPUT BUFFER.
+   !!! C. DEVICE CONTROL IO OPERATIONS mozu pre kazdy typ OPERATION definovany PARAMETER [Function] urcit ako sa ma pristupovat k USER MODE BUFFERS (PARAMETER [METHOD]). DEVICE CONTROL IO OPERATIONS umoznuju pouzit nasledujuce MODES.
+      A. MODE [METHOD_NEITHER].
+      B. MODE [METHOD_BUFFERED].
+      C. MODE [METHOD_IN_DIRECT].
+      D. MODE [METHOD_OUT_DIRECT].
+53. Pre DEVICE CONTROL IO MODE [METHOD_NEITHER] platia nasledujuce fakty.
+   A. Pouzitie DEVICE CONTROL IO MODE [METHOD_NEITHER] znamena, ze WINDOWS nevykonava ziadnu podporu pri prenose INPUT BUFFER a OUTPUT BUFFER z USER MODE do KERNEL MODE.
+   B. WINDOWS iba prenesie POINTER na INPUT BUFFER a POINTER na OUTPUT BUFFER bez toho, aby kontroloval ci POINTERS ukazuju na platnne MEMORY ADDRESSES.
+   C. POINTER na INPUT BUFFER je ulozene do FIELD [IO_STACK_LOCATION::Parameters::DeviceIoControl.Type3InputBuffer].
+   D. POINTER na OUTPUT BUFFER je ulozene do FIELD [IRP::UserBuffer].
+   E. Dlzka INPUT BUFFER je ulozeny do FIELD [IO_STACK_LOCATION::Parameters::DeviceIoControl::InputBufferLength].
+   F. Dlzka OUTPUT BUFFER je ulozeny do FIELD [IO_STACK_LOCATION::Parameters::DeviceIoControl::OutputBufferLength].
+54. Pre DEVICE CONTROL IO MODE [METHOD_BUFFERED] platia nasledujuce fakty.
+   A. Pouzitie DEVICE CONTROL IO MODE [METHOD_BUFFERED] znamena, ze WINDOWS uklada INPUT BUFFER i OUTPUT BUFFER do KERNEL MODE NON-PAGED POOL BUFFER ku ktorej je mozne pristupovat z lubovolneho THREAD a lubovolneho IRQL.
+   B. WINDOWS pracuje s INPUT BUFFER a OUTPUT BUFFER nasledujucim sposobom.
+      !!! A. Ked sa spusti DEVICE CONTROL IO OPERATION, IO MANAGER alokuje KERNEL MODE NON-PAGED POOL BUFFER, ktoreho dlzka je MAXIMUM z dlzky INPUT BUFFER a OUTPUT BUFFER.
+      !!! B. IO MANAGER nakopiruje obsah USER MODE BUFFER do KERNEL MODE NON-PAGED POOL BUFFER.
+	  C. WINDOWS spusti DISPATCH ROUTINE daneho DRIVER pre DEVICE CONTROL IO OPERATION.
+	  D. WINDOWS DRIVER pracuje s KERNEL MODE NON-PAGED POOL BUFFER z ktoreho moze citat data DEVICE CONTROL IO OPERATION a do ktoreho zapise vysledok DEVICE CONTROL IO OPERATION.
+	  E. Po skonceni DEVICE CONTROL IO OPERATION DRIVER zapise pocet BYTES, ktore zapisal do KERNEL MODE NON-PAGED POOL BUFFER do FIELD [IRP::IoStatus::Information].
+	  !!! F. Po skonceni IRP, IO MANAGER skopiruje pocet BYTES ulozenych vo FIELD [IRP::IoStatus::Information] z KERNEL MODE NON-PAGED POOL BUFFER do USER MODE OUTPUT BUFFER cim sa stavaju pristupnymi pre USER MODE CODE.
+   C. POINTER na INPUT BUFFER aj POINTER na OUTPUT BUFFER su ulozene vo FIELD [IRP::AssociatedIrp::SystemBuffer].
+   D. Dlzka INPUT BUFFER je ulozeny do FIELD [IO_STACK_LOCATION::Parameters::DeviceIoControl::InputBufferLength].
+   E. Dlzka OUTPUT BUFFER je ulozeny do FIELD [IO_STACK_LOCATION::Parameters::DeviceIoControl::OutputBufferLength].
+55. Pre DEVICE CONTROL IO MODE [METHOD_IN_DIRECT] platia nasledujuce fakty.
+   !!! A. Pouzitie DEVICE CONTROL IO MODE [METHOD_IN_DIRECT] znamena, INPUT BUFFER je ulozeny do KERNEL MODE NON-PAGED POOL BUFFER, zatial co OUTPUT BUFFER je pristupny pomocou DIRECT IO MODE, teda pomocou LIST STRUCTURES [MDL].
+   !!! B. V DEVICE CONTROL IO MODE [METHOD_IN_DIRECT] OUTPUT BUFFER moze byt READ, pretoze DRIVER ma READ ACCESS k OUTPUT BUFFER.
+   !!! C. Kedze INPUT BUFFER moze byt READ, tak OUTPUT BUFFER moze byt pouzity aj ako INPUT BUFFER.
+   D. POINTER na INPUT BUFFER je ulozene do FIELD [IRP::AssociatedIrp::SystemBuffer].
+   E. POINTER na LIST STRUCTURES [MDL], ktore popisuju OUTPUT BUFFER je ulozeny do FIELD [IRP::MdlAddress].
+   F. Dlzka INPUT BUFFER je ulozena do FIELD [IO_STACK_LOCATION::Parameters::DeviceIoControl::InputBufferLength].
+   G. Dlzka OUTPUT BUFFER je ulozena do FIELD [IO_STACK_LOCATION::Parameters::DeviceIoControl::OutputBufferLength].
+56. Pre DEVICE CONTROL IO MODE [METHOD_OUT_DIRECT] platia nasledujuce fakty.
+   !!!!! A. Pouzitie DEVICE CONTROL IO MODE [METHOD_OUT_DIRECT] znamena, INPUT BUFFER je ulozeny do KERNEL MODE NON-PAGED POOL BUFFER, zatial co OUTPUT BUFFER je pristupny pomocou DIRECT IO MODE, teda pomocou LIST STRUCTURES [MDL]. To znamena, ze co sa tyka pristupu k BUFFERS sa DEVICE CONTROL IO MODE [METHOD_IN_DIRECT] a DEVICE CONTROL IO MODE [METHOD_OUT_DIRECT] NIJAKO NELISIA.
+   !!! B. V DEVICE CONTROL IO MODE [METHOD_OUT_DIRECT] OUTPUT BUFFER moze byt WRITTEN, pretoze DRIVER ma WRITE ACCESS k OUTPUT BUFFER.
+   C. POINTER na INPUT BUFFER je ulozene do FIELD [IRP::AssociatedIrp::SystemBuffer].
+   D. POINTER na LIST STRUCTURES [MDL], ktore popisuju OUTPUT BUFFER je ulozeny do FIELD [IRP::MdlAddress].
+   E. Dlzka INPUT BUFFER je ulozena do FIELD [IO_STACK_LOCATION::Parameters::DeviceIoControl::InputBufferLength].
+   F. Dlzka OUTPUT BUFFER je ulozena do FIELD [IO_STACK_LOCATION::Parameters::DeviceIoControl::OutputBufferLength].
+57. Pre FUNCTION [IoGetNextIrpStackLocation()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [BOOL DeviceIoControl(HANDLE hDevice, DWORD dwIoControlCode, LPVOID lpInBuffer, DWORD nInBufferSize, LPVOID lpOutBuffer, DWORD nOutBufferSize, LPDWORD lpBytesReturned, LPOVERLAPPED lpOverlapped)].
+   B. PARAMETER [HANDLE hDevice] obsahuje HANDLE na DEVICE do ktoreho ma byt DEVICE CONTROL IO OPERATION odoslana.
+   C. PARAMETER [DWORD dwIoControlCode] obsahuje typ DEVICE CONTROL IO OPERATION. Typ sa vytvara pomocou MACRO [CTL_CODE(()].
+   D. PARAMETER [LPVOID lpInBuffer] obsahuje INPUT BUFFER.
+   E. PARAMETER [DWORD nInBufferSizelpInBuffer] obsahuje dlzku INPUT BUFFER.
+   F. PARAMETER [LPVOID lpOutBuffer] obsahuje OUTPUT BUFFER.
+   G. PARAMETER [DWORD nOutBufferSize] obsahuje dlzku OUTPUT BUFFER.
+   H. PARAMETER [LPDWORD lpBytesReturned] obsahuje POINTER na pocet BYTES, ktore sa zapisali do OUTPUT BUFFER.
+   I. PARAMETER [LPOVERLAPPED lpOverlapped] obsahuje STRUCTURE [OVERLAPPED], ktora sa pouziva pri ASYNCHRONOUT OPERATIONS.
+   J. RETURN VALUE TYPE [BOOL] vracia VALUE [TRUE], ak OPERATION prebehla uspesne, alebo VALUE [FALSE], ak OPERATION zlyhala, ale je vykonavana ASYNCHRONNE.
+   K. FUNCTION odosiela DEVICE CONTROL IO OPERATION na DEVICE (DRIVER).
+58. Pre FUNCTION [CTL_CODE()] platia nasledujuce fakty.
+   A. MACRO ma PROTOTYPE [void CTL_CODE(DeviceType, Function, Method, Access)].
+   B. PARAMETER [DeviceType] urcuje DEVICE TYPE pre ktory je DEVICE CONTROL CODE urceny. WINDOWS definuje mnozinu DEVICE TYPES. DRIVER moze definovat CUSTOM DEVICE TYPES, ktore by mali byt nad VALUE [0x8000]. SOFTWARE DRIVERS by mali pouzit VALUE [FILE_DEVICE_UNKNOWN].
+   C. PARAMETER [Function] urcuje FUNCTION CODE daneho DEVICE CONTROL CODE. WINDOWS definuje mnozinu FUNCTION CODES. DRIVER moze definovat FUNCTION CODES, ktore by mali byt nad VALUE [0x8000].
+   D. PARAMETER [Method] urcuje sposob prenosu BUFFERS pre danu DEVICE CONTROL IO OPERATION. VALID VALUES su VALUE [METHOD_NEITHER], VALUE [METHOD_BUFFERED], VALUE [METHOD_IN_DIRECT] a VALUE [METHOD_OUT_DIRECT].
+   E. PARAMETER [Access] urcuje sposob toku DEVICE CONTROL IO OPERATION. Povolene su nasledujuce VALUES.
+      A. VALUE [FILE_READ_DATA] znamena, ze IRP je odoslanie iba ak ma CALLER READ ACCESS. Tento ACCESS umoznuje prenos dat z HW DEVICE do SYSTEM MEMORY.
+      B. VALUE [FILE_WRITE_DATA] znamena, ze IRP je odoslanie iba ak ma CALLER WRITE ACCESS. Tento ACCESS umoznuje prenos dat zo SYSTEM MEMORY do HW DEVICE.
+      C. VALUE [FILE_ANY_ACCESS] znamena, ze IRP je odoslanie pre kazdeho CALLER.
+   F. MACRO generuje DEVICE CONTROL CODE s urcenymi parametrami.
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+Simulacia DEVICE OBJECT STACK.
+
+1. WINDOWS KERNEL standardne vytvara DEVICE OBJECT STACK pomocou PNP MANAGER.
+2. PNP MANAGER vytvarat novy DEVICE STACK na zaklade toho, ze BUS DRIVER, ktory je vzdy na dne DEVICE OBJECT STACK detekuje novy HW DEVICE a spusti proces vytvorenia DEVICE OBJECT STACK.
+!!! 3. WINDOWS KERNEL umoznuje vytvorit simulovany DEVICE OBJECT STACK volanim FUNCTION [IoAttachDevice()].
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+Postup pre vytvorenie simulovaneho DEVICE OBJECT STACK.
+
+1. Vytvoria sa 2 DRIVERS.
+   A. UPPER DRIVER. Je na vrchole DEVICE OBJECT STACK.
+   B. LOWER DRIVER. Je na dne DEVICE OBJECT STACK.
+2. Poradie spustania DRIVERS je nasledovne.
+   A. LOWER DRIVER.
+   B. UPPER DRIVER.
+3. Pri spusteni LOWER DRIVER sa vykonavaju nasledujuce kroky.
+   A. LOWER DRIVER vytvori DEVICE OBJECT volanim FUNCTION [IoCreateDevice()].
+   B. LOWER DRIVER sa dostane do STARTED STATE.
+4. Pri spusteni UPPER DRIVER sa vykonavaju nasledujuce kroky.
+   A. UPPER DRIVER vytvori DEVICE OBJECT volanim FUNCTION [IoCreateDevice()].
+   !!!!! B. UPPER DRIVER sa pripoji na LOWER DRIVER volanim FUNCTION [IoAttachDevice()]. FUNCTION [IoAttachDevice()] umoznuje najst LOWER DRIVER pomocou jeho DEVICE OBJECT NAME. FUNCTION vracia POINTER na DEVICE OBJECT LOWER DRIVER.
+   !!! C. Po uspesnom zavolani FUNCTION [IoAttachDevice()] ma DEVICE OBJECT STACK nasledujuci tvar.
+      A. UPPER DEVICE OBJECT vytvreny UPPER DRIVER.
+      B. LOWER DEVICE OBJECT vytvreny LOWER DRIVER.
+   D. UPPER DRIVER sa dostane do STARTED STATE.
+5. Poradie zastavovania DRIVERS je nasledovne.
+   A. UPPER DRIVER.
+   B. LOWER DRIVER.
+6. Pri zastavovani UPPER DRIVER sa vykonavaju nasledujuce kroky.
+   A. UPPER DRIVER sa odpoji od DEVICE OBJECT pre LOWER DRIVER volanim FUNCTION [IoDetachDevice()].
+   B. UPPER DRIVER uvolni svoj DEVICE OBJECT volanim FUNCTION [IoDeleteDevice()].
+   C. UPPER DRIVER sa dostane do STOPPED STATE.
+7. Pri zastavovani LOWER DRIVER sa vykonavaju nasledujuce kroky.
+   A. LOWER DRIVER uvolni svoj DEVICE OBJECT volanim FUNCTION [IoDeleteDevice()].
+   B. LOWER DRIVER sa dostane do STOPPED STATE.
+!!!!! 8. Ak sa pri zastavovani DRIVERS ako prvy zastavi LOWER DRIVER a az nasledne UPPER DRIVER, tak sa stane nasledujuce.
+   A. LOWER DRIVER sa dostane do STOPPING STATE, pretoze UPPER DRIVER nan obsahuje referenciu a tym padom LOWER DRIVER nemoze byt zastaveny, kym bezi UPPER DRIVER.
+   B. Ak sa nasledne zastavi UPPER DRIVER, pricom UPPER DRIVER odpoji od LOWER DRIVER.
+   C. UPPER DRIVER sa dostane do STOPPED STATE.
+   !!! D. Kedze na LOWER DRIVER uz neexistuje referencia, LOWER DRIVER sa zastavi a dostane sa do STOPPED STATE.
+!!! 9. Pre takto vytvoreny DEVICE OBJECT STACK platia nasledujuce fakty.
+   A. Ak USER MODE CODE zasle IRP do UPPER DRIVER, IRP ma 2 STACK LOCATIONS.
+   !!! B. Ak USER MODE CODE zasle IRP PRIAMO do LOWER DRIVER, namiesto UPPER DRIVER, tak WINDOWS aj napriek tomu, ze IRP bol zaslany PRIAMO do LOWER DRIVER zasle IRP do UPPER DRIVER, pricom IRP ma 2 STACK LOCATIONS.
+   !!! C. Ak je UPPER DRIVER zastaveny a DEVICE OBJECT STACK je tvoreny iba DEVICE OBJECT pre LOWER DRIVER, tak IRP zasielane do LOWER DRIVER maju iba 1 STACK LOCATION.
+//----------------------------------------------------------------------------------------------------------------------
