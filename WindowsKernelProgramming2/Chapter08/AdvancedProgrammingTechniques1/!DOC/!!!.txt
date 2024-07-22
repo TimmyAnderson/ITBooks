@@ -1,0 +1,360 @@
+//----------------------------------------------------------------------------------------------------------------------
+1. Solution demonstruje pouzitie pokrocile techniky v DRIVER PROGRAMMING.
+2. KERNEL umoznuje vytvarat KERNEL THREAD nazyvane aj SYSTEM THREADS. Pre SYSTEM THREADS platia nasledujuce fakty.
+   A. SYSTEM THREADS sa vytvaraju pomocou FUNCTION [PsCreateSystemThread()].
+   B. FUNCTION [PsCreateSystemThread()] ma ako PARAMETER POINTER na THREAD ROUTINE s PROTOTYPE [VOID KSTART_ROUTINE (PVOID StartContext)], ktora obsahuje CODE SYSTEM THREAD.
+   !!!!! C. SYSTEM THREAD vytvoreny FUNCTION [PsCreateSystemThread()] MUSI byt ukonceny NON RETURNABLE FUNCTION [PsTerminateSystemThread()]. To znaci, ze NESTACI, ak THREAD ROUTINE iba skonci svoj CODE. Pred jeho skoncenim MUSI volat FUNCTION [PsTerminateSystemThread()].
+   !!! D. FUNCTION [PsTerminateSystemThread()] obsahuje PARAMETER [NTSTATUS ExitStatus], ktory urcuje STATUS CODE s ktorym THREAD skoncil. VALUE STATUS CODE pre skonceny THREAD je mozne zistit volanim FUNCTION [PsGetThreadExitStatus()].
+   E. CODE THREAD ROUTINE sa vykonava v IRQL [PASSIVE_LEVEL].
+   F. CODE THREAD ROUTINE sa vykonava v CRITICAL REGION, ked je vypnute volanie NORMAL KERNEL ASYNCHRONOUS PROCEDURE CALLS.
+!!! 3. WINDOWS 8 a vyssie poskytuje na vytvorenie SYSTEM THREADS alternativnu FUNCTION [IoCreateSystemThread()]. Pre tuto FUNCTION platia nasledujuce fakty.
+   A. FUNCTION [IoCreateSystemThread()] ma PARAMETER [PVOID IoObject] obsahujuci POINTER na DRIVER OBJECT, alebo POINTER na DEVICE OBJECT.
+   !!! B. FUNCTION [IoCreateSystemThread()] pri uspesnom vytvoreni SYSTEM THREAD zvysuje COUNTER DRIVER OBJECT, alebo DEVICE OBJECT cim ZABRANUJE WINDOWS, aby odstranil DRIVER z MEMORY predtym ako je SYSTEM THREAD ukonceny.
+   !!! C. Pre FUNCTION [IoCreateSystemThread()] THREAD ROUTINE NESMIE na jej konci volat FUNCTION [PsTerminateSystemThread()], pretoze FUNCTION [IoCreateSystemThread()] definuje CUSTOM THREAD ROUTINE, ktora DEKREMENTUJE COUNTER DRIVER OBJECT, alebo DEVICE OBJECT a nasledne vola FUNCTION [PsTerminateSystemThread()] s PARAMETER VALUE [STATUS_SUCCESS].
+   !!!!! D. FUNCTION [IoCreateSystemThread()] je v skutocnosti jednoduchy WRAPPER okolo FUNCTION [PsCreateSystemThread()] vykonavajuci nasledujuce kroky.
+      A. FUNCTION zvysi COUNTER pre zaslany DRIVER OBJECT, alebo DEVICE OBJECT, aby zabranila WINDOWS ukoncit DRIVER predtym ako SYSTEM THREAD skonci.
+	  B. FUNCTION zavola FUNCTION FUNCTION [PsCreateSystemThread()], ktorou vytvori SYSTEM THREAD, pricom ako THREAD ROUTINE dava POINTER na CUSTOM THREAD ROUTINE.
+	  C. CUSTOM THREAD ROUTINE interne vola THREAD ROUTINE, ktora bola zadana ako PRAMETER do FUNCTION [IoCreateSystemThread()].
+	  !!! D. Na konci CUSTOM THREAD ROUTINE je IO MANAGER instruovany, aby korektne ukoncil SYSTEM THREAD.
+	  !!!!! E. Po skonceni CUSTOM THREAD ROUTINE IO MANAGER DEKREMENTUJE COUNTER DRIVER OBJECT, alebo DEVICE OBJECT, ktory FUNCTION [IoCreateSystemThread()] dostala ako PARAMETER.
+	  !!! F. IO MANAGER po dekrementovani COUNTER DRIVER OBJECT, alebo DEVICE OBJECT zavola FUNCTION [IoCreateSystemThread() s PARAMETER VALUE [STATUS_SUCCESS].
+4. Pre FUNCTION [PsCreateSystemThread()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [NTSTATUS PsCreateSystemThread(PHANDLE ThreadHandle, ULONG DesiredAccess, POBJECT_ATTRIBUTES ObjectAttributes, HANDLE ProcessHandle, PCLIENT_ID ClientId, PKSTART_ROUTINE StartRoutine, PVOID StartContext)].
+   B. PARAMETER [PHANDLE ThreadHandle] obsahuje POINTER na HANDLE na THREAD, ktory FUNCTION vrati pri uspesnom vytvoreni SYSTEM THREAD. Tento HANDLE MUSI byt uzatvoreni volanim FUNCTION [ZwClose()].
+   C. PARAMETER [ULONG DesiredAccess] obsahuje ACCESS MASK TYPE [ACCESS_MASK] definujucu, ktore ACCESS RIGHTS ma mat SYSTEM THREAD. Spravidla sa pouziva VALUE [THREAD_ALL_ACCESS].
+   D. PARAMETER [POBJECT_ATTRIBUTES ObjectAttributes] obsahuje POINTER na STRUCTURE [OBJECT_ATTRIBUTES]. Pre THREADS staci nastavit iba FIELD [OBJECT_ATTRIBUTES::Attributes] na VALUE [OBJ_KERNEL_HANDLE].
+   E. PARAMETER [HANDLE ProcessHandle] obsahuje HANDLE na PROCESS s ktoreho ADDRESS SPACE ma byt SYSTEM THREAD zviazany. DRIVER nastavuju pre tento PARAMETER VALUE [NULL].
+   F. PARAMETER [PCLIENT_ID ClientId] obsahuje POINTER na STRUCTURE [CLIENT_ID], ktora obsahuuje HANDLE na PROCESS a HANDLE na THREAD. DRIVERS by mali tento PARAMETER nastavit na VALUE [NULL].
+   G. PARAMETER [PKSTART_ROUTINE StartRoutine] obsahuje POINTER na THREAD ROUTINE, ktora ma PROTOTYPE [void KstartRoutine(PVOID StartContext)].
+   H. PARAMETER [PVOID StartContext] obsahuje POINTER na CUSTOM DATA, ktore su prenesene ako PARAMETER do THREAD ROUTINE.
+   I. RETURN VALUE TYPE [NTSTATUS] obsahuje informaciu ci bol SYSTEM THREAD uspesne vytvoreny. Ak bol SYSTEM THREAD uspesne vytvoreny vracia sa VALUE [STATUS_SUCCESS]. Inak sa vracia ERROR CODE.
+   J. FUNCTION vytvara SYSTEM THREAD s definovanou THREAD ROUTINE.
+   !!!!! K. THREAD ROUTINE musi VZDY koncit volanim NON RETURNABLE FUNCTION [PsTerminateSystemThread()], aby sa SYSTEM THREAD mohol korektne ukoncit.
+   !!! L. FUNCTION neposkytuje garanciu, ze DRIVER nie je odstraneny z MEMORY predtym ako je SYSTEM THREAD ukonceny.
+5. Pre FUNCTION [IoCreateSystemThread()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [NTSTATUS IoCreateSystemThread(PVOID IoObject, PHANDLE ThreadHandle, ULONG DesiredAccess, POBJECT_ATTRIBUTES ObjectAttributes, HANDLE ProcessHandle, PCLIENT_ID ClientId, PKSTART_ROUTINE StartRoutine, PVOID StartContext)].
+   !!! B. PARAMETER [PVOID IoObject] obsahuje POINTER DRIVER OBJECT, alebo POINTER na DEVICE OBJECT. Vdaka tomu POINTER moze FUNCTION garantovat, ze DRIVER nebude odstraneny z MEMORY skor nez SYSTEM THREAD skonci.
+   C. PARAMETER [PHANDLE ThreadHandle] obsahuje POINTER na HANDLE na THREAD, ktory FUNCTION vrati pri uspesnom vytvoreni SYSTEM THREAD. Tento HANDLE MUSI byt uzatvoreni volanim FUNCTION [ZwClose()].
+   D. PARAMETER [ULONG DesiredAccess] obsahuje ACCESS MASK TYPE [ACCESS_MASK] definujucu, ktore ACCESS RIGHTS ma mat SYSTEM THREAD. Spravidla sa pouziva VALUE [THREAD_ALL_ACCESS].
+   E. PARAMETER [POBJECT_ATTRIBUTES ObjectAttributes] obsahuje POINTER na STRUCTURE [OBJECT_ATTRIBUTES]. Pre THREADS staci nastavit iba FIELD [OBJECT_ATTRIBUTES::Attributes] na VALUE [OBJ_KERNEL_HANDLE].
+   F. PARAMETER [HANDLE ProcessHandle] obsahuje HANDLE na PROCESS s ktoreho ADDRESS SPACE ma byt SYSTEM THREAD zviazany. DRIVER nastavuju pre tento PARAMETER VALUE [NULL].
+   G. PARAMETER [PCLIENT_ID ClientId] obsahuje POINTER na STRUCTURE [CLIENT_ID], ktora obsahuuje HANDLE na PROCESS a HANDLE na THREAD. DRIVERS by mali tento PARAMETER nastavit na VALUE [NULL].
+   H. PARAMETER [PKSTART_ROUTINE StartRoutine] obsahuje POINTER na THREAD ROUTINE, ktora ma PROTOTYPE [void KstartRoutine(PVOID StartContext)].
+   I. PARAMETER [PVOID StartContext] obsahuje POINTER na CUSTOM DATA, ktore su prenesene ako PARAMETER do THREAD ROUTINE.
+   J. RETURN VALUE TYPE [NTSTATUS] obsahuje informaciu ci bol SYSTEM THREAD uspesne vytvoreny. Ak bol SYSTEM THREAD uspesne vytvoreny vracia sa VALUE [STATUS_SUCCESS]. Inak sa vracia ERROR CODE.
+   K. FUNCTION vytvara SYSTEM THREAD s definovanou THREAD ROUTINE.
+   !!!!! L. THREAD ROUTINE NESMIE koncit volanim NON RETURNABLE FUNCTION [PsTerminateSystemThread()], pretoze ta je volana AUTOMATICKY.
+   !!! M. FUNCTION GARANTUJE, ze DRIVER nie je odstraneny z MEMORY predtym ako je SYSTEM THREAD ukonceny.
+6. Pre FUNCTION [PsGetThreadExitStatus()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [NTSTATUS PsGetThreadExitStatus(PETHREAD Thread)].
+   B. PARAMETER [PETHREAD Thread] obsahuje POINTER na STRUCTURE [ETHREAD], ktora definuje SYSTEM THREAD, ktoreho STATUS CODE sa ma vratit.
+   C. RETURN VALUE TYPE [NTSTATUS] obsahuje STATUS CODE, ktory vratil SYSTEM THREAD pri volani FUNCTION [PsTerminateSystemThread()]. V pripade, ze THREAD este bezi vracia sa VALUE [STATUS_PENDING].
+   D. FUNCTION vracia STATUS CODE, ktory vratil SYSTEM THREAD pri volani FUNCTION [PsTerminateSystemThread()]. V pripade, ze THREAD este bezi vracia sa VALUE [STATUS_PENDING].
+7. KERNEL definuje viacero FUNCTIONS na alokovanie dynamickej MEMORY.
+   A. FUNCTION [ExAllocatePool2()].
+   B. FUNCTION [ExAllocatePool3()].
+8. Pre FUNCTION [ExAllocatePool2()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [DECLSPEC_RESTRICT PVOID ExAllocatePool2(POOL_FLAGS Flags, SIZE_T NumberOfBytes, ULONG Tag)].
+   B. PARAMETER [POOL_FLAGS Flags] obsahuje FLAGS, ktore urcuju v ktorej POOL ma byt MEMORY ALLOCATED, ci ma byt asociovana s QUOTE daneho PROCESS a dalsie detaily.
+   C. PARAMETER [SIZE_T NumberOfBytes] urcuje pocet BYTES, ktore maju byt ALLOCATED.
+   D. PARAMETER [ULONG Tag] definuje TAG alokovaneho MEMORY BLOCK.
+   E. RETURN VALUE TYPE [PVOID] obsahuje alokovany MEMORY BLOCK, alebo NULL, ak alokacia zlyhala.
+   F. FUNCTION alokuje MEMORY z daneho POOL, pricom vracia POINTER na alokovany MEMORY BLOCK.
+   !!! G. Ak je nastaveny FLAG [POOL_FLAG_RAISE_ON_FAILURE], tak pri zlyhani FUNCTION hodi EXCEPTION.
+9. Pre FUNCTION [ExAllocatePool3()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [DECLSPEC_RESTRICT PVOID ExAllocatePool3(POOL_FLAGS Flags, SIZE_T NumberOfBytes, ULONG Tag, PCPOOL_EXTENDED_PARAMETER ExtendedParameters, ULONG ExtendedParametersCount)].
+   B. PARAMETER [POOL_FLAGS Flags] obsahuje FLAGS, ktore urcuju v ktorej POOL ma byt MEMORY ALLOCATED, ci ma byt asociovana s QUOTE daneho PROCESS a dalsie detaily.
+   C. PARAMETER [SIZE_T NumberOfBytes] urcuje pocet BYTES, ktore maju byt ALLOCATED.
+   D. PARAMETER [ULONG Tag] definuje TAG alokovaneho MEMORY BLOCK.
+   E. PARAMETER [PCPOOL_EXTENDED_PARAMETER ExtendedParameters] obsahuje ARRAY STRUCTURES [POOL_EXTENDED_PARAMETER], ktore blizsie definuje chovanie FUNCTION. Pomocou STRUCTURES [POOL_EXTENDED_PARAMETER] je mozne urcit PRIORITY (ci sa ma MEMORY alokovat ak je nedostatok MEMORY v SYSTEME), ci ma byt alokovana zo SECURE POOL, alebo na ktorom NUMA NODE ma byt MEMORY alokovana.
+   F. PARAMETER [ULONG ExtendedParametersCount] obsahuje pocet ITEMS v ARRAY STRUCTURES [POOL_EXTENDED_PARAMETER].
+   G. RETURN VALUE TYPE [PVOID] obsahuje alokovany MEMORY BLOCK, alebo NULL, ak alokacia zlyhala.
+   H. FUNCTION alokuje MEMORY z daneho POOL, pricom vracia POINTER na alokovany MEMORY BLOCK.
+   !!! I. Ak je nastaveny FLAG [POOL_FLAG_RAISE_ON_FAILURE], tak pri zlyhani FUNCTION hodi EXCEPTION.
+10. TYPE [POOL_FLAGS] urcuje detaily alokacie MEMORY. Ma nasledujuce MEMBERS.
+   A. FLAG [POOL_FLAG_USE_QUOTA] urcuje ci alokovana MEMORY ma byt odratana z QUOTA daneho PROCESSU.
+   B. FLAG [POOL_FLAG_UNINITIALIZED] urcuje ze alokovana MEMORY nema byt inicializovana na 0. Ak tento FLAG nie je specifikovany, tak MEMORY je inicializovana na 0.
+   C. FLAG [POOL_FLAG_CACHE_ALIGNED] urcuje alokovana ADDRESS ma byt CPU CACHE ALIGNED. Je to iba BEST EFFORT a alokacia NEGARANTUJE, ze sa jej podari dosiahnut CPU CACHE ALIGNED ADDRESS.
+   D. FLAG [POOL_FLAG_RAISE_ON_FAILURE] urcuje ze alokacna FUNCTION ma hodit EXCEPTION, ak ALLOCATION zlyha.
+   E. FLAG [POOL_FLAG_NON_PAGED] urcuje ze ALLOCATION ma byt vykonana v NON-EXECUTABLE NON-PAGED MEMORY POOL.
+   F. FLAG [POOL_FLAG_NON_PAGED_EXECUTE] urcuje ze ALLOCATION ma byt vykonana v EXECUTABLE NON-PAGED MEMORY POOL.
+   G. FLAG [POOL_FLAG_PAGED] urcuje ze ALLOCATION ma byt vykonana v NON-EXECUTABLE PAGED MEMORY POOL.
+   !!! H. FLAG [POOL_FLAG_SPECIAL_POOL] urcuje ze ALLOCATION ma byt vykonana v SPECIAL POOL. SPECIAL POOL znamena alokaciu na zaciatku, alebo na konci MEMORY PAGE. To je vhodne pri odhalovani BUFFER OVERRUN ERRORS.
+11. STRUCTURE [POOL_EXTENDED_PARAMETER] umoznuje definovat podrobnosti za akych ma FUNCTION [ExAllocatePool3()] alokovat MEMORY. Ma nasledujuce MEMBERS.
+   A. STRUCTURE [DUMMYSTRUCTNAME] obsahuje typ EXTENDED PARAMETER. Ma nasledujuce FIELDS.
+      A. FIELD [ULONG64 Type : POOL_EXTENDED_PARAMETER_TYPE_BITS] definuje typ EXTENDED PARAMETER. Moze mat VALUE [POOL_EXTENDED_PARAMETER_TYPE::PoolExtendedParameterPriority], VALUE [POOL_EXTENDED_PARAMETER_TYPE::PoolExtendedParameterSecurePool], alebo VALUE [POOL_EXTENDED_PARAMETER_TYPE::PoolExtendedParameterNumaNode].
+      B. FIELD [ULONG64 Optional : POOL_EXTENDED_PARAMETER_REQUIRED_FIELD_BITS] urcuje ci ma ALLOCATION zlyhat, ak nebol respektovany dany EXTENDED PARAMETER.
+      C. FIELD [ULONG64 Reserved : POOL_EXTENDED_PARAMETER_RESERVED_BITS] je RESERVED pre buduce pouzitie.
+   B. UNION [DUMMYUNIONNAME] obsahuje VALUES pre EXTENDED PARAMETER. Ma nasledujuce FIELDS.
+      A. FIELD [ULONG64 Reserved2] je RESERVED pre buduce pouzitie.
+      B. FIELD [PVOID Reserved3] je RESERVED pre buduce pouzitie.
+      C. FIELD [EX_POOL_PRIORITY Priority] obsahuje PRIORITY, ktora urcuje ci sa ma MEMORY alokovat ak je v SYSTEME nedostatok MEMORY. Tento FIELD MUSI byt nastaveny ako je FIELD [ULONG64 Type : POOL_EXTENDED_PARAMETER_TYPE_BITS] nastaveny na VALUE [POOL_EXTENDED_PARAMETER_TYPE::PoolExtendedParameterPriority].
+      D. FIELD [POOL_EXTENDED_PARAMS_SECURE_POOL* SecurePoolParams] obsahuje SECURE POOL PARAMETERS. Tento FIELD MUSI byt nastaveny ako je FIELD [ULONG64 Type : POOL_EXTENDED_PARAMETER_TYPE_BITS] nastaveny na VALUE [POOL_EXTENDED_PARAMETER_TYPE::PoolExtendedParameterSecurePool].
+      E. FIELD [POOL_NODE_REQUIREMENT PreferredNode] cislo NUMA NODE, kde sa ma MEMORY alokovat. Tento FIELD MUSI byt nastaveny ako je FIELD [ULONG64 Type : POOL_EXTENDED_PARAMETER_TYPE_BITS] nastaveny na VALUE [POOL_EXTENDED_PARAMETER_TYPE::PoolExtendedParameterNumaNode].
+12. KERNEL definuje viacero FUNCTIONS na uvolnovanie dynamickej MEMORY.
+   A. FUNCTION [ExFreePoolWithTag()].
+   B. FUNCTION [ExFreePool2()].
+13. Pre FUNCTION [ExFreePoolWithTag()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [void ExFreePoolWithTag(PVOID P, ULONG Tag)].
+   B. PARAMETER [PVOID P] obsahuje POINTER na alokovany BUFFER.
+   C. PARAMETER [ULONG Tag] definuje TAG alokovaneho MEMORY BLOCK.
+   D. FUNCTION uvolnuje dyamicky alokovanu MEMORY z daneho POOL.
+14. Pre FUNCTION [ExFreePoolWithTag()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [void ExFreePool2(PVOID P, ULONG Tag, PCPOOL_EXTENDED_PARAMETER ExtendedParameters, ULONG ExtendedParametersCount)].
+   B. PARAMETER [PVOID P] obsahuje POINTER na alokovany BUFFER.
+   C. PARAMETER [ULONG Tag] definuje TAG alokovaneho MEMORY BLOCK.
+   D. PARAMETER [PCPOOL_EXTENDED_PARAMETER ExtendedParameters] obsahuje ARRAY STRUCTURES [POOL_EXTENDED_PARAMETER], ktore blizsie definuje chovanie FUNCTION. Pomocou STRUCTURES [POOL_EXTENDED_PARAMETER] je mozne urcit nastavit EXTENDED PARAMETERS ako napriklad HANDLE na SECURE POOL, ak alokacia bola vykonava v SECURE POOL.
+   E. PARAMETER [ULONG ExtendedParametersCount] obsahuje pocet ITEMS v ARRAY STRUCTURES [POOL_EXTENDED_PARAMETER].
+   F. FUNCTION uvolnuje dyamicky alokovanu MEMORY z daneho POOL pricom umoznuje nastavit EXTENDED PARAMETERS ako napriklad HANDLE na SECURE POOL, ak alokacia bola vykonava v SECURE POOL.
+15. KERNEL umoznuje alokaciu DYNAMIC MEMORY v SECURE MEMORY POOLS. Pre SECURE MEMORY POOLS platia nasledujuce fakty.
+   A. SECURE MEMORY POOLS je MEMORY POOL, ktory NIE je pristupny z inych KERNEL COMPONENTS. Je pristupny iba z DRIVER, ktory dany SECURE MEMORY POOL vytvoril.
+   !!! B. SECURE MEMORY POOLS funguju IBA ak je vo WINDOWS povoleny VIRTUALIZATION BASED SECURITY.
+   C. READ a WRITE BUFFERS alokovanych v SECURE MEMORY POOLS je mozne iba pomocou specializovaneho API, ktore je sucastou VIRTUAL TRUST LEVEL.
+   D. SECURE MEMORY POOL sa vytvara volanim FUNCTION [ExCreatePool()].
+   E. SECURE MEMORY POOL sa odstranuje volanim FUNCTION [ExDestroyPool()].
+   F. Alokacia MEMORY BUFFER v SECURE MEMORY POOL sa vykonava volanim FUNCTION [ExAllocatePool3()] pricom MUSI byt nastaveny EXTENDED PARAMETER SECURE POOL a inicializovana STRUCTURE [POOL_EXTENDED_PARAMS_SECURE_POOL].
+   G. Uvolenie MEMORY BUFFER v SECURE MEMORY POOL sa vykonava volanim FUNCTION [ExFreePool2()] pricom MUSI byt nastaveny EXTENDED PARAMETER SECURE POOL a inicializovana STRUCTURE [POOL_EXTENDED_PARAMS_SECURE_POOL].
+   H. UPDATE MEMORY BUFFER v SECURE MEMORY POOL sa vykonava volanim FUNCTION [ExSecurePoolUpdate()].
+16. Pri alokacii MEMORY BUFFER v SECURE MEMORY POOL volanim FUNCTION [ExAllocatePool3()] je potrebne vykonat nasledujuce kroky.
+   A. Vytvorit instanciu STRUCTURE [POOL_EXTENDED_PARAMETER] a jej obsah nastavit na 0.
+   B. Vytvorit instanciu STRUCTURE [POOL_EXTENDED_PARAMS_SECURE_POOL] a jej obsah nastavit na 0.
+   C. Nastavit FIELD [POOL_EXTENDED_PARAMETER::Type] na VALUE [POOL_EXTENDED_PARAMETER_TYPE::PoolExtendedParameterSecurePool].
+   D. Nastavit FIELD [POOL_EXTENDED_PARAMETER::SecurePoolParams] na ADDRESS instancie STRUCTURE [POOL_EXTENDED_PARAMS_SECURE_POOL].
+   !!!!! E. Nastavit FIELD [POOL_EXTENDED_PARAMS_SECURE_POOL::Buffer] na BUFFER, ktory obsahuje pociatocny CONTENT SECURE MEMORY BUFFER.
+   F. Nastavit FIELD [POOL_EXTENDED_PARAMS_SECURE_POOL::Cookie] na COOKIE VALUE, ktora sa pouziva pri verifikacii SECURE MEMORY BUFFER.
+   !!! G. Nastavit FIELD [POOL_EXTENDED_PARAMS_SECURE_POOL::SecurePoolFlags]. Ak ma byt SECURE MEMORY BUFFER modifikovatelny je nutne nastavit FIELD na VALUE [SECURE_POOL_FLAGS_FREEABLE | SECURE_POOL_FLAGS_MODIFIABLE].
+   !!! H. Nastavit FIELD [POOL_EXTENDED_PARAMS_SECURE_POOL::SecurePoolHandle] na HANDLE SECURE MEMORY POOL.
+   I. Zavolat FUNCTION [ExAllocatePool3()].
+17. Pri uvolneni MEMORY BUFFER v SECURE MEMORY POOL volanim FUNCTION [ExFreePool2()] je potrebne vykonat nasledujuce kroky.
+   A. Vytvorit instanciu STRUCTURE [POOL_EXTENDED_PARAMETER] a jej obsah nastavit na 0.
+   B. Vytvorit instanciu STRUCTURE [POOL_EXTENDED_PARAMS_SECURE_POOL] a jej obsah nastavit na 0.
+   C. Nastavit FIELD [POOL_EXTENDED_PARAMETER::Type] na VALUE [POOL_EXTENDED_PARAMETER_TYPE::PoolExtendedParameterSecurePool].
+   D. Nastavit FIELD [POOL_EXTENDED_PARAMETER::SecurePoolParams] na ADDRESS instancie STRUCTURE [POOL_EXTENDED_PARAMS_SECURE_POOL].
+   !!! E. Nastavit FIELD [POOL_EXTENDED_PARAMS_SECURE_POOL::Buffer] na VALUE [nullptr].
+   F. Nastavit FIELD [POOL_EXTENDED_PARAMS_SECURE_POOL::Cookie] na COOKIE VALUE, ktora sa pouziva pri verifikacii SECURE MEMORY BUFFER.
+   !!! G. Nastavit FIELD [POOL_EXTENDED_PARAMS_SECURE_POOL::SecurePoolFlags] na VALUE [0].
+   !!! H. Nastavit FIELD [POOL_EXTENDED_PARAMS_SECURE_POOL::SecurePoolHandle] na HANDLE SECURE MEMORY POOL.
+   I. Zavolat FUNCTION [ExFreePool2()].
+18. Pre FUNCTION [ExCreatePool()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [NTSTATUS ExCreatePool(ULONG Flags, ULONG_PTR Tag, POOL_CREATE_EXTENDED_PARAMS* Params, HANDLE* PoolHandle)].
+   B. PARAMETER [ULONG Flags] obsahuje FLAGS, ktore popisuju SECURE MEMORY POOL. FIELD by mal byt nastaveny na VALUE [POOL_CREATE_FLG_SECURE_POOL | POOL_CREATE_FLG_USE_GLOBAL_POOL].
+   D. PARAMETER [ULONG_PTR Tag] definuje TAG daneho SECURE MEMORY POOL.
+   E. PARAMETER [POOL_CREATE_EXTENDED_PARAMS* Params] obsahuje ARRAY STRUCTURES [POOL_CREATE_EXTENDED_PARAMS]. FIELD by mal byt nastaveny na VALUE [nullptr].
+   F. PARAMETER [HANDLE* PoolHandle] obsahuje POINTER na HANDLE do ktoreho sa ulozi HANDLE na SECURE MEMORY POOL.
+   G. RETURN VALUE TYPE [NTSTATUS] obsahuje informaciu ci FUNCTION skoncila uspesne.
+   H. FUNCTION vytvori SECURE MEMORY POOL.
+19. Pre FUNCTION [ExDestroyPool()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [VOID ExDestroyPool(HANDLE PoolHandle)].
+   B. PARAMETER [HANDLE PoolHandle] obsahuje HANDLE na SECURE MEMORY POOL, ktory sa ma odstranit.
+   C. FUNCTION odstranuje SECURE MEMORY POOL.
+20. Pre FUNCTION [ExCreatePool()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [NTSTATUS ExSecurePoolUpdate(HANDLE SecurePoolHandle, ULONG Tag, PVOID Allocation, ULONG_PTR Cookie, SIZE_T Offset, SIZE_T Size, PVOID Buffer)].
+   B. PARAMETER [HANDLE SecurePoolHandle] obsahuje HANDLE na SECURE MEMORY POOL.
+   C. PARAMETER [ULONG_PTR Tag] definuje TAG daneho SECURE MEMORY POOL.
+   !!! D. PARAMETER [ULONG_PTR Tag] obsahuje POINTER na MEMORY BUFFER, ktora vratila FUNCTION [ExAllocatePool3()].
+   E. PARAMETER [ULONG_PTR Cookie] obsahuje COOKIE VALUE, ktora sa pouziva pri verifikacii SECURE MEMORY BUFFER.
+   F. PARAMETER [SIZE_T Offset] obsahuje OFFSET do MEMORY BUFFER, ktoreho obsah sa ma zmenit.
+   G. PARAMETER [SIZE_T Size] obsahuje POCET BYTES, ktore sa maju v MEMORY BUFFER zmenit.
+   H. PARAMETER [PVOID Buffer] obsahuje novy CONTENT, ktorym sa ma MEMORY BUFFER naplnit.
+   I. RETURN VALUE TYPE [NTSTATUS] obsahuje informaciu ci FUNCTION skoncila uspesne.
+   J. FUNCTION vykona UPDATE MEMORY BUFFER v SECURE MEMORY POOL.
+21. STRUCTURE [POOL_EXTENDED_PARAMS_SECURE_POOL] ma nasledujuce FIELDS.
+   A. FIELD [HANDLE SecurePoolHandle] obsahuje HANDLE na SECURE MEMORY POOL.
+   !!! B. FIELD [PVOID Buffer] obsahuje BUFFER CONTENT, ktorym sa ma MEMORY BUFFER naplnit. Vyuziva sa len pri vytvarani MEMORY BUFFER v SECURE MEMORY POOL.
+   C. FIELD [ULONG_PTR Cookie] obsahuje COOKIE VALUE, ktora sa pouziva pri verifikacii SECURE MEMORY BUFFER.
+   D. FIELD [ULONG SecurePoolFlags] obsahuje FLAGS, pouzivane pri vytvoreni MEMORY BUFFER. Obsahuje nasledujuce VALUES.
+      A. VALUE [POOL_CREATE_FLG_SECURE_POOL] znamena, ze sa ma alokovat MEMORY BUFFER v SECURE MEMORY POOL.
+      B. VALUE [POOL_CREATE_FLG_USE_GLOBAL_POOL] znamena, ze sa ma alokovat GLOBAL MEMORY BUFFER.
+22. C++ v KERNEL MODE nema implementovany RUNTIME, takze nie je mozne pouzit DEFAULT OPERATOR [OPERATOR new] a DEFAULT OPERATOR [OPERATOR delete]. C++ vsak umoznuje definovanie CUSTOM OPERATOR [OPERATOR new] a CUSTOM OPERATOR [OPERATOR delete]. Pre tieto CUSTOM OPERATORS platia nasledujuce fakty.
+   A. CUSTOM OPERATOR [OPERATOR new] a CUSTOM OPERATOR [OPERATOR delete] mozu byt definovane ako GLOBALNE, alebo pre konkretne TYPES.
+   B. CUSTOM OPERATOR [OPERATOR new] vola po uspesnej alokacii MEMORY CONSTRUCTOR daneho TYPE.
+   C. CUSTOM OPERATOR [OPERATOR delete] vola pre uvolnenim MEMORY DESTRUCTOR daneho TYPE.
+   D. CUSTOM OPERATOR [OPERATOR new] moze mat dodatocne PARAMETERS. To je mozne vyuzit v KERNEL MODE pre prenos POOL TYPE v ktorom ma byt MEMORY alokovana ci dalsie detialy MEMORY ALLOCATION.
+   E. Pri volani CUSTOM OPERATOR [OPERATOR new] je PARAMETER obsahujuci POCET BYTES,m ktore maju byt alokovane automaticky doplneny COMPILER.
+   F. Pri volani CUSTOM OPERATOR [OPERATOR delete] je PARAMETER obsahujuci POCET BYTES nastaveny COMPILER na 0.
+   G. C++ umoznuje definovat PLACEMENT OPERATOR [OPERATOR new], ktory pouziva uz alokovanu MEMORY, a nealokuje dalsiu, no pre dany TYPE zavola CONSTRUCTOR.
+   !!!!! H. OPERATOR CUSTOM GLOBAL OPERATOR [OPERATOR delete] MUSI mat PROTOTYPE [void operator delete(void* Buffer, size_t Size)], aby ho C++ zvolal. Ale CUSTOM SPECIFIC TYPE OPERATOR [OPERATOR delete] MOZE mat aj PROTOTYPE [void operator delete(void* Buffer)].
+23. LOOKASIDE LISTS je mechanizmus ako efektivne alokovat MEMORY BLOCKS rovnakej dlzky. Pre LOOKASIDE LISTS platia nasledujuce fakty.
+   A. LOOKASIDE LISTS umoznuju efektivne alokovat MEMORY BLOCKS rovnakej dlzky tym, ze pri odstranovani alokovaneho MEMORY BLOCK ho realne neodstranuju z MEMORY, ale iba ho oznacia ako vymazany a tym padom je alokacia nove MEMORY BLOCK v uz zmazanom MEMORY BLOCK efektivnejsia.
+   B. KERNEL poskytuje nasledujuce API pre pracu s LOOKASIDE LISTS.
+      A. Povodne API pristupne od verzie WINDOWS 2000.
+      B. Nove API pristupne od verzie WINDOWS VISTA.
+24. Pre povodne API pre pracu s LOOKASIDE LISTS pristupne od verzie WINDOWS 2000 platia nasledujuce fakty.
+   A. API poskytuje rozdielne KERNEL FUNCTIONS pre alokaciou MEMORY BLOCKS v PAGED a NON-PAGED MEMORY POOLS.
+   B. LOOKASIDE LIST sa vytvara pomocou nasledujucich FUNCTIONS.
+      A. Pre PAGED MEMORY sa pouziva FUNCTION [ExInitializePagedLookasideList()].
+      B. Pre NON-PAGED MEMORY sa pouziva FUNCTION [ExInitializeNPagedLookasideList()].
+   C. LOOKASIDE LIST sa odstranuje pomocou nasledujucich FUNCTIONS.
+      A. Pre PAGED MEMORY sa pouziva FUNCTION [ExDeletePagedLookasideList()].
+      B. Pre NON-PAGED MEMORY sa pouziva FUNCTION [ExDeleteNPagedLookasideList()].
+   D. Alokacia MEMORY BLOCK v LOOKASIDE LIST sa realizuje pomocou nasledujucich FUNCTIONS.
+      A. Pre PAGED MEMORY sa pouziva FUNCTION [ExAllocateFromPagedLookasideList()].
+      B. Pre NON-PAGED MEMORY sa pouziva FUNCTION [ExAllocateFromNPagedLookasideList()].
+   E. Uvolnenie MEMORY BLOCK v LOOKASIDE LIST sa realizuje pomocou nasledujucich FUNCTIONS.
+      A. Pre PAGED MEMORY sa pouziva FUNCTION [ExFreeToPagedLookasideList()].
+      B. Pre NON-PAGED MEMORY sa pouziva FUNCTION [ExFreeToNPagedLookasideList()].
+   !!! F. Pri vytvarani LOOKASIDE LIST FUNCTION [ExInitializePagedLookasideList()] a FUNCTION [ExInitializeNPagedLookasideList()] prijmaju ako OPTIONAL PARAMETERS ALLOCATION FUNCTION a DEALLOCATION FUNCTION, ktore su volane namiesto DEFAULT ALLOCATION FUNCTION a DEALLOCATION FUNCTION. DEFAULT ALLOCATION FUNCTION je FUNCTION [ExAllocatePoolWithTag()] a DEFAULT DEALLOCATION FUNCTION je FUNCTION [ExFreePool()].
+   !!!!! G. ALLOCATION FUNCTION a DEALLOCATION FUNCTION NIE su volane pri alokacii ci uvolneni kazdeho MEMORY BLOCK. Su volane iba vtedy ak je LOOKASIDE LIST EMPTY, alebo FULL, alebo treba vykonat realokaciu existujuceho LOOKASIDE LIST.
+25. Pre FUNCTION [ExInitializePagedLookasideList()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [void ExInitializePagedLookasideList(PPAGED_LOOKASIDE_LIST Lookaside, PALLOCATE_FUNCTION Allocate, PFREE_FUNCTION Free, ULONG Flags, SIZE_T Size, ULONG Tag, USHORT Depth)].
+   B. PARAMETER [PPAGED_LOOKASIDE_LIST Lookaside] obsahuje POINTER na STRUCTURE [PAGED_LOOKASIDE_LIST] popisujucu LOOKASIDE LIST, ktory FUNCTION inicializuje pri uspesnom volani.
+   !!! C. PARAMETER [PALLOCATE_FUNCTION Allocate] obsahuje ALLOCATION FUNCTION, ktora sa ma volat pri alokacii MEMORY pre LOOKASIDE LIST. PARAMETER je OPTIONAL. ALLOCATION FUNCTION ma PROTOTYPE [PVOID AllocationFunction(POOL_TYPE PoolType, SIZE_T NumberOfBytes, ULONG Tag)].
+   !!! D. PARAMETER [PFREE_FUNCTION Free] obsahuje DEALLOCATION FUNCTION, ktora sa ma volat pri dealokacii MEMORY pre LOOKASIDE LIST. PARAMETER je OPTIONAL. DEALLOCATION FUNCTION ma PROTOTYPE [VOID FreeFunction (PVOID Buffer)].
+   E. PARAMETER [ULONG Flags] obsahuje FLAGS. VALUE [POOL_RAISE_IF_ALLOCATION_FAILURE] nastavuje, ze FUNCTION ma pri nedostatku MEMORY hodi EXCEPTION, namiesto hodenia VALUE [nullptr].
+   F. PARAMETER [SIZE_T Size] obsahuje dlzku jedneho MEMORY BLOCK v BYTES.
+   G. PARAMETER [ULONG Tag] definuje TAG alokovanych MEMORY BLOCKS.
+   H. PARAMETER [USHORT Depth] je RESERVED a MUSI byt nastaveny na VALUE [0].
+   I. FUNCTION inicializuje LOOKASIDE LIST pre PAGED MEMORY POOL.
+26. Pre FUNCTION [ExDeletePagedLookasideList()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [VOID ExDeletePagedLookasideList(PPAGED_LOOKASIDE_LIST Lookaside)].
+   B. PARAMETER [PPAGED_LOOKASIDE_LIST Lookaside] obsahuje POINTER na STRUCTURE [PAGED_LOOKASIDE_LIST] popisujucu LOOKASIDE LIST, ktory ma byt odstraneny.
+   C. FUNCTION uvolnuje LOOKASIDE LIST pre PAGED MEMORY POOL.
+27. Pre FUNCTION [ExAllocateFromPagedLookasideList()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [PVOID ExAllocateFromPagedLookasideList(PPAGED_LOOKASIDE_LIST Lookaside)].
+   B. PARAMETER [PPAGED_LOOKASIDE_LIST Lookaside] obsahuje POINTER na STRUCTURE [PAGED_LOOKASIDE_LIST] popisujucu LOOKASIDE LIST, z ktoreho ma byt alokovany MEMORY BLOCK.
+   C. RETURN VALUE TYPE [PVOID] obsahuje alokovany MEMORY BLOCK z LOOKASIDE LIST.
+   D. FUNCTION alokuje MEMORY BLOCK z LOOKASIDE LIST pre PAGED MEMORY POOL.
+28. Pre FUNCTION [ExFreeToPagedLookasideList()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [VOID ExFreeToPagedLookasideList(PPAGED_LOOKASIDE_LIST Lookaside, PVOID Entry)].
+   B. PARAMETER [PPAGED_LOOKASIDE_LIST Lookaside] obsahuje POINTER na STRUCTURE [PAGED_LOOKASIDE_LIST] popisujucu LOOKASIDE LIST, z ktoreho ma byt uvolneny MEMORY BLOCK.
+   C. PARAMETER [PVOID Entry] obsahuje MEMORY BLOCK, ktory ma byt LOOKASIDE LIST uvolneny.
+   D. FUNCTION uvolnuje MEMORY BLOCK v LOOKASIDE LIST pre PAGED MEMORY POOL.
+29. Pre FUNCTION [ExInitializeNPagedLookasideList()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [void ExInitializeNPagedLookasideList(PNPAGED_LOOKASIDE_LIST Lookaside, PALLOCATE_FUNCTION Allocate, PFREE_FUNCTION Free, ULONG Flags, SIZE_T Size, ULONG Tag, USHORT Depth)].
+   B. PARAMETER [PNPAGED_LOOKASIDE_LIST Lookaside] obsahuje POINTER na STRUCTURE [NPAGED_LOOKASIDE_LIST] popisujucu LOOKASIDE LIST, ktory FUNCTION inicializuje pri uspesnom volani.
+   !!! C. PARAMETER [PALLOCATE_FUNCTION Allocate] obsahuje ALLOCATION FUNCTION, ktora sa ma volat pri alokacii MEMORY pre LOOKASIDE LIST. PARAMETER je OPTIONAL. ALLOCATION FUNCTION ma PROTOTYPE [PVOID AllocationFunction(POOL_TYPE PoolType, SIZE_T NumberOfBytes, ULONG Tag)].
+   !!! D. PARAMETER [PFREE_FUNCTION Free] obsahuje DEALLOCATION FUNCTION, ktora sa ma volat pri dealokacii MEMORY pre LOOKASIDE LIST. PARAMETER je OPTIONAL. DEALLOCATION FUNCTION ma PROTOTYPE [VOID FreeFunction (PVOID Buffer)].
+   E. PARAMETER [ULONG Flags] obsahuje FLAGS. FLAGS mozu nadobudat nasledujuce VALUES.
+      A. VALUE [POOL_RAISE_IF_ALLOCATION_FAILURE] nastavuje, ze FUNCTION ma pri nedostatku MEMORY hodi EXCEPTION, namiesto hodenia VALUE [nullptr].
+	  B. VALUE [POOL_NX_ALLOCATION] urcuje, ze sa MEMORY BLOCK ma alokovat z NON-EXECUTABLE MEMORY.
+   F. PARAMETER [SIZE_T Size] obsahuje dlzku jedneho MEMORY BLOCK v BYTES.
+   G. PARAMETER [ULONG Tag] definuje TAG alokovanych MEMORY BLOCKS.
+   H. PARAMETER [USHORT Depth] je RESERVED a MUSI byt nastaveny na VALUE [0].
+   I. FUNCTION inicializuje LOOKASIDE LIST pre NON-PAGED MEMORY POOL.
+30. Pre FUNCTION [ExDeleteNPagedLookasideList()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [void ExDeleteNPagedLookasideList(PNPAGED_LOOKASIDE_LIST Lookaside)].
+   B. PARAMETER [PNPAGED_LOOKASIDE_LIST Lookaside] obsahuje POINTER na STRUCTURE [NPAGED_LOOKASIDE_LIST] popisujucu LOOKASIDE LIST, ktory ma byt odstraneny.
+   C. FUNCTION uvolnuje LOOKASIDE LIST pre NON-PAGED MEMORY POOL.
+31. Pre FUNCTION [ExAllocateFromNPagedLookasideList()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [PVOID ExAllocateFromNPagedLookasideList(PNPAGED_LOOKASIDE_LIST Lookaside)].
+   B. PARAMETER [PNPAGED_LOOKASIDE_LIST Lookaside] obsahuje POINTER na STRUCTURE [NPAGED_LOOKASIDE_LIST] popisujucu LOOKASIDE LIST, z ktoreho ma byt alokovany MEMORY BLOCK.
+   C. RETURN VALUE TYPE [PVOID] obsahuje alokovany MEMORY BLOCK z LOOKASIDE LIST.
+   D. FUNCTION alokuje MEMORY BLOCK z LOOKASIDE LIST pre NON-PAGED MEMORY POOL.
+32. Pre FUNCTION [ExFreeToNPagedLookasideList()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [void ExFreeToNPagedLookasideList(PNPAGED_LOOKASIDE_LIST Lookaside, PVOID Entry)].
+   B. PARAMETER [NPAGED_LOOKASIDE_LIST Lookaside] obsahuje POINTER na STRUCTURE [NPAGED_LOOKASIDE_LIST] popisujucu LOOKASIDE LIST, z ktoreho ma byt uvolneny MEMORY BLOCK.
+   C. PARAMETER [PVOID Entry] obsahuje MEMORY BLOCK, ktory ma byt LOOKASIDE LIST uvolneny.
+   D. FUNCTION uvolnuje MEMORY BLOCK v LOOKASIDE LIST pre NON-PAGED MEMORY POOL.
+33. Pre nove API pre pracu s LOOKASIDE LISTS pristupne od verzie WINDOWS VISTA platia nasledujuce fakty.
+   A. API poskytuje iba jeden typ KERNEL FUNCTIONS pre alokaciou MEMORY BLOCKS v PAGED aj NON-PAGED MEMORY POOLS.
+   B. LOOKASIDE LIST sa vytvara pomocou FUNCTION [ExInitializeLookasideListEx()].
+   C. LOOKASIDE LIST sa odstranuje pomocou FUNCTION [ExDeleteLookasideListEx()].
+   D. Alokacia MEMORY BLOCK v LOOKASIDE LIST sa realizuje pomocou FUNCTION [ExAllocateFromLookasideListEx()].
+   E. Uvolnenie MEMORY BLOCK v LOOKASIDE LIST sa realizuje pomocou FUNCTION [ExFreeToLookasideListEx()].
+   !!! F. Pri vytvarani LOOKASIDE LIST FUNCTION [ExInitializeLookasideListEx()] tato FUNCTION prijma ako OPTIONAL PARAMETERS ALLOCATION FUNCTION a DEALLOCATION FUNCTION, ktore su volane namiesto DEFAULT ALLOCATION FUNCTION a DEALLOCATION FUNCTION. DEFAULT ALLOCATION FUNCTION je FUNCTION [ExAllocatePoolWithTag()] a DEFAULT DEALLOCATION FUNCTION je FUNCTION [ExFreePool()].
+   !!! G. ALLOCATION FUNCTION a DEALLOCATION FUNCTION maju PARAMETER [PLOOKASIDE_LIST_EX Lookaside]. Tento PARAMETER je mozne pomocou MACRO [CONTAINING_RECORD()] pouzit na prenasanie CUSTOM PARAMETERS do ALLOCATION FUNCTION a DEALLOCATION FUNCTION.
+   !!!!! H. ALLOCATION FUNCTION a DEALLOCATION FUNCTION NIE su volane pri alokacii ci uvolneni kazdeho MEMORY BLOCK. Su volane iba vtedy ak je LOOKASIDE LIST EMPTY, alebo FULL, alebo treba vykonat realokaciu existujuceho LOOKASIDE LIST.
+34. Pre FUNCTION [ExInitializeLookasideListEx()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [NTSTATUS ExInitializeLookasideListEx(PLOOKASIDE_LIST_EX Lookaside, PALLOCATE_FUNCTION_EX Allocate, PFREE_FUNCTION_EX Free, POOL_TYPE PoolType, ULONG Flags, SIZE_T Size, ULONG Tag, USHORT Depth)].
+   B. PARAMETER [PLOOKASIDE_LIST_EX Lookaside] obsahuje POINTER na STRUCTURE [LOOKASIDE_LIST_EX] popisujucu LOOKASIDE LIST, ktory FUNCTION inicializuje pri uspesnom volani. STRUCTURE [LOOKASIDE_LIST_EX] MUSI byt alokovana v NON-PAGED MEMORY.
+   !!! C. PARAMETER [PALLOCATE_FUNCTION_EX Allocate] obsahuje ALLOCATION FUNCTION, ktora sa ma volat pri alokacii MEMORY pre LOOKASIDE LIST. PARAMETER je OPTIONAL. ALLOCATION FUNCTION ma PROTOTYPE [PVOID AllocateFunctionEx(POOL_TYPE PoolType, SIZE_T NumberOfBytes, ULONG Tag, PLOOKASIDE_LIST_EX Lookaside)].
+   !!! D. PARAMETER [PFREE_FUNCTION_EX Free] obsahuje DEALLOCATION FUNCTION, ktora sa ma volat pri dealokacii MEMORY pre LOOKASIDE LIST. PARAMETER je OPTIONAL. DEALLOCATION FUNCTION ma PROTOTYPE [void FreeFunctionEx(PVOID Buffer, PLOOKASIDE_LIST_EX Lookaside)].
+   E. PARAMETER [POOL_TYPE PoolType] urcuje MEMORY POOL z ktoreho ma byt MEMORY pre LOOKASIDE LIST ALLOCATED.
+   F. PARAMETER [ULONG Flags] obsahuje FLAGS. FLAGS mozu nadobudat nasledujuce VALUES.
+      A. VALUE [EX_LOOKASIDE_LIST_EX_FLAGS_RAISE_ON_FAIL] nastavuje, ze FUNCTION ma pri nedostatku MEMORY hodi EXCEPTION, namiesto hodenia VALUE [nullptr].
+	  B. VALUE [EX_LOOKASIDE_LIST_EX_FLAGS_FAIL_NO_RAISE] urcuje, ze ak sa MEMORY nepodari alokovat, ma FUNCTION vratit VALUE [nullptr], a nie hodit EXCEPTION. Interne FLAG vykona OR PARAMETER [POOL_TYPE PoolType] s VALUE [POOL_RAISE_IF_ALLOCATION_FAILURE].
+   G. PARAMETER [SIZE_T Size] obsahuje dlzku jedneho MEMORY BLOCK v BYTES.
+   H. PARAMETER [ULONG Tag] definuje TAG alokovanych MEMORY BLOCKS.
+   I. PARAMETER [USHORT Depth] je RESERVED a MUSI byt nastaveny na VALUE [0].
+   J. RETURN VALUE TYPE [NTSTATUS] obsahuje informaciu ci LOOKASIDE LIST bol uspesne inicializovany.
+   K. FUNCTION inicializuje LOOKASIDE LIST.
+35. Pre FUNCTION [ExDeleteLookasideListEx()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [void ExDeleteLookasideListEx(PLOOKASIDE_LIST_EX Lookaside)].
+   B. PARAMETER [PLOOKASIDE_LIST_EX Lookaside] obsahuje POINTER na STRUCTURE [LOOKASIDE_LIST_EX] popisujucu LOOKASIDE LIST, ktory ma byt odstraneny.
+   C. FUNCTION uvolnuje LOOKASIDE LIST.
+36. Pre FUNCTION [ExAllocateFromLookasideListEx()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [PVOID ExAllocateFromLookasideListEx(PLOOKASIDE_LIST_EX Lookaside)].
+   B. PARAMETER [PLOOKASIDE_LIST_EX Lookaside] obsahuje POINTER na STRUCTURE [LOOKASIDE_LIST_EX] popisujucu LOOKASIDE LIST, z ktoreho ma byt alokovany MEMORY BLOCK.
+   C. RETURN VALUE TYPE [PVOID] obsahuje alokovany MEMORY BLOCK z LOOKASIDE LIST.
+   D. FUNCTION alokuje MEMORY BLOCK z LOOKASIDE LIST.
+37. Pre FUNCTION [ExFreeToLookasideListEx()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [void ExFreeToLookasideListEx(PLOOKASIDE_LIST_EX Lookaside, PVOID Entry)].
+   B. PARAMETER [PLOOKASIDE_LIST_EX Lookaside] obsahuje POINTER na STRUCTURE [PLOOKASIDE_LIST_EX] popisujucu LOOKASIDE LIST, z ktoreho ma byt uvolneny MEMORY BLOCK.
+   C. PARAMETER [PVOID Entry] obsahuje MEMORY BLOCK, ktory ma byt LOOKASIDE LIST uvolneny.
+   D. FUNCTION uvolnuje MEMORY BLOCK v LOOKASIDE LIST.
+38. KERNEL umoznuje posielat IRP medzi jednotlivymi DRIVERS. Postup je nasledovny.
+   A. SENDING DRIVER ziska instanciu STRUCTURE [DEVICE_OBJECT]. Na to je mozne pouzit FUNCTION [IoGetDeviceObjectPointer()].
+   B. SENDING DRIVER vytvori IRP. KERNEL poskytuje viacero FUNCTIONS, ktore umoznuju vytvorit IRP. Pre odosielanie DEVICE CONTROL IRP je najjednoduchsie pouzit FUNCTION [IoBuildDeviceIoControlRequest()].
+   C. SENDING DRIVER odosle IRP do RECEIVING DRIVER volanim FUNCTION [IoCallDriver()].
+   D. RECEIVING DRIVER spracuje IRP a zavola FUNCTION [IoCompleteRequest()].
+   !!!!! E. SENDING DRIVER po spracovani NESMIE UVOLNIT IRP. To je automaticky uvolnene IO MANAGER, ked RECEIVING DRIVER zavola FUNCTION [IoCompleteRequest()].
+39. Pre FUNCTION [IoGetDeviceObjectPointer()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [NTSTATUS IoGetDeviceObjectPointer(PUNICODE_STRING ObjectName, ACCESS_MASK DesiredAccess, PFILE_OBJECT* FileObject, PDEVICE_OBJECT* DeviceObject)].
+   B. PARAMETER [PUNICODE_STRING ObjectName] obsahuje meno DRIVER, ktoreho DEVICE OBJECT sa ma ziskat.
+   C. PARAMETER [ACCESS_MASK DesiredAccess] obsahuje ACCESS MASK TYPE [ACCESS_MASK] definujucu, ktore ACCESS RIGHTS ma mat ziskany DEVICE OBJECT. Spravidla sa pouziva VALUE [FILE_ALL_ACCESS].
+   !!!!! D. PARAMETER [PFILE_OBJECT* FileObject] obsahuje POINTER na POINTER na STRUCTURE [FILE_OBJECT]. Tento POINTER naplni FUNCTION po uspesnom volani. POINTER musi byt uvolneny po skonceni pouzivania DEVICE OBJECT pomocou FUNCTION [ObDereferenceObject()].
+   !!! E. PARAMETER [PDEVICE_OBJECT* DeviceObject] obsahuje POINTER na POINTER na STRUCTURE [DEVICE_OBJECT]. Tento POINTER naplni FUNCTION po uspesnom volani.
+   F. RETURN VALUE TYPE [NTSTATUS] obsahuje informaciu ci sa FUNCTION podarilo ziskat DEVICE OBJECT.
+   G. FUNCTION vracia DEVICE OBJECT pre DRIVER najdeny pomocou jeho NAME.
+   !!!!! H. FUNCTION NESMIE uvolnit PARAMETER [PFILE_OBJECT* FileObject] kym DEVICE OBJECT pouziva, iba by sa stal DEVICE OBJECT NEPLATNYM.
+40. Pre FUNCTION [IoBuildDeviceIoControlRequest()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [PIRP IoBuildDeviceIoControlRequest(ULONG IoControlCode, PDEVICE_OBJECT DeviceObject, PVOID InputBuffer, ULONG InputBufferLength, PVOID OutputBuffer, ULONG OutputBufferLength, BOOLEAN InternalDeviceIoControl, PKEVENT Event, PIO_STATUS_BLOCK IoStatusBlock)].
+   B. PARAMETER [ULONG IoControlCode] obsahuje IO CONTROL CODE vytvaraneho IRP.
+   !!! C. PARAMETER [PDEVICE_OBJECT DeviceObject] obsahuje POINTER na DEVICE OBJECT do ktoreho bude IRP zaslane. DEVICE OBJECT urcuje velkost STACK STRUCTURES [IO_STACK_LOCATION].
+   D. PARAMETER [PVOID InputBuffer] obsahuje INPUT BUFFER.
+   E. PARAMETER [ULONG InputBufferLength] obsahuje dlzku OUTPUT BUFFER.
+   F. PARAMETER [PVOID OutputBuffer] obsahuje INPUT BUFFER.
+   G. PARAMETER [ULONG OutputBufferLength] obsahuje dlzku OUTPUT BUFFER.
+   H. PARAMETER [BOOLEAN InternalDeviceIoControl] urcuje ci sa ma pouzit MAJOR FUNCTION [IRP_MJ_INTERNAL_DEVICE_CONTROL], alebo MAJOR FUNCTION [IRP_MJ_DEVICE_CONTROL].
+   I. PARAMETER [PKEVENT Event] je OPTIONAL PARAMETER, ktory obsahuje EVENT, ktory bude signalizovany pri spracovani IRP na RECEIVING DRIVER.
+   J. PARAMETER [PIO_STATUS_BLOCK IoStatusBlock] je POINTER na STRUCTURE [IO_STATUS_BLOCK], ktora obsahuje vysledok IRP.
+   K. RETURN VALUE TYPE [PIRP] obsahuje vytvoreny IRP, alebo VALUE [nullptr], ake vytvorenie IRP zlyha.
+   L. FUNCTION vytvara pre dany DEVICE OBJECT IRP, ktory obsahuje ako bud MAJOR FUNCTION [IRP_MJ_DEVICE_CONTROL], alebo MAJOR FUNCTION [IRP_MJ_INTERNAL_DEVICE_CONTROL].
+   !!!!! M. FUNCTION uz NASTAVUJE prvu STRUCTURE [IO_STACK_LOCATION] v ARRAY STRUCTURES [IO_STACK_LOCATION], takze sa uz NESMIE MODIFIKOVAT. Ak by sa zavolala napriklad FUNCTION [IoCopyCurrentIrpStackLocationToNext()], tak by doslo k modifikacii nasledujucej STRUCTURE [IO_STACK_LOCATION], ktora VOBEC NEMUSI EXISTOVAT, pretoze STACK LOCATION SIZE moze byt rovny 1 a nastavovala by sa STACK LOCATION s INDEX 2 co by sposobilo BUG CHECK.
+41. Pre FUNCTION [IofCallDriver()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [NTSTATUS IofCallDriver(PDEVICE_OBJECT DeviceObject, PIRP Irp)].
+   B. PARAMETER [PDEVICE_OBJECT DeviceObject] obsahuje DEVICE OBJECT do ktoreho ma byt IRP zaslane.
+   C. PARAMETER [PIRP Irp] obsahuje IRP, ktore ma byt zaslane.
+   D. RETURN VALUE TYPE [NTSTATUS] obsahuje informaciu ci FUNCTION skoncila uspesne.
+   E. FUNCTION odosiela IRP do definovaneho DEVICE OBJECT.
+   !!! F. Pred pouzitim FUNCTION musi DRIVER nastavit instanciu STRUCTURE [IO_STACK_LOCATION] pre DEVICE OBJECT NIZSIE v DEVICE OBJECT STACK a pripade aj nastavit volanie CALLBACK FUNCTION, ak je to nutne.
+   G. Pre tuto FUNCTION je definovane MACRO [IoCallDriver()].
+42. Pre FUNCTION [IofCallDriver()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [NTSTATUS KeDelayExecutionThread(KPROCESSOR_MODE WaitMode, BOOLEAN Alertable, PLARGE_INTEGER Interval)].
+   B. PARAMETER [KPROCESSOR_MODE WaitMode] urcuje MODE daneho DELAY. Moze sa pouzit VALUE [MODE::UserMode], alebo VALUE [MODE::KernelMode].
+   C. PARAMETER [BOOLEAN Alertable] urcuje ci DELAY ma byt ALTERABLE. Ak je DELAY ALERTABLE, tak moze byt kedykolvek preruseny volanim ASYNCHRONOUS PROCEDURE CALL.
+   D. PARAMETER [PLARGE_INTEGER Interval] urcuje TIMEOUT daneho DELAY. Pozitivna VALUE urcuje ABSOLUTE TIME v 100ns od polnoci 1.1.1601. Negativna VALUE urcuje RELATIVE TIME v 100ns.
+   E. RETURN VALUE TYPE [NTSTATUS] obsahuje informaciu ci FUNCTION skoncila uspesne.
+   F. FUNCTION odosiela vykonava DEALY CURRENT THREAD na zadany cas.
+43. WINDOWS poskytuje viacero FUNCTIONS na zistenie rozlicnych informacii o SYSTEME. Mnohe vsak nie su DOCUMENTED v KERNEL MODE, hoci su pristupne z USER MODE.
+   A. FUNCTION [ZwQuerySystemInformation()] vracia rozlicne SYSTEM INFORMATION, ako napriklad zoznam beziacich PROCESSES.
+   B. FUNCTION [ZwQueryInformationProcess()] vracia podrobne informacie o danom PROCESSE.
+44. Pre FUNCTION [ZwQuerySystemInformation()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [NTSTATUS NTAPI ZwQuerySystemInformation(SYSTEM_INFORMATION_CLASS SystemInformationClass, PVOID SystemInformation, ULONG SystemInformationLength, PULONG ReturnLength)].
+   B. PARAMETER [SYSTEM_INFORMATION_CLASS SystemInformationClass] urcuje aky typ SYSTEM INFORMATION ma FUNCTION vratit.
+   C. PARAMETER [PVOID SystemInformation] obsahuje BUFFER do ktoreho budu zapisane dotazovane informacie.
+   D. PARAMETER [ULONG SystemInformationLength] urcuje dlzku BUFFER v PARAMETER [PVOID SystemInformation].
+   !!! E. PARAMETER [PULONG ReturnLength] urcuje dlzku, ktoru musi mat BUFFER v PARAMETER [PVOID SystemInformation]. Tento PARAMETER sa pouziva na zistenie aky velky BUFFER je potrebne alokovat pre PARAMETER [PVOID SystemInformation], aby FUNCTION uspesne naplnila BUFFER pozadovanymi datami.
+   F. RETURN VALUE TYPE [NTSTATUS] obsahuje informaciu ci FUNCTION skoncila uspesne.
+   G. FUNCTION vracia pozadovane SYSTEM INFORMATION, ako je napriklad zoznam PROCESSES.
+   !!!!! H. FUNCTION by mala byt volana nasledovne.
+      A. Zavola sa FUNCTION [ZwQuerySystemInformation()] s PARAMETER [PVOID SystemInformation] nastavenym na VALUE [nullptr], ale validnym PARAMETER [PULONG ReturnLength]. FUNCTION vrati pocet BYTES, ktore su potrebne na ulozenie SYSTEM INFORMATION.
+	  B. Dynamicky sa alokuje MEMORY o dlzke PARAMETER [PULONG ReturnLength].
+      C. Zavola sa FUNCTION [ZwQuerySystemInformation()] s PARAMETER [PVOID SystemInformation] nastavenym na alokovany BUFFER.
+	  !!!!! D. Kedze medzi 1. a 2. volanim FUNCTION [ZwQuerySystemInformation()] mohlo dojst k vniku novych PROCESSES, je NUTNE predosle kroky robit v CYKLE, az kym 2. volanie FUNCTION neskonci uspesne.
+   !!! I. FUNCTION je definovana v USER MODE HEADER [Winternl.h], ktory nanestastie nie je mozne kombinovat z KERNEL MODE HEADER [ntddk.h].
+45. Pre FUNCTION [ZwQueryInformationProcess()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [NTSTATUS ZwQueryInformationProcess(HANDLE ProcessHandle, PROCESSINFOCLASS ProcessInformationClass, PVOID ProcessInformation, ULONG ProcessInformationLength, PULONG ReturnLength)].
+   B. PARAMETER [HANDLE ProcessHandle] obsahuje HANDLE na PROCESS, ktoreho DATA maju byt ziskane.
+   C. PARAMETER [PROCESSINFOCLASS ProcessInformationClass] urcuje aky typ INFORMATION ma FUNCTION vratit.
+   D. PARAMETER [PVOID ProcessInformation] obsahuje BUFFER do ktoreho budu zapisane dotazovane informacie.
+   E. PARAMETER [ULONG ProcessInformationLength] urcuje dlzku BUFFER v PARAMETER [PVOID ProcessInformation].
+   !!! F. PARAMETER [PULONG ReturnLength] urcuje dlzku, ktoru musi mat BUFFER v PARAMETER [PVOID ProcessInformation]. Tento PARAMETER sa pouziva na zistenie aky velky BUFFER je potrebne alokovat pre PARAMETER [PVOID ProcessInformation], aby FUNCTION uspesne naplnila BUFFER pozadovanymi datami.
+   G. RETURN VALUE TYPE [NTSTATUS] obsahuje informaciu ci FUNCTION skoncila uspesne.
+   H. FUNCTION vracia pozadovane PROCESS INFORMATION.
+   !!!!! I. FUNCTION by mala byt volana nasledovne.
+      A. Zavola sa FUNCTION [ZwQueryInformationProcess()] s PARAMETER [PVOID ProcessInformation] nastavenym na VALUE [nullptr], ale validnym PARAMETER [PULONG ReturnLength]. FUNCTION vrati pocet BYTES, ktore su potrebne na ulozenie PROCESS INFORMATION.
+	  B. Dynamicky sa alokuje MEMORY o dlzke PARAMETER [PULONG ReturnLength].
+      C. Zavola sa FUNCTION [ZwQueryInformationProcess()] s PARAMETER [PVOID ProcessInformation] nastavenym na alokovany BUFFER.
+   !!! J. FUNCTION je definovana v USER MODE HEADER [Winternl.h], ktory nanestastie nie je mozne kombinovat z KERNEL MODE HEADER [ntddk.h].
+//----------------------------------------------------------------------------------------------------------------------
