@@ -1,0 +1,119 @@
+//----------------------------------------------------------------------------------------------------------------------
+1. Solution demonstruje PROCESS a THREAD NOTIFICATIONS v KERNEL.
+2. KERNEL umoznuje realizovat PROCESS NOTIFICATION. Pre PROCESS NOTIFICATION platia nasledujuce fakty.
+   A. PROCESS NOTIFICATION umoznuje vykonat NOTIFICATION pri vzniku a ukonceni PROCESSES.
+   !!! B. PROCESS NOTIFICATION sa vykonava INLINE, co znamena, ze sa vykona vzdy, bez ohladu na to ako dlho trva zivotnost daneho PROCESSU. PROCESS NOTIFICATION je odoslana v ramci procesu vytvarania ci ukoncovania daneho PROCESSU a az po skonceni NOTIFICATION proces vytvarania, alebo ukoncovania daneho PROCESSU pokracuje.
+   C. PROCESS NOTIFICATION umoznuje zablokovat vytvorenie daneho PROCESSU vratenim ERROR CODE.
+   !!! D. Pri vytvarani noveho PROCESSU je PROCESS NOTIFICATION CALLBACK volany v kontexte THREAD PARENT PROCESS, ktory novy PROCESS vytvara.
+   !!! E. Pri ukoncovani existujuce PROCESSU je PROCESS NOTIFICATION CALLBACK volany v kontexte POSLEDNEHO THREAD, ktory ukoncuje dany PROCESS.
+   F. CALLBACKS PROCESS NOTIFICATION bezia v CRITICAL REGIONS, kedy NORMAL KERNEL ASYNCHRONOUS PROCEDURE CALLS zablokovane.
+   G. PROCESS NOTIFICATION registruje a odregistruje CALLBACKS volanim FUNCTION [PsSetCreateProcessNotifyRoutineEx()]. Alternativou je FUNCTION [PsSetCreateProcessNotifyRoutineEx2()], ktora umoznuje PROCESS NOTIFICATION aj pri PICO PROCESSES co su PROCESSES ktore hostuju LINUX PROCESSES vo WINDOWS SUBSYSTEM FOR LINUX.
+   !!! H. DRIVER, ktory pouziva PROCESS NOTIFICATION MUSI mat v PE FILE povoleny FLAG [IMAGE_DLLCHARACTERISTICS_FORCE_INTEGRITY]. To sa robi pridanim COMMAND [/integritycheck] do LINKER COMMAND LINE.
+   I. WINDOWS umoznuje iba maximalne 64 CALLBACK registracii pre PROCESS NOTIFICATION.
+3. Pre FUNCTION [PsSetCreateProcessNotifyRoutineEx()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [NTSTATUS PsSetCreateProcessNotifyRoutineEx(PCREATE_PROCESS_NOTIFY_ROUTINE_EX NotifyRoutine, BOOLEAN Remove)].
+   B. PARAMETER [PCREATE_PROCESS_NOTIFY_ROUTINE_EX NotifyRoutine] obsahuje POINTER na CALLBACK FUNCTION, ktora sa ma volat pri vytvarani a ukoncovani PROCESES.
+   C. PARAMETER [BOOLEAN Remove] urcuje pocet ci CALLBACK FUNCTION ma byt zaregistrovana (VALUE [FALSE]), alebo odregistrovana (VALUE [TRUE]).
+   D. RETURN VALUE TYPE [NTSTATUS] obsahuje informaciu ci CALLBACK FUNCTION pre PROCESS NOTIFICATION bola uspesne zaregistrovana, alebo odregistrovana.
+   F. FUNCTION registruje, alebo odregistruje CALLBACK FUNCTION pre PROCESS NOTIFICATION.
+!!! 4. CALLBACK FUNCTION pre PROCESS NOTIFICATION ma PROTOTYPE [void ProcessNotifyCallback(PEPROCESS Process, HANDLE ProcessId, PPS_CREATE_NOTIFY_INFO CreateInfo)].
+   A. PARAMETER [PEPROCESS Process] obsahuje PROCESS OBJECT PROCESSU, ktory je vytvarany, alebo ukoncovany.
+   B. PARAMETER [HANDLE ProcessId] obsahuje PROCESS ID PROCESSU, ktory je vytvarany, alebo ukoncovany.
+   !!! C. PARAMETER [PPS_CREATE_NOTIFY_INFO CreateInfo] obsahuje informacie o vytvaranom PROCESSE. Pri ukoncovani PROCESSU je PARAMETER nastaveny na VALUE [nullptr].
+5. STRUCTURE [PS_CREATE_NOTIFY_INFO] ma nasledujuce FIELDS.
+   A. FIELD [SIZE_T Size] obsahuje dlzku STRUCTURE v BYTES.
+   B. FIELD UNION obsahuje nasledujuce FIELDS.
+      A. FIELD [ULONG Flags] obsahuje RESERVED FLAGS.
+	  B. FIELD STRUCTURE obsahuje nasledujuce FIELDS.
+	     A. FIELD [ULONG FileOpenNameAvailable : 1] obsahuje informaciu ci FIELD [PCUNICODE_STRING ImageFileName] je nastaveny.
+	     B. FIELD [ULONG IsSubsystemProcess : 1] obsahuje informaciu ci sa jedna o PICO PROCESS.
+	     C. FIELD [ULONG Reserved : 30] obsahuje RESERVED FLAGS.
+   C. FIELD [HANDLE ParentProcessId] obsahuje PARENT PROCESS ID. PARENT PROCESS ID nemusi byt zhodny s PROCESS ID vo FIELD [CLIENT_ID CreatingThreadId], ak pri vytvarani PROCESS sa za PARENT PROCESS ID da ine PROCESS ID ako PROCESS ID CURRENT PROCESS.
+   D. FIELD [CLIENT_ID CreatingThreadId] obsahuje PROCESS ID a THREAD ID, ktore vytvaraju dany PROCESS.
+   E. FIELD [_FILE_OBJECT* FileObject] obsahuje POINTER na FILE OBJECT pre PROCESS EXECUTABLE FILE.
+   F. FIELD [PCUNICODE_STRING ImageFileName] obsahuje nazov FILE NAME EXECUTABLE FILE, ak je FLAG [FileOpenNameAvailable] nastaveny na VALUE [1].
+   G. FIELD [PCUNICODE_STRING CommandLine] obsahuje COMMAND LINE. Moze byt nastaveny na VALUE [nullptr].
+   !!!!! H. FIELD [NTSTATUS CreationStatus] obsahuje STATUS s ktorym je PROCESS vytvarany. VALUE [STATUS_SUCCESS] znamena, ze PROCESS bude uspesne vytvoreny. Tuto VALUE je vsak mozne zmenit aj na ERROR STATUS, kedy PROCESS NEBUDE VYTVORENY, a zaroven ani nebudu volane ostane CALLBACK FUNCTIONS, ktore boli zaregistrovane pre PROCESS NOTIFICATION.
+6. KERNEL umoznuje realizovat THREAD NOTIFICATION. Pre THREAD NOTIFICATION platia nasledujuce fakty.
+   A. THREAD NOTIFICATION umoznuje vykonat NOTIFICATION pri vzniku a ukonceni THREADS.
+   !!! B. THREAD NOTIFICATION sa vykonava INLINE, co znamena, ze sa vykona vzdy, bez ohladu na to ako dlho trva zivotnost daneho THREADU. THREAD NOTIFICATION je odoslana v ramci procesu vytvarania ci ukoncovania daneho THREADU a az po skonceni NOTIFICATION proces vytvarania, alebo ukoncovania daneho THREADU pokracuje.
+   !!! C. Pri vytvarani noveho THREADU je THREAD NOTIFICATION CALLBACK volany v kontexte PARENT THREADU, ktory novy THREAD vytvara.
+   !!! D. Pri ukoncovani existujuce THREADU je THREAD NOTIFICATION CALLBACK volany v kontexte ukoncovaneho THREADU.
+   E. THREAD NOTIFICATION registruje CALLBACKS volanim FUNCTION [PsSetCreateThreadNotifyRoutine()] alebo FUNCTION [PsSetCreateThreadNotifyRoutineEx()].
+   F. THREAD NOTIFICATION odregistruje CALLBACKS volanim FUNCTION [PsRemoveCreateThreadNotifyRoutine()].
+7. Pre FUNCTION [PsSetCreateThreadNotifyRoutine()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [NTSTATUS PsSetCreateThreadNotifyRoutine(PCREATE_THREAD_NOTIFY_ROUTINE NotifyRoutine)].
+   B. PARAMETER [PCREATE_THREAD_NOTIFY_ROUTINE NotifyRoutine] obsahuje POINTER na CALLBACK FUNCTION, ktora sa ma volat pri vytvarani a ukoncovani THREADS.
+   C. RETURN VALUE TYPE [NTSTATUS] obsahuje informaciu ci CALLBACK FUNCTION pre THREAD NOTIFICATION bola uspesne zaregistrovana.
+   D. FUNCTION zaregistruje CALLBACK FUNCTION pre THREAD NOTIFICATION.
+8. Pre FUNCTION [PsSetCreateThreadNotifyRoutineEx()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [NTSTATUS PsSetCreateThreadNotifyRoutineEx(PSCREATETHREADNOTIFYTYPE NotifyType, PVOID NotifyInformation)].
+   B. PARAMETER [PSCREATETHREADNOTIFYTYPE NotifyType] obsahuje typ THREAD NOTIFICATION.
+   C. PARAMETER [PVOID NotifyInformation] obsahuje POINTER na CALLBACK FUNCTION, ktora sa ma volat pri vytvarani a ukoncovani THREADS.
+   D. RETURN VALUE TYPE [NTSTATUS] obsahuje informaciu ci CALLBACK FUNCTION pre THREAD NOTIFICATION bola uspesne zaregistrovana.
+   E. FUNCTION zaregistruje CALLBACK FUNCTION pre THREAD NOTIFICATION.
+9. ENUM [PSCREATETHREADNOTIFYTYPE] ma nasledujuce VALUES.
+   A. VALUE [PsCreateThreadNotifyNonSystem] znamena, ze THREAD NOTIFICATION CALLBACK je vyvolany na novovytvorenom NON-SYSTEM THREAD.
+   B. VALUE [PsCreateThreadNotifySubsystems] znamena, ze THREAD NOTIFICATION CALLBACK je vyvolany pre THREADS vsetkych SUBSYSTEMS.
+10. Pre FUNCTION [PsRemoveCreateThreadNotifyRoutine()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [NTSTATUS PsRemoveCreateThreadNotifyRoutine(PCREATE_THREAD_NOTIFY_ROUTINE NotifyRoutine)].
+   B. PARAMETER [PCREATE_THREAD_NOTIFY_ROUTINE NotifyRoutine] obsahuje POINTER na CALLBACK FUNCTION, ktora sa ma volat pri vytvarani a ukoncovani THREADS.
+   C. RETURN VALUE TYPE [NTSTATUS] obsahuje informaciu ci CALLBACK FUNCTION pre THREAD NOTIFICATION bola uspesne odregistrovana.
+   D. FUNCTION odregistruje CALLBACK FUNCTION pre THREAD NOTIFICATION.
+!!! 11. CALLBACK FUNCTION pre THREAD NOTIFICATION ma PROTOTYPE [void CreateThreadNotifyRoutine(HANDLE ProcessId, HANDLE ThreadId, BOOLEAN Create)].
+   A. PARAMETER [HANDLE ProcessId] obsahuje PROCESS ID PROCESSU, v ktorom je THREAD vytvarany, alebo odstranovany.
+   B. PARAMETER [HANDLE ThreadId] obsahuje THREAD ID THREADU, ktory je vytvarany, alebo odstranovany.
+   C. PARAMETER [BOOLEAN Create] obsahuje informaciu ci THREAD je vytvarany, alebo odstranovany.
+12. KERNEL umoznuje realizovat IMAGE LOAD NOTIFICATION. Pre IMAGE LOAD NOTIFICATION platia nasledujuce fakty.
+   A. IMAGE LOAD NOTIFICATION umoznuje vykonat NOTIFICATION pri nacitani IMAGE FILE ako je FILE [.EXE], FILE [.DLL] a FILE [.SYS].
+   !!! B. IMAGE LOAD NOTIFICATION NEVYKONAVA NOTIFICATION pri IMAGE UNLOAD.
+   !!! C. Pri nacitani IMAGE, ktory vytvara novy PROCESS je IMAGE LOAD NOTIFICATION CALLBACK volany v kontexte novovytvoreneho PROCESSU.
+   D. IMAGE LOAD NOTIFICATION registruje CALLBACKS volanim FUNCTION [PsSetLoadImageNotifyRoutine()].
+   E. IMAGE LOAD NOTIFICATION odregistruje CALLBACKS volanim FUNCTION [PsRemoveLoadImageNotifyRoutine()].
+13. Pre FUNCTION [PsSetLoadImageNotifyRoutine()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [NTSTATUS PsSetLoadImageNotifyRoutine(PLOAD_IMAGE_NOTIFY_ROUTINE NotifyRoutine)].
+   B. PARAMETER [PLOAD_IMAGE_NOTIFY_ROUTINE NotifyRoutine] obsahuje POINTER na CALLBACK FUNCTION, ktora sa ma volat pri nacitani IMAGE.
+   C. RETURN VALUE TYPE [NTSTATUS] obsahuje informaciu ci CALLBACK FUNCTION pre IMAGE LOAD NOTIFICATION bola uspesne zaregistrovana.
+   D. FUNCTION zaregistruje CALLBACK FUNCTION pre IMAGE LOAD NOTIFICATION.
+14. Pre FUNCTION [PsRemoveLoadImageNotifyRoutine()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [NTSTATUS PsRemoveLoadImageNotifyRoutine(PLOAD_IMAGE_NOTIFY_ROUTINE NotifyRoutine)].
+   B. PARAMETER [PLOAD_IMAGE_NOTIFY_ROUTINE NotifyRoutine] obsahuje POINTER na CALLBACK FUNCTION, ktora sa ma volat pri nacitani IMAGE.
+   C. RETURN VALUE TYPE [NTSTATUS] obsahuje informaciu ci CALLBACK FUNCTION pre IMAGE LOAD NOTIFICATION bola uspesne odregistrovana.
+   D. FUNCTION odregistruje CALLBACK FUNCTION pre IMAGE LOAD NOTIFICATION.
+!!! 15. CALLBACK FUNCTION pre IMAGE LOAD NOTIFICATION ma PROTOTYPE [void LoadImageNotifyRoutine(PUNICODE_STRING FullImageName, HANDLE ProcessId, PIMAGE_INFO ImageInfo)].
+   A. PARAMETER [PUNICODE_STRING FullImageName] obsahuje IMAGE NAME. Niekedy, ked sa nepodari vycitat IMAGE NAME moze tento PRAMETER obsahova VALUE [nullptr].
+   B. PARAMETER [HANDLE ProcessId] obsahuje PROCESS ID PROCESSU, do ktoreho bol IMAGE MAPPED. Pre DRIVERS obsahuje VALUE [0].
+   C. PARAMETER [PIMAGE_INFO ImageInfo] obsahuje dodatocne informacie o nacitanom IMAGE.
+16. STRUCTURE [IMAGE_INFO] ma nasledujuce FIELDS.
+   A. FIELD UNION obsahuje nasledujuce FIELDS.
+      A. FIELD [ULONG Properties] obsahuje RESERVED PROPERTIES rozdelene na BITS v nasledujucej STRUCTURE.
+	  B. FIELD STRUCTURE obsahuje nasledujuce FIELDS.
+	     A. FIELD [ULONG ImageAddressingMode : 8] je vzdy nastaveny na VALUE [IMAGE_ADDRESSING_MODE_32BIT].
+	     B. FIELD [ULONG SystemModeImage : 1] obsahuje VALUE [1] ak je IMAGE sucastou KERNEL MODE COMPONENTS ako napriklad DRIVERS a VALUE [0] ak je IMAGE mapovany do USER SPACE.
+	     C. FIELD [ULONG ImageMappedToAllPids : 1] je vzdy nastaveny na VALUE [0].
+	     !!! D. FIELD [ULONG ExtendedInfoPresent : 1] ak je nastaveny na VALUE [1], tak STRUCTURE [IMAGE_INFO] je sucastou STRUCTURE STRUCTURE [IMAGE_INFO_EX], ktorej POINTER je mozne ziskat pomocou MACRO [CONTAINING_RECORD()].
+	     E. FIELD [ULONG MachineTypeMismatch : 1] je vzdy nastaveny na VALUE [0].
+	     F. FIELD [ULONG ImageSignatureLevel : 4] obsahuje LEVEL SIGNATURE nacitaneho IMAGE. Obsahuje niektoru z VALUES [SE_SIGNING_LEVEL_*].
+	     G. FIELD [ULONG ImageSignatureType : 3] obsahuje TYPE SIGNATURE nacitaneho IMAGE. Obsahuje niektoru z VALUES TYPE [SE_IMAGE_SIGNATURE_TYPE].
+	     H. FIELD [ULONG ImagePartialMap : 1] obsahuje VALUE [1] ak bol nacitany iba PARTIAL IMAGE a VALUE [0] ak bol nacitany cely IMAGE.
+	     I. FIELD [ULONG Reserved : 12] je vzdy nastaveny na VALUE [0].
+   C. FIELD [PVOID ImageBase] obsahuje VIRTUAL BASE ADDRESS nacitaneho IMAGE.
+   D. FIELD [ULONG ImageSelector] obsahuje vzdy VALUE [0].
+   E. FIELD [SIZE_T ImageSize] obsahuje VIRTUAL SIZE nacitaneho IMAGE.
+   F. FIELD [ULONG ImageSectionNumber] obsahuje vzdy VALUE [0].
+17. STRUCTURE [IMAGE_INFO_EX] ma nasledujuce FIELDS.
+   A. FIELD [SIZE_T Size] obsahuje dlzku STRUCTURE v BYTES.
+   !!! B. FIELD [IMAGE_INFO ImageInfo] obsahuje STRUCTURE [IMAGE_INFO]. Ak je FLAG [IMAGE_INFO.] nastaveny na VALUE [1], tak je POINTER na STRUCTURE [IMAGE_INFO_EX.ExtendedInfoPresent] mozne ziskat pomocou MACRO [CONTAINING_RECORD()].
+   C. FIELD [_FILE_OBJECT* FileObject] obsahuje POINTER na FILE OBJECT pre IMAGE FILE.
+18. Pre FUNCTION [KeAreApcsDisabled()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [BOOLEAN KeAreApcsDisabled(void)].
+   B. RETURN VALUE TYPE [BOOLEAN] vracia informaciu ci su NORMAL KERNEL ASYNCHRONOUS PROCEDURE CALLS vypnute.
+   C. FUNCTION vracia informaciu ci su NORMAL KERNEL ASYNCHRONOUS PROCEDURE CALLS vypnute.
+   D. RETURN VALUE [TRUE] znamena, ze THREAD je v CRITICAL REGION.
+19. Pre FUNCTION [KeAreAllApcsDisabled()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [BOOLEAN KeAreAllApcsDisabled(void)].
+   B. RETURN VALUE TYPE [BOOLEAN] vracia informaciu ci su VSETKY KERNEL ASYNCHRONOUS PROCEDURE CALLS vypnute.
+   C. FUNCTION vracia informaciu ci su VSETKY KERNEL ASYNCHRONOUS PROCEDURE CALLS vypnute.
+   D. RETURN VALUE [TRUE] znamena, ze THREAD je v GUARDED REGION.
+20. WINDOWS KERNERL exportuje GLOBAL VARIABLE [PEPROCESS PsInitialSystemProcess], ktora obsahuje STRUCTURE [EPROCESS] na SYSTEM PROCESS.
+//----------------------------------------------------------------------------------------------------------------------

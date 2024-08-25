@@ -62,15 +62,15 @@ NTSTATUS TestZwQuerySystemInformation(DEVICE_OBJECT* DeviceObject, IRP* Irp)
 
 		if (AreDataRead==true)
 		{
-	        ULONG												TotalProcesses=0;
+			ULONG												TotalProcesses=0;
 			SSYSTEM_PROCESS_INFORMATION*						TypedBuffer=static_cast<SSYSTEM_PROCESS_INFORMATION*>(Buffer);
 
 			while(true)
 			{
-                ULONG											ProcessIDAsULong=HandleToULong(TypedBuffer->UniqueProcessId);
-				ULONG											SessionID=TypedBuffer->SessionId;
-				ULONG											HandleCount=TypedBuffer->HandleCount;
-                ULONG											NumberOfThreads=TypedBuffer->NumberOfThreads;
+				ULONG									ProcessIDAsULong=HandleToULong(TypedBuffer->UniqueProcessId);
+				ULONG									SessionID=TypedBuffer->SessionId;
+				ULONG									HandleCount=TypedBuffer->HandleCount;
+				ULONG									NumberOfThreads=TypedBuffer->NumberOfThreads;
 				UNICODE_STRING&									ImageName=TypedBuffer->ImageName;
 
 				KdPrint(("!!!!!!!!!! ROUTINE [%s] - PID [%lu] SESSION ID [%lu] HANDLES [%lu] THREADS [%lu] IMAGE NAME [%wZ].\n",FunctionName,ProcessIDAsULong,SessionID,HandleCount,NumberOfThreads,ImageName));
