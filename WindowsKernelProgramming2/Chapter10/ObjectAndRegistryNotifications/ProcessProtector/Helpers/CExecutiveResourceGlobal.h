@@ -1,19 +1,31 @@
 //----------------------------------------------------------------------------------------------------------------------
 #pragma once
 //----------------------------------------------------------------------------------------------------------------------
-#define MY_DRIVER_NAME L"ProcessAndThreadNotifications"
+#include <ntddk.h>
+#include "CMemoryOperators.h"
 //----------------------------------------------------------------------------------------------------------------------
 //----------------------------------------------------------------------------------------------------------------------
 //----------------------------------------------------------------------------------------------------------------------
-struct SNotificationStatistics final
+// !!!!! DON"T have CONSTRUCTOR and DESTURCTOR. Can be USED as a GLOBAL VARIABLE.
+class CExecutiveResourceGlobal : public CMemoryOperators
 {
 //----------------------------------------------------------------------------------------------------------------------
+	private:
+		ERESOURCE												MResource;
+		bool													MIsInCriticalRegion;
+
 	public:
-		LONG64													MNumberOfProcessesCreated;
-		LONG64													MNumberOfProcessesFinished;
-		LONG64													MNumberOfThreadsCreated;
-		LONG64													MNumberOfThreadsFinished;
-		LONG64													MNumberOfLoadedImages;
+		void Init(void);
+		void Delete(void);
+
+		void Lock(void);
+		void Unlock(void);
+
+		void LockShared(void);
+		void UnlockShared(void);
+
+		ULONG GetSharedWaiterCount(void);
+		ULONG GetExclusiveWaiterCount(void);
 //----------------------------------------------------------------------------------------------------------------------
 };
 //----------------------------------------------------------------------------------------------------------------------

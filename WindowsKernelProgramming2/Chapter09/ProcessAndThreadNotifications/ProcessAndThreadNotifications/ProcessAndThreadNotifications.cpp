@@ -11,17 +11,17 @@
 //----------------------------------------------------------------------------------------------------------------------
 //----------------------------------------------------------------------------------------------------------------------
 //----------------------------------------------------------------------------------------------------------------------
-//#define											DUMP_PROCESSES
-//#define											DUMP_THREADS
-//#define											DUMP_IMAGES
+//#define														DUMP_PROCESSES
+//#define														DUMP_THREADS
+//#define														DUMP_IMAGES
 //----------------------------------------------------------------------------------------------------------------------
 //----------------------------------------------------------------------------------------------------------------------
 //----------------------------------------------------------------------------------------------------------------------
-volatile LONG64										NumberOfProcesesCreated;
-volatile LONG64										NumberOfProcesesFinished;
-volatile LONG64										NumberOfThreadsCreated;
-volatile LONG64										NumberOfThreadsFinished;
-volatile LONG64										NumberOfLoadedImages;
+volatile LONG64													NumberOfProcessesCreated;
+volatile LONG64													NumberOfProcessesFinished;
+volatile LONG64													NumberOfThreadsCreated;
+volatile LONG64													NumberOfThreadsFinished;
+volatile LONG64													NumberOfLoadedImages;
 //----------------------------------------------------------------------------------------------------------------------
 //----------------------------------------------------------------------------------------------------------------------
 //----------------------------------------------------------------------------------------------------------------------
@@ -29,7 +29,7 @@ void MyProcessNotifyCallback(PEPROCESS Process, HANDLE ProcessId, PPS_CREATE_NOT
 {
 	if (CreateInfo!=nullptr)
 	{
-		InterlockedIncrement64(&NumberOfProcesesCreated);
+		InterlockedIncrement64(&NumberOfProcessesCreated);
 
 		if (CreateInfo->ImageFileName!=nullptr)
 		{
@@ -50,7 +50,7 @@ void MyProcessNotifyCallback(PEPROCESS Process, HANDLE ProcessId, PPS_CREATE_NOT
 	}
 	else
 	{
-		InterlockedIncrement64(&NumberOfProcesesFinished);
+		InterlockedIncrement64(&NumberOfProcessesFinished);
 	}
 
 #ifdef DUMP_PROCESSES
@@ -209,8 +209,8 @@ NTSTATUS DispatchRoutineRead(DEVICE_OBJECT* DeviceObject, IRP* Irp)
 
 		SNotificationStatistics*							Statistics=static_cast<SNotificationStatistics*>(ReadBuffer);
 
-		Statistics->MNumberOfProcesesCreated=InterlockedOr64(&NumberOfProcesesCreated,0);
-		Statistics->MNumberOfProcesesFinished=InterlockedOr64(&NumberOfProcesesFinished,0);
+		Statistics->MNumberOfProcessesCreated=InterlockedOr64(&NumberOfProcessesCreated,0);
+		Statistics->MNumberOfProcessesFinished=InterlockedOr64(&NumberOfProcessesFinished,0);
 		Statistics->MNumberOfThreadsCreated=InterlockedOr64(&NumberOfThreadsCreated,0);
 		Statistics->MNumberOfThreadsFinished=InterlockedOr64(&NumberOfThreadsFinished,0);
 		Statistics->MNumberOfLoadedImages=InterlockedOr64(&NumberOfLoadedImages,0);

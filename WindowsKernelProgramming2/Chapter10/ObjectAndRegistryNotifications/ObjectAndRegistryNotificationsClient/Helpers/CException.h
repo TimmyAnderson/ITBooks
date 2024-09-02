@@ -1,19 +1,32 @@
 //----------------------------------------------------------------------------------------------------------------------
 #pragma once
 //----------------------------------------------------------------------------------------------------------------------
-#define MY_DRIVER_NAME L"ProcessAndThreadNotifications"
+#include <string>
+//----------------------------------------------------------------------------------------------------------------------
+#ifdef _MSC_VER
+#undef GetMessage
+#endif
 //----------------------------------------------------------------------------------------------------------------------
 //----------------------------------------------------------------------------------------------------------------------
 //----------------------------------------------------------------------------------------------------------------------
-struct SNotificationStatistics final
+class CException final
 {
 //----------------------------------------------------------------------------------------------------------------------
+	private:
+		std::wstring											MMessage;
+
 	public:
-		LONG64													MNumberOfProcessesCreated;
-		LONG64													MNumberOfProcessesFinished;
-		LONG64													MNumberOfThreadsCreated;
-		LONG64													MNumberOfThreadsFinished;
-		LONG64													MNumberOfLoadedImages;
+		CException& operator=(const CException& Other);
+		CException& operator=(CException&& Other) noexcept;
+
+	public:
+		const std::wstring& GetMessage(void) const noexcept;
+
+	public:
+		CException(const std::wstring& Message);
+		CException(const CException& Other);
+		CException(CException&& Other) noexcept;
+		virtual ~CException(void);
 //----------------------------------------------------------------------------------------------------------------------
 };
 //----------------------------------------------------------------------------------------------------------------------

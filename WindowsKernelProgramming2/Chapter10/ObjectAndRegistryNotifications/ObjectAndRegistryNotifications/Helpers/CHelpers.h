@@ -1,19 +1,17 @@
 //----------------------------------------------------------------------------------------------------------------------
 #pragma once
 //----------------------------------------------------------------------------------------------------------------------
-#define MY_DRIVER_NAME L"ProcessAndThreadNotifications"
+#include <ntddk.h>
 //----------------------------------------------------------------------------------------------------------------------
 //----------------------------------------------------------------------------------------------------------------------
 //----------------------------------------------------------------------------------------------------------------------
-struct SNotificationStatistics final
+class CHelpers final
 {
 //----------------------------------------------------------------------------------------------------------------------
 	public:
-		LONG64													MNumberOfProcessesCreated;
-		LONG64													MNumberOfProcessesFinished;
-		LONG64													MNumberOfThreadsCreated;
-		LONG64													MNumberOfThreadsFinished;
-		LONG64													MNumberOfLoadedImages;
+		static NTSTATUS CreateThread(DEVICE_OBJECT* DeviceObject, const char* ThreadName, PKSTART_ROUTINE StartRoutine, PVOID StartContext, PETHREAD* Object);
+		static NTSTATUS Sleep(LONGLONG TimeoutInMS);
+		static NTSTATUS CompleteIRP(PIRP Irp, NTSTATUS Status, ULONG_PTR Information);
 //----------------------------------------------------------------------------------------------------------------------
 };
 //----------------------------------------------------------------------------------------------------------------------

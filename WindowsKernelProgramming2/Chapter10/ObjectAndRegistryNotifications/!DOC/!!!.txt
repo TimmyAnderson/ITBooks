@@ -1,0 +1,163 @@
+//----------------------------------------------------------------------------------------------------------------------
+1. Solution demonstruje OBJECT a REGISTRY NOTIFICATIONS v KERNEL.
+2. WINDOWS KERNEL podporuje OBJECT NOTIFICATIONS. Pre OBJECT NOTIFICATIONS platia nasledujuce fakty.
+   A. OBJECT NOTIFICATIONS sa vykonavaju pre KERNEL OBJECTS, ak su nad nimi vykonane specificke OPERATIONS.
+   B. OBJECT NOTIFICATIONS sa vykonavaju pri nasledujucich OPERATIONS.
+      A. OPEN HANDLE na KERNEL OBJECT.
+      B. DUPLICATE HANDLE KERNEL OBJECT.
+   C. OBJECT NOTIFICATIONS sa vykonavaju pre nasledujuce typy KERNEL OBJECTS.
+      A. PROCESSES.
+      B. THREADS.
+      C. DESKTOPS.
+   D. OBJECT NOTIFICATIONS je mozne vykonat PRED a PO vykonani danej OPERATION nad KERNEL OBJECT.
+   E. Registracia OBJECT NOTIFICATIONS sa vykonava volanim FUNCTION [ObRegisterCallbacks()].
+   F. Odregistracia OBJECT NOTIFICATIONS sa vykonava volanim FUNCTION [ObUnRegisterCallbacks()].
+   G. DRIVER moze v CALLBACK FUNCTIONS volanych PRED vykonanim danej OPERATION vykonat modifikacie nad HANDLE daneho KERNEL OBJECT. Moze obmedzit pozadovane ACCESS RIGHTS pre HANDLE, ale nemoze ich rozsirit o nove ACCESS RIGHTS.
+   !!! H. DRIVER, ktory pouziva OBJECT NOTIFICATION MUSI mat v PE FILE povoleny FLAG [IMAGE_DLLCHARACTERISTICS_FORCE_INTEGRITY]. To sa robi pridanim COMMAND [/integritycheck] do LINKER COMMAND LINE.
+3. Pre DESKTOPS platia nasledujuce fakty.
+   A. DESKTOP je KERNEL OBJECT, ktory je sucastou WINDOWS STATION, co je tiez KERNEL OBJECT.
+   B. WINDOWS pri LOG ON vytvara nasledujuce DESKTOP KERNEL OBJECTS.
+      A. DESKTOP OBJECT [Winlogon] je vytvoreny aby zobrazoval SCREEN, ktora sa zobrazi pri stlaceni klaves CTRL-ALT-DEL.
+	  B. DESKTOP OBJECT prihlaseneho USER, kde sa zobrazuje UI.
+4. Pre FUNCTION [ObRegisterCallbacks()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [NTSTATUS ObRegisterCallbacks(POB_CALLBACK_REGISTRATION CallbackRegistration, PVOID* RegistrationHandle)].
+   B. PARAMETER [POB_CALLBACK_REGISTRATION CallbackRegistration] obsahuje podrobnosti o OBJECT NOTIFICATION.Obsahuje informaciu o ktorych KERNEL OBJECTS a ktorych OPERATIONS nad KERNEL OBJECTS ma byt DRIVER NOTIFIED.
+   C. PARAMETER [PVOID* RegistrationHandle] obsahuje POINTER na HANDLE, ktory sa pouzivna na odregistrovanie OBJECT NOTICATION pomocou FUNCTION [ObUnRegisterCallbacks()].
+   D. RETURN VALUE TYPE [NTSTATUS] obsahuje informaciu ci CALLBACK FUNCTIONS pre OBJECT NOTIFICATION boli uspesne zaregistrovane.
+   E. FUNCTION zaregistruje CALLBACK FUNCTIONS pre OBJECT NOTIFICATION.
+5. Pre FUNCTION [ObUnRegisterCallbacks()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [void ObUnRegisterCallbacks(PVOID RegistrationHandle)].
+   B. PARAMETER [PVOID RegistrationHandle] obsahuje HANDLE, ktory vratila FUNCTION [ObRegisterCallbacks()].
+   C. FUNCTION odregistruje CALLBACK FUNCTIONS pre OBJECT NOTIFICATION.
+6. STRUCTURE [OB_CALLBACK_REGISTRATION] ma nasledujuce FIELDS.
+   A. FIELD [USHORT Version] musi by nastaveny na VALUE [OB_FLT_REGISTRATION_VERSION].
+   B. FIELD [USHORT OperationRegistrationCount] obsahuje pocet ITEMS v ARRAY [OperationRegistration].
+   !!! C. FIELD [UNICODE_STRING Altitude] obsahuje STRING, ktory musi obsahovat FLOATING POINT NUMBER urcujuci prioritu s ktorou su volane OBJECT NOTIFICATION CALLBACKS. Tato priorita je relativna voci inym volaniam FUNCTION [ObRegisterCallbacks()] v celom SYSTEME a MUSI byt UNIKATNA. Ak nie je FUNCTION [ObRegisterCallbacks()] vrati ERROR CODE [STATUS_FLT_INSTANCE_ALTITUDE_COLLISION].
+   D. FIELD [PVOID RegistrationContext] obsahuje VALUE, ktora je zasielana do CALLBACK FUNCTIONS OBJECT NOTIFICATION.
+   E. FIELD [OB_OPERATION_REGISTRATION* OperationRegistration] obsahuje ARRAY OBJECTS TYPE [OB_OPERATION_REGISTRATION], kde kazdy OBJECT urcuje pre ake KERNEL OBJECTS sa ma OBJECT NOTIFICATION realizovat.
+7. STRUCTURE [OB_OPERATION_REGISTRATION] ma nasledujuce FIELDS.
+   A. FIELD [POBJECT_TYPE* ObjectType] obsahuje POINTER na OBJECT TYPE pre ktory sa ma OBJECT NOTIFICATION vykonat. FIELD moze odkazovat na nasledujuce VALUES.
+      A. VALUE [PsProcessType] pre PROCESS KERNEL OBJECT.
+      B. VALUE [PsThreadType] pre THREAD KERNEL OBJECT.
+      C. VALUE [ExDesktopObjectType] pre DESKTOP KERNEL OBJECT.
+   B. FIELD [OB_OPERATION Operations] obsahuje zoznam OPERATIONS pre ktore ma byt realizovany OBJECT NOTIFICATION. FIELD moze nadobudat nasledujuce VALUES.
+      A. VALUE [OB_OPERATION_HANDLE_CREATE] znamena, ze CALLBACKS budu volane pri vytvoreni noveho HANDLE na dany KERNEL OBJECT.
+      B. VALUE [OB_OPERATION_HANDLE_DUPLICATE] znamena, ze CALLBACKS budu volane pri duplikovani HANDLE na dany KERNEL OBJECT.
+   C. FIELD [POB_PRE_OPERATION_CALLBACK PreOperation] obsahuje CALLBACK, ktory sa ma volat PRED vykonanim danych OPERATIONS. CALLBACK ma PROTOTYPE [OB_PREOP_CALLBACK_STATUS PobPreOperationCallback(PVOID RegistrationContext, POB_PRE_OPERATION_INFORMATION OperationInformation)].
+   D. FIELD [POB_POST_OPERATION_CALLBACK PostOperation] obsahuje CALLBACK, ktory sa ma volat PO vykonani danych OPERATIONS. CALLBACK ma PROTOTYPE [void PobPostOperationCallback(PVOID RegistrationContext, POB_POST_OPERATION_INFORMATION OperationInformation)].
+8. STRUCTURE [OB_PRE_OPERATION_INFORMATION] je zasielana ako PARAMETER CALLBACK FUNCTION [OB_PRE_OPERATION_CALLBACK] a ma nasledujuce FIELDS.
+   A. FIELD [OB_OPERATION Operation] obsahuje TYPE OPERATION vykonavanej nad OBJECT. FIELD MOZE nadobudat nasledujuce VALUES.
+      A. VALUE [OB_OPERATION_HANDLE_CREATE] znamena, ze CALLBACKS budu volane pri vytvoreni noveho HANDLE na dany KERNEL OBJECT.
+      B. VALUE [OB_OPERATION_HANDLE_DUPLICATE] znamena, ze CALLBACKS budu volane pri duplikovani HANDLE na dany KERNEL OBJECT.
+   B. FIELD UNION obsahuje nasledujuce FIELDS.
+      A. FIELD [ULONG Flags] je RESERVED.
+      B. FIELD STRUCT obsahuje nasledujuce FIELDS.
+         A. FIELD [ULONG KernelHandle : 1] urcuje ci HANDLE nad ktorym je vykonavana OPERATION je KERNEL HANDLE.
+         B. FIELD [ULONG Reserved : 31] je RESERVED.
+   C. FIELD [PVOID Object] obsahuje POINTER na KERNEL OBJECT nad ktoreho HANDLE je vykonavana dana OPERATION.
+   D. FIELD [POBJECT_TYPE ObjectType] obsahuje TYPE KERNEL OBJECT nad ktoreho HANDLE je vykonavana dana OPERATION. FIELD moze obsahovat nasledujuce VALUES.
+      A. VALUE [PsProcessType] znamena, ze sa jedna o PROCESS KERNEL OBJECT.
+      B. VALUE [PsThreadType] znamena, ze sa jedna o THREAD KERNEL OBJECT.
+      C. VALUE [ExDesktopObjectType] znamena, ze sa jedna o DESKTOP KERNEL OBJECT.
+   E. FIELD [PVOID CallContext] obsahuje CUSTOM VALUE, ktora bola nastavena pri registracii OBJECT NOTIFICATION.
+   F. FIELD [POB_PRE_OPERATION_PARAMETERS Parameters] obsahuje detaily pre jednotlive OPERATIONS.
+9. STRUCTURE [OB_PRE_OPERATION_PARAMETERS] ma nasledujuce FIELDS.
+   A. FIELD [OB_PRE_CREATE_HANDLE_INFORMATION CreateHandleInformation] obsahuje PARAMETERS pre OPERATION [OB_OPERATION_HANDLE_CREATE].
+   B. FIELD [OB_PRE_DUPLICATE_HANDLE_INFORMATION DuplicateHandleInformation] obsahuje PARAMETERS pre OPERATION [OB_OPERATION_HANDLE_DUPLICATE].
+10. STRUCTURE [OB_POST_CREATE_HANDLE_INFORMATION] ma nasledujuce FIELDS.
+   A. FIELD [ACCESS_MASK DesiredAccess] obsahuje skutocne pridelene ACCESS RIGHTS. Tento FIELD moze modifikovat CALLBACK FUNCTION.
+   B. FIELD [ACCESS_MASK OriginalDesiredAccess] obsahuje ACCESS RIGHTS pozadovane CALLER, ktory vykonava OPERATION nad HANDLE daneho KERNEL OBJECT.
+11. STRUCTURE [OB_PRE_DUPLICATE_HANDLE_INFORMATION] ma nasledujuce FIELDS.
+   A. FIELD [ACCESS_MASK DesiredAccess] obsahuje skutocne pridelene ACCESS RIGHTS. Tento FIELD moze modifikovat CALLBACK FUNCTION.
+   B. FIELD [ACCESS_MASK OriginalDesiredAccess] obsahuje ACCESS RIGHTS pozadovane CALLER, ktory vykonava OPERATION nad HANDLE daneho KERNEL OBJECT.
+   C. FIELD [PVOID SourceProcess] obsahuje POINTER na PROCESS KERNEL OBJECT ktory vykonava duplikaciu HANDLE na KERNEL OBJECT.
+   D. FIELD [PVOID TargetProcess] obsahuje POINTER na PROCESS KERNEL OBJECT do ktoreho sa vykonava duplikacia HANDLE na KERNEL OBJECT.
+12. STRUCTURE [OB_POST_OPERATION_INFORMATION] je zasielana ako PARAMETER CALLBACK FUNCTION [OB_POST_OPERATION_CALLBACK] a ma nasledujuce FIELDS.
+   A. FIELD [OB_OPERATION Operation] obsahuje TYPE OPERATION vykonavanej nad OBJECT. FIELD MOZE nadobudat nasledujuce VALUES.
+      A. VALUE [OB_OPERATION_HANDLE_CREATE] znamena, ze CALLBACKS budu volane pri vytvoreni noveho HANDLE na dany KERNEL OBJECT.
+      B. VALUE [OB_OPERATION_HANDLE_DUPLICATE] znamena, ze CALLBACKS budu volane pri duplikovani HANDLE na dany KERNEL OBJECT.
+   B. FIELD UNION obsahuje nasledujuce FIELDS.
+      A. FIELD [ULONG Flags] je RESERVED.
+      B. FIELD STRUCT obsahuje nasledujuce FIELDS.
+         A. FIELD [ULONG KernelHandle : 1] urcuje ci HANDLE nad ktorym je vykonavana OPERATION je KERNEL HANDLE.
+         B. FIELD [ULONG Reserved : 31] je RESERVED.
+   C. FIELD [PVOID Object] obsahuje POINTER na KERNEL OBJECT nad ktoreho HANDLE je vykonavana dana OPERATION.
+   D. FIELD [POBJECT_TYPE ObjectType] obsahuje TYPE KERNEL OBJECT nad ktoreho HANDLE je vykonavana dana OPERATION. FIELD moze obsahovat nasledujuce VALUES.
+      A. VALUE [PsProcessType] znamena, ze sa jedna o PROCESS KERNEL OBJECT.
+      B. VALUE [PsThreadType] znamena, ze sa jedna o THREAD KERNEL OBJECT.
+      C. VALUE [ExDesktopObjectType] znamena, ze sa jedna o DESKTOP KERNEL OBJECT.
+   E. FIELD [PVOID CallContext] obsahuje CUSTOM VALUE, ktora bola nastavena pri registracii OBJECT NOTIFICATION.
+   F. FIELD [NTSTATUS ReturnStatus] obsahuje STATUS, ktory vratilo vykonanie danej OPERATION.
+   G. FIELD [POB_POST_OPERATION_PARAMETERS Parameters] obsahuje detaily pre jednotlive OPERATIONS.
+13. STRUCTURE [OB_POST_OPERATION_PARAMETERS] ma nasledujuce FIELDS.
+   A. FIELD [OB_POST_CREATE_HANDLE_INFORMATION CreateHandleInformation] obsahuje PARAMETERS pre OPERATION [OB_OPERATION_HANDLE_CREATE].
+   B. FIELD [OB_POST_DUPLICATE_HANDLE_INFORMATION DuplicateHandleInformation] obsahuje PARAMETERS pre OPERATION [OB_OPERATION_HANDLE_DUPLICATE].
+14. STRUCTURE [OB_POST_CREATE_HANDLE_INFORMATION] ma FIELD [ACCESS_MASK GrantedAccess], ktory obsahuje ACCESS RIGHTS, ktore boli HANDLE daneho KERNEL OBJECT priradene.
+15. STRUCTURE [OB_POST_DUPLICATE_HANDLE_INFORMATION] ma FIELD [ACCESS_MASK GrantedAccess], ktory obsahuje ACCESS RIGHTS, ktore boli HANDLE daneho KERNEL OBJECT priradene.
+16. REGISTRY je cast WINDOWS pre ktoru platia nasledujuce fakty.
+   A. REGISTRY je HIERARCHICAL DATABASE, ktora uklada informacie o WINDOWS.
+   B. Vacsina dat v REGISTRY je ulozena vo FILES, ale niektore su generovane aj dynamicky, a NIE su ulozene vo FILES.
+   C. REGISTRY je mozne editovat pomocou TOOL [Regedit.exe].
+   !!! D. Kazdy REGISTRY KEY ma USER KEY NAME a REAL KEY NAME. REAL KEY NAMES zacinaju s NAME NAMED KERNEL OBJECT [REGISTRY].
+   E. WINDOWS vykonava preklad medzi USER KEY NAMES a REAL KEY NAMES.
+   F. WINDOWS KERNEL vzdy pouziva a REAL KEY NAMES.
+17. WINDOWS KERNEL podporuje REGISTRY NOTIFICATIONS. Pre REGISTRY NOTIFICATIONS platia nasledujuce fakty.
+   A. REGISTRY NOTIFICATIONS umoznuje vykonat NOTIFICATIONS, ked sa vykonava pristup k REGISTRY KEYS a REGISTRY VALUES.
+   !!! B. REGISTRY NOTIFICATIONS umoznuje monitoring, blokovanie, alebo modifikaciu REGISTRY OPERATIONS.
+   C. REGISTRY NOTIFICATIONS vola CALLBACK FUNCTION PRED a PO vykonani danej OPERATION nad REGISTRY.
+   D. REGISTRY NOTIFICATIONS su registrovane pomocou FUNCTION [CmRegisterCallbackEx()].
+   E. REGISTRY NOTIFICATIONS su odregistrovane pomocou FUNCTION [CmUnregisterCallback()].
+   !!! F. CALLBACK FUNCTION REGISTRY NOTIFICATIONS je volana na IRQL [IRQL=PASSIVE_LEVEL] tym THREADOM, ktory vykonava nad REGISTRY danu OPERATION.
+   !!! G. V CALLBACK FUNCTION je mozne ziskat REGISTRY OBJECT NAME volanim FUNCTION [CmCallbackGetKeyObjectIDEx()]. Po ukonceni pouzivania REGISTRY OBJECT NAME je nutne tento NAME uvolnit volanim FUNCTION [CmCallbackReleaseKeyObjectIDEx()].
+18. Pre FUNCTION [CmRegisterCallbackEx()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [NTSTATUS CmRegisterCallbackEx(PEX_CALLBACK_FUNCTION Function, PCUNICODE_STRING Altitude, PVOID Driver, PVOID Context, PLARGE_INTEGER Cookie, PVOID Reserved)].
+   B. PARAMETER [PEX_CALLBACK_FUNCTION Function] obsahuje POINTER na CALLBACK FUNCTION, ktora sa vola pri REGISTRY NOTIFICATIONS. CALLBACK FUNCTION ma PROTOTYPE [NTSTATUS ExCallbackFunction(PVOID CallbackContext, PVOID Argument1, PVOID Argument2)].
+   !!! C. PARAMETER [UNICODE_STRING Altitude] obsahuje STRING, ktory musi obsahovat FLOATING POINT NUMBER urcujuci prioritu s ktorou su volane REGISTRY NOTIFICATION CALLBACKS. Tato priorita je relativna voci inym volaniam FUNCTION [CmRegisterCallbackEx()] v celom SYSTEME a MUSI byt UNIKATNA. Ak nie je FUNCTION [CmRegisterCallbackEx()] vrati ERROR CODE [STATUS_FLT_INSTANCE_ALTITUDE_COLLISION].
+   D. PARAMETER [PVOID Driver] obsahuje OBJECT TYPE [DRIVER_OBJECT].
+   E. PARAMETER [PVOID Context] obsahuje lubovolnu VALUE, ktora je zasielana do CALLBACK FUNCTION.
+   F. PARAMETER [PLARGE_INTEGER Cookie] obsahuje IDENTIFIER, ktory sa pouziva na odregistrovanie REGISTRY NOTIFICATIONS vo FUNCTION [CmUnRegisterCallback()].
+   G. PARAMETER [PVOID Reserved] je RESERVED.
+   H. RETURN VALUE TYPE [NTSTATUS] obsahuje informaciu ci CALLBACK FUNCTION pre REGISTRY NOTIFICATIONS bola uspesne zaregistrovana.
+   I. FUNCTION zaregistruje CALLBACK FUNCTION pre REGISTRY NOTIFICATIONS.
+19. Pre FUNCTION [CmUnRegisterCallback()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [NTSTATUS CmUnRegisterCallback(LARGE_INTEGER Cookie)].
+   B. PARAMETER [PLARGE_INTEGER Cookie] obsahuje IDENTIFIER, ktory vratila FUNCTION [CmRegisterCallbackEx()].
+   C. RETURN VALUE TYPE [NTSTATUS] obsahuje informaciu ci CALLBACK FUNCTION pre REGISTRY NOTIFICATIONS bola uspesne odregistrovana.
+   D. FUNCTION odregistruje CALLBACK FUNCTION pre REGISTRY NOTIFICATIONS.
+!!! 20. Pre CALLBACK FUNCTION [ExCallbackFunction()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [NTSTATUS ExCallbackFunction(PVOID CallbackContext, PVOID Argument1, PVOID Argument2)].
+   B. PARAMETER [PVOID Context] obsahuje lubovolnu VALUE, ktora bola zaslana do FUNCTION [CmRegisterCallbackEx()].
+   !!! C. PARAMETER [PVOID Argument1] obsahuje VALUE z ENUM [REG_NOTIFY_CLASS], ktora urcuje OPERATION TYPE, pre ktoru je CALLBACK FUNCTION volana. ENUM obsahuje VALUES pre PRE OPERATIONS a POST OPERATIONS.
+   !!! D. PARAMETER [PVOID Argument2] obsahuje POINTER na STRUTURE, ktoreho TYPE zavisi od OPERATION TYPE urceneho v PARAMETER [PVOID Argument1].
+   E. RETURN VALUE TYPE [NTSTATUS] zavisi od OPERATION TYPE urceneho v PARAMETER [PVOID Argument1].
+   F. FUNCTION reprezentuje CALLBACK FUNCTION pre REGISTRY NOTIFICATIONS.
+21. CALLBACK FUNCTION REGISTRY NOTIFICATIONS moze pre PRE OPERATIONS vykonat niektoru z nasledujucich ACTIONS.
+   A. Vykonat OPERATION, ktora nemodifikuje STRUCTURE v PARAMETER [Argument2] (napriklad LOGGING) a vratit RETURN VALUE [STATUS_SUCCESS]. CONFIGURATION MANAGER pokracuje vo vykonavani REGISTRY OPERATION a nasledne zavola CALLBACK FUNCTION pre POST OPERATION.
+   !!! B. Vratit v RETURN VALUE FAILURE STATUS. CONFIGURATION MANAGER vrati tento FAILURE STATUS CLIENTOVI, ktory vykonal REGISTRY OPERATION a CALLBACK FUNCTION pre POST OPERATION NIE JE VOLANA.
+   !!! C. Modifikovat STRUCTURE v PARAMETER [Argument2] a vratit RETURN VALUE [STATUS_CALLBACK_BYPASS]. V tomto pripade je vykonanie OPERATION nad REGISTRY plne v kompetencii CALLBACK FUNCTION a CONFIGURATION MANAGER vrati SUCCESS STATUS CLIENTOVI, ktory vykonal REGISTRY OPERATION. CALLBACK FUNCTION pre POST OPERATION NIE JE VOLANA.
+22. CALLBACK FUNCTION REGISTRY NOTIFICATIONS moze pre POST OPERATIONS vykonat niektoru z nasledujucich ACTIONS.
+   A. Vykonat OPERATION, ktora nemodifikuje STRUCTURE v PARAMETER [Argument2] (napriklad LOGGING) a vratit RETURN VALUE [STATUS_SUCCESS].
+   !!! B. Modifikovat RETURN STATUS ulozeny vo FIELD [Argument2::ReturnStatus] a vratit RETURN VALUE [STATUS_CALLBACK_BYPASS]. CONFIGURATION MANAGER novy STATUS vo FIELD [Argument2::ReturnStatus] vrati CLIENTOVI, ktory vykonal REGISTRY OPERATION.
+   !!! C. Modifikovat STRUCTURE v PARAMETER [Argument2] a ako vratit ako RETURN VALUE [STATUS_SUCCESS]. CONFIGURATION MANAGER data modifikovane v STRUCTURE v PARAMETER [Argument2] vrati CLIENTOVI, ktory vykonal REGISTRY OPERATION.
+23. Pre FUNCTION [CmCallbackGetKeyObjectIDEx()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [NTSTATUS CmCallbackGetKeyObjectIDEx(PLARGE_INTEGER Cookie, PVOID Object, PULONG_PTR ObjectID, PCUNICODE_STRING* ObjectName, ULONG Flags)].
+   B. PARAMETER [PLARGE_INTEGER Cookie] obsahuje IDENTIFIER, ktory vratila FUNCTION [CmRegisterCallbackEx()].
+   C. PARAMETER [PVOID Driver] obsahuje POINTER na REGISTRY OBJECT, ktoreho KEY ma byt vrateny.
+   D. PARAMETER [PULONG_PTR ObjectID] obsahuje POINTER do ktoreho bude ulozeny REGISTRY OBJECT ID.
+   E. PARAMETER [PCUNICODE_STRING* ObjectName] obsahuje POINTER do ktoreho bude ulozeny REGISTRY OBJECT NAME.
+   F. PARAMETER [ULONG Flags] musi byt nastaveny na VALUE [0].
+   G. RETURN VALUE TYPE [NTSTATUS] obsahuje informaciu ci sa podarilo ziskat REGISTRY OBJECT NAME.
+   H. FUNCTION vracia REGISTRY OBJECT NAME pre dany REGISTRY OBJECT.
+   !!! I. REGISTRY OBJECT NAME musi byt uvolneny volanim FUNCTION [CmCallbackReleaseKeyObjectIDEx()].
+24. Pre FUNCTION [CmCallbackReleaseKeyObjectIDEx()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [void CmCallbackReleaseKeyObjectIDEx(PCUNICODE_STRING ObjectName)].
+   B. PARAMETER [PCUNICODE_STRING ObjectName] obsahuje POINTER na REGISTRY OBJECT NAME, ktory vratila FUNCTION [CmCallbackGetKeyObjectIDEx()].
+   C. FUNCTION uvolnuje REGISTRY OBJECT NAME, ktory vratila FUNCTION [CmCallbackGetKeyObjectIDEx()].
+25. Pri REGISTRY NOTIFICATIONS nie vsetky FIELDS vsetkych STRUCTURES su vzdy VALID.
+   A. V OPERATION [RegNtPostCreateKeyEx] je FIELD [REG_POST_OPERATION_INFORMATION::Object] VALID iba ak FIELD [REG_POST_OPERATION_INFORMATION::Status] obsahuje VALUE [STATUS_SUCCESS].
+   B. V OPERATION [RegNtPostOpenKeyEx] je FIELD [REG_POST_OPERATION_INFORMATION::Object] VALID iba ak FIELD [REG_POST_OPERATION_INFORMATION::Status] obsahuje VALUE [STATUS_SUCCESS].
+   C. V OPERATION [RegNtPreKeyHandleClose] je FIELD [REG_KEY_HANDLE_CLOSE_INFORMATION::Object] INVALID.
+   D. V OPERATION [RegNtPostKeyHandleClose] je FIELD [_POST_OPERATION_INFORMATION::Object] INVALID.
+   E. V OPERATION [RegNtCallbackObjectContextCleanup] je FIELD [REG_CALLBACK_CONTEXT_CLEANUP_INFORMATION::Object] INVALID.
+   !!! F. FIELD [::Object] NESMIE byt zasielany do FUNCION [ObReferenceObjectByPointer()] ani inych GENERAL KERNEL ROUTINES. Ale moze byt pouzity vo FUNCTION [CmCallbackGetKeyObjectIDEx()].
+//----------------------------------------------------------------------------------------------------------------------

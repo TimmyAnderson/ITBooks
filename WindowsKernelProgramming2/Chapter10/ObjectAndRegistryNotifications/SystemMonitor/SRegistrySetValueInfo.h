@@ -1,19 +1,22 @@
 //----------------------------------------------------------------------------------------------------------------------
 #pragma once
 //----------------------------------------------------------------------------------------------------------------------
-#define MY_DRIVER_NAME L"ProcessAndThreadNotifications"
+#include "SItemHeader.h"
 //----------------------------------------------------------------------------------------------------------------------
 //----------------------------------------------------------------------------------------------------------------------
 //----------------------------------------------------------------------------------------------------------------------
-struct SNotificationStatistics final
+struct SRegistrySetValueInfo final : public SItemHeader
 {
 //----------------------------------------------------------------------------------------------------------------------
 	public:
-		LONG64													MNumberOfProcessesCreated;
-		LONG64													MNumberOfProcessesFinished;
-		LONG64													MNumberOfThreadsCreated;
-		LONG64													MNumberOfThreadsFinished;
-		LONG64													MNumberOfLoadedImages;
+		ULONG													MProcessID;
+		ULONG													MThreadID;
+		USHORT													MKeyNameOffset;
+		USHORT													MValueNameOffset;
+		ULONG													MDataType;
+		ULONG													MDataSize;
+		USHORT													MDataOffset;
+		USHORT													MProvidedDataSize;
 //----------------------------------------------------------------------------------------------------------------------
 };
 //----------------------------------------------------------------------------------------------------------------------

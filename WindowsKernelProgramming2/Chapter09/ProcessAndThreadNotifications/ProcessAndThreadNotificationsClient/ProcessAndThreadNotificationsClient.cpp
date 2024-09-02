@@ -64,7 +64,7 @@ int main(int argc, const char* argv[])
 
 			if (CHelpers::SendSynchronousReadRequest(SymbolicLinkName,reinterpret_cast<BYTE*>(&Buffer),BufferSize,&BytesRead)==true)
 			{
-				wcout << L"PROCESSES CREATED [" << Buffer.MNumberOfProcesesCreated << L"] PROCESSES FINISHED [" << Buffer.MNumberOfProcesesFinished << L"] THREADS CREATED [" << Buffer.MNumberOfThreadsCreated << L"] THREADS FINISHED [" << Buffer.MNumberOfThreadsFinished << L"] LOADED IMAGES [" << Buffer.MNumberOfLoadedImages << L"] BYTES READ [" << BytesRead << L"] !" << endl;
+				wcout << L"PROCESSES CREATED [" << Buffer.MNumberOfProcessesCreated << L"] PROCESSES FINISHED [" << Buffer.MNumberOfProcessesFinished << L"] THREADS CREATED [" << Buffer.MNumberOfThreadsCreated << L"] THREADS FINISHED [" << Buffer.MNumberOfThreadsFinished << L"] LOADED IMAGES [" << Buffer.MNumberOfLoadedImages << L"] BYTES READ [" << BytesRead << L"] !" << endl;
 			}
 		}
 	}

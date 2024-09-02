@@ -1,19 +1,21 @@
 //----------------------------------------------------------------------------------------------------------------------
 #pragma once
 //----------------------------------------------------------------------------------------------------------------------
-#define MY_DRIVER_NAME L"ProcessAndThreadNotifications"
+#include <ntddk.h>
 //----------------------------------------------------------------------------------------------------------------------
 //----------------------------------------------------------------------------------------------------------------------
 //----------------------------------------------------------------------------------------------------------------------
-struct SNotificationStatistics final
+enum class EPoolFlags : POOL_FLAGS
 {
 //----------------------------------------------------------------------------------------------------------------------
-	public:
-		LONG64													MNumberOfProcessesCreated;
-		LONG64													MNumberOfProcessesFinished;
-		LONG64													MNumberOfThreadsCreated;
-		LONG64													MNumberOfThreadsFinished;
-		LONG64													MNumberOfLoadedImages;
+	E_POOL_FLAG_USE_QUOTA=POOL_FLAG_USE_QUOTA,
+	E_POOL_FLAG_UNINITIALIZED=POOL_FLAG_UNINITIALIZED,
+	E_POOL_FLAG_SESSION=POOL_FLAG_SESSION,
+	E_POOL_FLAG_CACHE_ALIGNED=POOL_FLAG_CACHE_ALIGNED,
+	E_POOL_FLAG_RAISE_ON_FAILURE=POOL_FLAG_RAISE_ON_FAILURE,
+	E_POOL_FLAG_NON_PAGED=POOL_FLAG_NON_PAGED,
+	E_POOL_FLAG_NON_PAGED_EXECUTE=POOL_FLAG_NON_PAGED_EXECUTE,
+	E_POOL_FLAG_PAGED=POOL_FLAG_PAGED
 //----------------------------------------------------------------------------------------------------------------------
 };
 //----------------------------------------------------------------------------------------------------------------------

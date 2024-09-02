@@ -1,19 +1,28 @@
 //----------------------------------------------------------------------------------------------------------------------
 #pragma once
 //----------------------------------------------------------------------------------------------------------------------
-#define MY_DRIVER_NAME L"ProcessAndThreadNotifications"
+#include <ntddk.h>
+#include "Helpers/CFastMutexGlobal.h"
+#include "Helpers/CMemoryOperators.h"
 //----------------------------------------------------------------------------------------------------------------------
 //----------------------------------------------------------------------------------------------------------------------
 //----------------------------------------------------------------------------------------------------------------------
-struct SNotificationStatistics final
+struct SGlobals final : public CMemoryOperators
 {
 //----------------------------------------------------------------------------------------------------------------------
+	private:
+		LIST_ENTRY												MItemsHead;
+		ULONG													MCount;
+		ULONG													MMaxCount;
+		CFastMutexGlobal										MLock;
+
 	public:
-		LONG64													MNumberOfProcessesCreated;
-		LONG64													MNumberOfProcessesFinished;
-		LONG64													MNumberOfThreadsCreated;
-		LONG64													MNumberOfThreadsFinished;
-		LONG64													MNumberOfLoadedImages;
+		void AddItem(LIST_ENTRY* Entry);
+		void AddHeadItem(LIST_ENTRY* Entry);
+		LIST_ENTRY* RemoveItem(void);
+
+	public:
+		void Init(ULONG MaxCount);
 //----------------------------------------------------------------------------------------------------------------------
 };
 //----------------------------------------------------------------------------------------------------------------------

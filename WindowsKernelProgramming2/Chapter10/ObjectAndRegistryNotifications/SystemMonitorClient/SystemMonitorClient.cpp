@@ -3,12 +3,13 @@
 #include <string>
 #include <iostream>
 #include <sstream>
+#include <unordered_map>
 #include "Helpers\MyDebug.h"
 #include "Helpers\CString.h"
 #include "Helpers\CException.h"
 #include "Helpers\CHelpers.h"
 // !!!!! SHARED HEADER definovany v DRIVER.
-#include "..\ProcessAndThreadMonitor\SharedHeader.h"
+#include "..\SystemMonitor\SharedHeader.h"
 //----------------------------------------------------------------------------------------------------------------------
 #ifdef _MSC_VER
 #pragma warning( disable : 4804 )
@@ -40,6 +41,115 @@ void DisplayTime(const LARGE_INTEGER& Time)
 
 	wcout << FormattedTime;
 }
+//----------------------------------------------------------------------------------------------------------------------
+wstring GetDosNameFromNTName(PCWSTR Path)
+{
+	if (Path[0] != L'\\')
+	{
+		return(Path);
+	}
+
+	static unordered_map<wstring,wstring>						Map;
+
+	if (Map.empty()==true)
+	{
+		DWORD													DrivesMask=GetLogicalDrives();
+		int														Character=0;
+		WCHAR													Root[]=L"X:";
+		WCHAR													Target[128];
+
+		while(DrivesMask!=0)
+		{
+			if ((DrivesMask&1)!=0)
+			{
+				Root[0]=('A'+Character);
+
+				if (QueryDosDevice(Root,Target,_countof(Target)))
+				{
+					Map.insert({Target,Root});
+				}
+			}
+
+			DrivesMask>>=1;
+			Character++;
+		}
+	}
+
+	const wchar_t*												Position=wcschr(Path+1,L'\\');
+
+	if (Position==nullptr)
+	{
+		return(Path);
+	}
+
+	Position=wcschr(Position+1,L'\\');
+
+	if (Position==nullptr)
+	{
+		return(Path);
+	}
+
+	wstring														NTName(Path,Position-Path);
+	unordered_map<wstring,wstring>::iterator					Iterator=Map.find(NTName);
+
+	if (Iterator!=Map.end())
+	{
+		wstring													CompletePath=(Iterator->second+std::wstring(Position));
+
+		return(CompletePath);
+	}
+
+	return(Path);
+}
+//----------------------------------------------------------------------------------------------------------------------
+void DisplayBinary(const BYTE* Buffer, DWORD Size)
+{
+	wcout << endl;
+
+	for(DWORD Index=0;Index<Size;Index++)
+	{
+		if (Index>0 && (Index%16)!=0)
+		{
+			wcout << L" ";
+		}
+
+		wstring													FormattedValue=format(L"{:02X}",Buffer[Index]);
+
+		wcout << FormattedValue;
+
+		if (((Index+1)%16)==0)
+		{
+			wcout << endl;
+		}
+	}
+
+	wcout << endl;
+}
+//----------------------------------------------------------------------------------------------------------------------
+void DisplayRegistryValue(const SRegistrySetValueInfo* Info)
+{
+	PBYTE														Data=(((PBYTE)Info)+Info->MDataOffset);
+
+	if (Info->MDataType==REG_DWORD)
+	{
+		DWORD													Value=(*(DWORD*)Data);
+		wstring													FormattedValue=format(L"0x{:08X} {:d}",Value,Value);
+
+		wcout << FormattedValue;
+	}
+	else if (Info->MDataType==REG_SZ || Info->MDataType==REG_EXPAND_SZ)
+	{
+		PCWSTR													Value=((PCWSTR)Data);
+		
+		wcout << Value << endl;
+	}
+	else
+	{
+		DisplayBinary(Data,Info->MProvidedDataSize);
+	}
+}
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
 //----------------------------------------------------------------------------------------------------------------------
 void DisplayInfo(BYTE* Buffer, DWORD Size)
 {
@@ -81,6 +191,27 @@ void DisplayInfo(BYTE* Buffer, DWORD Size)
 			SThreadExitInfo*									Info=(SThreadExitInfo*)Buffer;
 
 			wcout << L"THREAD [" << Info->MThreadID << L"] EXITED from PROCESS [" << Info->MProcessID << L"]. EXIT CODE [" << Info->MExitCode << L"]." << endl;
+		}
+		else if (Header->MType==EItemType::E_IMAGE_LOAD)
+		{
+			DisplayTime(Header->MTime);
+
+			SImageLoadInfo*										Info=(SImageLoadInfo*)Buffer;
+			wstring												DosName=GetDosNameFromNTName(Info->MImageFileName).c_str();
+
+			wcout << L"IMAGE LOADED INTO PROCESS [" << Info->MProcessID << L"] at ADDRESS [" << Info->MLoadAddress << L"]." << endl;
+		}
+		else if (Header->MType==EItemType::E_REGISTRY_SET_VALUE)
+		{
+			DisplayTime(Header->MTime);
+
+			SRegistrySetValueInfo*								Info=((SRegistrySetValueInfo*)Buffer);
+			PCWSTR												Name1=((PCWSTR)(((PBYTE)Info)+Info->MKeyNameOffset));
+			PCWSTR												Name2=((PCWSTR)(((PBYTE)Info)+Info->MValueNameOffset));
+			
+			wcout << L"REGISTRY WRITE - PID [" << Info->MProcessID << L"] TID [" << Info->MThreadID << L"] NAME [" << Name1 << L"\\" << Name2 << L"] TYPE [" << Info->MDataType << L"] SIZE [" << Info->MDataSize << L"] DATA:";
+
+			DisplayRegistryValue(Info);
 		}
 
 		Buffer+=Header->MSize;

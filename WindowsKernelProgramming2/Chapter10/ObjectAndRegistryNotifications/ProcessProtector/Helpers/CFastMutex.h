@@ -1,19 +1,25 @@
 //----------------------------------------------------------------------------------------------------------------------
 #pragma once
 //----------------------------------------------------------------------------------------------------------------------
-#define MY_DRIVER_NAME L"ProcessAndThreadNotifications"
+#include <ntddk.h>
+#include "CFastMutexGlobal.h"
 //----------------------------------------------------------------------------------------------------------------------
 //----------------------------------------------------------------------------------------------------------------------
 //----------------------------------------------------------------------------------------------------------------------
-struct SNotificationStatistics final
+class CFastMutex final : private CFastMutexGlobal
 {
 //----------------------------------------------------------------------------------------------------------------------
 	public:
-		LONG64													MNumberOfProcessesCreated;
-		LONG64													MNumberOfProcessesFinished;
-		LONG64													MNumberOfThreadsCreated;
-		LONG64													MNumberOfThreadsFinished;
-		LONG64													MNumberOfLoadedImages;
+		using CMemoryOperators::operator new;
+		using CMemoryOperators::operator delete;
+
+	public:
+		using CFastMutexGlobal::Lock;
+		using CFastMutexGlobal::Unlock;
+
+	public:
+		CFastMutex(void);
+		~CFastMutex(void);
 //----------------------------------------------------------------------------------------------------------------------
 };
 //----------------------------------------------------------------------------------------------------------------------

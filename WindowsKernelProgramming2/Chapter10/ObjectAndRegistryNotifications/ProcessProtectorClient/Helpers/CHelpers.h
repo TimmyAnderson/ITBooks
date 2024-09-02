@@ -1,19 +1,24 @@
 //----------------------------------------------------------------------------------------------------------------------
 #pragma once
 //----------------------------------------------------------------------------------------------------------------------
-#define MY_DRIVER_NAME L"ProcessAndThreadNotifications"
+#include <Windows.h>
 //----------------------------------------------------------------------------------------------------------------------
 //----------------------------------------------------------------------------------------------------------------------
 //----------------------------------------------------------------------------------------------------------------------
-struct SNotificationStatistics final
+class CHelpers final
 {
 //----------------------------------------------------------------------------------------------------------------------
 	public:
-		LONG64													MNumberOfProcessesCreated;
-		LONG64													MNumberOfProcessesFinished;
-		LONG64													MNumberOfThreadsCreated;
-		LONG64													MNumberOfThreadsFinished;
-		LONG64													MNumberOfLoadedImages;
+		static bool SendSynchronousDeviceIoControlRequest(const wchar_t* SymbolicLinkName, DWORD Code, BYTE* InputBuffer, DWORD InputBufferSize, BYTE* OutputBuffer, DWORD OutputBufferSize, DWORD* BytesReturned);
+		static bool SendAsynchronousDeviceIoControlRequest(const wchar_t* SymbolicLinkName, DWORD Code, BYTE* InputBuffer, DWORD InputBufferSize, BYTE* OutputBuffer, DWORD OutputBufferSize, DWORD* BytesReturned);
+
+	public:
+		static bool SendSynchronousDeviceIoControlRequestEmptyArrays(const wchar_t* SymbolicLinkName, DWORD Code);
+		static bool SendAsynchronousDeviceIoControlRequestEmptyArrays(const wchar_t* SymbolicLinkName, DWORD Code);
+
+	public:
+		static bool SendSynchronousReadRequest(const wchar_t* SymbolicLinkName, BYTE* ReadBuffer, DWORD ReadBufferSize, DWORD* NumberOfBytesRead);
+		static bool SendSynchronousWriteRequest(const wchar_t* SymbolicLinkName, const BYTE* WriteBuffer, DWORD WriteBufferSize, DWORD* NumberOfBytesWritten);
 //----------------------------------------------------------------------------------------------------------------------
 };
 //----------------------------------------------------------------------------------------------------------------------
