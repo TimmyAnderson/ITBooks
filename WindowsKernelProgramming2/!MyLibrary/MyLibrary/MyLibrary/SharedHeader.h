@@ -31,3 +31,13 @@
 #define CODE_TEST_EXECUTIVE_RESOURCE_LOCAL_OBJECT 0x814
 #define CODE_TEST_EXECUTIVE_RESOURCE_LOCAL_POINTER 0x815
 //----------------------------------------------------------------------------------------------------------------------
+#define CODE_TEST_SPLAY_TREES_GLOBAL 0x816
+#define CODE_TEST_SPLAY_TREES 0x817
+#define CODE_TEST_AVL_TREES_GLOBAL 0x819
+#define CODE_TEST_AVL_TREES 0x81A
+//----------------------------------------------------------------------------------------------------------------------
+#define CODE_TEST_TIMER_GLOBAL 0x81B
+//----------------------------------------------------------------------------------------------------------------------
+#define CODE_TEST_INTERLOCKED_GLOBAL 0x81C
+#define CODE_TEST_INTERLOCKED 0x81D
+//----------------------------------------------------------------------------------------------------------------------

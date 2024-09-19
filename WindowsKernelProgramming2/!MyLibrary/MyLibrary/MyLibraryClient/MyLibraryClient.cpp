@@ -52,6 +52,16 @@ using namespace std;
 #define IOCTL_TEST_EXECUTIVE_RESOURCE_LOCAL_OBJECT CTL_CODE(FILE_DEVICE_UNKNOWN,CODE_TEST_EXECUTIVE_RESOURCE_LOCAL_OBJECT,METHOD_NEITHER,FILE_ANY_ACCESS)
 #define IOCTL_TEST_EXECUTIVE_RESOURCE_LOCAL_POINTER CTL_CODE(FILE_DEVICE_UNKNOWN,CODE_TEST_EXECUTIVE_RESOURCE_LOCAL_POINTER,METHOD_NEITHER,FILE_ANY_ACCESS)
 //----------------------------------------------------------------------------------------------------------------------
+#define IOCTL_TEST_SPLAY_TREES_GLOBAL CTL_CODE(FILE_DEVICE_UNKNOWN,CODE_TEST_SPLAY_TREES_GLOBAL,METHOD_NEITHER,FILE_ANY_ACCESS)
+#define IOCTL_TEST_SPLAY_TREES CTL_CODE(FILE_DEVICE_UNKNOWN,CODE_TEST_SPLAY_TREES,METHOD_NEITHER,FILE_ANY_ACCESS)
+#define IOCTL_TEST_AVL_TREES_GLOBAL CTL_CODE(FILE_DEVICE_UNKNOWN,CODE_TEST_AVL_TREES_GLOBAL,METHOD_NEITHER,FILE_ANY_ACCESS)
+#define IOCTL_TEST_AVL_TREES CTL_CODE(FILE_DEVICE_UNKNOWN,CODE_TEST_AVL_TREES,METHOD_NEITHER,FILE_ANY_ACCESS)
+//----------------------------------------------------------------------------------------------------------------------
+#define IOCTL_TEST_TIMER_GLOBAL CTL_CODE(FILE_DEVICE_UNKNOWN,CODE_TEST_TIMER_GLOBAL,METHOD_NEITHER,FILE_ANY_ACCESS)
+//----------------------------------------------------------------------------------------------------------------------
+#define IOCTL_TEST_INTERLOCKED_GLOBAL CTL_CODE(FILE_DEVICE_UNKNOWN,CODE_TEST_INTERLOCKED_GLOBAL,METHOD_NEITHER,FILE_ANY_ACCESS)
+#define IOCTL_TEST_INTERLOCKED CTL_CODE(FILE_DEVICE_UNKNOWN,CODE_TEST_INTERLOCKED,METHOD_NEITHER,FILE_ANY_ACCESS)
+//----------------------------------------------------------------------------------------------------------------------
 //----------------------------------------------------------------------------------------------------------------------
 //----------------------------------------------------------------------------------------------------------------------
 int main(int argc, const char* argv[])
@@ -167,6 +177,34 @@ int main(int argc, const char* argv[])
 		else if (Code==21)
 		{
 			CHelpers::SendSynchronousDeviceIoControlRequestEmptyArrays(SymbolicLinkName,IOCTL_TEST_EXECUTIVE_RESOURCE_LOCAL_POINTER);
+		}
+		else if (Code==22)
+		{
+			CHelpers::SendSynchronousDeviceIoControlRequestEmptyArrays(SymbolicLinkName,IOCTL_TEST_SPLAY_TREES_GLOBAL);
+		}
+		else if (Code==23)
+		{
+			CHelpers::SendSynchronousDeviceIoControlRequestEmptyArrays(SymbolicLinkName,IOCTL_TEST_SPLAY_TREES);
+		}
+		else if (Code==24)
+		{
+			CHelpers::SendSynchronousDeviceIoControlRequestEmptyArrays(SymbolicLinkName,IOCTL_TEST_AVL_TREES_GLOBAL);
+		}
+		else if (Code==25)
+		{
+			CHelpers::SendSynchronousDeviceIoControlRequestEmptyArrays(SymbolicLinkName,IOCTL_TEST_AVL_TREES);
+		}
+		else if (Code==26)
+		{
+			CHelpers::SendSynchronousDeviceIoControlRequestEmptyArrays(SymbolicLinkName,IOCTL_TEST_TIMER_GLOBAL);
+		}
+		else if (Code==27)
+		{
+			CHelpers::SendSynchronousDeviceIoControlRequestEmptyArrays(SymbolicLinkName,IOCTL_TEST_INTERLOCKED_GLOBAL);
+		}
+		else if (Code==28)
+		{
+			CHelpers::SendSynchronousDeviceIoControlRequestEmptyArrays(SymbolicLinkName,IOCTL_TEST_INTERLOCKED);
 		}
 	}
 	while(false);

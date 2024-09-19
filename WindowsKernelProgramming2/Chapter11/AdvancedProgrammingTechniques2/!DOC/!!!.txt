@@ -1,0 +1,471 @@
+//----------------------------------------------------------------------------------------------------------------------
+1. Solution demonstruje pouzitie pokrocile techniky v DRIVER PROGRAMMING ako su TIMERS, GENERIC TABLES, HASH TABLES, SINGLY LINKED LISTS a CALLBACK OBJECTS.
+2. WINDOWS KERNEL podporuje viacero roznych typov TIMERS.
+   A. KERNEL TIMERS.
+   B. HIGH RESOLUTION TIMERS.
+   C. IO TIMERS.
+3. Pre KERNEL TIMERS platia nasledujuce fakty.
+   A. KERNEL TIMER je reprezentovany STRUCTURE [KTIMER], ktora MUSI byt alokovana v NON-PAGED MEMORY.
+   B. KERNEL TIMERS mozu byt spustene RAZ, alebo OPAKOVANE.
+   C. KERNEL TIMERS mozu mat nastaveny ABSOLUTE EXPIRATION TIME, alebo RELATIVE EXPIRATION TIME.
+   D. KERNEL TIMERS su DISPATCHER OBJECTS na ktore je mozne aplikovat WAIT FUNCTIONS.
+   !!! E. KERNEL TIMERS mozu byt nasledujucich typov.
+      A. NOTIFICATION TIMER uvolni lubovolny pocet THREADS, ktore cakaju na to, az bude TIMER SIGNALED. Je to analogia MANUAL RESET EVENTS.
+      B. SYNCHRONIZATION TIMER uvolni iba 1 THREAD, ktory caka na to, az bude TIMER SIGNALED. Po uvolneny THREAD je TIMER OBJECT nastaveny do NON-SIGNALED STATE. Je to analogia AUTO RESET EVENTS.
+   !!! F. KERNEL TIMERS mozu OPTIONALLY pri TIMEOUT EXPIRATION odoslat volanie DEFFERED PROCEDURE CALL.
+   G. KERNEL TIMERS mozu byt aj COALESCABLE. Pre COALESCABLE KERNEL TIMERS platia nasledujuce fakty.
+      A. COALESCABLE KERNEL TIMER ma nastavenu toleranciu do kedy od TIME EXPIRATION musi byt SIGNALED.
+	  B. COALESCABLE KERNEL TIMER su nastavene do SIGNALED STATE kedykolvek v casovom INTERVALE <EXPIRATION_TIME,EXPIRATION_TIME+TOLERANCE>.
+	  !!! C. Zmyslom COALESCABLE KERNEL TIMERS je setrit ENERGY. WINDOWS totizto moze vsetky COALESCABLE KERNEL TIMERS, ktore musia EXSPIROVAT v danom case do 1 WAKEUP CALL a prebudit SYSTEM iba raz, pricom sa spustia vsetky COALESCABLE KERNEL TIMERS, ktore musia byt v danom case EXPIRED. Tym padom WINDOWS nemusi tak casto prebudzat SYSTEM.
+   H. KERNEL TIMERS musia byt inicializovane volanim FUNCTION [KeInitializeTimer()], alebo volanim FUNCTION [KeInitializeTimerEx()].
+   I. EXPIRATION TIME pre KERNEL TIMERS je nastavovany bud volanim FUNCTION [KeSetTimer()], alebo volanim FUNCTION [KeSetTimerEx()].
+   J. KERNEL TIMERS TIME EXPIRATION je mozne zrusit volanim FUNCTION [KeCancelTimer()].
+   K. EXPIRATION TIME pre COALESCABLE KERNEL TIMERS je nastavovany volanim FUNCTION [KeSetCoalescableTimer()].
+   L. Zistenie ci je KERNEL TIMER nastaveny v SIGNALED STATE je mozne zistit volanim FUNCTION [KeReadStateTimer()].
+4. Pre FUNCTION [KeInitializeTimer()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [void KeInitializeTimer(PKTIMER Timer)].
+   B. PARAMETER [PKTIMER Timer] obsahuje STRUCTURE [KTIMER], ktora musi byt alokovana na NON-PAGED MEMORY.
+   C. FUNCTION registruje STRUCTURE [KTIMER], aby bola pouzitelna ako TIMER.
+5. Pre FUNCTION [KeInitializeTimerEx()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [void KeInitializeTimerEx(PKTIMER Timer, TIMER_TYPE Type)].
+   B. PARAMETER [PKTIMER Timer] obsahuje STRUCTURE [KTIMER], ktora musi byt alokovana na NON-PAGED MEMORY.
+   !!! C. PARAMETER [TIMER_TYPE Type] obsahuje informaciu o type TIMER. Moze obsahovat nasledujuce VALUES.
+      A. VALUE [NotificationTimer] znamena, ze TIMER uvolni vsetky THREADS, ktore na dany TIMER cakaju a TIMER, ktory je SIGNALED STATE sa NEVRATI automaticky do NON-SIGNALED STATE.
+      B. VALUE [SynchronizationTimer] znamena, ze TIMER uvolni iba 1 THREAD, ktory na dany TIMER caka a hned po jeho uvolneni je TIMER automaticky nastaveny do NON-SIGNALED STATE.
+   D. FUNCTION registruje STRUCTURE [KTIMER], aby bola pouzitelna ako TIMER.
+6. Pre FUNCTION [KeSetTimer()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [BOOLEAN KeSetTimer(PKTIMER Timer, LARGE_INTEGER DueTime, PKDPC Dpc)].
+   B. PARAMETER [PKTIMER Timer] obsahuje TIMER, ktory sa ma nastavit na spustenie.
+   C. PARAMETER [LARGE_INTEGER DueTime] urcuje ABSOLUTE TIME (kladna VALUE), alebo RELATIVE TIME (zaporna VALUE) kedy ma TIMER EXSPIROVAT.
+   !!! D. PARAMETER [PKDPC Dpc] obsahuje OPTIONAL STRUCTURE [KDPC], ktora urcuje DEFERRED PROCEDURE CALLS QUEUE do ktorej sa ma ulozit REQUEST na vykonanie DEFERRED PROCEDURE po exspiracii TIMER.
+   E. RETURN VALUE TYPE [BOOLEAN] vracia informaciu ci REQUEST na spustenie TIMER uz bol ulozeny v TIMER QUEUE. Ak REQUEST na spustenie TIMER uz bol vlozeny do QUEUE, tak povodny REQUEST je CANCELLED.
+   F. FUNCTION nastavuje ABSOLUTE, alebo RELATIVE kedy ma TIMER EXSPIROVAT. Ak je pouzita STRUCTURE [KDPC], tak sa po exspiracii TIMER vyvola DEFERRED PROCEDURE. Kedze TIMER je WAITABLE OBJECT, je mozne nan aplikovat WAIT FUNCTIONS.
+7. Pre FUNCTION [KeSetTimerEx()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [BOOLEAN KeSetTimerEx(PKTIMER Timer, LARGE_INTEGER DueTime, LONG Period, PKDPC Dpc)].
+   B. PARAMETER [PKTIMER Timer] obsahuje TIMER, ktory sa ma nastavit na spustenie.
+   C. PARAMETER [LARGE_INTEGER DueTime] urcuje ABSOLUTE TIME (kladna VALUE), alebo RELATIVE TIME (zaporna VALUE) kedy ma TIMER EXSPIROVAT.
+   D. PARAMETER [LONG Period] urcuje TIME PERIOD v MILLISECONDS po ktorej ma byt TIMER opatovne spusteny.
+   !!! E. PARAMETER [PKDPC Dpc] obsahuje OPTIONAL STRUCTURE [KDPC], ktora urcuje DEFERRED PROCEDURE CALLS QUEUE do ktorej sa ma ulozit REQUEST na vykonanie DEFERRED PROCEDURE po exspiracii TIMER.
+   F. RETURN VALUE TYPE [BOOLEAN] vracia informaciu ci REQUEST na spustenie TIMER uz bol ulozeny v TIMER QUEUE. Ak REQUEST na spustenie TIMER uz bol vlozeny do QUEUE, tak povodny REQUEST je CANCELLED.
+   G. FUNCTION nastavuje ABSOLUTE, alebo RELATIVE kedy ma TIMER EXSPIROVAT. Ak je pouzita STRUCTURE [KDPC], tak sa po exspiracii TIMER vyvola DEFERRED PROCEDURE. Kedze TIMER je WAITABLE OBJECT, je mozne nan aplikovat WAIT FUNCTIONS.
+8. Pre FUNCTION [KeCancelTimer()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [BOOLEAN KeCancelTimer(PKTIMER Timer)].
+   B. PARAMETER [PKTIMER Timer] obsahuje TIMER, ktory ma byt zastaveny.
+   C. RETURN VALUE TYPE [BOOLEAN] vracia informaciu ci TIMER OBJECT uz bol zaradeny do TIMER QUEUE a teda realne bol CANCELLED.
+   D. FUNCTION zastavuje volanie TIMER.
+9. Pre FUNCTION [KeSetCoalescableTimer()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [BOOLEAN KeSetCoalescableTimer(PKTIMER Timer, LARGE_INTEGER DueTime, ULONG Period, ULONG TolerableDelay, PKDPC Dpc)].
+   B. PARAMETER [PKTIMER Timer] obsahuje TIMER, ktory sa ma nastavit na spustenie.
+   C. PARAMETER [LARGE_INTEGER DueTime] urcuje ABSOLUTE TIME (kladna VALUE), alebo RELATIVE TIME (zaporna VALUE) kedy ma TIMER EXSPIROVAT.
+   D. PARAMETER [LONG Period] urcuje TIME PERIOD v MILLISECONDS po ktorej ma byt TIMER opatovne spusteny.
+   !!! E. PARAMETER [ULONG TolerableDelay] urcuje MAXIMALNY cas v MILLISECONDS do ktore MUSI byt TIMER SIGANLED po exspiracii EXPIRATION TIME.
+   !!! F. PARAMETER [PKDPC Dpc] obsahuje OPTIONAL STRUCTURE [KDPC], ktora urcuje DEFERRED PROCEDURE CALLS QUEUE do ktorej sa ma ulozit REQUEST na vykonanie DEFERRED PROCEDURE po exspiracii TIMER.
+   G. RETURN VALUE TYPE [BOOLEAN] vracia informaciu ci REQUEST na spustenie TIMER uz bol ulozeny v TIMER QUEUE. Ak REQUEST na spustenie TIMER uz bol vlozeny do QUEUE, tak povodny REQUEST je CANCELLED.
+   H. FUNCTION nastavuje ABSOLUTE, alebo RELATIVE kedy ma COALESCABLE KERNEL TIMERS EXSPIROVAT aj s pouzitim TOLERABLE DELAY INTERVAL. Ak je pouzita STRUCTURE [KDPC], tak sa po exspiracii TIMER vyvola DEFERRED PROCEDURE. Kedze TIMER je WAITABLE OBJECT, je mozne nan aplikovat WAIT FUNCTIONS.
+10. Pre FUNCTION [KeReadStateTimer()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [BOOLEAN KeReadStateTimer(PKTIMER Timer)].
+   B. PARAMETER [PKTIMER Timer] obsahuje TIMER, ktory ma byt zastaveny.
+   C. RETURN VALUE TYPE [BOOLEAN] vracia VALUE [TRUE], ak je TIMER v SIGNALED STATE a VALUE [FALSE], ak je TIMER v NON-SIGNALED STATE.
+   D. FUNCTION vracia VALUE [TRUE], ak je TIMER v SIGNALED STATE a VALUE [FALSE], ak je TIMER v NON-SIGNALED STATE.
+11. KERNEL umoznuje zmenit KERNEL TIMER RESOLUTION. Platia nasledujuce fakty.
+   A. KERNEL TIMER RESOLUTION je mozne nastavit volanim FUNCTION [ExSetTimerResolution()].
+   B. KERNEL TIMER RESOLUTION je mozne ziskat volanim FUNCTION [ExQueryTimerResolution()].
+   !!!!! C. Ak DRIVER meni KERNEL TIMER RESOLUTION, tak zmena ma dopad na CELY WINDOWS a moze znizit jeho vykon, alebo zvysit spotrebu energie.
+   !!!!! D. Ak je KERNEL TIMER RESOLUTION zmeneny volanim FUNCTION [ExSetTimerResolution(TIMEOUT,TRUE)], tak KERNEL TIMER RESOLUTION by mal byt vrateny na povodnu VALUE volanim [ExSetTimerResolution(0,FALSE)].
+12. Pre FUNCTION [ExSetTimerResolution()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [ULONG ExSetTimerResolution(ULONG DesiredTime, BOOLEAN SetResolution)].
+   B. PARAMETER [ULONG DesiredTime] obsahuje pozadovany TIMER RESOLUTION v 100kach NANOSECONDS.
+   !!! C. PARAMETER [BOOLEAN SetResolution] ak obsahuje VALUE [TRUE] FUNCTION nastavi RESOLTION. VALUE [FALSE] znamena, ze je dekrementovany COUNTER obsahujuci pocet volani FUNCTION [ExSetTimerResolution()] a ked COUNTER klesne na VALUE [0], tak sa RESOLUTION vrati na povodnu VALUE.
+   D. RETURN VALUE TYPE [ULONG] vracia aktualny TIMER RESOLUTION v 100kach NANOSECONDS.
+   E. FUNCTION nastavuje KERNEL TIMER RESOLUTION.
+   !!!!! F. Ak je KERNEL TIMER RESOLUTION zmeneny volanim FUNCTION [ExSetTimerResolution(TIMEOUT,TRUE)], tak KERNEL TIMER RESOLUTION by mal byt vrateny na povodnu VALUE volanim [ExSetTimerResolution(0,FALSE)].
+13. Pre FUNCTION [ExQueryTimerResolution()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [void ExQueryTimerResolution(PULONG MaximumTime, PULONG MinimumTime, PULONG CurrentTime)].
+   B. PARAMETER [PULONG MaximumTime] obsahuje POINTER do ktoreho sa ulozi MAXIMUM KERNEL TIMER RESOLUTION v 100kach NANOSECONDS.
+   C. PARAMETER [PULONG MinimumTime] obsahuje POINTER do ktoreho sa ulozi MINIMUM KERNEL TIMER RESOLUTION v 100kach NANOSECONDS.
+   D. PARAMETER [PULONG CurrentTime] obsahuje POINTER do ktoreho sa ulozi CURRENT KERNEL TIMER RESOLUTION v 100kach NANOSECONDS.
+   E. FUNCTION vracia MINIMUM KERNEL TIMER RESOLUTION, MAXIMUM KERNEL TIMER RESOLUTION a CURRENT KERNEL TIMER RESOLUTION.
+14. WINDOWS podporuje API pre EXTENDED TIMERS. Pre EXTENDED TIMERS platia nasledujuce fakty.
+   A. EXTENDED TIMERS su reprezentovane STRUCTURE [_EX_TIMER], ktora je alokovana FUNCTION [ExAllocateTimer()] a uvolnena FUNCTION [ExDeleteTimer()].
+   !!! B. EXTENDED TIMERS plne nahradzaju KERNEL TIMERS.
+   C. EXTENDED TIMERS mozu reprezentovat nasledujuce typy TIMERS.
+      A. LOW RESOLUTION TIMER, ak vo FUNCTION [ExAllocateTimer()] sa NEPOUZIJE FLAG [EX_TIMER_HIGH_RESOLUTION].
+      B. HIGH RESOLUTION TIMER, ak vo FUNCTION [ExAllocateTimer()] sa POUZIJE FLAG [EX_TIMER_HIGH_RESOLUTION].
+   D. EXTENDED TIMERS su DISPATCHER OBJECTS na ktore je mozne aplikovat WAIT FUNCTIONS.
+   !!! E. EXTENDED TIMERS mozu byt nasledujucich typov.
+      A. NOTIFICATION TIMER uvolni lubovolny pocet THREADS, ktore cakaju na to, az bude TIMER SIGNALED. Je to analogia MANUAL RESET EVENTS.
+      B. SYNCHRONIZATION TIMER uvolni iba 1 THREAD, ktory caka na to, az bude TIMER SIGNALED. Po uvolneny THREAD je TIMER OBJECT nastaveny do NON-SIGNALED STATE. Je to analogia AUTO RESET EVENTS.
+   F. EXTENDED TIMERS mozu byt spustene RAZ, alebo OPAKOVANE.
+   !!!!! G. EXTENDED TIMERS mozu mat nastaveny na ABSOLUTE EXPIRATION TIME, alebo RELATIVE EXPIRATION TIME. V pripade, ze EXTENDED TIMER je HIGH RESOLUTION TIMER, tak je mozne pouzit IBA RELATIVE EXPIRATION TIME.
+   !!! H. EXTENDED TIMERS ak su pouzite ako HIGH RESOLUTION TIMERS, nemusia explicitne nastavovat TIMER RESOLUTION, pretoze ten je automaticky nastaveny KERNELOM na zaklade poziadaviek na EXTENDED TIMERS.
+   !!! I. EXTENDED TIMERS nepouzivaju DEFFERED PROCEDURE CALL OBJECT, pretoze maju implementovany vlastny CALLBACK MECHANISM, kde CALLBACKS su volane v IRQL [DISPATCH_LEVEL].
+   !!! J. EXTENDED TIMERS mozu byt NO-WAKE TIMERS. Pre NO-WAKE TIMERS platia nasledujuce fakty.
+     A. NO-WAKE TIMERS su EXTENDED TIMERS, ktore vo FUNCTION [ExAllocateTimer] maju nastaveny FLAG [].
+	 !!! B. NO-WAKE TIMERS su TIMERS, ktore ak je CPU v LOW POWER STATE, nie su SIGNALED okamzite po TIME EXPIRATION, ale az potom co je CPU prebudeny z ineho dovodu ako TIME EXPIRATION.
+	 C. NO-WAKE TIMERS mozu nastavit maximalny NO-WAKE TIME po ktorom bude CPU v LOW POWER STATE prebudene a TIMER bude SIGNALED.
+	 D. NO-WAKE TIME sa nastavuje vo FIELD [EXT_SET_PARAMETERS::NoWakeTolerance]. VALUE [EX_TIMER_UNLIMITED_TOLERANCE] znamena, ze TIMER bude EXPIRED iba ak je CPU prebudeny z ineho dovodu ako TIME EXPIRATION.
+   K. EXTENDED TIMERS sa vytvaraju volnim FUNCTION [ExAllocateTimer()].
+   L. EXTENDED TIMERS sa uvolnuju volnim FUNCTION [ExDeleteTimer()]. STRUCTURE [EXT_DELETE_PARAMETERS] ktoru FUNCTION [ExDeleteTimer()] pouziva sa inicializuje volanim FUNCTION [ExInitializeDeleteTimerParameters()].
+   M. EXPIRATION TIME pre EXTENDED TIMERS je nastavovany volanim FUNCTION [ExSetTimer()]. STRUCTURE [EXT_SET_PARAMETERS] ktoru FUNCTION [ExSetTimer()] pouziva sa inicializuje volanim FUNCTION [ExInitializeSetTimerParameters()].
+   N. TIME EXPIRATION pre EXTENDED TIMERS je mozne zrusit volanim FUNCTION [ExCancelTimer()].
+15. Pre FUNCTION [ExAllocateTimer()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [PEX_TIMER ExAllocateTimer(PEXT_CALLBACK Callback, PVOID CallbackContext, ULONG Attributes)].
+   !!! B. PARAMETER [PEXT_CALLBACK Callback] obsahuje OPTIONAL CALLBACK FUNCTION, ktora sa vykona ak TIMER je SIGNALED. CALLBACK FUNCTION ma PROTOTYPE [void EXT_CALLBACK(PEX_TIMER Timer, PVOID Context)].
+   C. PARAMETER [PVOID CallbackContext] obsahuje CUSTOM PARAMETER, ktory je zaslany do CALLBACK FUNCTION.
+   !!! D. PARAMETER [ULONG Attributes] obsahuje ATTRIBUTES, ktore nastavuju funkcionalitu TIMER. PARAMETER moze obsahovat nasledujuce VALUES.
+      !!! A. VALUE [EX_TIMER_HIGH_RESOLUTION] urcuje, ze TIMER ma byt HIGH RESOLUTION TIMER. Ak tento FLAG NIE je nastaveny, tak TIMER predstavuje LOW RESOLUTION TIMER.
+      B. VALUE [EX_TIMER_NO_WAKE] urcuje, ze TIMER bude NO-WAKE TIMER
+      !!! C. VALUE [EX_TIMER_NOTIFICATION] urcuje, ze TIMER bude NOTIFICATION TIMER. Ak FLAG nie je nastaveny, TIMER bude SYNCHRONIZATION TIMER.
+   E. RETURN VALUE TYPE [PEX_TIMER] vracia POINTER na EXTENDED TIMER.
+   F. FUNCTION vytvara EXTENDED TIMER.
+16. Pre FUNCTION [ExDeleteTimer()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [BOOLEAN ExDeleteTimer(PEX_TIMER Timer, BOOLEAN Cancel, BOOLEAN Wait, PEXT_DELETE_PARAMETERS Parameters)].
+   B. PARAMETER [PEX_TIMER Timer] obsahuje POINTER na EXTENDED TIMER OBJECT.
+   !!! C. PARAMETER [BOOLEAN Cancel] urcuje ci TIMER s nastavenym EXPIRATION TIME ma byt CANCELLED. VALUE [TRUE] znamena, ze TIMER bude CANCELLED. VALUE [FALSE] znamena, ze TIMER NEBUDE CANCELLED.
+   !!!!! D. PARAMETER [BOOLEAN Wait] urcuje ci TIMER ma cakat na ukoncenie TIMER EXPIRATION ak prave prebieha. VALUE [TRUE] znamena, ze FUNCTION bude cakat na TIME EXPIRATION. VALUE [FALSE] znamena, ze FUNCTION NEBUDE cakat na TIME EXPIRATION. Ak je nastavena VALUE [TRUE], MUSI byt aj PARAMETER [BOOLEAN Cancel] nastaveny na VALUE [TRUE], inak dojde k BUGCHECK.
+   !!! E. PARAMETER [PEXT_DELETE_PARAMETERS Parameters] obsahuje POINTER na STRUCTURE, ktora popisuje dalsie chovanie uvolnovania TIMER ako moznost volat CALLBACK FUNCTION potom ako je TIMER uvolneny.
+   F. RETURN VALUE TYPE [BOOLEAN] vracia VALUE [TRUE], ak PARAMETER [BOOLEAN Cancel] bol nastaveny na VALUE [TRUE] a TIMER bol CANCELLED a VALUE [FALSE] znamena, ze TIMER nebol nastaveny. Ak PARAMETER [BOOLEAN Cancel] bol nastaveny na VALUE [FALSE] FUNCTION vzdy vracia VALUE [FALSE].
+   G. FUNCTION uvolnuje EXTENDED TIMER.
+17. STRUCTURE [EXT_DELETE_PARAMETERS] ma nasledujuce FIELDS.
+   A. FIELD [ULONG Version] obsahuje verziu STRUCTURE. FIELD je nastaveny volanim FUNCTION [ExInitializeDeleteTimerParameters()].
+   B. FIELD [ULONG Reserved] je RESERVED. FIELD je nastaveny volanim FUNCTION [ExInitializeDeleteTimerParameters()].
+   !!! C. FIELD [PEXT_DELETE_CALLBACK DeleteCallback] obsahuje POINTER na CALLBACK FUNCTION, ktora sa vola potom ako je TIMER uvolneny. CALLBACK FUNCTION ma PROTOTYPE [void ExtDeleteCallback(PVOID Context)].
+   D. FIELD [PVOID DeleteContext] obsahuje CUSTOM VALUE, ktora sa posle do CALLBACK FUNCTION.
+18. Pre FUNCTION [ExInitializeDeleteTimerParameters()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [void ExInitializeDeleteTimerParameters(PEXT_DELETE_PARAMETERS Parameters)].
+   B. PARAMETER [PEXT_DELETE_PARAMETERS Parameters] obsahuje POINTER na STRUCTURE [EXT_DELETE_PARAMETERS], ktora ma byt inicializovana.
+   C. FUNCTION uvolnuje inicializuje STRUCTURE [EXT_DELETE_PARAMETERS].
+19. Pre FUNCTION [ExSetTimer()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [BOOLEAN ExSetTimer(PEX_TIMER Timer, LONGLONG DueTime, LONGLONG Period, PEXT_SET_PARAMETERS Parameters)].
+   B. PARAMETER [PEX_TIMER Timer] obsahuje TIMER, ktory sa ma nastavit na spustenie.
+   !!!!! C. PARAMETER [LONGLONG DueTime] urcuje ABSOLUTE EXPIRATION TIME (kladna VALUE v 100kach NANOSECONDS od 1.1.1601), alebo RELATIVE TIME (zaporna VALUE v 100kach NANOSECONDS). ABSOLUTE TIME moze byt nastaveny IBA ak TIMER je LOW RESOLUTION TIMER. Pre LOW RESOLUTION TIMERS pokus o nastavenie ABSOLUTE EXPIRATION TIME skonci BUGCHECK.
+   D. PARAMETER [LONGLONG Period] urcuje TIME PERIOD v 100kach NANOSECONDS po ktorej ma byt TIMER opatovne spusteny.
+   !!! E. PARAMETER [PEXT_SET_PARAMETERS Parameters] obsahuje POINTER na STRUCTURE, ktora popisuje dalsie chovanie uvolnovania TIMER ako nastavenie NO-WAKE TIME.
+   F. RETURN VALUE TYPE [BOOLEAN] vracia informaciu ci REQUEST na spustenie TIMER uz bol ulozeny v TIMER QUEUE. Ak REQUEST na spustenie TIMER uz bol vlozeny do QUEUE, tak povodny REQUEST je CANCELLED.
+   G. FUNCTION nastavuje EXPIRATION TIME pre EXTENDED TIMER.
+20. STRUCTURE [EXT_SET_PARAMETERS] ma nasledujuce FIELDS.
+   A. FIELD [ULONG Version] obsahuje verziu STRUCTURE. FIELD je nastaveny volanim FUNCTION [ExInitializeSetTimerParameters()].
+   B. FIELD [ULONG Reserved] je RESERVED. FIELD je nastaveny volanim FUNCTION [ExInitializeSetTimerParameters()].
+   !!! C. FIELD [LONGLONG NoWakeTolerance] urcuje NO-WAKE TIME v 100kach NANOSECONDS. VALUE [EX_TIMER_UNLIMITED_TOLERANCE] znamena, ze ak je CPU je v LOW POWER STATE, TIMER nebude SIGNALED az kym CPU nebude prebudeny z ineho dovodu ako z TIME EXPIRATION.
+21. Pre FUNCTION [ExInitializeSetTimerParameters()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [void ExInitializeSetTimerParameters(PEXT_SET_PARAMETERS Parameters)].
+   B. PARAMETER [PEXT_SET_PARAMETERS Parameters] obsahuje POINTER na STRUCTURE [EXT_SET_PARAMETERS], ktora ma byt inicializovana.
+   C. FUNCTION uvolnuje inicializuje STRUCTURE [EXT_SET_PARAMETERS].
+22. Pre FUNCTION [ExCancelTimer()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [BOOLEAN ExCancelTimer(PEX_TIMER Timer, PEXT_CANCEL_PARAMETERS Parameters)].
+   B. PARAMETER [PEX_TIMER Timer] obsahuje POINTER na EXTENDED TIMER OBJECT.
+   C. PARAMETER [PEXT_CANCEL_PARAMETERS Parameters] MUSI obsahovat VALUE [nullptr].
+   D. RETURN VALUE TYPE [BOOLEAN] vracia VALUE [TRUE] ak bol TIMER CANCELLED a VALUE [FALSE] v opacnom pripade.
+   E. FUNCTION vykonava CANCELLATION EXTENDED TIMER.
+23. KERNEL implementuje IO TIMERS. Pre IO TIMERS platia nasledujuce fakty.
+   !!! A. IO TIMERS su asociovane s OBJECT [DEVICE_OBJECT].
+   B. Kazdy DEVICE OBJECT ma 1 IO TIMER.
+   !!! C. IO TIMER po spusteni vykonava CALLBACK FUNCTION 1 SEKUNDOCH INTERVALOCH, ktore NIE JE mozne ZMENIT.
+   !!! D. CALLBACK FUNCTION IO TIMER je volana na IRQL [DISPATCH_LEVEL].
+   E. IO TIMER sa inicializuje volanim FUNCTION [IoInitializeTimer()].
+   F. IO TIMER sa spusta volanim FUNCTION [IoStartTimer()].
+   G. IO TIMER sa spusta volanim FUNCTION [IoStopTimer()].
+24. Pre FUNCTION [IoInitializeTimer()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [NTSTATUS IoInitializeTimer(PDEVICE_OBJECT DeviceObject, PIO_TIMER_ROUTINE TimerRoutine, PVOID Context)].
+   B. PARAMETER [PDEVICE_OBJECT DeviceObject] obsahuje POINTER na DEVICE OBJECT s ktorym je IO TIMER asociovany.
+   !!! C. PARAMETER [PIO_TIMER_ROUTINE TimerRoutine] obsahuje POINTER na CALLBACK FUNCTION, ktoru IO TIMER vola v 1 sekundovych intervaloch. CALLBACK FUNCTION ma PROTOTYPE [void IoTimerRoutine(_DEVICE_OBJECT* DeviceObject, PVOID Context)].
+   D. PARAMETER [PVOID Context] obsahuje CUSTOM PARAMETER, ktory je zaslany do CALLBACK FUNCTION.
+   E. RETURN VALUE TYPE [NTSTATUS] obsahuje informaciu ci FUNCTION skoncila uspesne.
+   F. FUNCTION inicializuje IO TIMER asociovany s DEVICE OBJECT.
+   !!! G. FUNCTION moze byt volana iba 1 pre dany DEVICE OBJECT.
+25. Pre FUNCTION [IoStartTimer()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [void IoStartTimer(PDEVICE_OBJECT DeviceObject)].
+   B. PARAMETER [PDEVICE_OBJECT DeviceObject] obsahuje POINTER na DEVICE OBJECT s ktorym je IO TIMER asociovany.
+   C. FUNCTION spusta IO TIMER asociovany s DEVICE OBJECT.
+26. Pre FUNCTION [IoStopTimer()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [void IoStopTimer(PDEVICE_OBJECT DeviceObject)].
+   B. PARAMETER [PDEVICE_OBJECT DeviceObject] obsahuje POINTER na DEVICE OBJECT s ktorym je IO TIMER asociovany.
+   C. FUNCTION zastavuje IO TIMER asociovany s DEVICE OBJECT.
+27. WINDOWS KERNEL implementuje GENERIC TABLES co su implementacie BINARY TREES. WINDOWS KERNEL implementuje nasledujuce typu GENERIC TABLES.
+   A. SPLAY TREES.
+   B. AVL TREES.
+28. Pre SPLAY TREES platia nasledujuce fakty.
+   A. SPLAY TREES su BINARY TREES, ktore automaticky presuvaju casto pouzivane ITEMS blizsie k ROOT cim sa zvysuje PERFORMANCE.
+   B. SPLAY TREES NIE su SELF-BALANCING, ktore mozu mat lubovolnu DEPTH.
+   C. SPLAY TREES NIE su THREAD SAFE.
+   D. SPLAY TREES su reprezentovane OBJECT TYPE [RTL_GENERIC_TABLE].
+   !!! E. SPLAY TREES pouzivaju KEYS na vyhladavanie ITEMS v SPLAY TREES. KEYS su porovnavane v COMPARE ROUTINE, ktora sa definuje vo FUNCTION [RtlInitializeGenericTable()].
+   !!! F. SPLAY TREES definuju ALLOCATION FUNCTION a FREE FUNCTION, ktore sluzia na alokovanie a uvolnovanie ITEMS v SPLAY TREES. ITEMS obsahuju okrem CUSTOM DATA aj INTERNAL DATA, ktore SPLAY TREES potrebuju na ukladanie ITEMS v SPLAY TREES. ALLOCATION FUNCTION a FREE FUNCTION sa definuju vo FUNCTION [RtlInitializeGenericTable()].
+   G. SPLAY TREES umoznuju ENUMERATION vsetkych ITEMS.
+   H. SPLAY TREE sa inicializuje volanim FUNCTION [RtlInitializeGenericTable()].
+   I. Do SPLAY TREE sa vklada ITEM volanim FUNCTION [RtlInsertElementGenericTable()].
+   J. Z SPLAY TREE sa odstranuje ITEM volanim FUNCTION [RtlDeleteElementGenericTable()].
+   K. V SPLAY TREE sa vyhladava ITEM na zaklade KEY volanim FUNCTION [RtlLookupElementGenericTable()].
+   L. V SPLAY TREE sa vyhladava ITEM na zaklade INDEX volanim FUNCTION [RtlGetElementGenericTable()].
+   !!! M. V SPLAY TREE sa enumeruju ITEMS volanim FUNCTION [RtlEnumerateGenericTable()]. ITEMS su pred enumerovanim FLATTENED CONVERSION SPLAY TREE na LINKED LIST.
+   !!! N. V SPLAY TREE sa enumeruju ITEMS volanim FUNCTION [RtlEnumerateGenericTableWithoutSplaying()]. ITEMS NIE su pred enumerovanim FLATTENED CONVERSION SPLAY TREE na LINKED LIST.
+   O. Pocet ITEMS v SPLAY TREE sa sa ziskava volanim FUNCTION [RtlNumberGenericTableElements()].
+   P. Informacia ci je SPLAY TREE EMPTY sa ziskava volanim FUNCTION [RtlIsGenericTableEmpty()].
+29. Pre FUNCTION [RtlInitializeGenericTable()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [void RtlInitializeGenericTable(PRTL_GENERIC_TABLE Table, PRTL_GENERIC_COMPARE_ROUTINE CompareRoutine, PRTL_GENERIC_ALLOCATE_ROUTINE AllocateRoutine, PRTL_GENERIC_FREE_ROUTINE FreeRoutine, PVOID TableContext)].
+   B. PARAMETER [PRTL_GENERIC_TABLE Table] obsahuje POINTER na vytvoreny OBJECT [RTL_GENERIC_TABLE].
+   !!! C. PARAMETER [PRTL_GENERIC_COMPARE_ROUTINE CompareRoutine] obsahuje POINTER na COMPARE ROUTINE. COMPARE ROUTINE sa pouziva na porovnavanie KEYS. COMPARE ROUTINE ma PROTOTYPE [RTL_GENERIC_COMPARE_RESULTS RTL_GENERIC_COMPARE_ROUTINE(_RTL_GENERIC_TABLE* Table, PVOID FirstStruct, PVOID SecondStruct)].
+   !!! D. PARAMETER [PRTL_GENERIC_ALLOCATE_ROUTINE AllocateRoutine] obsahuje POINTER na ALLOCATE ROUTINE. ALLOCATE ROUTINE vykonava alokaciu BUFFER pre ITEM, ktory okrem samotnej VALUE obsahuje aj data potrebne pre spravu TREE. FUNCTION ma PROTOTYPE [PVOID RTL_GENERIC_ALLOCATE_ROUTINE(_RTL_GENERIC_TABLE *Table, CLONG ByteSize)].
+   !!! E. PARAMETER [PRTL_GENERIC_FREE_ROUTINE FreeRoutine] obsahuje POINTER na FREE ROUTINE. FREE ROUTINE uvolnenie BUFFER pre ITEM, ktory okrem samotnej VALUE obsahuje aj data potrebne pre spravu TREE. FUNCTION ma PROTOTYPE [void RTL_GENERIC_FREE_ROUTINE(_RTL_GENERIC_TABLE* Table, PVOID Buffer)].
+   !!! F. PARAMETER [PVOID TableContext] obsahuje CUSTOM VALUE, ktora je pristupna vo FIELD [PVOID TableContext] STRUCTURE [RTL_GENERIC_TABLE].
+   G. FUNCTION inicializuje SPLAY TREE.
+30. Pre COMPARE ROUTINE definovana vo FUNCTION [RtlInitializeGenericTable()] platia nasledujuce fakty.
+   A. COMPARE FUNCTION ma PROTOTYPE [RTL_GENERIC_COMPARE_RESULTS RTL_GENERIC_COMPARE_ROUTINE(_RTL_GENERIC_TABLE* Table, PVOID FirstStruct, PVOID SecondStruct)].
+   B. PARAMETER [_RTL_GENERIC_TABLE* Table] obsahuje POINTER na OBJECT [RTL_GENERIC_TABLE].
+   C. PARAMETER [PVOID FirstStruct] obsahuje POINTER na FIRST ITEM, ktory sa ma porovnat.
+   D. PARAMETER [PVOID SecondStruct] obsahuje POINTER na SECOND ITEM, ktory sa ma porovnat.
+   !!! E. RETURN VALUE TYPE [RTL_GENERIC_COMPARE_RESULTS] obsahuje vysledok porovnania. Moze obsahovat nasledujuce VALUES.
+      A. VALUE [GenericLessThan] znamena, ze [FirstStruct<SecondStruct].
+      B. VALUE [GenericGreaterThan] znamena, ze [FirstStruct>SecondStruct].
+      C. VALUE [GenericEqual] znamena, ze [FirstStruct==SecondStruct].
+31. Pre FUNCTION [RtlInsertElementGenericTable()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [PVOID RtlInsertElementGenericTable(PRTL_GENERIC_TABLE Table, PVOID Buffer, CLONG BufferSize, PBOOLEAN NewElement)].
+   B. PARAMETER [PRTL_GENERIC_TABLE Table] obsahuje POINTER na OBJECT [RTL_GENERIC_TABLE].
+   C. PARAMETER [PVOID Buffer] obsahuje POINTER na BUFFER, ktory obsahuje data, ktore sa maju ulozit do TREE.
+   D. PARAMETER [CLONG BufferSize] obsahuje BUFFER SIZE dat ktore sa maju ulozit do TREE.
+   E. PARAMETER [PBOOLEAN NewElement] obsahuje POINTER na VALUE [BOOLEAN] do ktoreho sa ulozi ci ITEM bol do TREE vlozeny, alebo sa uz v TREE nachadal.
+   !!! F. RETURN VALUE TYPE [PVOID] ak bol ITEM do TREE vlozeny, obsahuje POINTER na novy ITEM. Ak uz ITEM v TREE existoval, obsahuje POINTER na existujuci ITEM. VALUE [nullptr] sa vrati, ak ITEM s s TREE DATA nemohol byt alokovany. Napriklad preto, ze ALLOCATION FUNCTION zlyhala.
+   G. FUNCTION vklada novy ITEM do SPLAY TREE.
+   !!! H. Pri pokuse vlozit ITEM s ROVNAKYM KEY nie je do TREE vlozeny ziaden ITEM a ani nie je volana ALLOCATE FUNCTION.
+32. Pre FUNCTION [RtlDeleteElementGenericTable()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [BOOLEAN RtlDeleteElementGenericTable(PRTL_GENERIC_TABLE Table, PVOID Buffer)].
+   B. PARAMETER [PRTL_GENERIC_TABLE Table] obsahuje POINTER na OBJECT [RTL_GENERIC_TABLE].
+   C. PARAMETER [PVOID Buffer] obsahuje POINTER na BUFFER, ktory obsahuje KEY na zaklade ktoreho sa ma ostranit ITEM z TREE.
+   D. RETURN VALUE TYPE [BOOLEAN] obsahuje informaciu ci ITEM bol odstraneny z TREE.
+   E. FUNCTION odstranuje existujuci ITEM zo SPLAY TREE.
+33. Pre FUNCTION [RtlEnumerateGenericTable()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [PVOID RtlEnumerateGenericTable(PRTL_GENERIC_TABLE Table, BOOLEAN Restart)].
+   B. PARAMETER [PRTL_GENERIC_TABLE Table] obsahuje POINTER na OBJECT [RTL_GENERIC_TABLE].
+   C. PARAMETER [BOOLEAN Restart] obsahuje informaciu ci sa ma spustit nova ENUMERATION od zaciatku TREE, alebo sa ma pokracovat tam kde ENUMERATION skoncila poslednym volanim tejto FUNCTION.
+   !!! D. RETURN VALUE TYPE [PVOID] obsahuje POINTER na ITEM, ale VALUE [nullptr] ako ENUMERATION skoncila.
+   E. FUNCTION vykonava krok v ENUMERATION SPLAY TREE.
+   F. FUNCTION VYKONAVA CONVERSION zo SPLAY TREE na LINKED LIST.
+34. Pre FUNCTION [RtlEnumerateGenericTableWithoutSplaying()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [PVOID RtlEnumerateGenericTableWithoutSplaying(PRTL_GENERIC_TABLE Table, PVOID* RestartKey)].
+   B. PARAMETER [PRTL_GENERIC_TABLE Table] obsahuje POINTER na OBJECT [RTL_GENERIC_TABLE].
+   !!!!! C. PARAMETER [PVOID* RestartKey] obsahuje VALUE [nullptr] ak ma ENUMERATION zacat, alebo POINTER na PARAMETER [PVOID* RestartKey] z posledneho volania FUNCTION, kde ma ENUMERATION pokracovat. POINTER obsahuje ITEM, ktory obsahuje okrem USER DATA aj data potrebne pre spravu TREE.
+   !!! D. RETURN VALUE TYPE [PVOID] obsahuje POINTER na ENUMERATED ITEM, alebo VALUE [nullptr], ak ENUMERATION skoncila.
+   E. FUNCTION vykonava krok v ENUMERATION SPLAY TREE.
+   !!! F. FUNCTION NEVYKONAVA CONVERSION zo SPLAY TREE na LINKED LIST.
+35. Pre FUNCTION [RtlLookupElementGenericTable()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [PVOID RtlLookupElementGenericTable(PRTL_GENERIC_TABLE Table, PVOID Buffer)].
+   B. PARAMETER [PRTL_GENERIC_TABLE Table] obsahuje POINTER na OBJECT [RTL_GENERIC_TABLE].
+   C. PARAMETER [PVOID Buffer] obsahuje POINTER na BUFFER, ktory obsahuje KEY na zaklade ktoreho sa ma vyhladat ITEM v TREE.
+   !!! D. RETURN VALUE TYPE [PVOID] obsahuje POINTER na najdeny ITEM, alebo VALUE [nullptr], ak sa ITEM v TREE nenachadzal.
+   E. FUNCTION vracia ITEM zo SPLAY TREE najdeny na zaklade KEY.
+36. Pre FUNCTION [RtlGetElementGenericTable()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [PVOID RtlGetElementGenericTable(PRTL_GENERIC_TABLE Table, ULONG I)].
+   B. PARAMETER [PRTL_GENERIC_TABLE Table] obsahuje POINTER na OBJECT [RTL_GENERIC_TABLE].
+   C. PARAMETER [ULONG I] obsahuje ZERO BASED INDEX na ITEM v TREE.
+   !!! D. RETURN VALUE TYPE [PVOID] obsahuje POINTER na najdeny ITEM, alebo VALUE [nullptr], ak sa ITEM v TREE nenachadzal.
+   E. FUNCTION vracia ITEM zo SPLAY TREE najdeny na zaklade INDEX.
+37. Pre FUNCTION [RtlNumberGenericTableElements()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [ULONG RtlNumberGenericTableElements(PRTL_GENERIC_TABLE Table)].
+   B. PARAMETER [PRTL_GENERIC_TABLE Table] obsahuje POINTER na OBJECT [RTL_GENERIC_TABLE].
+   !!! C. RETURN VALUE TYPE [ULONG] obsahuje POCET ITEMS v TREE.
+   D. FUNCTION vracia POCET ITEMS v SPLAY TREE.
+38. Pre FUNCTION [RtlIsGenericTableEmpty()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [BOOLEAN RtlIsGenericTableEmpty(PRTL_GENERIC_TABLE Table)].
+   B. PARAMETER [PRTL_GENERIC_TABLE Table] obsahuje POINTER na OBJECT [RTL_GENERIC_TABLE].
+   !!! C. RETURN VALUE TYPE [BOOLEAN] vracia informaciu ci je TREE EMPTY.
+   D. FUNCTION vracia informaciu ci je SPLAY TREE EMPTY.
+39. Pre AVL TREES platia nasledujuce fakty.
+   A. AVL TREES su BINARY TREES, ktore su SELF-BALANCING.
+   B. AVL TREES maju LOGARITHMIC DEPTH, kde DEPTH je rovny logaritmu poctu ITEMS pri zaklade 2.
+   C. AVL TREES su podobne RED BLACK TREES, ale su rychlejsie pre ITEM RETRIEVAL.
+   D. AVL TREES NIE su THREAD SAFE.
+   E. AVL TREES su reprezentovane OBJECT TYPE [RTL_AVL_TABLE].
+   !!! F. AVL TREES pouzivaju KEYS na vyhladavanie ITEMS v AVL TREES. KEYS su porovnavane v COMPARE ROUTINE, ktora sa definuje vo FUNCTION [RtlInitializeGenericTableAvl()].
+   !!! G. AVL TREES definuju ALLOCATION FUNCTION a FREE FUNCTION, ktore sluzia na alokovanie a uvolnovanie ITEMS v AVL TREES. ITEMS obsahuju okrem CUSTOM DATA aj INTERNAL DATA, ktore AVL TREES potrebuju na ukladanie ITEMS v AVL TREES. ALLOCATION FUNCTION a FREE FUNCTION sa definuju vo FUNCTION [RtlInitializeGenericTableAvl()].
+   H. AVL TREES umoznuju ENUMERATION vsetkych ITEMS.
+   I. AVL TREE sa inicializuje volanim FUNCTION [RtlInitializeGenericTableAvl()].
+   J. Do AVL TREE sa vklada ITEM volanim FUNCTION [RtlInsertElementGenericTableAvl()].
+   K. Z AVL TREE sa odstranuje ITEM volanim FUNCTION [RtlDeleteElementGenericTableAvl()].
+   L. V AVL TREE sa vyhladava ITEM na zaklade KEY volanim FUNCTION [RtlLookupElementGenericTableAvl()].
+   M. V AVL TREE sa vyhladava ITEM na zaklade INDEX volanim FUNCTION [RtlGetElementGenericTableAvl()].
+   !!! N. V AVL TREE sa enumeruju ITEMS volanim FUNCTION [RtlEnumerateGenericTableAvl()].
+   !!! O. V AVL TREE sa enumeruju ITEMS volanim FUNCTION [RtlEnumerateGenericTableWithoutSplayingAvl()]. Kedze AVL TREES NEPOZIVAJU SPLAYING, tak jej cinnost nelisi of FUNCTION [RtlEnumerateGenericTableAvl()].
+   P. Pocet ITEMS v AVL TREE sa sa ziskava volanim FUNCTION [RtlNumberGenericTableElementsAvl()].
+   Q. Informacia ci je SPLAY TREE EMPTY sa ziskava volanim FUNCTION [RtlIsGenericTableEmptyAvl()].
+40. Pre FUNCTION [RtlInitializeGenericTableAvl()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [void RtlInitializeGenericTableAvl(PRTL_AVL_TABLE Table, PRTL_AVL_COMPARE_ROUTINE CompareRoutine, PRTL_AVL_ALLOCATE_ROUTINE AllocateRoutine, PRTL_AVL_FREE_ROUTINE FreeRoutine, PVOID TableContext)].
+   B. PARAMETER [PRTL_AVL_TABLE Table] obsahuje POINTER na vytvoreny OBJECT [RTL_AVL_TABLE].
+   !!! C. PARAMETER [PRTL_AVL_COMPARE_ROUTINE CompareRoutine] obsahuje POINTER na COMPARE ROUTINE. COMPARE ROUTINE sa pouziva na porovnavanie KEYS. COMPARE ROUTINE ma PROTOTYPE [RTL_GENERIC_COMPARE_RESULTS RTL_AVL_COMPARE_ROUTINE(_RTL_AVL_TABLE *Table, PVOID FirstStruct, _In_ PVOID SecondStruct)].
+   !!! D. PARAMETER [PRTL_AVL_ALLOCATE_ROUTINE AllocateRoutine] obsahuje POINTER na ALLOCATE ROUTINE. ALLOCATE ROUTINE vykonava alokaciu BUFFER pre ITEM, ktory okrem samotnej VALUE obsahuje aj data potrebne pre spravu TREE. FUNCTION ma PROTOTYPE [PVOID RTL_AVL_ALLOCATE_ROUTINE(_RTL_AVL_TABLE *Table, CLONG ByteSize)].
+   !!! E. PARAMETER [PRTL_AVL_FREE_ROUTINE FreeRoutine] obsahuje POINTER na FREE ROUTINE. FREE ROUTINE uvolnenie BUFFER pre ITEM, ktory okrem samotnej VALUE obsahuje aj data potrebne pre spravu TREE. FUNCTION ma PROTOTYPE [void RTL_AVL_FREE_ROUTINE(_RTL_AVL_TABLE* Table, PVOID Buffer)].
+   !!! F. PARAMETER [PVOID TableContext] obsahuje CUSTOM VALUE, ktora je pristupna vo FIELD [PVOID TableContext] STRUCTURE [RTL_AVL_TABLE].
+   G. FUNCTION inicializuje AVL TREE.
+41. Pre COMPARE ROUTINE definovana vo FUNCTION [RtlInitializeGenericTableAvl()] platia nasledujuce fakty.
+   A. COMPARE FUNCTION ma PROTOTYPE [RTL_GENERIC_COMPARE_RESULTS RTL_AVL_COMPARE_ROUTINE(_RTL_AVL_TABLE* Table, PVOID FirstStruct, _In_ PVOID SecondStruct)].
+   B. PARAMETER [_RTL_AVL_TABLE* Table] obsahuje POINTER na OBJECT [RTL_AVL_TABLE].
+   C. PARAMETER [PVOID FirstStruct] obsahuje POINTER na FIRST ITEM, ktory sa ma porovnat.
+   D. PARAMETER [PVOID SecondStruct] obsahuje POINTER na SECOND ITEM, ktory sa ma porovnat.
+   !!! E. RETURN VALUE TYPE [RTL_GENERIC_COMPARE_RESULTS] obsahuje vysledok porovnania. Moze obsahovat nasledujuce VALUES.
+      A. VALUE [GenericLessThan] znamena, ze [FirstStruct<SecondStruct].
+      B. VALUE [GenericGreaterThan] znamena, ze [FirstStruct>SecondStruct].
+      C. VALUE [GenericEqual] znamena, ze [FirstStruct==SecondStruct].
+42. Pre FUNCTION [RtlInsertElementGenericTableAvl()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [PVOID RtlInsertElementGenericTableAvl(PRTL_AVL_TABLE Table, PVOID Buffer, CLONG BufferSize, PBOOLEAN NewElement)].
+   B. PARAMETER [PRTL_AVL_TABLE Table] obsahuje POINTER na OBJECT [RTL_AVL_TABLE].
+   C. PARAMETER [PVOID Buffer] obsahuje POINTER na BUFFER, ktory obsahuje data, ktore sa maju ulozit do TREE.
+   D. PARAMETER [CLONG BufferSize] obsahuje BUFFER SIZE dat ktore sa maju ulozit do TREE.
+   E. PARAMETER [PBOOLEAN NewElement] obsahuje POINTER na VALUE [BOOLEAN] do ktoreho sa ulozi ci ITEM bol do TREE vlozeny, alebo sa uz v TREE nachadal.
+   !!! F. RETURN VALUE TYPE [PVOID] ak bol ITEM do TREE vlozeny, obsahuje POINTER na novy ITEM. Ak uz ITEM v TREE existoval, obsahuje POINTER na existujuci ITEM. VALUE [nullptr] sa vrati, ak ITEM s s TREE DATA nemohol byt alokovany. Napriklad preto, ze ALLOCATION FUNCTION zlyhala.
+   G. FUNCTION vklada novy ITEM do AVL TREE.
+   !!! H. Pri pokuse vlozit ITEM s ROVNAKYM KEY nie je do TREE vlozeny ziaden ITEM a ani nie je volana ALLOCATE FUNCTION.
+43. Pre FUNCTION [RtlDeleteElementGenericTableAvl()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [BOOLEAN RtlDeleteElementGenericTableAvl(PRTL_AVL_TABLE Table, PVOID Buffer)].
+   B. PARAMETER [PRTL_AVL_TABLE Table] obsahuje POINTER na OBJECT [RTL_AVL_TABLE].
+   C. PARAMETER [PVOID Buffer] obsahuje POINTER na BUFFER, ktory obsahuje KEY na zaklade ktoreho sa ma ostranit ITEM z TREE.
+   D. RETURN VALUE TYPE [BOOLEAN] obsahuje informaciu ci ITEM bol odstraneny z TREE.
+   E. FUNCTION odstranuje existujuci ITEM zo AVL TREE.
+44. Pre FUNCTION [RtlEnumerateGenericTableAvl()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [PVOID RtlEnumerateGenericTableAvl(PRTL_AVL_TABLE Table, BOOLEAN Restart)].
+   B. PARAMETER [PRTL_AVL_TABLE Table] obsahuje POINTER na OBJECT [RTL_AVL_TABLE].
+   C. PARAMETER [BOOLEAN Restart] obsahuje informaciu ci sa ma spustit nova ENUMERATION od zaciatku TREE, alebo sa ma pokracovat tam kde ENUMERATION skoncila poslednym volanim tejto FUNCTION.
+   !!! D. RETURN VALUE TYPE [PVOID] obsahuje POINTER na ITEM, ale VALUE [nullptr] ako ENUMERATION skoncila.
+   E. FUNCTION vykonava krok v ENUMERATION AVL TREE.
+45. Pre FUNCTION [RtlEnumerateGenericTableWithoutSplayingAvl()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [PVOID RtlEnumerateGenericTableWithoutSplayingAvl(PRTL_AVL_TABLE Table, PVOID* RestartKey)].
+   B. PARAMETER [PRTL_AVL_TABLE Table] obsahuje POINTER na OBJECT [RTL_AVL_TABLE].
+   !!!!! C. PARAMETER [PVOID* RestartKey] obsahuje VALUE [nullptr] ak ma ENUMERATION zacat, alebo POINTER na PARAMETER [PVOID* RestartKey] z posledneho volania FUNCTION, kde ma ENUMERATION pokracovat. POINTER obsahuje ITEM, ktory obsahuje okrem USER DATA aj data potrebne pre spravu TREE.
+   !!! D. RETURN VALUE TYPE [PVOID] obsahuje POINTER na ENUMERATED ITEM, alebo VALUE [nullptr], ak ENUMERATION skoncila.
+   E. FUNCTION vykonava krok v ENUMERATION AVL TREE.
+   !!! F. FUNCTION je funkcionalitou IDENTICKA s FUNCTION [RtlEnumerateGenericTableAvl()]. Je definovana iba kvoli kompatibilite API so SPLAY TREES.
+46. Pre FUNCTION [RtlLookupElementGenericTableAvl()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [PVOID RtlLookupElementGenericTableAvl(PRTL_AVL_TABLE Table, PVOID Buffer)].
+   B. PARAMETER [PRTL_AVL_TABLE Table] obsahuje POINTER na OBJECT [RTL_AVL_TABLE].
+   C. PARAMETER [PVOID Buffer] obsahuje POINTER na BUFFER, ktory obsahuje KEY na zaklade ktoreho sa ma vyhladat ITEM v TREE.
+   !!! D. RETURN VALUE TYPE [PVOID] obsahuje POINTER na najdeny ITEM, alebo VALUE [nullptr], ak sa ITEM v TREE nenachadzal.
+   E. FUNCTION vracia ITEM zo AVL TREE najdeny na zaklade KEY.
+47. Pre FUNCTION [RtlGetElementGenericTableAvl()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [PVOID RtlGetElementGenericTableAvl(PRTL_AVL_TABLE Table, ULONG I)].
+   B. PARAMETER [PRTL_AVL_TABLE Table] obsahuje POINTER na OBJECT [RTL_AVL_TABLE].
+   C. PARAMETER [ULONG I] obsahuje ZERO BASED INDEX na ITEM v TREE.
+   !!! D. RETURN VALUE TYPE [PVOID] obsahuje POINTER na najdeny ITEM, alebo VALUE [nullptr], ak sa ITEM v TREE nenachadzal.
+   E. FUNCTION vracia ITEM zo AVL TREE najdeny na zaklade INDEX.
+48. Pre FUNCTION [RtlNumberGenericTableElements()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [ULONG RtlNumberGenericTableElementsAvl(PRTL_AVL_TABLE Table)].
+   B. PARAMETER [PRTL_AVL_TABLE Table] obsahuje POINTER na OBJECT [RTL_AVL_TABLE].
+   !!! C. RETURN VALUE TYPE [ULONG] obsahuje POCET ITEMS v TREE.
+   D. FUNCTION vracia POCET ITEMS v AVL TREE.
+49. Pre FUNCTION [RtlIsGenericTableEmptyAvl()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [BOOLEAN RtlIsGenericTableEmptyAvl(PRTL_AVL_TABLE Table)].
+   B. PARAMETER [PRTL_AVL_TABLE Table] obsahuje POINTER na OBJECT [RTL_AVL_TABLE].
+   !!! C. RETURN VALUE TYPE [BOOLEAN] vracia informaciu ci je TREE EMPTY.
+   D. FUNCTION vracia informaciu ci je AVL TREE EMPTY.
+50. WINDOWS KERNEL umoznuje rychlu modifikaciu SPLAY TREES na AVL TREES bez nutnosti zmeni SOURCE CODES. Zmena sa vykonava nasledujucim sposobom.
+   A. PRED INCLUDE HEADER [<ntddk.h>] sa vlozi DEFINE [RTL_USE_AVL_TABLES].
+   B. Vdaka tomuto DEFINE budu vsetky SPLAY TREES implementovane ako AVL TREES.
+!!! 51. WINDOWS KERNEL obsahuje aj implementaciu HASH TABLES, tie vsak NIE SU DOCUMENTED, hoci su pristupne v HEADER [<ntddk.h>].
+52. WINDOWS KERNEL podporuje SINGLY LINKED LISTS. Pre SINGLY LINKED LISTS platia nasledujuce fakty.
+   A. SINGLY LINKED LISTS su reprezentovane STRUCTURE [SINGLE_LIST_ENTRY].
+   B. SINGLY LINKED LISTS su jednosmerne LISTS umoznujuce pridavat a odoberat ITEMS z LIST HEAD.
+   C. SINGLY LINKED LISTS podporuju aj API pre THREAD SAFE OPERATIONS.
+   D. Novy ITEM sa do SINGLY LINKED LISTS pridava volanim FUNCTION [PushEntryList()].
+   E. Existujuci ITEM sa zo SINGLY LINKED LISTS odstranuje volanim FUNCTION [PopEntryList()].
+   F. Novy ITEM sa do SINGLY LINKED LISTS THREAD SAFE sposobom pridava volanim FUNCTION [ExInterlockedPushEntryList()].
+   G. Existujuci ITEM sa zo SINGLY LINKED LISTS THREAD SAFE sposobom odstranuje volanim FUNCTION [ExInterlockedPopEntryList()].
+   !!! H. MACRO [CONTAINING_RECORD()] umoznuje pre POINTER [SINGLE_LIST_ENTRY*] ziskat POINTER na CUSTOM STRUCTURE, ktora obsahuje dany POINTER [SINGLE_LIST_ENTRY*]. To znamena, ze MACRO umoznuje ziskat POINTER na PARENT CUSTOM STRUCTURE, ktore obsahuje POINTER [SINGLE_LIST_ENTRY*].
+53. STRUCTURE [SINGLE_LIST_ENTRY] ma jediny FIELD [_SINGLE_LIST_ENTRY* Next] odkazujuci na nasledujuci ITEM v SINGLY LINKED LIST.
+54. Pre FUNCTION [PushEntryList()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [void PushEntryList(PSINGLE_LIST_ENTRY ListHead, PSINGLE_LIST_ENTRY Entry)].
+   B. PARAMETER [PSINGLE_LIST_ENTRY ListHead] obsahuje HEAD na LIST.
+   C. PARAMETER [PSINGLE_LIST_ENTRY Entry] obsahuje novy ITEM, ktory bude pridany do LIST.
+   D. FUNCTION pridava novy ITEM do SINGLY LINKED LIST.
+55. Pre FUNCTION [PopEntryList()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [PSINGLE_LIST_ENTRY PopEntryList(PSINGLE_LIST_ENTRY ListHead)].
+   B. PARAMETER [PSINGLE_LIST_ENTRY ListHead] obsahuje HEAD na LIST.
+   !!! C. RETURN VALUE TYPE [PSINGLE_LIST_ENTRY] vracia odstraneny ITEM v LIST, alebo VALUE [nullptr], ak bol LIST prazdny.
+   D. FUNCTION odstranuje existujuci ITEM zo SINGLY LINKED LIST.
+56. Pre FUNCTION [ExInterlockedPushEntryList()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [PSINGLE_LIST_ENTRY ExInterlockedPushEntryList(PSINGLE_LIST_ENTRY ListHead, PSINGLE_LIST_ENTRY ListEntry, PKSPIN_LOCK Lock)].
+   B. PARAMETER [PSINGLE_LIST_ENTRY ListHead] obsahuje HEAD na LIST.
+   C. PARAMETER [PSINGLE_LIST_ENTRY Entry] obsahuje novy ITEM, ktory bude pridany do LIST.
+   D. PARAMETER [PKSPIN_LOCK Lock] obsahuje SPIN LOCK, ktory sa pouziva na SYNCHRONIZATION LIST OPERATIONS.
+   !!! E. RETURN VALUE TYPE [PSINGLE_LIST_ENTRY] vracia prvy ITEM PRED pridanim noveho ITEM do LIST, alebo VALUE [nullptr], ak bol LIST prazdny.
+   F. FUNCTION pridava novy ITEM do SINGLY LINKED LIST THREAD SAFE sposobom.
+57. Pre FUNCTION [ExInterlockedPopEntryList()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [PSINGLE_LIST_ENTRY ExInterlockedPopEntryList(PSINGLE_LIST_ENTRY ListHead, PKSPIN_LOCK Lock)].
+   B. PARAMETER [PSINGLE_LIST_ENTRY ListHead] obsahuje HEAD na LIST.
+   C. PARAMETER [PKSPIN_LOCK Lock] obsahuje SPIN LOCK, ktory sa pouziva na SYNCHRONIZATION LIST OPERATIONS.
+   !!! D. RETURN VALUE TYPE [PSINGLE_LIST_ENTRY] vracia odstraneny ITEM v LIST, alebo VALUE [nullptr], ak bol LIST prazdny.
+   E. FUNCTION odstranuje existujuci ITEM zo SINGLY LINKED LIST THREAD SAFE sposobom.
+58. WINDOWS KERNEL podporuje SEQUENCED SINGLY LINKED LISTS. Pre SEQUENCED SINGLY LINKED LISTS platia nasledujuce fakty.
+   A. SEQUENCED SINGLY LINKED LISTS su reprezentovane STRUCTURE [SLIST_HEADER].
+   B. SEQUENCED SINGLY LINKED LIST ITEMS su reprezentovane STRUCTURE [SLIST_ENTRY].
+   C. SEQUENCED SINGLY LINKED LISTS su jednosmerne LISTS umoznujuce pridavat a odoberat ITEMS z LIST HEAD.
+   !!! D. SEQUENCED SINGLY LINKED LISTS su THREAD SAFE, pricom THREAD SAFE je realizovany pomocou LOCK FREE ALGORITHMS.
+   E. SEQUENCED SINGLY LINKED LISTS su inicializovane volanim FUNCTION [InitializeSListHead()].
+   F. Novy ITEM sa do SEQUENCED SINGLY LINKED LISTS pridava volanim FUNCTION [ExpInterlockedPushEntrySList()].
+   G. Existujuci ITEM sa zo SEQUENCED SINGLY LINKED LISTS odstranuje volanim FUNCTION [ExpInterlockedPopEntrySList()].
+   !!! H. SEQUENCED SINGLY LINKED LISTS sa vymazava volanim FUNCTION [ExInterlockedFlushSList()]. FUNCTION vsak len nastavi HEAD na NULL, ale neodstranuje ITEMS z MEMORY.
+   I. Pocet ITEMS v SEQUENCED SINGLY LINKED LISTS sa ziskava volanim FUNCTION [ExQueryDepthSList()].
+   !!! J. MACRO [CONTAINING_RECORD()] umoznuje pre POINTER [SLIST_ENTRY*] ziskat POINTER na CUSTOM STRUCTURE, ktora obsahuje dany POINTER [SLIST_ENTRY*]. To znamena, ze MACRO umoznuje ziskat POINTER na PARENT CUSTOM STRUCTURE, ktore obsahuje POINTER [SLIST_ENTRY*].
+59. STRUCTURE [SLIST_ENTRY] ma jediny FIELD [_SLIST_ENTRY* Next] odkazujuci na nasledujuci ITEM v SEQUENCED SINGLY LINKED LIST.
+60. Pre FUNCTION [InitializeSListHead()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [void InitializeSListHead(PSLIST_HEADER ListHead)].
+   B. PARAMETER [PSLIST_HEADER ListHead] obsahuje HEAD na LIST.
+   C. FUNCTION inicializuje SEQUENCED  SINGLY LINKED LIST.
+61. Pre FUNCTION [ExpInterlockedPushEntrySList()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [PSLIST_ENTRY ExpInterlockedPushEntrySList(PSLIST_HEADER ListHead, PSLIST_ENTRY ListEntry)].
+   B. PARAMETER [PSLIST_HEADER ListHead] obsahuje HEAD na LIST.
+   C. PARAMETER [PSLIST_ENTRY ListEntry] obsahuje novy ITEM, ktory bude pridany do LIST.
+   !!! D. RETURN VALUE TYPE [PSLIST_ENTRY] vracia prvy ITEM PRED pridanim noveho ITEM do LIST, alebo VALUE [nullptr], ak bol LIST prazdny.
+   E. FUNCTION pridava novy ITEM do SEQUENCED SINGLY LINKED LIST.
+62. Pre FUNCTION [ExpInterlockedPopEntrySList()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [PSLIST_ENTRY ExpInterlockedPopEntrySList(PSLIST_HEADER ListHead)].
+   B. PARAMETER [PSLIST_HEADER ListHead] obsahuje HEAD na LIST.
+   !!! C. RETURN VALUE TYPE [PSLIST_ENTRY] vracia odstraneny ITEM v LIST, alebo VALUE [nullptr], ak bol LIST prazdny.
+   D. FUNCTION odstranuje existujuci ITEM zo SEQUENCED SINGLY LINKED LIST.
+63. Pre FUNCTION [ExInterlockedFlushSList()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [PSLIST_ENTRY ExInterlockedFlushSList(PSLIST_HEADER ListHead)].
+   B. PARAMETER [PSLIST_HEADER ListHead] obsahuje HEAD na LIST.
+   !!! C. RETURN VALUE TYPE [PSLIST_ENTRY] vracia prvy ITEM v LIST, alebo VALUE [nullptr], ak bol LIST prazdny.
+   D. FUNCTION odstranuje ITEMS zo SEQUENCED SINGLY LINKED LIST.
+   !!!!! E. FUNCTION NEZABEZPECUJE odstranovanie jednotlivych ITEMS, iba nastavi HEAD na NULL. Ostranenie ITEMS a pripadne uvolnenie MEMORY je zalezitost PROGRAMU.
+64. Pre FUNCTION [ExQueryDepthSList()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [USHORT ExQueryDepthSList(PSLIST_HEADER SListHead)].
+   B. PARAMETER [PSLIST_HEADER SListHead] obsahuje HEAD na LIST.
+   !!! C. RETURN VALUE TYPE [USHORT] vracia pocet ITEMS v SEQUENCED SINGLY LINKED LIST.
+   D. FUNCTION vracia pocet ITEMS v SEQUENCED SINGLY LINKED LIST.
+65. WINDOWS KERNEL poskytuje CALLBACK OBJECTS. Pre CALLBACK OBJECTS platia nasledujuce fakty.
+   A. CALLBACK OBJECTS su NAMED OBJECTS registrovane vo WINDOWS, ktore umoznuju, aby CLIENTS boli notifikovane o vzniku definovanych EVENTS.
+   B. WINDOWS KERNEL definuje niekolko standardnych CALLBACK OBJECTS, no DRIVERS mozu definovat aj vlastne CALLBACK OBJECTS.
+   C. Ak je CLIENT prihlaseny na odber CALLBACK OBJECTS, tak pri vzniku EVENT je volana CALLBACK FUNCTION, ktoru CLIENT CODE definoval.
+   !!! D. CALLBACK OBJECTS je mozne zobrazit pomocou TOOL [WinObj] v SEKCII [Callback].
+   E. CALLBACK OBJECTS su vytvarane pomocou FUNCTION [ExCreateCallback()]. FUNCTION umoznuje aj ziskanie EXISTUJUCEHO CALLBACK OBJECT.
+   F. CLIENT CODE registruje CALLBACK FUNCTION pre dany CALLBACK OBJECT volanim FUNCTION [ExRegisterCallback()].
+   G. CLIENT CODE odregistruje CALLBACK FUNCTION pre dany CALLBACK OBJECT volanim FUNCTION [ExUnregisterCallback()].
+   H. EVENTS cez CALLBACK OBECTS su odosielane volanim FUNCTION [ExNotifyCallback()].
+66. Pre FUNCTION [ExCreateCallback()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [NTSTATUS ExCreateCallback(PCALLBACK_OBJECT* CallbackObject, POBJECT_ATTRIBUTES ObjectAttributes, BOOLEAN Create, BOOLEAN AllowMultipleCallbacks)].
+   B. PARAMETER [PCALLBACK_OBJECT* CallbackObject] obsahuje POINTER do ktoreho sa ulozi vytvoreny CALLBACK OBJECT.
+   C. PARAMETER [POBJECT_ATTRIBUTES ObjectAttributes] obsahuje POINTER na STRUCTURE [OBJECT_ATTRIBUTES], ktora popisuje KERNEL OBJECT CALLBACK OBJECT.
+   !!! D. PARAMETER [BOOLEAN Create] urcuje ci ma byt vytvoreny NOVY CALLBACK OBJECT, alebo sa ma otvorit EXISTUJUCI CALLBACK OBJECT.
+   !!! E. PARAMETER [BOOLEAN AllowMultipleCallbacks] urcuje ci na dany CALLBACK OBJECT moze byt zaregistrovanych viacero CLIENT CALLBACKS na odber EVENTS.
+   F. RETURN VALUE TYPE [NTSTATUS] obsahuje informaciu ci FUNCTION skoncila uspesne.
+   G. FUNCTION vytvara novy CALLBACK OBJECT, alebo sa pripaja na EXISTUJUCI CALLBACK OBJECT.
+   !!!!! H. CALLBACK OBJECT MUSI byt uvolneny volanim FUNCTION [ObDereferenceObject()].
+67. Pre FUNCTION [ExRegisterCallback()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [PVOID ExRegisterCallback(PCALLBACK_OBJECT CallbackObject, PCALLBACK_FUNCTION CallbackFunction, PVOID CallbackContext)].
+   B. PARAMETER [PCALLBACK_OBJECT CallbackObject] obsahuje POINTER na CALLBACK OBJECT.
+   !!! C. PARAMETER [PCALLBACK_FUNCTION CallbackFunction] obsahuje CALLBACK FUNCTION, ktora sa bude volat pri vzniku EVENT v CALLBACK OBJECT. CALLBACK FUNCTION ma PROTOTYPE [VOID CALLBACK_FUNCTION(PVOID CallbackContext, PVOID Argument1, PVOID Argument2)].
+   D. PARAMETER [PVOID CallbackContext] obsahuje lubovolnu VALUE, ktora bude zaslana do CALLBACK FUNCTION.
+   !!! E. RETURN VALUE TYPE [PVOID] obsahuje OPAQUE HANDLE, ktory sa pouziva na odregistrovanie CALLBACK FUNCTION volanim FUNCTION [ExUnregisterCallback()]. VALUE [nullptr] znamena, ze registracia CALLBACK FUNCTION zlyhala.
+   F. FUNCTION pre dany CALLBACK OBJECT registruje CALLBACK FUNCTION, ktora sa vola pri vzniku EVENT na danom CALLBACK OBJECT.
+68. Pre FUNCTION [ExUnregisterCallback()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [void ExUnregisterCallback(PVOID CallbackRegistration)].
+   !!! B. PARAMETER [PCALLBACK_OBJECT CallbackObject] obsahuje VALUE, ktoru vratila FUNCTION [ExRegisterCallback()].
+   C. FUNCTION pre dany CALLBACK OBJECT odregistruje CALLBACK FUNCTION, ktora sa vola pri vzniku EVENT na danom CALLBACK OBJECT.
+69. Pre FUNCTION [ExNotifyCallback()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [void ExNotifyCallback(PVOID CallbackObject, PVOID Argument1, PVOID Argument2)].
+   B. PARAMETER [PCALLBACK_OBJECT CallbackObject] obsahuje POINTER na CALLBACK OBJECT.
+   C. PARAMETER [PVOID Argument1] obsahuje 1. CUSTOM ARGUMENT, ktory je zaslany do CALLBACK FUNCTION daneho CALLBACK OBJECT.
+   D. PARAMETER [PVOID Argument2] obsahuje 2. CUSTOM ARGUMENT, ktory je zaslany do CALLBACK FUNCTION daneho CALLBACK OBJECT.
+   D. FUNCTION odosiela EVENT na dany CALLBACK OBJECT.
+70. WINDOWS definuje nasledujuce CALLBACK OBJECTS.
+   A. CALLBACK OBJECT [ProcessorAdd] vyvolava EVENT ak novy PROCESSOR je HOT ADDED do SYSTEMU.
+   B. CALLBACK OBJECT [PowerState] vyvolava EVENT ak SYSTEM ide do LOW POWER STATE, alebo je SYSTEM prepnuty z AC na DC, alebo opacne, alebo ak sa zmenila POWER POLICY.
+   C. CALLBACK OBJECT [SetSystemTime] vyvolava EVENT ak doslo k zmene SYSTEM TIME.
+//----------------------------------------------------------------------------------------------------------------------

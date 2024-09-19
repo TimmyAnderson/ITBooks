@@ -40,7 +40,11 @@
    B. PARAMETER [PDEVICE_OBJECT DeviceObject] obsahuje POINTER na DEVICE OBJECT, ktory sa ma odstranit. DEVICE OBJECT sa zaroven odstrani aj z LINKED LIST, ktory je sucastou STRUCTURE [DRIVER_OBJECT].
    C. FUNCTION uvolnuje instanciu STRUCTURE [DEVICE_OBJECT] a zaroven odstranuje DEVICE OBJECT z LINKED LIST, ktory je sucastou STRUCTURE [DRIVER_OBJECT].
 !!! 8. Ak CUSTOM FUNCTION [DriverEntry()] vrati ERROR CODE, tak CUSTOM FUNCTION [DriverUnload()] sa NEVOLA. A preto FUNCTION [DriverEntry()] musi vykonat kompletny CLEANUP.
-9. Pre SYMBOLIC LINKS platia nasledujuce fakty.
+!!!!! 9. Pre FUNCTION DRIVER UNLOAD platia nasledujuce fakty.
+   A. DRIVER UNLOAD sa NEVOLA ak DRIVER ENTRY vratil ERROR STATUS CODE.
+   !!!!! B. DRIVER UNLOAD sa vola AZ ked su ukoncene vsetky IRP, pricom dalsie IRP po spusteni iniciovani UNLOAD procesu uz nedovoli WINDOWS odoslat. To znamena, ze DRIVER UNLOAD NEMUSI kontrolovat ci este nebezia nejake IRP daneho DRIVER, pretoze ak by bezali, tak WINDOWS DRIVER UNLOAD NESPUSTI, az kym nebudu vsetky IRP ukoncene.
+   !!!!! C. DRIVER UNLOAD NIE JE spusteny, az kym vsetky DEFFERED PROCEDURE CALLS, ktore spustil dany DRIVER NIE su UKONCENE.
+10. Pre SYMBOLIC LINKS platia nasledujuce fakty.
    A. SYMBOLIC LINKS su KERNEL OBJECTS, ktore sluzia ako POINTERS na ine KERNEL OBJECTS.
    B. SYMBOLIC LINKS sluzia na pristup k DEVICE OBJECTS daneho DRIVER. Su to NAME ALIASES k skutocnym DEVICE OBJECTS.
    C. SYMBOLIC LINKS sa pouzivaju ako 1. PARAMETER FUNCTION [CreateFile()].
@@ -51,18 +55,18 @@
    !!! H. SYMBOLIC LINKS pri otvarani pomocou FUNCTION [CreateFile()] MUSIA pouzit PREFIX [\\.\], aby PASER dokazal indetifikovat, ze sa jedna o SYMBOLIC LINK.
    I. SYMBOLIC LINKS sa vytvaraju volanim KERNEL FUNCTION [IoCreateSymbolicLink()].
    J. SYMBOLIC LINKS sa uvolnuju volanim KERNEL FUNCTION [IoDeleteSymbolicLink()].
-10. Pre FUNCTION [IoDeleteDevice()] platia nasledujuce fakty.
+11. Pre FUNCTION [IoDeleteDevice()] platia nasledujuce fakty.
    A. FUNCTION ma PROTOTYPE [NTSTATUS IoCreateSymbolicLink(PUNICODE_STRING SymbolicLinkName, PUNICODE_STRING DeviceName)].
    B. PARAMETER [PUNICODE_STRING SymbolicLinkName] obsahuje nazov SYMBOLIC LINK.
    C. PARAMETER [PUNICODE_STRING DeviceName] obsahuje nazov DEVICE OBJECT pre ktory ma byt SYMBOLIC LINK vytvoreny.
    D. RETURN VALUE TYPE [NTSTATUS] obsahuje informaciu ci FUNCTION skoncila uspesne.
    E. FUNCTION vytvara SYMBOLIC LINK pre dany DEVICE OBJECT.
-11. Pre FUNCTION [IoDeleteSymbolicLink()] platia nasledujuce fakty.
+12. Pre FUNCTION [IoDeleteSymbolicLink()] platia nasledujuce fakty.
    A. FUNCTION ma PROTOTYPE [NTSTATUS IoDeleteSymbolicLink(PUNICODE_STRING SymbolicLinkName)].
    B. PARAMETER [PUNICODE_STRING SymbolicLinkName] obsahuje nazov SYMBOLIC LINK.
    C. RETURN VALUE TYPE [NTSTATUS] obsahuje informaciu ci FUNCTION skoncila uspesne.
    D. FUNCTION vytvara odstranuje SYMBOLIC LINK.
-12. Kazda DISPATCH ROUTINE ma ako PARAMETER STRUCTURE [IRP]. Pre STRUCTURE IRP platia nasledujuce fakty.
+13. Kazda DISPATCH ROUTINE ma ako PARAMETER STRUCTURE [IRP]. Pre STRUCTURE IRP platia nasledujuce fakty.
    A. STRUCTURE [IRP] reprezentuje REQUEST IO OPERATION, ktoru ma DRIVER vykonat.
    B. STRUCTURE [IRP] obsahuje informacie o type IO OPERATION, ktora je od DRIVER pozadovana, ako aj PARAMETERS vo forme BUFFER.
    C. STRUCTURE [IRP] je SEMI-DOCUMENTED STRUCTURE.
@@ -71,20 +75,20 @@
    F. STRUCTURE [IRP] je uzatvarana a uvolnovana volanim KERNEL FUNCTION [IofCompleteRequest()].
    G. FIELD [IRP::IoStatus] obsahuje informacie o vysledku IO OPERATION.
    H. FUNCTION [IoGetCurrentIrpStackLocation] umoznuje ziskat instanciu STRUCTURE [IO_STACK_LOCATION] pre CURRENT DRIVER.
-13. Pre FUNCTION [IofCompleteRequest()] platia nasledujuce fakty.
+14. Pre FUNCTION [IofCompleteRequest()] platia nasledujuce fakty.
    A. FUNCTION ma PROTOTYPE [void IofCompleteRequest(PIRP Irp, CCHARPriorityBoost)].
    B. PARAMETER [PIRP Irp] obsahuje IRP, ktore ma byt ukoncene.
    C. PARAMETER [CCHARPriorityBoost] obsahuje PRIORITY BOOST, ktory ma byt vykonany pre THREAD, ktory ukoncuje dany IRP.
    !!! D. FUNCTION ukoncuje danu IRP, notifikuje EXECUTIVE MANAGER, ktory IRP vytvoril, ze IRP je ukonceny a nasledne odstranuje IRP z MEMORY.
-14. Pre FUNCTION [IoGetCurrentIrpStackLocation()] platia nasledujuce fakty.
+15. Pre FUNCTION [IoGetCurrentIrpStackLocation()] platia nasledujuce fakty.
    A. FUNCTION ma PROTOTYPE [PIO_STACK_LOCATION IoGetCurrentIrpStackLocation(PIRP Irp)].
    B. PARAMETER [PIRP Irp] obsahuje IRP, pre ktore ma byt vratena instancia STRUCTURE [IO_STACK_LOCATION] pre CURRENT DRIVER.
    C. RETURN VALUE TYPE [PIO_STACK_LOCATION] obsahuje POINTER na STRUCTURE [IO_STACK_LOCATION] pre CURRENT DRIVER.
    D. FUNCTION vracia instanciu STRUCTURE [IO_STACK_LOCATION] pre CURRENT DRIVER.
-!!! 15. STRUCTURE [IO_STACK_LOCATION] obsahuje FIELD [IO_STACK_LOCATION::Parameters] co je rozsiahly UNION, kde pre kazdy typ DISPACH ROUTINE obsahuje PARAMETERS danej IO OPERATION.
-16. Nastavenie THREAD PRIORITY sa robi v nasledujucich krokoch.
+!!! 16. STRUCTURE [IO_STACK_LOCATION] obsahuje FIELD [IO_STACK_LOCATION::Parameters] co je rozsiahly UNION, kde pre kazdy typ DISPACH ROUTINE obsahuje PARAMETERS danej IO OPERATION.
+17. Nastavenie THREAD PRIORITY sa robi v nasledujucich krokoch.
    !!! A. Zavola sa KERNEL FUNCTION [PsLookupThreadByThreadId()], ktora pre THREAD ID vrati instanciu STRUCTURE [_KTHREAD]. Zaroven FUNCTION zvysuje INTERNY COUNTER pre STRUCTURE [_KTHREAD], aby pri predcasnom uvolneni THREAD nedoslo k uvolneniu instancie STRUCTURE [_KTHREAD] a k vzniku DANGLING POINTER.
    B. Zavola sa FUNCTION [KeSetPriorityThread()], ktora nastavi THREAD PRIORITY.
    !!! C. Zavola sa FUNCTION [ObfDereferenceObject()], ktora dereferencuje INTERNAL COUNTER STRUCTURE [_KTHREAD] cim umozni jej uvolnenie.
-!!!!! 17. CLIENT PROGRAM moze byt spusteny na MACHINE, kde nie je nainstalovany VISUAL STUDIO C++ DEBUG RUNTIME tym, ze PROJECT bude pouzivat STATIC LIBRARY namiesto DLL. Toto nastavenie sa robit v [PROJECT PROPERTIES -> C/C++ -> Code Generation -> Runtime Library]. Alternativou je spravit RELEASE BUILD, ktory vyzaduje VISUAL STUDIO C++ RELEASE RUNTIME.
+!!!!! 18. CLIENT PROGRAM moze byt spusteny na MACHINE, kde nie je nainstalovany VISUAL STUDIO C++ DEBUG RUNTIME tym, ze PROJECT bude pouzivat STATIC LIBRARY namiesto DLL. Toto nastavenie sa robit v [PROJECT PROPERTIES -> C/C++ -> Code Generation -> Runtime Library]. Alternativou je spravit RELEASE BUILD, ktory vyzaduje VISUAL STUDIO C++ RELEASE RUNTIME.
 //----------------------------------------------------------------------------------------------------------------------

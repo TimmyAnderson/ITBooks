@@ -297,6 +297,8 @@ NTSTATUS DriverEntry(PDRIVER_OBJECT DriverObject, PUNICODE_STRING RegistryPath)
 	NTSTATUS													Status;
 	PDEVICE_OBJECT												DeviceObject;
 
+	bool														SymbolicLinkCreated=false;
+
 #ifdef USE_LOOKSIDE_LISTS
 	bool														OldLookasideListsInitialized=false;
 #endif
@@ -318,6 +320,8 @@ NTSTATUS DriverEntry(PDRIVER_OBJECT DriverObject, PUNICODE_STRING RegistryPath)
 			KdPrint(("!!!!! DRIVER [%wZ] FAILED to CREATE SYMBOLIC LINK [%wZ] with ERROR CODE [%lX] !!!\n",DriverObject->DriverName,SymbolicLink,Status));
 			break;
 		}
+
+		SymbolicLinkCreated=true;
 
 #ifdef USE_SECURE_POOL
 		// !!!!! Vytvori sa SECURE POOL.
@@ -380,6 +384,12 @@ NTSTATUS DriverEntry(PDRIVER_OBJECT DriverObject, PUNICODE_STRING RegistryPath)
 			SecurePoolHandle=nullptr;
 		}
 #endif
+
+		if (SymbolicLinkCreated==true)
+		{
+			IoDeleteSymbolicLink(&SymbolicLink);
+			SymbolicLinkCreated=false;
+		}
 
 		if (DeviceObject!=nullptr)
 		{

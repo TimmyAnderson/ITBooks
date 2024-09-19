@@ -6,7 +6,7 @@
 //----------------------------------------------------------------------------------------------------------------------
 //----------------------------------------------------------------------------------------------------------------------
 //----------------------------------------------------------------------------------------------------------------------
-// !!!!! DON"T have CONSTRUCTOR and DESTURCTOR. Can be USED as a GLOBAL VARIABLE.
+// !!!!! DON'T have CONSTRUCTOR and DESTURCTOR. Can be USED as a GLOBAL VARIABLE.
 template<typename TType>
 class CLookasideListGlobal final : public CMemoryOperators
 {

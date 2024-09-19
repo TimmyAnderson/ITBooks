@@ -27,6 +27,13 @@
 #include "TestExecutiveResourceGlobalGlobalPointer.h"
 #include "TestExecutiveResourceLocalObject.h"
 #include "TestExecutiveResourceLocalPointer.h"
+#include "TestSplayTreesGlobal.h"
+#include "TestSplayTrees.h"
+#include "TestAvlTreesGlobal.h"
+#include "TestAvlTrees.h"
+#include "TestTimerGlobal.h"
+#include "TestInterlockedGlobal.h"
+#include "TestInterlocked.h"
 //----------------------------------------------------------------------------------------------------------------------
 //----------------------------------------------------------------------------------------------------------------------
 //----------------------------------------------------------------------------------------------------------------------
@@ -57,6 +64,16 @@
 #define IOCTL_TEST_EXECUTIVE_RESOURCE_GLOBAL_GLOBAL_POINTER CTL_CODE(FILE_DEVICE_UNKNOWN,CODE_TEST_EXECUTIVE_RESOURCE_GLOBAL_GLOBAL_POINTER,METHOD_NEITHER,FILE_ANY_ACCESS)
 #define IOCTL_TEST_EXECUTIVE_RESOURCE_LOCAL_OBJECT CTL_CODE(FILE_DEVICE_UNKNOWN,CODE_TEST_EXECUTIVE_RESOURCE_LOCAL_OBJECT,METHOD_NEITHER,FILE_ANY_ACCESS)
 #define IOCTL_TEST_EXECUTIVE_RESOURCE_LOCAL_POINTER CTL_CODE(FILE_DEVICE_UNKNOWN,CODE_TEST_EXECUTIVE_RESOURCE_LOCAL_POINTER,METHOD_NEITHER,FILE_ANY_ACCESS)
+//----------------------------------------------------------------------------------------------------------------------
+#define IOCTL_TEST_SPLAY_TREES_GLOBAL CTL_CODE(FILE_DEVICE_UNKNOWN,CODE_TEST_SPLAY_TREES_GLOBAL,METHOD_NEITHER,FILE_ANY_ACCESS)
+#define IOCTL_TEST_SPLAY_TREES CTL_CODE(FILE_DEVICE_UNKNOWN,CODE_TEST_SPLAY_TREES,METHOD_NEITHER,FILE_ANY_ACCESS)
+#define IOCTL_TEST_AVL_TREES_GLOBAL CTL_CODE(FILE_DEVICE_UNKNOWN,CODE_TEST_AVL_TREES_GLOBAL,METHOD_NEITHER,FILE_ANY_ACCESS)
+#define IOCTL_TEST_AVL_TREES CTL_CODE(FILE_DEVICE_UNKNOWN,CODE_TEST_AVL_TREES,METHOD_NEITHER,FILE_ANY_ACCESS)
+//----------------------------------------------------------------------------------------------------------------------
+#define IOCTL_TEST_TIMER_GLOBAL CTL_CODE(FILE_DEVICE_UNKNOWN,CODE_TEST_TIMER_GLOBAL,METHOD_NEITHER,FILE_ANY_ACCESS)
+//----------------------------------------------------------------------------------------------------------------------
+#define IOCTL_TEST_INTERLOCKED_GLOBAL CTL_CODE(FILE_DEVICE_UNKNOWN,CODE_TEST_INTERLOCKED_GLOBAL,METHOD_NEITHER,FILE_ANY_ACCESS)
+#define IOCTL_TEST_INTERLOCKED CTL_CODE(FILE_DEVICE_UNKNOWN,CODE_TEST_INTERLOCKED,METHOD_NEITHER,FILE_ANY_ACCESS)
 //----------------------------------------------------------------------------------------------------------------------
 //----------------------------------------------------------------------------------------------------------------------
 //----------------------------------------------------------------------------------------------------------------------
@@ -194,6 +211,34 @@ NTSTATUS DispatchRoutineDeviceControl(DEVICE_OBJECT* DeviceObject, IRP* Irp)
 		{
 			Status=TestExecutiveResourceLocalPointer(DeviceObject,Irp);
 		}
+		else if (Code==IOCTL_TEST_SPLAY_TREES_GLOBAL)
+		{
+			Status=TestSplayTreesGlobal(DeviceObject,Irp);
+		}
+		else if (Code==IOCTL_TEST_SPLAY_TREES)
+		{
+			Status=TestSplayTrees(DeviceObject,Irp);
+		}
+		else if (Code==IOCTL_TEST_AVL_TREES_GLOBAL)
+		{
+			Status=TestAvlTreesGlobal(DeviceObject,Irp);
+		}
+		else if (Code==IOCTL_TEST_AVL_TREES)
+		{
+			Status=TestAvlTrees(DeviceObject,Irp);
+		}
+		else if (Code==IOCTL_TEST_TIMER_GLOBAL)
+		{
+			Status=TestTimerGlobal(DeviceObject,Irp);
+		}
+		else if (Code==IOCTL_TEST_INTERLOCKED_GLOBAL)
+		{
+			Status=TestInterlockedGlobal(DeviceObject,Irp);
+		}
+		else if (Code==IOCTL_TEST_INTERLOCKED)
+		{
+			Status=TestInterlocked(DeviceObject,Irp);
+		}
 		else
 		{
 			KdPrint(("!!!!! DRIVER [%wZ] FAILED to RECOGNIZE CODE [%lu] !!!\n",DeviceObject->DriverObject->DriverName,Code));
@@ -209,6 +254,9 @@ NTSTATUS DispatchRoutineDeviceControl(DEVICE_OBJECT* DeviceObject, IRP* Irp)
 //----------------------------------------------------------------------------------------------------------------------
 //----------------------------------------------------------------------------------------------------------------------
 //----------------------------------------------------------------------------------------------------------------------
+// !!!!! DRIVER UNLOAD sa vola AZ ked su ukoncene vsetky IRP, pricom dalsie IRP po spusteni iniciovani UNLOAD procesu uz nedovoli WINDOWS odoslat.
+// !!!!! To znamena, ze DRIVER UNLOAD NEMUSI kontrolovat ci este nebezia nejake IRP daneho DRIVER, pretoze ak by bezali, tak WINDOWS DRIVER UNLOAD NESPUSTI, az kym nebudu vsetky IRP ukoncene.
+// !!!!! DRIVER UNLOAD NIE JE spusteny, az kym vsetky DEFFERED PROCEDURE CALLS, ktore spustil dany DRIVER NIE su UKONCENE.
 void FunctionDriverUnload(PDRIVER_OBJECT DriverObject)
 {
 	KdPrint(("!!!!! DRIVER [%wZ] STOPPING !!!\n",DriverObject->DriverName));
