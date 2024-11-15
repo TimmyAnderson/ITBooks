@@ -190,7 +190,7 @@ int main(int argc, const char* argv[])
 
 				if (DeviceIoControl(DeviceHandle,IOCTL_TEST_SEH_1,Buffer,TextLengthInBytes,OutputBuffer,sizeof(OutputBuffer),&BytesReturned,NULL)!=FALSE)
 				{
-					wcout << L"IO CONTROL SUCCESSFULLY SENT - BUFFER [" << reinterpret_cast<void*>(Buffer) << "] BYTES RETURNED [" << BytesReturned << L"] !" << endl;
+					wcout << L"IO CONTROL SUCCESSFULLY SENT - BUFFER [" << reinterpret_cast<void*>(Buffer) << L"] BYTES RETURNED [" << BytesReturned << L"] !" << endl;
 				}
 				else
 				{
@@ -215,7 +215,7 @@ int main(int argc, const char* argv[])
 
 				if (DeviceIoControl(DeviceHandle,IOCTL_TEST_SEH_2,Buffer,TextLengthInBytes,OutputBuffer,sizeof(OutputBuffer),&BytesReturned,NULL)!=FALSE)
 				{
-					wcout << L"IO CONTROL SUCCESSFULLY SENT - BUFFER [" << reinterpret_cast<void*>(Buffer) << "] BYTES RETURNED [" << BytesReturned << L"] !" << endl;
+					wcout << L"IO CONTROL SUCCESSFULLY SENT - BUFFER [" << reinterpret_cast<void*>(Buffer) << L"] BYTES RETURNED [" << BytesReturned << L"] !" << endl;
 				}
 				else
 				{

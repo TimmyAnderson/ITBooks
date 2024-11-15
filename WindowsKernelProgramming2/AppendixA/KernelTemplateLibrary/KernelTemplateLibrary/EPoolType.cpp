@@ -55,6 +55,8 @@ void* __cdecl operator new(size_t Size, void* Address)
 //----------------------------------------------------------------------------------------------------------------------
 void __cdecl operator delete(void* Pointer, size_t Size)
 {
+	UNREFERENCED_PARAMETER(Size);
+
     NT_ASSERT(Pointer);
 
     ExFreePool(Pointer);
@@ -71,6 +73,8 @@ void __cdecl operator delete(void* Pointer, size_t Size)
 //----------------------------------------------------------------------------------------------------------------------
 void __cdecl operator delete[](void* Pointer, size_t Size)
 {
+	UNREFERENCED_PARAMETER(Size);
+
     NT_ASSERT(Pointer);
 
     ExFreePool(Pointer);

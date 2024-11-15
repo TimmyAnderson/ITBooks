@@ -1,0 +1,686 @@
+//----------------------------------------------------------------------------------------------------------------------
+1. Solution demonstruje implementaciu FILE SYSTEM MINI DRIVERS.
+2. Nad FILE SYSTEMS su vykonavane IO OPERATIONS. Ako FILE SYSTEM su implementovane rozne typy DEVICES.
+   A. DISK DEVICES s NTFS VOLUMES.
+   B. NAMED PIPES.
+   C. MAILSLOTS.
+3. FILE SYSTEM MINI DRIVERS su FILTER DRIVERS, ktoru mozu zachytavat a spracuvavat IO OPERATIONS urcene pre FILE SYSTEMS.
+4. WINDOWS implementuje 2 typy FILE SYSTEM DRIVER FILTERS.
+   A. LEGACY FILE SYSTEM FILTERS.
+   B. FILE SYSTEM MINI FILTERS.
+5. Pre LEGACY FILE SYSTEM FILTERS platia nasledujuce fakty.
+   A. LEGACY FILE SYSTEM FILTERS su zlozite na implementaciu.
+   B. LEGACY FILE SYSTEM FILTERS neumoznuju byt UNLOADED. Ak sa ma LEGACY FILE SYSTEM FILTER nahradit za novsiu verziu, je nutny RESTART SYSTEMU.
+6. Pre FILE SYSTEM MINI FILTERS platia nasledujuce fakty.
+   A. FILE SYSTEM MINI FILTERS su jednoduchsie na implementaciu.
+   B. FILE SYSTEM MINI FILTERS mozu byt UNLOADED.
+   !!!!! C. FILE SYSTEM MINI FILTERS su interne implementovane cez NATIVE LEGACY FILE SYSTEM FILTER nazyvany FILTER MANAGER.
+7. Kazdy FILE SYSTEM DRIVER FILTER ma definovanu ALTITUDE. Pre ALTITUDE platia nasledujuce fakty.
+   A. ALTITUDE urcuje poziciu FILE SYSTEM DRIVER FILTER v DRIVER STACK.
+   B. ALTITUDE maju priradene ako LEGACY FILE SYSTEM FILTERS, tak aj FILE SYSTEM MINI FILTERS.
+   !!! C. Cim vyssia hodnota ALTITUDE, tym vyssie sa dany FILE SYSTEM DRIVER FILTER v DRIVER STACK NACHADZA.
+!!! 8. FILTER MANAGER je LEGACY FILE SYSTEM FILTER, ktory umoznuje beh FILE SYSTEM MINI FILTERS. Pre FILTER MANAGER platia nasledujuce fakty.
+   A. FILTER MANAGER vykonava manazment 1-N FILE SYSTEM MINI FILTERS, ktore su v DRIVER STACK zaradene podla ALTITUDE.
+   B. FILTER MANAGER je zodpovedny za LOADING a UNLOADING svojich FILE SYSTEM MINI FILTERS.
+   C. FILTER MANAGER zachytava IRP urcene pre dany FILE SYSTEM a odosiela ich do svojich FILE SYSTEM MINI FILTERS v poradi urcenom ALTITUDE.
+   !!! D. V DRIVER STACK sa moze nachadza aj VIACERO INSTANCII FILTER MANAGER, ak sa v DRIVER STACK nachadzaju aj dalsie LEGACY FILE SYSTEM FILTERS. Poziciu LEGACY FILE SYSTEM FILTERS a FILE SYSTEM MINI FILTERS urcuje ich ALTITUDE.
+   !!! E. Kazda instancia FILTER MANAGER je nazyvana FRAME, pricom FRAMES su cislovane od 0, zhora nadol.
+9. Priklad DRIVER STACK obsahujuceho viacero LEGACY FILE SYSTEM FILTERS a viacero FILE SYSTEM MINI FILTERS.
+   A. FRAME 0 je implementovany pomocou FILTER MANAGER, ktory je LEGACY FILE SYSTEM FILTER a spravuje nasledujuce FILE SYSTEM MINI FILTERS.
+      A. FILE SYSTEM MINI FILTER A s ALTITUDE 1000.
+      B. FILE SYSTEM MINI FILTER B s ALTITUDE 900.
+      C. FILE SYSTEM MINI FILTER C s ALTITUDE 800.
+   B. LEGACY FILE SYSTEM FILTER 1 s ALTITUDE 700.
+   C. FRAME 1 je implementovany pomocou FILTER MANAGER, ktory je LEGACY FILE SYSTEM FILTER a spravuje nasledujuce FILE SYSTEM MINI FILTERS.
+      A. FILE SYSTEM MINI FILTER D s ALTITUDE 600.
+      B. FILE SYSTEM MINI FILTER E s ALTITUDE 500.
+   D. LEGACY FILE SYSTEM FILTER 2 s ALTITUDE 400.
+   E. FRAME 2 je implementovany pomocou FILTER MANAGER, ktory je LEGACY FILE SYSTEM FILTER a spravuje nasledujuce FILE SYSTEM MINI FILTERS.
+      A. FILE SYSTEM MINI FILTER F s ALTITUDE 300.
+      B. FILE SYSTEM MINI FILTER G s ALTITUDE 200.
+      C. FILE SYSTEM MINI FILTER H s ALTITUDE 100.
+10. LOADING FILE SYSTEM MINI FILTER sa vykonava v nasledujucich krokoch.
+   A. Z USER MODE sa vola FUNCTION [FilterLoad()].
+   B. USER MODE FUNCTION [FilterLoad()] zavola KERNEL MODE FUNCTION [FltLoadFilter()], ktora vykona LOADING daneho FILE SYSTEM MINI FILTER.
+   C. FILE SYSTEM MINI FILTER musi byt zaregistrovany v REGISTRY KEY [HKLM\System\CurrentControlSet\Services\DRIVER_NAME], kde VALUE [DRIVER_NAME] je nazov daneho FILE SYSTEM MINI FILTER.
+11. UNLOADING FILE SYSTEM MINI FILTER sa vykonava v nasledujucich krokoch.
+   A. Z USER MODE sa vola FUNCTION [FilterUnload()].
+   B. USER MODE FUNCTION [FilterUnload()] zavola KERNEL MODE FUNCTION [FltUnloadFilter()], ktora vykona UNLOADING daneho FILE SYSTEM MINI FILTER.
+   C. Pri UNLOADING FILE SYSTEM MINI FILTER sa vola FILTER UNLOAD CALLBACK.
+   !!! D. UNLOADING FILE SYSTEM MINI FILTER NEMUSI vzdy USPIET (kvoli volaniu FILTER UNLOAD CALLBACK) a moze sa stat, ze FILE SYSTEM MINI FILTER ostane LOADED.
+12. WINDOWS na LOADING a UNLOADING FILE SYSTEM MINI FILTERS poskytuje TOOL [FLTMC.exe].
+   A. COMMAND [FLTMC.exe load DRIVER_NAME] vykonava LOADING FILE SYSTEM MINI FILTER s NAME [DRIVER_NAME].
+   B. COMMAND [FLTMC.exe unload DRIVER_NAME] vykonava UNLOADING FILE SYSTEM MINI FILTER s NAME [DRIVER_NAME].
+13. FILE SYSTEM MINI FILTERS su viditelne v OBJET MANAGER DIRECTORY [FileSystem].
+14. Pre initializaciu FILE SYSTEM MINI FILTERS platia nasledujuce fakty.
+   A. Inicializacia FILE SYSTEM MINI FILTERS sa vykonava vo FUNCTION [DriverEntry()].
+   B. Registracia DRIVER ako FILE SYSTEM MINI FILTER sa vykonava volanim FUNCTION [FltRegisterFilter()].
+   C. Spustenie DRIVER sa realizuje volanim FUNCTION [FltStartFiltering()].
+   !!!!! D. FILE SYSTEM MINI FILTERS NESPRACUVAVAJU IRP ako bezne DRIVERS. Preto ani neregistruju CALLBACK ROUTINES pre MAJOR FUNCTIONS. Tuto cinnost vykonava FILTER MANAGER, ktory hostuje dany FILE SYSTEM MINI FILTER.
+15. Pre FUNCTION [FltRegisterFilter()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [NTSTATUS FltRegisterFilter(PDRIVER_OBJECT Driver, const FLT_REGISTRATION* Registration, PFLT_FILTER* RetFilter)].
+   B. PARAMETER [PDRIVER_OBJECT Driver] obsahuje POINTER na DRIVER OBJECT s ktorym je FILE SYSTEM MINI FILTER asociovany.
+   C. PARAMETER [const FLT_REGISTRATION* Registration] obsahuje POINTER na STRUCTURE [FLT_REGISTRATION], ktora obsahuje konfiguraciu FILE SYSTEM MINI FILTER.
+   D. PARAMETER [PFLT_FILTER* RetFilter] obsahuje POINTER do ktoreho sa ulozi OPAQUE STRUCTURE reprezentujuca FILE SYSTEM MINI FILTER.
+   E. RETURN VALUE TYPE [NTSTATUS] obsahuje informaciu ci FUNCTION skoncila uspesne.
+   F. FUNCTION registruje FILE SYSTEM MINI FILTER.
+16. Pre FUNCTION [FltUnregisterFilter()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [VOID FltUnregisterFilter(PFLT_FILTER Filter)].
+   B. PARAMETER [PFLT_FILTER Filter] obsahuje POINTER na OPAQUE STRUCTURE, ktoru vratila FUNCTION [FltRegisterFilter()].
+   C. FUNCTION odregistruje FILE SYSTEM MINI FILTER.
+   !!! D. FUNCTION MUSI byt volana pri uspesnom UNLOAD v UNLOAD ROUTINE daneho FILE SYSTEM MINI FILTER.
+17. STRUCTURE [FLT_REGISTRATION] obsahuje nastavenie FILE SYSTEM MINI FILTER. Ma nasledujuce FIELDS.
+   A. FIELD [USHORT Size] obsahuje dlzku STRUCTURE ziskanu pomocou OPERATOR [OPERATOR sizeof()].
+   B. FIELD [USHORT Version] obsahuje VERSION STRUCTURE. FIELD sa musi nastavit na VALUE [FLT_REGISTRATION_VERSION].
+   C. FIELD [FLT_REGISTRATION_FLAGS Flags] obsahuje FLAGS. Moze obsahovat nasledujuce FLAGS.
+      A. FLAG [FLTFL_REGISTRATION_DO_NOT_SUPPORT_SERVICE_STOP] znamena, ze FILE SYSTEM MINI FILTER nemoze byt UNLOADED zo SYSTEMU, bez ohladu na ostatne nastavenia.
+	  B. FLAG [FLTFL_REGISTRATION_SUPPORT_NPFS_MSFS] znamena, ze FILE SYSTEM MINI FILTER podporuje REQUESTS pre NAMED PIPES a MAILSLOTS.
+	  !!! C. FLAG [FLTFL_REGISTRATION_SUPPORT_DAX_VOLUME ] znamena, ze FILE SYSTEM MINI FILTER podporuje DIRECT ACCESS VOLUMES. DIRECT ACCESS VOLUMES su PERMANENT STORAGES, ktore vsak maju vykonnost RAM MEMORY.
+   D. FIELD [const FLT_CONTEXT_REGISTRATION* ContextRegistration] je OPTIONAL POINTER obsahujuci CONTEXT DATA, ktore su asociovane s danym FILE SYSTEM MINI FILTER.
+   !!!!! E. FIELD [const FLT_OPERATION_REGISTRATION* OperationRegistration] obsahuje POINTER na ARRAY STRUCTURES [FLT_OPERATION_REGISTRATION] obsahujucich PRE a POST CALLBACK ROUTINES, ktore spracuvaju jednotlive typy IRP. Platia nasledujuce fakty.
+      A. FIELD obsahuje ARRAY STRUCTURES [FLT_OPERATION_REGISTRATION].
+	  B. FIELD moze byt nastaveny na VALUE [nullptr].
+	  !!! C. ARRAY je ukonceny instanciou STRUCTURE [FLT_OPERATION_REGISTRATION], ktorej FIELD [FLT_OPERATION_REGISTRATION::MajorFunction] je nastaveny na VALUE [IRP_MJ_OPERATION_END].
+   !!! F. FIELD [PFLT_FILTER_UNLOAD_CALLBACK FilterUnloadCallback] obsahuje UNLOAD ROUTINE, ktora je volana, ked je FILE SYSTEM MINI FILTER. UNLOAD ROUTINE ma PROTOTYPE [NTSTATUS PfltFilterUnloadCallback(FLT_FILTER_UNLOAD_FLAGS Flags)]. Pre UNLOAD ROUTINE platia nasledujuce fakty.
+      !!! A. Ak UNLOAD ROUTINE nie je DEFINOVANA, FILE SYSTEM MINI FILTER NEMOZE byt UNLOADED.
+	  B. Ak UNLOAD ROUTINE vrati SUCCESS VALUE, tak FILE SYSTEM MINI FILTER je UNLOADED.
+	  !!! C. Ak UNLOAD ROUTINE vrati FAILURE VALUE, tak FILE SYSTEM MINI FILTER NIE je UNLOADED.
+	  !!!!! D. Pre uspesny UNLOAD musi FILE SYSTEM MINI FILTER zavolat FUNCTION [FltUnregisterFilter()].
+   G. FIELD [PFLT_INSTANCE_SETUP_CALLBACK InstanceSetupCallback] obsahuje POINTER na CALLBACK ROUTINE, ktora sa vola pri pripojeni noveho VOLUME. FILE SYSTEM MINI FILTER sa na zaklade RETURN VALUE moze rozhodnut ci sa k danemu VOLUME pripoji, alebo nie. CALLBACK ROUTINE ma PROTOTYPE [NTSTATUS PfltInstanceSetupCallback(PCFLT_RELATED_OBJECTS FltObjects, FLT_INSTANCE_SETUP_FLAGS Flags, DEVICE_TYPE VolumeDeviceType, FLT_FILESYSTEM_TYPE VolumeFilesystemType)].
+   H. FIELD [PFLT_INSTANCE_QUERY_TEARDOWN_CALLBACK InstanceQueryTeardownCallback] obsahuje POINTER na CALLBACK ROUTINE, ktora sa vola pri DETACH pripojeneho VOLUME. CALLBACK ROUTINE ma PROTOTYPE [NTSTATUS PfltInstanceQueryTeardownCallback(PCFLT_RELATED_OBJECTS FltObjects, FLT_INSTANCE_QUERY_TEARDOWN_FLAGS Flags)].
+   I. FIELD [PFLT_INSTANCE_TEARDOWN_CALLBACK InstanceTeardownStartCallback] obsahuje POINTER na CALLBACK ROUTINE, ktora sa vola ked zacina proces DETACH pripojeneho VOLUME. CALLBACK ROUTINE by mala ukoncit vsetky PENDING IO OPERATIONS. CALLBACK ROUTINE ma PROTOTYPE [void PfltInstanceTeardownCallback(PCFLT_RELATED_OBJECTS FltObjects, FLT_INSTANCE_TEARDOWN_FLAGS Reason)].
+   J. FIELD [PFLT_INSTANCE_TEARDOWN_CALLBACK InstanceTeardownCompleteCallback] obsahuje POINTER na CALLBACK ROUTINE, ktora sa vola skoncil proces DETACH pripojeneho VOLUME a vsetky PENDING IO OPERATIONS boli skoncene. CALLBACK ROUTINE ma PROTOTYPE [void PfltInstanceTeardownCallback(PCFLT_RELATED_OBJECTS FltObjects, FLT_INSTANCE_TEARDOWN_FLAGS Reason)].
+   K. FIELD [PFLT_GENERATE_FILE_NAME GenerateFileNameCallback] obsahuje POINTER na CALLBACK ROUTINE, ktora sa vola ak je nutne vygenerovat FILE NAMES pre FILE MANAGER NAME CACHE. CALLBACK ROUTINE ma PROTOTYPE [NTSTATUS PfltGenerateFileName(PFLT_INSTANCE Instance, PFILE_OBJECT FileObject, PFLT_CALLBACK_DATA CallbackData, FLT_FILE_NAME_OPTIONS NameOptions, PBOOLEAN CacheFileNameInformation, PFLT_NAME_CONTROL FileName)].
+   L. FIELD [PFLT_NORMALIZE_NAME_COMPONENT NormalizeNameComponentCallback] obsahuje POINTER na CALLBACK ROUTINE, ktora sa vola ak je nutne vygenerovat NORMALIZED NAMES pre FILE MANAGER NAME CACHE. CALLBACK ROUTINE ma PROTOTYPE [NTSTATUS PfltNormalizeNameComponent(PFLT_INSTANCE Instance, PCUNICODE_STRING ParentDirectory, USHORT VolumeNameLength, PCUNICODE_STRING Component, PFILE_NAMES_INFORMATION ExpandComponentName, ULONG ExpandComponentNameLength, FLT_NORMALIZE_NAME_FLAGS Flags, PVOID* NormalizationContext)].
+   M. FIELD [PFLT_NORMALIZE_CONTEXT_CLEANUP NormalizeContextCleanupCallback] obsahuje POINTER na CALLBACK ROUTINE, ktora sa vola ak je nutne uvolnit vygenerovane NORMALIZED NAMES pre FILE MANAGER NAME CACHE. CALLBACK ROUTINE ma PROTOTYPE [void PfltNormalizeContextCleanup(PVOID* NormalizationContext)].
+   N. FIELD [PFLT_TRANSACTION_NOTIFICATION_CALLBACK TransactionNotificationCallback] obsahuje POINTER na CALLBACK ROUTINE, ktora pri zmene stavu TRANSACTION do ktorej je FILE SYSTEM MINI FILTER zapojeny. CALLBACK ROUTINE ma PROTOTYPE [NTSTATUS PfltTransactionNotificationCallback(PCFLT_RELATED_OBJECTS FltObjects, PFLT_CONTEXT TransactionContext, ULONG NotificationMask)].
+   O. FIELD [PFLT_NORMALIZE_NAME_COMPONENT_EX NormalizeNameComponentExCallback] obsahuje POINTER na CALLBACK ROUTINE, ktora sa vola ak je nutne vygenerovat NORMALIZED NAMES pre FILE MANAGER NAME CACHE. CALLBACK ROUTINE ma PROTOTYPE [NTSTATUS PfltNormalizeNameComponentEx(PFLT_INSTANCE Instance, PFILE_OBJECT FileObject, PCUNICODE_STRING ParentDirectory, USHORT VolumeNameLength, PCUNICODE_STRING Component, PFILE_NAMES_INFORMATION ExpandComponentName, ULONG ExpandComponentNameLength, FLT_NORMALIZE_NAME_FLAGS Flags, PVOID* NormalizationContext)].
+   P. FIELD [PFLT_SECTION_CONFLICT_NOTIFICATION_CALLBACK SectionNotificationCallback] obsahuje POINTER na CALLBACK ROUTINE, ktora sa vola ak doslo k FAILURES pri vykonavani IO OPERATIONS. CALLBACK ROUTINE ma PROTOTYPE [NTSTATUS PfltSectionConflictNotificationCallback(PFLT_INSTANCE Instance, PFLT_CONTEXT SectionContext, PFLT_CALLBACK_DATA Data)].
+18. STRUCTURE [FLT_CONTEXT_REGISTRATION] ma nasledujuce FIELDS.
+   A. FIELD [FLT_CONTEXT_TYPE ContextType] obsahuje TYPE daneho CONTEXT.
+   B. FIELD [FLT_CONTEXT_REGISTRATION_FLAGS Flags] obsahuje FLAGS. Moze obsahovat FLAG [FLTFL_CONTEXT_REGISTRATION_NO_EXACT_SIZE_MATCH] urcuje ci CONTEXT ma byt alokovany z LOOKASIDE LIST aj ked dlzka CONTEXT je kratsia rovnaka ako dlzka ITEMS v LOOKASIDE LIST.
+   C. FIELD [PFLT_CONTEXT_CLEANUP_CALLBACK ContextCleanupCallback] obsahuje CALLBACK ROUTINE, ktora sa vola tesne pred uvolnenim CONTEXT. V CALLBACK ROUTINE je mozne uvolnit DYNAMIC MEMORY, ktoru obsahuje CONTEXT. CALLBACK ROUTINE ma PROTOTYPE [void PfltContextCleanupCallback(PFLT_CONTEXT Context, FLT_CONTEXT_TYPE ContextType)].
+   D. FIELD [SIZE_T Size] obshauje dlzku CUSTOM CONTEXT ak FILE SYSTEM MINI FILTER pouziva FIXED SIZE CONTEXTS. Ak sa pouzivaju VARIABLE SIZE CONTEXTS, FIELD musi byt nastaveny na VALUE [FLT_VARIABLE_SIZED_CONTEXTS].
+   E. FIELD [ULONG PoolTag] obsahuje POOL TAG, ktory je pouzivany pri alokacii a dealokacii CONTEXT.
+   F. FIELD [PFLT_CONTEXT_ALLOCATE_CALLBACK ContextAllocateCallback] obsahuje POINTER na ALLOCATE ROUTINE, ktora sa pouziva na alokaciu CONTEXT. Ak je tento FIELD nastaveny, tak su FIELD [SIZE_T Size] a FIELD [ULONG PoolTag] ignorovane. ALLOCATE ROUTINE ma PROTOTYPE [PVOID PfltContextAllocateCallback(POOL_TYPE PoolType, SIZE_T Size, FLT_CONTEXT_TYPE ContextType)].
+   G. FIELD [PFLT_CONTEXT_FREE_CALLBACK ContextFreeCallback] obsahuje POINTER na FREE ROUTINE, ktora sa pouziva na dealokaciu CONTEXT. Ak je tento FIELD nastaveny, tak su FIELD [SIZE_T Size] a FIELD [ULONG PoolTag] ignorovane. FREE ROUTINE ma PROTOTYPE [void PfltContextFreeCallback(PVOID Pool, FLT_CONTEXT_TYPE ContextType)].
+   H. FIELD [PVOID Reserved1] je RESERVED.
+19. STRUCTURE [FLT_OPERATION_REGISTRATION] ma nasledujuce FIELDS.
+   A. FIELD [UCHAR MajorFunction] je MAJOR FUNCTION s ktoru je asociovana PRE OPERATION ROUTINE a POST OPERATION ROUTINE.
+   B. FIELD [FLT_OPERATION_REGISTRATION_FLAGS Flags] obsahuje FLAGS. Ma nasledujuce VALUES.
+      A. VALUE [FLTFL_OPERATION_REGISTRATION_SKIP_PAGING_IO] urcuje, ze PRE OPERATION ROUTINE a POST OPERATION ROUTINE NEMAJU byt volane pre PAGING IO OPERATIONS.
+      B. VALUE [FLTFL_OPERATION_REGISTRATION_SKIP_CACHED_IO] urcuje, ze PRE OPERATION ROUTINE a POST OPERATION ROUTINE NEMAJU byt volane pre CACHED IO OPERATIONS.
+      C. VALUE [FLTFL_OPERATION_REGISTRATION_SKIP_NON_DASD_IO] urcuje, ze PRE OPERATION ROUTINE a POST OPERATION ROUTINE NEMAJU byt volane pre vsetky NON-DASD VOLUMES.
+      D. VALUE [LTFL_OPERATION_REGISTRATION_SKIP_NON_CACHED_NON_PAGING_IO] urcuje, ze PRE OPERATION ROUTINE a POST OPERATION ROUTINE NEMAJU byt volane pre vsetky NON-PAGING IO OPERATIONS a vsetky NON-CACHED IO OPERATIONS.
+   C. FIELD [PFLT_PRE_OPERATION_CALLBACK PreOperation] obsahuje PRE OPERATION ROUTINE, ktora je volana PRED odoslanim IRP do DRIVER NIZSIE v DRIVER STACK. PRE OPERATION ROUTINE ma PROTOTYPE [FLT_PREOP_CALLBACK_STATUS PfltPreOperationCallback(PFLT_CALLBACK_DATA Data, PCFLT_RELATED_OBJECTS FltObjects, PVOID *CompletionContext)].
+   D. FIELD [PFLT_POST_OPERATION_CALLBACK PostOperation] obsahuje POST OPERATION ROUTINE, ktora je volana PO spracovani IRP v DRIVER NIZSIE v DRIVER STACK. POST OPERATION ROUTINE ma PROTOTYPE [FLT_POSTOP_CALLBACK_STATUS PfltPostOperationCallback(PFLT_CALLBACK_DATA Data, PCFLT_RELATED_OBJECTS FltObjects, PVOID CompletionContext, FLT_POST_OPERATION_FLAGS Flags)].
+   E. FIELD [PVOID Reserved1] je RESERVED.
+20. FILE SYSTEM MINI FILTERS poskytuju ABSTRACTION na spracovanie IO OPERATIONS. Pre ABSTRACTION platia nasledujuce fakty.
+   A. FILE SYSTEM MINI FILTERS poskytuju nasledujuce sposoby ako spracovavat IO OPERATIONS.
+      A. Definovanim DISPATCH ROUTINES pre IRP MAJOR FUNCTIONS.
+	  B. Definovanim CALLBACKS ROUTINES pre FAST IO API.
+   B. ABSTRACTION umoznuje definovat abstrahovat spracovani IO OPERATIONS bez ohladu na to ci ich zdrojom je realne IRP, IRP, ktore vygeneroval interne FILTER MANAGER z povodneho IRP, alebo ich zdrojom je FAST IO API.
+21. Pre DISPATCH ROUTINES pouzivane na spracovanie IRP MAJOR FUNCTIONS platia nasledujuce fakty.
+   A. FILE SYSTEM MINI FILTERS definuju mnozstvo DISPATCH ROUTINES ktore moze dany FILE SYSTEM MINI FILTER odoberat.
+   !!! B. Niektore IRP MAJOR FUNCTIONS su specificke pre FILE SYSTEM MINI FILTERS. To znamena, ze tieto IRP MAJOR FUNCTIONS NEMAJU analogiu v klasickych DRIVERS a su definovane iba specialne pre FILE SYSTEM MINI FILTERS.
+   C. Nie vsetky DISPATCH ROUTINES su vyvolavane ako reakcia na vznik IRP, ktore by bolo zaslane do FILTER MANAGER DRIVER z IO MANAGER. Niektore DISPATCH ROUTINES su vyvolavane interne FILTER MANAGER, ako dosledok vykonavanej IO OPERATION. No z hladiska CODE je toto abstrahovane a CODE FILE SYSTEM MINI FILTER nerozlisuje kto dane IRP vytvoril.
+   !!! D. Spracovanie DISPATCH ROUTINES pre IRP MAJOR FUNCTIONS je vdaka ABSTRACTION IDENTICKE ako spracovanie CALLBACKS ROUTINES pre FAST IO API. FILE SYSTEM MINI FILTERS mozu detekovat ci sa jedna o IO OPERATION z DISPATCH ROUTINES pre IRP MAJOR FUNCTIONS pomocou MACRO [FLT_IS_IRP_OPERATION()].
+22. Pre CALLBACKS ROUTINES pouzivane vo FAST IO API platia nasledujuce fakty.
+   A. FAST IO API sa pouziva iba pre SYNCHRONOUS IO OPERATIONS nad CACHED FILES.
+   B. FAST IO API vykonava prenos dat medzi USER BUFFERS a SYSTEM CACHE bez nutnosti pristupovat k FILE SYSTEM a STORAGE DRIVER STACK, cim su tieto IO OPERATIONS rychlejsie.
+   C. FAST IO API implementuje NTFS FILE SYSTEM DRIVER.
+   !!! D. Spracovanie CALLBACKS ROUTINES pre FAST IO API je vdaka ABSTRACTION IDENTICKE, ako spracovanie DISPATCH ROUTINES pre IRP MAJOR FUNCTIONS. FILE SYSTEM MINI FILTERS mozu detekovat ci sa jedna o IO OPERATION z FAST IO API pomocou MACRO [FLT_IS_FASTIO_OPERATION()].
+23. DEBUG COMMAND [!drvobj] umoznuje vypisat detaily o DRIVER OBJECT, vratane zoznamu DISPATCH ROUTINES.
+24. FILE SYSTEM MINI FILTERS moze spracovat viacero IRP MAJOR FUNCTIONS. Najdolezitejsie su tieto.
+   A. IRP MAJOR FUNCTION [IRP_MJ_CREATE] je volana pri CREATE, alebo OPEN daneho FILE ci DIRECTORY.
+   B. IRP MAJOR FUNCTION [IRP_MJ_READ] je volana pri READ FILE.
+   C. IRP MAJOR FUNCTION [IRP_MJ_WRITE] je volana pri WRITE FILE.
+   D. IRP MAJOR FUNCTION [IRP_MJ_QUERY_EA] je volana pri READ EXTENDED ATTRIBUTES daneho FILE ci DIRECTORY.
+   E. IRP MAJOR FUNCTION [IRP_MJ_DIRECTORY_CONTROL] je volana ak je REQUEST zaslany do daneho DIRECTORY.
+   F. IRP MAJOR FUNCTION [IRP_MJ_FILE_SYSTEM_CONTROL] je FILE SYSTEM DEVICE IO CONTROL REQUEST.
+   G. IRP MAJOR FUNCTION [IRP_MJ_SET_INFORMATION] je volana pri rozlicnych FILE IO OPERATIONS ako RENAME ci DELETE.
+   !!! H. IRP MAJOR FUNCTION [IRP_MJ_ACQUIRE_FOR_SECTION_SYNCHRONIZATION] znamena, ze bola OPENED SECTION v MEMORY MAPPED FILE. Pre tuto IRP MAJOR FUNCTION NIE je definovana DISPATCH ROUTINE.
+   I. IRP MAJOR FUNCTION [IRP_MJ_OPERATION_END] nie je realne IRP, iba zarazka urcujuca koniec ARRAY STRUCTURES [FLT_OPERATION_REGISTRATION]. Pre tuto IRP MAJOR FUNCTION NIE je definovana DISPATCH ROUTINE.
+25. Pre ALTITUDE v FILE SYSTEM MINI FILTERS platia nasledujuce fakty.
+   A. ALTITUDE urcuje poziciu FILE SYSTEM MINI FILTER v DRIVER STACK. Vyssia hodnota znamena, vyssiu poziciu v DRIVER STACK.
+   !!! B. ALTITUDE MUSI byt pri instalacii FILE SYSTEM MINI FILTER ulozena v REGISTRY KEY [HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\DRIVER_NAME\Instances\DRIVER_NAME_INSTANCE]. Je ulohou FILE SYSTEM MINI FILTER pri starte hodnotu ALTITUDE na tuto poziciu v REGISTRY zapisat.
+   C. ALTITUDE pre FILE SYSTEM MINI FILTERS je registrovana MICROSOFT a jej VALUE musi byt pridelena zo strany MICROSOFT.
+26. FILE SYSTEM MINI FILTERS musia pre korektne fungovanie zaregistrovat do KEY [HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\DRIVER_NAME] nasledujuce KEYS a VALUES.
+   A. REGISTRY KEY [Instances].
+   B. STRING REGISTRY VALUE [Instances\DRIVER_NAME_INSTANCE] s VALUE [DRIVER_NAME_INSTANCE], ktory obsahuje lubovolny NAME.
+   C. REGISTRY KEY [Instances\DRIVER_NAME_INSTANCE], kde VALUE [DRIVER_NAME_INSTANCE] musi byt zhodna s VALUE STRING REGISTRY VALUE [Instances\DRIVER_NAME_INSTANCE].
+   D. STRING REGISTRY VALUE [Instances\DRIVER_NAME_INSTANCE\Altitude] s VALUE [ALTITUDE], ktory obsahuje ALTITUDE daneho FILE SYSTEM MINI FILTER.
+   E. DWORD REGISTRY VALUE [Instances\DRIVER_NAME_INSTANCE\Flags] s VALUE [FLAGS], ktory moze nadobudat nasledujuce VALUES.
+      A. VALUE [0x00] znamena ze FILE SYSTEM MINI FILTER chce prijmat vsetky ATTACHMENTS.
+      B. VALUE [0x01] znamena ze FILE SYSTEM MINI FILTER nema zaujem o prijmanie AUTOMATIC ATTACHMENTS.
+      C. VALUE [0x02] znamena ze FILE SYSTEM MINI FILTER nema zaujem o prijmanie MANUAL ATTACHMENTS.
+!!! 27. FILE SYSTEM MINI FILTERS musia registrovat REGISTRY KEYS a VALUES pocas svojej instalacie vo FUNCTION [DriverEntry()].
+!!!!! 28. FILE SYSTEM MINI FILTERS musia mat vlozenu LIBRARY [FltMgr.lib].
+!!! 29. FILE SYSTEM MINI FILTERS sa registruju pomocou COMMAND [sc create DRIVER_NAME type= filesys binPath= FULL_PATH], kde VALUE [DRIVER_NAME] je nazov DRIVER a VALUE [FULL_PATH] je FULL PATH na [.SYS] FILE.
+30. Pre PRE OPERATION CALLBACK platia nasledujuce fakty.
+   A. PRE OPERATION CALLBACK ma PROTOTYPE [FLT_PREOP_CALLBACK_STATUS SomePreOperation(PFLT_CALLBACK_DATA Data, PCFLT_RELATED_OBJECTS FltObjects, PVOID* CompletionContext)].
+   B. PARAMETER [PFLT_CALLBACK_DATA Data] obsahuje DATA danej IO OPERATION.
+   C. PARAMETER [PCFLT_RELATED_OBJECTS FltObjects] obsahuje OPAQUE POINTERS na DIRECTORY ci FILE, ktoreho sa IO OPERATION tyka. Takisto obsahuje OPAQUE POINTERS na CURRENT FILTER, INSTANCE a VOLUME.
+   D. PARAMETER [PVOID* CompletionContext] obsahuje POINTER na CONTEXT VALUE, ktora bude nasledne zaslana aj do POST OPERATION CALLBACK.
+   E. RETURN VALUE moze obsahovat nasledujuce VALUES.
+      A. VALUE [FLT_PREOP_COMPLETE] znamena, ze IO OPERATION bola ukoncena FILE SYSTEM MINI FILTER. POST OPERATION CALLBACK, ani IO OPERATION uz nebude odoslana do FILE SYSTEM MINI FILTERS nizsie v DRIVER STACK.
+      B. VALUE [FLT_PREOP_DISALLOW_FASTIO] znamena, ze sa jedna FAST IO OPERATION a FILE SYSTEM MINI FILTER neumoznuje vykonanie FAST IO OPERATION pre danu IO PATH.
+      !!! C. VALUE [FLT_PREOP_PENDING] znamena, ze IO OPERATION je PENDING. FILTER MANAGER nebude pokracovat v spracovani IO OPERATION, az kym FILE SYSTEM MINI FILTER nezavola FUNCTION [FltCompletePendedPreOperation()].
+      D. VALUE [FLT_PREOP_SUCCESS_NO_CALLBACK] znamena, ze IO OPERATION moze byt dalej spracovana a volanie POST OPERATION CALLBACK pre FILE SYSTEM MINI FILTER NIE je vyzadovane.
+      E. VALUE [FLT_PREOP_SUCCESS_WITH_CALLBACK] znamena, ze IO OPERATION moze byt dalej spracovana a volanie POST OPERATION CALLBACK pre FILE SYSTEM MINI FILTER je vyzadovane.
+      !!! F. VALUE [FLT_PREOP_SYNCHRONIZE] znamena, ze IO OPERATION moze byt dalej spracovana a volanie POST OPERATION CALLBACK pre FILE SYSTEM MINI FILTER je vyzadovane. POST OPERATION CALLBACK sa vsak nevykona na IRQL [IRQL<=DISPATCH_LEVEL], ale na IRQL [IRQL<=APC_LEVEL].
+      G. VALUE [FLT_PREOP_DISALLOW_FSFILTER_IO] znamena, ze sa jedna FAST QUERY OPEN IO OPERATION, ktoru FILE SYSTEM MINI FILTER nepodporuje a je ju nutne realizovat pomocou SLOW PATH.
+31. Pre POST OPERATION CALLBACK platia nasledujuce fakty.
+   A. POST OPERATION CALLBACK ma PROTOTYPE [FLT_POSTOP_CALLBACK_STATUS SomePostOperation(PFLT_CALLBACK_DATA Data, PCFLT_RELATED_OBJECTS FltObjects, PVOID CompletionContext, FLT_POST_OPERATION_FLAGS Flags)].
+   B. PARAMETER [PFLT_CALLBACK_DATA Data] obsahuje DATA danej IO OPERATION.
+   C. PARAMETER [PCFLT_RELATED_OBJECTS FltObjects] obsahuje OPAQUE POINTERS na DIRECTORY ci FILE, ktoreho sa IO OPERATION tyka. Takisto obsahuje OPAQUE POINTERS na CURRENT FILTER, INSTANCE a VOLUME.
+   D. PARAMETER [PVOID CompletionContext] obsahuje CONTEXT VALUE, ktora bola odoslana z prislusnej PRE OPERATION CALLBACK
+   E. PARAMETER [FLT_POST_OPERATION_FLAGS Flags] moze obsahovat FLAG [FLTFL_POST_OPERATION_DRAINING], ktory znamena ze IO OPERATION sa realizuje pocas VOLUME DRAINING, kedy je VOLUME DETACHED. POST OPERATION CALLBACK pri vyskyte tohto FLAG by mala vracat RETURN VALUE [FLT_POSTOP_FINISHED_PROCESSING].
+   F. RETURN VALUE moze obsahovat nasledujuce VALUES.
+      A. VALUE [FLT_POSTOP_FINISHED_PROCESSING] znamena, ze FILE SYSTEM MINI FILTER ukoncil spracovanie IO OPERATION a riadenie vracia do FILTER MANAGER.
+      !!! B. VALUE [FLT_POSTOP_MORE_PROCESSING_REQUIRED] znamena, ze FILE SYSTEM MINI FILTER este neukoncil spracovanie IO OPERATION a FILTER MANAGER ma cakat, az kym FILE SYSTEM MINI FILTER nezavola FUNCTION [FltCompletePendedPostOperation()].
+      C. VALUE [FLT_POSTOP_DISALLOW_FSFILTER_IO] znamena, ze sa jedna FAST QUERY OPEN IO OPERATION, ktoru FILE SYSTEM MINI FILTER nepodporuje a je ju nutne realizovat pomocou SLOW PATH.
+   !!! G. POST OPERATION CALLBACKS su standardne vykonavne v IRQL [IRQL<=DISPATCH_LEVEL] a na ARBITRARY TRHEAD. Ak vsak POST OPERATION CALLBACK nastavila FLAG [FLT_PREOP_SYNCHRONIZE], POST OPERATION CALLBACK je volany na IRQL [IRQL<DISPATCH_LEVEL] a na rovnakom THREAD, na ktorom bola vykonana PRE OPERATION CALLBACK.
+   !!! H. POST OPERATION CALLBACKS mozu DEFERRED dokoncenie IO OPERATION vykonanim SCHEDULING CALLBACK ROUTINE, ktora sa vykona na IRQL [IRQL<DISPATCH_LEVEL]. Je mozne pouzit nasledujuce mechanizmy.
+      !!! A. Zavola sa FUNCTION [FltDoCompletionProcessingWhenSafe()], ktora nastavi CALLBACK FUNCTION, ktora sa zavola na IRQL [IRQL<DISPATCH_LEVEL]. Tento mechanizmus sa NESMIE pouzit na MAJOR FUNCTION [IRP_MJ_READ], MAJOR FUNCTION [IRP_MJ_WRITE] a MAJOR FUNCTION [IRP_MJ_FLUSH_BUFFERS]. Mechanizmus moze byt pouzity IBA pre IRP IO OPERATIONS.
+	  B. Zavola sa FUNCTION [FltQueueDeferredIoWorkItem], ktora nastavi CALLBACK FUNCTION, ktora sa zavola na IRQL [IRQL=PASSIVE_LEVEL]. V CALLBACK FUNCTION sa nasledne volna FUNCTION [FltCompletePendedPostOperation()], ktorou sa indikuje ukoncenie spracovania IO OPERATION v POST OPERATION CALLBACK.
+   !!!!! I. Mechanizmus pre DEFFER IO OPERATION v POST OPERATION CALLBACK sa NESMIE vykonat ak je nastaveny FLAG [ FLTFL_POST_OPERATION_DRAINING].
+32. STRUCTURE [FLT_CALLBACK_DATA] ma nasledujuce FIELDS.
+   A. FIELD [FLT_CALLBACK_DATA_FLAGS Flags] obsahuje FLAGS. Moze obsahovat nasledujuce FLAGS.
+      !!! A. FLAG [FLTFL_CALLBACK_DATA_DIRTY] sa nastavuje volanim FUNCTION [FltSetCallbackDataDirty()] a znamena, ze FILE SYSTEM MINI FILTER modifikoval FIELDS STRUCTURE [FLT_CALLBACK_DATA].
+      B. FLAG [FLTFL_CALLBACK_DATA_FAST_IO_OPERATION] indikuje, ze sa jedna o FAST IO OPERATIONS.
+      C. FLAG [FLTFL_CALLBACK_DATA_FS_FILTER_OPERATION] indikuje, ze sa jedna o FILE SYSTEM OPERATION.
+      D. FLAG [FLTFL_CALLBACK_DATA_IRP_OPERATION] indikuje, ze sa jedna o IRP OPERATION.
+      E. FLAG [FLTFL_CALLBACK_DATA_GENERATED_IO] indikuje, ze sa jedna o OPERATION, ktory generoval iny FILE SYSTEM MINI FILTER.
+      F. FLAG [FLTFL_CALLBACK_DATA_REISSUED_IO] indikuje, ze sa jedna o OPERATION, ktora bola REISSUED inym FILE SYSTEM MINI FILTER volanim FUNCTION [FltReissueSynchronousIo()].
+      G. FLAG [FLTFL_CALLBACK_DATA_SYSTEM_BUFFER] indikuje, ze BUFFER pre IO OPERATION bol alokovany z NON-PAGED MEMORY.
+      H. FLAG [FLTFL_CALLBACK_DATA_DRAINING_IO] indikuje, ze IO OPERATION sa realizuje pocas VOLUME DRAINING, kedy je VOLUME DETACHED.
+      I. FLAG [FLTFL_CALLBACK_DATA_POST_OPERATION] indikuje, ze STRUCTURE je volana pre POST IO OPERATION.
+   B. FIELD [PETHREAD Thread] obsahuje POINTER na THREAD, ktory spustil IO OPERATION.
+   C. FIELD [PFLT_IO_PARAMETER_BLOCK Iopb] obsahuje detaily IO OPERATION.
+   D. FIELD [IO_STATUS_BLOCK IoStatus] obsahuje STATUS danej IO OPERATION. PRE IO OPERATION CALLBACK moze nastavit tento FIELD a ukoncit spracovanie IO OPERATION vratenim RETURN VALUE [FLT_PREOP_COMPLETE]. POST IO OPERATION CALLBACK moze skontrolovat vysledky IO OPERATION.
+   E. FIELD [_FLT_TAG_DATA_BUFFER* TagData] obsahuje REPARSE POINT DATA danej IO OPERATION.
+   F. FIELD UNION obsahuje nasledujuce FIELDS.
+      A. FIELD STRUCTURE obsahuje nasledujuce FIELDS.
+	     A. FIELD [QueueLinks] obshuje QUEUE LINKS, ked sa pouziva FILTER MANAGER CALLBACK QUEUE.
+		 B. FIELD [PVOID QueueContext[2]] obsahuje ARRAY CONTEXT INFORMATION POINTERS, ked sa pouziva FILTER MANAGER QUEUE.
+	  B. FIELD [PVOID FilterContext[4]] obsahuje ARRAY CONTEXT INFORMATION POINTERS, ked sa pouziva ina ako FILTER MANAGER QUEUE.
+   G. FIELD [KPROCESSOR_MODE RequestorMode] obsahuje informaciu ci IO OPERATION bola iniciovana z USER MODE, alebo z KERNEL MODE.
+33. STRUCTURE [FLT_IO_PARAMETER_BLOCK] ma nasledujuce FIELDS.
+   A. FIELD [ULONG IrpFlags] obsahuje IRP FLAGS. Moze obsahovat nasledujuce FLAGS.
+      A. FLAG [IRP_BUFFERED_IO] znamena, ze IO OPERATION je BUFFERED OPERATION.
+      B. FLAG [IRP_CLOSE_OPERATION] znamena, ze sa jedna o CLEANUP IO OPERATION, alebo CLOSE IO OPERATION.
+      C. FLAG [IRP_DEALLOCATE_BUFFER] znamena, ze IO MANAGER vymaze BUFFER v COMPLETION PHASE danej IRP.
+      D. FLAG [IRP_INPUT_OPERATION] znamena, ze sa jedna o INPUT IO OPERATION.
+      E. FLAG [IRP_NOCACHE] znamena, ze sa jedna o NON-CACHED IO OPERATION.
+      F. FLAG [IRP_PAGING_IO] znamena, ze sa jedna o PAGING IO OPERATION.
+      G. FLAG [IRP_SYNCHRONOUS_API] znamena, ze sa jedna o SYNCHRONOUS IO OPERATION.
+      H. FLAG [IRP_SYNCHRONOUS_PAGING_IO] znamena, ze sa jedna o SYNCHRONOUS PAGING IO OPERATION.
+      I. FLAG [IRP_MOUNT_COMPLETION] znamena, ze VOLUME MOUNT je COMPLETED.
+      J. FLAG [IRP_CREATE_OPERATION] znamena, ze sa jedna o CREATE IO OPERATION, alebo OPEN IO OPERATION.
+      K. FLAG [IRP_READ_OPERATION] znamena, ze sa jedna o READ IO OPERATION.
+      L. FLAG [IRP_WRITE_OPERATION] znamena, ze sa jedna o WRITE IO OPERATION.
+      M. FLAG [IRP_DEFER_IO_COMPLETION] znamena, ze IO COMPLETION IO OPERATION je DEFERRED.
+      N. FLAG [IRP_ASSOCIATED_IRP] znamena, ze IO OPERATION je asociovana s MASTER IRP.
+      O. FLAG [IRP_OB_QUERY_NAME]  znamena, ze sa jedna o ASYNCRHONOUS NAME QUERY IO OPERATION.
+      P. FLAG [IRP_HOLD_DEVICE_QUEUE] je RESERVED.
+      Q. FLAG [IRP_UM_DRIVER_INITIATED_IO] znamena, ze IO OPERATION bola iniciovana USER MODE DRIVER.
+   B. FIELD [UCHAR MajorFunction] obsahuje MAJOR FUNCTION IO OPERATION.
+   C. FIELD [UCHAR MinorFunction] obsahuje MINOR FUNCTION IO OPERATION.
+   D. FIELD [UCHAR OperationFlags] obsahuje OPERATION FLAGS. Moze obsahovat nasledujuce FLAGS.
+      A. FLAG [SL_CASE_SENSITIVE] indikuje, ze FILE NAME COMPARISIONS maju byt CASE SENSITIVE. FLAG sa pouziva pre MAJOR FUNCTION [IRP_MJ_CREATE].
+      B. FLAG [SL_EXCLUSIVE_LOCK] indikuje, ze sa pozaduje EXCLUSIVE BYTE RANGE LOCK. Ak FLAG nie je nastaveny, pozaduje sa SHARED LOCK. FLAG sa pouziva pre MAJOR FUNCTION [IRP_MJ_LOCK_CONTROL].
+      C. FLAG [SL_FAIL_IMMEDIATELY] indikuje, ze IO OPERATION by mala okamzite zlyhat, ak sa nepodari ziskat LOCK. FLAG sa pouziva pre MAJOR FUNCTION [IRP_MJ_LOCK_CONTROL].
+      D. FLAG [SL_FORCE_ACCESS_CHECK] indikuje, ze sa MUSIA vykonat ACCESS CHECKS, aj ked IO OPERATION bola iniciovana z KERNEL MODE. FLAG sa pouziva pre MAJOR FUNCTION [IRP_MJ_CREATE].
+      E. FLAG [SL_FORCE_DIRECT_WRITE] indikuje, KERNEL MODE DRIVERS mozu vykonat WRITE aj do tych casti VOLUME, ktore su normalne PROTECTED. FLAG sa pouziva pre MAJOR FUNCTION [IRP_MJ_WRITE] a MAJOR FUNCTION [IOCTL_DISK_COPY_DATA].
+      F. FLAG [SL_INDEX_SPECIFIED] indikuje, ze SCAN pre DIRECTORY, QUOTA, alebo EXTENDED ATTRIBUTE INFORMATION by mal zacinat na LIST ENTRY, ktoreho INDEX bol speficikovany. FLAG sa pouziva pre MAJOR FUNCTION [ IRP_MJ_DIRECTORY_CONTROL], MAJOR FUNCTION [IRP_MJ_SET_QUOTA] a MAJOR FUNCTION [IRP_MJ_QUERY_EA].
+      G. FLAG [SL_OPEN_PAGING_FILE] indikuje, ze sa jedna o IO OPERATION nad PAGE FILE. FLAG sa pouziva pre MAJOR FUNCTION [IRP_MJ_CREATE].
+      H. FLAG [SL_OPEN_TARGET_DIRECTORY] indikuje, ze by sa mal otvorit PARENT DIRECTORY daneho FILE. FLAG sa pouziva pre MAJOR FUNCTION [IRP_MJ_CREATE].
+      I. FLAG [SL_OVERRIDE_VERIFY_VOLUME] indikuje, ze IO OPERATION by sa mala vykonat aj ked je na danom VOLUME nastaveny FLAG [DO_VERIFY_VOLUME]. FLAG sa pouziva pre MAJOR FUNCTION [IRP_MJ_DIRECTORY_CONTROL], MAJOR FUNCTION [IRP_MJ_READ] a MAJOR FUNCTION [IRP_MJ_WRITE].
+      J. FLAG [SL_RESTART_SCAN] indikuje, ze SCAN pre DIRECTORY, QUOTA, alebo EXTENDED ATTRIBUTE INFORMATION by mal zacinat na FIRST LIST ENTRY. FLAG sa pouziva pre MAJOR FUNCTION [IRP_MJ_DIRECTORY_CONTROL], MAJOR FUNCTION [IRP_MJ_SET_QUOTA] a MAJOR FUNCTION [IRP_MJ_QUERY_EA].
+      K. FLAG [SL_RETURN_SINGLE_ENTRY] indikuje, ze SCAN pre DIRECTORY, QUOTA, alebo EXTENDED ATTRIBUTE INFORMATION by mal vratot FIRST LIST ENTRY, ktory najde. FLAG sa pouziva pre MAJOR FUNCTION [IRP_MJ_DIRECTORY_CONTROL], MAJOR FUNCTION [IRP_MJ_SET_QUOTA] a MAJOR FUNCTION [IRP_MJ_QUERY_EA].
+      L. FLAG [SL_WATCH_TREE] indikuje, ze vsekty SUBDIRECTORIES by mali byt WATCHED. Ak FLAG nie je nastaveny, iba CURRENT DIRECTORY by mal byt WATCHED. FLAG sa pouziva pre MAJOR FUNCTION [IRP_MJ_DIRECTORY_CONTROL].
+      M. FLAG [SL_WRITE_THROUGH] indikuje, ze data musia byt zapisane do PERSISTENT STORAGE, a nie iba do CACHE. FLAG sa pouziva pre MAJOR FUNCTION [IRP_MJ_WRITE].
+   E. FIELD [UCHAR Reserved] je RESERVED.
+   F. FIELD [PFILE_OBJECT TargetFileObject] obsahuje FILE OBJECT POINTER na FILE, alebo DIRECTORY nad ktorym sa realizuje IO OPERATION. POINTER je mozne pouzit na ziskanie dalsich INFORMATION o FILE, alebo DIRECTORY.
+   G. FIELD [PFLT_INSTANCE TargetInstance] obsahuje OPAQUE POINTER na TARGET FILE SYSTEM MINI FILTER.
+   I. FIELD [FLT_PARAMETERS Parameters] obsahuje PARAMETERS danej IO OPERATION.
+34. STRUCTURE [FLT_RELATED_OBJECTS] ma nasledujuce FIELDS.
+   A. FIELD [USHORT Size] obsahuje dlzku STRUCTURE v BYTES.
+   B. FIELD [USHORT TransactionContext] obsahuje TRANSACTION MINIVERSION ID.
+   C. FIELD [PFLT_FILTER Filter] obsahuje OPAQUE POINTER na FILE SYSTEM MINI FILTER, ktoreho CALLBACK ROUTINE bude zavolana pre danu IO OPERATION.
+   D. FIELD [PFLT_VOLUME Volume] obsahuje OPAQUE POINTER na VOLUME, ktory je asociovany s danou IO OPERATION.
+   E. FIELD [PFLT_INSTANCE Instance] obsahuje OPAQUE POINTER na FILE SYSTEM MINI FILTER, ktory je asociovany s danou IO OPERATION.
+   F. FIELD [PFILE_OBJECT FileObject] obsahuje FILE OBJECT POINTER na FILE, alebo DIRECTORY nad ktorym sa realizuje IO OPERATION. POINTER je mozne pouzit na ziskanie dalsich INFORMATION o FILE, alebo DIRECTORY.
+   G. FIELD [PKTRANSACTION Transaction] obsahuje OPAQUE POINTER na TRANSACTION, ktora je asociovana s danou IO OPERATION.
+35. Pre FUNCTION [FltSetCallbackDataDirty()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [VOID FltSetCallbackDataDirty(PFLT_CALLBACK_DATA Data)].
+   B. PARAMETER [PFLT_CALLBACK_DATA Data] obsahuje POINTER na STRUCTURE [FLT_CALLBACK_DATA], ktorej FIELDS boli modifikovane.
+   C. FUNCTION nastavuje FLAG v STRUCTURE [FLT_CALLBACK_DATA] indikujuci, ze STRUCTURE bola modifikovana.
+36. Pre FUNCTION [FltCompletePendedPreOperation()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [VOID FltCompletePendedPreOperation(PFLT_CALLBACK_DATA CallbackData, FLT_PREOP_CALLBACK_STATUS CallbackStatus, PVOID Context)].
+   B. PARAMETER [PFLT_CALLBACK_DATA Data] obsahuje POINTER na STRUCTURE [FLT_CALLBACK_DATA], ktora reprezentuje IO OPERATION.
+   C. PARAMETER [FLT_PREOP_CALLBACK_STATUS CallbackStatus] obsahuje STATUS, ktory FILE SYSTEM MINI FILTER vracia pre danu IO OPERATION. Moze nadobudat nasledujuce VALUE.
+      A. VALUE [FLT_PREOP_COMPLETE] znamena, ze IO OPERATION bola ukoncena FILE SYSTEM MINI FILTER. POST OPERATION CALLBACK, ani IO OPERATION uz nebude odoslana do FILE SYSTEM MINI FILTERS nizsie v DRIVER STACK.
+      B. VALUE [FLT_PREOP_SUCCESS_NO_CALLBACK] znamena, ze IO OPERATION moze byt dalej spracovana a volanie POST OPERATION CALLBACK pre FILE SYSTEM MINI FILTER NIE je vyzadovane.
+      C. VALUE [FLT_PREOP_SUCCESS_WITH_CALLBACK] znamena, ze IO OPERATION moze byt dalej spracovana a volanie POST OPERATION CALLBACK pre FILE SYSTEM MINI FILTER je vyzadovane.
+   D. PARAMETER [PVOID Context] obsahuje CONTEXT VALUE, ktora bude nasledne zaslana aj do POST OPERATION CALLBACK.
+   E. FUNCTION umoznuje IO MANAGER v pokracovani IO OPERATION, ktora bola FILE SYSTEM MINI FILTER nastavena na PENDING v PRE OPERATION CALLBACK.
+37. Pre FUNCTION [FltCompletePendedPostOperation()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [VOID FltCompletePendedPostOperation(PFLT_CALLBACK_DATA CallbackData)].
+   B. PARAMETER [PFLT_CALLBACK_DATA Data] obsahuje POINTER na STRUCTURE [FLT_CALLBACK_DATA], ktora reprezentuje IO OPERATION.
+   C. FUNCTION umoznuje IO MANAGER v pokracovani IO OPERATION, ktora bola FILE SYSTEM MINI FILTER nastavena na PENDING v POST OPERATION CALLBACK.
+   !!!!! D. FUNCTION sa vola IBA ak ci uz POST OPERATION CALLBACK, alebo DEFFERED CALLBACK FUNCTION volana pomocou FUNCTION [FltDoCompletionProcessingWhenSafe()] vratila RETURN VALUE [FLT_POSTOP_MORE_PROCESSING_REQUIRED]. Volanie FUNCTION [FltCompletePendedPostOperation()] sa realizuje vo CUSTOM WORK ITEM, ktory dokoncil spracovani IO OPERATION.
+38. Pre FUNCTION [FltDoCompletionProcessingWhenSafe()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [BOOLEAN FltDoCompletionProcessingWhenSafe(PFLT_CALLBACK_DATA Data, PCFLT_RELATED_OBJECTS FltObjects, PVOID CompletionContext, FLT_POST_OPERATION_FLAGS Flags, PFLT_POST_OPERATION_CALLBACK SafePostCallback, PFLT_POSTOP_CALLBACK_STATUS RetPostOperationStatus)].
+   B. PARAMETER [PFLT_CALLBACK_DATA Data] obsahuje POINTER na STRUCTURE [FLT_CALLBACK_DATA], ktora reprezentuje IO OPERATION.
+   C. PARAMETER [PCFLT_RELATED_OBJECTS FltObjects] obsahuje POINTER na STRUCTURE [CFLT_RELATED_OBJECTS]. Spravila sa pouziva PARAMETER zaslany do POST OPERATION CALLBACK.
+   D. PARAMETER [PVOID CompletionContext] obsahuje CONTEXT, ktory sa zasle do CALLBACK FUNCTION.
+   E. PARAMETER [FLT_POST_OPERATION_FLAGS Flags] obsahuje FLAGS.
+   F. PARAMETER [PFLT_POST_OPERATION_CALLBACK SafePostCallback] obsahuje POINTER na CALLBACK FUNCTION, ktora sa ma zavolat v IRQL [IRQL<DISPATCH_LEVEL]. CALLBACK FUNCTION ma PROTOTYPE [FLT_POSTOP_CALLBACK_STATUS PfltPostOperationCallback(PFLT_CALLBACK_DATA Data, PCFLT_RELATED_OBJECTS FltObjects, PVOID CompletionContext, FLT_POST_OPERATION_FLAGS Flags)].
+   G. PARAMETER [PFLT_POSTOP_CALLBACK_STATUS RetPostOperationStatus] obsahuje POINTER na VARIABLE do ktorej sa ulozi FINAL STATUS IO OPERATION.
+   H. RETURN VALUE TYPE [BOOLEAN] obsahuje informaciu ci CALLBACK FUNCTION moze byt spracovana DEFERRED sposobom.
+   I. FUNCTION umoznuje vykonat CALLBACK OPERATION pre POST OPERATION CALLBACK v IRQL [IRQL<DISPATCH_LEVEL].
+   !!! J. FUNCTION NESMIE pouzit na MAJOR FUNCTION [IRP_MJ_READ], MAJOR FUNCTION [IRP_MJ_WRITE] a MAJOR FUNCTION [IRP_MJ_FLUSH_BUFFERS].
+   !!! K. FUNCTION moze byt pouzita IBA pre IRP IO OPERATIONS.
+   !!!!! L. POST OPERATION CALLBACK by mala vraciat ako RETURN VALUE obsah PARAMETER [RetPostOperationStatus], a to aj ked FUNCTION vrati VALUE [FALSE].
+39. Pre FUNCTION [FltQueueDeferredIoWorkItem()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [NTSTATUS FltQueueDeferredIoWorkItem(PFLT_DEFERRED_IO_WORKITEM FltWorkItem, PFLT_CALLBACK_DATA Data, PFLT_DEFERRED_IO_WORKITEM_ROUTINE WorkerRoutine, WORK_QUEUE_TYPE QueueType, PVOID Context)].
+   B. PARAMETER [PFLT_DEFERRED_IO_WORKITEM FltWorkItem] obsahuje POINTER na STRUCTURE [FLT_DEFERRED_IO_WORKITEM], ktora musi byt alokovana FUNCTION [FltAllocateDeferredIoWorkItem()].
+   C. PARAMETER [PFLT_CALLBACK_DATA Data] obsahuje POINTER na STRUCTURE [FLT_CALLBACK_DATA]. Spravidla sa posiela STRUCTURE zaslana v POST OPERATION CALLBACK.
+   D. PARAMETER [PFLT_DEFERRED_IO_WORKITEM_ROUTINE WorkerRoutine] obsahuje POINTER na CALLBACK FUNCTION, ktora sa ma zavolat v IRQL [IRQL==PASSIVE_LEVEL]. CALLBACK FUNCTION ma PROTOTYPE [VOID FLT_DEFERRED_IO_WORKITEM_ROUTINE(PFLT_DEFERRED_IO_WORKITEM FltWorkItem, PFLT_CALLBACK_DATA CallbackData, PVOID Context)].
+   E. PARAMETER [WORK_QUEUE_TYPE QueueType] urcuje TYPE QUEUE do ktorej sa ma WORK ITEM odoslat.
+   F. PARAMETER [PVOID Context] obsahuje CONTEXT, ktory sa zasle do CALLBACK FUNCTION.
+   G. RETURN VALUE TYPE [NTSTATUS] obsahuje informaciu ci FUNCTION skoncila uspesne.
+   H. FUNCTION odosle IRP IO OPERATION na spracovanie do WORK QUEUE.
+40. Pre FUNCTION [FltAllocateDeferredIoWorkItem()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [PFLT_DEFERRED_IO_WORKITEM FltAllocateDeferredIoWorkItem(void)].
+   B. RETURN VALUE TYPE [PFLT_DEFERRED_IO_WORKITEM] vracia ALLOCATED STRUCTURE, alebo VALUE [nullptr], ak je nedostatok MEMORY.
+   C. FUNCTION alokuje MEMORY pre DEFFERED WORK ITEM pre FILE SYSTEM MINI FILTER CALLBACK FUNCTION.
+   D. Alokovana MEMORY sa musi uvolnit volanim FUNCTION [FltFreeDeferredIoWorkItem()].
+41. Pre FUNCTION [FltFreeDeferredIoWorkItem()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [VOID FltFreeDeferredIoWorkItem(PFLT_DEFERRED_IO_WORKITEM FltWorkItem)].
+   B. PARAMETER [PFLT_DEFERRED_IO_WORKITEM FltWorkItem] obsahuje POINTER na alokovanu STRUCTURE [FLT_DEFERRED_IO_WORKITEM], ktora sa ma uvolnit.
+   C. FUNCTION uvolnuje MEMORY pre DEFFERED WORK ITEM pre FILE SYSTEM MINI FILTER CALLBACK FUNCTION.
+   D. MEMORY musi uvolnit alokovana volanim FUNCTION [FltAllocateDeferredIoWorkItem()].
+42. FILE NAMES, alebo DIRECTORY NAMES vo FILE SYSTEM MINI FILTERS mozne ziskat viacerymi sposobmi.
+   !!! A. STRUCTURE [FILE_OBJECT] ma FIELD [UNICODE_STRING FileName], ktory obsahuje FILE NAME, alebo DIRECTORY NAME. Problem je, ze NAME je vo formate v akom bol vyziadany CLIENTOM. To znamena, ze sa moze obsahovat FULL PATH, alebo RELATIVE PATH.
+   B. Pomocou FUNCTION [FltGetFileNameInformation()] je mozne ziskat NORMALIZED NAME pomocou STRUCTURE [FLT_FILE_NAME_INFORMATION]. NORMALIZED NAME obsahuje FULL PATH k danemu FILE, alebo DIRECTORY. No zaroven, namiesto VOLUME NAME ako je NAME [C:] obsahuje VOLUME NAME v tvare NAME [\Device\HarddiskVolume2].
+   C. STRUCTURE [FLT_FILE_NAME_INFORMATION] vratena volanim FUNCTION [FltGetFileNameInformation()] ma nastaveny iba FIELD [UNICODE_STRING Name]. Na ziskanie ostatnych FIELDS, ako napriklad FIELD [UNICODE_STRING Extension] je nutne zavolat FUNCTION [FltParseFileNameInformation()].
+43. Pre FUNCTION [FltGetFileNameInformation()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [NTSTATUS FltGetFileNameInformation(PFLT_CALLBACK_DATA CallbackData, FLT_FILE_NAME_OPTIONS NameOptions, PFLT_FILE_NAME_INFORMATION* FileNameInformation)].
+   B. PARAMETER [PFLT_CALLBACK_DATA Data] obsahuje POINTER na STRUCTURE [FLT_CALLBACK_DATA], ktora sa ako PARAMETER posiela do PRE OPERATION CALLBACKS a POST OPERATION CALLBACKS.
+   C. PARAMETER [FLT_FILE_NAME_OPTIONS NameOptions] obsahuje VALUES, ktore urcuju v akom FORMATE ma byt vrateny FILE NAME, alebo DIRECTORY NAME. PARAMETER moze nadobudat nasledujuce VALUES.
+      A. VALUE [FLT_FILE_NAME_NORMALIZED] znamena, ze NAME ma byt v NORMALIZED FORMAT, kedy NAME obsahuje FULL PATH.
+      B. VALUE [FLT_FILE_NAME_OPENED] znamena, ze NAME ma byt v OPEN FORMAT, ked NAME je v tom FORMAT v ktorom ho CLIENT otvoril, co moze byt napriklad RELATIVE PATH.
+      C. VALUE [FLT_FILE_NAME_SHORT] znamena, ze NAME ma byt v SHORT FORMAT, kedy je vo FORMAT [8+3].
+      D. VALUE [FLT_FILE_NAME_QUERY_DEFAULT] znamena, ze NAME sa ma brat z CACHE, alebo ak nie je v CACHE tak z FILE SYSTEM.
+      E. VALUE [FLT_FILE_NAME_QUERY_CACHE_ONLY] znamena, ze NAME sa ma brat IBA z CACHE, ale NIE z FILE SYSTEM, ak nie je v CACHE.
+      F. VALUE [FLT_FILE_NAME_QUERY_FILESYSTEM_ONLY] znamena, ze NAME sa ma brat IBA z FILE SYSTEM, ale NIE z CACHE.
+      G. VALUE [FLT_FILE_NAME_QUERY_ALWAYS_ALLOW_CACHE_LOOKUP] znamena, ze NAME sa ma brat z CACHE, alebo ak nie je v CACHE tak z FILE SYSTEM a nasledne sa NAME ma ulozit do CACHE.
+      H. VALUE [FLT_FILE_NAME_REQUEST_FROM_CURRENT_PROVIDER] sa pouziva iba v NAME PROVIDER FILE SYSTEM MINI FILTERS a znamena, ze pri ziskavani NAME moze byt REQUEST zaslany do CURRENT FILE SYSTEM MINI FILTER, a nie priamo do LOWER FILE SYSTEM MINI FILTER.
+      I. VALUE [FLT_FILE_NAME_DO_NOT_CACHE] sa pouziva iba v NAME PROVIDER FILE SYSTEM MINI FILTERS a znamena, ze NAME sa NESMIE ulozit do CACHE.
+      J. VALUE [FLT_FILE_NAME_ALLOW_QUERY_ON_REPARSE] sa pouziva iba v NAME PROVIDER FILE SYSTEM MINI FILTERS a znamena, ze je bezpecne ziskat NAME v POST CREATE PATH ak bola vratena VALUE [STATUS_REPARSE].
+   D. PARAMETER [PFLT_FILE_NAME_INFORMATION* FileNameInformation] obsahuje POINTER na STRUCTURE, do ktorej sa ulozi NAME daneho FILE, alebo DIRECTORY.
+   E. RETURN VALUE TYPE [NTSTATUS] obsahuje informaciu ci FUNCTION skoncila uspesne.
+   F. FUNCTION vracia NAME daneho FILE, alebo DIRECTORY.
+   !!! G. FUNCTION alokuje STRUCTURE v PARAMETER [PFLT_FILE_NAME_INFORMATION* FileNameInformation], ktora MUSI byt uvolnena volanim FUNCTION [FltReleaseFileNameInformation()].
+   !!!!! H. NAME vrateny v PARAMETER [PFLT_FILE_NAME_INFORMATION* FileNameInformation] obsahuje IBA FIELD [UNICODE_STRING Name]. Pre PARSING ostatnych FIELDS je nutne volat FUNCTION [FltParseFileNameInformation()].
+44. Pre FUNCTION [FltReleaseFileNameInformation()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [VOID FltReleaseFileNameInformation(PFLT_FILE_NAME_INFORMATION FileNameInformation)].
+   B. PARAMETER [PFLT_FILE_NAME_INFORMATION FileNameInformation] obsahuje STRUCTURE [FLT_FILE_NAME_INFORMATION] vytvorenu volanim FUNCTION [FltGetFileNameInformation()], ktora sa ma uvolnit.
+   C. FUNCTION uvolnuje STRUCTURE [FLT_FILE_NAME_INFORMATION], ktora bola alokovana volanim FUNCTION [FltGetFileNameInformation()].
+45. Pre FUNCTION [FltParseFileNameInformation()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [NTSTATUS FltParseFileNameInformation(PFLT_FILE_NAME_INFORMATION FileNameInformation)].
+   B. PARAMETER [PFLT_FILE_NAME_INFORMATION FileNameInformation] obsahuje STRUCTURE [FLT_FILE_NAME_INFORMATION], ktora obsahuje NAME, ktory ma byt PARSED.
+   C. RETURN VALUE TYPE [NTSTATUS] obsahuje informaciu ci FUNCTION skoncila uspesne.
+   D. FUNCTION vykonava PARSING NAME daneho FILE, alebo DIRECTORY, pricom v STRUCTURE [FLT_FILE_NAME_INFORMATION] naplni FIELDS, ktore su uspesne PARSED.
+   !!!!! E. FUNCTION NEALOKUJE ziadnu dodatocnu MEMORY. Jednotlive FIELDS TYPE [UNICODE_STRING] iba referuju na FIELD [UNICODE_STRING Name].
+46. STRUCTURE [FLT_FILE_NAME_INFORMATION] ma nasledujuce FIELDS.
+   A. FIELD [USHORT Size] obsahuje dlzku STRUCTURE v BYTES.
+   B. FIELD [FLT_FILE_NAME_PARSED_FLAGS NamesParsed] obsahuje FLAGS, ktore urcuju, ktore FIELDS STRUCTURE [FLT_FILE_NAME_INFORMATION] boli uspesne PARSED. FIELD moze obsahovat nasledujuce VALUES.
+      A. FLAG [FLTFL_FILE_NAME_PARSED_FINAL_COMPONENT] znamena, ze FIELD [UNICODE_STRING FinalComponent] bol uspesne PARSED.
+      B. FLAG [FLTFL_FILE_NAME_PARSED_EXTENSION] znamena, ze FIELD [UNICODE_STRING Extension] bol uspesne PARSED.
+      C. FLAG [FLTFL_FILE_NAME_PARSED_STREAM] znamena, ze FIELD [UNICODE_STRING Stream] bol uspesne PARSED.
+      D. FLAG [FLTFL_FILE_NAME_PARSED_EXTENSION] znamena, ze FIELD [UNICODE_STRING ParentDir] bol uspesne PARSED.
+   C. FIELD [FLT_FILE_NAME_OPTIONS Format] obsahuje FORMAT v ktorom sa nachadza FIELD [UNICODE_STRING Name]. FIELD moze obsahovat nasledujuce VALUES.
+      A. VALUE [FLT_FILE_NAME_NORMALIZED] znamena, ze FIELD [UNICODE_STRING Name] je v NORMALIZED FORMAT kedy obsahuje FULL PATH.
+      B. VALUE [FLT_FILE_NAME_OPENED] znamena, ze FIELD [UNICODE_STRING Name] je v tom istom FORMATE v ktorom ho zadal CLIENT pristupujuci k danemu FILE ci DIRECTORY.
+      C. VALUE [FLT_FILE_NAME_SHORT] znamena, ze FIELD [UNICODE_STRING Name] je SHORT FORMAT, kedy ma FORMAT [8+3] CHARACTERS.
+   D. FIELD [UNICODE_STRING Name] obsahuje FILE NAME, alebo DIRECTORY NAME. FORMAT daneho NAME je urceny FIELD [FLT_FILE_NAME_OPTIONS Format].
+   E. FIELD [UNICODE_STRING Volume] obsahuje VOLUME NAME daneho FILE, alebo DIRECTORY.
+   F. FIELD [UNICODE_STRING Share] obsahuje NETWORK SHARE NAME daneho FILE, alebo DIRECTORY.
+   G. FIELD [UNICODE_STRING Extension] obsahuje EXTENSION daneho FILE, alebo DIRECTORY.
+   H. FIELD [UNICODE_STRING Stream] obsahuje STREAM NAME daneho FILE, alebo DIRECTORY.
+   I. FIELD [UNICODE_STRING FinalComponent] obsahuje FINAL NAME COMPONENT daneho FILE, alebo DIRECTORY.
+   J. FIELD [UNICODE_STRING ParentDir] obsahuje PARENT DIRECTORY NAME daneho FILE, alebo DIRECTORY.
+47. WINDOWS podporuje pre NTFS FILE SYSTEMS FILE STREAMS. Pre FILE STREAMS platia nasledujuce fakty.
+   A. FILE STREAMS umoznuju do jedneho FILE zapisovat viacero rozlicnych STREAMS.
+   B. FILE STREAMS su vzajomne nezavisle. To znamena, ze READ ci WRITE z jedneho STREAM nijako neovplynuje ine STREAMS.
+   C. FILE NAMES s FILE STREAMS ma FORMAT [FILE_NAME:FILE_NAME_STREAM], kde VALUE [FILE_NAME] je nazov FILE a VALUE [FILE_NAME_STREAM] je nazov FILE NAME STREAM.
+   !!! D. DEFAULT FILE STREAM ma NAME [:$DATA], VRATANE CHARACTER [:].
+   !!! E. WINDOWS TOOLS standardne nepracuju zo VIACERYMI STREAMS a zobrazuju iba obsah DEFAULT STREAM [:$DATA].
+   !!! F. FILES s FILE STREAMS je mozne otvarat volanim FUNCTION [CreateFile()], ktora v NAME ma nazov FILE STREAM.
+   !!! G. WINDOWS poskutyje FUNCTION [FindFirstStreamW()] a FUNCTION [FindNextStreamW()] na vyhladavanie STREAMS vo FILES.
+48. WINDOWS vykonava FILE DELETE nasledujucimi sposobmi.
+   A. Otvorenim FILE s FLAG [FILE_FLAG_DELETE_ON_CLOSE], ktory indikuje, ze FILE ma byt DELETED. Tento sposob je STANDARDY a pouziva ho aj FUNCTION [DeleteFile()].
+   B. Volanim USER MODE FUNCTION [SetFileInformationByHandle()], alebo KERNEL MODE FUNCTION [NtSetInformationFile()], ktore sposobia vyvolanie IRP [IRP_MJ_SET_INFORMATION] s FIELD [FILE_DISPOSITION_INFORMATION::DeleteFile] nastaveny na VALUE [TRUE], ktora indikuje FILE SYSTEM, ze FILE ma byt DELETED.
+49. Pre FUNCTION [FltParseFileName()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [NTSTATUS FltParseFileName(PCUNICODE_STRING FileName, PUNICODE_STRING Extension, PUNICODE_STRING Stream, PUNICODE_STRING FinalComponent)].
+   B. PARAMETER [PCUNICODE_STRING FileName] obsahuje FILE NAME, ktory ma byt PARSED.
+   C. PARAMETER [PUNICODE_STRING Extension] obsahuje POINTER na STRUCTURE [UNICODE_STRING] do ktorej sa ulozi EXTENSION daneho FILE NAME.
+   D. PARAMETER [PUNICODE_STRING Stream] obsahuje POINTER na STRUCTURE [UNICODE_STRING] do ktorej sa ulozi STREAM NAME daneho FILE NAME.
+   E. PARAMETER [PUNICODE_STRING FinalComponent] obsahuje POINTER na STRUCTURE [UNICODE_STRING] do ktorej sa ulozi FINAL COMPOMENT daneho FILE NAME.
+   F. RETURN VALUE TYPE [NTSTATUS] obsahuje informaciu ci FUNCTION skoncila uspesne.
+   G. FUNCTION vykonava PARSING NAME daneho FILE, alebo DIRECTORY.
+   !!!!! H. FUNCTION NEALOKUJE ziadnu dodatocnu MEMORY. Jednotlive FIELDS TYPE [UNICODE_STRING] iba referuju na zaslany PARAMETER [PCUNICODE_STRING FileName].
+50. Pre FUNCTION [IoQueryFileDosDeviceName()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [NTSTATUS IoQueryFileDosDeviceName(PFILE_OBJECT FileObject, POBJECT_NAME_INFORMATION* ObjectNameInformation)].
+   B. PARAMETER [PFILE_OBJECT FileObject] obsahuje STRUCTURE [FILE_OBJECT], ktora obsahuje NAME, ktory ma byt CONVERTED na DOS FORMAT.
+   !!! C. PARAMETER [POBJECT_NAME_INFORMATION* ObjectNameInformation] obsahuje POINTER na STRUCTURE [POBJECT_NAME_INFORMATION], ktora bude ALLOCATED a do ktorej sa ulozi FILE NAME v DOS FORMAT. STRUCTURE MUSI byt uvolnena volanim FUNCTION [ExFreePool()].
+   D. RETURN VALUE TYPE [NTSTATUS] obsahuje informaciu ci FUNCTION skoncila uspesne.
+   !!! E. FUNCTION vykonava konverziu FILE NAME z DEVICE FORMAT na DOS FORMAT.
+   !!!!! F. FUNCTION pri uspesnom volani interne alokuje MEMORY pre STRUCTURE [POBJECT_NAME_INFORMATION], ktora MUSI byt uvolnena volanim FUNCTION [ExFreePool()].
+51. CONTEXTS vo FILE SYSTEM MINI DRIVERS umoznuju asociovat CUSTOM DATA s FILE SYSTEM OBJECTS, ako su napriklad VOLUMES, INSTANCES, FILES ci STREAMS. Pre CONTEXTS platia nasledujuce fakty.
+   A. FILE SYSTEM MINI DRIVERS mozu asociovat lubovolne CUSTOM DATA s FILE SYSTEM OBJECTS, ako su napriklad VOLUMES, INSTANCES, FILES ci STREAMS. Tieto data sa nazyvaju CONTEXTS.
+   !!! B. Kazdy FILE SYSTEM OBJECT obsahuje LIST vsetkych asociovanych CONTEXTS. Plati, ze jedna FILE SYSTEM MINI DRIVER INSTANCE moze asociovat s danym FILE SYSTEM OBJECT iba 1 CONTEXT, FILE SYSTEM OBJECT moze mat asociovane viacere CONTEXTS od rozlicnych FILE SYSTEM MINI DRIVER INSTANCES.
+   C. CONTEXTS mozu mat FIXED LENGTHS, alebo VARIABLE LENGTHS.
+   !!! D. CONTEXTS su REFERENCE COUNTED. CONTEXT je uvolneny z MEMORY az ked INTERNAL COUNTER klesne na VALUE [0]. Platia nasledujuce fakty.
+      A. CONTEXT INTERNAL COUNTER je inkrementovany volanim FUNCTION [FltAllocateContext()], FUNCTION [FltSetXXXContext()] a FUNCTION [FltGetXXXContext()].
+	  B. CONTEXT INTERNAL COUNTER je dekrementovany volanim FUNCTION [FltReleaseContext()],  FUNCTION [FltDeleteXXXContext()] a FUNCTION [FltDeleteContext()].
+   !!!!! E. CONTEXT, ktory je priradeny do LIST daneho FILE SYSTEM OBJECT nemusi byt z neho explicitne odstraneny. KERNEL totizto automaticky odstranuje CONTEXT z LIST daneho FILE SYSTEM OBJECT a dekrementuje COUNTER (ak klesne na VALUE [0], tak je CONTEXT odstraneny z MEMORY) ak plati nieco z nasledujuceho.
+      A. FILE SYSTEM OBJECT je DELETED.
+	  B. FILE SYSTEM MINI DRIVER INSTANCE vykonava DETACH od FILE SYSTEM VOLUME ku ktoremu bola ATTACHED.
+	  B. FILE SYSTEM MINI DRIVER je uvolnovany z MEMORY.
+   !!! F. CONTEXTS sa registruju pomocou FUNCTION [FltRegisterFilter()], ktora ma ako PARAMETER ARRAY STRUCTURES [FLT_CONTEXT_REGISTRATION]. Kazdy ARRAY ITEM reprezentuje 1 CONTEXT TYPE, ktory bude FILE SYSTEM MINI DRIVER pouzivat. FILE SYSTEM MINI DRIVER nemoze pre ten isty CONTEXT TYPE registrovat viac ako 1 CONTEXT.
+   !!! G. Pri registracii CONTEXTS sa vytvara ARRAY STRUCTURES [FLT_CONTEXT_REGISTRATION]. Tento ARRAY MUSI byt ukonceny ITEM, ktoreho FIELD [FLT_CONTEXT_REGISTRATION::ContextType] je nastaveny na VALUE [FLT_CONTEXT_END] indikujuci koniec ARRAY.
+   H. Pri registracii CONTEXTS je mozne definovat CUSTOM ALLOCATE ROUTINE, CUSTOM FREE ROUTINE a CUSTOM CLEANUP ROUTINE, ktore sa volaju namiesto DEFAULT ROUTINES.
+   I. CONTEXT sa alokuje volanim FUNCTION [FltAllocateContext()]. Ak FUNCTION prebehne uspesne je INTERNAL COUNTER vytvoreneho CONTEXT inkrementovany.
+   !!! J. INTERNAL COUNTER CONTEXT sa dekrementuje volanim FUNCTION [FltReleaseContext()]. Ak INTERNAL COUNTER klesne na VALUE [0], CONTEXT je pocas volania FUNCTION [FltReleaseContext()] uvolneny z MEMORY.
+   !!! K. FUNCTION [FltSetXXXContext()], kde VALUE [XXX] predstavuje NAME daneho OBJECT, ako napriklad NAME [File] vlozi pre FILE SYSTEM MINI DRIVER INSTANCE novy CONTEXT do CONTEXT LIST daneho FILE SYSTEM OBJECT. V pripade uspesneho volania FUNCTION [FltSetXXXContext()] je INTERNAL COUNTER inkrementovany.
+   !!! L. FUNCTION [FltGetXXXContext()], kde VALUE [XXX] predstavuje NAME daneho OBJECT, ako napriklad NAME [File] vrati pre FILE SYSTEM MINI DRIVER INSTANCE priradeny CONTEXT z CONTEXT LIST daneho FILE SYSTEM OBJECT. V pripade uspesneho volania FUNCTION [FltGetXXXContext()] je INTERNAL COUNTER inkrementovany.
+   !!!!! M. FUNCTION [FltDeleteXXXContext()], kde VALUE [XXX] predstavuje NAME daneho OBJECT, ako napriklad NAME [File] odstrani pre FILE SYSTEM MINI DRIVER INSTANCE CONTEXT z CONTEXT LIST daneho FILE SYSTEM OBJECT. V pripade uspesneho volania FUNCTION [FltDeleteXXXContext()] je INTERNAL COUNTER dekrementovany. Ak INTERNAL COUNTER klesne na VALUE [0], CONTEXT je pocas volania FUNCTION [FltDeleteXXXContext()] uvolneny z MEMORY.
+   !!! N. FUNCTION [FltDeleteContext()] odstrani pre FILE SYSTEM MINI DRIVER INSTANCE CONTEXT z CONTEXT LIST daneho FILE SYSTEM OBJECT. V pripade uspesneho volania FUNCTION [FltDeleteContext()] je INTERNAL COUNTER dekrementovany. Ak INTERNAL COUNTER klesne na VALUE [0], CONTEXT je pocas volania FUNCTION [FltDeleteContext()] uvolneny z MEMORY.
+52. STRUCTURE [FLT_CONTEXT_REGISTRATION] ma nasledujuce FIELDS.
+   A. FIELD [FLT_CONTEXT_TYPE ContextType] identifikuje FILE SYSTEM OBJECT pre ktory sa bude CONTEXT pouzivat. Moze nadobudat nasledujuce VALUES.
+      A. VALUE [FLT_VOLUME_CONTEXT] znamena, ze sa CONTEXT pouziva pre VOLUMES.
+      !!! B. VALUE [FLT_INSTANCE_CONTEXT] znamena, ze sa CONTEXT pouziva pre FILE SYSTEM MINI DRIVER INSTANCES. KERNEL pre kazdy VOLUME ku ktoremu sa dany FILE SYSTEM MINI DRIVER pripaja vytvori novu INSTANCE daneho FILE SYSTEM MINI DRIVER.
+	  C. VALUE [FLT_FILE_CONTEXT] znamena, ze sa CONTEXT pouziva pre FILES.
+	  D. VALUE [FLT_STREAM_CONTEXT] znamena, ze sa CONTEXT pouziva pre FILE STREAMS.
+	  E. VALUE [FLT_STREAMHANDLE_CONTEXT] znamena, ze sa CONTEXT pouziva pre FILE STREAMS na STRUCTURE [FILE_OBJECT].
+	  F. VALUE [FLT_TRANSACTION_CONTEXT] znamena, ze sa CONTEXT pouziva pre TRANSACTIONS vykonavane nad danym FILE SYSTEM.
+	  G. VALUE [FLT_SECTION_CONTEXT] znamena, ze sa CONTEXT pouziva pre SECTIONS (FILE MAPPINGS).
+	  H. VALUE [FLT_CONTEXT_END] reprezentuje zarazku, ktora sa pouziva na identifikaciu konca ARRAY STRUCTURES [FLT_CONTEXT_REGISTRATION].
+   B. FIELD [FLT_CONTEXT_REGISTRATION_FLAGS Flags] obsahuje FLAGS. Moze obsahovat nasledujuce VALUES.
+      A. VALUE [0] znamena, ze ziaden FLAG nie je nastaveny.
+	  B. VALUE [FLTFL_CONTEXT_REGISTRATION_NO_EXACT_SIZE_MATCH] znamena ze ak sa pouzivaju FIXED SIZE CONTEXT, tak KERNEL alokuje CONTEXT z LOOKASIDE LIST nielen ked je pozadovana dlzka CONTEXT zhodna s dlzkou CONTEXT v LOOKASIDE LIST, ale aj ked je dlzka CONTEXT MENSIA. Ak FLAG nie je nastaveny, tak sa obe dlzky MUSIA ZHODOVAT, aby bol pouzity LOOKASIDE LIST.
+   C. FIELD [PFLT_CONTEXT_CLEANUP_CALLBACK ContextCleanupCallback] obsahuje OPTIONAL POINTER na CALLBACK, ktory sa bude volat pred uvolnenim CONTEXT z MEMORY. Pouziva sa na uvolnenie pripadnych POINTERS, ak ich obsahuje CONTEXT. Inak sa nastavi VALUE [nullptr]. CALLBACK FUNCTION ma PROTOTYPE [void PfltContextCleanupCallback(PFLT_CONTEXT Context, FLT_CONTEXT_TYPE ContextType)].
+   !!! D. FIELD [SIZE_T Size] obsahuje CONTEXT SIZE, ak sa pouzivaju FIXED SIZE CONTEXT, a nie su nastavene CUSTOM ALLOCATE ROUTINE a CUSTOM FREE ROUTINE. Pri pouziti VARIABLE SIZE CONTEXTS musi byt tento FIELD nastaveny na VALUE [FLT_VARIABLE_SIZED_CONTEXTS].
+   E. FIELD [ULONG PoolTag] obsahuje POOL TAG VALUE. Pouziva sa iba vtedy, ak nie su nastavene CUSTOM ALLOCATE ROUTINE a CUSTOM FREE ROUTINE.
+   F. FIELD [PFLT_CONTEXT_ALLOCATE_CALLBACK ContextAllocateCallback] obsahuje OPTIONAL POINTER na CUSTOM ALLOCATE ROUTINE, ktora sa vola, ak je nutne alokovat novy CONTEXT. CUSTOM ALLOCATION ROUTINE na PROTOTYPE [PVOID PfltContextAllocateCallback(POOL_TYPE PoolType, SIZE_T Size, FLT_CONTEXT_TYPE ContextType)].
+   G. FIELD [PFLT_CONTEXT_FREE_CALLBACK ContextFreeCallback] obsahuje OPTIONAL POINTER na CUSTOM FREE ROUTINE, ktora sa vola, ak je nutne uvolnit existujuci CONTEXT. CUSTOM FREE ROUTINE na PROTOTYPE [void PfltContextFreeCallback(PVOID Pool, FLT_CONTEXT_TYPE ContextType)].
+   !!! H. FIELD [PVOID Reserved1] je RESERVED. FIELD MUSI byt nastaveny na VALUE [nullptr].
+53. Pre FUNCTION [FltAllocateContext()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [NTSTATUS FltAllocateContext(PFLT_FILTER Filter, FLT_CONTEXT_TYPE ContextType, SIZE_T ContextSize, POOL_TYPE PoolType, PFLT_CONTEXT* ReturnedContext)].
+   B. PARAMETER [PFLT_FILTER Filter] obsahuje OPAQUE POINTER na FILE SYSTEM MINI FILTER.
+   C. PARAMETER [FLT_CONTEXT_TYPE ContextType] obsahuje TYPE FILE SYSTEM OBJECT pre ktory sa CONTEXT alokuje. Moze nadobudat nasledujuce VALUES.
+      A. VALUE [FLT_VOLUME_CONTEXT] znamena, ze sa CONTEXT pouziva pre VOLUMES.
+      !!! B. VALUE [FLT_INSTANCE_CONTEXT] znamena, ze sa CONTEXT pouziva pre FILE SYSTEM MINI DRIVER INSTANCES. KERNEL pre kazdy VOLUME ku ktoremu sa dany FILE SYSTEM MINI DRIVER pripaja vytvori novu INSTANCE daneho FILE SYSTEM MINI DRIVER.
+	  C. VALUE [FLT_FILE_CONTEXT] znamena, ze sa CONTEXT pouziva pre FILES.
+	  D. VALUE [FLT_STREAM_CONTEXT] znamena, ze sa CONTEXT pouziva pre FILE STREAMS.
+	  E. VALUE [FLT_STREAMHANDLE_CONTEXT] znamena, ze sa CONTEXT pouziva pre FILE STREAMS na STRUCTURE [FILE_OBJECT].
+	  F. VALUE [FLT_TRANSACTION_CONTEXT] znamena, ze sa CONTEXT pouziva pre TRANSACTIONS vykonavane nad danym FILE SYSTEM.
+	  G. VALUE [FLT_SECTION_CONTEXT] znamena, ze sa CONTEXT pouziva pre SECTIONS (FILE MAPPINGS).
+   !!! D. PARAMETER [SIZE_T ContextSize] obsahuje velkost CONTEXT, ktora sa ma alokovat. Pri FIXED SIZE CONTEXT by mala byt zhodna, alebo mensia ako VALUE vo FIELD [FLT_CONTEXT_REGISTRATION::Size].
+   E. PARAMETER [POOL_TYPE PoolType] obsahuje POOL TYPE z ktoreho sa ma MEMORY pre CONTEXT alokovat. Moze mat nasledujuce VALUES.
+      A. VALUE [NonPagedPool] znamena, ze MEMORY bude alokovana z NON-PAGED MEMORY POOL. Pre FILE SYSTEM OBJECT typu VOLUME sa musi VZDY pouzit NON-PAGED MEMORY POOL.
+      B. VALUE [PagedPool] znamena, ze MEMORY bude alokovana z PAGED MEMORY POOL.
+      C. VALUE [NonPagedPoolNx] znamena, ze MEMORY bude alokovana z NON-EXECUTABLE NON-PAGED MEMORY POOL.
+   !!! F. PARAMETER [PFLT_CONTEXT* ReturnedContext] obsahuje POINTER do ktoreho sa ulozi alokovany CONTEXT. Tento POINTER reprezentuje CONTEXT BUFFER do ktoreho je mozne ukladat CUSTOM CONTEXT DATA.
+   F. RETURN VALUE TYPE [NTSTATUS] obsahuje informaciu ci FUNCTION skoncila uspesne.
+   !!! G. FUNCTION alokuje MEMORY pre CONTEXT.
+   !!!!! H. FUNCTION pri uspesnom volani inkrementuje INTERNAL COUNTER. Ten MUSI byt dekrementovany volanim FUNCTION [FltReleaseContext()].
+   !!! I. Ak je definovana CUSTOM ALLOCATE ROUTINE, tak sa zavola na alokovanie MEMORY.
+54. Pre FUNCTION [FltReleaseContext()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [VOID FltReleaseContext(PFLT_CONTEXT Context)].
+   B. PARAMETER [PFLT_CONTEXT Context] obsahuje CONTEXT, ktoreho INTERNAL COUNTER ma byt DECREMENTED.
+   !!! C. FUNCTION dekrementuje INTERNAL COUNTER daneho CONTEXT.
+   !!!!! D. Ak pocas volania FUNCTION INTERNAL COUNTER klesne na VALUE [0], CONTEXT je okamzite pocas volania tejto FUNCTION odstraneny z MEMORY.
+   !!! E. Ak pocas volania FUNCTION je CONTEXT odstranovany z MEMORY a su definovane CUSTOM CLEANUP ROUTINE a CUSTOM FREE ROUTINE, tak sa zavolaju.
+55. Pre FUNCTION [FltSetFileContext()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [NTSTATUS FltSetFileContext(PFLT_INSTANCE Instance, PFILE_OBJECT FileObject, FLT_SET_CONTEXT_OPERATION Operation, PFLT_CONTEXT NewContext, PFLT_CONTEXT* OldContext)].
+   B. PARAMETER [PFLT_INSTANCE Instance] obsahuje OPAQUE POINTER na INSTANCE FILE SYSTEM MINI DRIVER.
+   C. PARAMETER [PFILE_OBJECT FileObject] obsahuje OPAQUE POINTER na FILE OBJECT s pre ktory sa ma dany CONTEXT nastavit.
+   D. PARAMETER [FLT_SET_CONTEXT_OPERATION Operation] obsahuje OPERATION, ktora sa ma vykonat. Moze obsahovat nasledujuce VALUES.
+      A. VALUE [FLT_SET_CONTEXT_REPLACE_IF_EXISTS] znamena, ze ak CONTEXT je uz s danym FILE OBJECT asociovany, tak povodny CONTEXT bude nahradeny novy CONTEXT. Ak CONTEXT pre dany OBJECT nebol nastaveny, tak CONTEXT sa prida do CONTEXT LIST asociovanom s danym FILE OBJECT.
+      B. VALUE [FLT_SET_CONTEXT_KEEP_IF_EXISTS] znamena, ze ak CONTEXT je uz s danym FILE OBJECT asociovany, tak povodny CONTEXT sa nezmeni a FUNCTION NEVYKONA INCREMENT INTERNAL COUNTER. Ako RETURN VALUE sa vrati VALUE [STATUS_FLT_CONTEXT_ALREADY_DEFINED]. Ak CONTEXT pre dany OBJECT nebol nastaveny, tak CONTEXT sa prida do CONTEXT LIST asociovanom s danym FILE OBJECT.
+   E. PARAMETER [PFLT_CONTEXT NewContext] obsahuje novy CONTEXT, ktory ma byt pridany do CONTEXT LIST asociovanom s danym FILE OBJECT.
+   !!! F. PARAMETER [PFLT_CONTEXT* OldContext] obsahuje POINTER na existujuci CONTEXT, ktory sa naplni CONTEXT, ktory bol asociovany s danym FILE OBJECT pred volanim FUNCTION. Ak tento PARAMETER nie je NULL a je nastaveny na OLD CONTEXT, jeho COUNTER MUSI byt DECREMENTED, aby mohol byt OLD CONTEXT uvolneny.
+   G. RETURN VALUE TYPE [NTSTATUS] obsahuje informaciu ci FUNCTION skoncila uspesne.
+   !!! H. FUNCTION asociuje CONTEXT s FILE OBJECT, pricom kazda INSTANCE FILE SYSTEM MINI DRIVER moze asociovat iba 1 CONTEXT s danym FILE OBJECT.
+   !!! I. Ak FUNCTION skonci uspesne, je INTERNAL COUNTER NEW CONTEXT INCREMENTED a musi byt explicitne DECREMENTED volanim FUNCTION [FltReleaseContext()].
+   !!!!! J. Ak FUNCTION nastavi PARAMETER [PFLT_CONTEXT* OldContext], tak INTERNAL COUNTER OLD CONTEXT je INCREMENTED a musi byt explicitne DECREMENTED volanim FUNCTION [FltReleaseContext()].
+56. Pre FUNCTION [FltGetFileContext()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [NTSTATUS FltGetFileContext(PFLT_INSTANCE Instance, PFILE_OBJECT FileObject, PFLT_CONTEXT* Context)].
+   B. PARAMETER [PFLT_INSTANCE Instance] obsahuje OPAQUE POINTER na INSTANCE FILE SYSTEM MINI DRIVER.
+   C. PARAMETER [PFILE_OBJECT FileObject] obsahuje OPAQUE POINTER na FILE OBJECT s pre ktory sa ma dany CONTEXT nacitat.
+   D. PARAMETER [PFLT_CONTEXT* Context] obsahuje CONTEXT, ktory je pre danu INSTANCE FILE SYSTEM MINI DRIVER asociovany s FILE OBJECT.
+   E. RETURN VALUE TYPE [NTSTATUS] obsahuje informaciu ci FUNCTION skoncila uspesne.
+   F. FUNCTION vracia CONTEXT asociovany s FILE OBJECT.
+   !!! G. Ak FUNCTION skonci uspesne, je INTERNAL COUNTER vrateneho CONTEXT INCREMENTED a musi byt explicitne DECREMENTED volanim FUNCTION [FltReleaseContext()].
+57. Pre FUNCTION [FltDeleteFileContext()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [NTSTATUS FltDeleteFileContext(PFLT_INSTANCE Instance, PFILE_OBJECT FileObject, PFLT_CONTEXT* OldContext)].
+   B. PARAMETER [PFLT_INSTANCE Instance] obsahuje OPAQUE POINTER na INSTANCE FILE SYSTEM MINI DRIVER.
+   C. PARAMETER [PFILE_OBJECT FileObject] obsahuje OPAQUE POINTER na FILE OBJECT s z ktoreho sa ma dany CONTEXT odstranit.
+   !!! D. PARAMETER [PFLT_CONTEXT* OldContext] obsahuje POINTER CONTEXT, ktory sa naplni CONTEXT, ktory bol asociovany s danym FILE OBJECT a je odstraneny.
+   E. RETURN VALUE TYPE [NTSTATUS] obsahuje informaciu ci FUNCTION skoncila uspesne.
+   !!! F. FUNCTION odstranuje CONTEXT z CONTEXT LIST daneho FILE OBJECT.
+   !!!!! G. FUNCTION dekrementuje INTERNAL COUNTER daneho CONTEXT. Ak INTERNAL COUNTER klesne na VALUE [0], tak je CONTEXT este pocas volania tejto FUNCTION odstraneny z MEMORY.
+   !!!!! H. Ak FUNCTION nastavi PARAMETER [PFLT_CONTEXT* OldContext], tak INTERNAL COUNTER OLD CONTEXT je INCREMENTED a musi byt explicitne DECREMENTED volanim FUNCTION [FltReleaseContext()].
+58. Pre FUNCTION [FltDeleteContext()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [VOID FltDeleteContext(PFLT_CONTEXT Context)].
+   B. PARAMETER [PFLT_CONTEXT Context] obsahuje CONTEXT, ktory ma byt odstraneny z CONTEXT LIST daneho FILE OBJECT.
+   !!! C. FUNCTION odstranuje CONTEXT z CONTEXT LIST daneho FILE OBJECT.
+   !!!!! D. FUNCTION dekrementuje INTERNAL COUNTER daneho CONTEXT. Ak INTERNAL COUNTER klesne na VALUE [0], tak je CONTEXT este pocas volania tejto FUNCTION odstraneny z MEMORY.
+!!! 59. Ak FILE SYSTEM MINI DRIVERS potrebuju vykonavat IO OPERATIONS, platia nasledujuce fakty.
+   A. FILE SYSTEM MINI DRIVERS mozu pouzit standardne KERNEL FUNCTIONS ako napriklad FUNCTION [ZwCreateFile()], FUNCTION [ZwReadFile()], FUNCTION [ZwWriteFile()] a FUNCTION [ZwClose()].
+   !!!!! B. Problem pouzitia standardnych IO KERNEL FUNCTIONS je, ze tieto spustia cely KERNEL STACK, co znamena, ze su volane aj PRE OPERATION CALLBACKS a POST OPERATION CALLBACKS samotneho FILE SYSTEM MINI DRIVER, ktory IO OPERATIONS inicioval. Tym dojde k REENTRANCY co moze sposobit problem a takisto maju taketo IO OPERATIONS nizsiu PERFORMANCE.
+   !!! C. Alternativou je pouzitie KERNEL FUNCTIONS ako FUNCTION [FltCreateFileEx()], FUNCTION [FltReadFile()], FUNCTION [FltWriteFile()] a FUNCTION [FltClose()]. Tieto FUNCTIONS NESPUSTAJU CELY KERNEL STACK, ale vykonavaju IO OPERATIONS iba nad DRIVERS, ktore su NIZSIE v DRIVER STACK ako CURRENT FILE SYSTEM MINI DRIVER.
+60. Pre FUNCTION [FltCreateFileEx()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [NTSTATUS FltCreateFileEx(PFLT_FILTER Filter, PFLT_INSTANCE Instance, PHANDLE FileHandle, PFILE_OBJECT* FileObject, ACCESS_MASK DesiredAccess, POBJECT_ATTRIBUTES ObjectAttributes, PIO_STATUS_BLOCK IoStatusBlock, PLARGE_INTEGER AllocationSize, ULONG FileAttributes, ULONG ShareAccess, ULONG CreateDisposition, ULONG CreateOptions, PVOID EaBuffer, ULONG EaLength, ULONG Flags)].
+   B. PARAMETER [PFLT_FILTER Filter] obsahuje OPAQUE POINTER na FILE SYSTEM MINI DRIVER identifikujuci CURRENT FILE SYSTEM MINI DRIVER.
+   C. PARAMETER [PFLT_INSTANCE Instance] obsahuje OPAQUE POINTER na INSTANCE FILE SYSTEM MINI DRIVER, ktory vykonava IO OPERATION.
+   !!! D. PARAMETER [PHANDLE FileHandle] obsahuje POINTER na HANDLE na FILE, ktory ma byt OPENED. HANDLE musi byt uzatvoreny volanim FUNCTION [FltClose()].
+   !!! E. PARAMETER [PFILE_OBJECT* FileObject] obsahuje POINTER do ktoreho sa ulozi POINTER na STRUCTURE [FILE_OBJECT] reprezentujuci FILE, ktory ma byt OPENED. POINTER musi byt uvolneny volanim FUNCTION [ObDereferenceObject()].
+   F. PARAMETER [ACCESS_MASK DesiredAccess] obsahuje typ ACCESS, ktory ma byt udeleny danemu FILE.
+   G. PARAMETER [POBJECT_ATTRIBUTES ObjectAttributes] obsahuje POINTER na STRUCTRE [OBJECT_ATTRIBUTES], ktora musi byt inicializovana volanim FUNCTION [InitializeObjectAttributes()].
+   H. PARAMETER [PIO_STATUS_BLOCK IoStatusBlock] obsahuje POINTER na STRUCTRE [PIO_STATUS_BLOCK IoStatusBlock], ktora obshauje informaciou o tom ako OPEN OPERATION skoncila.
+   I. PARAMETER [PLARGE_INTEGER AllocationSize] obsahuje OPTIONAL POINTER na STRUCTURE [LARGE_INTEGER], ktora uvodnu dlzku FILE STREAM.
+   J. PARAMETER [ULONG FileAttributes] obsahuje FILE ATTRIBUTES, ktore sa nastavia ak je FILE CREATED, alebo OVERWRITTEN.
+   K. PARAMETER [ULONG ShareAccess] obsahuje typ SHARED ACCESS, ktory je vyzadovani pri otvreni daneho FILE.
+   L. PARAMETER [ULONG CreateDisposition] obsahuje OPTIONS urcujuce co sa ma vykonat ak FILE uz existuje.
+   M. PARAMETER [ULONG CreateOptions] obsahuje OPTIONS, ktore sa aplikuje, ked je FILE CREATED, alebo OPENED.
+   N. PARAMETER [PVOID EaBuffer] obsahuje POINTER na STRUCTURE [FILE_FULL_EA_INFORMATION] obsahujuce EXTENDED INFORMATION data, ktore sa aplikuju na FILE.
+   O. PARAMETER [ULONG EaLength] obsahuje dlzku BUFFER v PARAMETER [PVOID EaBuffer].
+   P. PARAMETER [ULONG Flags] obsahuje FLAGS, ktore urcuje ako sa ma CREATE/OPEN IO OPERATION vykonat.
+   Q. RETURN VALUE TYPE [NTSTATUS] obsahuje informaciu ci FUNCTION skoncila uspesne.
+   R. FUNCTION otvara HANDLE na FILE nad ktorym chce vykonavat IO OPERATIONS.
+   !!! S. FUNCTION sa pouziva iba vo FILE SYSTEM MINI DRIVERS.
+   !!!!! T. Otvoreny HANDLE musi byt uzatvoreny volanim FUNCTION [FltClose()].
+   !!!!! U. POINTER na STRUCTURE [FILE_OBJECT], ktory bol vrateny v PARAMETER [PFILE_OBJECT* FileObject] musi byt uvolneny volanim FUNCTION [ObDereferenceObject()].
+61. Pre FUNCTION [FltClose()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [NTSTATUS FltClose(HANDLE FileHandle)].
+   B. PARAMETER [HANDLE FileHandle] obsahuje HANDLE na FILE, ktory ma byt CLOSED.
+   C. RETURN VALUE TYPE [NTSTATUS] obsahuje informaciu ci FUNCTION skoncila uspesne.
+   D. FUNCTION uzatvara HANDLE na FILE vytvoreny volanim FUNCTION [FltCreateFileEx()].
+   !!! E. FUNCTION sa pouziva iba vo FILE SYSTEM MINI DRIVERS.
+62. Pre FUNCTION [FltReadFile()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [NTSTATUS FltReadFile(PFLT_INSTANCE InitiatingInstance, PFILE_OBJECT FileObject, PLARGE_INTEGER ByteOffset, ULONG Length, PVOID Buffer, FLT_IO_OPERATION_FLAGS Flags, PULONG BytesRead, PFLT_COMPLETED_ASYNC_IO_CALLBACK CallbackRoutine, PVOID CallbackContext)].
+   B. PARAMETER [PFLT_INSTANCE InitiatingInstance] obsahuje OPAQUE POINTER na INSTANCE FILE SYSTEM MINI DRIVER, ktory vykonava IO OPERATION.
+   C. PARAMETER [PFILE_OBJECT FileObject] obsahuje POINTER na STRUCTURE [FILE_OBJECT], ktory idenfitikuje FILE pre ktory sa ma vykonat READ IO OPERATION.
+   D. PARAMETER [PLARGE_INTEGER ByteOffset] obsahuje POINTER na STRUCTURE [LARGE_INTEGER], ktora obsahuje FILE POSITION v BYTES na ktorej sa ma READ IO OPERATION vykonat.
+   E. PARAMETER [ULONG Length] obsahuje pocet BYTES, ktore maju byt nacitane z FILE.
+   F. PARAMETER [PVOID Buffer] obsahuje POINTER na BUFFER, do ktoreho sa ulozia nacitane data.
+   G. PARAMETER [FLT_IO_OPERATION_FLAGS Flags] obsahuje FLAGS. Moze mat nasledujuce VALUES.
+      A. VALUE [0] znamena, ze ziaden FLAG nie je nastaveny.
+      B. VALUE [FLTFL_IO_OPERATION_DO_NOT_UPDATE_BYTE_OFFSET] znamena, ze IO OPERATION NEMA menit VALUE FIELD [FILE_OBJECT::CurrentByteOffset].
+      C. VALUE [FLTFL_IO_OPERATION_NON_CACHED] znamena, ze sa IO OPERATION ma vykonat ako NON-CACHED IO OPERATION.
+      D. VALUE [FLTFL_IO_OPERATION_PAGING] znamena, ze sa ma jednat o PAGING IO OPERATION.
+      E. VALUE [FLTFL_IO_OPERATION_SYNCHRONOUS_PAGING] znamena, ze sa ma jednat o SYNCHRONOUS PAGING IO OPERATION.
+   H. PARAMETER [PULONG BytesWritten] obsahuje POINTER na VARIABLE do ktorej sa ulozi pocet nacitanych BYTES.
+   !!! I. PARAMETER [PFLT_COMPLETED_ASYNC_IO_CALLBACK CallbackRoutine] obsahuje POINTER na CALLBACK ROUTINE, ktora sa vola po skonceni ASYNCHRONOUS READ IO OPERATION. Ak je tento PARAMETER nastaveny na VALUE [nullptr], READ IO OPERATION sa vykona SYNCHRONNE. CALLBACK ROUTINE ma PROTOTYPE [void PfltCompletedAsyncIoCallback(PFLT_CALLBACK_DATA CallbackData, PFLT_CONTEXT Context)].
+   J. PARAMETER [PVOID CallbackContext] obsahuje POINTER na CUSTOM DATA, ktore budu zaslane do CALLBACK ROUTINE.
+   K. RETURN VALUE TYPE [NTSTATUS] obsahuje informaciu ci FUNCTION skoncila uspesne.
+   L. FUNCTION vykonava READ IO OPERATION nad FILE.
+   !!! M. FUNCTION sa pouziva iba vo FILE SYSTEM MINI DRIVERS.
+   !!!!! N. Ak PARAMETER [PVOID CallbackContext] obsahuje VALUE [nullptr], READ IO OPERATION sa vykonava SYNCHRONNE. Ak PARAMETER [PVOID CallbackContext] obsahuje POINTER na CALLBACK ROUTINE, READ IO OPERATION sa vykonava ASYNCHRONNE. 
+63. Pre FUNCTION [FltWriteFile()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [NTSTATUS FltWriteFile(PFLT_INSTANCE InitiatingInstance, PFILE_OBJECT FileObject, PLARGE_INTEGER ByteOffset, ULONG Length, PVOID Buffer, FLT_IO_OPERATION_FLAGS Flags, PULONG BytesWritten, PFLT_COMPLETED_ASYNC_IO_CALLBACK CallbackRoutine, PVOID CallbackContext)].
+   B. PARAMETER [PFLT_INSTANCE InitiatingInstance] obsahuje OPAQUE POINTER na INSTANCE FILE SYSTEM MINI DRIVER, ktory vykonava IO OPERATION.
+   C. PARAMETER [PFILE_OBJECT FileObject] obsahuje POINTER na STRUCTURE [FILE_OBJECT], ktory idenfitikuje FILE pre ktory sa ma vykonat WRITE IO OPERATION.
+   D. PARAMETER [PLARGE_INTEGER ByteOffset] obsahuje POINTER na STRUCTURE [LARGE_INTEGER], ktora obsahuje FILE POSITION v BYTES na ktorej sa ma WRITE IO OPERATION vykonat.
+   E. PARAMETER [ULONG Length] obsahuje pocet BYTES, ktore maju byt zapisane do FILE.
+   F. PARAMETER [PVOID Buffer] obsahuje POINTER na BUFFER, z ktoreho sa zapisu data do FILE.
+   G. PARAMETER [FLT_IO_OPERATION_FLAGS Flags] obsahuje FLAGS. Moze mat nasledujuce VALUES.
+      A. VALUE [0] znamena, ze ziaden FLAG nie je nastaveny.
+      B. VALUE [FLTFL_IO_OPERATION_DO_NOT_UPDATE_BYTE_OFFSET] znamena, ze IO OPERATION NEMA menit VALUE FIELD [FILE_OBJECT::CurrentByteOffset].
+      C. VALUE [FLTFL_IO_OPERATION_NON_CACHED] znamena, ze sa IO OPERATION ma vykonat ako NON-CACHED IO OPERATION.
+      D. VALUE [FLTFL_IO_OPERATION_PAGING] znamena, ze sa ma jednat o PAGING IO OPERATION.
+      E. VALUE [FLTFL_IO_OPERATION_SYNCHRONOUS_PAGING] znamena, ze sa ma jednat o SYNCHRONOUS PAGING IO OPERATION.
+   H. PARAMETER [PULONG BytesWritten] obsahuje POINTER na VARIABLE do ktorej sa ulozi pocet zapisanych BYTES.
+   !!! I. PARAMETER [PFLT_COMPLETED_ASYNC_IO_CALLBACK CallbackRoutine] obsahuje POINTER na CALLBACK ROUTINE, ktora sa vola po skonceni ASYNCHRONOUS WRITE IO OPERATION. Ak je tento PARAMETER nastaveny na VALUE [nullptr], WRITE IO OPERATION sa vykona SYNCHRONNE. CALLBACK ROUTINE ma PROTOTYPE [void PfltCompletedAsyncIoCallback(PFLT_CALLBACK_DATA CallbackData, PFLT_CONTEXT Context)].
+   J. PARAMETER [PVOID CallbackContext] obsahuje POINTER na CUSTOM DATA, ktore budu zaslane do CALLBACK ROUTINE.
+   K. RETURN VALUE TYPE [NTSTATUS] obsahuje informaciu ci FUNCTION skoncila uspesne.
+   L. FUNCTION vykonava WRITE IO OPERATION nad FILE.
+   !!! M. FUNCTION sa pouziva iba vo FILE SYSTEM MINI DRIVERS.
+   !!!!! N. Ak PARAMETER [PVOID CallbackContext] obsahuje VALUE [nullptr], WRITE IO OPERATION sa vykonava SYNCHRONNE. Ak PARAMETER [PVOID CallbackContext] obsahuje POINTER na CALLBACK ROUTINE, WRITE IO OPERATION sa vykonava ASYNCHRONNE. 
+64. FILE SYSTEM MINI DRIVERS mozu s USER MODE PROGRAMS komunikovat pomocou FILTER COMMUNICATION PORTS. Pre FILTER COMMUNICATION PORTS platia nasledujuca fakty.
+   A. FILTER COMMUNICATION PORTS umoznuju COMMUNICATION medzi FILE SYSTEM MINI DRIVERS a USER MODE PROGRAMS.
+   B. COMMUNICATION pomocou FILTER COMMUNICATION PORTS je BIDIRECTIONAL. To znamena, ze USER MODE PROGRAMS i FILE SYSTEM MINI DRIVERS mozu iniciovat COMMUNICATION s opacnou stranou.
+   C. COMMUNICATION pomocou FILTER COMMUNICATION PORTS sa realizuje prenosom MESSAGES.
+   !!! D. FILTER COMMUNICATION PORTS podporuju aj REPLAY MESSAGES. Ktorakolvek strana FILTER COMMUNICATION PORT moze poziadat o zaslanie REPLY MESSAGE a cakat na jej dorucenie.
+   E. USER MODE FUNCTIONS pre FILTER COMMUNICATION PORTS su definovane v LIBRARY [FltLib.lib].
+   !!! F. FILTER COMMUNICATION PORTS sa na FILE SYSTEM MINI DRIVERS vytvaraju volanim FUNCTION [FltCreateCommunicationPort()]. FUNCTION definuje CALLBACK ROUTINES, ktore sa volaju pri pripojeni noveho USER MODE CLIENT, odpojeni sa existujuceho USER MODE CLIENT, alebo pri doruceni MESSAGE.
+   G. FILTER COMMUNICATION PORTS sa na FILE SYSTEM MINI DRIVERS uzatvaraju volanim FUNCTION [FltCloseCommunicationPort()].
+   H. FILE SYSTEM MINI DRIVERS uzatvaraju CONNECTED CLIENTS volanim FUNCTION [FltCloseClientPort()].
+   I. FILE SYSTEM MINI DRIVERS mozu odosielat MESSAGES do USER MODE CLIENTS volanim FUNCTION [FltSendMessage()].
+   J. USER MODE CLIENTS sa ku FILTER COMMUNICATION PORTS pripajaju volanim USER MODE FUNCTION [FilterConnectCommunicationPort()].
+   K. USER MODE CLIENTS sa od FILTER COMMUNICATION PORTS odpajaju volanim USER MODE FUNCTION [CloseHandle()].
+   L. USER MODE CLIENTS citaju MESSAGES zaslane cez FILTER COMMUNICATION PORTS volanim USER MODE FUNCTION [FilterGetMessage()].
+   M. USER MODE CLIENTS odosielaju MESSAGES cez FILTER COMMUNICATION PORTS volanim USER MODE FUNCTION [FilterSendMessage()].
+   N. USER MODE CLIENTS odosielaju REPLY MESSAGES cez FILTER COMMUNICATION PORTS volanim USER MODE FUNCTION [FilterReplyMessage()].
+65. Pre FUNCTION [FltCreateCommunicationPort()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [NTSTATUS FltCreateCommunicationPort(PFLT_FILTER Filter, PFLT_PORT* ServerPort, POBJECT_ATTRIBUTES ObjectAttributes, PVOID ServerPortCookie, PFLT_CONNECT_NOTIFY ConnectNotifyCallback, PFLT_DISCONNECT_NOTIFY DisconnectNotifyCallback, PFLT_MESSAGE_NOTIFY MessageNotifyCallback, LONG MaxConnections)].
+   B. PARAMETER [PFLT_FILTER Filter] obsahuje POINTER na OPAQUE STRUCTURE, ktoru vratila FUNCTION [FltRegisterFilter()].
+   !!! C. PARAMETER [PFLT_PORT* ServerPort] obsahuje VARIABLE do ktorej sa ulozi vytvoreny HANDLE na FILTER COMMUNICATION PORT. HANDLE sa musi uvolnit volanim FUNCTION [FltCloseCommunicationPort()].
+   !!! D. PARAMETER [POBJECT_ATTRIBUTES ObjectAttributes] SECURITY ATTRIBUTES. SECURITY ATTRIBUTES musia mat nastaveny SECURITY DESCRIPTOR, ktory sa vytvara volanim FUNCTION [FltBuildDefaultSecurityDescriptor()] a uzatvara volanim FUNCTION [FltFreeSecurityDescriptor()].
+   E. PARAMETER [PVOID ServerPortCookie] je OPTIMAL CUSTOM PARAMETER, ktory je zasielany do CALLBACK FUNCTION ako identifikator daneho FILTER COMMUNICATION PORT.
+   !!! F. PARAMETER [PFLT_CONNECT_NOTIFY ConnectNotifyCallback] obsahuje CONNECT CALLBACK ROUTINE. Ma PROTOTYPE [NTSTATUS PfltConnectNotify(PFLT_PORT ClientPort, PVOID ServerPortCookie, PVOID ConnectionContext, ULONG SizeOfContext, PVOID* ConnectionPortCookie)].
+   !!! G. PARAMETER [PFLT_DISCONNECT_NOTIFY DisconnectNotifyCallback] obsahuje DISCONNECT CALLBACK ROUTINE. Ma PROTOTYPE [void PfltDisconnectNotify(PVOID ConnectionCookie)].
+   !!! H. PARAMETER [PFLT_MESSAGE_NOTIFY MessageNotifyCallback] obsahuje NOTIFY CALLBACK ROUTINE. Ma PROTOTYPE [NTSTATUS PfltMessageNotify(PVOID PortCookie, PVOID InputBuffer, ULONG InputBufferLength, PVOID OutputBuffer, ULONG OutputBufferLength, PULONG ReturnOutputBufferLength)].
+   I. PARAMETER [LONG MaxConnections] obsahuje maximalny pocet paralelne pripojenych CLIENTS.
+   J. RETURN VALUE TYPE [NTSTATUS] obsahuje informaciu ci FUNCTION skoncila uspesne.
+   K. FUNCTION vytvara FILTER COMMUNICATION PORT.
+   L. HANDLE ulozeny do PARAMETER [PFLT_PORT* ServerPort] sa uvolnuje volanim FUNCTION [FltCloseCommunicationPort()].
+   !!! M. SECURITY ATTRIBUTES v PARAMETER [POBJECT_ATTRIBUTES ObjectAttributes] obsahuju SECURITY DESCRIPTOR, ktory sa vytvara volanim FUNCTION [FltBuildDefaultSecurityDescriptor()] a uzatvara volanim FUNCTION [FltFreeSecurityDescriptor()].
+   !!!!! N. PARAMETER [PFLT_MESSAGE_NOTIFY MessageNotifyCallback] obsahuje NOTIFY CALLBACK ROUTINE. NOTIFY CALLBACK ROUTINE ma OUTPUT BUFFER, ktory moze FILE SYSTEM MINI DRIVER vyuzit na odoslanie REPLY MESSAGE do USER MODE CLIENT.
+66. Pre FUNCTION [FltCloseCommunicationPort()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [VOID FltCloseCommunicationPort(PFLT_PORT ServerPort)].
+   B. PARAMETER [PFLT_PORT ServerPort] obsahuje OPAQUE VALUE identifikujuci dany FILTER COMMUNICATION PORT, ktoru vratila FUNCTION [FltCreateCommunicationPort()].
+   C. RETURN VALUE TYPE [NTSTATUS] obsahuje informaciu ci FUNCTION skoncila uspesne.
+   D. FUNCTION uzatvara FILTER COMMUNICATION PORT.
+67. Pre FUNCTION [FltBuildDefaultSecurityDescriptor()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [NTSTATUS FltBuildDefaultSecurityDescriptor(PSECURITY_DESCRIPTOR* SecurityDescriptor, ACCESS_MASK DesiredAccess)].
+   B. PARAMETER [PSECURITY_DESCRIPTOR* SecurityDescriptor] obsahuje VARIABLE do ktorej sa ulozi vytvoreny SECURITY DESCRIPTOR.
+   C. PARAMETER [ACCESS_MASK DesiredAccess] obsahuje ACCESS MASK daneho SECURITY DESCRIPTOR.
+   D. RETURN VALUE TYPE [NTSTATUS] obsahuje informaciu ci FUNCTION skoncila uspesne.
+   E. FUNCTION vytvara SECURITY DESCRIPTOR, ktory sa pouziva v PARAMETER [POBJECT_ATTRIBUTES ObjectAttributes] FUNCTION [FltCreateCommunicationPort()].
+   !!! F. Vytvoreny SECURITY DESCRIPTOR musi byt uvolneny volanim FUNCTION [FltFreeSecurityDescriptor()].
+68. Pre FUNCTION [FltFreeSecurityDescriptor()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [VOID FltFreeSecurityDescriptor(PSECURITY_DESCRIPTOR SecurityDescriptor)].
+   B. PARAMETER [PSECURITY_DESCRIPTOR SecurityDescriptor] obsahuje SECURITY DESCRIPTOR vytvoreny volanim FUNCTION [FltBuildDefaultSecurityDescriptor()].
+   C. RETURN VALUE TYPE [NTSTATUS] obsahuje informaciu ci FUNCTION skoncila uspesne.
+   D. FUNCTION uvolnuje SECURITY DESCRIPTOR vytvoreny FUNCTION [FltBuildDefaultSecurityDescriptor()], ktory sa pouziva v PARAMETER [POBJECT_ATTRIBUTES ObjectAttributes] FUNCTION [FltCreateCommunicationPort()].
+69. Pre FUNCTION [FltCloseClientPort()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [VOID FltCloseClientPort(PFLT_FILTER Filter, PFLT_PORT* ClientPort)].
+   B. PARAMETER [PFLT_FILTER Filter] obsahuje POINTER na OPAQUE STRUCTURE, ktoru vratila FUNCTION [FltRegisterFilter()].
+   C. PARAMETER [PFLT_PORT* ClientPort] obsahuje POINTER na CLIENT PORT, ktory je zaslany v CONNECT CALLBACK ROUTINE zaregistrovanej volanim FUNCTION [FltCreateCommunicationPort()].
+   D. RETURN VALUE TYPE [NTSTATUS] obsahuje informaciu ci FUNCTION skoncila uspesne.
+   E. FUNCTION uvolnuje RESOURCES asociovane s USER MODE CLIENT, ktory sa pripojil k FILTER COMMUNICATION PORT.
+   !!!!! F. FUNCTION sa vola v DISCONNECT CALLBACK ROUTINE zaregistrovanej volanim FUNCTION [FltCreateCommunicationPort()].
+70. Pre FUNCTION [FltSendMessage()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [NTSTATUS FltSendMessage(PFLT_FILTER Filter, PFLT_PORT* ClientPort, PVOID SenderBuffer, ULONG SenderBufferLength, PVOID ReplyBuffer, PULONG ReplyLength, PLARGE_INTEGER Timeout)].
+   B. PARAMETER [PFLT_FILTER Filter] obsahuje POINTER na OPAQUE STRUCTURE, ktoru vratila FUNCTION [FltRegisterFilter()].
+   C. PARAMETER [PFLT_PORT* ClientPort] obsahuje POINTER na CLIENT PORT, ktory je zaslany v CONNECT CALLBACK ROUTINE zaregistrovanej volanim FUNCTION [FltCreateCommunicationPort()].
+   D. PARAMETER [PVOID SenderBuffer] obsahuje POINTER na BUFFER obsahujuci MESSAGE, ktora ma byt zaslana.
+   E. PARAMETER [ULONG SenderBufferLength] obsahuje BUFFER SIZE MESSAGE, ktora ma byt zaslana.
+   !!!!! F. PARAMETER [PVOID ReplyBuffer] obsahuje OPTIONAL POINTER na REPLY BUFFER pomocou ktoreho moze USER MODE CLIENT zaslat REPLY MESSAGE do FILE SYSTEM MINI DRIVER. BUFFER MUSI obsahovat cast pre ulozenie STRUCTURE [FILTER_REPLY_HEADER].
+   !!!!! G. PARAMETER [DWORD dwReplyBufferSize] obsahuje dlzku REPLY BUFFER v PARAMETER [PVOID ReplyBuffer]. Dlzka BUFFER MUSI byt rovna VALUE [sizeof(FILTER_REPLY_HEADER)+sizeof(CUSTOM_DATA)], kde VALUE 'CUSTOM_DATA' je STRUCTURE obsahujuca CUSTOM DATA.
+   !!! H. PARAMETER [PLARGE_INTEGER Timeout] obsahuje maximalny TIMEOUT, ktory FUNCTION caka kym USER MODE CLIENT nepreberie MESSAGE volanim USER MODE FUNCTION [FilterGetMessage()], alebo nezasle REPLY MESSAGE volanim USER MODE FUNCTION [FilterReplyMessage()].
+   I. RETURN VALUE TYPE [NTSTATUS] obsahuje informaciu ci FUNCTION skoncila uspesne.
+   J. FUNCTION odosiela MESSAGE z FILE SYSTEM MINI DRIVER do USER MODE CLIENT pomocou zaregistrovaneho FILTER COMMUNICATION PORT.
+   !!!!! K. PARAMETER [PLARGE_INTEGER Timeout], ak sa REPLY MESSAGE NEOCAKAVA (PARAMETER [PVOID ReplyBuffer] je nastaveny na VALUE [nullptr]) sa aplikuje nasledovne.
+      A. Ak je TIMEOUT nenulovy a USER MODE CLIENT zavola USER MODE FUNCTION [FilterGetMessage()] pred uplynutim TIMEOUT, FUNCTION skonci uspesne.
+      B. Ak je TIMEOUT nenulovy a USER MODE CLIENT NEZAVOLA USER MODE FUNCTION [FilterGetMessage()] pred uplynutim TIMEOUT, FUNCTION vrati ERROR CODE [STATUS_TIMEOUT].
+      C. Ak je TIMEOUT nulovy FUNCTION je BLOCKED az do doby kym USER MODE CLIENT NEZAVOLA USER MODE FUNCTION [FilterGetMessage()].
+   !!!!! L. PARAMETER [PLARGE_INTEGER Timeout], ak sa REPLY MESSAGE OCAKAVA (PARAMETER [PVOID ReplyBuffer] je nastaveny na VALIDNY BUFFER) sa aplikuje nasledovne.
+      A. Ak je TIMEOUT nenulovy a USER MODE CLIENT zavola USER MODE FUNCTION [FilterReplyMessage()] pred uplynutim TIMEOUT, FUNCTION skonci uspesne.
+      B. Ak je TIMEOUT nenulovy a USER MODE CLIENT NEZAVOLA USER MODE FUNCTION [FilterReplyMessage()] pred uplynutim TIMEOUT, FUNCTION vrati ERROR CODE [STATUS_TIMEOUT].
+      C. Ak je TIMEOUT nulovy FUNCTION je BLOCKED az do doby kym USER MODE CLIENT NEZAVOLA USER MODE FUNCTION [FilterReplyMessage()].
+   !!!!! M. Kvoli PADDING musi PARAMETER [PULONG ReplyLength] byt rovny VALUE [sizeof(FILTER_REPLY_HEADER)+sizeof(CUSTOM_DATA)], kde VALUE 'CUSTOM_DATA' je STRUCTURE obsahujuca CUSTOM DATA.
+71. Pre USER MODE FUNCTION [FilterConnectCommunicationPort()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [HRESULT FilterConnectCommunicationPort(LPCWSTR lpPortName, DWORD dwOptions, LPCVOID lpContext, WORD wSizeOfContext, LPSECURITY_ATTRIBUTES lpSecurityAttributes, HANDLE* hPort)].
+   B. PARAMETER [LPCWSTR lpPortName] obsahuje NAME FILTER COMMUNICATION PORT.
+   C. PARAMETER [DWORD dwOptions] obsahuje FLAGS. PARAMETER moze obsahovat tieto VALUES.
+      A. VALUE [0] znamena, ze ziaden FLAG nie je nastaveny.
+      B. VALUE [FLT_PORT_FLAG_SYNC_HANDLE] znamena, ze IO OPERATIONS nad FILTER COMMUNICATION PORT budu synchronne.
+   !!! D. PARAMETER [LPCVOID lpContext] obsahuje CUSTOM BUFFER, ktory je odoslany do CONNECT CALLBACK ROUTINE. Moze obsahovat napriklad AUTHENTICATION PARAMETERS, ak FILE SYSTEM MINI DRIVER vyzaduje nejaku formu AUTHENTICATION.
+   E. PARAMETER [WORD wSizeOfContext] obsahuje dlzku CUSTOM BUFFER v PARAMETER [LPCVOID lpContext].
+   F. PARAMETER [LPSECURITY_ATTRIBUTES lpSecurityAttributes] obsahuje SECURITY ATTRIBUTES.
+   !!! G. PARAMETER [HANDLE* hPort] obsahuje POINTER na HANDLE, ktory sa pouziva pri komunikacii cez FILTER COMMUNICATION PORT. HANDLE musi byt uzatvoreny volanim FUNCTION [CloseHandle()].
+   H. RETURN VALUE TYPE [HRESULT] obsahuje informaciu ci FUNCTION skoncila uspesne.
+   I. FUNCTION sa pripaja k FILTER COMMUNICATION PORT.
+   !!! J. HANDLE ulozeny do PARAMETER [HANDLE* hPort] sa uvolnuje volanim FUNCTION [CloseHandle()].
+72. Pre USER MODE FUNCTION [FilterGetMessage()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [HRESULT FilterGetMessage(HANDLE hPort, PFILTER_MESSAGE_HEADER lpMessageBuffer, DWORD dwMessageBufferSize, LPOVERLAPPED lpOverlapped)].
+   B. PARAMETER [HANDLE hPort] obsahuje HANDLE na FILTER COMMUNICATION PORT vrateni volanim FUNCTION [FilterConnectCommunicationPort()].
+   !!! C. PARAMETER [PFILTER_MESSAGE_HEADER lpMessageBuffer] obsahuje POINTER na BUFFER do ktoreho sa ulozi MESSAGE. MESSAGE CONTENT sa nachadza v tomto BUFFER za HEADER definovany STRUCTURE [FILTER_MESSAGE_HEADER].
+   D. PARAMETER [DWORD dwMessageBufferSize] obsahuje dlzku BUFFER zaslanu v PARAMETER [PFILTER_MESSAGE_HEADER lpMessageBuffer].
+   !!! E. PARAMETER [LPOVERLAPPED lpOverlapped] obsahuje POINTER na STRUCTURE [OVERLAPPED]. Ak je PARAMETER nastaveny na VALID OBJECT, OPERATION je vykonavana ASYNCHRONNE.
+   F. RETURN VALUE TYPE [HRESULT] obsahuje informaciu ci FUNCTION skoncila uspesne.
+   G. FUNCTION nacitava MESSAGE z FILTER COMMUNICATION PORT.
+   !!!!! H. MESSAGE CONTENT je ulozeny v PARAMETER [PFILTER_MESSAGE_HEADER lpMessageBuffer]. Nachadza za hned za HEADER definovany STRUCTURE [FILTER_MESSAGE_HEADER].
+   !!! I. Ak MESSAGE je dostupna a FUNCTION je volana SYNCHRONNE (PARAMETER [LPOVERLAPPED lpOverlapped] je nastaveny na VALUE [nullptr]), FUNCTION sa vrati okamzite.
+   !!! J. Ak MESSAGE NIE je dostupna a FUNCTION je volana SYNCHRONNE (PARAMETER [LPOVERLAPPED lpOverlapped] je nastaveny na VALUE [nullptr]), FUNCTION je BLOCKED az do prichodu MESSAGE.
+   !!! K. Ak je FUNCTION volana ASYNCHRONNE (PARAMETER [LPOVERLAPPED lpOverlapped] je nastaveny na VALID OBJECT), FUNCTION je vracia RETURN VALUE [ERROR_IO_PENDING] pricom pri prichode MESSAGE je nastaveny EVENT [OVERLAPPED::hEvent].
+73. Pre USER MODE FUNCTION [FilterSendMessage()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [HRESULT FilterSendMessage(HANDLE hPort, LPVOID lpInBuffer, DWORD dwInBufferSize, LPVOID lpOutBuffer, DWORD dwOutBufferSize, LPDWORD lpBytesReturned)].
+   B. PARAMETER [HANDLE hPort] obsahuje HANDLE na FILTER COMMUNICATION PORT vrateni volanim FUNCTION [FilterConnectCommunicationPort()].
+   C. PARAMETER [LPVOID lpInBuffer] obsahuje POINTER na BUFFER, ktory obsahuje odosielanu MESSAGE.
+   D. PARAMETER [DWORD dwInBufferSize] obsahuje dlzku BUFFER v PARAMETER [LPVOID lpInBuffer].
+   !!! E. PARAMETER [LPVOID lpOutBuffer] obsahuje OPTIONAL POINTER na BUFFER, do ktoreho moze FILE SYSTEM MINI DRIVER ulozit REPLY MESSAGE.
+   F. PARAMETER [DWORD dwOutBufferSize] obsahuje dlzku BUFFER v PARAMETER [LPVOID lpOutBuffer].
+   !!! G. PARAMETER [LPDWORD lpBytesReturned] obsahuje POINTER na VARIABLE do ktorej sa ulozi POCET BYTES REPLY MESSAGE ulozenych do PARAMETER [LPVOID lpOutBuffer].
+   H. FUNCTION odosiela MESSAGE do FILTER COMMUNICATION PORT.
+   !!! I. FUNCTION umoznuje prijmat REPLY MESSAGES v PARAMETER [LPVOID lpOutBuffer].
+   !!! J. FUNCTION je SYNCHRONNA. To znamena, ze FUNCTION je BLOCKED kym FILE SYSTEM MINI DRIVER nespravuje MESSAGE, eventualne, ak je ocakavana REPLY MESSAGE (ak PARAMETER [LPVOID lpOutBuffer] obsahuje POINTER na VALID BUFFER) nie je REPLY MESSAGE dorucena na stranu USER MODE CLIENT.
+74. Pre USER MODE FUNCTION [FilterReplyMessage()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [HRESULT FilterReplyMessage(HANDLE hPort, PFILTER_REPLY_HEADER lpReplyBuffer, DWORD dwReplyBufferSize)].
+   B. PARAMETER [HANDLE hPort] obsahuje HANDLE na FILTER COMMUNICATION PORT vrateni volanim FUNCTION [FilterConnectCommunicationPort()].
+   !!! C. PARAMETER [PFILTER_REPLY_HEADER lpReplyBuffer] obsahuje POINTER na BUFFER v ktorom sa nachadza REPLY MESSAGE. MESSAGE CONTENT sa nachadza v tomto BUFFER za HEADER definovany STRUCTURE [FILTER_MESSAGE_HEADER].
+   !!!!! D. PARAMETER [DWORD dwReplyBufferSize] obsahuje dlzku BUFFER v PARAMETER [PFILTER_REPLY_HEADER lpReplyBuffer]. Dlzka BUFFER MUSI byt rovna VALUE [sizeof(FILTER_REPLY_HEADER)+sizeof(CUSTOM_DATA)], kde VALUE 'CUSTOM_DATA' je STRUCTURE obsahujuca CUSTOM DATA.
+   E. FUNCTION odosiela REPLY MESSAGE do FILTER COMMUNICATION PORT.
+   !!!!! F. REPLY MESSAGE CONTENT je ulozeny v PARAMETER [PFILTER_MESSAGE_HEADER lpMessageBuffer]. Nachadza za hned za HEADER definovany STRUCTURE [FILTER_MESSAGE_HEADER].
+   !!!!! G. Kvoli PADDING musi PARAMETER [DWORD dwReplyBufferSize] byt rovny VALUE [sizeof(FILTER_REPLY_HEADER)+sizeof(CUSTOM_DATA)], kde VALUE 'CUSTOM_DATA' je STRUCTURE obsahujuca CUSTOM DATA.
+75. DEBUGGING TOOLS FOR WINDOWS implementuje LIBRARY [fltkd.dll], ktora umoznuje DEBUGGING FILE SYSTEM MINI DRIVERS. Platia nasledujuce fakty.
+   A. LIBRARY [fltkd.dll] nie je automaticky nacitana pri starte DEBUGGERA a je ju potrebne nacitat pomocou COMMAND [.load fltkd].
+   B. LIBRARY [fltkd.dll] definuje nasledujuce COMMANDS.
+      A. COMMAND [!help] zobrazuje HELP.
+	  B. COMMAND [!filters] zobrazuje zoznam vsetkych FILE SYSTEM MINI DRIVERS, ktore su nacitane v SYSTEME.
+	  C. COMMAND [!filter FILTER_ADDRESS] zobrazuje informacie o FILTER idenfikovanou jeho ADDRESS [FILTER_ADDRESS].
+	  D. COMMAND [!instance INSTANCE_ADDRESS] zobrazuje informacie o INSTANCE daneho FILTER idenfikovanej jej ADDRESS [INSTANCE_ADDRESS].
+	  E. COMMAND [!volumes] zobrazuje zoznam vsetkych VOLUMES, ktore existuju v SYSTEME.
+	  F. COMMAND [!volume VOLUME_ADDRESS] zobrazuje informacie o VOLUME identifikovanom jeho ADDRESS [VOLUME_ADDRESS].
+	  G. COMMAND [!portlist FILTER_ADDRESS] zobrazuje informacie o FILTER COMMUNICATION PORT identifikovanom jeho FILTER ADDRESS [FILTER_ADDRESS].
+	  H. COMMAND [!port FILTER_PORT_CLIENT_ADDRESS] zobrazuje informacie o FILTER COMMUNICATION PORT CLIENT identifikovanom jeho FILTER PORT ADDRESS [FILTER_PORT_CLIENT_ADDRESS].
+//----------------------------------------------------------------------------------------------------------------------
