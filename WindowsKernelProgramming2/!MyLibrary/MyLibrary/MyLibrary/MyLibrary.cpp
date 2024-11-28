@@ -34,6 +34,13 @@
 #include "TestTimerGlobal.h"
 #include "TestInterlockedGlobal.h"
 #include "TestInterlocked.h"
+#include "TestSpinLockGlobalGlobalObject.h"
+#include "TestSpinLockGlobalGlobalPointer.h"
+#include "TestSpinLockGlobalLocalObject.h"
+#include "TestSpinLockGlobalLocalPointer.h"
+#include "TestSpinLockGlobalPointer.h"
+#include "TestSpinLockLocalObject.h"
+#include "TestSpinLockLocalPointer.h"
 //----------------------------------------------------------------------------------------------------------------------
 //----------------------------------------------------------------------------------------------------------------------
 //----------------------------------------------------------------------------------------------------------------------
@@ -74,6 +81,15 @@
 //----------------------------------------------------------------------------------------------------------------------
 #define IOCTL_TEST_INTERLOCKED_GLOBAL CTL_CODE(FILE_DEVICE_UNKNOWN,CODE_TEST_INTERLOCKED_GLOBAL,METHOD_NEITHER,FILE_ANY_ACCESS)
 #define IOCTL_TEST_INTERLOCKED CTL_CODE(FILE_DEVICE_UNKNOWN,CODE_TEST_INTERLOCKED,METHOD_NEITHER,FILE_ANY_ACCESS)
+//----------------------------------------------------------------------------------------------------------------------
+#define IOCTL_TEST_SPIN_LOCK_GLOBAL_GLOBAL_OBJECT CTL_CODE(FILE_DEVICE_UNKNOWN,CODE_TEST_SPIN_LOCK_GLOBAL_GLOBAL_OBJECT,METHOD_NEITHER,FILE_ANY_ACCESS)
+#define IOCTL_TEST_SPIN_LOCK_GLOBAL_GLOBAL_POINTER CTL_CODE(FILE_DEVICE_UNKNOWN,CODE_TEST_SPIN_LOCK_GLOBAL_GLOBAL_POINTER,METHOD_NEITHER,FILE_ANY_ACCESS)
+#define IOCTL_TEST_SPIN_LOCK_GLOBAL_LOCAL_OBJECT CTL_CODE(FILE_DEVICE_UNKNOWN,CODE_TEST_SPIN_LOCK_GLOBAL_LOCAL_OBJECT,METHOD_NEITHER,FILE_ANY_ACCESS)
+#define IOCTL_TEST_SPIN_LOCK_GLOBAL_LOCAL_POINTER CTL_CODE(FILE_DEVICE_UNKNOWN,CODE_TEST_SPIN_LOCK_GLOBAL_LOCAL_POINTER,METHOD_NEITHER,FILE_ANY_ACCESS)
+//----------------------------------------------------------------------------------------------------------------------
+#define IOCTL_TEST_SPIN_LOCK_GLOBAL_POINTER CTL_CODE(FILE_DEVICE_UNKNOWN,CODE_TEST_SPIN_LOCK_GLOBAL_POINTER,METHOD_NEITHER,FILE_ANY_ACCESS)
+#define IOCTL_TEST_SPIN_LOCK_LOCAL_OBJECT CTL_CODE(FILE_DEVICE_UNKNOWN,CODE_TEST_SPIN_LOCK_LOCAL_OBJECT,METHOD_NEITHER,FILE_ANY_ACCESS)
+#define IOCTL_TEST_SPIN_LOCK_LOCAL_POINTER CTL_CODE(FILE_DEVICE_UNKNOWN,CODE_TEST_SPIN_LOCK_LOCAL_POINTER,METHOD_NEITHER,FILE_ANY_ACCESS)
 //----------------------------------------------------------------------------------------------------------------------
 //----------------------------------------------------------------------------------------------------------------------
 //----------------------------------------------------------------------------------------------------------------------
@@ -238,6 +254,34 @@ NTSTATUS DispatchRoutineDeviceControl(DEVICE_OBJECT* DeviceObject, IRP* Irp)
 		else if (Code==IOCTL_TEST_INTERLOCKED)
 		{
 			Status=TestInterlocked(DeviceObject,Irp);
+		}
+		else if (Code==IOCTL_TEST_SPIN_LOCK_GLOBAL_GLOBAL_OBJECT)
+		{
+			Status=TestSpinLockGlobalGlobalObject(DeviceObject,Irp);
+		}
+		else if (Code==IOCTL_TEST_SPIN_LOCK_GLOBAL_GLOBAL_POINTER)
+		{
+			Status=TestSpinLockGlobalGlobalPointer(DeviceObject,Irp);
+		}
+		else if (Code==IOCTL_TEST_SPIN_LOCK_GLOBAL_LOCAL_OBJECT)
+		{
+			Status=TestSpinLockGlobalLocalObject(DeviceObject,Irp);
+		}
+		else if (Code==IOCTL_TEST_SPIN_LOCK_GLOBAL_LOCAL_POINTER)
+		{
+			Status=TestSpinLockGlobalLocalPointer(DeviceObject,Irp);
+		}
+		else if (Code==IOCTL_TEST_SPIN_LOCK_GLOBAL_POINTER)
+		{
+			Status=TestSpinLockGlobalPointer(DeviceObject,Irp);
+		}
+		else if (Code==IOCTL_TEST_SPIN_LOCK_LOCAL_OBJECT)
+		{
+			Status=TestSpinLockLocalObject(DeviceObject,Irp);
+		}
+		else if (Code==IOCTL_TEST_SPIN_LOCK_LOCAL_POINTER)
+		{
+			Status=TestSpinLockLocalPointer(DeviceObject,Irp);
 		}
 		else
 		{

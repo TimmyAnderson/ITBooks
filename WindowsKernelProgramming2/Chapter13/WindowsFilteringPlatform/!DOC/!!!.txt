@@ -1,0 +1,479 @@
+//----------------------------------------------------------------------------------------------------------------------
+1. Solution demonstruje implementaciu WINDOWS FILTERING PLATFORM DRIVERS.
+2. WINDOWS FILTERING PLATFORM je PLATFORM, ktora umoznuje filtrovanie a modifikaciu NETWORK PACKETS. Pre WINDOWS FILTERING PLATFORM platia nasledujuce fakty.
+   A. WINDOWS FILTERING PLATFORM vykonava interakciu s NETWORK STACK v USER MODE i KERNEL MODE, aby umoznila filtrovanie a modifikaciu NETWORK PACKETS.
+   B. WINDOWS FILTERING PLATFORM obsahuje USER MODE API a KERNEL MODE API.
+   !!! C. WINDOWS FILTERING PLATFORM nie je priamo sucastou NEWTORK STACK, iba vyuziva NEWTORK STACK na implementaciu filtrovania a modifikacie NETWORK PACKETS.
+   C. DRIVERS vyuzivajuce WINDOWS FILTERING PLATFORM, ktore vykonavaju filtrovanie a modifikaciu NETWORK PACKETS sa nazyvaju CALLOUT DRIVERS.
+3. WINDOWS FILTERING PLATFORM je tvorena nasledujucimi COMPONENTS.
+   A. BASE FILTERING ENGINE je USER MODE cast WINDOWS FILTERING PLATFORM. Platia nasledujuce fakty.
+      A. BASE FILTERING ENGINE vystavuje USER MODE API RPC INTEFACE MANAGEMENT cez ktore komunikuju USER MODE PROGRAMS. Cez toto API je mozne pridavat a odstranovat FILTERS.
+	  B. BASE FILTERING ENGINE vystavuje CLASSIFY API pomocou ktoreho REMOTE PROCEDURE CALL RUNTIME komunikuje s BASE FILTERING ENGINE.
+	  C. BASE FILTERING ENGINE je implementovany v DLL [bfe.dll] a je HOSTED v HOST [svchost.exe].
+	  D. BASE FILTERING ENGINE obsahuje USER MODE FILTER ENGINE, ktory implementuje funkcionalitu USER MODE casti WINDOWS FILTERING PLATFORM.
+	  E. BASE FILTERING ENGINE interne vyuziva KERNEL MODE FILTER ENGINE.
+   B. KERNEL MODE FILTER ENGINE je KERNEL MODE cast WINDOWS FILTERING PLATFORM. Platia nasledujuce fakty.
+      A. KERNEL MODE FILTER ENGINE vystavuje KERNEL MODE MODE API IOCTL INTEFACE cez ktore komunikuje BASE FILTERING ENGINE s KERNEL MODE FILTER ENGINE.
+	  B. KERNEL MODE FILTER ENGINE vystavuje CLASSIFY API pomocou ktoreho TCP/IP STACK komunikuje s KERNEL MODE FILTER ENGINE.
+	  C. KERNEL MODE FILTER ENGINE vystavuje CALLOUT API pomocou ktoreho CALLOUT DRIVERS komunikuju s KERNEL MODE FILTER ENGINE.
+   C. CALLOUT DRIVERS su DRIVERS vyuzivajuce KERNEL API WINDOWS FILTERING PLATFORM. Platia nasledujuce fakty.
+      A. CALLOUT DRIVERS komunikuju s KERNEL MODE FILTER ENGINE pomocou CALLOUT API.
+	  B. WINDOWS FILTERING PLATFORM CLIENT je DRIVER LIBRARY, ktora komunikuje s CALLOUT DRIVERS. Je implementovana v DLL [fwpkclnt.sys].
+4. KERNEL MODE FILTER ENGINE funguje nasledujucim sposobom.
+   A. KERNEL MODE FILTER ENGINE vystavuje viacero LOGICAL LAYERS v ktorych su PACKETS spracovavane.
+   B. LAYERS reprezentuju poziciu v NETWORK STACK na ktorom moze by dany PACKET spracovany.
+   C. K LOGICAL LAYERS moze byt pripojenych <0,M> FILTERS.
+   D. FILTERS maju definovane CONDITIONS, ktore urcuju kedy sa ma dany FILTER aplikovat.
+   E. Kazdy LAYER moze mat definovanych <0,N> CALLOUT DRIVERS.
+   F. Ak FILTER vyhodnoti, ze VSETKY jeho CONDITIONS su splnene, tak FILTER moze vykonat nasledujuce cinnosti.
+      A. Zabranit dalsiemu spracovaniu daneho PACKET.
+	  B. Pokracovat v dalsom spracovani daneho PACKET dalsim FILER na tom istom LAYER.
+	  C. Zavolat CALLOUT DRIVER aby ten spracoval dany PACKET.
+!!! 5. PACKETS su spracovavane nasledovnym sposobom.
+   A. NEWTORK PACKETS su spracovavane NETWORK STACK.
+   !!! B. NETWORK STACK pre kazdy PACKET vola KERNEL MODE FILTER ENGINE prostrednictvom CLASSIFY API, ktore KERNEL MODE FILTER ENGINE vystavuje.
+   !!! C. Ked KERNEL MODE FILTER ENGINE dostane od NETWORK STACK PACKET urci, ktoremu NEWORK LAYER dany PACKET prinalezi.
+   D. KERNEL MODE FILTER ENGINE vola FILTERS, ktore su pre dany NEWORK LAYER definovane.
+   !!! E. Kazdy FILTER ma definovany zoznam CONDITIONS. FILTER kontroluje ci VSETKY CONDITIONS su splnene. Ak su VSETKY CONDITIONS splnene, tak FILTER moze vykonat nasledujuce cinnosti.
+      A. Zabranit dalsiemu spracovaniu daneho PACKET.
+	  B. Pokracovat v dalsom spracovani daneho PACKET dalsim FILER na tom istom LAYER.
+	  C. Zavolat CALLOUT DRIVER aby ten spracoval dany PACKET.
+   F. CALLOUT DRIVERS ak su zavolane, mozu vykonat lubovolnu operaciu nad danym PACKET, vratane jeho modifikacie.
+6. Pre NETWORK LAYERS, ktore definuje KERNEL MODE FILTER ENGINE platia nasledujuce fakty.
+   A. NETWORK LAYERS su definovane KERNEL MODE FILTER ENGINE.
+   B. KERNEL MODE FILTER ENGINE definuje pevny pocet NETWORK LAYERS, ktore su sucastou WINDOWS.
+   C. NETWORK LAYER urcuje logicku poziciu PACKET pri spracovani PACKET v NETWORK STACK.
+   D. NETWORK LAYER je identifikovany pomocou GUID.
+   !!! E. NEWORK LAYERS mozu mat definovane FIELDS, ktore vyuzivaju FILTERS pri vyhodnocovani CONDITIONS.
+   F. Kazdy NEWORK LAYER moze mat pripojenych <0,M> FILTERS a <0,N> CALLOUT DRIVERS.
+7. Pre FILTERS platia nasledujuce fakty.
+   A. FILTERS su identifikovana pomocou GUID.
+   B. FILTERS maju definovanu WEIGHT, ktora urcuje poradie spustania FILTERS pre dany NETWORK LAYER.
+   C. FILTERS maju definovanu aj EFFECTIVE WEIGHT, ktora je vypocitana z WEIGHT nasledujucim sposobom.
+      A. Ak ma WEIGHT VALUE <0,15>, tak EFFECTIVE WEIGHT je urcena ako VALUE [WEIGHT << 60 + GENERATED_WEIGHT], kde VALUE [GENERATED_WEIGHT] je VALUE generovana KERNEL MODE FILTER ENGINE.
+	  B. Ak WEIGHT nie je definovana, tak celu EFFECTIVE WEIGHT vygeneruje KERNEL MODE FILTER ENGINE.
+	  C. Ak WEIGHT ma VALUE [>15], tak EFFECTIVE WEIGHT sa rovna zadanej WEIGHT.
+   D. FILTERS mozu mat asociovanych <0,N> CALLOUT DRIVERS.
+   E. Kazdy FILTER ma definovanu FILTER ACTION, ktora urcuje co sa ma s PACKET spravit, ak su CONDITIONS splnene.
+   !!! F. Kazdy FILTER ma definovany zoznam CONDITIONS, ktore VSETKY musia byt splnene, aby sa vykonala FILTER ACTION.
+   !!! G. Jedna z FILTER ACTION moze byt aj volanie CALLOUT DRIVER, kedy je volany CALLOUT DRIVER na dalsie spracovanie PACKETU.
+   !!! H. CONDITIONS maju FORMAT [FIELD OPERATOR VALUE], kde jednotlive VALUES maju nasledujuci vyznam.
+      !!! A. VALUE [FIELD] je FIELD, ktory definuje dany NETWORK LAYER.
+	  B. VALUE [OPERATOR] je OPERATOR, ktory je definovany v ENUM [FWPM_MATCH_TYPE].
+	  C. VALUE [VALUE] je VALUE, ktora sa porovnava pomocou OPERATOR. CONDITION definuje TYPE danej VALUE.
+   I. Ak FILTER neobsahuje ziadne CONDITIONS, tak jeho FILER ACITON sa vykona pre vsetky PACKETS.
+8. WINDOWS FILTERING PLATFORM vystavuje API umoznujuce PROGRAMS vyuzivat WINDOWS FILTERING PLATFORM.
+   A. WINDOWS FILTERING PLATFORM vystavuje API pre USER MODE PROGRAMS a API pre KERNEL MODE PROGRAMS.
+   B. API pre MODE PROGRAMS a API pre KERNEL MODE PROGRAMS ma totoznu funkcionalitu s vynimkou tych KERNEL FUNCTIONS, ktore v USER MODE nemaju zmysel.
+   C. STRUCTURES vo WINDOWS FILTERING PLATFORM maju FORMAT [PREFIX_NAME], kde VALUE [PREFIX] je PREFIX danej LIBRARY a VALUE [NAME] je nazov STRUCTURE.
+   D. STRUCTURES vo WINDOWS FILTERING PLATFORM maju FORMAT [PREFIX_OBJECT_TYPE|OPERATION()], kde VALUE [PREFIX] je PREFIX danej LIBRARY, VALUE [OBJECT_TYPE] je nazov OBJECT a VALUE [OPERATION] je nazov OPERATION.
+   !!! E. API STRUCTURES a API FUNCTIONS su VERSIONED. Platia nasledujuce fakty.
+      A. VERSION je POSTFIX v nazve API STRUCTURE, alebo API FUNCTION.
+	  B. STRUCTURES maju FORMAT [PREFIX_NAME|VERSION], kde VALUE [PREFIX] je PREFIX danej LIBRARY, VALUE [NAME] je nazov STRUCTURE a VALUE [VERSION] je cislo VERSION. Prikladom je STRUCTURE [FWPM_LAYER0].
+	  C. FUNCTIONS maju FORMAT [PREFIX|OBJECT_TYPE|OPERATION|VERSION()], kde VALUE [PREFIX] je PREFIX danej LIBRARY, VALUE [OBJECT_TYPE] je nazov OBJECT, VALUE [OPERATION] je nazov OPERATION a VALUE [VERSION] je cislo VERSION. Prikladom je STRUCTURE [FwpmNetEventEnum0()].
+	  D. VERSIONS su cislovane od 0.
+	  E. WINDOWS FILTERING PLATFORM definuje MACROS bez VERSION, ktore nastavia tu VERSION, ktora zodpoveda PLATFORM voci ktorej je PROGRAM COMPILED.
+9. Pre USER MODE API vystavene WINDOWS FILTERING PLATFORM platia nasledujuce fakty.
+   A. USER MODE HEADERS maju FORMAT [fwpNAMEu.h], kde VALUE [NAME] je nazov HEADER.
+   B. BASE TYPES su definovane v LIBRARY [fwptypes.h] a LIBRARY [fwpmtypes.h], ktore su SHARED medzi USER MODE API a KERNEL MODE API.
+   C. FUNCTIONS vracaju ako RETURN VALUE TYPE [LONG], ktory obsahuje LAST ERROR VALUE. VALUE [0] znamena, ze FUNCTION uspela. Ine POSITIVE VALUES znaenaju, ze FUNCTION zlyhala.
+   !!! D. FUNCTIONS NENASTAVUJU LAST ERROR VALUE. Ta je vratane ako RETURN VALUE kazdej FUNCTION. Volanie FUNCTION [GetLastError()] preto nevracia VALID ERROR VALUE.
+   E. USER MODE API sa nachadza v LIBRARY [Fwpuclnt.lib].
+10. Pre KERNEL MODE API vystavene WINDOWS FILTERING PLATFORM platia nasledujuce fakty.
+   A. KERNEL MODE HEADERS maju FORMAT [fwpNAMEk.h], kde VALUE [NAME] je nazov HEADER.
+   B. BASE TYPES su definovane v LIBRARY [fwptypes.h] a LIBRARY [fwpmtypes.h], ktore su SHARED medzi USER MODE API a KERNEL MODE API.
+   C. FUNCTIONS vracaju ako RETURN VALUE TYPE [NTSUCCESS].
+11. Pre USER MODE FUNCTION [FwpmEngineOpen0()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [DWORD FwpmEngineOpen0(const wchar_t* ServerName, UINT32 AuthnService, SEC_WINNT_AUTH_IDENTITY_W* AuthIdentity, const FWPM_SESSION0* Session, HANDLE* EngineHandle)].
+   B. PARAMETER [const wchar_t* ServerName] musi byt nastaveny na VALUE [nullptr].
+   C. PARAMETER [UINT32 AuthnService] urcuje ktory AUTHENTICATION SERVICE sa ma pouzit. Odporucana VALUE je VALUE [RPC_C_AUTHN_DEFAULT].
+   D. PARAMETER [SEC_WINNT_AUTH_IDENTITY_W* AuthIdentity] obsahuje AUTHENTICATION a AUTHORIZATION CREDENTIALS. VALUE [nullptr] znamena, ze sa pouziju AUTHENTICATION a AUTHORIZATION CREDENTIALS CURRENT THREAD.
+   E. PARAMETER [const FWPM_SESSION0* Session] obsahuje SESSION SPECIFIC PARAMETERS. PARAMETER moze byt nastaveny na VALUE [nullptr].
+   !!! F. PARAMETER [HANDLE* EngineHandle] obsahuje HANDLE na FILTER ENGINE. HANDLE musi byt uvolneny volanim FUNCTION [FwpmEngineClose0()].
+   G. RETURN VALUE TYPE [DWORD] obsahuje LAST ERROR informaciu ci FUNCTION skoncila uspesne.
+   H. FUNCTION otvara HANDLE na FILTER ENGINE.
+   !!! I. Vytvoreny HANDLE musi byt uvolneny volanim FUNCTION [FwpmEngineClose0()].
+12. Pre USER MODE FUNCTION [FwpmEngineClose0()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [DWORD FwpmEngineClose0(HANDLE EngineHandle)].
+   B. PARAMETER [HANDLE EngineHandle] obsahuje HANDLE, ktory vratila FUNCTION [FwpmEngineOpen0()].
+   C. RETURN VALUE TYPE [DWORD] obsahuje LAST ERROR informaciu ci FUNCTION skoncila uspesne.
+   D. FUNCTION uzatvara HANDLE na FILTER ENGINE.
+13. Pre USER MODE FUNCTION [FwpmLayerCreateEnumHandle0()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [DWORD FwpmLayerCreateEnumHandle0(HANDLE EngineHandle, const FWPM_LAYER_ENUM_TEMPLATE0* EnumTemplate, HANDLE* EnumHandle)].
+   B. PARAMETER [HANDLE EngineHandle] obsahuje HANDLE na FILTER ENGINE.
+   C. PARAMETER [const FWPM_LAYER_ENUM_TEMPLATE0* EnumTemplate] obsahuje nastavenie pre obmedzenie LAYER OBJECTS, ktorymi je mozne enumerovat.
+   !!! D. PARAMETER [HANDLE* EnumHandle] obsahuje HANDLE na LAYER ENUMERATION. HANDLE musi byt uvolneny volanim FUNCTION [FwpmLayerDestroyEnumHandle0()].
+   E. RETURN VALUE TYPE [DWORD] obsahuje LAST ERROR informaciu ci FUNCTION skoncila uspesne.
+   F. FUNCTION otvara HANDLE, ktorym je mozne enumerovat LAYER OBJECTS.
+   !!! G. Vytvoreny HANDLE musi byt uvolneny volanim FUNCTION [FwpmLayerDestroyEnumHandle0()].
+14. Pre USER MODE FUNCTION [FwpmLayerDestroyEnumHandle0()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [DWORD FwpmLayerDestroyEnumHandle0(HANDLE EngineHandle, HANDLE EnumHandle)].
+   B. PARAMETER [HANDLE EngineHandle] obsahuje HANDLE na FILTER ENGINE.
+   C. PARAMETER [HANDLE EnumHandle] obsahuje HANDLE na LAYER ENUMERATION.
+   C. RETURN VALUE TYPE [DWORD] obsahuje LAST ERROR informaciu ci FUNCTION skoncila uspesne.
+   D. FUNCTION uzatvara HANDLE na LAYER ENUMERATION.
+15. Pre USER MODE FUNCTION [FwpmFilterCreateEnumHandle0()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [DWORD FwpmFilterCreateEnumHandle0(HANDLE EngineHandle, const FWPM_FILTER_ENUM_TEMPLATE0* EnumTemplate, HANDLE* EnumHandle)].
+   B. PARAMETER [HANDLE EngineHandle] obsahuje HANDLE na FILTER ENGINE.
+   C. PARAMETER [const FWPM_FILTER_ENUM_TEMPLATE0* EnumTemplate] obsahuje nastavenie pre obmedzenie FITER OBJECTS, ktorymi je mozne enumerovat.
+   !!! D. PARAMETER [HANDLE* EnumHandle] obsahuje HANDLE na FILTER ENUMERATION. HANDLE musi byt uvolneny volanim FUNCTION [FwpmFilterDestroyEnumHandle0()].
+   E. RETURN VALUE TYPE [DWORD] obsahuje LAST ERROR informaciu ci FUNCTION skoncila uspesne.
+   F. FUNCTION otvara HANDLE, ktorym je mozne enumerovat FILTER OBJECTS.
+   !!! G. Vytvoreny HANDLE musi byt uvolneny volanim FUNCTION [FwpmFilterDestroyEnumHandle0()].
+16. Pre USER MODE FUNCTION [FwpmFilterDestroyEnumHandle0()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [DWORD FwpmFilterDestroyEnumHandle0(HANDLE EngineHandle, HANDLE EnumHandle)].
+   B. PARAMETER [HANDLE EngineHandle] obsahuje HANDLE na FILTER ENGINE.
+   C. PARAMETER [HANDLE EnumHandle] obsahuje HANDLE na FILTER ENUMERATION.
+   C. RETURN VALUE TYPE [DWORD] obsahuje LAST ERROR informaciu ci FUNCTION skoncila uspesne.
+   D. FUNCTION uzatvara HANDLE na FILTER ENUMERATION.
+17. Pre USER MODE FUNCTION [FwpmLayerEnum0()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [DWORD FwpmLayerEnum0(HANDLE EngineHandle, HANDLE EnumHandle, UINT32 NumEntriesRequested, FWPM_LAYER0*** Entries, UINT32* NumEntriesReturned)].
+   B. PARAMETER [HANDLE EngineHandle] obsahuje HANDLE na FILTER ENGINE.
+   C. PARAMETER [HANDLE EnumHandle] obsahuje HANDLE na LAYER ENUMERATION.
+   D. PARAMETER [UINT32 NumEntriesRequested] obsahuje pocet pozadovanych LAYER OBJECTS, ktore ma FUNCTION vratit.
+   !!! E. PARAMETER [FWPM_LAYER0*** Entries] obsahuje POINTER na zoznam STRUCTURES obsahujucich FILTERS. MEMORY, ktoru alokuje volanie FUNCTION musi byt uvolena volanim FUNCTION [FwpmFreeMemory0()].
+   F. PARAMETER [UINT32* NumEntriesReturned] obsahuje POINTER do ktoreho sa ulozi pocet vratenych LAYERS.
+   G. RETURN VALUE TYPE [DWORD] obsahuje LAST ERROR informaciu ci FUNCTION skoncila uspesne.
+   H. FUNCTION vracia LAYERS ktore SYSTEM definuje.
+   !!! I. MEMORY alokovana v PARAMETER [FWPM_LAYER0*** Entries] musi byt uvolnena volanim FUNCTION [FwpmFreeMemory0()].
+18. Pre USER MODE FUNCTION [FwpmFilterEnum0()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [DWORD FwpmFilterEnum0(HANDLE EngineHandle, HANDLE EnumHandle, UINT32 NumEntriesRequested, FWPM_FILTER0*** Entries, UINT32* NumEntriesReturned)].
+   B. PARAMETER [HANDLE EngineHandle] obsahuje HANDLE na FILTER ENGINE.
+   C. PARAMETER [HANDLE EnumHandle] obsahuje HANDLE na FILTER ENUMERATION.
+   D. PARAMETER [UINT32 NumEntriesRequested] obsahuje pocet pozadovanych FILTER OBJECTS, ktore ma FUNCTION vratit.
+   !!! E. PARAMETER [FWPM_FILTER0*** Entries] obsahuje POINTER na zoznam STRUCTURES obsahujucich FILTERS. MEMORY, ktoru alokuje volanie FUNCTION musi byt uvolena volanim FUNCTION [FwpmFreeMemory0()].
+   F. PARAMETER [UINT32* NumEntriesReturned] obsahuje POINTER do ktoreho sa ulozi pocet vratenych FILTERS.
+   G. RETURN VALUE TYPE [DWORD] obsahuje LAST ERROR informaciu ci FUNCTION skoncila uspesne.
+   H. FUNCTION vracia FILTERS ktore su v SYSTEME zaregistrovane.
+   !!! I. MEMORY alokovana v PARAMETER [FWPM_FILTER0*** Entries] musi byt uvolnena volanim FUNCTION [FwpmFreeMemory0()].
+19. Pre USER MODE FUNCTION [FwpmFreeMemory0()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [void FwpmFreeMemory0(void** P)].
+   B. PARAMETER [void** P] obsahuje POINTER na MEMORY alokovanu FUNCTIONS WINDOWS FILTERING PLATFORM, ktora sa ma uvolnit.
+   C. RETURN VALUE TYPE [DWORD] obsahuje LAST ERROR informaciu ci FUNCTION skoncila uspesne.
+   D. FUNCTION uvolnuje MEMORY, ktory alokuju rozlicne FUNCTIONS WINDOWS FILTERING PLATFORM.
+20. Pre USER MODE FUNCTION [FwpmFilterAdd0()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [DWORD FwpmFilterAdd0(HANDLE EngineHandle, const FWPM_FILTER0* Filter, PSECURITY_DESCRIPTOR SD, UINT64* Id)].
+   B. PARAMETER [HANDLE EngineHandle] obsahuje HANDLE na FILTER ENGINE.
+   C. PARAMETER [const FWPM_FILTER0* Filter] obsahuje FILTER OBJECT, ktory ma byt pridany do SYSTEMU.
+   D. PARAMETER [PSECURITY_DESCRIPTOR SD] obsahuje SECURITY DESCRIPTOR FILTER OBJECT.
+   E. PARAMETER [UINT64* Id] obsahuje RUNTIME ID FILTER OBJECT.
+   F. RETURN VALUE TYPE [DWORD] obsahuje LAST ERROR informaciu ci FUNCTION skoncila uspesne.
+   G. FUNCTION pridava novy FILTER do SYSTEMU.
+   !!! H. FILTER je mozne zo SYSTEMU odstranit volanim FUNCTION [FwpmFilterDeleteByKey0()].
+21. Pre USER MODE FUNCTION [FwpmFilterDeleteByKey0()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [DWORD FwpmFilterDeleteByKey0(HANDLE EngineHandle, const GUID* Key)].
+   B. PARAMETER [HANDLE EngineHandle] obsahuje HANDLE na FILTER ENGINE.
+   C. PARAMETER [const GUID* Key] obsahuje GUID identifikujuc FILTER OBJECT, ktory ma byt odstraneny zo SYSTEMU.
+   D. RETURN VALUE TYPE [DWORD] obsahuje LAST ERROR informaciu ci FUNCTION skoncila uspesne.
+   E. FUNCTION odstranuje existujuci FILTER zo SYSTEMU.
+22. Pozutie CALLOUT DRIVERS vyzaduje vykonanie nasledujucich krokov.
+   A. Registracia CALLOUT DRIVER v KERNEL WINDOWS FILTERING PLATFORM ENGINE. Tento krok je mozne urobit IBA v KERNEL MODE.
+   B. Pridanie CALLOUT DRIVER do <1,N> LAYERS. Tento krok je mozne urobit IBA v USER MODE.
+   C. Pouzitie CALLOUT DRIVER ako sucast FILTER ACTION. Tento krok je mozne urobit IBA v USER MODE.
+23. Pre FUNCTION [FwpsCalloutRegister3()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [NTSTATUS FwpsCalloutRegister3(void* DeviceObject, const FWPS_CALLOUT3* Callout, UINT32* CalloutId)].
+   B. PARAMETER [void* DeviceObject] obsahuje POINTER na DEVICE OBJECT, ktory DRIVER vytvoril.
+   C. PARAMETER [const FWPS_CALLOUT3* Callout] obsahuje POINTER na STRUCTURE [FWPS_CALLOUT3], ktora obsahuje konfiguraciu CALLOUT DRIVER.
+   !!! D. PARAMETER [UINT32* CalloutId] obsahuje POINTER do ktoreho sa ulozi CALLOUT ID, ktora sa pouzije pri odregistrovani CALLOUT DRIVER volanim FUNCTION [FwpsCalloutUnregisterById0()].
+   E. RETURN VALUE TYPE [NTSTATUS] obsahuje informaciu ci FUNCTION skoncila uspesne.
+   F. FUNCTION zaregistruje CALLOUT DRIVER vo WINDOWS FILTERING PLATFORM.
+   !!! G. CALLOUT DRIVER musi byt odregistrovany z WINDOWS FILTERING PLATFORM volanim FUNCTION [FwpsCalloutUnregisterById0()], alebo volanim FUNCTION [FwpsCalloutUnregisterByKey0()].
+24. Pre FUNCTION [FwpsCalloutUnregisterById0()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [NTSTATUS FwpsCalloutUnregisterById0(const UINT32 CalloutId)].
+   B. PARAMETER [const UINT32 CalloutId] obsahuje CALLOUT ID, ktory vratila FUNCTION [FwpsCalloutRegister3()].
+   C. RETURN VALUE TYPE [NTSTATUS] obsahuje informaciu ci FUNCTION skoncila uspesne.
+   D. FUNCTION odregistruje CALLOUT DRIVER z WINDOWS FILTERING PLATFORM.
+25. Pre FUNCTION [FwpsCalloutUnregisterById0()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [NTSTATUS FwpsCalloutUnregisterByKey0(const GUID* CalloutKey)].
+   B. PARAMETER [const GUID* CalloutKey] obsahuje CALLOUT KEY nastaveny pri registracii CALLOUT DRIVER volanim FUNCTION [FwpsCalloutRegister3()].
+   C. RETURN VALUE TYPE [NTSTATUS] obsahuje informaciu ci FUNCTION skoncila uspesne.
+   D. FUNCTION odregistruje CALLOUT DRIVER z WINDOWS FILTERING PLATFORM.
+26. STRUCTURE [FWPS_CALLOUT3] ma nasledujude FIELDS.
+   A. FIELD [GUID CalloutKey] obsahuje GUID ktory jednoznacne identifikuje CALLOUT DRIVER.
+   B. FIELD [UINT32 Flags] obsahuje FLAGS. FLAGS mozu obsahovat nasledujuce VALUES.
+      A. VALUE [0] znamena, ze ziaden FLAG nie je nastaveny.
+      B. VALUE [FWP_CALLOUT_FLAG_CONDITIONAL_ON_FLOW] sa pouziva iba pre CALLOUT DRIVERS, ktore su pridane do LAYERS podporujucich DATA FLOWS. KERNEL zavola CALLBACK FUNCTION [FWPS_CALLOUT_CLASSIFY_FN3], ak je s DATA FLOW asociovany CONTEXT.
+      C. VALUE [FWP_CALLOUT_FLAG_ALLOW_OFFLOAD] sa pouziva na indikaciu, ze CALLOUT DRIVER nie je ovplyvneny tym ci NETWORK INTERFACE CARD robi OFFLOADING. Ak tento FLAG nie je specifikovany, potom OFFLOADING je DISABLED pre vsetky FILTERS, ktore pouzivaju dany CALLOUT DRIVER.
+      D. VALUE [FWP_CALLOUT_FLAG_ENABLE_COMMIT_ADD_NOTIFY] urcuje, ze CALLOUT DRIVER moze dostat NOTIFICATION o OBJECTS a FILTERS, ktore su pridane ako sucast TRANSACTION. NOTIFICATION sa vykona ak je TRANSACTION COMMITED.
+      E. VALUE [FWP_CALLOUT_FLAG_ALLOW_MID_STREAM_INSPECTION] urcuje, ze CALLOUT DRIVER moze vykonat DYNAMIC STREAM INSPECTION DATA FLOWS na STREAM LEVEL.
+      F. VALUE [FWP_CALLOUT_FLAG_ALLOW_RECLASSIFY] urcuje, ze CALLOUT DRIVER moze byt aj je existujuca SOCKET OPERATION RECLASSIFIED.
+      G. VALUE [FWP_CALLOUT_FLAG_RESERVED1] je RESERVED.
+      H. VALUE [FWP_CALLOUT_FLAG_ALLOW_RSC] urcuje, ze CALLOUT DRIVER podporuje RECEIVE SEGMENT COALESCING pre LARGE PACKET s dlzkou vacsou ako 64 kB. Ak VALUE nie je nastavena potom vsetky FILTERS, ktore pouzivaju tento CALLOUT DRIVERS su DISABLED pre RECEIVE SEGMENT COALESCING PACKETS.
+      I. VALUE [FWP_CALLOUT_FLAG_ALLOW_L2_BATCH_CLASSIFY] urcuje, ze CALLOUT DRIVER ak je zaregistrovany pre LAYER 2, bude jeho CALLBACK FUNCTION volana pre CHAINED STRUCTURES [NET_BUFFER_LIST].
+      J. VALUE [FWP_CALLOUT_FLAG_ALLOW_USO] urcuje, ze CALLOUT DRIVER podporuje UDP SEGMENTATION OFFLOAD pre PACKETS, ktore su vacsie ako MTU daneho NETWORK MEDIUM. Ak VALUE nie je nastavena, UDP SEGMENTATION OFFLOAD je vypnuta pre vsetky FILTERS, ktore pouzivaju dany CALLOUT DRIVER.
+      K. VALUE [FWP_CALLOUT_FLAG_ALLOW_URO] urcuje, ze CALLOUT DRIVER podporuje UDP RECEIVE OFFLOAD pre PACKETS, ktore su vacsie ako 64 kB. Ak VALUE nie je nastavena, UDP RECEIVE OFFLOAD je vypnuta pre vsetky FILTERS, ktore pouzivaju dany CALLOUT DRIVER.
+   C. FIELD [FWPS_CALLOUT_CLASSIFY_FN3 ClassifyFn] obsahuje CALLBACK FUNCTION ak ma CALLOUT DRIVER spracovat NETWORK DATA. CALLBACK FUNCTION ma PROTOTYPE [void FwpsCalloutClassifyFn3(const FWPS_INCOMING_VALUES0* InFixedValues, const FWPS_INCOMING_METADATA_VALUES0* InMetaValues, void* LayerData, const void* ClassifyContext, const FWPS_FILTER3* Filter, UINT64 FlowContext, FWPS_CLASSIFY_OUT0* ClassifyOut)].
+   D. FIELD [FWPS_CALLOUT_NOTIFY_FN3 NotifyFn] obsahuje CALLBACK FUNCTION, ktora sa vola pre EVENTS tykajucich sa daneho CALLOUT DRIVER. CALLBACK FUNCTION ma PROTOTYPE [NTSTATUS FwpsCalloutNotifyFn3(FWPS_CALLOUT_NOTIFY_TYPE NotifyType, const GUID* FilterKey, FWPS_FILTER3* Filter)].
+   E. FIELD [FWPS_CALLOUT_FLOW_DELETE_NOTIFY_FN0 FlowDeleteFn] obsahuje CALLBACK FUNCTION, ktora sa vola ak DATA FLOW asociovany s danym CALLOUT DRIVER je TERMINATED. CALLBACK FUNCTION ma PROTOTYPE [void FwpsCalloutFlowDeleteNotifyFn0(UINT16 LayerId, UINT32 CalloutId, UINT64 FlowContext)].
+27. CALLBACK FUNCTION [FWPS_CALLOUT_CLASSIFY_FN3] ma PROTOTYPE [void FwpsCalloutClassifyFn3(const FWPS_INCOMING_VALUES0* InFixedValues, const FWPS_INCOMING_METADATA_VALUES0* InMetaValues, void* LayerData, const void* ClassifyContext, const FWPS_FILTER3* Filter, UINT64 FlowContext, FWPS_CLASSIFY_OUT0* ClassifyOut)].
+   !!!!! A. CALLBACK FUNCTION je volana na IRQL [IRQL<=DISPATCH_LEVEL].
+   B. PARAMETER [const FWPS_INCOMING_VALUES0* InFixedValues] obsahuje POINTER na STRUCTURE [FWPS_INCOMING_VALUES0], ktora obsahuje VALUES pre FIELDS pre LAYER pre ktory bola CALLBACK FUNCTION volana.
+   C. PARAMETER [const FWPS_INCOMING_METADATA_VALUES0* InMetaValues] obsahuje POINTER na STRUCTURE [FWPS_INCOMING_METADATA_VALUES0], ktora obsahuje VALUES pre METADATA FIELDS pre LAYER pre ktory bola CALLBACK FUNCTION volana.
+   D. PARAMETER [void* LayerData] obsahuje POINTER na STRUCTURE, ktora obsahuje RAW DATA pre LAYER pre ktory bola CALLBACK FUNCTION volana.
+   E. PARAMETER [const void* ClassifyContext] obsahuje POINTER na CONTEXT DATA, ktore boli asociovane s CALLOUT DRIVER.
+   F. PARAMETER [const FWPS_FILTER3* Filter] obsahuje POINTER na STRUCTURE [FWPS_FILTER3], ktora popisuje FILTER pouzivajuci CALLOUT DRIVER pre bola CALLBACK FUNCTION volana.
+   G. PARAMETER [UINT64 FlowContext] obsahuje CONTEXT asociovany s DATA FLOW. Ak ziaden CONTEXT nie je asociovany s DATA FLOW, tak PARAMETER obsahuje VALUE [0].
+   H. PARAMETER [FWPS_CLASSIFY_OUT0* ClassifyOut] obsahuje POINTER na STRUCTURE [FWPS_CLASSIFY_OUT0], ktora obsahuje vsetky DATA, ktore CALLBACK FUNCTION vrati do CALLER.
+28. CALLBACK FUNCTION [FWPS_CALLOUT_NOTIFY_FN3] ma PROTOTYPE [NTSTATUS FwpsCalloutNotifyFn3(FWPS_CALLOUT_NOTIFY_TYPE NotifyType, const GUID* FilterKey, FWPS_FILTER3* Filter)].
+   !!!!! A. CALLBACK FUNCTION je volana na IRQL [IRQL<=DISPATCH_LEVEL].
+   B. PARAMETER [FWPS_CALLOUT_NOTIFY_TYPE NotifyType] obsahuje TYPE EVENTU o ktorom je CALLOUT DRIVER NOTIFIED. Moze obashova nasledujuce VALUES.
+      A. VALUE [FWPS_CALLOUT_NOTIFY_ADD_FILTER] znamena, ze novy FILTER pouzivajuci CALLOUT DRIVER je pridany do WINDOWS FILTERING PLATFORM.
+      B. VALUE [FWPS_CALLOUT_NOTIFY_DELETE_FILTER] znamena, ze existujuci FILTER pouzivajuci CALLOUT DRIVER je odstranovany z WINDOWS FILTERING PLATFORM.
+      C. VALUE [FWPS_CALLOUT_NOTIFY_TYPE_MAX] je MAXIMUM VALUE pouzivana na testovanie.
+   C. PARAMETER [const GUID* FilterKey] obsahuje POINTER na FILTER KEY FILTER, ktory pouziva CALLOUT DRIVER pre ktory dany EVENT vznikol.
+   D. PARAMETER [FWPS_FILTER3* Filter] obsahuje POINTER na STRUCTURE [FWPS_FILTER3], ktora popisuje FILTER pouzivajuci CALLOUT DRIVER pre ktory dany EVENT vznikol.
+   E. RETURN VALUE TYPE [NTSTATUS] obsahuje informaciu ci FUNCTION skoncila uspesne.
+      A. Ak PARAMETER [FWPS_CALLOUT_NOTIFY_TYPE NotifyType] obsahuje VALUE [FWPS_CALLOUT_NOTIFY_ADD_FILTER] a je vrateny ERROR CODE, FILTER pouzivajuci CALLOUT DRIVER NEBUDE pridany do WINDOWS FILTERING PLATFORM.
+      B. Ak PARAMETER [FWPS_CALLOUT_NOTIFY_TYPE NotifyType] obsahuje VALUE [FWPS_CALLOUT_NOTIFY_DELETE_FILTER] tak aj ked je vrateny ERROR CODE, FILTER pouzivajuci CALLOUT DRIVER BUDE odstraneny z WINDOWS FILTERING PLATFORM.
+29. CALLBACK FUNCTION [FWPS_CALLOUT_FLOW_DELETE_NOTIFY_FN0] ma PROTOTYPE [void FwpsCalloutFlowDeleteNotifyFn0(UINT16 LayerId, UINT32 CalloutId, UINT64 FlowContext)].
+   !!!!! A. CALLBACK FUNCTION je volana na IRQL [IRQL<=DISPATCH_LEVEL].
+   B. PARAMETER [UINT16 LayerId] obsahuje LAYER ID, pre ktory bol DATA FLOW TERMINATED.
+   C. PARAMETER [UINT32 CalloutId] obsahuje CALLOUT DRIVER ID, pre ktory bol DATA FLOW TERMINATED.
+   D. PARAMETER [UINT64 FlowContext] obsahuje najnovsi CONTEXT, ktory bol asociovany DATA FLOW, ktory bol TERMINATED.
+30. STRUCTURE [FWPS_INCOMING_VALUES0] ma nasledujuce FIELDS.
+   A. FIELD [UINT16 LayerId] obsahuje LAYER ID toho LAYER pre ktory je FILTER pouzivajuci CALLOUT DRIVER zaregistrovany.
+   B. FIELD [UINT32 ValueCount] obsahuje pocet STRUCTURES [FWPS_INCOMING_VALUE0] vo FIELD [FWPS_INCOMING_VALUE0* IncomingValue].
+   C. FIELD [FWPS_INCOMING_VALUE0* IncomingValue] obsahuje ARRAY STRCTURES [FWPS_INCOMING_VALUE0], kde kazdy ITEM obsahuje VALUE INCOMING FIELD.
+31. STRUCTURE [FWPS_INCOMING_VALUE0] ma FIELD [FWP_VALUE0 Value], ktory obsahuje VALUE INCOMING FIELD.
+32. STRUCTURE [FWP_VALUE0] ma nasledujuce FIELDS.
+   A. FIELD [FWP_DATA_TYPE Type] urcuje aky TYME obsahuje VALUE.
+   B. ANONYMOUS UNION, ktory obsahuje nasledujuce FIELDS.
+      A. FIELD [UINT8 Uint8] obsahuje VALUE TYPE [UINT8].
+      B. FIELD [UINT16 Uint16] obsahuje VALUE TYPE [UINT16].
+      C. FIELD [UINT32 Uint32] obsahuje VALUE TYPE [UINT32].
+      D. FIELD [UINT64* Uint64] obsahuje VALUE TYPE [UINT64*].
+      E. FIELD [INT8 Int8] obsahuje VALUE TYPE [INT8].
+      F. FIELD [INT16 Int16] obsahuje VALUE TYPE [INT16].
+      G. FIELD [INT32 Int32] obsahuje VALUE TYPE [INT32].
+      H. FIELD [INT64* Int64] obsahuje VALUE TYPE [INT64*].
+      I. FIELD [float Float32] obsahuje VALUE TYPE [float].
+      J. FIELD [double* Double64] obsahuje VALUE TYPE [double*].
+      K. FIELD [FWP_BYTE_ARRAY16* ByteArray16] obsahuje VALUE TYPE [FWP_BYTE_ARRAY16*].
+      L. FIELD [FWP_BYTE_BLOB* ByteBlob] obsahuje VALUE TYPE [FWP_BYTE_BLOB*].
+      M. FIELD [SID* Sid] obsahuje VALUE TYPE [SID*].
+      N. FIELD [FWP_BYTE_BLOB* Sd] obsahuje VALUE TYPE [FWP_BYTE_BLOB*].
+      O. FIELD [FWP_TOKEN_INFORMATION* TokenInformation] obsahuje VALUE TYPE [FWP_TOKEN_INFORMATION*].
+      P. FIELD [FWP_BYTE_BLOB* TokenAccessInformation] obsahuje VALUE TYPE [FWP_BYTE_BLOB*].
+      Q. FIELD [LPWSTR UnicodeString] obsahuje VALUE TYPE [LPWSTR].
+      R. FIELD [FWP_BYTE_ARRAY6* ByteArray6] obsahuje VALUE TYPE [FWP_BYTE_ARRAY6*].
+33. STRUCTURE [FWPS_CLASSIFY_OUT0] ma nasledujuce FIELDS.
+   A. FIELD [FWP_ACTION_TYPE ActionType] urcuje aka ACTION sa ma podla CALLOUT DRIVER vykonat pre TRANSMITTED DATA, alebo RECEIVED DATA.
+   B. FIELD [UINT64 OutContext] je RESERVED.
+   C. FIELD [UINT64 FilterId] je RESERVED.
+   D. FIELD [UINT32 Rights] obsahuje FLAGS, ktore urcuju ktore FIELDS mozu byt nastavene. Ma nasledujuce VALUES.
+      A. VALUE [0] znamena, ze ziaden FLAG nie je nastaveny.
+      B. VALUE [FWPS_RIGHT_ACTION_WRITE] znamena, CALLOUT DRIVER moze zapisovat do FIELD [FWP_ACTION_TYPE ActionType] zapisovat lubovolnu VALUE. Ak tento FIELD nie je nastaveny, CALLOUT DRIVER moze do FIELD [FWP_ACTION_TYPE ActionType] zapisat iba VALUE [FWP_ACTION_PERMIT].
+   E. FIELD [UINT32 Flags] obsahuje FLAGS, ktore urcuju aku ACTION moze CALLOUT DRIVER vykonat. Ma nasledujuce VALUES.
+      A. VALUE [0] znamena, ze ziaden FLAG nie je nastaveny.
+      B. VALUE [FWPS_CLASSIFY_OUT_FLAG_ABSORB] znamena, ze DROPPED DATA nebudu dalej spracovane, nebudu LOGGED, ani nad nimi nebude vykonany AUDIT. Typicky sa tento FLAG nastavuje vtedy ak CALLOUT DRIVER modifikova obsah TRANSMITTED DATA, alebo RECEIVED DATA a povodne DATA sa zahodia.
+      C. VALUE [FWPS_CLASSIFY_OUT_FLAG_BUFFER_LIMIT_REACHED] je nastaveny ked DATA BUFFER pre STREAM DATA je FULL.
+      D. VALUE [FWPS_CLASSIFY_OUT_FLAG_NO_MORE_DATA] je nastaveny ked doslo k REQUEST pre STREAM DATA potom co STREAM bol DISCONNECTED.
+   F. FIELD [UINT32 Reserved] je RESERVED.
+34. ENUM [FWP_ACTION_TYPE] obsahuje nasledujuce VALUES.
+   A. VALUE [FWP_ACTION_BLOCK] znamena, ze TRANSMITTED DATA, alebo RECEIVED DATA maju byt BLOCKED.
+   B. VALUE [FWP_ACTION_CONTINUE] znamena, ze TRANSMITTED DATA, alebo RECEIVED DATA maju byt spravovane dalsim FILTER.
+   C. VALUE [FWP_ACTION_NONE] znamena, ze pre TRANSMITTED DATA, alebo RECEIVED DATA boli CALLOUT DRIVER nevykonal ziadnu ACTION. VALUE ma identicky efekt ako VALUE [FWP_ACTION_CONTINUE].
+   D. VALUE [FWP_ACTION_NONE_NO_MATCH] znamena, ze pre TRANSMITTED DATA, alebo RECEIVED DATA boli CALLOUT DRIVER ignorovane, kedze ich CALLOUT DRIVER nespravuvava. VALUE ma identicky efekt ako VALUE [FWP_ACTION_CONTINUE].
+   E. VALUE [FWP_ACTION_PERMIT] znamena, ze TRANSMITTED DATA, alebo RECEIVED DATA boli CALLOUT DRIVER povolene v dalsom spracovani.
+35. STRUCTURE [FWPS_FILTER0] ma nasledujuce FIELDS.
+   A. FIELD [UINT64 FilterId] obsahuje FILTER ID, ktory pouziva CALLOUT DRIVER.
+   B. FIELD [FWP_VALUE0 Weight] obsahuje WEIGHT FILTER, ktory pouziva CALLOUT DRIVER.
+   C. FIELD [UINT16 SubLayerWeight] obsahuje SUBLAYER WEIGHT FILTER, ktory pouziva CALLOUT DRIVER.
+   D. FIELD [UINT16 Flags] obsahuje FLAGS. FIELD moze mat nasledujuce VALUES.
+      A. VALUE [0] znamena, ze ziaden FLAG nie je nastaveny.
+      B. VALUE [FWPS_FILTER_FLAG_CLEAR_ACTION_RIGHT] znamena, ze CALLOUT DRIVER by mal odstranit FLAG [FWPS_RIGHT_ACTION_WRITE] z FIELD [FWPS_CLASSIFY_OUT0::Rights] ak vo FIELD [FWPS_CLASSIFY_OUT0::ActionType] nastavuje VALUE [FWP_ACTION_BLOCK], alebo VALUE [FWP_ACTION_PERMIT]. Ak tento FLAG nie je nastaveny, CALLOUT DRIVER by mal odstranit FLAG [FWPS_RIGHT_ACTION_WRITE] z FIELD [FWPS_CLASSIFY_OUT0::Rights] ak vo FIELD [FWPS_CLASSIFY_OUT0::ActionType] nastavuje VALUE [FWP_ACTION_BLOCK].
+      C. VALUE [FWPS_FILTER_FLAG_PERMIT_IF_CALLOUT_UNREGISTERED] znamena, ze ak CALLOUT DRIVER nie je REGISTERED, CALLOUT DRIVER by mal fungovat ako PERMIT FILTER.
+      D. VALUE [FWPS_FILTER_FLAG_OR_CONDITIONS] znamena, ze FILTER obsahuje viacero CONDITIONS pre ten isty FIELD. Tieto CONDITIONS su OR-ed.
+      E. VALUE [FWPS_FILTER_FLAG_HAS_SECURITY_REALM_PROVIDER_CONTEXT] znamena, ze FILTER sa referuje na PROVIDER CONTEXT pre IPSEC.
+      F. VALUE [FWPS_FILTER_FLAG_SILENT_MODE] znamena, ze FILTER je v SILENT MODE.
+      G. VALUE [FWPS_FILTER_FLAG_IPSEC_NO_ACQUIRE_INITIATE] znamena, ze CALLOUT DRIVER nema vykonat IPSEC ACQUIRE ak PACKET sa zhoduje z IPSEC POLICY.
+      H. VALUE [FWPS_FILTER_FLAG_RESERVED0] je RESERVED.
+      I. VALUE [FWPS_FILTER_FLAG_RESERVED1] je RESERVED.
+      J. VALUE [FWPS_FILTER_FLAG_RESERVED2] je RESERVED.
+   E. FIELD [UINT32 NumFilterConditions] obsahuje pocet STRUCTURES [FWPS_FILTER_CONDITION0] v ARRAY vo FIELD [FWPS_FILTER_CONDITION0* FilterCondition].
+   F. FIELD [FWPS_FILTER_CONDITION0* FilterCondition] obsahuje ARRAY STRUCTURES [FWPS_FILTER_CONDITION0], kde kazda STRUCTURE obsahuje CONDITIONS, ktore definuje FILTER pouzivajuci CALLOUT DRIVER.
+   G. FIELD [FWPS_ACTION0 Action] obsahuje ACTION, ktoru ma FILTER pouzivajuci CALLOUT DRIVER vykonat.
+   H. FIELD [UINT64 Context] obsahuje CONTEXT, ktory ja asociovany s FILTER pouzivajuci CALLOUT DRIVER.
+   I. FIELD [FWPM_PROVIDER_CONTEXT0* ProviderContext] obsahuje POINTER na PROVIDER CONTEXT.
+36. STRUCTURE [FWPS_FILTER_CONDITION0] ma nasledujuce FIELDS.
+   A. FIELD [UINT16 FieldId] obsahuje FIELD ID ktory je TESTED v CONDITION.
+   B. FIELD [UINT16 Reserved] je RESERVED.
+   C. FIELD [FWP_MATCH_TYPE MatchType] obsahuje OPERATOR danej CONDITION. Moze mat nasledujuce VALUES.
+      A. VALUE [FWP_MATCH_EQUAL] znamena pouzitie OPERATOR [==].
+      B. VALUE [FWP_MATCH_GREATER] znamena pouzitie OPERATOR [>].
+      C. VALUE [FWP_MATCH_LESS] znamena pouzitie OPERATOR [<].
+      D. VALUE [FWP_MATCH_GREATER_OR_EQUAL] znamena pouzitie OPERATOR [>=].
+      E. VALUE [FWP_MATCH_LESS_OR_EQUAL] znamena pouzitie OPERATOR [<=].
+      F. VALUE [FWP_MATCH_RANGE] znamena sa testuje ci VALUE je v definovanom RANGE.
+      G. VALUE [FWP_MATCH_FLAGS_ALL_SET] znamena, ze sa testuje ci vsetky FLAGS su nastavene. Aplikuje sa iba na UNSIGNED TYPES.
+      H. VALUE [FWP_MATCH_FLAGS_ANY_SET] znamena, ze sa testuje ci niektory z FLAGS je nastaveny. Aplikuje sa iba na UNSIGNED TYPES.
+      I. VALUE [FWP_MATCH_FLAGS_NONE_SET] znamena, ze sa testuje ci ziaden z FLAGS nie je nastaveny. Aplikuje sa iba na UNSIGNED TYPES.
+      J. VALUE [FWP_MATCH_EQUAL_CASE_INSENSITIVE] znamena pouzitie OPERATOR [==]. TEST sa vykonava nad TYPE [FWP_UNICODE_STRING_TYPE] a je CASE INSENSITIVE.
+      K. VALUE [FWP_MATCH_NOT_EQUAL] znamena pouzitie OPERATOR [!=].
+      L. VALUE [FWP_MATCH_PREFIX] znamena ze CONDITION testuje ci VALUE konci definovanou VALUE. Nazov VALUE je nelogicky. Mal by obsahovat slovo POSTFIX a nie PREFIX.
+      M. VALUE [FWP_MATCH_NOT_PREFIX] znamena ze CONDITION testuje ci VALUE nekonci definovanou VALUE. Mal by obsahovat slovo POSTFIX a nie PREFIX.
+      N. VALUE [FWP_MATCH_TYPE_MAX] je zarazka pre testovanie.
+   D. FIELD [FWP_CONDITION_VALUE0 ConditionValue] obsahuje VALUE danej CONDITION.
+37. STRUCTURE [FWPS_ACTION0] ma nasledujuce FIELDS.
+   A. FIELD [FWP_ACTION_TYPE Type] obsahuje ACTION, ktoru FILTER pouzivajuci CALLOUT DRIVER vykona ak identifikuje PACKET.
+   B. FIELD [UINT32 CalloutId] obsahuje CALLOUT ID, ktory vratila FUNCTION [FwpsCalloutRegister3()].
+38. Pouzitie CALLOUT DRIVERS vyzaduje vykonanie nasledujucich krokoch.
+   A. Zaregistrovanie WINDOWS FILTERING PLATFORM PROVIDER, ktory sluzi na identifikaciu CALLOUT DRIVERS a FILTERS.
+   B. Zaregistrovanie CALLOUT DRIVER na prislusnch LAYERS, kde sa ma pouzit.
+   C. Zaregistrovanie FILTER, ktore pouzivaju CALLOUT DRIVER.
+39. WINDOWS FILTERING PLATFORM PROVIDERS sa pouzivaju nasledujucim sposobom.
+   A. STRUCTURE [FWPM_PROVIDER0] reprezentuje PROVIDER OBJECT.
+   B. USER MODE FUNCTION [FwpmProviderAdd0()] vykonava registraciu PROVIDER.
+   C. USER MODE FUNCTION [FwpmProviderDeleteByKey0()] vykonava odregistraciu PROVIDER.
+   D. USER MODE FUNCTION [FwpmProviderGetByKey0()] vracia zaregistrovany PROVIDER.
+40. STRUCTURE [FWPM_PROVIDER0] ma nasledujuce FIELDS.
+   A. FIELD [GUID ProviderKey] obsahuje unikatny identifikator PROVIDER.
+   B. FIELD [FWPM_DISPLAY_DATA0 DisplayData] obsahuje DISPLAY NAME a DESCRIPTION daneho PROVIDER.
+   C. FIELD [UINT32 Flags] obsahuje FLAGS. FIELD moze mat nasledujuce VALUES.
+      A. VALUE [0] znamena, ze ziaden FLAG nie je nastaveny.
+	  B. VALUE [FWPM_PROVIDER_FLAG_PERSISTENT] znamena, ze PROVIDER je PERSISTENT. To znamena, ze sa aplikuje aj po REBOOT.
+	  C. VALUE [FWPM_PROVIDER_FLAG_DISABLED] znamena, ze PROVIDER FILTERS su DISABLED. Tento FLAG nesmie byt nastaveny pri registracii PROVIDER. Vracia ho FUNCTION [FwpmProviderGetByKey0()] pri ziskavani zaregistrovaneho PROVIDER.
+   D. FIELD [FWP_BYTE_BLOB ProviderData] obsahuje OPTIONAL CUSTOM PROVIDER DATA.
+   E. FIELD [wchar_t* ServiceName] obsahuje OPTIONAL SERVICE NAME toho SERVICE, ktory robi HOSTING daneho PROVIDER.
+41. Pre USER MODE FUNCTION [FwpmEngineOpen0()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [DWORD FwpmProviderAdd0(HANDLE EngineHandle, FWPM_PROVIDER0 *Provider, PSECURITY_DESCRIPTOR SD)].
+   B. PARAMETER [HANDLE EngineHandle] obsahuje HANDLE na FILTER ENGINE.
+   C. PARAMETER [FWPM_PROVIDER0 *Provider] obsahuje STRUCTURE [FWPM_PROVIDER0], ktora reprezentuje PROVIDER OBJECT.
+   D. PARAMETER [PSECURITY_DESCRIPTOR SD] obsahuje SECURITY DESCRIPTOR PROVIDER.
+   E. RETURN VALUE TYPE [DWORD] obsahuje LAST ERROR informaciu ci FUNCTION skoncila uspesne.
+   F. FUNCTION registruje novy WINDOWS FILTERING PLATFORM PROVIDER.
+   !!! G. Zaregistrovany PROVIDER sa odregistruje volanim FUNCTION [FwpmProviderDeleteByKey0()].
+42. Pre USER MODE FUNCTION [FwpmProviderDeleteByKey0()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [DWORD FwpmProviderDeleteByKey0(HANDLE EngineHandle, const GUID* Key)].
+   B. PARAMETER [HANDLE EngineHandle] obsahuje HANDLE na FILTER ENGINE.
+   C. PARAMETER [const GUID* Key] obsahuje PROVIDER ID zaregistrovaneho PROVIDER.
+   D. RETURN VALUE TYPE [DWORD] obsahuje LAST ERROR informaciu ci FUNCTION skoncila uspesne.
+   E. FUNCTION odregistruje existujuci WINDOWS FILTERING PLATFORM PROVIDER.
+43. Pre USER MODE FUNCTION [FwpmProviderGetByKey0()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [DWORD FwpmProviderGetByKey0(HANDLE EngineHandle, const GUID* Key, FWPM_PROVIDER0** Provider)].
+   B. PARAMETER [HANDLE EngineHandle] obsahuje HANDLE na FILTER ENGINE.
+   C. PARAMETER [const GUID* Key] obsahuje PROVIDER ID zaregistrovaneho PROVIDER.
+   !!! D. PARAMETER [FWPM_PROVIDER0** Provider] obsahuje POINTER na STRUCTURE STRUCTURE [FWPM_PROVIDER0], do ktorej sa ulozi dany PROVIDER OBJECT. POINTER MUSI byt uvolneny volanim FUNCTION [FwpmFreeMemory()].
+   E. RETURN VALUE TYPE [DWORD] obsahuje LAST ERROR informaciu ci FUNCTION skoncila uspesne.
+   F. FUNCTION vracia zaregistrovany WINDOWS FILTERING PLATFORM PROVIDER.
+   !!! G. PARAMETER [FWPM_PROVIDER0** Provider] MUSI byt uvolneny volanim FUNCTION [FwpmFreeMemory()].
+!!! 44. WINDOWS FILTERING PLATFORM podporuje vykonavanie OPERATIONS v TRANSACTIONS. Pre TRANSACTIONS platia nasledujuce fakty.
+   A. TRANSACTIONS implementuju ACID PATTERN.
+   B. TRANSACTIONS sa pouzivaju pri registracii viacerych CALLOUT DRIVERS (na roznych LAYERS) a pri registracii viacerych FILTERS.
+   C. TRANSACTION sa vytvara volanim FUNCTION [FwpmTransactionBegin0()].
+   D. TRANSACTION je COMMITED volanim FUNCTION [FwpmTransactionCommit0()].
+   E. TRANSACTION je ABORTED volanim FUNCTION [FwpmTransactionAbort0()].
+45. Pre USER MODE FUNCTION [FwpmTransactionBegin0()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [DWORD FwpmTransactionBegin0(HANDLE EngineHandle, UINT32 Flags)].
+   B. PARAMETER [HANDLE EngineHandle] obsahuje HANDLE na FILTER ENGINE.
+   C. FIELD [UINT32 Flags] obsahuje FLAGS. FIELD moze mat nasledujuce VALUES.
+      A. VALUE [0] znamena, ze ziaden FLAG nie je nastaveny. V takom pripade sa spusta READ-WRITE TRANSACTION.
+      B. VALUE [FWPM_TXN_READ_ONLY] znamena, ze sa spusta READ-ONLY TRANSACTION.
+   D. RETURN VALUE TYPE [DWORD] obsahuje LAST ERROR informaciu ci FUNCTION skoncila uspesne.
+   E. FUNCTION spusta WINDOWS FILTERING PLATFORM TRANSACTION.
+46. Pre USER MODE FUNCTION [FwpmTransactionCommit0()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [DWORD FwpmTransactionCommit0(HANDLE EngineHandle)].
+   B. PARAMETER [HANDLE EngineHandle] obsahuje HANDLE na FILTER ENGINE.
+   C. RETURN VALUE TYPE [DWORD] obsahuje LAST ERROR informaciu ci FUNCTION skoncila uspesne.
+   D. FUNCTION vykonava COMMIT beziacej WINDOWS FILTERING PLATFORM TRANSACTION.
+47. Pre USER MODE FUNCTION [FwpmTransactionAbort0()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [DWORD FwpmTransactionAbort0(HANDLE EngineHandle)].
+   B. PARAMETER [HANDLE EngineHandle] obsahuje HANDLE na FILTER ENGINE.
+   C. RETURN VALUE TYPE [DWORD] obsahuje LAST ERROR informaciu ci FUNCTION skoncila uspesne.
+   D. FUNCTION vykonava ABORT beziacej WINDOWS FILTERING PLATFORM TRANSACTION.
+48. WINDOWS FILTERING PLATFORM CALLOUT DRIVERS sa pouzivaju nasledujucim sposobom.
+   A. STRUCTURE [FWPM_CALLOUT0] reprezentuje CALLOUT DRIVER OBJECT.
+   B. USER MODE FUNCTION [FwpmCalloutAdd0()] vykonava registraciu CALLOUT DRIVER.
+   C. USER MODE FUNCTION [FwpmCalloutDeleteByKey0()] vykonava odregistraciu CALLOUT DRIVER.
+   D. USER MODE FUNCTION [FwpmCalloutGetByKey0()] vracia zaregistrovany CALLOUT DRIVER.
+49. STRUCTURE [FWPM_CALLOUT0] ma nasledujuce FIELDS.
+   A. FIELD [GUID CalloutKey] obsahuje unikatny identifikator CALLOUT DRIVER.
+   B. FIELD [FWPM_DISPLAY_DATA0 DisplayData] obsahuje DISPLAY NAME a DESCRIPTION daneho CALLOUT DRIVER.
+   C. FIELD [UINT32 Flags] obsahuje FLAGS. FIELD moze mat nasledujuce VALUES.
+      A. VALUE [0] znamena, ze ziaden FLAG nie je nastaveny.
+	  B. VALUE [FWPM_CALLOUT_FLAG_PERSISTENT] znamena, ze CALLOUT DRIVER je PERSISTENT. To znamena, ze sa aplikuje aj po REBOOT.
+	  C. VALUE [FWPM_CALLOUT_FLAG_USES_PROVIDER_CONTEXT] znamena, ze CALLOUT DRIVER vyzaduje ACCESS k PROVIDER CONTEXT, ktory je ulozeny vo FILTER. CONTEXT je v CALLOUT DRIVER pristupny pomocou STRUCTURE [FWPS_FILTER0].
+	  D. VALUE [FWPM_CALLOUT_FLAG_REGISTERED] znamena, ze CALLOUT DRIVER je zaregistrovany v KERNEL. Tento FLAG nesmie byt nastaveny pri registracii CALLOUT DRIVER. Vracia ho FUNCTION [FwpmCalloutGetByKey0()] pri ziskavani zaregistrovaneho CALLOUT DRIVER.
+   D. FIELD [GUID ProviderKey] obsahuje unikatny identifikator PROVIDER, ktory je asociovany s CALLOUT DRIVER.
+   E. FIELD [FWP_BYTE_BLOB ProviderData] obsahuje OPTIONAL CUSTOM PROVIDER DATA.
+   F. FIELD [GUID ApplicableLayer] obsahuje LAYER ID identifikujuci LAYER pre ktory je CALLOUT DRIVER pouzity.
+   G. FIELD [UINT32 CalloutId] obsahuje RUNTIME CALLOUT DRIVER ID, ktory identifikuje CALLOUT DRIVER v ramci SYSTEMU.
+50. Pre USER MODE FUNCTION [FwpmCalloutAdd0()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [DWORD FwpmCalloutAdd0(HANDLE EngineHandle, const FWPM_CALLOUT0* Callout, PSECURITY_DESCRIPTOR SD, UINT32* ID)].
+   B. PARAMETER [HANDLE EngineHandle] obsahuje HANDLE na FILTER ENGINE.
+   C. PARAMETER [const FWPM_CALLOUT0* Callout] obsahuje POINTER na STRUCTURE [FWPM_CALLOUT0], ktora reprezentuje CALLOUT DRIVER OBJECT.
+   D. PARAMETER [PSECURITY_DESCRIPTOR SD] obsahuje SECURITY DESCRIPTOR CALLOUT DRIVER.
+   E. PARAMETER [UINT32* ID] obsahuje POINTER na RUNTIME CALLOUT ID, ktory identifikuje CALLOUT DRIVER v ramci SYSTEMU.
+   F. RETURN VALUE TYPE [DWORD] obsahuje LAST ERROR informaciu ci FUNCTION skoncila uspesne.
+   G. FUNCTION registruje novy CALLOUT DRIVER pre dany LAYER.
+   !!! H. Zaregistrovany CALLOUT DRIVER sa odregistruje volanim FUNCTION [FwpmCalloutDeleteByKey0()].
+51. Pre USER MODE FUNCTION [FwpmCalloutDeleteByKey0()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [DWORD FwpmCalloutDeleteByKey0(HANDLE EngineHandle, const GUID* Key)].
+   B. PARAMETER [HANDLE EngineHandle] obsahuje HANDLE na FILTER ENGINE.
+   C. PARAMETER [const GUID* Key] obsahuje CALLOUT DRIVER ID zaregistrovaneho CALLOUT DRIVER OBJECT.
+   D. RETURN VALUE TYPE [DWORD] obsahuje LAST ERROR informaciu ci FUNCTION skoncila uspesne.
+   E. FUNCTION odregistruje existujuci CALLOUT DRIVER zaregistrovany pre dany LAYER.
+52. Pre USER MODE FUNCTION [FwpmCalloutGetByKey0()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [NTSTATUS FwpmCalloutGetByKey0(HANDLE EngineHandle, const GUID* Key, FWPM_CALLOUT0** Callout)].
+   B. PARAMETER [HANDLE EngineHandle] obsahuje HANDLE na FILTER ENGINE.
+   C. PARAMETER [const GUID* Key] obsahuje CALLOUT DRIVER ID zaregistrovaneho CALLOUT DRIVER OBJECT.
+   !!! D. PARAMETER [FWPM_CALLOUT0** Callout] obsahuje POINTER na STRUCTURE STRUCTURE [FWPM_CALLOUT0], do ktorej sa ulozi dany CALLOUT DRIVER OBJECT. POINTER MUSI byt uvolneny volanim FUNCTION [FwpmFreeMemory()].
+   E. RETURN VALUE TYPE [DWORD] obsahuje LAST ERROR informaciu ci FUNCTION skoncila uspesne.
+   F. FUNCTION vracia zaregistrovany CALLOUT DRIVER.
+   !!! G. PARAMETER [FWPM_CALLOUT0** Callout] MUSI byt uvolneny volanim FUNCTION [FwpmFreeMemory()].
+53. WINDOWS FILTERING PLATFORM FILTERS sa pouzivaju nasledujucim sposobom.
+   A. STRUCTURE [FWPM_FILTER0] reprezentuje FILTER OBJECT.
+   B. USER MODE FUNCTION [FwpmFilterAdd0()] vykonava registraciu FILTER.
+   C. USER MODE FUNCTION [FwpmFilterDeleteByKey0()] vykonava odregistraciu FILTER.
+   D. USER MODE FUNCTION [FwpmFilterGetByKey0()] vracia zaregistrovany FILTER.
+54. STRUCTURE [FWPM_FILTER0] ma nasledujuce FIELDS.
+   A. FIELD [GUID FilterKey] obsahuje unikatny identifikator FILTER.
+   B. FIELD [FWPM_DISPLAY_DATA0 DisplayData] obsahuje DISPLAY NAME a DESCRIPTION daneho FILTER.
+   C. FIELD [UINT32 Flags] obsahuje FLAGS. FIELD moze mat nasledujuce VALUES.
+      A. VALUE [0] znamena, ze ziaden FLAG nie je nastaveny.
+	  B. VALUE [FWPM_FILTER_FLAG_NONE] je DEFAULT VALUE.
+	  C. VALUE [FWPM_FILTER_FLAG_PERSISTENT] znamena, ze FILTER je PERSISTENT. To znamena, ze sa aplikuje aj po REBOOT.
+	  D. VALUE [FWPM_FILTER_FLAG_BOOTTIME] znamena, ze FILTER sa aplikuje uz pri BOOT TIME.
+	  E. VALUE [FWPM_FILTER_FLAG_HAS_PROVIDER_CONTEXT] znamena, ze FILTER dostane POINTER na PROVIDER CONTEXT DATA.
+	  F. VALUE [FWPM_FILTER_FLAG_CLEAR_ACTION_RIGHT] znamena, ze sa ma odstranit FILTER ACTION RIGHT.
+	  G. VALUE [FWPM_FILTER_FLAG_PERMIT_IF_CALLOUT_UNREGISTERED] znamena, ze ak CALLOUT DRIVER nie je zaregistrovany, FILTER sa chova ako PERMIT FILTER.
+	  H. VALUE [FWPM_FILTER_FLAG_DISABLED] znamena, ze FILTER je DISABLED. Tento FLAG nesmie byt nastaveny pri registracii FILTER. Vracia ho FUNCTION [FwpmFilterGetByKey0()] pri ziskavani zaregistrovaneho FILTER.
+	  I. VALUE [FWPM_FILTER_FLAG_INDEXED] znamena, ze INDEXED pre rychlejsie vyhladavanie daneho FILTER pocas CLASSIFICATION.
+   D. FIELD [GUID* ProviderKey] obsahuje unikatny identifikator PROVIDER, ktory je asociovany s FILTER.
+   E. FIELD [FWP_BYTE_BLOB ProviderData] obsahuje OPTIONAL CUSTOM PROVIDER DATA.
+   F. FIELD [GUID LayerKey] obsahuje LAYER KEY identifikujuci LAYER pre ktory je FILTER pouzity.
+   G. FIELD [GUID SubLayerKey] obsahuje SUBLAYER KEY identifikujuci SUBLAYER pre ktory je FILTER pouzity.
+   H. FIELD [FWP_VALUE0 Weight] obsahuje WEIGHT daneho FILTER.
+   I. FIELD [UINT32 NumFilterConditions] obsahuje pocet CONDITIONS vo FIELD [FWPM_FILTER_CONDITION0* FilterCondition].
+   J. FIELD [FWPM_FILTER_CONDITION0* FilterCondition] obsahuje ARRAY STRUCTURES [FWPM_FILTER_CONDITION0] obsahujuci CONDITIONS daneho FILER.
+   K. FIELD [FWPM_ACTION0 Action] obsahuje ACTION, ktoru ma vykonat dany FILTER.
+   L. ANONYMOUS UNION obsahuje nasledujuce FIELDS.
+      A. FIELD [UINT64 RawContext] obsahuje OPTIONAL CUSTOM FILTER DATA.
+      B. FIELD [GUID ProviderContextKey] obsahuje ID PROVIDER CONTEXT DATA.
+   M. FIELD [GUID* Reserved] je RESERVED.
+   N. FIELD [UINT64 FilterId] obsahuje RUNTIME FILTER ID, ktory identifikuje CALLOUT DRIVER v ramci SYSTEMU.
+   O. FIELD [FWP_VALUE0 EffectiveWeight] obsahuje EFFECTIVE WEIGHT daneho FILTER.
+55. Pre USER MODE FUNCTION [FwpmFilterAdd0()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [DWORD FwpmFilterAdd0(HANDLE EngineHandle, const FWPM_FILTER0* Filter, PSECURITY_DESCRIPTOR SD, UINT64* ID)].
+   B. PARAMETER [HANDLE EngineHandle] obsahuje HANDLE na FILTER ENGINE.
+   C. PARAMETER [const FWPM_FILTER0* Filter] obsahuje POINTER na STRUCTURE [FWPM_FILTER0], ktora reprezentuje FILTER OBJECT.
+   D. PARAMETER [PSECURITY_DESCRIPTOR SD] obsahuje SECURITY DESCRIPTOR FILTER.
+   E. PARAMETER [UINT64* ID] obsahuje POINTER na RUNTIME FILTER ID, ktory identifikuje FILTER v ramci SYSTEMU.
+   F. RETURN VALUE TYPE [DWORD] obsahuje LAST ERROR informaciu ci FUNCTION skoncila uspesne.
+   G. FUNCTION registruje novy FILTER pre dany LAYER.
+   !!! H. Zaregistrovany FILTER sa odregistruje volanim FUNCTION [FwpmFilterDeleteByKey0()].
+56. Pre USER MODE FUNCTION [FwpmFilterDeleteByKey0()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [DWORD FwpmFilterDeleteByKey0(HANDLE EngineHandle, const GUID* Key)].
+   B. PARAMETER [HANDLE EngineHandle] obsahuje HANDLE na FILTER ENGINE.
+   C. PARAMETER [const GUID* Key] obsahuje FILTER ID zaregistrovaneho FILTER OBJECT.
+   D. RETURN VALUE TYPE [DWORD] obsahuje LAST ERROR informaciu ci FUNCTION skoncila uspesne.
+   E. FUNCTION odregistruje existujuci FILTER zaregistrovany pre dany LAYER.
+57. Pre USER MODE FUNCTION [FwpmFilterGetByKey0()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [DWORD FwpmFilterGetByKey0(HANDLE EngineHandle, const GUID* Key, FWPM_FILTER0** Filter)].
+   B. PARAMETER [HANDLE EngineHandle] obsahuje HANDLE na FILTER ENGINE.
+   C. PARAMETER [const GUID* Key] obsahuje FILTER ID zaregistrovaneho FILTER OBJECT.
+   !!! D. PARAMETER [FWPM_FILTER0** Filter] obsahuje POINTER na STRUCTURE STRUCTURE [FWPM_FILTER0], do ktorej sa ulozi dany FILTER OBJECT. POINTER MUSI byt uvolneny volanim FUNCTION [FwpmFreeMemory()].
+   E. RETURN VALUE TYPE [DWORD] obsahuje LAST ERROR informaciu ci FUNCTION skoncila uspesne.
+   F. FUNCTION vracia zaregistrovany FILTER.
+   !!! G. PARAMETER [FWPM_FILTER0** Filter] MUSI byt uvolneny volanim FUNCTION [FwpmFreeMemory()].
+//----------------------------------------------------------------------------------------------------------------------

@@ -41,3 +41,12 @@
 #define CODE_TEST_INTERLOCKED_GLOBAL 0x81C
 #define CODE_TEST_INTERLOCKED 0x81D
 //----------------------------------------------------------------------------------------------------------------------
+#define CODE_TEST_SPIN_LOCK_GLOBAL_GLOBAL_OBJECT 0x81E
+#define CODE_TEST_SPIN_LOCK_GLOBAL_GLOBAL_POINTER 0x81F
+#define CODE_TEST_SPIN_LOCK_GLOBAL_LOCAL_OBJECT 0x820
+#define CODE_TEST_SPIN_LOCK_GLOBAL_LOCAL_POINTER 0x821
+//----------------------------------------------------------------------------------------------------------------------
+#define CODE_TEST_SPIN_LOCK_GLOBAL_POINTER 0x822
+#define CODE_TEST_SPIN_LOCK_LOCAL_OBJECT 0x823
+#define CODE_TEST_SPIN_LOCK_LOCAL_POINTER 0x824
+//----------------------------------------------------------------------------------------------------------------------

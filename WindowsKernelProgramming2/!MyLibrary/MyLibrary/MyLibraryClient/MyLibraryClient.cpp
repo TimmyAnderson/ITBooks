@@ -62,6 +62,15 @@ using namespace std;
 #define IOCTL_TEST_INTERLOCKED_GLOBAL CTL_CODE(FILE_DEVICE_UNKNOWN,CODE_TEST_INTERLOCKED_GLOBAL,METHOD_NEITHER,FILE_ANY_ACCESS)
 #define IOCTL_TEST_INTERLOCKED CTL_CODE(FILE_DEVICE_UNKNOWN,CODE_TEST_INTERLOCKED,METHOD_NEITHER,FILE_ANY_ACCESS)
 //----------------------------------------------------------------------------------------------------------------------
+#define IOCTL_TEST_SPIN_LOCK_GLOBAL_GLOBAL_OBJECT CTL_CODE(FILE_DEVICE_UNKNOWN,CODE_TEST_SPIN_LOCK_GLOBAL_GLOBAL_OBJECT,METHOD_NEITHER,FILE_ANY_ACCESS)
+#define IOCTL_TEST_SPIN_LOCK_GLOBAL_GLOBAL_POINTER CTL_CODE(FILE_DEVICE_UNKNOWN,CODE_TEST_SPIN_LOCK_GLOBAL_GLOBAL_POINTER,METHOD_NEITHER,FILE_ANY_ACCESS)
+#define IOCTL_TEST_SPIN_LOCK_GLOBAL_LOCAL_OBJECT CTL_CODE(FILE_DEVICE_UNKNOWN,CODE_TEST_SPIN_LOCK_GLOBAL_LOCAL_OBJECT,METHOD_NEITHER,FILE_ANY_ACCESS)
+#define IOCTL_TEST_SPIN_LOCK_GLOBAL_LOCAL_POINTER CTL_CODE(FILE_DEVICE_UNKNOWN,CODE_TEST_SPIN_LOCK_GLOBAL_LOCAL_POINTER,METHOD_NEITHER,FILE_ANY_ACCESS)
+//----------------------------------------------------------------------------------------------------------------------
+#define IOCTL_TEST_SPIN_LOCK_GLOBAL_POINTER CTL_CODE(FILE_DEVICE_UNKNOWN,CODE_TEST_SPIN_LOCK_GLOBAL_POINTER,METHOD_NEITHER,FILE_ANY_ACCESS)
+#define IOCTL_TEST_SPIN_LOCK_LOCAL_OBJECT CTL_CODE(FILE_DEVICE_UNKNOWN,CODE_TEST_SPIN_LOCK_LOCAL_OBJECT,METHOD_NEITHER,FILE_ANY_ACCESS)
+#define IOCTL_TEST_SPIN_LOCK_LOCAL_POINTER CTL_CODE(FILE_DEVICE_UNKNOWN,CODE_TEST_SPIN_LOCK_LOCAL_POINTER,METHOD_NEITHER,FILE_ANY_ACCESS)
+//----------------------------------------------------------------------------------------------------------------------
 //----------------------------------------------------------------------------------------------------------------------
 //----------------------------------------------------------------------------------------------------------------------
 int main(int argc, const char* argv[])
@@ -205,6 +214,34 @@ int main(int argc, const char* argv[])
 		else if (Code==28)
 		{
 			CHelpers::SendSynchronousDeviceIoControlRequestEmptyArrays(SymbolicLinkName,IOCTL_TEST_INTERLOCKED);
+		}
+		else if (Code==29)
+		{
+			CHelpers::SendSynchronousDeviceIoControlRequestEmptyArrays(SymbolicLinkName,IOCTL_TEST_SPIN_LOCK_GLOBAL_GLOBAL_OBJECT);
+		}
+		else if (Code==30)
+		{
+			CHelpers::SendSynchronousDeviceIoControlRequestEmptyArrays(SymbolicLinkName,IOCTL_TEST_SPIN_LOCK_GLOBAL_GLOBAL_POINTER);
+		}
+		else if (Code==31)
+		{
+			CHelpers::SendSynchronousDeviceIoControlRequestEmptyArrays(SymbolicLinkName,IOCTL_TEST_SPIN_LOCK_GLOBAL_LOCAL_OBJECT);
+		}
+		else if (Code==32)
+		{
+			CHelpers::SendSynchronousDeviceIoControlRequestEmptyArrays(SymbolicLinkName,IOCTL_TEST_SPIN_LOCK_GLOBAL_LOCAL_POINTER);
+		}
+		else if (Code==33)
+		{
+			CHelpers::SendSynchronousDeviceIoControlRequestEmptyArrays(SymbolicLinkName,IOCTL_TEST_SPIN_LOCK_GLOBAL_POINTER);
+		}
+		else if (Code==34)
+		{
+			CHelpers::SendSynchronousDeviceIoControlRequestEmptyArrays(SymbolicLinkName,IOCTL_TEST_SPIN_LOCK_LOCAL_OBJECT);
+		}
+		else if (Code==35)
+		{
+			CHelpers::SendSynchronousDeviceIoControlRequestEmptyArrays(SymbolicLinkName,IOCTL_TEST_SPIN_LOCK_LOCAL_POINTER);
 		}
 	}
 	while(false);
