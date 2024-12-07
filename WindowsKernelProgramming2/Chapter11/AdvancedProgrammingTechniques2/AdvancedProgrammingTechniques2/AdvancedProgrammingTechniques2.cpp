@@ -112,8 +112,6 @@ NTSTATUS DispatchRoutineDeviceControl(DEVICE_OBJECT* DeviceObject, IRP* Irp)
 	CLocker														Lock(MutexForDispatchRoutineDeviceControl);
 
 	{
-		UNREFERENCED_PARAMETER(DeviceObject);
-
 		const char*												FunctionName=__FUNCTION__;
 
 		KdPrint(("!!!!! DRIVER [%wZ] EXECUTING DISPATCH ROUTINE [%s] !!!\n",DeviceObject->DriverObject->DriverName,FunctionName));
