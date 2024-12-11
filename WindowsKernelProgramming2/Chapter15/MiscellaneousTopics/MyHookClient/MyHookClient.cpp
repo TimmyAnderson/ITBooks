@@ -95,7 +95,7 @@ int main(int argc, const char* argv[])
 			}
 			else
 			{
-				wcout << L"!!!!! FILTER DRIVED FAILED to ADD DEVICE [" << DeviceName << L"]." << endl;
+				wcout << L"!!!!! FILTER DRIVER FAILED to ADD DEVICE [" << DeviceName << L"]." << endl;
 			}
 		}
 		else if (Operation==EOperation::E_CLEAR_DEVICE)
@@ -113,7 +113,7 @@ int main(int argc, const char* argv[])
 			}
 			else
 			{
-				wcout << L"!!!!! FILTER DRIVED FAILED to CLEAR DEVICE." << endl;
+				wcout << L"!!!!! FILTER DRIVER FAILED to CLEAR DEVICE." << endl;
 			}
 		}
 	}

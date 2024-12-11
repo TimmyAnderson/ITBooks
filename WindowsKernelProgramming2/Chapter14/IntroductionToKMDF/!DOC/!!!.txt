@@ -1,0 +1,366 @@
+//----------------------------------------------------------------------------------------------------------------------
+1. Solution demonstruje implementaciu KERNEL MODE DRIVER FRAMEWORK (KMDF).
+2. WINDOWS DRIVER FRAMEWORKS (WDF) je FRAMEWORK poskytujuci zjedndousene API pre vyvoj DRIVERS. Pre WINDOWS DRIVER FRAMEWORKS platia nasledujuce fakty.
+   A. KERNEL MODE DRIVER FRAMEWORK poskytuje vyssiu uroven abstrakcie ako WINDOWS DRIVER MODEL.
+   B. KERNEL MODE DRIVER FRAMEWORK sa rozdeluje nad 2 casti.
+      A. KERNEL MODE DRIVER FRAMEWORK (KMDF) umoznujuci vyvoj DRIVERS v KERNEL MODE.
+      B. USER MODE DRIVER FRAMEWORK (UMDF) umoznujuci vyvoj DRIVERS v USER MODE.
+3. Pre KERNEL MODE DRIVER FRAMEWORK (KMDF) platia nasledujuce fakty.
+   A. KERNEL MODE DRIVER FRAMEWORK umoznuje vyvoj DRIVERS v KERNEL MODE.
+   B. KERNEL MODE DRIVER FRAMEWORK je postaveny nad WINDOWS DRIVER MODEL.
+   C. KERNEL MODE DRIVER FRAMEWORK je sucastou WINDOWS DRIVER FRAMEWORKS.
+   !!! D. KERNEL MODE DRIVER FRAMEWORK poskytuje BUID-IN implementaciou pre PLUG AND PLAY INTERRUPT REQUEST PACKETS a POWER MANAGEMENT INTERRUPT REQUEST PACKETS.
+   E. KERNEL MODE DRIVER FRAMEWORK je OPEN SOURCE.
+3. Pre USER MODE DRIVER FRAMEWORK (UMDF) platia nasledujuce fakty.
+   A. USER MODE DRIVER FRAMEWORK umoznuje vyvoj DRIVERS v USER MODE.
+   B. USER MODE DRIVER FRAMEWORK od verzie 2.0. je postaveny nad WINDOWS DRIVER MODEL.
+   C. USER MODE DRIVERS bezia v USER MODE co znamena nasledujuce fakty.
+      A. USER MODE DRIVERS nemozu sposobit pad systemu.
+	  B. USER MODE DRIVERS su implementovane ako USER MODE DLLs.
+	  C. USER MODE DRIVERS bezia v PROCESS [UMDFHost.exe], ktory vykonava HOSTING USER MODE DRIVER DLLs.
+	  D. USER MODE DRIVERS komunikuju s KERNEL MODE DRIVER [Reflector], ktory zabezpecuje komunikaciu s HW DEVICES.
+	  E. USER MODE DRIVERS su vhodne iba na pomale HW DEVICES, ako USB DEVICES. Nie su vhodne na rychle HW DEVICES ako tie, ktore su pripojene napriklad cez PCI EXPRESS BUS.
+	  F. USER MODE DRIVERS mozu byt DEBUGGED na tej iste MACHINE, kedze bezia v USER MODE.
+	  !!! G. USER MODE DRIVERS nemozu PRIAMO pristupovat ku KERNEL API. Mozu volat iba KERNEL MODE DRIVER [Reflector].
+4. Pre KERNEL MODE DRIVER FRAMEWORK (KMDF) API platia nasledujuce fakty.
+   A. KERNEL MODE DRIVER FRAMEWORK API poskytuje BUID-IN implementaciou pre PLUG AND PLAY INTERRUPT REQUEST PACKETS a POWER MANAGEMENT INTERRUPT REQUEST PACKETS.
+   B. KERNEL MODE DRIVER FRAMEWORK API poskytuje konzistentny OBJECT MODEL postaveny na OBJECTS, PROPERTIES, METHODS a EVENTS (CALLBACKS).
+   C. KERNEL MODE DRIVER FRAMEWORK API ma konzistnentny NAMING CONVENTION.
+   !!! D. KERNEL MODE DRIVER FRAMEWORK API podporuje REFERENCE COUNTING.
+   E. KERNEL MODE DRIVER FRAMEWORK API umoznuje, aby MAJOR VERSIONS bezali vedla seba.
+   F. KERNEL MODE DRIVER FRAMEWORK API definuje hlavny HEADER FILE [wdf.h], kde su definovane KERNEL MODE DRIVER FRAMEWORK OBJECTS.
+   G. KERNEL MODE DRIVER FRAMEWORK API je implementovany v C++.
+   H. KERNEL MODE DRIVER FRAMEWORK API nepristupuje k OBJECT priamo cez POINTER, ale cez HANDLES. Kazdy HANDLE zodpovedaju prislusnemu C++ OBJECT.
+5. OBJECTS su zakladnym elementom KERNEL MODE DRIVER FRAMEWORK API. OBJECTS pozostavaju z nasledujucich ATTRIBUTES.
+   A. PROPERTIES. Pre PROPERTIES platia nasledujuce fakty.
+      A. PROPERTIES sluzia ako nahrada k priamemu pristupu k FIELDS.
+	  B. Kazda PROPERTY obsahuje GET METHOD a SET METHOD.
+	  C. GET METHOD ma NAMING CONVENTION [Get], alebo NAMING CONVENTION [Retrieve] pre tie PROPERTIES, ktore mozu zlyhat.
+	  D. SET METHOD ma NAMING CONVENTION [Set], alebo NAMING CONVENTION [Assign] pre tie PROPERTIES, ktore mozu zlyhat.
+	  E. PROPERTIES maju FORMAT [Wdf<OBJECT>Set/Get/Assign/Retrieve<DESCRIPTION>], kde VALUE [OBJECT] je nazov OBJECT a VALUE [DESCRIPTION] je nazov PROPERTY.
+   B. METHODS. Pre METHODS platia nasledujuce fakty.
+      A. METHODS maju PARAMETERS a RETURN VALUES.
+	  B. METHODS maju FORMAT [Wdf<OBJECT_TYPE><OPERATION>], kde VALUE [OBJECT_TYPE] je OBJECT TYPE a VALUE [OPERATION] je nazov METHOD.
+   C. EVENTS. Pre EVENTS platia nasledujuce fakty.
+      A. EVENTS mozu byt zaregistrovane dany DRIVER na zachytavanie CALLBACK FUNCTIONS.
+	  B. EVENTS maju FORMAT [Evt<OBJECT_TYPE><EVENT>], kde VALUE [OBJECT_TYPE] je OBJECT TYPE a VALUE [EVENT] je nazov EVENT.
+6. OBJECTS v KERNEL MODE DRIVER FRAMEWORK API podporuje REFERENCE COUNTING. Pre REFERENCE COUNTING platia nasledujuce fakty.
+   A. OBJECTS v KERNEL MODE DRIVER FRAMEWORK API su REFERENCE COUNTED co znamena, ze ich zivotnost konci ked ich REFERENCE COUNTER klesne na VALUE [0].
+   B. Odstranenie PARENT OBJECT automaticky sposobi aj odstranenie vsetkych jeho CHILD OBJECTS.
+   C. KERNEL MODE DRIVER FRAMEWORK API podporuje aj manualnu zmenu REFERENCE COUNTER volanim nasledujucich FUNCTIONS.
+      A. FUNCTION [void WdfObjectReference(WDFOBJECT Object)] inkrementuje REFERENCE COUNTER VALUE.
+      B. FUNCTION [void WdfObjectDereference(WDFOBJECT Object)] dekrementuje REFERENCE COUNTER VALUE.
+   D. REFERENCE COUNTING podporuje nasledujuce EVENTS.
+      !!! A. EVENT [EvtObjectCleanup] je volany ak je OBJECT odstranovany, ale stale moze mat OUTSTANDING REFERENCES na ine OBJECTS. V EVENT musia byt tieto OUTSTANDING REFERENCES uvolnene. Tento EVENT sa primarne pouziva na riesenie CIRCULAR REFERENCES.
+      B. EVENT [EvtObjectDestroy] je volany potom ako REFERENCE COUNTER VALUE klesla na VALUE [0], ale OBJECT este nebol DELETED.
+7. KERNEL MODE DRIVER FRAMEWORK API definuje nasledujuce zakladne OBJECTS.
+   A. OBJECT [WDFDRIVER] reprezentuje DRIVER. Je to WRAPPER nad STRUCTURE [DRIVER_OBJECT].
+   B. OBJECT [WDFDEVICE] reprezentuje DEVICE OBJECT. Je to WRAPPER nad STRUCTURE [DEVICE_OBJECT].
+   C. OBJECT [WDFQUEUE] reprezentuje QUEUE INTERRUPT REQUEST PACKETS. KERNEL MODE DRIVER FRAMEWORK API definuje nasledujuce typy QUEUES.
+      A. SEQUENTIAL.
+	  B. PARALLEL.
+	  C. MANUAL.
+   D. OBJECT [WDFREQUEST] reprezentuje INTERRUPT REQUEST PACKET. Je to WRAPPER nad STRUCTURE [IRP].
+8. Vacsina FUNCTIONS ma ako PARAMETER STUCTURE [WDF_OBJECT_ATTRIBUTES]. Pre STUCTURE [WDF_OBJECT_ATTRIBUTES] platia nasledujuce fakty.
+   A. STUCTURE [WDF_OBJECT_ATTRIBUTES] obsahuje ATTRIBUTES, ktore su spolocne pre vsetky OBJECTS v KERNEL MODE DRIVER FRAMEWORK.
+   B. STUCTURE [WDF_OBJECT_ATTRIBUTES] moze byt inicializovana volanim MACRO [VOID WDF_OBJECT_ATTRIBUTES_INIT(PWDF_OBJECT_ATTRIBUTES Attributes)].
+   C. STUCTURE [WDF_OBJECT_ATTRIBUTES] obsahuje ako PARAMETER velka cast KERNEL MODE DRIVER FRAMEWORK FUNCTIONS.
+   D. Ak sa STUCTURE [WDF_OBJECT_ATTRIBUTES] NEPOUZIVA, je mozne vo FUNCTIONS namiesto nej pouzit VALUE [WDF_NO_OBJECT_ATTRIBUTES].
+9. STUCTURE [WDF_OBJECT_ATTRIBUTES] ma nasledujuce FIELDS.
+   A. FIELD [ULONG Size] obsahuje dlzku STRUCTURE v BYTES.
+   B. FIELD [PFN_WDF_OBJECT_CONTEXT_CLEANUP EvtCleanupCallback] obsahuje POINTER na CLEANUP CALLBACK. CLEANUP CALLBACK ma PROTOTYPE [void EvtWdfObjectContextCleanup(WDFOBJECT Object)].
+   C. FIELD [PFN_WDF_OBJECT_CONTEXT_DESTROY EvtDestroyCallback] obsahuje POINTER na DESTROY CALLBACK. DESTROY CALLBACK ma PROTOTYPE [void EvtWdfObjectContextDestroy(WDFOBJECT Object)].
+   D. FIELD [WDF_EXECUTION_LEVEL ExecutionLevel] obsahuje maximalne IRQL s ktorym je mozne volat EVENT CALLBACK FUNCTIONS.
+   E. FIELD [WDF_SYNCHRONIZATION_SCOPE SynchronizationScope] urcuje akym sposobom bude synchronizovane volanie EVENT CALLBACK FUNCTIONS.
+   F. FIELD [WDFOBJECT ParentObject] obsahuje HANDLE na PARENT OBJECT. Ak dany OBJECT NEOBSAHUJE PARENT OBJECT, pouzije sa VALUE [nullptr].
+   !!! G. FIELD [size_t ContextSizeOverride] obsahuje CONTEXT LENGTH. Ak je VALUE nenulova, prepise VALUE [WDF_OBJECT_CONTEXT_TYPE_INFO::ContextSize] vo FIELD [PCWDF_OBJECT_CONTEXT_TYPE_INFO ContextTypeInfo]. FIELD sa vyuziva vtedy, ak ma CONTEXT VARIABLE LENGTH.
+   H. FIELD [PCWDF_OBJECT_CONTEXT_TYPE_INFO ContextTypeInfo] obsahuje CONTEXT asociovany s danym OBJECT.
+10. KERNEL MODE DRIVER FRAMEWORK umoznuje asociovat s kazdym OBJECT CUSTOM CONTEXT. Pre CUSTOM CONTEXTS platia nasledujuce fakty.
+   A. Kazdy OBJECT v KERNEL MODE DRIVER FRAMEWORK moze mat asociovany CUSTOM CONTEXT.
+   B. CUSTOM CONTEXT je spravidla CUSTOM STRUCTURE, ktora obsahuje CUSTOM DATA.
+   C. CUSTOM CONTEXT sa definuje nasledujucim sposobom.
+      A. Definuje sa CUSTOM STRUCTURE, ktora reprezentuje CUSTOM CONTEXT.
+	  !!! B. Definuje sa CUSTOM FUNCTION, ktora umoznuje ziskat CUSTOM CONTEXT z daneho OBJECT. KERNEL MODE DRIVER FRAMEWORK definuje MACRO [WDF_DECLARE_CONTEXT_TYPE_WITH_NAME()], ktore definuje takuto CUSTOM FUNCTION. MACRO ma PROROTYPE [WDF_DECLARE_CONTEXT_TYPE_WITH_NAME(CONTEXT_TYPE,CUSTOM_FUNCTION)], kde VALUE [CONTEXT_TYPE] je nazov CUSTOM STRUCTURE reprezentujucej CUSTOM CONTEXT a VALUE [CUSTOM_FUNCTION] je nazov CUSTOM FUNCTION.
+	  !!! C. Asociovanie CUSTOM STRUCTURE s OBJECT sa vykonava pomocou FIELD [PCWDF_OBJECT_CONTEXT_TYPE_INFO ContextTypeInfo] STRUCTURE [WDF_OBJECT_ATTRIBUTES]. Alternativne je mozne na inicializaciu STRUCTURE [WDF_OBJECT_ATTRIBUTES] s nastavenim CUSTOM CONTEXT pouzit MACRO [WDF_OBJECT_ATTRIBUTES_INIT_CONTEXT_TYPE()]. MACRO ma PROTOTYPE [void WDF_OBJECT_ATTRIBUTES_INIT_CONTEXT_TYPE(ATTRIBUTE_OBJECT,CONTEXT_TYPE)], kde VALUE [ATTRIBUTE_OBJECT] je nazov VARIABLE TYPE [WDF_OBJECT_ATTRIBUTES] a VALUE [CONTEXT_TYPE] je nazov CUSTOM STRUCTURE reprezentujucej CUSTOM CONTEXT.
+	  D. Inicializovana STRUCTURE [WDF_OBJECT_ATTRIBUTES] sa pouzije ako PARAMETER do FUNCTION, ktora vytvara OBJECT s ktorym ma byt CUSTOM CONTEXT asociovany.
+11. DRIVER OBJECT sa vytvara pomocou FUNCTION [WdfDriverCreate()]. Pre FUNCTION [WdfDriverCreate()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [NTSTATUS WdfDriverCreate(PDRIVER_OBJECT DriverObject, PCUNICODE_STRING RegistryPath, PWDF_OBJECT_ATTRIBUTES DriverAttributes, PWDF_DRIVER_CONFIG DriverConfig, WDFDRIVER* Driver)].
+   B. PARAMETER [PDRIVER_OBJECT DriverObject] obsahuje POINTER na STRUCTURE [DRIVER_OBJECT], ktora reprezentuje DRIVER OBJECT.
+   C. PARAMETER [PCUNICODE_STRING RegistryPath] obsahuje REGISTRY PATH pre dany DRIVER OBJECT.
+   D. PARAMETER [PWDF_OBJECT_ATTRIBUTES DriverAttributes] obsahuje POINTER na STRUCTURE [WDF_OBJECT_ATTRIBUTES], ktora obsahuje ATTRIBUTES asociovane s danym OBJECT.
+   E. PARAMETER [PWDF_DRIVER_CONFIG DriverConfig] obsahuje POINTER na STRUCTURE [WDF_DRIVER_CONFIG], ktora obsahuje SETTINGS daneho DRIVER OBJECT.
+   F. PARAMETER [WDFDRIVER* Driver] obsahuje POINTER na STRUCTURE [WDFDRIVER] do ktorej bude ulozeny dany DRIVER OBJECT.
+   G. RETURN VALUE TYPE [NTSTATUS] obsahuje informaciu ci FUNCTION skoncila uspesne.
+   !!! H. FUNCTION vytvara DRIVER OBJECT.
+12. Pre STUCTURE [WDF_DRIVER_CONFIG] platia nasledujuce fakty.
+   A. STRUCTURE obsahuje SETTINGS daneho DRIVER OBJECT.
+   B. STRUCTURE je mozne inicializovat volanim MACRO [void WDF_DRIVER_CONFIG_INIT(PWDF_DRIVER_CONFIG Config, PFN_WDF_DRIVER_DEVICE_ADD EvtDriverDeviceAdd)].
+13. STUCTURE [WDF_DRIVER_CONFIG] ma nasledujuce FIELDS.
+   A. FIELD [ULONG Size] obsahuje dlzku STRUCTURE v BYTES.
+   B. FIELD [PFN_WDF_DRIVER_DEVICE_ADD EvtDriverDeviceAdd] obsahuje POINTER na ADD DEVICE CALLBACK. ADD DEVICE ma PROTOTYPE [NTSTATUS EvtWdfDriverDeviceAdd(WDFDRIVER Driver, PWDFDEVICE_INIT DeviceInit)].
+   C. FIELD [PFN_WDF_DRIVER_UNLOAD EvtDriverUnload] obsahuje POINTER na DRIVER UNLOAD CALLBACK. DRIVER UNLOAD ma PROTOTYPE [void EvtWdfDriverUnload(WDFDRIVER Driver)].
+   D. FIELD [ULONG DriverInitFlags] obsahuje FLAGS z ENUM [WDF_DRIVER_INIT_FLAGS].
+   E. FIELD [ULONG DriverPoolTag] obsahuje TAG, ktory sa pouziva pri pri alokacii a uvolnovani MEMORY suvisiacej s danym DRIVER OBJECT.
+14. DEVICE OBJECT sa vytvara pomocou FUNCTION [WdfDeviceCreate()]. Pre FUNCTION [WdfDeviceCreate()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [NTSTATUS WdfDeviceCreate(PWDFDEVICE_INIT* DeviceInit, PWDF_OBJECT_ATTRIBUTES DeviceAttributes, WDFDEVICE* Device)].
+   !!! B. PARAMETER [PWDFDEVICE_INIT* DeviceInit] obsahuje POINTER na STRUCTURE [PWDFDEVICE_INIT], ktora obsahuje SETTINGS daneho DEVICE OBJECT. Po uspesnom volani FUNCTION sa POINTER nastavi na VALUE [nullptr]. STRUCTURE je OPAQUE.
+   C. PARAMETER [PWDF_OBJECT_ATTRIBUTES DeviceAttributes] obsahuje POINTER na STRUCTURE [WDF_OBJECT_ATTRIBUTES], ktora obsahuje ATTRIBUTES asociovane s danym OBJECT.
+   D. PARAMETER [WDFDEVICE* Device] obsahuje POINTER na STRUCTURE [WDFDEVICE] do ktorej bude ulozeny dany DEVICE OBJECT.
+   E. RETURN VALUE TYPE [NTSTATUS] obsahuje informaciu ci FUNCTION skoncila uspesne.
+   !!! F. FUNCTION vytvara DEVICE OBJECT.
+15. KERNEL MODE DRIVER FRAMEWORK podporuje koncent DEVICE INTERFACES. Pre DEVICE INTERFACES platia nasledujuce fakty.
+   A. DEVICE INTERFACE je abstrakcia, ktora umoznuje DRIVERS vystavit definovanu funkcionalitu pomocou DEVICE INTERFACE.
+   B. DEVICE INTERFACE je identifikovany GUID.
+   !!! C. DEVICE INTERFACE je v skutocnosti SYMBOLIC LINK, ktory je vygenerovany z GUID, a preto je UNIKATNY.
+   D. Jeden DEVICE OBJECT moze mat implementovanych aj viacero DEVICE INTERFACES.
+   E. WINDOWS poskytuje USER MODE SETUP API, pomocou ktoreho je mozne vyhladavat HW DEVICES na zaklade imlementovanych DEVICE INTERFACES.
+   F. DEVICE INTERFACE sa vytvara volanim FUNCTION [WdfDeviceCreateDeviceInterface()].
+16. Pre FUNCTION [WdfDeviceCreateDeviceInterface()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [NTSTATUS WdfDeviceCreateDeviceInterface(WDFDEVICE Device, const GUID* InterfaceClassGUID, PCUNICODE_STRING ReferenceString)].
+   B. PARAMETER [WDFDEVICE Device] obsahuje DEVICE OBJECT pre ktory sa DEVICE OBJECT.
+   C. PARAMETER [const GUID* InterfaceClassGUID] obsahuje POINTER na GUID, ktory identifikuje DEVICE INTERFACE.
+   D. PARAMETER [PCUNICODE_STRING ReferenceString] obsahuje POINTER na UNICODE STRING. PARAMETER umoznuje rozlisit rozlicne instancie toho isteho DEVICE INTERFACE.
+   E. RETURN VALUE TYPE [NTSTATUS] obsahuje informaciu ci FUNCTION skoncila uspesne.
+   F. FUNCTION zaregistruje DRIVER INTERFACE.
+   !!! G. FUNCTION na pozadi vola FUNCTION [IoRegisterDeviceInterface()], ktora zaregistruje DEVICE INTERFACE.
+17. KERNEL MODE DRIVER FRAMEWORK definuje QUEUES. Pre QUEUES platia nasledujuce fakty.
+   A. QUEUES sluzia na spracovanie INTERRUPT REQUEST PACKETS.
+   B. QUEUES su rozdelene do viacerych PACKAGES podla typu INTERRUPT REQUEST PACKET. KERNEL MODE DRIVER FRAMEWORK podporuje nasledujuce PACKAGES.
+      A. IO PACKAGE. 
+	  B. PLUG AND PLAY a POWER MANAGEMENT PACKAGE.
+	  C. WMI PACKAGE.
+   C. QUEUE je reprezentovany STRUCTURE [WDFQUEUE].
+   D. Konfiguracia QUEUE je reprezentovana STRUCTURE [WDF_IO_QUEUE_CONFIG]. STRUCTURE obsahuje EVENTS pre jednotlive INTERRUPT REQUEST PACKETS.
+   E. QUEUE sa incializuje pomocou MACRO [void WDF_IO_QUEUE_CONFIG_INIT(PWDF_IO_QUEUE_CONFIG Config, WDF_IO_QUEUE_DISPATCH_TYPE DispatchType)].
+   F. QUEUE sa vytvara volanim FUNCTION [WdfIoQueueCreate()].
+   G. QUEUE moze byt nastavena ako DEFAULT QUEUE. Pre DEFAULT QUEUE platia nasledujuce fakty.
+      A. DEFAULT QUEUE je QUEUE, ktora sa pouziva pre lubovolny INTERRUPT REQUEST PACKET, ktory nema SPECIFIC HANDLER.
+	  B. Kazdy DRIVER MUSI mat aspon 1 DEFAULT QUEUE.
+	  C. DEFAULT QUEUE sa inicializuje pomocou MACRO [void WDF_IO_QUEUE_CONFIG_INIT_DEFAULT_QUEUE(PWDF_IO_QUEUE_CONFIG Config, WDF_IO_QUEUE_DISPATCH_TYPE DispatchType)].
+18. Pre IO PACKAGE QUEUE platia nasledujuce fakty.
+   A. QUEUE spracovava rozne MAJOR FUNCTIONS ako MAJOR FUNCTION [IRP_MJ_CREATE], MAJOR FUNCTION [IRP_MJ_READ] ci MAJOR FUNCTION [IRP_MJ_WRITE].
+   B. KERNEL MODE DRIVER FRAMEWORK podporuje nasledujuce typy IO PACKAGE QUEUES.
+      A. SEQUENTIAL QUEUE. SEQUENTIAL QUEUE podporuje spracovanie 1 INTERRUPT REQUEST PACKET v danom case.
+      B. PARALLEL QUEUE. PARALLEL QUEUE podporuje spracovanie lubovolneho poctu INTERRUPT REQUEST PACKETS v danom case.
+      C. MANUAL QUEUE. MANUAL QUEUE manualne vyberanie INTERRUPT REQUEST PACKETS z QUEUE v lubovolnom case, kedy to DRIVER uzna za vhodne.
+19. Pre PLUG AND PLAY a POWER MANAGEMENT PACKAGE QUEUE platia nasledujuce fakty.
+   A. QUEUE spracovava MAJOR FUNCTION [IRP_MJ_PNP] a MAJOR FUNCTION [IRP_MJ_POWER].
+   B. QUEUE notifikuje IO PACKAGE QUEUE a WMI PACKAGE QUEUE.
+20. Pre WMI PACKAGE QUEUE platia nasledujuce fakty.
+   A. QUEUE spracovava WINDOWS MANAGEMENT INSTRUMENTATION REQUESTS.
+   B. WINDOWS MANAGEMENT INSTRUMENTATION REQUESTS su po spracovani odosielano do dalsich DRIVERS.
+21. DEVICE OBJECT QUEUE sa vytvara pomocou FUNCTION [WdfIoQueueCreate()]. Pre FUNCTION [WdfIoQueueCreate()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [NTSTATUS WdfIoQueueCreate(WDFDEVICE Device, PWDF_IO_QUEUE_CONFIG Config, PWDF_OBJECT_ATTRIBUTES QueueAttributes, WDFQUEUE* Queue)].
+   B. PARAMETER [WDFDEVICE Device] obsahuje DEVICE OBJECT pre ktory sa DEVICE OBJECT QUEUE vytvara.
+   C. PARAMETER [PWDF_IO_QUEUE_CONFIG Config] obsahuje POINTER na STRUCTURE [WDF_IO_QUEUE_CONFIG], ktora obsahuje SETTINGS daneho DEVICE OBJECT QUEUE.
+   D. PARAMETER [PWDF_OBJECT_ATTRIBUTES QueueAttributes] obsahuje POINTER na STRUCTURE [WDF_OBJECT_ATTRIBUTES], ktora obsahuje ATTRIBUTES asociovane s danym OBJECT.
+   E. PARAMETER [WDFQUEUE* Queue] obsahuje POINTER na STRUCTURE [WDFQUEUE] do ktorej bude ulozena dana DEVICE OBJECT QUEUE.
+   F. RETURN VALUE TYPE [NTSTATUS] obsahuje informaciu ci FUNCTION skoncila uspesne.
+   !!! G. FUNCTION vytvara DEVICE OBJECT QUEUE.
+22. Pre STUCTURE [WDF_IO_QUEUE_CONFIG] platia nasledujuce fakty.
+   A. STRUCTURE obsahuje SETTINGS danej DEVICE OBJECT QUEUE.
+   B. STRUCTURE je mozne inicializovat volanim MACRO [void WDF_IO_QUEUE_CONFIG_INIT_DEFAULT_QUEUE(PWDF_IO_QUEUE_CONFIG Config, WDF_IO_QUEUE_DISPATCH_TYPE DispatchType)], alebo MACRO [void WDF_IO_QUEUE_CONFIG_INIT(PWDF_IO_QUEUE_CONFIG Config, WDF_IO_QUEUE_DISPATCH_TYPE DispatchType)].
+23. STUCTURE [WDF_IO_QUEUE_CONFIG] ma nasledujuce FIELDS.
+   A. FIELD [ULONG Size] obsahuje dlzku STRUCTURE v BYTES.
+   B. FIELD [WDF_IO_QUEUE_DISPATCH_TYPE DispatchType] obsahuje DISPATCH TYPE, ktorym urcuje ako sa bude k ITEMS v DEVICE OBJECT QUEUE pristupovat.
+   C. FIELD [WDF_TRI_STATE PowerManaged] obsahuje informaciu ci DEVICE OBJECT QUEUE vykonava HANDLING POWER MANAGEMENT INTERRUPT REQUEST PACKETS.
+   D. FIELD [BOOLEAN AllowZeroLengthRequests] obsahuje informaciu ci DRIVER povoluje spracovanie READ INTERRUPT REQUEST PACKETS a WRITE INTERRUPT REQUEST PACKETS, ktorych BUFFERS maju nulovu dlzku.
+   E. FIELD [BOOLEAN DefaultQueue] obsahuje informaciu ci DEVICE OBJECT QUEUE je DEFAULT DEVICE OBJECT QUEUE.
+   F. FIELD [PFN_WDF_IO_QUEUE_IO_DEFAULT EvtIoDefault] obsahuje POINTER na DEFAULT DISPATCH ROUTINE. DEFAULT DISPATCH ROUTINE ma PROTOTYPE [void EvtWdfIoQueueIoDefault(WDFQUEUE Queue, WDFREQUEST Request)].
+   G. FIELD [PFN_WDF_IO_QUEUE_IO_READ EvtIoRead] obsahuje POINTER na READ DISPATCH ROUTINE. READ ROUTINE ma PROTOTYPE [void EvtWdfIoQueueIoRead(WDFQUEUE Queue, WDFREQUEST Request, size_t Length)].
+   H. FIELD [PFN_WDF_IO_QUEUE_IO_WRITE EvtIoWrite] obsahuje POINTER na WRITE DISPATCH ROUTINE. WRITE ROUTINE ma PROTOTYPE [void EvtWdfIoQueueIoWrite(WDFQUEUE Queue, WDFREQUEST Request, size_t Length)].
+   I. FIELD [PFN_WDF_IO_QUEUE_IO_DEVICE_CONTROL EvtIoDeviceControl] obsahuje POINTER na DEVICE CONTROL DISPATCH ROUTINE. DEVICE CONTROL ROUTINE ma PROTOTYPE [void EvtWdfIoQueueIoDeviceControl(WDFQUEUE Queue, WDFREQUEST Request, size_t OutputBufferLength, size_t InputBufferLength, ULONG IoControlCode)].
+   J. FIELD [PFN_WDF_IO_QUEUE_IO_INTERNAL_DEVICE_CONTROL EvtIoInternalDeviceControl] obsahuje POINTER na INTERNAL DEVICE CONTROL DISPATCH ROUTINE. INTERNAL DEVICE CONTROL ROUTINE ma PROTOTYPE [void EvtWdfIoQueueIoInternalDeviceControl(WDFQUEUE Queue, WDFREQUEST Request, size_t OutputBufferLength, size_t InputBufferLength, ULONG IoControlCode)].
+   K. FIELD [PFN_WDF_IO_QUEUE_IO_STOP EvtIoStop] obsahuje POINTER na STOP DISPATCH ROUTINE. STOP ROUTINE ma PROTOTYPE [void EvtWdfIoQueueIoStop(WDFQUEUE Queue, WDFREQUEST Request, ULONG ActionFlags)].
+   L. FIELD [PFN_WDF_IO_QUEUE_IO_RESUME EvtIoResume] obsahuje POINTER na RESUME DISPATCH ROUTINE. RESUME ROUTINE ma PROTOTYPE [void EvtWdfIoQueueIoResume(WDFQUEUE Queue, WDFREQUEST Request)].
+   M. FIELD [PFN_WDF_IO_QUEUE_IO_CANCELED_ON_QUEUE EvtIoCanceledOnQueue] obsahuje POINTER na CANCELLED DISPATCH ROUTINE. CANCELLED ROUTINE ma PROTOTYPE [void EvtWdfIoQueueIoCanceledOnQueue(WDFQUEUE Queue, WDFREQUEST Request)].
+   N. UNION [Settings] obsahuje STRUCTURE [Parallel], ktora obsahuje FIELD [ULONG NumberOfPresentedRequests]. Pre PARALLEL DEVICE OBJECT QUEUES FIELD [ULONG NumberOfPresentedRequests] obsahuje maximalny pocet paralelne volanych DISPATCH ROUTINES.
+   O. FIELD [WDFDRIVER Driver] obsahuje DRIVER OBJECT.
+24. V EVENTS, ktore spracovavaju INTERRUPT REQUEST PACKETS mozu vyuzit nasledujuce HELPER FUNCTION na jednoduchsiu implementaciu CODE.
+   A. Pomocou FUNCTION [WdfRequestRetrieveInputBuffer()] je mozne ziskat INPUT BUFFER pre dany INTERRUPT REQUEST PACKET.
+   B. Pomocou FUNCTION [WdfRequestRetrieveOutputBuffer()] je mozne ziskat INPUT BUFFER pre dany INTERRUPT REQUEST PACKET.
+   C. Pomocou FUNCTION [WdfRequestCompleteWithInformation()] je mozne ukoncit spracovanie daneho INTERRUPT REQUEST PACKET.
+25. Pre FUNCTION [WdfRequestRetrieveInputBuffer()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [NTSTATUS WdfRequestRetrieveInputBuffer(WDFREQUEST Request, size_t MinimumRequiredLength, PVOID* Buffer, size_t* Length)].
+   B. PARAMETER [WDFREQUEST Request] obsahuje INTERRUPT REQUEST PACKET.
+   C. PARAMETER [size_t MinimumRequiredLength] obsahuje minimalnu dlzku, ktoru musi BUFFER obsahovat.
+   D. PARAMETER [PVOID* Buffer] obsahuje POINTER do ktoreho sa ulozi INPUT BUFFER.
+   E. PARAMETER [size_t* Length] obsahuje POINTER do ktoreho sa ulozi dlzka INPUT BUFFER.
+   F. RETURN VALUE TYPE [NTSTATUS] obsahuje informaciu ci FUNCTION skoncila uspesne.
+   G. FUNCTION vracia INPUT BUFFER pre dany INTERRUPT REQUEST PACKET.
+   !!! H. FUNCTION podporuje BUFFERED IO, DIRECT IO aj NEITHER IO.
+26. Pre FUNCTION [WdfRequestRetrieveOutputBuffer()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [NTSTATUS WdfRequestRetrieveOutputBuffer(WDFREQUEST Request, size_t MinimumRequiredSize, PVOID* Buffer, size_t* Length)].
+   B. PARAMETER [WDFREQUEST Request] obsahuje INTERRUPT REQUEST PACKET.
+   C. PARAMETER [size_t MinimumRequiredLength] obsahuje minimalnu dlzku, ktoru musi BUFFER obsahovat.
+   D. PARAMETER [PVOID* Buffer] obsahuje POINTER do ktoreho sa ulozi OUTPUT BUFFER.
+   E. PARAMETER [size_t* Length] obsahuje POINTER do ktoreho sa ulozi dlzka OUTPUT BUFFER.
+   F. RETURN VALUE TYPE [NTSTATUS] obsahuje informaciu ci FUNCTION skoncila uspesne.
+   G. FUNCTION vracia OUTPUT BUFFER pre dany INTERRUPT REQUEST PACKET.
+   !!! H. FUNCTION podporuje BUFFERED IO, DIRECT IO aj NEITHER IO.
+27. Pre FUNCTION [WdfRequestCompleteWithInformation()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [void WdfRequestCompleteWithInformation(WDFREQUEST Request, NTSTATUS Status, ULONG_PTR Information)].
+   B. PARAMETER [WDFREQUEST Request] obsahuje INTERRUPT REQUEST PACKET.
+   C. PARAMETER [NTSTATUS Status] obsahuje STATUS s ktorym ma byt INTERRUPT REQUEST PACKET ukonceny.
+   D. PARAMETER [ULONG_PTR Information] obsahuje INFORMATION VALUE s ktorym ma byt INTERRUPT REQUEST PACKET ukonceny.
+   E. RETURN VALUE TYPE [NTSTATUS] obsahuje informaciu ci FUNCTION skoncila uspesne.
+   F. FUNCTION ukoncuje spracovanie INTERRUPT REQUEST PACKET.
+28. WINDOWS umoznuje instalaciu DRIVERS pomocou INF FILES. Pre INF FILES platia nasledujuce fakty.
+   A. INF FILES pouzivaju SYNTAX FILES [.INI].
+   B. INF FILES pozostavaju z nasledujucich casti.
+      A. SECTIONS. SECTIONS maju FORMAT [[SECTION_NAME]], kde VALUE [SECTION_NAME] je nazov SECTION.
+      B. DIRECTIVES. DIRECTIVES maju FORMAT [NAME=VALUE], kde VALUE [NAME] je nazov DIRECTIVE a VALUE [VALUE] je VALUE DIRECTIVE. VALUE ak obsahuje medzery, MUSI byt v UVODZOVKACH.
+   C. DIRECTIVES v roznych SECTIONS mozu na seba vzajomne odkazovat. Vdaka tomu vznik TREE STRUCTURE.
+   D. INF FILES podporuju nasledujuce typy OPERATIONS.
+      A. FILE COPY.
+	  B. REGISTRY WRITE.
+   E. INF FILES mozu obsahovat COMMENTS, ktore zacinaju CHARACTER [;] a koncia na konci LINE.
+   !!! F. DIRECTIVE NAMES a DIRECTIVE VALUES mozu obsahovat MACROS. Pre MACROS platia tieto fakty.
+      A. MACRO ma SYNTAX [%MACRO_NAME%], kde VALUE [MACRO_NAME] je nazov daneho MACRO.
+	  B. MACROS sa VZDY referuju do SECTION [Strings], kde obsahuju konkretne VALUES.
+   G. INF FILES su podporovane vo WINDOW DRIVER MODEL, ako aj vo WINDOWS DRIVER FRAMEWORKS.
+!!! 29. WINDOWS podporuje koncept DRIVER CLASSES. Pre DRIVER CLASSES platia nasledujuce fakty.
+   A. WINDOWS kategorizuje DRIVERS do CLASSES podla ich spolocnych crt.
+   B. DRIVER CLASS definuje spolocne PARAMETERS, ktore sa aplikuju na vsetky DRIVERS, ktore su daneho CLASS.
+   !!!!! C. Medzi spolocne PARAMETERS DRIVER CLASS patria LOWER FILTER DRIVERS a UPPER FILTER DRIVERS.
+   D. Informacie o DRIVER CLASSES su ulozene v REGISTRY [HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Class].
+   E. Kazdy DRIVER CLASS je identifikovany GUID.
+   F. WINDOWS definuje sadu standardnych DRIVER CLASSES s pevne definovanymi GUIDS.
+   G. DRIVER CLASS do ktoreho dany DRIVER patri sa urcuje v INF FILE v SECTION [Version] a DIRECTIVE [Class] a DIRECTIVE [ClassGuid].
+30. INF FILE musi mat povinnu SECTION [Version]. SECTION [Version] ma nasledujuce DIRECTIVES.
+   A. DIRECTIVE [Signature] musi obsahovat VALUE [$WINDOWS NT$].
+   B. DIRECTIVE [Class] obsahuje popisny nazov DRIVER CLASS.
+   C. DIRECTIVE [ClassGuid] obsahuje popisny GUID DRIVER CLASS.
+   D. DIRECTIVE [CatalogFile] obsahuje nazov PUBLISHER daneho DRIVER.
+   E. DIRECTIVE [Provider] obsahuje CATALOG FILE daneho DRIVER.
+   F. DIRECTIVE [DriverVer] obsahuje VERSION daneho DRIVER.
+   G. DIRECTIVE [PnpLockdown] urcuje ci ma PLUG AND PLAY MANAGER zabranit PROGRAMS priamo modifikovat FILES, ktore INF FILE specifikuje. VALUE [1] znamena, ze PLUG AND PLAY MANAGER ma zabranit PROGRAMS priamo modifikovat FILES. VALUE [0], ze PLUG AND PLAY MANAGER nema zabranit PROGRAMS priamo modifikovat FILES.
+31. INF FILE musi mat povinnu SECTION [Manufacturer]. Pre SECTION [Manufacturer] platia nasledujuce fakty.
+   A. SECTION [Manufacturer] obsahuje DIRECTIVE [%ManufacturerName%].
+   B. VALUE DIRECTIVE [%ManufacturerName%] obsahuje nazov DRIVER INSTALATION SECTION.
+   C. VALUE DIRECTIVE [%ManufacturerName%] moze obsahovat MACRO [$ARCH$] ako ARCHITECTURE NAME, napriklad VALUE [AMD64].
+32. Pre DRIVER INSTALATION SECTION platia nasledujuce fakty.
+   A. SECTION obsahuje v DIRECTIVES kroky ktore su potrebnne k instalacii daneho DRIVER.
+   B. Nazov SECTION je uvedeny v VALUE DIRECTIVE [%ManufacturerName%] SECTION [Manufacturer].
+   C. DIRECTIVE [%DRIVER_NAME.DeviceDesc%] ma NAME [%DRIVER_NAME.DeviceDesc%], kde VALUE [DRIVER_NAME] je nazov DRIVER. DIRECTIVE NAME obsahuje popis daneho DRIVER. Zobrazuje sa ak PLUG AND PLAY MANAGER potrebuje zobrazit USER INTERFACE s popisom DEVICE, ktory je spravovany danym DRIVER.
+   D. DIRECTIVE [%DRIVER_NAME.DeviceDesc%] ma VALUE so SYNTAX [PART_1, PART_2], kde vyznam jednotlivych VALUES je nasledovny.
+      A. VALUE [PART_1] obsahuje nazov DEVICE INSTALLATION SECTION, kde pokracuju instrukcie pre INSTALLATION.
+	  !!!!! B. VALUE [PART_2] obsahuje UNIQUE DEVICE ID pre dany HW DEVICE. Ma SYNTAX [ENUMERATOR\ID], kde VALUE [ENUMERATOR] je typ BUS ku ktoremu je HW DEVICE pripojeny a VALUE [ID] je unikatny identifikator HW DEVICE. ENUMERATOR [Root] sa je VIRTUAL BUS, ktory sa pouziva pre NON PLUG AND PLAY DEVICE a sposobi, ze NON PLUG AND PLAY DEVICE je automaticky spusteny.
+33. Pre DEVICE INSTALATION SECTION platia nasledujuce fakty.
+   A. SECTION obsahuje zoznam FILES, ktore tvoria dany DRIVER.
+   B. Nazov SECTION je uvedeny v prvej casti VALUE DIRECTIVE [%DRIVER_NAME.DeviceDesc%] DRIVER INSTALATION SECTION.
+   C. DIRECTIVE [CopyFiles] obsahuuje vo VALUE nazov COPY FILE SECTION, ktora obsahuje nazov FILES, ktore tvoria dany DRIVER a ktore maju byt pri instalacii skopirovane.
+34. Pre COPY FILE SECTION platia nasledujuce fakty.
+   A. COPY FILE SECTION obsahuje nazov FILES, ktore tvoria dany DRIVER a ktore maju byt pri instalacii skopirovane.
+   B. Nazov SECTION je uvedeny v VALUE DIRECTIVE [CopyFiles] DEVICE INSTALATION SECTION.
+   C. SECTION obsahuje ako VALUES nazvy FILES, ktore tvoria dany DRIVER.
+35. Pre SERVICE INSTALLATION SECTION platia nasledujuce fakty.
+   A. SERVICE INSTALLATION SECTION obsahuje nazov SECTION obsahujucej PARAMETERS pre SERVICE, ktory zavadza dany DRIVER.
+   B. SERVICE INSTALLATION SECTION ma NAME [DEVICE_NAME.NT.Services], kde VALUE [DEVICE_NAME] je uvedeny v prvej casti VALUE DIRECTIVE [%DRIVER_NAME.DeviceDesc%] DRIVER INSTALATION SECTION.
+   C. SERVICE INSTALLATION SECTION obsahuje DIRECTIVE [AddService], ktora obsahuje NAME SERVICE PROPERTY SECTION.
+36. Pre SERVICE PROPERTY SECTION platia nasledujuce fakty.
+   A. SERVICE PROPERTY SECTION obsahuje nastavenia SERVICE, ktora robi HOSTING daneho DRIVER.
+   B. SERVICE PROPERTY SECTION NAME je obsiahnuta v DIRECTIVE [AddService] SERVICE INSTALLATION SECTION.
+   C. SERVICE PROPERTY SECTION obsahuje DIRECTIVES pre vsetky nastavenia SERICE.
+37. INF FILE definuje nasledujuce MACROS pre DIRECTORIES.
+   A. MACRO [01] znamena DIRECTORY z ktorej je DRIVER INSTALLED.
+   B. MACRO [10] znamena WINODWS DIRECTORY, ktory je identicky s VALUE [%SystemRoot%].
+   C. MACRO [11] znamena SYSTEM DIRECTORY, ktory je identicky s VALUE [%SystemRoot%\System32].
+   D. MACRO [12] znamena DRIVERS DIRECTORY, ktory je identicky s VALUE [%SystemRoot%\System32\Drivers].
+   E. MACRO [13] znamena DRIVER STORE DIRECTORY.
+   F. MACRO [17] znamena INF DIRECTORY, ktory je identicky s VALUE [%SystemDrive%INF].
+   G. MACRO [24] znamena ROOT DIRECTORY, ktory je identicky s VALUE [%SystemDrive%].
+   H. MACRO [-1] znamena ABSOLUTE PATH.
+38. Pre pridanie CUSTOM CLASS do INF FILE je potrebne vykonat nasledujuce kroky.
+   A. V SECTION [Version] a DIRECTIVE [Class] sa definuje CLASS NAME.
+   B. V SECTION [Version] a DIRECTIVE [ClassGuid] se definuje CUSTOM GUID, ktory identifikuje dany CLASS.
+   C. Prida sa SECTION [ClassInstall32] do ktorej sa prida DIRECTIVE [DevClass_AddReg], ktora obsahuje SECTION NAME v ktorej su definovanane podrobnosti CLASS INSTALLER.
+   D. Prida sa CLASS INSTALLER SECTION, ktorej NAME zodpoveda DIRECTIVE [DevClass_AddReg] v SECTION [ClassInstall32].
+   !!! E. Do CLASS INSTALLER SECTION sa prida DIRECTIVE [HKR,,,,CLASS_NAME], kde VALUE [CLASS_NAME] je identicky CLASS NAME v SECTION [Version] a DIRECTIVE [Class].
+   !!! F. Do CLASS INSTALLER SECTION sa prida DIRECTIVE [HKR,,SilentInstall,,1].
+39. WINDOWS implementuje SETUP API. Pre SETUP API platia nasledujuce fakty.
+   A. SETUP API je USER MODE API, ktore umoznuje vyhladat rozlicne informacie o HW DEVICES a DRIVERS, ktore obsluhuju dane HW DEVICES.
+   B. SETUP API je deklarovany v HEADER [SetupAPI.h].
+   C. SETUP API je definovany v LIBRARY [Setupapi.lib].
+   D. USER MODE FUNCTION [SetupDiGetClassDevs()] vykonava vyhladavanie HW DEVICES. FUNCTION vracia DEVICE INFORMATION SET, ktory obsahuje podrobnosti o najdenych HW DEVICES.
+   E. USER MODE FUNCTION [SetupDiDestroyDeviceInfoList()] uvolnuje vytvoreny DEVICE INFORMATION SET.
+   F. USER MODE FUNCTION [SetupDiEnumDeviceInfo()] vracia z DEVICE INFORMATION SET DEVICE INFORMATION DATA pre HW DEVICE s danym INDEXOM.
+   G. USER MODE FUNCTION [SetupDiEnumDeviceInterfaces()] vracia z DEVICE INFORMATION DATA DEVICE INTERFACE DATA pre DEVICE INTERFACE s danym INDEXOM.
+   H. USER MODE FUNCTION [SetupDiGetDeviceInterfaceDetail()] vracia z DEVICE INFORMATION DATA DEVICE INTERFACE DETAIL DATA.
+40. Pre USER MODE FUNCTION [SetupDiGetClassDevs()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [HDEVINFO SetupDiGetClassDevs(const GUID* ClassGuid, PCWSTR Enumerator, HWND HwndParent, DWORD Flags)].
+   B. PARAMETER [const GUID* ClassGuid] obsahuje POINTER na GUID, ktory reprezentuje bud GUID DEVICE SETUP CLASS, alebo GUID DEVICE INTERFACE CLASS.
+   C. PARAMETER [PCWSTR Enumerator] obsahuje STRING, ktory reprezentuje bud PLUG AND PLAY ENUMERATOR IDENTIFIER, alebo PLUG AND PLAY DEVICE INSTANCE IDENTIFIER.
+   D. PARAMETER [HWND HwndParent] obsahuje OPTIONAL HANDLE na PARENT WINDOW.
+   E. PARAMETER [DWORD Flags] obsahuje FLAGS. PARAMETER moze mat nasledujuce VALUES.
+      A. VALUE [0] znamena, ze ziaden FLAG nie je nastaveny.
+      B. VALUE [DIGCF_ALLCLASSES] znamena, ze sa ma vratit DEVICE INFORMATION SET pre vsetky DEVICE SETUP CLASSES, alebo pre vsetky DEVICE INTERFACE CLASSES.
+      C. VALUE [DIGCF_DEVICEINTERFACE] znamena, ze sa ma vratit DEVICE INFORMATION SET pre DEVICE INTERFACE CLASS, ktoreho GUID je definovany v PARAMETER [const GUID* ClassGuid].
+      D. VALUE [DIGCF_DEFAULT] znamena, ze sa ma vratit DEVICE INFORMATION SET pre HW DEVICES, ktore su asociovane so SYSTEM DEFAULT DEVICE INTERFACE DEVICE INTERFACE CLASS, ktoreho GUID je definovany v PARAMETER [const GUID* ClassGuid].
+      E. VALUE [DIGCF_PRESENT] znamena, ze sa ma vratit DEVICE INFORMATION SET pre HW DEVICES, ktore su nacitane v MEMORY.
+      F. VALUE [DIGCF_PROFILE] znamena, ze sa ma vratit DEVICE INFORMATION SET pre HW DEVICES, ktore su sucastou CURRENT HARDWARE PROFILE.
+   F. RETURN VALUE TYPE [HDEVINFO] obsahuje HANDLE na DEVICE INFORMATION SET. V pripade ERROR obsahuje HANDLE [INVALID_HANDLE_VALUE].
+   G. FUNCTION vracia DEVICE INFORMATION SET najdeny pre definovanu CONDITION.
+   !!! H. Vrateny DEVICE INFORMATION SET reprezentovany TYPE [HDEVINFO] je potrebne uvolnit volanim FUNCTION [SetupDiDestroyDeviceInfoList()].
+41. Pre USER MODE FUNCTION [SetupDiDestroyDeviceInfoList()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [BOOL SetupDiDestroyDeviceInfoList(HDEVINFO DeviceInfoSet)].
+   B. PARAMETER [HDEVINFO DeviceInfoSet] obsahuje HANDLE na DEVICE INFORMATION SET, ktory ma byt uvolneny.
+   C. RETURN VALUE TYPE [BOOL] obsahuje informaciu ci FUNCTION skoncila uspesne.
+   D. FUNCTION uvolnuje DEVICE INFORMATION SET.
+42. Pre USER MODE FUNCTION [SetupDiEnumDeviceInfo()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [BOOL SetupDiEnumDeviceInfo(HDEVINFO DeviceInfoSet, DWORD MemberIndex, PSP_DEVINFO_DATA DeviceInfoData)].
+   B. PARAMETER [HDEVINFO DeviceInfoSet] obsahuje HANDLE na DEVICE INFORMATION SET.
+   C. PARAMETER [DWORD MemberIndex] obsahuje INDEX HW DEVICE, ktoreho DEVICE INFORMATION DATA maju byt vratene.
+   D. PARAMETER [PSP_DEVINFO_DATA DeviceInfoData] obsahuje POINTER na STRUCTURE [SP_DEVINFO_DATA] do ktoreho sa ulozia najdene DEVICE INFORMATION DATA.
+   !!! E. RETURN VALUE TYPE [BOOL] obsahuje informaciu ci FUNCTION skoncila uspesne. V pripade, ze INDEX prekrocil pocet ELEMENTS, FUNCTION vrati VALUE [FALSE] a FUNCTION [GetLastError()] vrati VALUE [ERROR_NO_MORE_ITEMS].
+   F. FUNCTION vracia z DEVICE INFORMATION SET DEVICE INFORMATION DATA pre HW DEVICE s INDEXOM v PARAMETER [DWORD MemberIndex].
+43. Pre USER MODE FUNCTION [SetupDiEnumDeviceInterfaces()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [BOOL SetupDiEnumDeviceInterfaces(HDEVINFO DeviceInfoSet, PSP_DEVINFO_DATA DeviceInfoData, const GUID* InterfaceClassGuid, DWORD MemberIndex, PSP_DEVICE_INTERFACE_DATA DeviceInterfaceData)].
+   B. PARAMETER [HDEVINFO DeviceInfoSet] obsahuje HANDLE na DEVICE INFORMATION SET.
+   C. PARAMETER [PSP_DEVINFO_DATA DeviceInfoData] obsahuje POINTER na STRUCTURE [SP_DEVINFO_DATA] ktora obsahuje DEVICE INFORMATION DATA.
+   D. PARAMETER [const GUID* InterfaceClassGuid] obsahuje POINTER na GUID na DEVICE INTERFACE CLASS, ktore DEVICE INTERFACE ma byt najdeny.
+   E. PARAMETER [DWORD MemberIndex] obsahuje INDEX DEVICE INTERFACE, ktoreho DEVICE INTERFACE DATA maju byt vratene.
+   F. PARAMETER [PSP_DEVICE_INTERFACE_DATA DeviceInterfaceData] obsahuje POINTER na STRUCTURE [SP_DEVICE_INTERFACE_DATA] do ktoreho sa ulozia najdene DEVICE INTERFACE DATA.
+   !!! G. RETURN VALUE TYPE [BOOL] obsahuje informaciu ci FUNCTION skoncila uspesne. V pripade, ze INDEX prekrocil pocet ELEMENTS, FUNCTION vrati VALUE [FALSE] a FUNCTION [GetLastError()] vrati VALUE [ERROR_NO_MORE_ITEMS].
+   H. FUNCTION vracia z DEVICE INFORMATION DATA DEVICE INTERFACE DATA pre DEVICE INTERFACE s INDEXOM v PARAMETER [DWORD MemberIndex].
+44. Pre USER MODE FUNCTION [SetupDiGetDeviceInterfaceDetail()] platia nasledujuce fakty.
+   A. FUNCTION ma PROTOTYPE [BOOL SetupDiGetDeviceInterfaceDetail(HDEVINFO DeviceInfoSet, PSP_DEVICE_INTERFACE_DATA DeviceInterfaceData, PSP_DEVICE_INTERFACE_DETAIL_DATA DeviceInterfaceDetailData, DWORD DeviceInterfaceDetailDataSize, PDWORD RequiredSize, PSP_DEVINFO_DATA DeviceInfoData)].
+   B. PARAMETER [HDEVINFO DeviceInfoSet] obsahuje HANDLE na DEVICE INFORMATION SET.
+   C. PARAMETER [PSP_DEVICE_INTERFACE_DATA DeviceInterfaceData] obsahuje POINTER na STRUCTURE [PSP_DEVICE_INTERFACE_DATA] ktora obsahuje DEVICE INTERFACE DATA.
+   D. PARAMETER [PSP_DEVICE_INTERFACE_DETAIL_DATA DeviceInterfaceDetailData] obsahuje POINTER na STRUCTURE [SP_DEVICE_INTERFACE_DETAIL_DATA] do ktorej budu ulozene DEVICE INTERFACE DETAIL DATA.
+   !!! E. PARAMETER [DWORD DeviceInterfaceDetailDataSize] obsahuje dlzku BUFFER v PARAMETER [PSP_DEVICE_INTERFACE_DETAIL_DATA DeviceInterfaceDetailData]. Ta musi byt rovna, alebo vacsia ako VALUE [sizeof(SP_DEVICE_INTERFACE_DETAIL_DATA)].
+   !!! F. PARAMETER [PDWORD RequiredSize] obsahuje pocet BYTES, ktore su potrebne na ulozenie DEVICE INTERFACE DETAIL DATA. Je to OUTPUT PARAMETER, ktory vrati FUNCTION ak je BUFFER nedostatocne velky.
+   G. PARAMETER [PSP_DEVINFO_DATA DeviceInfoData] obsahuje POINTER na STRUCTURE [SP_DEVINFO_DATA], ktora obsahuje DEVICE INFORMATION DATA.
+   H. RETURN VALUE TYPE [BOOL] obsahuje informaciu ci FUNCTION skoncila uspesne.
+   I. FUNCTION vracia z DEVICE INFORMATION DATA DEVICE INTERFACE DETAIL DATA.
+45. Pre KERNEL MODE DRIVER FRAMEWORK INSTALLATION platia nasledujuce fakty.
+   A. INSTALLATION vyzaduje nakopirovanie nasledujucich FILES do rovnakeho DIRECTORY.
+      A. FILE [DRIVER.sys], kde VALUE [DRIVER] je nazov DRIVER. FILE [DRIVER.sys] obsahuje samotny DRIVER.
+      B. FILE [DRIVER.inf], kde VALUE [DRIVER] je nazov DRIVER. FILE [DRIVER.inf] obsahuje INSTALLATION FILE daneho DRIVER. MACROS uz su v tomto FILE subsituovane.
+   B. INSTALLATION sa vykonava pomocou TOOL [devcon.exe], ktory je sucastou DRIVER KITS. TOOL [devcon.exe] podporuje nasledujuce COMMANDS.
+      A. COMMAND [devcon.exe install INF_FILE_PATH HARDWARE_ID], kde VALUE [INF_FILE_PATH] je PATH k INF FILE a VALUE [HARDWARE_ID] je HARDWARE ID instaluje DRIVER. HARDWARE ID sa musi zhodovat s VALUE v INF FILE v SECTION [Standard.NT$ARCH$.10.0...16299].
+      !!! B. COMMAND [devcon.exe remove HARDWARE_ID], kde VALUE [HARDWARE_ID] je HARDWARE ID odinstaluje DRIVER. HARDWARE ID sa musi zhodovat s VALUE v INF FILE v SECTION [Standard.NT$ARCH$.10.0...16299]. DRIVER FILES vsak NIE SU DELETED.
+      !!!!! C. COMMAND [devcon.exe dp_delete GENERATED_INF_FILE], kde VALUE [GENERATED_INF_FILE] je nazov INF FILE, ktory vratil INSTALL COMMAND. Prikladom je NAME [oemNUMBER.inf], kde VALUE [NUMBER] je vygenerovane cislo.
+   !!! C. ALTERNATIVNE, INSTALLATION sa moze vykonavat aj pomocou TOOL [devgen.exe] a TOOL [pnputil.exe], ktore su sucastou DRIVER KITS.
+   !!! D. Po uspesnom nainstalovani DRIVER je DRIVER viditelny v DEVICE MANAGER. Nachadza sa v NODE zodpovedajucom DRIVER CLASS. Platia nasledujuce fakty.
+      A. Ak ma DRIVER DRIVER CLASS [System], tak v DEVICE MANAGER je viditelny v NODE [System devices].
+	  B. Ak ma DRIVER DRIVER CLASS [CUSTOM], tak v DEVICE MANAGER je viditelny v NODE [CUSTOM].
+!!!!! 46. INSTALLATION pomocou TOOL [devgen.exe] a TOOL [pnputil.exe] sa vykonava v nasledujucich krokoch.
+   A. Instaluje sa BUS DEVICE pomocou COMMAND [devgen.exe /add /bus ROOT /hardwareid BUS_DEVICE_NAME /instanceid INSTANCE_NAME], kde jednotlive VALUES maju nasledujuci vyznam.
+      A. VALUE [BUS_DEVICE_NAME] je nazov BUS DEVICE, ktory sa MUSI zhodovat s VALUE v INF FILE v v SECTION [Standard.NT$ARCH$.10.0...16299] a DIRECTIVE [%DRIVER_NAME.DeviceDesc%], kde VALUE [DRIVER_NAME] je nazov DRIVER NAME. Prikladom je VALUE [Root\IntroductionToKMDF].
+	  B. VALUE [INSTANCE_NAME] je CUSTOM INSTANCE NAME. Mal by byt v UPPER CASE. Tato VALUE sa pouziva pri odinstalovani BUS DEVICE. Prikladom je VALUE [MY_TEST_DEVICE].
+   B. Instaluje sa DRIVER pomocou COMMAND [pnputil.exe /add-driver PATH_TO_INF_FILE /install], kde VALUE [PATH_TO_INF_FILE] je PATH k INF FILE.
+   !!! C. Teraz uz by mal byt DRIVER viditelny v DEVICE MANAGER.
+   !!! D. DRIVER je uz zaroven zavedeny v MEMORY a SPUSTENY.
+!!!!! 47. UNINSTALLATION pomocou TOOL [devgen.exe] a TOOL [pnputil.exe] sa vykonava v nasledujucich krokoch.
+   !!! A. Odinstaluje sa DRIVER pomocou COMMAND [pnputil.exe /remove-device INSTANCE_NAME], kde VALUE [INSTANCE_NAME] je nazov INSTANCE NAME, ktory sa pouzil v COMMAND [devgen.exe /add /bus ROOT /hardwareid BUS_DEVICE_NAME /instanceid INSTANCE_NAME].
+   B. Teraz je uz DRIVER zastaveny a odstraneny z MEMORY, co je vidiet aj tym, ze DRIVER ZMIZNE z DEVICE MANAGER.
+   C. DRIVER FILES sa vsak stale nachadzaju na disku.
+   D. Ziska sa DRIVER INF FILE PUBLISHED NAME pomocou COMMAND [pnputil.exe /enum-drivers]. Prikladom je NAME [oem6.inf].
+   E. Spusti sa COMMAND [pnputil.exe /delete-driver FILENAME.inf], kde VALUE [FILENAME.inf] je DRIVER INF FILE PUBLISHED NAME, ktory sa ziska pomocou COMMAND [pnputil.exe /enum-drivers].
+   !!! F. Odinstaluje sa BUS DEVICE pomocou COMMAND [devgen.exe /remove ROOT\DEVGEN\INSTANCE_NAME], kde VALUE [INSTANCE_NAME] je INSTANCE NAME z ADD COMMAND. Prikladom je VALUE [MY_TEST_DEVICE].
+!!! 48. Uzitocne COMMANDS TOOL [pnputil.exe].
+   A. COMMAND [pnputil.exe /enum-devices] vracia vsetky nainstalovane DEVICES.
+   B. COMMAND [pnputil.exe /enum-drivers] vracia vsetky nainstalovane DRIVERS. Z tohto COMMAND sa da zistit DRIVER INF FILE PUBLISHED NAME.
+!!!!! 49. DRIVERS zaregistrovane TOOL [devcon.exe] su AUTOMATICKY spustane aj po REBOOT SYSTEMU.
+//----------------------------------------------------------------------------------------------------------------------

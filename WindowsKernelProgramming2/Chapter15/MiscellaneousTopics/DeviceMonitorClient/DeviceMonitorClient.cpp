@@ -108,7 +108,7 @@ int main(int argc, const char* argv[])
 			}
 			else
 			{
-				wcout << L"!!!!! FILTER DRIVED FAILED to ADD DEVICE [" << DeviceName << L"]." << endl;
+				wcout << L"!!!!! FILTER DRIVER FAILED to ADD DEVICE [" << DeviceName << L"]." << endl;
 			}
 		}
 		else if (Operation==EOperation::E_REMOVE_DEVICE)
@@ -126,7 +126,7 @@ int main(int argc, const char* argv[])
 			}
 			else
 			{
-				wcout << L"!!!!! FILTER DRIVED FAILED to REMOVE DEVICE [" << DeviceName << L"]." << endl;
+				wcout << L"!!!!! FILTER DRIVER FAILED to REMOVE DEVICE [" << DeviceName << L"]." << endl;
 			}
 		}
 		else if (Operation==EOperation::E_REMOVE_ALL_DEVICES)
@@ -144,7 +144,7 @@ int main(int argc, const char* argv[])
 			}
 			else
 			{
-				wcout << L"!!!!! FILTER DRIVED FAILED to REMOVE ALL DEVICES." << endl;
+				wcout << L"!!!!! FILTER DRIVER FAILED to REMOVE ALL DEVICES." << endl;
 			}
 		}
 	}

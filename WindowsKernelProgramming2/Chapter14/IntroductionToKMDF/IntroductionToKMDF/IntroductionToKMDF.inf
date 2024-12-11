@@ -1,0 +1,81 @@
+;
+; IntroductionToKMDF.inf
+;
+
+[Version]
+Signature   = "$WINDOWS NT$"
+; !!! CUSTOM CLASS NAME.
+Class       = MyDevices
+; !!! Vygenerovany vlastny GUID pre CLASS.
+ClassGuid   = {7C6B24D1-ABF0-4252-8A93-73B08E64D056}
+Provider    = %ManufacturerName%
+CatalogFile = IntroductionToKMDF.cat
+DriverVer   = ; TODO: set DriverVer in stampinf property pages
+PnpLockdown = 1
+
+[DestinationDirs]
+DefaultDestDir = 13
+
+[SourceDisksNames]
+1 = %DiskName%,,,""
+
+[SourceDisksFiles]
+IntroductionToKMDF.sys = 1,,
+
+;*****************************************
+; Install Section
+;*****************************************
+
+[Manufacturer]
+%ManufacturerName% = Standard,NT$ARCH$.10.0...16299 ; %13% support introduced in build 16299
+
+[Standard.NT$ARCH$.10.0...16299]
+; VALUE [Root\IntroductionToKMDF] je nazov BUS DEVICE, ktory sa pridava cez TOOL [devgen.exe].
+%IntroductionToKMDF.DeviceDesc% = IntroductionToKMDF_Device, Root\IntroductionToKMDF
+
+[IntroductionToKMDF_Device.NT]
+CopyFiles = File_Copy
+
+[File_Copy]
+IntroductionToKMDF.sys
+
+;-------------- Service installation
+[IntroductionToKMDF_Device.NT.Services]
+AddService = IntroductionToKMDF,%SPSVCINST_ASSOCSERVICE%, IntroductionToKMDF_Service_Inst
+
+; -------------- IntroductionToKMDF driver install sections
+[IntroductionToKMDF_Service_Inst]
+DisplayName    = %IntroductionToKMDF.SVCDESC%
+ServiceType    = 1               ; SERVICE_KERNEL_DRIVER
+StartType      = 3               ; SERVICE_DEMAND_START
+ErrorControl   = 1               ; SERVICE_ERROR_NORMAL
+ServiceBinary  = %13%\IntroductionToKMDF.sys
+
+[IntroductionToKMDF_Device.NT.Wdf]
+KmdfService = IntroductionToKMDF, IntroductionToKMDF_wdfsect
+
+[IntroductionToKMDF_wdfsect]
+KmdfLibraryVersion = $KMDFVERSION$
+
+
+
+
+; !!! Definuje sa INSTALLER pre CLASS.
+[ClassInstall32]
+AddReg=DevClass_AddReg
+
+; !!! Obsahuje podrobnosti instalacie CLASS.
+[DevClass_AddReg]
+; !!! VALUE [BoostDevice] musi byt zhodna s DIRECTIVE [Class] v SECTION [Version].
+HKR,,,,MyDevices
+HKR,,SilentInstall,,1
+
+
+
+
+[Strings]
+SPSVCINST_ASSOCSERVICE = 0x00000002
+ManufacturerName = "Timmy Anderson"
+DiskName = "IntroductionToKMDF Installation Disk"
+IntroductionToKMDF.DeviceDesc = "IntroductionToKMDF Device"
+IntroductionToKMDF.SVCDESC = "IntroductionToKMDF Service"

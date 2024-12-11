@@ -1,0 +1,80 @@
+;
+; Boost.inf
+;
+
+[Version]
+Signature   = "$WINDOWS NT$"
+; !!! CUSTOM CLASS NAME.
+Class       = BoostDevice
+; !!! Vygenerovany vlastny GUID pre CLASS.
+ClassGuid   = {08733BEC-52E0-4936-8587-0D0BF26CC4BD}
+Provider    = %ManufacturerName%
+CatalogFile = Boost.cat
+DriverVer   = ; TODO: set DriverVer in stampinf property pages
+PnpLockdown = 1
+
+[DestinationDirs]
+DefaultDestDir = 12
+
+[SourceDisksNames]
+1 = %DiskName%,,,""
+
+[SourceDisksFiles]
+Boost.sys = 1,,
+
+;*****************************************
+; Install Section
+;*****************************************
+
+[Manufacturer]
+; VALUE [Standard,NT$ARCH$.10.0...16299] je nazov SECTION [Standard.NT$ARCH$.10.0...16299].
+%ManufacturerName% = Standard,NT$ARCH$.10.0...16299 ; %13% support introduced in build 16299
+
+[Standard.NT$ARCH$.10.0...16299]
+; VALUE [Boost_Device] je nazov PREFIX pre SECTION [Boost_Device.NT] a SECTION [Boost_Device.NT.Services].
+; VALUE [Root\Boost] obsajuje nazov VIRTUAL BUS [Root].
+%Boost.DeviceDesc% = Boost_Device, Root\Boost ; TODO: edit hw-id
+
+[Boost_Device.NT]
+CopyFiles = File_Copy
+
+[File_Copy]
+Boost.sys
+
+;-------------- Service installation
+[Boost_Device.NT.Services]
+; VALUE [Boost_Service_Inst] je nazov SECTION [Boost_Service_Inst].
+AddService = Boost,%SPSVCINST_ASSOCSERVICE%, Boost_Service_Inst
+
+; -------------- Boost driver install sections
+[Boost_Service_Inst]
+DisplayName    = %Boost.SVCDESC%
+ServiceType    = 1               ; SERVICE_KERNEL_DRIVER
+StartType      = 3               ; SERVICE_DEMAND_START
+ErrorControl   = 1               ; SERVICE_ERROR_NORMAL
+ServiceBinary  = %12%\Boost.sys
+
+[Boost_Device.NT.Wdf]
+KmdfService = Boost, Boost_wdfsect
+
+[Boost_wdfsect]
+KmdfLibraryVersion = $KMDFVERSION$
+
+
+; !!! Definuje sa INSTALLER pre CLASS.
+[ClassInstall32]
+AddReg=DevClass_AddReg
+
+; !!! Obsahuje podrobnosti instalacie CLASS.
+[DevClass_AddReg]
+; !!! VALUE [BoostDevice] musi byt zhodna s DIRECTIVE [Class] v SECTION [Version].
+HKR,,,,BoostDevice
+HKR,,SilentInstall,,1
+
+
+[Strings]
+SPSVCINST_ASSOCSERVICE = 0x00000002
+ManufacturerName = "Timmy Anderson" ;TODO: Replace with your manufacturer name
+DiskName = "Boost Installation Disk"
+Boost.DeviceDesc = "Boost Device"
+Boost.SVCDESC = "Boost Service"
