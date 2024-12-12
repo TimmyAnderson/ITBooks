@@ -1,6 +1,39 @@
 //----------------------------------------------------------------------------------------------------------------------
 1. Solution demonstruje rozlicne TOPICS pre WINDOWS KERNEL DEVELOPMENT.
-2. WINDOWS organizuje DRIVERS do DEVICE OBJECT STACKS. Pre DEVICE OBJECT STACKS platia nasledujuce fakty.
+2. DRIVERS vo WINDOWS musia byt SIGNED. Platia nasledujuce fakty.
+   A. Na to, aby DRIVER mohol byt nainstalovany do WINDOWS, MUSI byt SIGNED.
+   B. DRIVERS musia byt SIGNED nasledujucimi AUTHORITIES.
+	  A. PUBLISHER.
+      B. MICROSOFT.
+   C. Pre PUBLISHER SIGNING platia nasledujuce fakty.
+      A. DRIVER je SIGNED CERTIFICATE, ktory je mozne zakupit od CERTIFICATION AUTHORITY.
+	  B. PUBLISHER sluzi na to, aby bolo garantovane, ze DRIVER po vydani danym PUBLISHER sa nezmenil na binarnej urovni.
+	  !!! C. PUBLISHER SINGING sa vykonava pomocou TOOL [SignTool.exe], ktory je sucastou WINDOWS SDK.
+	  !!! D. PUBLISHER SINGING sa moze vykonat aj pomocou VISUAL STUDIO, ak je CERTIFICATE ziskany od CERTIFICATE AUTHORITY je instalovany na BUILD MACHINE, kde sa nachadza VISUAL STUDIO.
+   D. Pre MICROSOFT SIGNING platia nasledujuce fakty.
+      A. MICROSOFT SIGNING je vykonavany pomocu MICROSOFT WEB PAGE.
+	  B. Sucastou MICROSOFT SIGNING je automaticke testovanie DRIVER zo strany MICROSOFT, ktoreho cielom je detekovat mozne ERRORS v DRIVER CODE.
+	  C. Automaticke testovanie zo strany MICROSOFT sa nazyva WINDOWS HARDWARE QUALITY LAB.
+3. VISUAL STUDIO podporuje nasledujuce sposoby DRIVER SIGNING.
+   A. TEST SIGN, kde SIGNING je vykonany pomocou TEST CERTIFICATE.
+   B. PRODUCTION SIGN, kde SIGNING je vykonany pomocou skutocneho CERTIFICATE ziskaneho z CERTIFICATE AUTHORITY.
+4. TEST SIGN sa pomocou VISUAL STUDIO vykonava v nasledujucich krokoch.
+   A. V PROJECT PROPERTIES v OPTION [Configuration Properties->Driver Signing->General->Sign Mode] sa vyberie VALUE [Test Sign].
+   B. V PROJECT PROPERTIES v OPTION [Configuration Properties->Driver Signing->General->Test Certificate] sa vyberie, alebo vygeneruje a vyberie TEST CERTIFICATE.
+5. PRODUCTION SIGN sa pomocou VISUAL STUDIO vykonava v nasledujucich krokoch.
+   A. Na MACHINE, kde sa nachadza VISUAL STUDIO sa musi nachadzat v CERTIFICATION STORE CERTIFICATE ziskany z CERTIFICATE AUTHORITY.
+   B. V PROJECT PROPERTIES v OPTION [Configuration Properties->Driver Signing->General->Sign Mode] sa vyberie VALUE [Production Sign].
+   C. V PROJECT PROPERTIES v OPTION [Configuration Properties->Driver Signing->General->Production Certificate] sa vyberie CERTIFICATE.
+6. DRIVER VERIFIER je TOOL, ktory je sucastou WINDOWS a ktory sluzi na verifikaciu DRIVERS. Pre DRIVER VERIFIER platia nasledujuce fakty.
+   A. DRIVER VERIFIER vykonava rozlicne CHECKS nad vybratymi DRIVERS s cielom zistit ci DRIVERS nesposobuju BUG CHECKS, alebo ine problemy.
+   B. Prikladom kontrol vykonavanych DRIVER VERIFIER je alokacia MEMORY v SPECIAL POOLS, kde citanie ci zapis do MEMORY, ktora je OUTSIDE BOUNDS okamzite vyvola BUG CHCEK.
+   C. DRIVER VERIFIER [verifier.exe] je mozne spustat nasledujucimi sposobmi.
+      A. Ak sa DRIVER VERIFIER [verifier.exe] spusi BEZ COMMAND LINE ARGUMENTS, spusti sa GUI, ktore umoznuje nakonfigurovat DRIVER VERIFIER.
+      B. Ak sa DRIVER VERIFIER [verifier.exe] spusi S COMMAND LINE ARGUMENTS, spusti sa ako CONSOLE PROGRAM.
+   D. Po nakonfigurovani DRIVER VERIFIER je potrebne vykonat REBOOT, aby sa nastavenia DRIVER VERIFIER aplikovali.
+   !!! E. Cela filozofia DRIVER VERIFIER spociva v tom, ze sa nakonfiguruje DRIVER VERIFIER a nasledne je nutne manualne DRIVER pouzivat. V pripade ERROR je pri pouziti DRIVER VERIFIER daleko vyssia pravdepodobnost vzniku BUG CHECK.
+   !!! F. Po odladeni DRIVER je nutne vypnut DRIVER VERIFIER, aby sa nespustal po kazdom REBOOT a nespomalova beh MACHINE.
+7. WINDOWS organizuje DRIVERS do DEVICE OBJECT STACKS. Pre DEVICE OBJECT STACKS platia nasledujuce fakty.
    A. DRIVERS vystavuju DEVICE OBJECTS. DEVICE OBJECTS su organizovane v podobe DEVICE OBJECT STACKS.
    B. DEVICE OBJECT STACK je STACK DEVICE OBJECTS. IRP vstupujuci do DEVICE OBJECT STACK prechadza jednotlivymi DEVICE OBJECTS od NAJVYSSIEHO po NAJNIZSI DEVICE OBJECT. Po spracovani IRP zas IRP prechadza od NAJNIZSIEHO po NAJVYSSI DEVICE OBJECT.
    C. DEVICE OBJECT STACK obsahuje DEVICE OBJECTS v nasledujucom poradi.
@@ -9,17 +42,17 @@
       C. LOWER FILTER DEVICE OBJECTS (FIDO). DEVICE OBJECT STACKS mozu obsahovat <0,N> UPPER FIDO.
 	  D. PHYSICAL DEVICE OBJECT (PDO). DEVICE OBJECT STACKS obsahuju 1 PDO.
 	D. DEVICE OBJECT STACKS su vytvarane PLUG AND PLAY MANAGER smerom zdola nahor.
-3. Pre PHYSICAL DEVICE OBJECTS platia nasledujuce fakty.
+8. Pre PHYSICAL DEVICE OBJECTS platia nasledujuce fakty.
    A. PDO je vzdy vytvarany BUS DRIVER toho BUS ku ktoremu je dane HW DEVICE pripojeny.
    B. PDO sa vzdy nachadza na BOTTOM DEVICE OBJECT STACK.
-4. Pre FUNCTIONAL DEVICE OBJECTS platia nasledujuce fakty.
+9. Pre FUNCTIONAL DEVICE OBJECTS platia nasledujuce fakty.
    A. FDO je vytvarany 'skutocnym' DRIVER, ktory ovlada dane HW DEVICE.
    B. FDO sa nachadza nad PDO v DEVICE OBJECT STACK.
-5. Pre FILTER DEVICE OBJECTS platia nasledujuce fakty.
+10. Pre FILTER DEVICE OBJECTS platia nasledujuce fakty.
    A. FILTER DEVICE OBJECTS su vytvarane FILTER DRIVERS.
    B. FILTER DEVICE OBJECTS sa mozu nachadzat v DEVICE OBJECT STACK medzi PDO a FDO, alebo medzi FDO a vrcholom DEVICE OBJECT STACK.
    C. FILTER DEVICE OBJECTS su OPTIONAL.
-6. Pre FILTER DRIVERS platia nasledujuce fakty.
+11. Pre FILTER DRIVERS platia nasledujuce fakty.
    A. FILTER DRIVERS vytvaraju DEVICE OBJECTS, ktore mozu byt zaradene do DEVICE OBJECT STACK na nasledujuce pozicie.
       A. UPPER FILTER DEVICE OBJECTS su zaradene medzi KERNEL IO MANAGER a FUNCTIONAL DEVICE OBJECT.
       B. LOWER FILTER DEVICE OBJECTS su zaradene medzi FUNCTIONAL DEVICE OBJECT a PHYSICAL DEVICE OBJECT.
@@ -35,50 +68,50 @@
    I. Odpojenie DEVICE OBJECT do DEVICE OBJECT STACK moze byt vykonavana nasledovnymi sposobmi.
       A. AUTOMATICKY pomocou PLUG AND PLAY MANAGER pri odstranovani pripojeneho HW DEVICE do SYSTEMU.
 	  B. MANUALNE volanim FUNCTION [IoDetachDevice] v lubovolnom case.
-7. Pre spracovanie INTERRUPT REQUEST PACKETS vo FILTER DRIVERS platia nasledujuce fakty.
+12. Pre spracovanie INTERRUPT REQUEST PACKETS vo FILTER DRIVERS platia nasledujuce fakty.
    A. FILTER DEVICE OBJECTS MUSIA INTERRUPT REQUEST PACKETS pre VSETKY MAJOR FUNCTION bud spracovat, alebo poslat do DEVICE OBJECTS NIZSIE v DEVICE OBJECT STACK na dalsie spracovanie. Ak by INTERRUPT REQUEST PACKETS neboli poslane do DEVICE OBJECTS NIZSIE v DEVICE OBJECT STACK, mohlo by to narusit functionalitu HW DEVICE ci samotneho SYSTEMU.
    B. FILTER DEVICE OBJECTS odosielaju INTERRUPT REQUEST PACKETS do DEVICE OBJECTS NIZSIE v DEVICE OBJECT STACK volanim FUNCTION [IoCallDriver()] do ktorej sa ako TARGET DEVICE OBJECT posiela ten DEVICE OBJECT, ktory vratila FUNCTION [IoAttachDevice()], FUNCTION [IoAttachDeviceToDeviceStack()], alebo FUNCTION [IoAttachDeviceToDeviceStackSafe()].
    !!! C. Pred odoslanim INTERRUPT REQUEST PACKET do DEVICE OBJECTS NIZSIE v DEVICE OBJECT STACK musi FILTER DRIVER pripravit instanciu STRUCTURE [IO_STACK_LOCATION] pre DEVICE OBJECT NIZSIE v DEVICE OBJECT STACK. To sa da vykonat nasledujucimi sposobmi.
       A. Pouzitim FUNCTION [IoGetNextIrpStackLocation()].
       B. Pouzitim FUNCTION [IoCopyCurrentIrpStackLocationToNext()].
       C. Pouzitim FUNCTION [IoSkipCurrentIrpStackLocation()].
-8. Pre pripravu instancie STRUCTURE [IO_STACK_LOCATION] pomocou FUNCTION [IoGetNextIrpStackLocation()] platia nasledujuce fakty.
+13. Pre pripravu instancie STRUCTURE [IO_STACK_LOCATION] pomocou FUNCTION [IoGetNextIrpStackLocation()] platia nasledujuce fakty.
    A. Pri tomto sposobe FILTER DRIVER MANUALNE pripravi instanciu STRUCTURE [IO_STACK_LOCATION] pre DEVICE OBJECT NIZSIE v DEVICE OBJECT STACK nastavenim vsetkych jej FIELDS.
    B. Volanim FUNCTION [IoGetNextIrpStackLocation()] ziska FILTER DRIVER POINTER na instanciu STRUCTURE [IO_STACK_LOCATION] pre DEVICE OBJECT NIZSIE v DEVICE OBJECT STACK. Tu nasledne moze lubovolne upravit.
    !!!!! C. Tento sposob umoznuje, aby FILTER DRIVER nastavil vlastnu COMPLETIION ROUTINE, ktora sa vola pri ukonceni daneho INTERRUPT REQUEST PACKET. COMPETION ROUTINE je VZDY ulozena v instancii STRUCTURE [IO_STACK_LOCATION] pre DEVICE OBJECT NIZSIE v DEVICE OBJECT STACK a teda ziskanim POINTER na tuto instanciu moze FILTER OBJECT nastavit svoju vlastnu COMPLETION ROUTINE.
    D. Po pripraveni instancie STRUCTURE [IO_STACK_LOCATION] FILTER DRIVER zavola FUNCTION [IoCallDriver()], ktora DEKREMENTUJE poziciu STACK LOCATION, takze DEVICE OBJECT, ktory je NIZSIE v DEVICE OBJECT STACK ziska POINTER na instanciu STRUCTURE [IO_STACK_LOCATION] nastavenu FILTER DRIVER.
-9. Pre pripravu instancie STRUCTURE [IO_STACK_LOCATION] pomocou FUNCTION [IoCopyCurrentIrpStackLocationToNext()] platia nasledujuce fakty.
+14. Pre pripravu instancie STRUCTURE [IO_STACK_LOCATION] pomocou FUNCTION [IoCopyCurrentIrpStackLocationToNext()] platia nasledujuce fakty.
    A. Pri tomto sposobe FILTER DRIVER pripravi instanciu STRUCTURE [IO_STACK_LOCATION] pre DEVICE OBJECT NIZSIE v DEVICE OBJECT STACK skopirovanim takmer vsetkych FIELDS z instancie STRUCTURE [IO_STACK_LOCATION] pre CURRENT DEVICE OBJECT do instancie STRUCTURE [IO_STACK_LOCATION] pre DEVICE OBJECT NIZSIE v DEVICE OBJECT STACK.
    !!!!! B. FUNCTION [IoCopyCurrentIrpStackLocationToNext()] NEVYKONAVA iba kopirovanie FIELD [IO_STACK_LOCATION::CompletionRoutine] z instancie STRUCTURE [IO_STACK_LOCATION] pre CURRENT DEVICE OBJECT do instancie STRUCTURE [IO_STACK_LOCATION] pre DEVICE OBJECT NIZSIE v DEVICE OBJECT STACK. Je to preto, lebo tento FIELD pre instanciu STRUCTURE [IO_STACK_LOCATION] CURRENT DEVICE OBJECT obsahuje COMPLETION ROUTINE DEVICE OBJECT VYSSIE v DEVICE OBJECT STACK. A tak kopirovanim tohto FIELD by DEVICE OBJECT NIZSIE v DEVICE OBJECT STACK obsahoval COMPLETION ROUTINE nespravneho DEVICE OBJECT.
    !!!!! C. Tento sposob umoznuje, aby FILTER DRIVER nastavil vlastnu COMPLETIION ROUTINE, ktora sa vola pri ukonceni daneho INTERRUPT REQUEST PACKET. COMPETION ROUTINE je VZDY ulozena v instancii STRUCTURE [IO_STACK_LOCATION] pre DEVICE OBJECT NIZSIE v DEVICE OBJECT STACK a teda ziskanim POINTER na tuto instanciu moze FILTER OBJECT nastavit svoju vlastnu COMPLETION ROUTINE.
    D. Po pripraveni instancie STRUCTURE [IO_STACK_LOCATION] FILTER DRIVER zavola FUNCTION [IoCallDriver()], ktora DEKREMENTUJE poziciu STACK LOCATION, takze DEVICE OBJECT, ktory je NIZSIE v DEVICE OBJECT STACK ziska POINTER na instanciu STRUCTURE [IO_STACK_LOCATION] nastavenu FILTER DRIVER.
-10. Pre pripravu instancie STRUCTURE [IO_STACK_LOCATION] pomocou FUNCTION [IoSkipCurrentIrpStackLocation()] platia nasledujuce fakty.
+15. Pre pripravu instancie STRUCTURE [IO_STACK_LOCATION] pomocou FUNCTION [IoSkipCurrentIrpStackLocation()] platia nasledujuce fakty.
    A. Pri tomto sposobe FILTER DRIVER NEMODIFIKUJE instanciu STRUCTURE [IO_STACK_LOCATION] pre DEVICE OBJECT NIZSIE v DEVICE OBJECT STACK, ale poskytne svoju vlastnu instanciu STRUCTURE [IO_STACK_LOCATION] pre CURRENT DEVICE OBJECT DEVICE OBJECT NIZSIE v DEVICE OBJECT STACK.
    !!!!! B. Pri tomto sposobne FILTER OBJECT NESMIE nastavit vlastnu COMPLETION ROUTINE. Je to preto, lebo instancia STRUCTURE [IO_STACK_LOCATION] pre CURRENT DEVICE OBJECT, ktora je posunuta do DEVICE OBJECT NIZSIE v DEVICE OBJECT STACK moze obsahovat COMPLETION ROUTINE DEVICE OBJECT VYSSIE v DEVICE OBJECT STACK. Nastavenim vlastnej COMPLETION ROUTINE by sa COMPLETION ROUTINE pre DEVICE OBJECT VYSSIE v DEVICE OBJECT STACK NIKDY NEZAVOLALA.
    !!! C. FUNCTION [IoSkipCurrentIrpStackLocation()] v skutocnosti nijako nemodifikuje instanciu STRUCTURE [IO_STACK_LOCATION], ale iba INKREMENTUJE COUNTER DEVICE OBJECT STACK. Nasledne volanie FUNCTION [IoCallDriver()] ho DEKREMENTUJE, takze DEVICE OBJECT NIZSIE v DEVICE OBJECT STACK odkazuje na tu istu instanciu STRUCTURE [IO_STACK_LOCATION] ako CURRENT DEVICE OBJECT.
    !!! D. Po pripraveni instancie STRUCTURE [IO_STACK_LOCATION] FILTER DRIVER zavola FUNCTION [IoCallDriver()], ktora DEKREMENTUJE poziciu STACK LOCATION, takze DEVICE OBJECT, ktory je NIZSIE v DEVICE OBJECT STACK ziska POINTER na instanciu STRUCTURE [IO_STACK_LOCATION] pre CURRENT DEVICE OBJECT STACK.
-11. Pre FUNCTION [IoGetNextIrpStackLocation()] platia nasledujuce fakty.
+16. Pre FUNCTION [IoGetNextIrpStackLocation()] platia nasledujuce fakty.
    A. FUNCTION ma PROTOTYPE [PIO_STACK_LOCATION IoGetNextIrpStackLocation(PIRP Irp)].
    B. PARAMETER [PIRP Irp] obsahuje INTERRUPT REQUEST PACKET pre ktory sa ma ziskat instancia STRUCTURE [PIO_STACK_LOCATION].
    C. RETURN VALUE TYPE [PIO_STACK_LOCATION] obsahuje instanciu STRUCTURE [PIO_STACK_LOCATION] pre DEVICE OBJECT NIZSIE v DEVICE OBJECT STACK.
    D. FUNCTION vracia instanciu STRUCTURE [PIO_STACK_LOCATION] pre DEVICE OBJECT NIZSIE v DEVICE OBJECT STACK.
-12. Pre FUNCTION [IoCopyCurrentIrpStackLocationToNext()] platia nasledujuce fakty.
+17. Pre FUNCTION [IoCopyCurrentIrpStackLocationToNext()] platia nasledujuce fakty.
    A. FUNCTION ma PROTOTYPE [void IoCopyCurrentIrpStackLocationToNext(PIRP Irp)].
    B. PARAMETER [PIRP Irp] obsahuje INTERRUPT REQUEST PACKET v ktorom ma dojst ku kopirovaniu instancii STRUCTURES [IO_STACK_LOCATION].
    !!! C. FUNCTION kopiruje VSETKY FIELDS okrem FIELD [IO_STACK_LOCATION::CompletionRoutine] z instancie STRUCTURE [IO_STACK_LOCATION] pre CURRENT DEVICE OBJECT do instancie STRUCTURE [IO_STACK_LOCATION] pre DEVICE OBJECT NIZSIE v DEVICE OBJECT STACK.
    !!!!! D. FIELD FIELD [IO_STACK_LOCATION::CompletionRoutine] nie je umyselne kopirovany, pretoze by mohol obsahovat COMPLETION ROUTINE pre DEVICE OBJECT VYSSIE v DEVICE OBJECT STACK.
-13. Pre FUNCTION [IoSkipCurrentIrpStackLocation()] platia nasledujuce fakty.
+18. Pre FUNCTION [IoSkipCurrentIrpStackLocation()] platia nasledujuce fakty.
    A. FUNCTION ma PROTOTYPE [void IoSkipCurrentIrpStackLocation(PIRP Irp)].
    B. PARAMETER [PIRP Irp] obsahuje INTERRUPT REQUEST PACKET v ktorom ma dojde k modifikacii DEVICE OBJECT STACK LOCATION.
    !!! C. FUNCTION INKREMENTUJE DEVICE OBJECT STACK LOCATION pre INTERRUPT REQUEST PACKET. Nasledne volanie FUNCTION [IoCallDriver()] INKREMENTUJE DEVICE OBJECT STACK LOCATION, takze DEVICE OBJECT NIZSIE v DEVICE OBJECT STACK sa bude referovat na instanciu [IO_STACK_LOCATION] CURRENT DEVICE OBJECT.
-14. Pre FUNCTION [IoCallDriver()] platia nasledujuce fakty.
+19. Pre FUNCTION [IoCallDriver()] platia nasledujuce fakty.
    A. FUNCTION ma PROTOTYPE [NTSTATUS IoCallDriver(PDEVICE_OBJECT DeviceObject, PIRP Irp)].
    B. PARAMETER [PDEVICE_OBJECT DeviceObject] obsahuje DEVICE OBJECT do ktoreho ma byt INTERRUPT REQUEST PACKET zaslany.
    C. PARAMETER [PIRP Irp] obsahuje INTERRUPT REQUEST PACKET, ktory ma byt odoslany do ineho DEVICE OBJECT.
    D. RETURN VALUE TYPE [NTSTATUS] obsahuje informaciu ci FUNCTION skoncila uspesne.
    E. FUNCTION odosiela INTERRUPT REQUEST PACKET do DEVICE OBJECT na dalsie spracovanie.
    !!! F. FUNCTION DEKREMENTUJE DEVICE OBJECT STACK LOCATION.
-15. Pre AUTMATICKE pripojenie FILTER DEVICE OBJECTS platia nasledujuce fakty.
+20. Pre AUTMATICKE pripojenie FILTER DEVICE OBJECTS platia nasledujuce fakty.
    A. AUTMATICKE pripojenie FILTER DEVICE OBJECTS vykonava PLUG AND PLAY MANAGER pri BOOT, alebo ked je do SYSTEMU pridany novy HW DEVICE.
    B. PLUG AND PLAY MANAGER vytvara cely DEVICE OBJECT STACK pre dany HW DEVICE na zaklade udajov v REGISTRY.
    C. Aby FILTER DEVICE OBJECT pre dany FILTER DRIVER bol pripojeny, musia byt jeho udaje ulozene v REGISTRY.
@@ -95,7 +128,7 @@
 	  !!! J. CALLBACK FUNCTION vo FIELD [DRIVER_OBJECT::DriverExtension::AddDevice] v PARAMETER [AttachedToDeviceObject] FUNCTION [IoAttachDeviceToDeviceStackSafe()] ziska POINTER na DEVICE OBJECT ku ktoremu je skutocne pripojeny. Teda k DEVICE OBJECT, ktory sa nachadza o 1 priecku nizsie v DEVICE OBJECT STACK ako novy DEVICE OBJECT.
 	  K. CALLBACK FUNCTION vo FIELD [DRIVER_OBJECT::DriverExtension::AddDevice] nasledne skopiruje vsetky potrebne FIELDS z DEVICE OBJECT [AttachedToDeviceObject] do noveho DEVICE OBJECT, pretoze novy DEVICE OBJECT tvori novy VRCHOL DEVICE OBJECT STACK z ktoreho IO MANAGER berie VALUES tychto FIELDS.
 	  L. PLUG AND PLAY MANAGER nasledne cely proces opakuje pre dalsi DRIVER, ktoreho DEVICE OBJECT ma byt zaradeny do DEVICE OBJECT STACK daneho HW DEVICE.
-16. Pre MANUALNE pripojenie FILTER DEVICE OBJECTS platia nasledujuce fakty.
+21. Pre MANUALNE pripojenie FILTER DEVICE OBJECTS platia nasledujuce fakty.
    A. MANUALNE pripojenie FILTER DEVICE OBJECTS sa moze vykonavat DYNAMICKY v lubovolnom okamihu behu SYSTEMU.
    B. MANUALNE pripojenie NEVYKONAVA PLUG AND PLAY MANAGER, ale vykonava ho lubovolny KERNEL CODE volanim FUNCTION [IoAttachDevice()], FUNCTION [IoAttachDeviceToDeviceStack()], alebo FUNCTION [IoAttachDeviceToDeviceStackSafe()].
    C. MANUALNE pripojenie je plne dynamicke a nevyzaduje ulozenie ziadnych udajov do REGISTRY.
@@ -106,7 +139,7 @@
 	  !!!!! D. Aj ked FUNCTION [IoAttachDeviceToDeviceStackSafe()] s PARAMETER [LowerDeviceObject], ktory sa NENACHADZA na VRCHOLE DEVICE OBJECT STACK, novy DEVICE OBJECT je pridany na VRCHOL DEVICE OBJECT STACK.
 	  !!! E. PARAMETER [AttachedToDeviceObject] FUNCTION [IoAttachDeviceToDeviceStackSafe()] ziska POINTER na DEVICE OBJECT ku ktoremu je skutocne pripojeny. Teda k DEVICE OBJECT, ktory sa nachadza o 1 priecku nizsie v DEVICE OBJECT STACK ako novy DEVICE OBJECT.
 	  F. KERNEL CODE nasledne skopiruje vsetky potrebne FIELDS z DEVICE OBJECT [AttachedToDeviceObject] do noveho DEVICE OBJECT, pretoze novy DEVICE OBJECT tvori novy VRCHOL DEVICE OBJECT STACK z ktoreho IO MANAGER berie VALUES tychto FIELDS.
-17. Pre FUNCTION [IoAttachDevice()] platia nasledujuce fakty.
+22. Pre FUNCTION [IoAttachDevice()] platia nasledujuce fakty.
    A. FUNCTION ma PROTOTYPE [NTSTATUS IoAttachDevice(PDEVICE_OBJECT SourceDevice, PUNICODE_STRING TargetDevice, PDEVICE_OBJECT* AttachedDevice)].
    B. PARAMETER [PDEVICE_OBJECT SourceDevice] obsahuje POINTER na DEVICE OBJECT, ktory ma byt pripojeny k DEVICE OBJECT STACK.
    C. PARAMETER [PUNICODE_STRING TargetDevice] obsahuje nazov DEVICE OBJECT ku ktoremu ma byt DEVICE OBJECT v PARAMETER [PDEVICE_OBJECT SourceDevice] pripojeny.
@@ -115,7 +148,7 @@
    F. FUNCTION pridava DEVICE OBJECT na VRCHOL DEVICE OBJECT STACK.
    !!! G. DEVICE OBJECT sa odstranuje z DEVICE OBJECT STACK volanim FUNCTION [IoDetachDevice()].
    !!!!! H. Volanie FUNCTION OKAMZITE generuje INTERRUPT REQUEST PACKETS s MAJOR FUNCTION [IRP_MJ_CREATE] a MAJOR FUNCTION [IRP_MJ_CLEANUP], a kedze DISPATCH ROUTINES, ak chcu posielat tieto INTERRUPT REQUEST PACKETS do DEVICE OBJECT NIZSIE v DEVICE OBJECT STACK, MUSIA mat uz k dispozicii POINTER na DEVICE OBJECT NIZSIE v DEVICE OBJECT STACK. Preto PARAMETER [PDEVICE_OBJECT* AttachedDevice] sa MUSI ukladat do VARIABLE, ktora je pristupna z DISPATCH ROUTINES.
-18. Pre FUNCTION [IoAttachDeviceToDeviceStack()] platia nasledujuce fakty.
+23. Pre FUNCTION [IoAttachDeviceToDeviceStack()] platia nasledujuce fakty.
    A. FUNCTION ma PROTOTYPE [PDEVICE_OBJECT IoAttachDeviceToDeviceStack(PDEVICE_OBJECT SourceDevice, PDEVICE_OBJECT TargetDevice)].
    B. PARAMETER [PDEVICE_OBJECT SourceDevice] obsahuje POINTER na DEVICE OBJECT, ktory ma byt pripojeny k DEVICE OBJECT STACK.
    C. PARAMETER [PDEVICE_OBJECT TargetDevice] obsahuje POINTER na DEVICE OBJECT, ku ktoremu ma byt DEVICE OBJECT v PARAMETER [PDEVICE_OBJECT SourceDevice] pripojeny.
@@ -123,7 +156,7 @@
    E. FUNCTION pridava DEVICE OBJECT na VRCHOL DEVICE OBJECT STACK.
    !!! F. DEVICE OBJECT sa odstranuje z DEVICE OBJECT STACK volanim FUNCTION [IoDetachDevice()].
    !!!!! G. Volanie FUNCTION OKAMZITE generuje INTERRUPT REQUEST PACKETS s MAJOR FUNCTION [IRP_MJ_CREATE] a MAJOR FUNCTION [IRP_MJ_CLEANUP], a kedze DISPATCH ROUTINES, ak chcu posielat tieto INTERRUPT REQUEST PACKETS do DEVICE OBJECT NIZSIE v DEVICE OBJECT STACK, MUSIA mat uz k dispozicii POINTER na DEVICE OBJECT NIZSIE v DEVICE OBJECT STACK. Preto PARAMETER [PDEVICE_OBJECT* AttachedDevice] sa MUSI ukladat do VARIABLE, ktora je pristupna z DISPATCH ROUTINES.
-19. Pre FUNCTION [IoAttachDeviceToDeviceStackSafe()] platia nasledujuce fakty.
+24. Pre FUNCTION [IoAttachDeviceToDeviceStackSafe()] platia nasledujuce fakty.
    A. FUNCTION ma PROTOTYPE [NTSTATUS IoAttachDeviceToDeviceStackSafe(PDEVICE_OBJECT SourceDevice, PDEVICE_OBJECT TargetDevice, PDEVICE_OBJECT *AttachedToDeviceObject)].
    B. PARAMETER [PDEVICE_OBJECT SourceDevice] obsahuje POINTER na DEVICE OBJECT, ktory ma byt pripojeny k DEVICE OBJECT STACK.
    C. PARAMETER [PDEVICE_OBJECT TargetDevice] obsahuje POINTER na DEVICE OBJECT, ku ktoremu ma byt DEVICE OBJECT v PARAMETER [PDEVICE_OBJECT SourceDevice] pripojeny.
@@ -132,7 +165,7 @@
    F. FUNCTION pridava DEVICE OBJECT na VRCHOL DEVICE OBJECT STACK.
    !!! G. DEVICE OBJECT sa odstranuje z DEVICE OBJECT STACK volanim FUNCTION [IoDetachDevice()].
    !!!!! H. Volanie FUNCTION OKAMZITE generuje INTERRUPT REQUEST PACKETS s MAJOR FUNCTION [IRP_MJ_CREATE] a MAJOR FUNCTION [IRP_MJ_CLEANUP], a kedze DISPATCH ROUTINES, ak chcu posielat tieto INTERRUPT REQUEST PACKETS do DEVICE OBJECT NIZSIE v DEVICE OBJECT STACK, MUSIA mat uz k dispozicii POINTER na DEVICE OBJECT NIZSIE v DEVICE OBJECT STACK. Preto PARAMETER [PDEVICE_OBJECT* AttachedDevice] sa MUSI ukladat do VARIABLE, ktora je pristupna z DISPATCH ROUTINES.
-20. Pre FUNCTION [IoGetDeviceObjectPointer()] platia nasledujuce fakty.
+25. Pre FUNCTION [IoGetDeviceObjectPointer()] platia nasledujuce fakty.
    A. FUNCTION ma PROTOTYPE [NTSTATUS IoGetDeviceObjectPointer(PUNICODE_STRING ObjectName, ACCESS_MASK DesiredAccess, PFILE_OBJECT* FileObject, PDEVICE_OBJECT* DeviceObject)].
    B. PARAMETER [PUNICODE_STRING ObjectName] obsahuje nazov DEVICE OBJECT ktoreho DEVICE OBJECT sa ma vratit.
    C. PARAMETER [ACCESS_MASK DesiredAccess] obsahuje ACCESS MASK urcujuci pozadovany ACCESS.
@@ -141,7 +174,7 @@
    F. RETURN VALUE TYPE [NTSTATUS] obsahuje informaciu ci FUNCTION skoncila uspesne.
    G. FUNCTION vracia DEVICE OBJECT pre dany DEVICE OBJECT NAME.
    !!!!! H. Pri DEVICE OBJECT DETACH je NUTNE volat pre PARAMETER [PFILE_OBJECT* FileObject] FUNCION [ObDereferenceObject()], ktora DEKREMENTUJE COUNTER daneho DEVICE OBJECT.
-21. Pre AUTMATICKE odpojenie FILTER DEVICE OBJECTS platia nasledujuce fakty.
+26. Pre AUTMATICKE odpojenie FILTER DEVICE OBJECTS platia nasledujuce fakty.
    A. AUTMATICKE odpojenie FILTER DEVICE OBJECTS vykonava PLUG AND PLAY MANAGER pri SHUTDOWN, alebo ked je zo SYSTEMU odstraneny existujuci HW DEVICE.
    B. PLUG AND PLAY MANAGER uvolnuje cely DEVICE OBJECT STACK.
    !!! C. AUTMATICKE odpojenie FILTER DEVICE OBJECTS sa vykonava pocas spracovania MAJOR FUNCTION [IRP_MJ_PNP] a MINOR FUNCTION [IRP_MN_REMOVE_DEVICE]. FILTER DRIVER preto MUSI mat explicitnu implementaciu MAJOR FUNCTION [IRP_MJ_PNP].
@@ -168,7 +201,7 @@
 	  !!!!! E. Ak sa jedna o INTERRUPT REQUEST PACKET s MINOR FUNCTION [IRP_MN_REMOVE_DEVICE], DISPATCH ROUTINE zavola FUNCTION [IoReleaseRemoveLockAndWait()], ktora vykona WAIT, az kym nie su vsetky ostatne INTERRUPT REQUEST PACKETS pre dany DEVICE OBJECT STACK spracovane.
 	  !!! F. Po ukonceni WAIT zavola DISPATCH ROUTINE FUNCTION [IoDetachDevice()] na odpojenie DEVICE OBJECT od DEVICE OBJECT STACK.
 	  G. Nasledne DISPATCH ROUTINE zavola FUNCTION [IoDeleteDevice()] na uvolnenie DEVICE OBJECT z MEMORY.
-22. Pre MANUALNE odpojenie FILTER DEVICE OBJECTS platia nasledujuce fakty.
+27. Pre MANUALNE odpojenie FILTER DEVICE OBJECTS platia nasledujuce fakty.
    A. MANUALNE odpojenie FILTER DEVICE OBJECTS sa moze vykonavat DYNAMICKY v lubovolnom okamihu behu SYSTEMU.
    B. MANUALNE odpojenie NEVYKONAVA PLUG AND PLAY MANAGER, ale vykonava ho lubovolny KERNEL CODE volanim FUNCTION [IoDetachDevice()].
    C. MANUALNE odpojenie je plne dynamicke a nevyzaduje ulozenie ziadnych udajov do REGISTRY.
@@ -177,19 +210,19 @@
 	  B. KERNEL CODE zavola FUNCTION [IoDetachDevice()], ktora sa vola s PARAMETER [LowerDeviceObject].
 	  !!! C. FUNCTION [IoDetachDevice()] odstrani DEVICE OBJECT z DEVICE OBJECT STACK.
 	  D. KERNEL CODE uvolni CURRENT DEVICE OBJECT volanim FUNCTION [IoDeleteDevice()].
-23. Pre FUNCTION [IoDetachDevice()] platia nasledujuce fakty.
+28. Pre FUNCTION [IoDetachDevice()] platia nasledujuce fakty.
    A. FUNCTION ma PROTOTYPE [void IoDetachDevice(PDEVICE_OBJECT TargetDevice)].
    !!! B. PARAMETER [PDEVICE_OBJECT TargetDevice] obsahuje POINTER na DEVICE OBJECT, do ktoreho ma byt DEVICE OBJECT, ktory volal tuto FUNCTION odpojeny.
    C. RETURN VALUE TYPE [NTSTATUS] obsahuje informaciu ci FUNCTION skoncila uspesne.
    D. FUNCTION odstranuje CURRENT DEVICE OBJECT z VRCHOLU DEVICE OBJECT STACK.
-24. Pre FUNCTION [IoInitializeRemoveLock()] platia nasledujuce fakty.
+29. Pre FUNCTION [IoInitializeRemoveLock()] platia nasledujuce fakty.
    A. FUNCTION ma PROTOTYPE [void IoInitializeRemoveLock(PIO_REMOVE_LOCK Lock, ULONG AllocateTag, ULONG MaxLockedMinutes, ULONG HighWatermark)].
    B. PARAMETER [PIO_REMOVE_LOCK Lock] obsahuje POINTER na REMOVE LOCK, ktory ma byt inicializovany.
    C. PARAMETER [ULONG AllocateTag] obsahuje TAG pouzivany pri alokacii REMOVE LOCK. Tato VALUE sa pouziva iba je DRIVER VERIFIER je povoleny.
    D. PARAMETER [ULONG MaxLockedMinutes] obsahuje maximalny pocet MINUT, ktory ma byt REMOVE LOCK drzany. VALUE [0] znamena, ze LOCK bude drzany nekonecny cas. Tato VALUE sa pouziva iba je DRIVER VERIFIER je povoleny.
    E. PARAMETER [ULONG HighWatermark] obsahuje maximalny pocet OUTSTANDING ACUISITIONS daneho REMOVE LOCK. Tato VALUE sa pouziva iba je DRIVER VERIFIER je povoleny.
    F. FUNCTION inicializuje REMOVE LOCK.
-25. Pre FUNCTION [IoAcquireRemoveLock()] platia nasledujuce fakty.
+30. Pre FUNCTION [IoAcquireRemoveLock()] platia nasledujuce fakty.
    A. FUNCTION ma PROTOTYPE [NTSTATUS IoAcquireRemoveLock(PIO_REMOVE_LOCK RemoveLock, PVOID Tag)].
    B. PARAMETER [PIO_REMOVE_LOCK Lock] obsahuje POINTER na REMOVE LOCK.
    C. PARAMETER [PVOID Tag] obsahuje TAG, ktory identifikuje CODE, ktory vykonava RELEASE daneho REMOVE LOCK.
@@ -197,7 +230,7 @@
    !!! E. FUNCTION INKREMENTUJE INTERRUPT REQUEST PACKET COUNTER, aby nemohlo dojst k predcasnemu uvolneniu DEVICE OBJECT.
    !!!!! F. Ak FUNCTION vrati INU VALUE ako VALUE [STATUS_SUCCESS] je to pre DRIVER CODE indikacia, ze DEVICE OBJECT STACK je v procese odstranovania (DRIVER CODE pri spracovani MINOR FUNCTION [IRP_MN_REMOVE_DEVICE] zavolal FUNCTION [IoReleaseRemoveLockAndWait()]) a INTERRUPT REQUEST PACKET MUSI byt OKAMZITE ukonceny so STATUS, ktory vratila FUNCTION [IoAcquireRemoveLock()].
    !!! G. REMOVE LOCK ziskany volanim tejto FUNCTION je nutne v pripade, ze FUNCTION vrati RETURN VALUE [STATUS_SUCCESS] uvolnit volanim FUNCTION [IoReleaseRemoveLock()].
-26. Pre FUNCTION [IoReleaseRemoveLock()] platia nasledujuce fakty.
+31. Pre FUNCTION [IoReleaseRemoveLock()] platia nasledujuce fakty.
    A. FUNCTION ma PROTOTYPE [NTSTATUS IoReleaseRemoveLock(PIO_REMOVE_LOCK RemoveLock, PVOID Tag)].
    B. PARAMETER [PIO_REMOVE_LOCK Lock] obsahuje POINTER na REMOVE LOCK.
    C. PARAMETER [PVOID Tag] obsahuje TAG, ktory identifikuje CODE, ktory vykonava ACQUIRE daneho REMOVE LOCK.
@@ -205,13 +238,13 @@
    !!! E. TAG v PARAMETER [PVOID Tag] MUSI byt ten ISTY, ako TAG, ktory bol poslany do FUNCTION [IoAcquireRemoveLock()].
    !!! F. Ak DRIVER NEPOUZIVA COMPLETION ROUTINE, FUNCTION musi byt zavolana po odoslanie INTERRUPT REQUEST PACKET do DEVICE OBJECT NIZSIE v DEVICE OBJECT STACK.
    !!!!! G. Ak DRIVER POUZIVA COMPLETION ROUTINE, FUNCTION musi byt zavolana v COMPLETION ROUTINE po skonceni spracovania INTERRUPT REQUEST PACKET.
-27. Pre FUNCTION [IoReleaseRemoveLockAndWait()] platia nasledujuce fakty.
+32. Pre FUNCTION [IoReleaseRemoveLockAndWait()] platia nasledujuce fakty.
    A. FUNCTION ma PROTOTYPE [void IoReleaseRemoveLockAndWait(PIO_REMOVE_LOCK RemoveLock, PVOID Tag)].
    B. PARAMETER [PIO_REMOVE_LOCK Lock] obsahuje POINTER na REMOVE LOCK.
    C. PARAMETER [PVOID Tag] obsahuje TAG, ktory identifikuje CODE, ktory vykonava RELEASE daneho REMOVE LOCK.
    !!! D. FUNCTION vykonava WAIT, az kym pocet aktualne spracovavanych INTERRUPT REQUEST PACKETS neklesne na 0.
    !!! E. TAG v PARAMETER [PVOID Tag] MUSI byt ten ISTY, ako TAG, ktory bol poslany do FUNCTION [IoAcquireRemoveLock()].
-28. DRIVERS vratane FILTER DRIVERS mozu nielen odosielat INTERRUPRT REQUEST PACKETS do DEVICE OBJECTS NIZSIE v DEVICE OBJECT STACK, ale mozu sa prihladit aj na odber COMPLETION ROUTINES, ktore su volane, ak INTERRUPRT REQUEST PACKET je ukonceny a je potrebne spracovat jeho vysledky.
+33. DRIVERS vratane FILTER DRIVERS mozu nielen odosielat INTERRUPRT REQUEST PACKETS do DEVICE OBJECTS NIZSIE v DEVICE OBJECT STACK, ale mozu sa prihladit aj na odber COMPLETION ROUTINES, ktore su volane, ak INTERRUPRT REQUEST PACKET je ukonceny a je potrebne spracovat jeho vysledky.
    A. COMPLETION ROUTINE sluzi na ziskanie vysledkov spracovania INTERRUPT REQUEST PACKET v DEVICE OBJECT NIZSIE v DEVICE OBJECT STACK.
    !!! B. COMPLETION ROUTINES su volane v OPACNOM poradi ako DEVICE OBJECTS v DEVICE OBJECT STACK.
    !!!!! C. COMPLETION ROUTINES su zaregistrovane v STRUCTURE [IO_STACK_LOCATION], ktora odpoveda STACK LOCATION DEVICE OBJECT NIZSIE v DEVICE OBJECT STACK. Vdaka tomu ma DEVICE OBJECT NIZSIE v DEVICE OBJECT STACK pristup ku COMPLETION ROUTINE a moze ju volat.
@@ -224,7 +257,7 @@
       !!! A. Ak RETURN VALUE obsahuje INU VALUE ako VALUE [STATUS_MORE_PROCESSING_REQUIRED], tak WINDOWS pokracuje v spracovani INTERRUPT REQUEST PACKET jeho zaslanim do DEVICE OBJECT VYSSIE v DEVICE OBJECT STACK.
       !!!!! B. Ak RETURN VALUE obsahuje VALUE [STATUS_MORE_PROCESSING_REQUIRED], tak WINDOWS NEPOKRACUJE v spracovani INTERRUPT REQUEST PACKET jeho zaslanim do DEVICE OBJECT VYSSIE v DEVICE OBJECT STACK, az kym DRIVER nazavola FUNCTION [IoCompleteRequest()].
    !!!!!! J. Ak COMPLETION ROUTINE vracia INU RETURN VALUE ako VALUE [STATUS_MORE_PROCESSING_REQUIRED], MUSI vykonat kontrolu ci je FIELD [IRP::PendingReturned] nastaveny na VALUE [TRUE], a ak ano, MUSI zavolat FUNCTION [IoMarkIrpPending()]. Tato FUNCTION vykonava PROPAGATION FLAG [SL_PENDING_RETURNED] do STRUCTURE [IO_STACK_LOCATION] zodpovedajucemu DEVICE OBJECT VYSSIE v DEVICE OBJECT STACK.
-29. Pre FUNCTION [IoSetCompletionRoutineEx()] platia nasledujuce fakty.
+34. Pre FUNCTION [IoSetCompletionRoutineEx()] platia nasledujuce fakty.
    A. FUNCTION ma PROTOTYPE [NTSTATUS IoSetCompletionRoutineEx(PDEVICE_OBJECT DeviceObject, PIRP Irp, PIO_COMPLETION_ROUTINE CompletionRoutine, PVOID Context, BOOLEAN InvokeOnSuccess, BOOLEAN InvokeOnError, BOOLEAN InvokeOnCancel)].
    B. PARAMETER [PDEVICE_OBJECT DeviceObject] obsahuje DEVICE OBJECT pre ktory je COMPLETION ROUTINE volana.
    C. PARAMETER [PIRP Irp] obsahuje INTERRUPT REQUEST PACKET pre ktory je COMPLETION ROUTINE volana.
@@ -236,7 +269,7 @@
    !!! I. FUNCTION musi byt volana AZ PO pripraveni STRUCTURE [IO_STACK_LOCATION] volani FUNCTION [IoCopyCurrentIrpStackLocationToNext()].
    !!!!! J. Ak FUNCTION vrati VALUE [STATUS_SUCCESS], FUNCTION alokuje MEMORY BLOCK, ktory je uvolneny IBA ak DRIVER nasledne zavola FUNCTION [IoCallDriver()]. Inak dojde k MEMORY LEAK.
    !!!!! K. FUNCTION pre NON PLUG AND PLAY DRIVERS garantuje, ze DEVICE OBJECT nie je UNLOADED, skor nez je zavolana COMPLETION ROUTINE.
-30. Pre COMPLETION ROUTINE [IO_COMPLETION_ROUTINE] platia nasledujuce fakty.
+35. Pre COMPLETION ROUTINE [IO_COMPLETION_ROUTINE] platia nasledujuce fakty.
    A. FUNCTION ma PROTOTYPE [NTSTATUS IoCompletionRoutine(PDEVICE_OBJECT DeviceObject, PIRP Irp, PVOID Context)].
    B. PARAMETER [PDEVICE_OBJECT DeviceObject] obsahuje DEVICE OBJECT pre ktory je COMPLETION ROUTINE volana.
    C. PARAMETER [PIRP Irp] obsahuje INTERRUPT REQUEST PACKET, ktoreho spracovanie bolo ukoncene.
@@ -244,18 +277,18 @@
    E. RETURN VALUE TYPE [NTSTATUS] obsahuje informaciu ci FUNCTION skoncila uspesne.
    !!! F. Ak RETURN VALUE obsahuje INU VALUE ako VALUE [STATUS_MORE_PROCESSING_REQUIRED], tak WINDOWS pokracuje v spracovani INTERRUPT REQUEST PACKET jeho zaslanim do DEVICE OBJECT VYSSIE v DEVICE OBJECT STACK.
    !!!!! G. Ak RETURN VALUE obsahuje VALUE [STATUS_MORE_PROCESSING_REQUIRED], tak WINDOWS NEPOKRACUJE v spracovani INTERRUPT REQUEST PACKET jeho zaslanim do DEVICE OBJECT VYSSIE v DEVICE OBJECT STACK, az kym DRIVER nazavola FUNCTION [IoCompleteRequest()].
-31. DEVICE OBJECTS mozu mat asociovane CUSTOM DATA, ktore sa nazyvaju DEVICE EXTENSION. Pre DEVICE EXTENSION platia tieto fakty.
+36. DEVICE OBJECTS mozu mat asociovane CUSTOM DATA, ktore sa nazyvaju DEVICE EXTENSION. Pre DEVICE EXTENSION platia tieto fakty.
    A. DEVICE EXTENSION je CUSTOM STRUCTURE, ktory obsahuje CUSTOM DATA, ktore su asociovane s DEVICE OBJECT.
    B. DEVICE EXTENSION je automaticky alokovany volanim FUNCTION [IoCreateDevice()].
    C. DEVICE EXTENSION je automaticky uvolneny volanim FUNCTION [IoDeleteDevice()]. 
    D. DEVICE EXTENSION je pristupny pomocou FIELD [DEVICE_OBJECT::DeviceExtension].
    !!! E. DEVICE EXTENSION je v MEMORY ulozena HNED za STRUCTURE [DEVICE_OBJECT].
-32. DRIVER HOOKING je technika, ktora umoznuje nahradit vsetky CALLBACK FUNCTIONS STRUCTURE [DRIVER_OBJECT] za CUSTOM CALLBACK FUNCTIONS. Pre DRIVER HOOKING platia nasledujuce fakty.
+37. DRIVER HOOKING je technika, ktora umoznuje nahradit vsetky CALLBACK FUNCTIONS STRUCTURE [DRIVER_OBJECT] za CUSTOM CALLBACK FUNCTIONS. Pre DRIVER HOOKING platia nasledujuce fakty.
    A. DRIVER HOOKING umoznuje nahradit vsetky CALLBACK FUNCTIONS STRUCTURE [DRIVER_OBJECT] za CUSTOM CALLBACK FUNCTIONS.
    B. Na vykonanie DRIVER HOOKING je nutne ziskat POINTER na STRUCTURE [DRIVER_OBJECT]. Ten sa da ziskat volanim UNDOCUMENTED FUNCTION [ObReferenceObjectByName()].
    !!! C. FUNCTION [ObReferenceObjectByName()] vyzaduje DRIVER NAME. DRIVER NAME sa da najst pouzitim TOOL [ObjectManager]. DRIVER NAMES sa nachadzaju v PATH [Driver].
    !!! D. Nie pre vsetky DRIVERS je mozne vykonat DRIVER HOOKING. Niektore DRIVERS su chranene pomocou PATCH GUARD, ktory po vykonani DRIVER HOOKING po nejakom case vykona BUG CHECK.
-33. Pre FUNCTION [ObReferenceObjectByName()] platia nasledujuce fakty.
+38. Pre FUNCTION [ObReferenceObjectByName()] platia nasledujuce fakty.
    A. FUNCTION ma PROTOTYPE [NTSTATUS ObReferenceObjectByName(PUNICODE_STRING ObjectPath, ULONG Attributes, PACCESS_STATE PassedAccessState, ACCESS_MASK DesiredAccess, POBJECT_TYPE ObjectType, KPROCESSOR_MODE AccessMode, PVOID ParseContext, PVOID* Object)].
    B. PARAMETER [PUNICODE_STRING ObjectPath] obsahuje DRIVER NAME.
    C. PARAMETER [ULONG Attributes] obsahuje ATTRIBUTES pre vyhladanie DRIVER NAME. FLAG [OBJ_CASE_INSENSITIVE] vykona CASE INSENSITIVE SEARCH.
@@ -269,6 +302,19 @@
    K. FUNCTION vracia rozne typy OBJECTS, ktore su asociovane s danym DRIVER NAME.
    !!!!! L. OBJECT v PARAMETER [PVOID* Object] musi byt po skonceni pouzivania uvolneny volanim FUNCTION [ObDereferenceObject()].
    !!! M. FUNCTION je UNDOCUMENTED.
+39. STATIC KERNEL LIBRARY sa vytvara nasledujucim sposobom.
+   A. Vytvori sa PROJECT [Empty WDM Driver].
+   B. Do PROJECT sa nakopiruju vsetky FILES, ktore tvoria KERNEL LIBRARY.
+   C. V PROJECT SETTINGS [Configuration Properties->General->General Properties->Configuration Type] sa vyberie OPTION [Static library (.lib)].
+!!! 40. STATIC KERNEL LIBRARY sa pridava nasledujucim sposobom.
+   A. DRIVER by mal referovat na HEADER FILES [.H], ktore sa nachadzaju v STATIC LIBRARY. To znamena, ze treba vlozit celu PATH do referencii na HEADERS.
+   B. Cez SOLUTION EXPLORER sa vlozi LINK na DRIVER nasledujucim sposobom.
+      A. Rozbali sa DRIVER PROJECT.
+	  B. Rozbali sa CONTEXT MENU pre DIRECTORY [References].
+	  C. Z CONTEXT MENU sa vyberie OPTION [Add Reference...].
+	  D. Vo WINDOWS [Add Reference] sa zaskrtne STATIC KERNEL LIBRARY PROJECT.
+	  E. Urobi sa REBUILD.
+   !!! C. Kedze STATIC KERNEL LIBRARY je vlozena priamo do DRIVER a stava sa sucastou DRIVER FILE [.SYS], nie je potrebne ju prenasat pri pouzivani DRIVER.
 //----------------------------------------------------------------------------------------------------------------------
 //----------------------------------------------------------------------------------------------------------------------
 //----------------------------------------------------------------------------------------------------------------------

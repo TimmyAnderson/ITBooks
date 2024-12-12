@@ -463,7 +463,7 @@ void PrintMenu(void)
 {
 	wcout << L"--------------------------------------------------------------------------------" << endl;
 
-	wcout << "COMMANDS: block [PID] | permit [PID] | clear | exit." << endl;
+	wcout << L"COMMANDS: block [PID] | permit [PID] | clear | exit." << endl;
 
 	wcout << L"--------------------------------------------------------------------------------" << endl;
 }
@@ -499,7 +499,7 @@ void ExecuteMenu(HANDLE DeviceHandle)
 			}
 			else
 			{
-				wcout << "PID can't be PARSED !" << endl;
+				wcout << L"PID can't be PARSED !" << endl;
 			}
 		}
 		else if (CommandID==L"permit")
@@ -514,7 +514,7 @@ void ExecuteMenu(HANDLE DeviceHandle)
 			}
 			else
 			{
-				wcout << "PID can't be PARSED !" << endl;
+				wcout << L"PID can't be PARSED !" << endl;
 			}
 		}
 		else if (CommandID==L"clear")
@@ -527,7 +527,7 @@ void ExecuteMenu(HANDLE DeviceHandle)
 		}
 		else
 		{
-			wcout << "UNSUPPORTED COMMAND !" << endl;
+			wcout << L"UNSUPPORTED COMMAND !" << endl;
 		}
 	}
 }
