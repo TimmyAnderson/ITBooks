@@ -1,0 +1,49 @@
+//----------------------------------------------------------------------------------------------------------------------
+1. Solution demonstruje zakladne funkcionality ASP.NET CORE ako su LOGGING a MIDDLEWARE.
+2. LOGGING umoznuje ukladanie LOG MESSAGES do rozlicnych DESTINATIONS ako je CONSOLE, FILES ci AZURE APPLICATION INSIGHTS.
+3. MIDDLEWARE je COMPONENT, ktora sa vklada do HTTP REQUEST MIDDLEWARE CHAIN a umoznuje spracovat HTTP REQUEST MESSAGE a rozhodnut ci HTTP REQUEST posle do nasledujuceho MIDDLEWARE v HTTP REQUEST MIDDLEWARE CHAIN, alebo okamzite ukonci jeho spracovanie odoslanim HTTP RESPOSE MESSAGE.
+4. LOGGING v ASP.NET je postaveny na LOGGING PROVIDERS. Pre LOGGING PROVIDERS platia nasledujuce fakty.
+   A. LOGGING PROVIDER je COMPONENT, ktory je zodpovedny za zapis LOG MESSAGES do DESTINATION.
+   B. LOGGING PROVIDER implementuje INTERFACE [ILoggerProvider], ktory v METHOD [ILogger CreateLogger(string CategoryName)] vracia CLASS implementujucu INTERFACE [ILogger], ktory reprezentuje samotny LOGGER.
+   C. PROGRAM moze mat viacero LOGGING PROVIDERS, ktore su registrovane v PROPERTY [WebApplicationBuilder.Logging].
+   !!! D. BY-DEFAULT, ASP.NET CORE pridava nasledujuce LOGGING PROVIDERS.
+      A. CONSOLE LOGGING PROVIDER.
+      B. DEBUG LOGGING PROVIDER.
+      C. EVENT SOURCE LOGGING PROVIDER.
+      D. EVENT LOG LOGGING PROVIDER. Tento LOG PROVIDER sa pouziva IBA vo WINDOWS.
+   E. DEFAULT LOG PROVIDERS sa daju vymazat volanim METHOD [ILoggingBuilder ClearProviders(this ILoggingBuilder Builder)].
+5. Zapisy LOG MESSAGES do LOGGER sa vykonavaju pomocou INTERFACE [ILogger<TCategoryName>], ktory moze byt cez DEPENDENCY INJECTION vlozene do CONTROLLER. INTERFACE ma nasledujuce METHODS.
+   A. METHOD [void Log<TState>(LogLevel LogLevel, EventId EventId, TState State, Exception Exception, Func<TState,Exception,string> Formatter)] zapisuje genericku LOG MESSAGE. Samotna MESSAGE sa nachadza v PARAMETRI [TState State].
+   B. METHOD [bool IsEnabled (LogLevel LogLevel)] vracia informaciu ci LOG MESSAGE bude pre dany LOGGING LEVEL zapisana do LOGGER.
+   C. EXTENSION METHOD [void Log(this ILogger Logger, LogLevel LogLevel, EventId EventID, Exception Exception, string Message, params object[] Args)] zapisuje LOG MESSAGE pre CATEGORY urcenu PARAMETER [ILogger Logger].
+   D. EXTENSION METHOD [void LogTrace(ILogger Logger, EventId EventID, Exception Exception, string Message, params object[] Args)] zapisuje LOG MESSAGE s LOGGING LEVEL [Trace] pre CATEGORY urcenu PARAMETER [ILogger Logger].
+   E. EXTENSION METHOD [void LogDebug(ILogger Logger, EventId EventID, Exception Exception, string Message, params object[] Args)] zapisuje LOG MESSAGE s LOGGING LEVEL [Debug] pre CATEGORY urcenu PARAMETER [ILogger Logger].
+   F. EXTENSION METHOD [void LogInformation(ILogger Logger, EventId EventID, Exception Exception, string Message, params object[] Args)] zapisuje LOG MESSAGE s LOGGING LEVEL [Information] pre CATEGORY urcenu PARAMETER [ILogger Logger].
+   G. EXTENSION METHOD [void LogWarning(ILogger Logger, EventId EventID, Exception Exception, string Message, params object[] Args)] zapisuje LOG MESSAGE s LOGGING LEVEL [Warning] pre CATEGORY urcenu PARAMETER [ILogger Logger].
+   H. EXTENSION METHOD [void LogError(ILogger Logger, EventId EventID, Exception Exception, string Message, params object[] Args)] zapisuje LOG MESSAGE s LOGGING LEVEL [Error] pre CATEGORY urcenu PARAMETER [ILogger Logger].
+   I. EXTENSION METHOD [void LogCritical(ILogger Logger, EventId EventID, Exception Exception, string Message, params object[] Args)] zapisuje LOG MESSAGE s LOGGING LEVEL [Critical] pre CATEGORY urcenu PARAMETER [ILogger Logger].
+6. LOG MESSAGES maju asociovany LOGGING LEVEL. Pre LOGGING LEVELS platia nasledujuce fakty.
+   A. LOGGING LEVEL je definovany v ENUM [LogLevel], ktory ma nasledujuce VALUES.
+      A. VALUE [LogLevel.Trace] ma VALUE [0].
+      B. VALUE [LogLevel.Debug] ma VALUE [1].
+      C. VALUE [LogLevel.Information] ma VALUE [2].
+      D. VALUE [LogLevel.Warning] ma VALUE [3].
+      E. VALUE [LogLevel.Error] ma VALUE [4].
+      F. VALUE [LogLevel.Critical] ma VALUE [5].
+      G. VALUE [LogLevel.None] ma VALUE [6]. Tento LOG LEVEL sa pouziva v CONFIGURATIONS na vypnutie LOGGING pre danu CATEGORY.
+   B. To co sa dana LOG MESSAGE zapise do LOGGER zavisi od hodnoty LOGGING LEVEL. Ak LOGGING LEVEL danej LOG MESSAGE je [>=] ako nakonfigurovany LOGGING LEVEL pre danu LOG MESSAGE CATEGORY, tak sa LOG MESSAGE zapise. Inak sa ignoruje.
+   C. LOGGING LEVEL pre jednotlive CATEGORIES je ulozeny v CONFIGURATIONS.
+7. LOG MESSAGES maju asociovanu LOG CATEGORY. Pre LOG CATEGORY platia nasledujuce fakty.
+   A. LOG CATEGORY je definovana ako .NET TYPE.
+   B. LOG CATEGORY sa definuje ako TYPE PARAMETER v INTERFACE [ILogger<TCategoryName>], kde TYPE [TCategoryName] je LOG CATEGORY.
+   C. LOG MESSAGES mozu byt filtrovane ne zaklade LOG CATEGORY FILTER v CONFIGURATIONS.
+   D. LOG CATEGORY FILTER moze obsahovat nasledujuce VALUES.
+      A. Zaciatocnu cast NAMESPACE. 
+      B. Cely NAMESPACE.
+      C. Cely NAMESPACE s LOG CATEGORY CLASS TYPE.
+   !!! E. Specifickejsi LOG CATEGORY FILTER ma VYSSIU PRIORITU ako menej specificky LOG CATEGORY FILTER.
+   F. Ak LOG CATEGORY je TYPE [NAMESPACE_1.NAMESPACE_2.CATEGORY_TYPE], tak LOG CATEGORY FILTER moze obsahovat nasledujuce VALUES.
+      A. VALUE [NAMESPACE_1] sa aplikuje na vsetky LOG CATEGORY TYPES v NAMESPACE [NAMESPACE_1], ak tento LOG CATEGORY FILTER neprepise specifickejsi LOG CATEGORY FILTER.
+      B. VALUE [NAMESPACE_1.NAMESPACE_2] sa aplikuje na vsetky LOG CATEGORY TYPES v NAMESPACE [NAMESPACE_1.NAMESPACE_2], ak tento LOG CATEGORY FILTER neprepise specifickejsi LOG CATEGORY FILTER.
+      C. VALUE [NAMESPACE_1.NAMESPACE_2.CATEGORY_TYPE] sa aplikuje na LOG CATEGORY TYPE [CATEGORY_TYPE].
+//----------------------------------------------------------------------------------------------------------------------

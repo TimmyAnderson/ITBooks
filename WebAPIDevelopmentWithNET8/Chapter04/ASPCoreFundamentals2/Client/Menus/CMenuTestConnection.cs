@@ -1,0 +1,53 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+//--------------------------------------------------------------------------------------------------------------------------------
+namespace Client
+{
+//--------------------------------------------------------------------------------------------------------------------------------
+	public sealed class CMenuTestConnection : CMenu
+	{
+//--------------------------------------------------------------------------------------------------------------------------------
+		private const string									BASE_ADDRESS="https://localhost:7000/";
+//--------------------------------------------------------------------------------------------------------------------------------
+//--------------------------------------------------------------------------------------------------------------------------------
+//--------------------------------------------------------------------------------------------------------------------------------
+		public CMenuTestConnection()
+			: base(new CMenuCommand("q","QUIT",new EMenuCommandParameterType[0],null))
+		{
+		}
+//--------------------------------------------------------------------------------------------------------------------------------
+//--------------------------------------------------------------------------------------------------------------------------------
+//--------------------------------------------------------------------------------------------------------------------------------
+		private void ExecuteCommandTestConnection(string CommandID, object[] Parameters)
+		{
+			string												MessageID=CommandID;
+			EMyHttpClientHttpMethod								Method=EMyHttpClientHttpMethod.E_GET;
+			string												URL=$"{BASE_ADDRESS}TestConnection";
+			CMyHttpClientHeaders								Headers=null;
+			CMyHttpClientContent								Content=null;
+			TimeSpan											Timeout=TimeSpan.FromHours(1);
+			CMyHttpClientOperationRequest						Request=new CMyHttpClientOperationRequest(MessageID,Method,URL,Headers,Content,Timeout);
+
+			CMyHttpClient.ExecuteMessage(Request);
+		}
+//--------------------------------------------------------------------------------------------------------------------------------
+//--------------------------------------------------------------------------------------------------------------------------------
+//--------------------------------------------------------------------------------------------------------------------------------
+		protected override CMenuCommand[] GetCommands()
+		{
+			List<CMenuCommand>									CommandsCollection=new List<CMenuCommand>();
+
+			CommandsCollection.Add(new CMenuCommand("test","TEST CONNECTION",new EMenuCommandParameterType[0],ExecuteCommandTestConnection));
+
+			CMenuCommand[]										Commands=CommandsCollection.ToArray();
+
+			return(Commands);
+		}
+//--------------------------------------------------------------------------------------------------------------------------------
+	}
+//--------------------------------------------------------------------------------------------------------------------------------
+}
+//--------------------------------------------------------------------------------------------------------------------------------

@@ -1,0 +1,230 @@
+//----------------------------------------------------------------------------------------------------------------------
+1. Solution demonstruje zakladne funkcionality ASP.NET CORE ako su ROUTING, CONFIGURATION a ENVIRONMENT.
+2. ROUTING je mechanizmus, ktory vykonava presmerovanie HTTP REQUESTS na prislusne ACTION METHOD.
+3. CONFIGURATION je zoznam SETTINGS, ktore sa aplikuju na ASP.NET CORE PROGRAM a umoznuju ho nakonfigurovat.
+4. ENVIRONMENT je prostredie v ktorom ASP.NET CORE PROGRAM bezi.
+5. Pre ROUTING v ASP.NET CORE WEB API platia nasledujuce fakty.
+   A. ROUTING vykonava presmerovanie HTTP REQUESTS na prislusne ACTION METHOD.
+   B. ROUTING pre WEB API PROGRAMS sa nastavuje pomocou C# ATTRIBUTES.
+   C. ROUTING na CONTROLLERS a ACTION METHODS sa definuje pomocou ATTRIBUTE [Route].
+   !!! D. CONTROLLER, alebo ACTION METHODS moze mat aj VIACERO ROUTES, ale z praktickeho hladiska sa to neodporuca.
+   E. ROUTE definuje specialnu SYNTAX, ktorou je mozne v ROUTE pouzit nazvy CONTROLLERS, ACTION METHODS, AREAS ci PAGES, ako aj hodnoty PARAMETERS zaslane do ACTION METHODS.
+   F. ROUTE umoznuje obsahovat aj CONSTRAINTS, ktore limituju PARAMETERS ACTION METHODS ak su sucastou ROUTE.
+   !!! G. ROUTING SYSTEM v ASP.NET je CASE INSENSITIVE.
+   !!! H. GLOBAL SETTINGS pre ROUTING SYSTEM je mozne nastavit pomocou METHOD [IServiceCollection AddRouting(this IServiceCollection Services, Action<RouteOptions> ConfigureOptions)].
+6. ASP.NET pri definicii ROUTES umoznuje pouzivat nasledujuce typy ROUTE VARIABLES.
+   A. RESERVED ROUTE VARIABLES. Tieto VARIABLES maju SYNTAX [[VARIABLE_NAME]], kde VAUE [VARIABLE_NAME] je nazov RESERVED ROUTE VARIABLE.
+   B. CUSTOM ROUTE VARIABLES. Tieto VARIABLES maju SYNTAX [{VARIABLE_NAME}], kde VAUE [VARIABLE_NAME] je nazov CUSTOM ROUTE VARIABLE.
+7. ASP.NET definuje nasledujuce RESERVED ROUTE VARIABLES.
+   A. VARIABLE [[Controller]] definuje nazov CONTROLLER, ktory ma spracovat dany HTTP REQUEST.
+   B. VARIABLE [[Action]] definuje nazov ACTION METHOD, ktora ma spracovat dany HTTP REQUEST.
+   C. VARIABLE [[Area]] definuje nazov AREA.
+   D. VARIABLE [[Page]] definuje nazov PAGE.
+   E. VARIABLE [[Handler]] definuje nazov PAGE HANDLER.
+8. ASP.NET umoznuje definovat CUSTOM ROUTE VARIABLES. Pre CUSTOM ROUTE VARIABLES platia nasledujuce fakty.
+   A. V ROUTE sa CUSTOM ROUTE VARIABLE definuje pomocou SYNTAXE [{VARIABLE_NAME}], kde VALUE [VARIABLE_NAME] je nazov CUSTOM ROUTE VARIABLE.
+   B. CUSTOM ROUTE VARIABLES, tak ako RESERVED ROUTE VARIABLES mozu mat DEFAULT VALUES. Tie sa pouziju ak prislusny URL SEGMENT v URL nebol nastaveny.
+   C. V ACTION METHODS je mozne k hodnotam ROUTE VARIABLES pristupovat pomocou PROPERTY [HttpRequest.RouteValues], ktora obsahuje DICTIONARY [RouteValueDictionary] vsetkych ROUTE VARIABLES.
+   !!! D. PROPERTY [HttpRequest.RouteValues] obsahuje ako CUSTOM ROUTE VARIABLES, tak aj RESERVED ROUTE VARIABLES.
+   !!!!! E. Ak ACTION METHOD ma PARAMETERS, ktorych nazvy su ZHODNE s nazvami CUSTOM ROUTE VARIABLES, tak ASP.NET pomocou procesu MODEL BINDING sa pokusi namapovat CUSTOM ROUTE VARIABLES na PARAMETERS. V pripade, ze nesedia TYPES, tak vykona aj prislusne konverzie. To zjednodusuje pouzivanie CUSTOM ROUTE VARIABLES.
+   F. ROUTE moze definovat lubovolny pocet CUSTOM ROUTE VARIABLES.
+   !!! G. ASP.NET umoznuje vycitat z 1 SEGMENT aj viacero ROUTE VARIABLES, ak su tieto oddelene STATIC STRING. Napriklad je mozne pouzit PATTERN [SEGMENT_1/{Filename}.{Extension}/SEGMENT_2], ktory vybera 2 CUSTOM ROUTE VARIABLES z jedneho SEGMENT.
+9. ASP.NET CORE definuje sadu ATTRIBUTES, ktorymi je mozne definovat, cez ake HTTP VERBS je mozne dane ACTION METHODS volat.
+   A. ATTRIBUTE [AcceptVerbsAttribute] umoznuje definovat zoznam HTTP VERBS pre ktore moze byt dana ACTION METHOD volana.
+   B. ATTRIBUTE [HttpGetAttribute] urcuje, ze ACTION METHOD moze byt volana iba pre HTTP VERB GET.
+   C. ATTRIBUTE [HttpPostAttribute] urcuje, ze ACTION METHOD moze byt volana iba pre HTTP VERB POST.
+   D. ATTRIBUTE [HttpDeleteAttribute] urcuje, ze ACTION METHOD moze byt volana iba pre HTTP VERB DELETE.
+   E. ATTRIBUTE [HttpPutAttribute] urcuje, ze ACTION METHOD moze byt volana iba pre HTTP VERB PUT.
+   F. ATTRIBUTE [HttpPatchAttribute] urcuje, ze ACTION METHOD moze byt volana iba pre HTTP VERB PATCH.
+   G. ATTRIBUTE [HttpHeadAttribute] urcuje, ze ACTION METHOD moze byt volana iba pre HTTP VERB HEAD.
+10. HTTP ATTRIBUTES urcujuce HTTP METHOD mozu mat ako parameter ROUTE STRING, ktory sa urcuje ROUTING pre danu ACTION METHOD.
+!!! 11. Vsetky ROUTES v PROGRAME MUSIA byt UNIKATNE. Ak nie su, a ROUTING SYSTEM sa nevie jednoznacne rozhodnut pre ACTION METHOD, ktoru ma volat, ASP.NET CORE vrati HTTP ERROR STATUS CODE [500].
+12. ASP.NET pri definicii CUSTOM ROUTE VARIABLES umoznuje definovat CONSTRAINTS. Pre CONSTRAINTS platia nasledujuce pravidla.
+   !!! A. CONSTRAINTS sa aplikuju na URL SEGMENTS, kde CONSTRAINTS urcuju za akych podmienok je dany SEGMENT vyhlaseny ako VALIDNY a tym padom dana ROUTE takyto SEGMENT AKCEPTUJE. Cela URL je akceptovana IBA ak su VSETKY SEGMENTS daneho ROUTE akceptovane.
+   B. CONSTRAINTS sa aplikuju INLINE sposobom pomocou SYNTAX [{VARIABLE_NAME:CONSTRAINT_1:...:CONSTRAINT_N}], kde VALUE [VARIABLE_NAME] je nazov CUSTOM ROUTE VARIABLE a VALUE [CONSTRAINT_1] az VALUE [CONSTRAINT_N] su nazvy CONSTRAINTS.
+   !!!!! C. CONSTRAINTS je mozne aplikovat aj na RESERVED ROUTE VARIABLES.
+   !!! D. Ak ROUTE VARIABLE NEMA nastavenu VALUE, ale ma definovanu DEFAULT VALUE, tak najprv sa aplikuje DEFAULT VALUE a az potom sa vykona kontrola CONSTRAINTS.
+   E. Ak ROUTE VARIABLE je OPTIONAL a jej VALUE nie je zadana, tak sa CONSTRAINTS na tuto ROUTE VARIABLE NEAPLIKUJU.
+   !!! F. Ak CONSTRAINTS nie su splnene, ASP.NET CORE vrati HTTP RESPONSE STATUS CODE [404].
+   !!! G. Ak CONSTRAINTS NIE su APLIKOVANE a TYPE PARAMETER v ACTION METHOD nesedi s VALUE zaslanej do daneho PARAMETER, ASP.NET CORE vrati HTTP RESPONSE STATUS CODE [400].
+13. ASP.NET definuje mnozstvo CONSTRAINTS, ktore je mozne pouzit.
+   A. CLASS [AlphaRouteConstraint] (INLINE verzia [alpha]) povoluje SEGMENTS, ktore obsahuju iba CHARACTERS [A-z] a [a-z].
+   B. CLASS [BoolRouteConstraint] (INLINE verzia [bool]) povoluje SEGMENTS, ktore obsahuju iba BOOLEAN VALUES.
+   C. CLASS [DateTimeRouteConstraint] (INLINE verzia [datetime]) povoluje SEGMENTS, ktore obsahuju iba DATE-TIME VALUES.
+   D. CLASS [DecimalRouteConstraint] (INLINE verzia [decimal]) povoluje SEGMENTS, ktore obsahuju iba DECIMAL VALUES.
+   E. CLASS [DoubleRouteConstraint] (INLINE verzia [double]) povoluje SEGMENTS, ktore obsahuju iba DOUBLE VALUES.
+   F. CLASS [FileNameRouteConstraint] (INLINE verzia [file]) povoluje SEGMENTS, ktore obsahuju iba FILENAMES VALUES.
+   G. CLASS [FloatRouteConstraint] (INLINE verzia [float]) povoluje SEGMENTS, ktore obsahuju iba FLOAT VALUES.
+   H. CLASS [GuidRouteConstraint] (INLINE verzia [guid]) povoluje SEGMENTS, ktore obsahuju iba GUID VALUES.
+   I. CLASS [IntRouteConstraint] (INLINE verzia [int]) povoluje SEGMENTS, ktore obsahuju iba INTEGER VALUES.
+   J. CLASS [LongRouteConstraint] (INLINE verzia [long]) povoluje SEGMENTS, ktore obsahuju iba LONG VALUES.
+   K. CLASS [LengthRouteConstraint] (INLINE verzia [length(LENGTH)], alebo [length(MIN,MAX)]) povoluje SEGMENTS, ktore obsahuju pocet CHARACTERS rovny VALUE 'LENGTH', alebo pocet CHARACTERS je v INTERVALE <MIN,MAX>.
+   L. CLASS [MinLengthRouteConstraint] (INLINE verzia [minlength(LENGTH)]) povoluje SEGMENTS, ktore obsahuju minimalne 'LENGTH' CHARACTERS.
+   M. CLASS [MaxLengthRouteConstraint] (INLINE verzia [maxlength(LENGTH)]) povoluje SEGMENTS, ktore obsahuju maximalne 'LENGTH' CHARACTERS.
+   N. CLASS [MinRouteConstraint] (INLINE verzia [min(VALUE)]) povoluje SEGMENTS, ktore obsahuju INTEGER VALUE, a zaroven VALUE je VACSIA ako VALUE 'VALUE'.
+   O. CLASS [MaxRouteConstraint] (INLINE verzia [max(VALUE)]) povoluje SEGMENTS, ktore obsahuju INTEGER VALUE, a zaroven VALUE je MENSIA ako VALUE 'VALUE'.
+   P. CLASS [NonFileNameRouteConstraint] (INLINE verzia [nonfile]) povoluje SEGMENTS, ktore NEOBSAHUJU FILENAMES VALUES.
+   Q. CLASS [RangeRouteConstraint] (INLINE verzia [range(MIN,MAX)]) povoluje SEGMENTS, ktore obsahuju INTEGER VALUE, a zaroven VALUE je v INTERVALE <MIN,MAX>.
+   R. CLASS [RegexRouteConstraint] (INLINE verzia [regex(EXPRESSION)]) povoluje SEGMENTS, pre ktore je splneny REGULAR EXPRESSION 'EXPRESSION'.
+14. ASP.NET umonzuje definovavat CUSTOM ROUTE CONSTRAINTS. Pre CUSTOM ROUTE CONSTRAINTS platia nasledujuce fakty.
+   A. CUSTOM ROUTE CONSTRAINTS sa implementuju ako CUSTOM CLASSES, ktore implementuju INTERFACE [IRouteConstraint].
+   B. CUSTOM ROUTE CONSTRAINTS musia implementovat METHOD [bool IRouteConstraint.Match(HttpContext Context, IRouter Route, string RouteKey, RouteValueDictionary Values, RouteDirection Direction)], ktora vyhodnocuje ci dany CONSTRAINT bol, alebo nebol splneny.
+   C. CUSTOM ROUTE CONSTRAINTS mozu byt aplikovane aj pomocou INLINE SYNTAX, no CUSTOM ROUTE CONSTRAINT MUSI byt pridana do COLLECTION v PROPERTY [RouteOptions.ConstraintMap], kde sa vykona mapovanie INLINE CONSTRAINT NAME na CUSTOM ROUTE CONSTRAINT CLASS NAME.
+   !!! D. V pripade, ze CUSTOM ROUTE CONSTRAINTS maju PARAMETRIZED CONSTRUCTOR, tak tieto CONSTRUCTORS je mozne volat pomocou INLINE SYNTAX zadanim tychto PARAMETERS pomocou SYNTAXE [{ROUTE_VARIABLE:CUSTOM_ROUTE_CONSTRAINT(PARAMETER_1,...PARAMETER_N)}].
+15. ASP.NET vykonava BINDING HTTP REQUEST PROPERTIES na ACTION METHOD PARAMETERS. Pre BINDING platia nasledujuce fakty.
+   A. BINDING na jednotlive ACTION METHOD PARAMETERS sa nastavuje pomocou ATTRIBUTES aplikovanych na ACTION METHOD PARAMETERS.
+   !!! B. ASP.NET CORE pre CONTROLLER CLASSES (na ktore je aplikovany ATTRIBUTE [ApiController]) aplikuje DEFAULT INFERENCE RULES, ktore umoznuju vykonat BINDING ACTION METHOD PARAMETERS, aj bez explicitneho aplikovania ATTRIBUTES na ACTION METHOD PARAMETERS.
+   !!! C. ACTION METHOD moze mat IBA 1 ACTION METHOD PARAMETER nacitavany z HTTP REQUEST BODY.
+16. ASP.NET definuje nasledujuce typy BINDING ATTRIBUTES.
+   !!! A. ATTRIBUTE [FromBody] mapuje ACTION METHOD PARAMETER na HTTP REQUEST BODY. ASP.NET CORE povoluje iba 1 ACTION METHOD PARAMETER, aby bol mapovany na HTTP REQUEST BODY.
+   B. ATTRIBUTE [FromForm] mapuje ACTION METHOD PARAMETER na FROM DATA z HTTP REQUEST BODY.
+   C. ATTRIBUTE [FromHeader] mapuje ACTION METHOD PARAMETER na HTTP REQUEST HEADER.
+   D. ATTRIBUTE [FromQuery] mapuje ACTION METHOD PARAMETER na HTTP REQUEST QUERY STRING PARAMETER.
+   E. ATTRIBUTE [FromRoute] mapuje ACTION METHOD PARAMETER na HTTP REQUEST URL SEGMENT.
+   F. ATTRIBUTE [FromServices] mapuje ACTION METHOD PARAMETER na OBJECT z DEPENDENCY INJECTION.
+!!! 17. ASP.NET definuje nasledujuce DEFAULT INFERENCE BINDING RULES.
+   A. Ak je ACTION METHOD PARAMETER typu COMPLEX TYPE a tento COMPLEX TYPE je mapovany v DEPENDENCY INJECTION CONTAINER, tak sa na ACTION METHOD PARAMETER aplikuje ATTRIBUTE [FromServices].
+   B. Ak je ACTION METHOD PARAMETER typu COMPLEX TYPE a tento COMPLEX TYPE NIE je mapovany v DEPENDENCY INJECTION CONTAINER, tak sa na ACTION METHOD PARAMETER aplikuje ATTRIBUTE [FromBody].
+   C. Ak je ACTION METHOD PARAMETER TYPE [IFormFile], alebo TYPE [IFormFileCollection], tak sa na ACTION METHOD PARAMETER aplikuje ATTRIBUTE [FromForm].
+   D. Ak ma ACTION METHOD PARAMETER rovnaky NAME ako NAME CUSTOM ROUTE VARIABLE, tak sa na ACTION METHOD PARAMETER aplikuje ATTRIBUTE [FromRoute].
+   E. Ak je ACTION METHOD PARAMETER typu SIMPLE TYPE, tak sa na ACTION METHOD PARAMETER aplikuje ATTRIBUTE [FromQuery].
+18. ASP.NET CORE poskytuje rozsiahle moznosti CONFIGURATION PROGRAMU. Pre CONFIGURATION platia nasledujuce fakty.
+   A. CONFIGURATION v ASP.NET CORE je KEY VALUE PAIR.
+   B. CONFIGURATIONS mozu pochadzat z rozlicnych CONFIGURATION SOURCES. CONFIGURATION SOURCES sa nazyvaju aj CONFIGURATION PROVIDERS.
+   !!! C. CONFIGURATION PROVIDERS su zotriedene podla PRIORITIES.
+   D. CONFIGURATION API je definovane v PACKAGE [Microsoft.Extension.Configuration]. Ten je sucastou DEFAULT INSTALATION ASP.NET CORE TEMPLATE.
+19. ASP.NET CORE podporuje nasledujuce CONFIGURATION PROVIDERS.
+   A. CONFIGURATION PROVIDER citajuci data z FILES ako napriklad FILE [appsettings.json].
+   B. CONFIGURATION PROVIDER pre USER SECRETS. USER SECRETS su ulozene v LOCAL SECRET FILE, ktory sa pouziva, ked PROGRAM bez v DEVELOPMENT ENVIRONMENT.
+   C. CONFIGURATION PROVIDER pre ENVIRONMENT VARIABLES.
+   D. CONFIGURATION PROVIDER pre COMMAND LINE.
+   E. CONFIGURATION PROVIDER pre AZURE APP CONFIGURATION.
+   F. CONFIGURATION PROVIDER pre AZURE KEY VAULT.
+20. Pre FILE CONFIGURATION PROVIDER platia nasledujuce fakty.
+   A. FILE CONFIGURATION PROVIDER umoznuje citat CONFIGURATIONS z JSON FILES.
+   B. FILE CONFIGURATION PROVIDER je implementovany v CLASS [JsonConfigurationProvider].
+   C. BY-DEFAULT FILE CONFIGURATION PROVIDER cita CONFIGURATIONS z FILE [appsettings.json], ktory sa nachadza v ROOT DIRECTORY daneho PROJECT.
+   D. FILE CONFIGURATION PROVIDER cita CONFIGURATIONS aj z FILE [appsettings.ENVIRONMENT.json], kde VALUE [ENVIRONMENT] je nazov ENVIRONMENT. Tieto CONFIGURATIONS maju prednost pred CONFIGURATIONS vo FILE [appsettings.json].
+   F. CONFIGURATIONS su v PROGRAME pristupne pomocou INTERFACE [IConfiguration], ktore je mozne ziskat z DEPENDENCY INJECTION CONTAINER.
+   !!! G. CONFIGURATIONS mozu byt v JSON FILE aj VNORENE. V takom pripade sa na pristup k tymto CONFIGURATIONS pouziva SYNTAX [KEY_1:...:KEY_N], kde VALUE [KEY_1] je nazov prveho KEY a VALUE [KEY_N] je nazov najvnorenejsieho KEY.
+   !!! H. FILE CONFIGURATION PROVIDER umoznuje citat aj COMPLEX TYPES pomocou OPTIONS PATTERN.
+21. OPTIONS PATTERN umoznuje z FILE CONFIGURATION PROVIDER citat COMPLEX TYPES. COMPLEX TYPES musia splnat nasledujuce podmienky.
+   A. Definuje sa CLASS, ktora reprezentuje COMPLEX TYPE obsahujuci jednotlive CONFIGURATIONS.
+   B. CLASS pre kazdy CONFIGURATION obsahuje PROPERTY, ktora ma GETTER a SETTER.
+   C. CLASS MUSI obsahovat DEFAULT CONSTRUCTOR.
+22. CONFIGURATIONS mozu byt namapovane na CUSTOM CLASSES pomocou OPTIONS PATTERN nasledujucimi sposobmi.
+   A. Volanim METHOD [void Bind(this IConfiguration Configuration, string Key, object Instance)], kde PARAMETER [Instance] obsahuje OBJECT, ktore PROPERTIES budu REKURZIVNE volanim prislusnych SETTERS nastavene na VALUES z CONFIGURATION FILE.
+   B. Volanim METHOD [TType Get<TType>(this IConfiguration Configuration)], kde PARAMETER [Configuration] obsahuje SECTION z ktorej sa REKURZIVNE budu PROPERTIES volanim prislusnych SETTERS nastavovat na VALUES z CONFIGURATION FILE. OBJECT TYPE [TType] je vytovreny volanim DEFAULT CONSTRUCTOR.
+   C. Pomocou DEPENDENCY INJECTION. Mapovanie pomocou DEPENDENCY INJECTION sa vykonava v nasledujucich krokoch.
+      A. Zavola sa METHOD [IServiceCollection Configure<TOptions>(this IServiceCollection Services, IConfiguration Config)], ktora zaregistruje CUSTOM CLASS v DEPENDENCY INJECTION. Zaroven v PARAMETER [Config] sa definuje SECTION z ktorej sa ma CUSTOM CLASS naplnit.
+	  B. Do ACTION METHOD sa vlozi PARAMETER TYPE [IOptions<CUSTOM_CLASS>], PARAMETER TYPE [IOptionsSnapshot<CUSTOM_CLASS>], alebo PARAMETER TYPE [IOptionsMonitor<CUSTOM_CLASS>].
+   D. Pomocou DEPENDENCY INJECTION s pomenovanim roznych CONFIGURATIONS. Realizacia je v nasledujucich krokoch.
+      A. Zavola sa METHOD [IServiceCollection Configure<TOptions>(this IServiceCollection Services, string Name, IConfiguration Config)], ktora zaregistruje CUSTOM CLASS v DEPENDENCY INJECTION. V PARAMETER [Config] sa definuje SECTION z ktorej sa ma CUSTOM CLASS naplnit a v PARAMETER [Name] sa definuje NAME CONFIGURATION SECTION.
+	  B. Do ACTION METHOD sa vlozi PARAMETER TYPE [IOptionsSnapshot<CUSTOM_CLASS>], alebo PARAMETER TYPE [IOptionsMonitor<CUSTOM_CLASS>].
+	  !!! C. V ACTION METHOD sa zavola METHOD [TOptions Get(string Name)], ktora pomocou PARAMETER [Name] definuje NAMED CONFIGURATION, ktora sa ma nacitat.
+23. Pre INTERFACE [IOptions<CUSTOM_CLASS>] platia nasledujuce fakty.
+   A. INTERFACE umoznuje pomocou DEPENDENCY INJECTION mapovat CONFIGURATIONS na CUSTOM CLASSES pomocou OPTIONS PATTERN.
+   B. INTERFACE ma PROPERTY [IOptions.Value], ktory vracia COMPLEX OBJECT nacitany z CONFIGURATION FILE.
+   C. INTERFACE je registrovany v DEPENDENCY INJECTION CONTAINER, ako SINGLETON OBJECT.
+   !!! D. INTERFACE NEVYKONAVA UPDATE CONFIGURATION VALUES, ked dojde k zmene CONFIGURATION FILE.
+24. Pre INTERFACE [IOptionsSnapshot<CUSTOM_CLASS>] platia nasledujuce fakty.
+   A. INTERFACE umoznuje pomocou DEPENDENCY INJECTION mapovat CONFIGURATIONS na CUSTOM CLASSES pomocou OPTIONS PATTERN.
+   B. INTERFACE ma PROPERTY [IOptionsSnapshot.Value], ktory vracia COMPLEX OBJECT nacitany z CONFIGURATION FILE.
+   !!! C. INTERFACE je registrovany v DEPENDENCY INJECTION CONTAINER, ako SCOPED OBJECT. To znamena, ze INTERFACE NEMOZE byt vlozeny do SINGLETON SERVICES.
+   !!! D. INTERFACE VYKONAVA UPDATE CONFIGURATION VALUES, ked dojde k zmene CONFIGURATION FILE.
+25. Pre INTERFACE [IOptionsMonitor<CUSTOM_CLASS>] platia nasledujuce fakty.
+   A. INTERFACE umoznuje pomocou DEPENDENCY INJECTION mapovat CONFIGURATIONS na CUSTOM CLASSES pomocou OPTIONS PATTERN.
+   B. INTERFACE ma PROPERTY [IOptionsMonitor.CurrentValue], ktory vracia COMPLEX OBJECT nacitany z CONFIGURATION FILE.
+   !!! C. INTERFACE ma METHOD [IDisposable OnChange<TOptions>(this IOptionsMonitor<TOptions> Monitor, Action<TOptions> Listener)], ktora umoznuje zaregistrovat CALLBACK, ktory sa vola pri zmene CONFIGURATION v CONFIGURATION FILE.
+   !!! D. INTERFACE je registrovany v DEPENDENCY INJECTION CONTAINER, ako SINGLETON OBJECT.
+   !!! E. INTERFACE VYKONAVA UPDATE CONFIGURATION VALUES, ked dojde k zmene CONFIGURATION FILE.
+26. ASP.NET definuje nasledujuce CLASSES pre FILE CONFIGURATION PROVIDERS.
+   A. CLASS [FileConfigurationProvider] je BASE CLASS pre vsetky FILE CONFIGURATION PROVIDERS.
+   B. CLASS [JsonConfigurationProvider] nacitava CONFIGURATIONS z JSON FILES.
+   C. CLASS [IniConfigurationProvider] nacitava CONFIGURATIONS z INI FILES.
+   D. CLASS [XmlConfigurationProvider] nacitava CONFIGURATIONS z XML FILES.
+!!! 27. ASP.NET CORE automaticky registruje FILE CONFIGURATION PROVIDER CLASS [JsonConfigurationProvider] volanim METHOD [IConfigurationBuilder AddJsonFile(this IConfigurationBuilder Builder, IFileProvider Provider, string Path, bool Optional, bool ReloadOnChange)], pricom ako PATH sa pouziva FILE [appsettings.json].
+28. Pre USER SECRETS CONFIGURATION PROVIDER platia nasledujuce fakty.
+   A. USER SECRETS CONFIGURATION PROVIDER uklada CONFIGURATIONS do USER SECRET FILE.
+   !!! B. USER SECRET FILE je UNENCRYPTED a je ulozeny v DIRECTORY [%APPDATA%\Microsoft\UserSecrets\USER_SECRET_ID], kde VALUE [USER_SECRET_ID] je unikatny ID USER SECRET FILE. Je teda ulozeny mimo PROJECT DIRECTORY a tym padom nie je ulozeny v GIT.
+   C. USER SECRET FILE je FLATTENED. To znamena, ze nema hierarchicku strukturu, ale iba strukturu KEY VALUE PAIRS, ktore su zaradene pod seba.
+   D. USER SECRETS CONFIGURATION PROVIDER je registrovany IBA v DEVELOPMENT ENVIRONMENT.
+   !!! E. Kedze USER SECRETS CONFIGURATION PROVIDER je registrovany az po FILE CONFIGURATION PROVIDER, ma VYSSIU PRIORITU ako FILE CONFIGURATION PROVIDER. To znamena, ze KEY VALUE PAIRS s rovnakymi KEYS ulozenymi v USER SECRETS CONFIGURATION PROVIDER prepisu KEYS ulozene vo FILE CONFIGURATION PROVIDER.
+   F. S FILES v USER SECRETS CONFIGURATION PROVIDER sa pracuje pomocou TOOL [dotnet user-secrets].
+   !!! G. Na to, aby bolo mozne pracovat s USER SECRETS CONFIGURATION PROVIDER, do FILE [.csproj] v ITEM [UserSecretsId] vlozit VALUE [USER_SECRET_ID] daneho USER SECRET FILE.
+29. Pre pracu s USER SECRETS sa pouziva TOOL [dotnet user-secrets], ktory ma nasledujuce COMMANDS.
+   A. COMMAND [dotnet user-secrets init] spusteny v PROJECT DIRECTORY vygeneruje novy USER SECRET FILE a jeho VALUE [USER_SECRET_ID] sa vlozi do FILE [.csproj].
+   B. COMMAND [dotnet user-secrets set KEY VALUE] spusteny v PROJECT DIRECTORY vlozi KEY [KEY] a VALUE [VALUE] do SECRET FILE.
+   C. COMMAND [dotnet user-secrets remove KEY] spusteny v PROJECT DIRECTORY odstrani KEY VALUE PAIR z KEY [KEY] zo SECRET FILE.
+   D. COMMAND [dotnet user-secrets clear] spusteny v PROJECT DIRECTORY odstrani vseky KEY VALUE PAIRS zo SECRET FILE.
+   E. COMMAND [dotnet user-secrets list] spusteny v PROJECT DIRECTORY zobrazi vsetky KEY-VALUE PAIRS ulozene v danom SECRET FILE.
+30. Pre ENVIRONMENT VARIABLES CONFIGURATION PROVIDER platia nasledujuce fakty.
+   A. ENVIRONMENT VARIABLES CONFIGURATION PROVIDER cita CONFIGURATIONS z ENVIRONMENT VARIABLES.
+   !!! B. Kedze ENVIRONMENT VARIABLES CONFIGURATION PROVIDER je registrovany az po FILE CONFIGURATION PROVIDER, ma VYSSIU PRIORITU ako FILE CONFIGURATION PROVIDER. To znamena, ze KEY VALUE PAIRS s rovnakymi KEYS ulozenymi v ENVIRONMENT VARIABLES CONFIGURATION PROVIDER prepisu KEYS ulozene vo FILE CONFIGURATION PROVIDER.
+   !!! C. Pri vnorenych datach plati, ze KEY [KEY_1:KEY_2] je nacitany ENVIRONMENT VARIABLE, ktora ma KEY [KEY_1__KEY_2]. To znamena, ze ako SEPARATOR sa pouziva STRING [__].
+   D. KEY v ENVIRONMENT VARIABLES PROVIDER su CASE SENSITIVE.
+   !!!!! E. ENVIRONMENT VARIABLES je mozne nastavit aj na urovni PROGRAMU vo FILE [launchSettings.json].
+31. Pre COMMAND LINE CONFIGURATION PROVIDER platia nasledujuce fakty.
+   A. COMMAND LINE CONFIGURATION PROVIDER cita CONFIGURATIONS z COMMAND LINE.
+   !!! B. Kedze COMMAND LINE CONFIGURATION PROVIDER je registrovany ako PRVY PROVIDER, ma NAJVYSSIU PRIORITU a prepisuje zhodne KEYS z inych PROVIDERS.
+   C. COMMAND LINE SYNTAX musi byt [KEY=VALUE]. V pripade vnorenych dat sa pouziva SYNTAX [KEY_1:KEY_2=VALUE]. Ak maju VALUES medzery, tak ich treba uzatvorit do zavoriek ["AAA BBB"].
+   !!!!! D. COMMAND LINE je mozne nastavit aj na urovni PROGRAMU vo FILE [launchSettings.json].
+32. Pre AZURE APP CONFIGURATION CONFIGURATION PROVIDER platia nasledujuce fakty.
+   A. AZURE APP CONFIGURATION CONFIGURATION PROVIDER cita CONFIGURATIONS z AZURE APP CONFIGURATION.
+   B. AZURE APP CONFIGURATION CONFIGURATION PROVIDER NIE SU ENCRYPTED, takze by NEMALI obsahovat citlive data.
+   C. Na pouzitie AZURE APP CONFIGURATION PROVIDER je nutne do PROJECT vlozit PACKAGE [Microsoft.Azure.AppConfiguration.AspNetCore].
+33. Pre AZURE KEY VAULT CONFIGURATION PROVIDER platia nasledujuce fakty.
+   A. AZURE KEY VAULT CONFIGURATION PROVIDER cita CONFIGURATIONS z AZURE KEY VAULT.
+   B. CONFIGURATIONS v AZURE KEY VAULT CONFIGURATION PROVIDER SU ENCRYPTED, takze mozu obsahovat aj citlive data.
+   C. Na pouzitie AZURE KEY VAULT CONFIGURATION PROVIDER je nutne do PROJECT vlozit PACKAGE [Azure.Extensions.AspNetCore.Configuration.Secrets] a PACKAGE [Azure.Identity].
+!!! 34. Prioritu CONFIGURATION PROVIDERS urcuje poradie v akom su CONFIGURATION PROVIDERS zaregistrovane. Plati, ze CONFIGURATION PROVIDER zaregistrovany NESKOR ma VYSSIU PRIORITU a tym padom jeho CONFIGURATIONS prepisu CONFIGURATIONS tych CONFIGURATION PROVIDERS, ktore boli zaregistrovane skor.
+35. CONFIGURATIONS su citane podla nasledujucej PRIORITY od NAJVYSSEJ k NAJNIZSEJ.
+   A. CONFIGURATIONS nacitane z COMMAND LINE.
+   B. CONFIGURATIONS nacitane z NON-PREFIXED ENVIRONMENT VARIABLES.
+   C. CONFIGURATIONS nacitane z USER SECRETS FILES. Tieto CONFIGURATIONS su nacitane iba pre ENVIRONMENT [Development].
+   D. CONFIGURATIONS nacitane z FILE [appsettings.ENVIRONMENT.json], kde VALUE [ENVIRONMENT] je nazov ENVIRONMENT.
+   E. CONFIGURATIONS nacitane z FILE [appsettings.json].
+36. V pripade ENVIRONMENT VARIABLE CONFIGURATIIONS su tieto citane podla nasledujucej PRIORITY od NAJVYSSEJ k NAJNIZSEJ.
+   A. CONFIGURATIONS nacitane z COMMAND LINE.
+   B. CONFIGURATIONS nacitane z ENVIRONMENT VARIABLES nastavenych vo FILE [launchSettings.json].
+   C. CONFIGURATIONS nacitane z ENVIRONMENT VARIABLES pre CURRENT PROCESS.
+   D. CONFIGURATIONS nacitane zo SYSTEM ENVIRONMENT VARIABLES.
+37. Pre ENVIRONMENTS platia nasledujuce fakty.
+   A. ENVIRONMENT je nastavenie PROGRAMU, ktore urcuje z ktorych FILES bude FILE CONFIGURATION PROVIDER brat CONFIGURATIONS.
+   B. FILE CONFIGURATION PROVIDER cita CONFIGURATIONS nasledujucim sposobom.
+      A. Ako prve su nacitane CONFIGURATIONS z FILE [appsettings.json].
+	  B. Nasledne su nacitane CONFIGURATIONS z FILE [appsettings.ENVIRONMENT.json], kde VALUE [ENVIRONMENT] je nazov ENVIRONMENT. Tieto CONFIGURATIONS maju prednost pred CONFIGURATIONS vo FILE [appsettings.json].
+   C. ENVIRONMENT sa nastavuje pomocou ENVIRONMENT VARIABLE [ASPNETCORE_ENVIRONMENT], ktora obsahuje nazov aktualnej CONFIGURATION.
+   D. ENVIRONEMNT je mozne nastavit aj pomocou COMMAND [dotnet run --environment ENVIRONMENT_NAME], kde VALUE [ENVIRONMENT_NAME] obsahuje nazov ENVIRONMENT.
+   !!! E. ENVIRONMENT NAME je mozne v CODE nastavit nastavenim PROPERTY [WebApplicationBuilder.Environment.EnvironmentName].
+   !!! F. ENVIRONMENT NAME je mozne v CODE zistit volanim METHOD [bool IsEnvironment(this IHostEnvironment HostEnvironment, string EnvironmentName)].
+38. Pre LAUNCH PROFILES platia nasledujuce fakty.
+   A. LAUNCH PROFILE je zoznam SETTINGS, ktore sa pouzivaju pri LOKALNOM spostani PROGRAMU na LOCAL DEVELOPMENT MACHINE.
+   !!! B. LAUNCH PROFILES NIE su sucastou DEPLOYMENT v produkcnom prostredi. Pouzivaju sa iba pre spustanie PROGRAMU na LOCAL DEVELOPMENT MACHINE.
+   C. LAUNCH PROFILE obsahuje nasledujuce nastavenia.
+      A. Typ WEB SERVER na ktorom PROGRAM bezi.
+	  B. URLs na ktorych WEB SERVER bezi.
+	  !!! C. ENVIRONMENT VARIABLES, ktora moze obsahovat aj ENVIRONMENT VARIABLE [ASPNETCORE_ENVIRONMENT] obsahujuca nazov ENVIRONMENT v ktorom ma byt PROGRAM spusteny.
+	  D. COMMAND LINE PARAMETERS.
+	  E. Informaciu ci pri spusteni PROGRAMU sa ma spustit aj BROWSER a na akej RELATIVE URL sa ma spustit.
+   D. ASP.NET CORE PROJECT moze obsahovat LAUNCH PROFILES, no iba 1 z nich sa v danom case moze spustit.
+   E. Nastavenia jednotlivych LAUNCH PROFILES su ulozene vo FILE [launchSettings.json], ktory nie je sucastou DEPLOYMENT.
+   F. BY-DEFAULT vytvoreny FILE [launchSettings.json] obsahuje nasledujuce LAUNCH PROFILES.
+      A. LAUNCH PROFILE [http], ktora spusta KESTREL IN-PROCESS HTTP SERVER na PROTOCOLE HTTP.
+      B. LAUNCH PROFILE [https], ktora spusta KESTREL IN-PROCESS HTTP SERVER na PROTOCOLE HTTPS.
+      C. LAUNCH PROFILE [IIS Express], ktora spusta IIS EXPRESS HTTP SERVER.
+!!! 39. Pre KESTREL HTTP SERVER platia nasledujuce fakty.
+   A. KESTREL HTTP SERVER je HTTP SERVER, ktory bezi ako IN-PROCESS HTTP SERVER v ramci PROGRAMU.
+   B. KESTREL HTTP SERVER je DEFAULT HTTP SERVER, ktory je odporucanym HTTP SERVER pre beh ASP.NET CORE PROGRAMS.
+   C. KESTREL HTTP SERVER je CROSS PLATFORM HTTP SERVER, ktory bezi na WINDOWS, LINUX, iOS, macOS ci ANDROID.
+40. FILE [launchSettings.json] ma nasledujucu STRUCTURE.
+   A. ELEMENT [profiles] obsahuje vsetky LAUNCH PROFILES.
+   B. ELEMENT [profiles:PROFILE_NAME] obsahuje nastavenie LAUNCH PROFILE [PROFILE_NAME].
+   C. ELEMENT [profiles:PROFILE_NAME:commandName] obsahuje HTTP SERVER, ktory ma byt pre beh PROGRAMU pouzity. Moze nadobudat nasledujuce VALUES.
+      A. VALUE [Project] znamena, ze sa pouzije KESTREL IN-PROCESS HTTP SERVER.
+      B. VALUE [IIS Express] znamena, ze sa pouzije IIS EXPRESS HTTP SERVER.
+   D. ELEMENT [profiles:PROFILE_NAME:applicationUrl] obshuje <1,N> URLs na ktorych bude HTTP SERVER bezat.
+   E. ELEMENT [profiles:PROFILE_NAME:environmentVariables] obsahuje ENVIRONMENT VARIABLES.
+   F. ELEMENT [profiles:PROFILE_NAME:commandLineArgs] obsahuje COMMAND LINE.
+41. COMMAND [dotnet run] umoznuje nastavit LAUNCH PROFILE, ktory sa ma spustat pomocou COMMAND LINE [dotnet run --launch-profile PROFILE_NAME], kde VALUE [PROFILE_NAME] je nazov LAUNCH PROFILE, ktory ma byt pouzity na spustenie PROGRAMU.
+//----------------------------------------------------------------------------------------------------------------------
