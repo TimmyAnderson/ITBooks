@@ -46,4 +46,109 @@
       A. VALUE [NAMESPACE_1] sa aplikuje na vsetky LOG CATEGORY TYPES v NAMESPACE [NAMESPACE_1], ak tento LOG CATEGORY FILTER neprepise specifickejsi LOG CATEGORY FILTER.
       B. VALUE [NAMESPACE_1.NAMESPACE_2] sa aplikuje na vsetky LOG CATEGORY TYPES v NAMESPACE [NAMESPACE_1.NAMESPACE_2], ak tento LOG CATEGORY FILTER neprepise specifickejsi LOG CATEGORY FILTER.
       C. VALUE [NAMESPACE_1.NAMESPACE_2.CATEGORY_TYPE] sa aplikuje na LOG CATEGORY TYPE [CATEGORY_TYPE].
+8. ASP.NET CORE podporuje aj 3rd PARTY LOGGERS. Pre 3rd PARTY LOGGER SERILOG platia nasledujuce fakty.
+   A. SERILOG umoznuje zapisovat LOG MESSAGES do rozlicnych DESTINATIONS nazyvanych SINKS. SERILOG podporuje nasledujuce SINKS.
+      A. SINK [File].
+      B. SINK [Azure Application Insights].
+      C. SINK [Azure Blob Storage].
+      D. SINK [Azure Cosmos DB].
+      E. SINK [Amazon CloudWatch].
+      F. SINK [Amazon DynamoDB].
+      G. SINK [Amazon Kinesis].
+      H. SINK [Exceptionless].
+      I. SINK [Elasticsearch].
+      J. SINK [Sumo Logic].
+      K. SINK [Email].
+      L. SINK [PostgreSQL].
+      M. SINK [RabbitMQ].
+   B. SERILOG je implementovany v PACKAGE [Serilog.AspNetCore].
+   C. SERILOG FILE SINK je implementovany v PACKAGE [Serilog.Sinks.File].
+   D. SERILOG pre FILE SINK sa konfiguruje nasledujucim sposobom.
+      A. Vytvori sa instancia CLASS [LoggerConfiguration].
+	  !!! B. Instancia CLASS [LoggerConfiguration] sa nakonfiguruje volanim METHOD [LoggerConfiguration File(this LoggerSinkConfiguration SinkConfiguration, string Path, LogEventLevel RestrictedToMinimumLevel, string OutputTemplate, IFormatProvider FormatProvider, long FileSizeLimitBytes, LoggingLevelSwitch LevelSwitch, bool Buffered, bool Shared, TimeSpan FlushToDiskInterval, RollingInterval RollingInterval, bool RollOnFileSizeLimit, int RetainedFileCountLimit, Encoding Encoding, FileLifecycleHooks Hooks, TimeSpan RetainedFileTimeLimit)], alebo METHOD [LoggerConfiguration File(this LoggerSinkConfiguration SinkConfiguration, ITextFormatter Formatter, string Path, LogEventLevel RestrictedToMinimumLevel, long FileSizeLimitBytes, LoggingLevelSwitch LevelSwitch, bool Buffered, bool Shared, TimeSpan FlushToDiskInterval, RollingInterval RollingInterval, bool RollOnFileSizeLimit, int RetainedFileCountLimit, Encoding Encoding, FileLifecycleHooks Hooks, TimeSpan RetainedFileTimeLimit)]. Druha verzia METHOD umoznuje definovat instanciu INTERFACE [ITextFormatter], ktory umoznuje pouzit STRUCTURED FORMATTER pre zapis STRUCTURED LOG MESSAGES.
+	  C. Vytvori sa instancia CLASS [Logger] volanim METHOD [Logger LoggerConfiguration.CreateLogger()].
+	  D. Vytvoreny LOGGER sa vlozi do COLLECTIONS LOGGERS volanim METHOD [ILoggingBuilder AddSerilog(this ILoggingBuilder Builder, ILogger Logger, bool Dispose)].
+9. ASP.NET LOGGING podporuje STRUCTURED LOGGING. Pre STRUCTURED LOGGING platia nasledujuce fakty.
+   A. STRUCTURED LOGGING umoznuje zapisovat LOG MESSAGES, ktore maju jasne identifikovane PARAMETERS, na zaklade, ktorych mozu LOG ANALYZERS tieto PARAMETERS identifikovat a zobrazovat ich VALUES.
+   B. STRUCTURED LOGGING vyuziva PARAMETERS [Args] v METHOD [void Log(this ILogger Logger, LogLevel LogLevel, EventId EventID, Exception Exception, string Message, params object[] Args)] na ukladanie identifikovatelnych PARAMETERS a ich VALUES.
+   !!! C. Na to aby STRUCTURED LOG MESSAGES bolo mozne zapisat v STRUCTURED FORMATE, MUSI ho podporovat prislusny LOGGING PROVIDER. SERILOG podporuje zapis STRUCTURED LOG MESSAGES.
+10. ASP.NET CORE spracovava HTTP REQUEST MESSAGES v REQUEST PRIPELINES. Pre REQUEST PRIPELINES platia nasledujuce fakty.
+   A. REQUEST PIPELINE je kolekcia MIDDLEWARE COMPONENTS cez ktore prechadzaju HTTP REQUEST MESSAGES a HTTP RESPONSE MESSAGES.
+   B. REQUEST PIPELINE je vytvorena ako QUEUE, kde MIDDLEWARE COMPONENTS su usporiadane v pevnom poradi. To znamena, ze jednotlive MIDDLEWARE COMPONENTS nemozu byt preskocene pri spracovani HTTP REQUESTS a HTTP RESPONSES. To znaci, ze dana MIDDLEWARE COMPONENT ma pristup VZDY iba k NASLEDUJUCEJ a PREDCHADZAJUCEJ MIDDLEWARE COMPONENT v REQUEST PIPELINE.
+   !!!!! C. REQUEST PIPELINE moze mat BRANCHES. To znamena, ze HTTP REQUEST MESSAGES nemusia byt spracovane v hlavnej REQUEST PIPELINE, ale mozu byt poslane na spracovanie do niektorej z REQUEST PIPELINE BRANCHES. Tieto BRANCHES mozu mat svoje vlastne BRANCHES.
+   D. REQUEST PIPELINE pozostava z nasledujucich typov MIDDLEWARE COMPONENTS.
+      A. NON-TERMINATING MIDDLEWARE COMPONENTS obsahuju DELEGATE na MIDDLEWARE COMPONENT NIZSIE v REQUEST PIPELINE. MIDDLEWARE COMPONENT moze danu HTTP REQUEST MESSAGE okamzite spracovat zaslanim HTTP RESPONSE MESSAGE do NON-TERMINATING MIDDLEWARE COMPONENT VYSSIE v REQUEST PIPELINE, alebo ju HTTP REQUEST MESSAGE poslat na dalsie spracovanie do MIDDLEWARE COMPONENT NIZSIE v REQUEST PIPELINE.
+	  B. TERMINATING MIDDLEWARE COMPONENTS su na BOTTOM danej BRANCH REQUEST PIPELINE a VZDY MUSIA vygenerovat HTTP RESPONSE MESSAGE, ktora je nasledne zaslana do MIDDLEWARE COMPONENT VYSSIE v REQUEST PIPELINE.
+   !!! E. Kazda BRANCH REQUEST PIPELINE moze mat <0,N> NON-TERMINATING MIDDLEWARE COMPONENTS a presne 1 TERMINATING MIDDLEWARE COMPONENT.
+   !!!!! F. Ak BRANCH NEMA na BOTTOM TERMINATING MIDDLEWARE COMPONENT a HTTP REQUEST MESSAGE sa dostane na tuto uroven .ASP.NET CORE generuje HTTP RESPONSE MESSAGE s HTTP RESPONSE MESSAGE CODE [404].
+11. HTTP REQUEST MESSAGES su v REQUEST PIPELINE spracovavane nasledujucim sposobom.
+   A. Ak ASP.NET CORE WEB SERVER HOST zachyti HTTP REQUEST MESSAGE, posle ju do prvej MIDDLEWARE COMPONENT v REQUEST PIPELINE.
+   B. Ak NON-TERMINATING MIDDLEWARE COMPONENT pre HTTP REQUEST MESSAGE nevygeneruje HTTP RESPONSE MESSAGE, zasle ju do MIDDLEWARE COMPONENT NIZSIE v REQUEST PIPELINE.
+   C. Ak NON-TERMINATING MIDDLEWARE COMPONENT, alebo TERMINATING MIDDLEWARE COMPONENT pre HTTP REQUEST MESSAGE vygeneruje HTTP RESPONSE MESSAGE, ktora je zaslana na dalsie spracovanie do MIDDLEWARE COMPONENT VYSSIE v REQUEST PIPELINE.
+   !!! D. TERMINATING MIDDLEWARE COMPONENT, ktora sa nachadza na BOTTOM REQUEST PIPELINE musi VZDY vygenerovat HTTP RESPONSE MESSAGE, ktoru nasledne zasle na dalsie spracovanie do MIDDLEWARE COMPONENT VYSSIE v REQUEST PIPELINE.
+   !!! E. Ak HTTP RESPONSE MESSAGE dorazi na TOP REQUEST PIPELINE, tak je odoslana na CLIENT.
+12. MIDDLEWARE COMPONENTS su COMPONENTS, ktore vytvaraju REQUEST PIPELINE. Pre MIDDLEWARE COMPONENTS platia nasledujuce fakty.
+   A. MIDDLEWARE COMPONENTS sa nachadzaju v REQUEST PIPELINE.
+   B. MIDDLEWARE COMPONENTS su zodpovedne za spracovanie HTTP REQUEST MESSAGES, ktore mozu byt spracovane nasledujucim sposobom.
+      A. Okamzite spracovane danou MIDDLEWARE COMPONENT vygenerovanim HTTP RESPONSE MESSAGE, ktora je poslana na dalsie spracovanie do MIDDLEWARE COMPONENT VYSSIE v REQUEST PIPELINE.
+	  B. Odoslanie HTTP REQUEST MESSAGE na dalsie spracovanie do MIDDLEWARE COMPONENT NIZSIE v REQUEST PIPELINE.
+   !!! C. MIDDLEWARE COMPONENTS mozu LUBOVOLNE modifikovat HTTP REQUEST MESSAGES i HTTP RESPONSE MESSAGES.
+   D. Pri navrate HTTP RESPONSE MESSAGE tato prechadza VSETKYMI MIDDLEWARE COMPONENTS, ktore predtym spracovali prislusnu HTTP REQUEST MESSAGE pre ktoru bola HTTP RESPONSE MESSAGE generovana, pricom kazda MIDDLEWARE COMPONENT moze HTTP RESPONSE MESSAGE modifikovat, tak ako predtym mohla modifikovat HTTP REQUEST MESSAGE.
+   !!!!! F. MIDDLEWARE COMPONENTS mozu menit HTTP RESPONSE MESSAGE IBA predtym ako je volana dalsia MIDDLEWARE COMPONENT NIZSIE v REQUEST PIPELINE. Ak sa CODE pokusi modifikovat HTTP RESPONSE MESSAGE potom ako jej BODY uz bolo vygenerovane niektorou z MIDDLEWARE COMPONENTS, pri pokuse o modifikaciu HTTP RESPONSE MESSAGE dojde k vzniku EXCEPTION. Dovodom tohto chovania je to, ze po vygenerovani BODY HTTP RESPONSE MESSAGE moze byt HTTP RESPONSE MESSAGE okamzite odosielana na CLIENT. A tym padom jej modifikacia by sposobila narusenie integrity.
+   !!! G. WEB API CONTROLLERS je v ASP.NET CORE taktiez implementovany ako MIDDLEWARE COMPONENT.
+!!! 13. HTTP REQUEST PIPELINE sa vytvara nasledujucim sposobom.
+   A. HTTP REQUEST PIPELINE sa vytvara pomocou INTERFACE [IApplicationBuilder].
+   B. Pomocou OPERATION [USE] je mozne pridat do REQUEST PIPELINE novy NON-TERMINATING MIDDLEWARE COMPONENT.
+   !!! C. Pomocou OPERATION [USE WHEN] je mozne do PARENT BRANCH REQUEST PIPELINE pridat CHILD BRANCH, ktora bezi SERIOVO s CURRENT BRANCH. To znamena, ze ak cela CHILD BRANCH skonci, bez toho, aby vygenerovala HTTP RESPONSE MESSAGE, spracovanie pokracuje v MIDDLEWARE COMPONENT, ktora v PARENT BRANCH nachadza za touto CHILD BRANCH. Ci HTTP REQUEST MESSAGE danu CHILD BRANCH pouzije urcuje PREDICATE aplikovany na HTTP REQUEST MESSAGE.
+   D. Pomocou OPERATION [RUN] sa do REQUEST PIPELINE pridava TERMINATING MIDDLEWARE COMPONENT.
+   E. Pomocou OPERATION [MAP] je mozne do PARENT BRANCH REQUEST PIPELINE pridat CHILD BRANCH, ktora bezi PARALELNE s CURRENT BRANCH. Takato BRANCH MUSI byt ukoncena TERMINATING MIDDLEWARE COMPONENT. Ci HTTP REQUEST MESSAGE danu CHILD BRANCH pouzije urcuje URL HTTP REQUEST MESSAGE.
+   G. Pomocou OPERATION [MAP WHEN] je mozne do PARENT BRANCH REQUEST PIPELINE pridat CHILD BRANCH, ktora bezi PARALELNE s CURRENT BRANCH. Takato BRANCH MUSI byt ukoncena TERMINATING MIDDLEWARE COMPONENT. Ci HTTP REQUEST MESSAGE danu CHILD BRANCH pouzije urcuje PREDICATE aplikovany na HTTP REQUEST MESSAGE.
+14. Pre OPERATION [USE] platia nasledujuce fakty.
+   A. OPERATION [USE] sa vykonava volanim METHOD [IApplicationBuilder Use(this IApplicationBuilder App, Func<HttpContext,RequestDelegate,Task> Middleware)].
+   B. OPERATION [USE] pridava do CURRENT BRANCH REQUEST PIPELINE novu NON-TERMINATING MIDDLEWARE COMPONENT.
+15. Pre OPERATION [USE WHEN] platia nasledujuce fakty.
+   A. OPERATION [USE WHEN] sa vykonava volanim METHOD [IApplicationBuilder UseWhen(this IApplicationBuilder App, Func<HttpContext,bool> Predicate, Action<IApplicationBuilder> Configuration)].
+   !!!!! B. OPERATION [USE WHEN] pridava do CURRENT BRANCH novu CHILD BRANCH, ktora bezi SERIOVO s PARENT BRANCH. To znamena, ze CHILD BRANCH NEMUSI byt ukoncena TERMINATING MIDDLEWARE COMPONENT. Ak spracovanie CHILD BRANCH skonci BEZ toho, aby vygenerovala HTTP RESPONSE MESSAGE, HTTP REQUEST MESSAGE je poslana na dalsie spracovanie do MIDDLEWARE COMPONENT NIZSIE v PARENT BRANCH.
+   !!! C. To ci sa pre danu HTTP REQUEST MESSAGE pouzije CHILD BRANCH urcuje DELEGATE aplikovany na HTTP REQUEST MESSAGE.
+16. Pre OPERATION [RUN] platia nasledujuce fakty.
+   A. OPERATION [RUN] sa vykonava volanim METHOD [void Run(this IApplicationBuilder App, RequestDelegate Handler)].
+   B. OPERATION [RUN] MUSI VZDY ukoncit spracovanie HTTP REQUEST MESSAGE vygenerovanim HTTP RESPONSE MESSAGE, ktora je nasledne poslana na dalsie spracovanie do MIDDLEWARE COMPONENT VYSSIE v CURRENT BRANCH.
+17. Pre OPERATION [MAP] platia nasledujuce fakty.
+   A. OPERATION [MAP] sa vykonava volanim METHOD [IApplicationBuilder Map(this IApplicationBuilder App, PathString PathMatch, bool PreserveMatchedPathSegment, Action<IApplicationBuilder> Configuration)].
+   !!!!! B. OPERATION [MAP] pridava do CURRENT BRANCH novu CHILD BRANCH, ktora bezi PARALELNE s PARENT BRANCH. To znamena, ze CHILD BRANCH MUSI byt ukoncena TERMINATING MIDDLEWARE COMPONENT a MIDDLEWARE COMPONENTS v PARENT BRANCH nachadzaju sa za touto CHILD BRANCH nie su NIKDY VOLANE.
+   C. To ci sa pre danu HTTP REQUEST MESSAGE pouzije CHILD BRANCH urcuje URL HTTP REQUEST MESSAGE.
+18. Pre OPERATION [MAP WHEN] platia nasledujuce fakty.
+   A. OPERATION [MAP WHEN] sa vykonava volanim METHOD [IApplicationBuilder MapWhen(this IApplicationBuilder App, Func<HttpContext,bool> Predicate, Action<IApplicationBuilder> Configuration)].
+   !!!!! B. OPERATION [MAP WHEN] pridava do CURRENT BRANCH novu CHILD BRANCH, ktora bezi PARALELNE s PARENT BRANCH. To znamena, ze CHILD BRANCH MUSI byt ukoncena TERMINATING MIDDLEWARE COMPONENT a MIDDLEWARE COMPONENTS v PARENT BRANCH nachadzaju sa za touto CHILD BRANCH nie su NIKDY VOLANE.
+   C. To ci sa pre danu HTTP REQUEST MESSAGE pouzije CHILD BRANCH urcuje DELEGATE aplikovany na HTTP REQUEST MESSAGE.
+   !!!!! D. Ak BRANCH vytvorena pomocou OPERATION [MAP WHEN] NEMA na BOTTOM svojej REQUEST PIPELINE BRANCH pridany TERMINATING MIDDLEWARE COMPONENT a HTTP REQUEST MESSAGE sa dostane na koniec tejto REQUEST PIPELINE BRANCH, tak ASP.NET CORE generuje HTTP RESPONSE MESSAGE s HTTP RESPONSE MESSAGE CODE [404].
+19. ASP.NET definuje mnozstvo standardnych MIDDLEWARE COMPONENTS.
+   A. MIDDLEWARE COMPONENT [Authentication] vykonava AUTHENTICATION USERS. MIDDLEWARE COMPONENT musi byt pouzita pred vsetkymi MIDDLEWARE COMPONENTS, ktore pouzivaju PROPERTY [HttpContext.User].
+   B. MIDDLEWARE COMPONENT [Authorization] vykonava AUTHORIZATION USERS. MIDDLEWARE COMPONENT sa musi nachadzat HNED za MIDDLEWARE COMPONENT [Authentication].
+   C. MIDDLEWARE COMPONENT [CORS] vykonava CROSS ORIGIN RESOURCE SHARING. MIDDLEWARE COMPONENT sa musi nachadzat pred vsetkymi MIDDLEWARE COMPONENTS, ktore pouzivaju CORS. MIDDLEWARE COMPONENT sa musi nachadzat pred MIDDLEWARE COMPONENT [UseResponseCaching].
+   D. MIDDLEWARE COMPONENT [Health Check] kontroluje HEALTH STATUS beziaceho PROGRAMU. MIDDLEWARE COMPONENT je TERMINATING MIDDLEWARE COMPONENT pre HEALTH STATUS URLs.
+   E. MIDDLEWARE COMPONENT [HTTPS Redirection] vykonava REDIRECTION vsetkych HTTP REQUEST MESSAGES na HTTPS REQUEST MESSAGES. MIDDLEWARE COMPONENT sa musi nachadza pred vsetkymi MIDDLEWARE COMPONENT, ktore vyuzivaju HTTPS URLs.
+   F. MIDDLEWARE COMPONENT [Response Caching] vykonava RESPONSE CACHING. MIDDLEWARE COMPONENT sa musi pouzivat pred vsetkymi MIDDLEWARE COMPONENTS, ktore vyzaduju RESPONSE CACHING. MIDDLEWARE COMPONENT sa musi nachadzat za MIDDLEWARE COMPONENT [CORS].
+   G. MIDDLEWARE COMPONENT [Endpoint Routing] definuje a vykonava CONSTRAINTS REQUEST ROUTES. MIDDLEWARE COMPONENT je TERMINATING MIDDLEWARE COMPONENT pre vsetky URLs, ktore zodpovedaju zadanym ROUTES.
+20. STANDARD MIDDLEWARE COMPONENT [RateLimiter] umoznuje limitovat pocet HTTP REQUEST MESSAGES na PROGRAM. MIDDLEWARE COMPONENT [RateLimiter] sa pouziva nasledujucim sposobom.
+   A. Do DEPENDENCY INJECTION CONTAINER sa pridaju SERVICES potrebne pre beh MIDDLEWARE COMPONENT [RateLimiter] volanim METHOD [IServiceCollection AddRateLimiter(this IServiceCollection Services, Action<RateLimiterOptions> ConfigureOptions)]. Pomocou PARAMETER [Action<RateLimiterOptions> ConfigureOptions] sa nakonfiguruju RATE LIMITING POLICIES, ktore sa maju aplikovat na jednotlive URLs.
+   B. Do REQUEST PIPELINE sa prida STANDARD MIDDLEWARE COMPONENT [RateLimiter] volanim METHOD [IApplicationBuilder UseRateLimiter(this IApplicationBuilder Application)].
+   C. Na ACTION METHOD sa aplikuje RATE LIMITING POLICY, ktora bola vytvorena pri registracii SERVICES pomocou ATTRIBUTE [EnableRateLimiting].
+   !!!!! D. Ak je LIMIT RATE LIMITER prekroceny, RATE LIMITER drzi REQUESTS v QUEUE a umozni ich vykonanie az po uplynuti casoveho LIMITU.
+21. STANDARD MIDDLEWARE COMPONENT [RequestTimeouts] umoznuje nastavit maximalny cas na spracovanie HTTP REQUEST MESSAGES v ACTION METHODS. MIDDLEWARE COMPONENT [RequestTimeouts] sa pouziva nasledujucim sposobom.
+   A. Do DEPENDENCY INJECTION CONTAINER sa pridaju SERVICES potrebne pre beh MIDDLEWARE COMPONENT [RequestTimeouts] volanim METHOD [IServiceCollection AddRequestTimeouts(this IServiceCollection Services, Action<RequestTimeoutOptions> Configure)]. Pomocou PARAMETER [Action<RequestTimeoutOptions> Configure] sa nakonfiguruju REQUEST TIMEOUT POLICIES, ktore sa maju aplikovat na jednotlive URLs.
+   B. Do REQUEST PIPELINE sa prida STANDARD MIDDLEWARE COMPONENT [RequestTimeouts] volanim METHOD [IApplicationBuilder UseRequestTimeouts(this IApplicationBuilder Builder)].
+   C. Na ACTION METHOD sa TIMEOUT, alebo REQUEST TIMEOUT POLICY, ktora bola vytvorena pri registracii SERVICES pomocou ATTRIBUTE [RequestTimeout].
+   !!!!! D. Ak dojde k exspiracii TIMEOUT pri spracovani HTTP REQUEST MESSAGE v ACTION METHOD, tak sa nastavi CANCELLATION TOKEN v PROPERTY [CancellationToken RequestAborted], ktory moze ACTION METHOD kontrolovat a v pripade jeho nastavenia, spracovat ERROR.
+   !!! E. Pre MINIMUM API PROGRAMS sa TIMEOUT na ACTION METHODS aplikuje volanim METHOD [IEndpointConventionBuilder WithRequestTimeout(this IEndpointConventionBuilder Builder, RequestTimeoutPolicy Policy)].
+   !!!!! F. STANDARD MIDDLEWARE COMPONENT [RequestTimeouts] sa aplikuje IBA ak PROGRAM NEBEZI v DEBUG MODE. V DEBUG MODE je tento MIDDLEWARE COMPONENT VYPNUTY.
+22. STANDARD MIDDLEWARE COMPONENT [Short Circuit] umoznuje okamzite ukoncit spracovanie HTTP REQUEST MESSAGE generovanie HTTP RESPONSE MESSAGE. MIDDLEWARE COMPONENT [Short Circuit] sa pouziva nasledujucimi sposobmi.
+   A. Volanim METHOD [IEndpointConventionBuilder ShortCircuit(this IEndpointConventionBuilder Builder, int StatusCode)], ktora sa aplikuje ENDPOINT BUILDER sa pre zadanu URL vykona SHORT CIRCUIT.
+   B. Volanim METHOD [IEndpointConventionBuilder MapShortCircuit(this IEndpointRouteBuilder Builder, int StatusCode, params string[] RoutePrefixes)] sa pre URLs v PARAMETER [RoutePrefixes] vykona SHORT CIRCUIT.
+23. ASP.NET CORE umoznuje vytvarat CUSTOM MIDDLEWARE COMPONENTS vo forme CLASSES. Pre CUSTOM MIDDLEWARE COMPONENT CLASSES platia nasledujuce fakty.
+   A. CLASS nemusi byt zdedena zo ziadnej inej CLASS, alebo implementovat INTERFACE.
+   B. CLASS MUSI mat PUBLIC CONTRUCTOR, ktora ma 1. PARAMETER TYPE [RequestDelegate].
+   C. CLASS MUSI mat definovanu PUBLIC METHOD [Task Invoke(HttpContext Context)], alebo PUBLIC METHOD [Task InvokeAsync(HttpContext Context)].
+   D. CLASS moze v CONSTRUCTOR i PUBLIC METHOD [Task Invoke(HttpContext Context)], alebo PUBLIC METHOD [Task InvokeAsync(HttpContext Context)] vyuzivat DEPENDENCY INJECTION.
+   E. Na pridanie CLASS do REQUEST PIPELINE sa pouziva EXTENSION METHOD pre TYPE [IApplicationBuilder], ktora musi volat METHOD [IApplicationBuilder UseMiddleware<TMiddleware>(this IApplicationBuilder Application, params object[] Args)].
 //----------------------------------------------------------------------------------------------------------------------

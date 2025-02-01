@@ -4,91 +4,97 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using System.Net;
 //--------------------------------------------------------------------------------------------------------------------------------
-namespace Client
+namespace MySharedLibrary
 {
 //--------------------------------------------------------------------------------------------------------------------------------
-	public sealed class CMyHttpClientHeaderAuthorization : CMyHttpClientHeader
+	public sealed class CMyHttpClientOperationRequest : CMyHttpClientOperation
 	{
 //--------------------------------------------------------------------------------------------------------------------------------
-		private const char										SEPARATOR_SCHEME_PARAMETERS=' ';
+		private readonly EMyHttpClientHttpMethod				MMethod;
+		private readonly string									MUrl;
+		private readonly CMyHttpClientHeaders					MHeaders;
+		private readonly CMyHttpClientContent					MContent;
+		private readonly TimeSpan								MTimeout;
 //--------------------------------------------------------------------------------------------------------------------------------
 //--------------------------------------------------------------------------------------------------------------------------------
 //--------------------------------------------------------------------------------------------------------------------------------
-		public CMyHttpClientHeaderAuthorization(string Scheme, string Parameters)
-			: base(CMyHttpClientHeaders.HEADER_NAME_AUTHORIZATION,CreateValue(Scheme,Parameters))
+		public CMyHttpClientOperationRequest(string MessageID, EMyHttpClientHttpMethod Method, string Url, CMyHttpClientHeaders Headers, CMyHttpClientContent Content, TimeSpan Timeout)
+			: base(MessageID)
 		{
+			MMethod=Method;
+			MUrl=Url;
+			MHeaders=Headers;
+			MContent=Content;
+			MTimeout=Timeout;
 		}
 //--------------------------------------------------------------------------------------------------------------------------------
-		public CMyHttpClientHeaderAuthorization(string[] Values)
-			: base(CMyHttpClientHeaders.HEADER_NAME_AUTHORIZATION,Values)
-		{
-		}
 //--------------------------------------------------------------------------------------------------------------------------------
 //--------------------------------------------------------------------------------------------------------------------------------
-//--------------------------------------------------------------------------------------------------------------------------------
-		public string											Scheme
+		public EMyHttpClientHttpMethod							Method
 		{
 			get
 			{
-				string											Value=Values[0];
-				string											Scheme=ParseValueScheme(Value);
-
-				return(Scheme);
+				return(MMethod);
 			}
 		}
 //--------------------------------------------------------------------------------------------------------------------------------
-		public string											Parameters
+		public string											Url
 		{
 			get
 			{
-				string											Value=Values[0];
-				string											Parameters=ParseValueParameters(Value);
-
-				return(Parameters);
+				return(MUrl);
+			}
+		}
+//--------------------------------------------------------------------------------------------------------------------------------
+		public CMyHttpClientHeaders								Headers
+		{
+			get
+			{
+				return(MHeaders);
+			}
+		}
+//--------------------------------------------------------------------------------------------------------------------------------
+		public CMyHttpClientContent								Content
+		{
+			get
+			{
+				return(MContent);
+			}
+		}
+//--------------------------------------------------------------------------------------------------------------------------------
+		public TimeSpan											Timeout
+		{
+			get
+			{
+				return(MTimeout);
 			}
 		}
 //--------------------------------------------------------------------------------------------------------------------------------
 //--------------------------------------------------------------------------------------------------------------------------------
 //--------------------------------------------------------------------------------------------------------------------------------
-		private static string CreateValue(string Scheme, string Parameters)
+		public override string GetMessageAsText()
 		{
-			string												Value=$"{Scheme}{SEPARATOR_SCHEME_PARAMETERS}{Parameters}";
+			StringBuilder										SB=new StringBuilder();
 
-			return(Value);
-		}
-//--------------------------------------------------------------------------------------------------------------------------------
-		private static string ParseValueScheme(string Value)
-		{
-			int													SeparatorPosition=Value.IndexOf(SEPARATOR_SCHEME_PARAMETERS);
+			SB.AppendLine($"ID\t[{MessageID}].");
+			SB.AppendLine();
+			SB.AppendLine($"METHOD\t[{MMethod.EXT_ToString()}].");
+			SB.AppendLine();
+			SB.AppendLine($"URL\t[{MUrl}].");
+			SB.AppendLine();
+			SB.AppendLine($"CONTENT TYPE [{MContent?.ContentType?.ConvertToString()}].");
+			SB.AppendLine();
+			SB.AppendLine($"BODY LENGTH [{MContent?.Content?.Length}].");
 
-			if (SeparatorPosition>=0)
-			{
-				string											ValueParameters=Value.Substring(0,SeparatorPosition);
+			string												Body=MContent.ConvertToString();
 
-				return(ValueParameters);
-			}
-			else
-			{
-				return(Value);
-			}
-		}
-//--------------------------------------------------------------------------------------------------------------------------------
-		private static string ParseValueParameters(string Value)
-		{
-			int													SeparatorPosition=Value.IndexOf(SEPARATOR_SCHEME_PARAMETERS);
+			SB.AppendLine();
+			SB.AppendLine($"BODY:\n{Body}");
 
-			if (SeparatorPosition>=0)
-			{
-				string											ValueParameters=Value.Substring(SeparatorPosition+1);
+			string												Text=SB.ToString();
 
-				return(ValueParameters);
-			}
-			else
-			{
-				return("");
-			}
+			return(Text);
 		}
 //--------------------------------------------------------------------------------------------------------------------------------
 	}

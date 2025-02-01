@@ -9,7 +9,9 @@ namespace Client
 		static void Main(string[] args)
 		{
 			//CMenuTestConnection								Menu=new CMenuTestConnection();
-			CMenuLogging										Menu=new CMenuLogging();
+			//CMenuLogging										Menu=new CMenuLogging();
+			//CMenuMiddlewares									Menu=new CMenuMiddlewares();
+			CMenuStandardMiddlewareComponents					Menu=new CMenuStandardMiddlewareComponents();
 
 			Menu.Execute();
 		}

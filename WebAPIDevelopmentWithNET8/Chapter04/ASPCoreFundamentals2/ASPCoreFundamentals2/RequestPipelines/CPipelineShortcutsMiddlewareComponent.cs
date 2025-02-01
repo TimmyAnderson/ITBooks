@@ -1,26 +1,25 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using Microsoft.AspNetCore.Mvc;
+﻿using System;
+using System.Threading.Tasks;
+using Microsoft.AspNetCore.Http;
 //----------------------------------------------------------------------------------------------------------------------
 namespace ASPCoreFundamentals2
 {
 //----------------------------------------------------------------------------------------------------------------------
-	[ApiController]
-	[Route("[controller]")]
-	public class TestConnectionController : ControllerBase
+	public static class CPipelineShortCircuitsMiddlewareComponent
 	{
 //----------------------------------------------------------------------------------------------------------------------
-		[HttpGet]
-		public string GetValue()
+		public static async Task ShortCircuitsMiddlewareComponent(HttpContext Context)
 		{
-			return("Hello WORLD !");
-		}
-//----------------------------------------------------------------------------------------------------------------------
-		[HttpPost]
-		public string PostValue([FromBody] string Value)
-		{
-			return($"Hello [{Value}] !");
+			string												MethodName=nameof(ShortCircuitsMiddlewareComponent);
+
+			Console.WriteLine($"MIDDLEWARE [{MethodName}] - START.");
+
+			// !!! Vytvori sa HTTP RESPONSE MESSAGE.
+			Context.Response.Headers["Content-Type"]="text/plain;charset=utf-8";
+
+			await Context.Response.WriteAsync($"RESPONSE from SHORT CIRCUIT MIDDLEWARE [{MethodName}].");
+
+			Console.WriteLine($"MIDDLEWARE [{MethodName}] - STOP.");
 		}
 //----------------------------------------------------------------------------------------------------------------------
 	}

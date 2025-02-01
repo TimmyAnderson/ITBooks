@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using MySharedLibrary;
 //--------------------------------------------------------------------------------------------------------------------------------
 namespace Client
 {
@@ -34,6 +35,19 @@ namespace Client
 			CMyHttpClient.ExecuteMessage(Request);
 		}
 //--------------------------------------------------------------------------------------------------------------------------------
+		private void ExecuteCommandTestConnectionPost(string CommandID, object[] Parameters)
+		{
+			string												MessageID=CommandID;
+			EMyHttpClientHttpMethod								Method=EMyHttpClientHttpMethod.E_POST;
+			string												URL=$"{BASE_ADDRESS}TestConnection";
+			CMyHttpClientHeaders								Headers=null;
+			CMyHttpClientContent								Content=CMyHttpClientContent.CreateContentJsonObject("MY TEXT");
+			TimeSpan											Timeout=TimeSpan.FromHours(1);
+			CMyHttpClientOperationRequest						Request=new CMyHttpClientOperationRequest(MessageID,Method,URL,Headers,Content,Timeout);
+
+			CMyHttpClient.ExecuteMessage(Request);
+		}
+//--------------------------------------------------------------------------------------------------------------------------------
 //--------------------------------------------------------------------------------------------------------------------------------
 //--------------------------------------------------------------------------------------------------------------------------------
 		protected override CMenuCommand[] GetCommands()
@@ -41,6 +55,7 @@ namespace Client
 			List<CMenuCommand>									CommandsCollection=new List<CMenuCommand>();
 
 			CommandsCollection.Add(new CMenuCommand("test","TEST CONNECTION",new EMenuCommandParameterType[0],ExecuteCommandTestConnection));
+			CommandsCollection.Add(new CMenuCommand("post","TEST CONNECTION POST",new EMenuCommandParameterType[0],ExecuteCommandTestConnectionPost));
 
 			CMenuCommand[]										Commands=CommandsCollection.ToArray();
 

@@ -26,6 +26,13 @@ namespace ASPCoreFundamentals2
 //----------------------------------------------------------------------------------------------------------------------
 //----------------------------------------------------------------------------------------------------------------------
 //----------------------------------------------------------------------------------------------------------------------
+		private void ThrowException()
+		{
+			throw(new InvalidOperationException("My EXCEPTION !"));
+		}
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
 		public LogLevel GetLogLevel(ILogger Logger)
 		{
 			LogLevel[]											LogLevels=Enum.GetValues<LogLevel>().OrderBy(P => P).ToArray();
@@ -134,6 +141,41 @@ namespace ASPCoreFundamentals2
 			string										Result=$"CATEGORY [{Category}] has LOG CATEGORY [{CurrentLogLevel}].";
 
 			return(Result);
+		}
+//----------------------------------------------------------------------------------------------------------------------
+		[HttpGet("LogComplexMessage")]
+		public string LogComplexMessage()
+		{
+			try
+			{
+				ThrowException();
+			}
+			catch(Exception E)
+			{
+				// !!! VALUE [1000] je EVENT ID.
+				MLogger.LogError(1000,E,"This is COMPLEX MESSAGE with PARAMETER 1 [{Parameter1}] PARAMETER 2 [{Parameter2}].","My PARAM A","My PARAM B");
+			}
+
+			return("LOG MESSAGE WRITTEN !");
+		}
+//----------------------------------------------------------------------------------------------------------------------
+		[HttpGet("LogToSerilog")]
+		public string LogToSerilog()
+		{
+			MLogger.LogCritical("This MESSAGE will be WRITTEN to SERILOG.");
+
+			return("LOG MESSAGE WRITTEN !");
+		}
+//----------------------------------------------------------------------------------------------------------------------
+		[HttpGet("LogStructuredLogMessage")]
+		public string LogStructuredLogMessage()
+		{
+			MLogger.LogCritical($"This is UNSTRUCTURED LOG with PARAMETER 1 [{100}] and PARAMETER 2 [{200}].");
+
+			// !!! Toto je STRUCUTRED LOG MESSAGE.
+			MLogger.LogCritical("This is STRUCTURED LOG with PARAMETER 1 [{MY_PARAM_1}] and PARAMETER 2 [{MY_PARAM_2}].",100,200);
+
+			return("LOG MESSAGE WRITTEN !");
 		}
 //----------------------------------------------------------------------------------------------------------------------
 	}

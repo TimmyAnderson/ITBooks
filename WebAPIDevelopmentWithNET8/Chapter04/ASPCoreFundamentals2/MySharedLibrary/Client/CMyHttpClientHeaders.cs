@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 using System.Net;
 using System.Net.Http.Headers;
 //--------------------------------------------------------------------------------------------------------------------------------
-namespace Client
+namespace MySharedLibrary
 {
 //--------------------------------------------------------------------------------------------------------------------------------
 	public sealed class CMyHttpClientHeaders

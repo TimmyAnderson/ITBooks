@@ -7,7 +7,7 @@ using System.Text;
 using System.Threading.Tasks;
 using Newtonsoft.Json;
 //--------------------------------------------------------------------------------------------------------------------------------
-namespace Client
+namespace MySharedLibrary
 {
 //--------------------------------------------------------------------------------------------------------------------------------
 	public sealed class CMyHttpClientContent
@@ -36,8 +36,8 @@ namespace Client
 
 			if (ContentLength>0)
 			{
-				string											ContentType=Content.Headers.ContentType.MediaType;
-				string											CharSet=Content.Headers.ContentType.CharSet;
+				string											ContentType=Content?.Headers?.ContentType?.MediaType;
+				string											CharSet=Content?.Headers?.ContentType?.CharSet;
 
 				MContentType=new CMyHttpClientContentType(ContentType,CharSet);
 				MContent=Content.ReadAsByteArrayAsync().Result;
@@ -77,6 +77,18 @@ namespace Client
 			return(DefaultEncoding);
 		}
 //--------------------------------------------------------------------------------------------------------------------------------
+		private static MediaTypeHeaderValue CreateMediaTypeHeaderValue(string MediaType, string CharSet)
+		{
+			MediaTypeHeaderValue								MediaTypeObject=new MediaTypeHeaderValue(MediaType);
+
+			if (CharSet!=null)
+			{
+				MediaTypeObject.CharSet=CharSet;
+			}
+
+			return(MediaTypeObject);
+		}
+//--------------------------------------------------------------------------------------------------------------------------------
 //--------------------------------------------------------------------------------------------------------------------------------
 //--------------------------------------------------------------------------------------------------------------------------------
 		public HttpContent ConvertToHttpContent()
@@ -91,7 +103,7 @@ namespace Client
 						string									ContentText=Encoding.GetString(MContent);
 						StringContent							Content=new StringContent(ContentText);
 
-						Content.Headers.ContentType=new MediaTypeHeaderValue(MContentType.MediaType,MContentType.CharSet);
+						Content.Headers.ContentType=CreateMediaTypeHeaderValue(MContentType.MediaType,MContentType.CharSet);
 
 						return(Content);
 					}
@@ -101,7 +113,7 @@ namespace Client
 						string									ContentText=Encoding.GetString(MContent);
 						StringContent							Content=new StringContent(ContentText);
 
-						Content.Headers.ContentType=new MediaTypeHeaderValue(MContentType.MediaType,MContentType.CharSet);
+						Content.Headers.ContentType=CreateMediaTypeHeaderValue(MContentType.MediaType,MContentType.CharSet);
 
 						return(Content);
 					}
@@ -111,7 +123,7 @@ namespace Client
 						string									ContentText=Encoding.GetString(MContent);
 						StringContent							Content=new StringContent(ContentText);
 
-						Content.Headers.ContentType=new MediaTypeHeaderValue(MContentType.MediaType,MContentType.CharSet);
+						Content.Headers.ContentType=CreateMediaTypeHeaderValue(MContentType.MediaType,MContentType.CharSet);
 
 						return(Content);
 					}
@@ -180,7 +192,7 @@ namespace Client
 //--------------------------------------------------------------------------------------------------------------------------------
 //--------------------------------------------------------------------------------------------------------------------------------
 //--------------------------------------------------------------------------------------------------------------------------------
-		public static CMyHttpClientContent CreateContentJson(string JsonContent)
+		public static CMyHttpClientContent CreateContentJsonString(string JsonContent)
 		{
 			CMyHttpClientContentType							ContentType=new CMyHttpClientContentType(MEDIA_TYPE_JSON,CHAR_SET_UTF_8);
 			byte[]												RawContent=Encoding.UTF8.GetBytes(JsonContent);
@@ -189,7 +201,7 @@ namespace Client
 			return(Content);
 		}
 //--------------------------------------------------------------------------------------------------------------------------------
-		public static CMyHttpClientContent CreateContentJson(object JsonContent)
+		public static CMyHttpClientContent CreateContentJsonObject(object JsonContent)
 		{
 			CMyHttpClientContentType							ContentType=new CMyHttpClientContentType(MEDIA_TYPE_JSON,CHAR_SET_UTF_8);
 			string												SerializedJsonContent=JsonConvert.SerializeObject(JsonContent);

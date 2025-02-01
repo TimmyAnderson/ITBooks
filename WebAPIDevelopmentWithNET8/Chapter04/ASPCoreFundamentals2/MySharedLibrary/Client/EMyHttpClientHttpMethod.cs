@@ -1,70 +1,74 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
+using System.Net.Http;
 using System.Text;
 using System.Threading.Tasks;
-using System.Net;
-using System.Net.Http;
-using System.Net.Http.Headers;
-using Newtonsoft.Json;
 //--------------------------------------------------------------------------------------------------------------------------------
-namespace Client
+namespace MySharedLibrary
 {
 //--------------------------------------------------------------------------------------------------------------------------------
-	public sealed class CMyHttpClientContentType
+	public enum EMyHttpClientHttpMethod
 	{
 //--------------------------------------------------------------------------------------------------------------------------------
-		private readonly string									MMediaType;
-		private readonly string									MCharSet;
+		E_GET=1,
+		E_POST=2,
+		E_PUT=3,
+		E_DELETE=4,
+//--------------------------------------------------------------------------------------------------------------------------------
+	}
 //--------------------------------------------------------------------------------------------------------------------------------
 //--------------------------------------------------------------------------------------------------------------------------------
 //--------------------------------------------------------------------------------------------------------------------------------
-		public CMyHttpClientContentType(string MediaType, string CharSet)
+	public static class CMyHttpClientHttpMethodExtensions
+	{
+//--------------------------------------------------------------------------------------------------------------------------------
+		public static HttpMethod EXT_ConvertHttpMethod(this EMyHttpClientHttpMethod Method)
 		{
-			MMediaType=MediaType;
-			MCharSet=CharSet;
-		}
-//--------------------------------------------------------------------------------------------------------------------------------
-//--------------------------------------------------------------------------------------------------------------------------------
-//--------------------------------------------------------------------------------------------------------------------------------
-		public string											MediaType
-		{
-			get
+			if (Method==EMyHttpClientHttpMethod.E_GET)
 			{
-				return(MMediaType);
+				return(HttpMethod.Get);
+			}
+			else if (Method==EMyHttpClientHttpMethod.E_POST)
+			{
+				return(HttpMethod.Post);
+			}
+			else if (Method==EMyHttpClientHttpMethod.E_PUT)
+			{
+				return(HttpMethod.Put);
+			}
+			else if (Method==EMyHttpClientHttpMethod.E_DELETE)
+			{
+				return(HttpMethod.Delete);
+			}
+			else
+			{
+				throw(new InvalidOperationException($"UNSUPPORTED METHOD [{Method}]."));
 			}
 		}
 //--------------------------------------------------------------------------------------------------------------------------------
-		public string											CharSet
+		public static string EXT_ToString(this EMyHttpClientHttpMethod Method)
 		{
-			get
+			if (Method==EMyHttpClientHttpMethod.E_GET)
 			{
-				return(MCharSet);
+				return("GET");
 			}
-		}
-//--------------------------------------------------------------------------------------------------------------------------------
-//--------------------------------------------------------------------------------------------------------------------------------
-//--------------------------------------------------------------------------------------------------------------------------------
-		public string ConvertToString()
-		{
-			if (MMediaType!=null)
+			else if (Method==EMyHttpClientHttpMethod.E_POST)
 			{
-				if (MCharSet==null)
-				{
-					string										Text=MMediaType;
-
-					return(Text);
-				}
-				else
-				{
-					string										Text=$"{MMediaType},{MCharSet}";
-
-					return(Text);
-				}
+				return("POST");
 			}
-			
-			return("");
+			else if (Method==EMyHttpClientHttpMethod.E_PUT)
+			{
+				return("PUT");
+			}
+			else if (Method==EMyHttpClientHttpMethod.E_DELETE)
+			{
+				return("DELETE");
+			}
+			else
+			{
+				throw(new InvalidOperationException($"UNSUPPORTED METHOD [{Method}]."));
+			}
 		}
 //--------------------------------------------------------------------------------------------------------------------------------
 	}

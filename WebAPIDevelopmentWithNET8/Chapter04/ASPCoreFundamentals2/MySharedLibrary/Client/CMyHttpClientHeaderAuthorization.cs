@@ -6,59 +6,89 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Net;
 //--------------------------------------------------------------------------------------------------------------------------------
-namespace Client
+namespace MySharedLibrary
 {
 //--------------------------------------------------------------------------------------------------------------------------------
-	public class CMyHttpClientHeader
+	public sealed class CMyHttpClientHeaderAuthorization : CMyHttpClientHeader
 	{
 //--------------------------------------------------------------------------------------------------------------------------------
-		private readonly string									MKey;
-		private readonly string[]								MValues;
+		private const char										SEPARATOR_SCHEME_PARAMETERS=' ';
 //--------------------------------------------------------------------------------------------------------------------------------
 //--------------------------------------------------------------------------------------------------------------------------------
 //--------------------------------------------------------------------------------------------------------------------------------
-		public CMyHttpClientHeader(string Key, string Value)
+		public CMyHttpClientHeaderAuthorization(string Scheme, string Parameters)
+			: base(CMyHttpClientHeaders.HEADER_NAME_AUTHORIZATION,CreateValue(Scheme,Parameters))
 		{
-			MKey=Key;
-			MValues=new string[]{Value};
 		}
 //--------------------------------------------------------------------------------------------------------------------------------
-		public CMyHttpClientHeader(string Key, string[] Values)
+		public CMyHttpClientHeaderAuthorization(string[] Values)
+			: base(CMyHttpClientHeaders.HEADER_NAME_AUTHORIZATION,Values)
 		{
-			MKey=Key;
-			MValues=Values;
 		}
 //--------------------------------------------------------------------------------------------------------------------------------
 //--------------------------------------------------------------------------------------------------------------------------------
 //--------------------------------------------------------------------------------------------------------------------------------
-		public string											Key
+		public string											Scheme
 		{
 			get
 			{
-				return(MKey);
+				string											Value=Values[0];
+				string											Scheme=ParseValueScheme(Value);
+
+				return(Scheme);
 			}
 		}
 //--------------------------------------------------------------------------------------------------------------------------------
-		public string[]											Values
+		public string											Parameters
 		{
 			get
 			{
-				return(MValues);
+				string											Value=Values[0];
+				string											Parameters=ParseValueParameters(Value);
+
+				return(Parameters);
 			}
 		}
 //--------------------------------------------------------------------------------------------------------------------------------
 //--------------------------------------------------------------------------------------------------------------------------------
 //--------------------------------------------------------------------------------------------------------------------------------
-		public override string ToString()
+		private static string CreateValue(string Scheme, string Parameters)
 		{
-			StringBuilder										SB=new StringBuilder();
+			string												Value=$"{Scheme}{SEPARATOR_SCHEME_PARAMETERS}{Parameters}";
 
-			SB.Append($"KEY [{MKey}]");
-			SB.Append($" VALUES [{MValues.Length}]");
+			return(Value);
+		}
+//--------------------------------------------------------------------------------------------------------------------------------
+		private static string ParseValueScheme(string Value)
+		{
+			int													SeparatorPosition=Value.IndexOf(SEPARATOR_SCHEME_PARAMETERS);
 
-			string												Text=SB.ToString();
+			if (SeparatorPosition>=0)
+			{
+				string											ValueParameters=Value.Substring(0,SeparatorPosition);
 
-			return(Text);
+				return(ValueParameters);
+			}
+			else
+			{
+				return(Value);
+			}
+		}
+//--------------------------------------------------------------------------------------------------------------------------------
+		private static string ParseValueParameters(string Value)
+		{
+			int													SeparatorPosition=Value.IndexOf(SEPARATOR_SCHEME_PARAMETERS);
+
+			if (SeparatorPosition>=0)
+			{
+				string											ValueParameters=Value.Substring(SeparatorPosition+1);
+
+				return(ValueParameters);
+			}
+			else
+			{
+				return("");
+			}
 		}
 //--------------------------------------------------------------------------------------------------------------------------------
 	}

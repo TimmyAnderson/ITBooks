@@ -1,26 +1,20 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using Microsoft.AspNetCore.Mvc;
+﻿using System;
+using System.Threading.Tasks;
+using Microsoft.AspNetCore.Http;
 //----------------------------------------------------------------------------------------------------------------------
 namespace ASPCoreFundamentals2
 {
 //----------------------------------------------------------------------------------------------------------------------
-	[ApiController]
-	[Route("[controller]")]
-	public class TestConnectionController : ControllerBase
+	public static class CPipelineMiddlewareInMainBranch
 	{
 //----------------------------------------------------------------------------------------------------------------------
-		[HttpGet]
-		public string GetValue()
+		public static async Task MyMiddlewareInMainBranch(HttpContext Context, RequestDelegate NextMiddleware)
 		{
-			return("Hello WORLD !");
-		}
-//----------------------------------------------------------------------------------------------------------------------
-		[HttpPost]
-		public string PostValue([FromBody] string Value)
-		{
-			return($"Hello [{Value}] !");
+			Console.WriteLine("MIDDLEWARE [MyMiddlewareInMainBranch] - START.");
+
+			await NextMiddleware(Context);
+
+			Console.WriteLine("MIDDLEWARE [MyMiddlewareInMainBranch] - END.");
 		}
 //----------------------------------------------------------------------------------------------------------------------
 	}

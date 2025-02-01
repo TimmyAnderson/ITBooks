@@ -4,97 +4,67 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using System.Net;
+using System.Net.Http;
+using System.Net.Http.Headers;
+using Newtonsoft.Json;
 //--------------------------------------------------------------------------------------------------------------------------------
-namespace Client
+namespace MySharedLibrary
 {
 //--------------------------------------------------------------------------------------------------------------------------------
-	public sealed class CMyHttpClientOperationRequest : CMyHttpClientOperation
+	public sealed class CMyHttpClientContentType
 	{
 //--------------------------------------------------------------------------------------------------------------------------------
-		private readonly EMyHttpClientHttpMethod				MMethod;
-		private readonly string									MUrl;
-		private readonly CMyHttpClientHeaders					MHeaders;
-		private readonly CMyHttpClientContent					MContent;
-		private readonly TimeSpan								MTimeout;
+		private readonly string									MMediaType;
+		private readonly string									MCharSet;
 //--------------------------------------------------------------------------------------------------------------------------------
 //--------------------------------------------------------------------------------------------------------------------------------
 //--------------------------------------------------------------------------------------------------------------------------------
-		public CMyHttpClientOperationRequest(string MessageID, EMyHttpClientHttpMethod Method, string Url, CMyHttpClientHeaders Headers, CMyHttpClientContent Content, TimeSpan Timeout)
-			: base(MessageID)
+		public CMyHttpClientContentType(string MediaType, string CharSet)
 		{
-			MMethod=Method;
-			MUrl=Url;
-			MHeaders=Headers;
-			MContent=Content;
-			MTimeout=Timeout;
+			MMediaType=MediaType;
+			MCharSet=CharSet;
 		}
 //--------------------------------------------------------------------------------------------------------------------------------
 //--------------------------------------------------------------------------------------------------------------------------------
 //--------------------------------------------------------------------------------------------------------------------------------
-		public EMyHttpClientHttpMethod							Method
+		public string											MediaType
 		{
 			get
 			{
-				return(MMethod);
+				return(MMediaType);
 			}
 		}
 //--------------------------------------------------------------------------------------------------------------------------------
-		public string											Url
+		public string											CharSet
 		{
 			get
 			{
-				return(MUrl);
-			}
-		}
-//--------------------------------------------------------------------------------------------------------------------------------
-		public CMyHttpClientHeaders								Headers
-		{
-			get
-			{
-				return(MHeaders);
-			}
-		}
-//--------------------------------------------------------------------------------------------------------------------------------
-		public CMyHttpClientContent								Content
-		{
-			get
-			{
-				return(MContent);
-			}
-		}
-//--------------------------------------------------------------------------------------------------------------------------------
-		public TimeSpan											Timeout
-		{
-			get
-			{
-				return(MTimeout);
+				return(MCharSet);
 			}
 		}
 //--------------------------------------------------------------------------------------------------------------------------------
 //--------------------------------------------------------------------------------------------------------------------------------
 //--------------------------------------------------------------------------------------------------------------------------------
-		public override string GetMessageAsText()
+		public string ConvertToString()
 		{
-			StringBuilder										SB=new StringBuilder();
+			if (MMediaType!=null)
+			{
+				if (MCharSet==null)
+				{
+					string										Text=MMediaType;
 
-			SB.AppendLine($"ID\t[{MessageID}].");
-			SB.AppendLine();
-			SB.AppendLine($"METHOD\t[{MMethod.EXT_ToString()}].");
-			SB.AppendLine();
-			SB.AppendLine($"URL\t[{MUrl}].");
-			SB.AppendLine();
-			SB.AppendLine($"CONTENT TYPE [{MContent?.ContentType?.ConvertToString()}].");
-			SB.AppendLine();
-			SB.AppendLine($"BODY LENGTH [{MContent?.Content?.Length}].");
+					return(Text);
+				}
+				else
+				{
+					string										Text=$"{MMediaType},{MCharSet}";
 
-			string												Body=MContent.ConvertToString();
-
-			SB.AppendLine();
-			SB.AppendLine($"BODY:\n{Body}");
-
-			string												Text=SB.ToString();
-
-			return(Text);
+					return(Text);
+				}
+			}
+			
+			return("");
 		}
 //--------------------------------------------------------------------------------------------------------------------------------
 	}

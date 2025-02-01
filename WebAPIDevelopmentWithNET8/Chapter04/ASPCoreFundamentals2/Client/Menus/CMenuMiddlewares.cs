@@ -8,21 +8,21 @@ using MySharedLibrary;
 namespace Client
 {
 //--------------------------------------------------------------------------------------------------------------------------------
-	public sealed class CMenuLogging : CMenu
+	public sealed class CMenuMiddlewares : CMenu
 	{
 //--------------------------------------------------------------------------------------------------------------------------------
 		private const string									BASE_ADDRESS="https://localhost:7000/";
 //--------------------------------------------------------------------------------------------------------------------------------
 //--------------------------------------------------------------------------------------------------------------------------------
 //--------------------------------------------------------------------------------------------------------------------------------
-		public CMenuLogging()
+		public CMenuMiddlewares()
 			: base(new CMenuCommand("q","QUIT",new EMenuCommandParameterType[0],null))
 		{
 		}
 //--------------------------------------------------------------------------------------------------------------------------------
 //--------------------------------------------------------------------------------------------------------------------------------
 //--------------------------------------------------------------------------------------------------------------------------------
-		private void ExecuteCommandSimpleLogging(string CommandID, object[] Parameters)
+		private void ExecuteCommandMainBranchMiddleware(string CommandID, object[] Parameters)
 		{
 			string												MessageID=CommandID;
 			EMyHttpClientHttpMethod								Method=EMyHttpClientHttpMethod.E_GET;
@@ -35,11 +35,11 @@ namespace Client
 			CMyHttpClient.ExecuteMessage(Request);
 		}
 //--------------------------------------------------------------------------------------------------------------------------------
-		private void ExecuteCommandLoggingLevels(string CommandID, object[] Parameters)
+		private void ExecuteCommandMyComplexBranch(string CommandID, object[] Parameters)
 		{
 			string												MessageID=CommandID;
 			EMyHttpClientHttpMethod								Method=EMyHttpClientHttpMethod.E_GET;
-			string												URL=$"{BASE_ADDRESS}Logging/LoggingLevels";
+			string												URL=$"{BASE_ADDRESS}MyComplexBranch";
 			CMyHttpClientHeaders								Headers=null;
 			CMyHttpClientContent								Content=null;
 			TimeSpan											Timeout=TimeSpan.FromHours(1);
@@ -48,11 +48,13 @@ namespace Client
 			CMyHttpClient.ExecuteMessage(Request);
 		}
 //--------------------------------------------------------------------------------------------------------------------------------
-		private void ExecuteCommandCustomLogCategory1(string CommandID, object[] Parameters)
+		private void ExecuteCommandBranchWithUseWhen1(string CommandID, object[] Parameters)
 		{
 			string												MessageID=CommandID;
 			EMyHttpClientHttpMethod								Method=EMyHttpClientHttpMethod.E_GET;
-			string												URL=$"{BASE_ADDRESS}Logging/CustomLogCategory1";
+
+			// !!! NEVOLA sa USE WHEN BRANCH.
+			string												URL=$"{BASE_ADDRESS}BranchWithUseWhen";
 			CMyHttpClientHeaders								Headers=null;
 			CMyHttpClientContent								Content=null;
 			TimeSpan											Timeout=TimeSpan.FromHours(1);
@@ -61,11 +63,13 @@ namespace Client
 			CMyHttpClient.ExecuteMessage(Request);
 		}
 //--------------------------------------------------------------------------------------------------------------------------------
-		private void ExecuteCommandCustomLogCategory2(string CommandID, object[] Parameters)
+		private void ExecuteCommandBranchWithUseWhen2(string CommandID, object[] Parameters)
 		{
 			string												MessageID=CommandID;
 			EMyHttpClientHttpMethod								Method=EMyHttpClientHttpMethod.E_GET;
-			string												URL=$"{BASE_ADDRESS}Logging/CustomLogCategory2";
+
+			// !!! VOLA sa USE WHEN BRANCH.
+			string												URL=$"{BASE_ADDRESS}BranchWithUseWhen/Child";
 			CMyHttpClientHeaders								Headers=null;
 			CMyHttpClientContent								Content=null;
 			TimeSpan											Timeout=TimeSpan.FromHours(1);
@@ -74,11 +78,13 @@ namespace Client
 			CMyHttpClient.ExecuteMessage(Request);
 		}
 //--------------------------------------------------------------------------------------------------------------------------------
-		private void ExecuteCommandCustomLogCategory3(string CommandID, object[] Parameters)
+		private void ExecuteCommandBranchWithMapWhen1(string CommandID, object[] Parameters)
 		{
 			string												MessageID=CommandID;
 			EMyHttpClientHttpMethod								Method=EMyHttpClientHttpMethod.E_GET;
-			string												URL=$"{BASE_ADDRESS}Logging/CustomLogCategory3";
+
+			// !!! NEVOLA sa MAP WHEN BRANCH.
+			string												URL=$"{BASE_ADDRESS}BranchWithMapWhen";
 			CMyHttpClientHeaders								Headers=null;
 			CMyHttpClientContent								Content=null;
 			TimeSpan											Timeout=TimeSpan.FromHours(1);
@@ -87,50 +93,13 @@ namespace Client
 			CMyHttpClient.ExecuteMessage(Request);
 		}
 //--------------------------------------------------------------------------------------------------------------------------------
-		private void ExecuteCommandCustomLogCategory4(string CommandID, object[] Parameters)
+		private void ExecuteCommandBranchWithMapWhen2(string CommandID, object[] Parameters)
 		{
 			string												MessageID=CommandID;
 			EMyHttpClientHttpMethod								Method=EMyHttpClientHttpMethod.E_GET;
-			string												URL=$"{BASE_ADDRESS}Logging/CustomLogCategory4";
-			CMyHttpClientHeaders								Headers=null;
-			CMyHttpClientContent								Content=null;
-			TimeSpan											Timeout=TimeSpan.FromHours(1);
-			CMyHttpClientOperationRequest						Request=new CMyHttpClientOperationRequest(MessageID,Method,URL,Headers,Content,Timeout);
 
-			CMyHttpClient.ExecuteMessage(Request);
-		}
-//--------------------------------------------------------------------------------------------------------------------------------
-		private void ExecuteCommandLogComplexMessage(string CommandID, object[] Parameters)
-		{
-			string												MessageID=CommandID;
-			EMyHttpClientHttpMethod								Method=EMyHttpClientHttpMethod.E_GET;
-			string												URL=$"{BASE_ADDRESS}Logging/LogComplexMessage";
-			CMyHttpClientHeaders								Headers=null;
-			CMyHttpClientContent								Content=null;
-			TimeSpan											Timeout=TimeSpan.FromHours(1);
-			CMyHttpClientOperationRequest						Request=new CMyHttpClientOperationRequest(MessageID,Method,URL,Headers,Content,Timeout);
-
-			CMyHttpClient.ExecuteMessage(Request);
-		}
-//--------------------------------------------------------------------------------------------------------------------------------
-		private void ExecuteCommandLogToSerilog(string CommandID, object[] Parameters)
-		{
-			string												MessageID=CommandID;
-			EMyHttpClientHttpMethod								Method=EMyHttpClientHttpMethod.E_GET;
-			string												URL=$"{BASE_ADDRESS}Logging/LogToSerilog";
-			CMyHttpClientHeaders								Headers=null;
-			CMyHttpClientContent								Content=null;
-			TimeSpan											Timeout=TimeSpan.FromHours(1);
-			CMyHttpClientOperationRequest						Request=new CMyHttpClientOperationRequest(MessageID,Method,URL,Headers,Content,Timeout);
-
-			CMyHttpClient.ExecuteMessage(Request);
-		}
-//--------------------------------------------------------------------------------------------------------------------------------
-		private void ExecuteCommandLogStructuredLogMessage(string CommandID, object[] Parameters)
-		{
-			string												MessageID=CommandID;
-			EMyHttpClientHttpMethod								Method=EMyHttpClientHttpMethod.E_GET;
-			string												URL=$"{BASE_ADDRESS}Logging/LogStructuredLogMessage";
+			// !!! VOLA sa MAP WHEN BRANCH.
+			string												URL=$"{BASE_ADDRESS}BranchWithMapWhen/Child";
 			CMyHttpClientHeaders								Headers=null;
 			CMyHttpClientContent								Content=null;
 			TimeSpan											Timeout=TimeSpan.FromHours(1);
@@ -145,15 +114,12 @@ namespace Client
 		{
 			List<CMenuCommand>									CommandsCollection=new List<CMenuCommand>();
 
-			CommandsCollection.Add(new CMenuCommand("1","SIMPLE LOGGING",new EMenuCommandParameterType[0],ExecuteCommandSimpleLogging));
-			CommandsCollection.Add(new CMenuCommand("2","LOGGING LEVELS",new EMenuCommandParameterType[0],ExecuteCommandLoggingLevels));
-			CommandsCollection.Add(new CMenuCommand("3","LOG CATEGORY 1",new EMenuCommandParameterType[0],ExecuteCommandCustomLogCategory1));
-			CommandsCollection.Add(new CMenuCommand("4","LOG CATEGORY 2",new EMenuCommandParameterType[0],ExecuteCommandCustomLogCategory2));
-			CommandsCollection.Add(new CMenuCommand("5","LOG CATEGORY 3",new EMenuCommandParameterType[0],ExecuteCommandCustomLogCategory3));
-			CommandsCollection.Add(new CMenuCommand("6","LOG CATEGORY 4",new EMenuCommandParameterType[0],ExecuteCommandCustomLogCategory4));
-			CommandsCollection.Add(new CMenuCommand("7","LOG COMPLEX MESSAGE",new EMenuCommandParameterType[0],ExecuteCommandLogComplexMessage));
-			CommandsCollection.Add(new CMenuCommand("8","LOG TO SERILOG",new EMenuCommandParameterType[0],ExecuteCommandLogToSerilog));
-			CommandsCollection.Add(new CMenuCommand("9","LOG STRUCTURED LOG MESSAGE",new EMenuCommandParameterType[0],ExecuteCommandLogStructuredLogMessage));
+			CommandsCollection.Add(new CMenuCommand("1","MAIN BRANCH MIDDLEWARE",new EMenuCommandParameterType[0],ExecuteCommandMainBranchMiddleware));
+			CommandsCollection.Add(new CMenuCommand("2","MY COMPLEX BRANCH",new EMenuCommandParameterType[0],ExecuteCommandMyComplexBranch));
+			CommandsCollection.Add(new CMenuCommand("3","USE WHEN BRANCH 1",new EMenuCommandParameterType[0],ExecuteCommandBranchWithUseWhen1));
+			CommandsCollection.Add(new CMenuCommand("4","USE WHEN BRANCH 2",new EMenuCommandParameterType[0],ExecuteCommandBranchWithUseWhen2));
+			CommandsCollection.Add(new CMenuCommand("5","MAP WHEN BRANCH 1",new EMenuCommandParameterType[0],ExecuteCommandBranchWithMapWhen1));
+			CommandsCollection.Add(new CMenuCommand("6","MAP WHEN BRANCH 2",new EMenuCommandParameterType[0],ExecuteCommandBranchWithMapWhen2));
 
 			CMenuCommand[]										Commands=CommandsCollection.ToArray();
 

@@ -8,25 +8,46 @@ using MySharedLibrary;
 namespace Client
 {
 //--------------------------------------------------------------------------------------------------------------------------------
-	public sealed class CMenuLogging : CMenu
+	public sealed class CMenuStandardMiddlewareComponents : CMenu
 	{
 //--------------------------------------------------------------------------------------------------------------------------------
 		private const string									BASE_ADDRESS="https://localhost:7000/";
 //--------------------------------------------------------------------------------------------------------------------------------
 //--------------------------------------------------------------------------------------------------------------------------------
 //--------------------------------------------------------------------------------------------------------------------------------
-		public CMenuLogging()
+		public CMenuStandardMiddlewareComponents()
 			: base(new CMenuCommand("q","QUIT",new EMenuCommandParameterType[0],null))
 		{
 		}
 //--------------------------------------------------------------------------------------------------------------------------------
 //--------------------------------------------------------------------------------------------------------------------------------
 //--------------------------------------------------------------------------------------------------------------------------------
-		private void ExecuteCommandSimpleLogging(string CommandID, object[] Parameters)
+		private void ExecuteCommandRateLimiter(string CommandID, object[] Parameters)
 		{
+			// !!! Odosle sa 5 REQUESTS, aby sa demonstrovala funkcionalita RATE LIMITER.
+			// !!! Ak je LIMIT RATE LIMITER prekroceny, RATE LIMITER drzi REQUESTS v QUEUE a umozni ich vykonanie az po uplynuti casoveho LIMITU.
+
+			for(int Index=0;Index<5;Index++)
+			{
+				string											MessageID=CommandID;
+				EMyHttpClientHttpMethod							Method=EMyHttpClientHttpMethod.E_GET;
+				string											URL=$"{BASE_ADDRESS}StandardMiddlewareComponents/RateLimitedEndpoint";
+				CMyHttpClientHeaders							Headers=null;
+				CMyHttpClientContent							Content=null;
+				TimeSpan										Timeout=TimeSpan.FromHours(1);
+				CMyHttpClientOperationRequest					Request=new CMyHttpClientOperationRequest(MessageID,Method,URL,Headers,Content,Timeout);
+
+				CMyHttpClient.ExecuteMessage(Request);
+			}
+		}
+//--------------------------------------------------------------------------------------------------------------------------------
+		private void ExecuteCommandRequestTimeoutsEndpoint1(string CommandID, object[] Parameters)
+		{
+			int													TimeoutInMS=((int) Parameters[0]);
+
 			string												MessageID=CommandID;
 			EMyHttpClientHttpMethod								Method=EMyHttpClientHttpMethod.E_GET;
-			string												URL=$"{BASE_ADDRESS}Logging/SimpleLogging";
+			string												URL=$"{BASE_ADDRESS}StandardMiddlewareComponents/RequestTimeoutsEndpoint1?TimeoutInMS={TimeoutInMS}";
 			CMyHttpClientHeaders								Headers=null;
 			CMyHttpClientContent								Content=null;
 			TimeSpan											Timeout=TimeSpan.FromHours(1);
@@ -35,11 +56,13 @@ namespace Client
 			CMyHttpClient.ExecuteMessage(Request);
 		}
 //--------------------------------------------------------------------------------------------------------------------------------
-		private void ExecuteCommandLoggingLevels(string CommandID, object[] Parameters)
+		private void ExecuteCommandRequestTimeoutsEndpoint2(string CommandID, object[] Parameters)
 		{
+			int													TimeoutInMS=((int) Parameters[0]);
+
 			string												MessageID=CommandID;
 			EMyHttpClientHttpMethod								Method=EMyHttpClientHttpMethod.E_GET;
-			string												URL=$"{BASE_ADDRESS}Logging/LoggingLevels";
+			string												URL=$"{BASE_ADDRESS}StandardMiddlewareComponents/RequestTimeoutsEndpoint2?TimeoutInMS={TimeoutInMS}";
 			CMyHttpClientHeaders								Headers=null;
 			CMyHttpClientContent								Content=null;
 			TimeSpan											Timeout=TimeSpan.FromHours(1);
@@ -48,11 +71,13 @@ namespace Client
 			CMyHttpClient.ExecuteMessage(Request);
 		}
 //--------------------------------------------------------------------------------------------------------------------------------
-		private void ExecuteCommandCustomLogCategory1(string CommandID, object[] Parameters)
+		private void ExecuteCommandRequestTimeoutsEndpoint3(string CommandID, object[] Parameters)
 		{
+			int													TimeoutInMS=((int) Parameters[0]);
+
 			string												MessageID=CommandID;
 			EMyHttpClientHttpMethod								Method=EMyHttpClientHttpMethod.E_GET;
-			string												URL=$"{BASE_ADDRESS}Logging/CustomLogCategory1";
+			string												URL=$"{BASE_ADDRESS}StandardMiddlewareComponents/RequestTimeoutsEndpoint3?TimeoutInMS={TimeoutInMS}";
 			CMyHttpClientHeaders								Headers=null;
 			CMyHttpClientContent								Content=null;
 			TimeSpan											Timeout=TimeSpan.FromHours(1);
@@ -61,11 +86,13 @@ namespace Client
 			CMyHttpClient.ExecuteMessage(Request);
 		}
 //--------------------------------------------------------------------------------------------------------------------------------
-		private void ExecuteCommandCustomLogCategory2(string CommandID, object[] Parameters)
+//--------------------------------------------------------------------------------------------------------------------------------
+//--------------------------------------------------------------------------------------------------------------------------------
+		private void ExecuteCommandMyShortCircuit1(string CommandID, object[] Parameters)
 		{
 			string												MessageID=CommandID;
 			EMyHttpClientHttpMethod								Method=EMyHttpClientHttpMethod.E_GET;
-			string												URL=$"{BASE_ADDRESS}Logging/CustomLogCategory2";
+			string												URL=$"{BASE_ADDRESS}MyShortCircuit1";
 			CMyHttpClientHeaders								Headers=null;
 			CMyHttpClientContent								Content=null;
 			TimeSpan											Timeout=TimeSpan.FromHours(1);
@@ -74,11 +101,11 @@ namespace Client
 			CMyHttpClient.ExecuteMessage(Request);
 		}
 //--------------------------------------------------------------------------------------------------------------------------------
-		private void ExecuteCommandCustomLogCategory3(string CommandID, object[] Parameters)
+		private void ExecuteCommandMyShortCircuit2(string CommandID, object[] Parameters)
 		{
 			string												MessageID=CommandID;
 			EMyHttpClientHttpMethod								Method=EMyHttpClientHttpMethod.E_GET;
-			string												URL=$"{BASE_ADDRESS}Logging/CustomLogCategory3";
+			string												URL=$"{BASE_ADDRESS}MyShortCircuit2";
 			CMyHttpClientHeaders								Headers=null;
 			CMyHttpClientContent								Content=null;
 			TimeSpan											Timeout=TimeSpan.FromHours(1);
@@ -87,50 +114,11 @@ namespace Client
 			CMyHttpClient.ExecuteMessage(Request);
 		}
 //--------------------------------------------------------------------------------------------------------------------------------
-		private void ExecuteCommandCustomLogCategory4(string CommandID, object[] Parameters)
+		private void ExecuteCommandMyCustomMiddlewareClasses(string CommandID, object[] Parameters)
 		{
 			string												MessageID=CommandID;
 			EMyHttpClientHttpMethod								Method=EMyHttpClientHttpMethod.E_GET;
-			string												URL=$"{BASE_ADDRESS}Logging/CustomLogCategory4";
-			CMyHttpClientHeaders								Headers=null;
-			CMyHttpClientContent								Content=null;
-			TimeSpan											Timeout=TimeSpan.FromHours(1);
-			CMyHttpClientOperationRequest						Request=new CMyHttpClientOperationRequest(MessageID,Method,URL,Headers,Content,Timeout);
-
-			CMyHttpClient.ExecuteMessage(Request);
-		}
-//--------------------------------------------------------------------------------------------------------------------------------
-		private void ExecuteCommandLogComplexMessage(string CommandID, object[] Parameters)
-		{
-			string												MessageID=CommandID;
-			EMyHttpClientHttpMethod								Method=EMyHttpClientHttpMethod.E_GET;
-			string												URL=$"{BASE_ADDRESS}Logging/LogComplexMessage";
-			CMyHttpClientHeaders								Headers=null;
-			CMyHttpClientContent								Content=null;
-			TimeSpan											Timeout=TimeSpan.FromHours(1);
-			CMyHttpClientOperationRequest						Request=new CMyHttpClientOperationRequest(MessageID,Method,URL,Headers,Content,Timeout);
-
-			CMyHttpClient.ExecuteMessage(Request);
-		}
-//--------------------------------------------------------------------------------------------------------------------------------
-		private void ExecuteCommandLogToSerilog(string CommandID, object[] Parameters)
-		{
-			string												MessageID=CommandID;
-			EMyHttpClientHttpMethod								Method=EMyHttpClientHttpMethod.E_GET;
-			string												URL=$"{BASE_ADDRESS}Logging/LogToSerilog";
-			CMyHttpClientHeaders								Headers=null;
-			CMyHttpClientContent								Content=null;
-			TimeSpan											Timeout=TimeSpan.FromHours(1);
-			CMyHttpClientOperationRequest						Request=new CMyHttpClientOperationRequest(MessageID,Method,URL,Headers,Content,Timeout);
-
-			CMyHttpClient.ExecuteMessage(Request);
-		}
-//--------------------------------------------------------------------------------------------------------------------------------
-		private void ExecuteCommandLogStructuredLogMessage(string CommandID, object[] Parameters)
-		{
-			string												MessageID=CommandID;
-			EMyHttpClientHttpMethod								Method=EMyHttpClientHttpMethod.E_GET;
-			string												URL=$"{BASE_ADDRESS}Logging/LogStructuredLogMessage";
+			string												URL=$"{BASE_ADDRESS}TestConnection";
 			CMyHttpClientHeaders								Headers=null;
 			CMyHttpClientContent								Content=null;
 			TimeSpan											Timeout=TimeSpan.FromHours(1);
@@ -145,15 +133,13 @@ namespace Client
 		{
 			List<CMenuCommand>									CommandsCollection=new List<CMenuCommand>();
 
-			CommandsCollection.Add(new CMenuCommand("1","SIMPLE LOGGING",new EMenuCommandParameterType[0],ExecuteCommandSimpleLogging));
-			CommandsCollection.Add(new CMenuCommand("2","LOGGING LEVELS",new EMenuCommandParameterType[0],ExecuteCommandLoggingLevels));
-			CommandsCollection.Add(new CMenuCommand("3","LOG CATEGORY 1",new EMenuCommandParameterType[0],ExecuteCommandCustomLogCategory1));
-			CommandsCollection.Add(new CMenuCommand("4","LOG CATEGORY 2",new EMenuCommandParameterType[0],ExecuteCommandCustomLogCategory2));
-			CommandsCollection.Add(new CMenuCommand("5","LOG CATEGORY 3",new EMenuCommandParameterType[0],ExecuteCommandCustomLogCategory3));
-			CommandsCollection.Add(new CMenuCommand("6","LOG CATEGORY 4",new EMenuCommandParameterType[0],ExecuteCommandCustomLogCategory4));
-			CommandsCollection.Add(new CMenuCommand("7","LOG COMPLEX MESSAGE",new EMenuCommandParameterType[0],ExecuteCommandLogComplexMessage));
-			CommandsCollection.Add(new CMenuCommand("8","LOG TO SERILOG",new EMenuCommandParameterType[0],ExecuteCommandLogToSerilog));
-			CommandsCollection.Add(new CMenuCommand("9","LOG STRUCTURED LOG MESSAGE",new EMenuCommandParameterType[0],ExecuteCommandLogStructuredLogMessage));
+			CommandsCollection.Add(new CMenuCommand("1","RATE LIMITER",new EMenuCommandParameterType[0],ExecuteCommandRateLimiter));
+			CommandsCollection.Add(new CMenuCommand("2","REQUEST TIMEOUTS 1",new EMenuCommandParameterType[]{EMenuCommandParameterType.E_INT},ExecuteCommandRequestTimeoutsEndpoint1));
+			CommandsCollection.Add(new CMenuCommand("3","REQUEST TIMEOUTS 2",new EMenuCommandParameterType[]{EMenuCommandParameterType.E_INT},ExecuteCommandRequestTimeoutsEndpoint2));
+			CommandsCollection.Add(new CMenuCommand("4","REQUEST TIMEOUTS 3",new EMenuCommandParameterType[]{EMenuCommandParameterType.E_INT},ExecuteCommandRequestTimeoutsEndpoint3));
+			CommandsCollection.Add(new CMenuCommand("5","SHORT CIRCUIT 1",new EMenuCommandParameterType[0],ExecuteCommandMyShortCircuit1));
+			CommandsCollection.Add(new CMenuCommand("6","SHORT CIRCUIT 2",new EMenuCommandParameterType[0],ExecuteCommandMyShortCircuit2));
+			CommandsCollection.Add(new CMenuCommand("7","CUSTOM MIDDLEWARE CLASS",new EMenuCommandParameterType[0],ExecuteCommandMyCustomMiddlewareClasses));
 
 			CMenuCommand[]										Commands=CommandsCollection.ToArray();
 

@@ -1,26 +1,20 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using Microsoft.AspNetCore.Mvc;
+﻿using System;
+using System.Threading.Tasks;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Http;
 //----------------------------------------------------------------------------------------------------------------------
 namespace ASPCoreFundamentals2
 {
 //----------------------------------------------------------------------------------------------------------------------
-	[ApiController]
-	[Route("[controller]")]
-	public class TestConnectionController : ControllerBase
+	public static class CMyCustomMiddlewareClassesExtensions
 	{
 //----------------------------------------------------------------------------------------------------------------------
-		[HttpGet]
-		public string GetValue()
+		public static IApplicationBuilder UseMyCustomMiddlewareClasses(this IApplicationBuilder Builder)
 		{
-			return("Hello WORLD !");
-		}
-//----------------------------------------------------------------------------------------------------------------------
-		[HttpPost]
-		public string PostValue([FromBody] string Value)
-		{
-			return($"Hello [{Value}] !");
+			// !!! Prida sa CUSTOM MIDDLEWARE COMPONENT CLASS do REQUEST PIPELINE.
+			IApplicationBuilder									Result=Builder.UseMiddleware<CMyCustomMiddlewareClasses>();
+
+			return(Result);
 		}
 //----------------------------------------------------------------------------------------------------------------------
 	}
