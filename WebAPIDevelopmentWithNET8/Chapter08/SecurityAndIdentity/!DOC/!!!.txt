@@ -1,0 +1,75 @@
+//----------------------------------------------------------------------------------------------------------------------
+1. Solution demonstruje SECURITY a IDENTITY v ASP.NET CORE.
+2. AUTHENTICATION je proces overenia IDENTITY daneho USER. IDENTITA daneho USER sa overuje kontrolou USER CREDENTIALS, ci tieto sedia s USER CREDENTIALS ulozenymi v IDENTITY DB. USER CREDENTIALS su spravidla USER NAME a PASSWORD.
+3. AUTHORIZATION je proces urcenia ci dany USER, ktory uz presiel procesom AUTHENTICATION ma ACCESS RIGHTS k danemu RESOURCE. AUTHORIZATION je mozne vykonat az po vykonani AUTHENTICATION.
+4. AUTHENTICATION aj AUTHORIZATION je v ASP.NET CORE implementovany pomocou IDENTITY FRAMEWORK.
+5. AUTHENTICATION je implementovany aj pomocou 3rd PARTY LIBRARIES.
+6. PROGRAM vyuzivajuci AUTHENTICATION a AUTHORIZATION by mal mat minimalne tieto ENDPOINTS.
+   A. USER REGISTRATION ENDPOINT. Do tohto POST ENDPOINT cez HTTP REQUEST MESSAGE BODY je odoslany USERNAME a PASSWORD a na zaklade nich si ENDPOINT ulozi informacie o novom USER do DB. HTTP RESPONSE MESSAGE obsahuje v RESPONSE BODY JSON WEB TOKEN, ktory sa pouziva na overenie daneho USER.
+   B. USER LOGIN ENDPOINT. Do tohto POST ENDPOINT cez HTTP REQUEST MESSAGE BODY je odoslany USERNAME a PASSWORD, ktore su VALIDATED. Po uspesnom VALIDATION oproti USERNAME a PASSWORD v DB, ENPOINT odosle HTTP RESPONSE MESSAGE obsahuje v RESPONSE BODY JSON WEB TOKEN, ktory sa pouziva na overenie daneho USER.
+   C. SECURE ENPOINTS. Su to ENPOINTS, ktore maju byt chranene voci neautorizovanemu pristupu. Do tychto ENDPOINTS sa v HEADER [Authorization] zasiela JSON WEB TOKEN, ktory je vzdy VALIDATED. CODE ENDPOINT je vykonany iba vtedy, ak je JSON WEB TOKEN uspesne VALIDATED.
+7. JSON WEB TOKEN (JWT) je WEB STANDARD na prenos SECURITY TOKENS medzi CLIENTS a SERVERS. Pre JSON WEB TOKENS platia nasledujuce fakty.
+   A. JSON WEB TOKEN ma format JSON.
+   B. JSON WEB TOKEN obsahuje nasledujuce casti.
+      A. HEADER. HEADER je JSON OBJECT, ktory obsahuje typ ALOGRITHM pouziteho na pospisanie TOKEN.
+	  B. PAYLOAD. PAYLOAD je JSON OBJECT, ktory obsahuje zoznam CLAIMS.
+	  C. SIGNATURE. SIGNATURE je JSON OBJECT, ktory obsahuje SECURE SIGNATURE na overenie JSON WEB TOKEN.
+   !!! C. JSON WEB TOKEN je prenasany v BASE64 ENCODING, kde su jednotlive casti oddelene CHARACTER [.]. JSON WEB TOKEN ma teda FORMAT [BASE_64_HEADER.BASE_64_PAYLOAD.BASE_64_SIGNATURE].
+8. IDENTITY FRAMEWORK, ktory umoznuje ukladat informacie o USERS a ROLES do IDENTITY DB. Pre IDENTITY FRAMEWORK platia nasledujuce fakty.
+   A. IDENTITY FRAMEWORK umoznuje ukladat informacie o USERS a ROLES do IDENTITY DB.
+   B. IDENTITY FRAMEWORK je implementovany pomocou ENTITY FRAMEWORK.
+   C. IDENTITY FRAMEWORK sa nachadza v PACKAGE [Microsoft.AspNetCore.Identity.EntityFrameworkCore].
+   D. IDENTITY FRAMEWORK ma CLASSES na citanie a zapis USERS.
+   E. IDENTITY FRAMEWORK ma CLASSES na citanie a zapis ROLES.
+   !!! F. IDENTITY FRAMEWORK sa vyuziva v pripade, ze PROGRAM si sam uklada USERS a ROLES a nepouziva na AUTHENTICATION 3rd PARTY COMPONENTS.
+9. CLASSES pre pracu s JSON WEB TOKEN sa nachadzaju v PACKAGE [Microsoft.AspNetCore.Authentication.JwtBearer].
+10. USER je v ASP.NET CORE IDENTITY reprezentovany CLASS [IdentityUser]. PROGRAM moze pridat nove PROPERTIES vytvorenim CLASS, ktora je DERIVED z CLASS [IdentityUser]. CLASS [IdentityUser] ma nasledujuce MEMBERS.
+   A. PROPERTY [Id] TYPE [string] obsahuje UNIQUE IDENTIFIER daneho USER.
+   B. PROPERTY [UserName] TYPE [string] obsahuje NAME daneho USER.
+   C. PROPERTY [Email] TYPE [string] obsahuje EMAIL daneho USER.
+   D. PROPERTY [PasswordHash] TYPE [string] obsahuje PASSWORD HASH daneho USER.
+   E. PROPERTY [PhoneNumber] TYPE [string] obsahuje PHONE NUMBER daneho USER.
+   F. PROPERTY [SecurityStamp] TYPE [string] obsahuje SECURITY STAMP daneho USER. VALUE SECURITY STAMP sa meni vtedy, ak dojde k zmene PROPERTIES CLASS [IdentityUser], ako je napriklad zmena PASSWORD.
+11. ROLE je v ASP.NET CORE IDENTITY reprezentovana CLASS [IdentityRole]. PROGRAM moze pridat nove PROPERTIES vytvorenim CLASS, ktora je DERIVED z CLASS [IdentityRole]. CLASS [IdentityRole] ma nasledujuce MEMBERS.
+   A. PROPERTY [Id] TYPE [string] obsahuje UNIQUE IDENTIFIER danej ROLE.
+   B. PROPERTY [RoleName] TYPE [string] obsahuje NAME danej ROLE.
+   C. PROPERTY [ConcurrencyStamp] TYPE [string] obsahuje CONCURRENCY STAMP danej ROLE. VALUE CONCURRENCY STAMP sa meni vtedy, ak dojde k ulozenie ROLE do PERSISTENT STORE.
+!!! 12. ASP.NET CORE IDENTITY definuje CLASS [IdentityDbContext<TUserType,TRoleType,TKeyType>], kde VALUE [TUserType] reprezentuje USER TYPE, VALUE [TRoleType] reprezentuje ROLE TYPE a VALUE [TKeyType] reprezentuje TYPE USER a ROLE KEYS. CLASS [IdentityDbContext<TUserType,TRoleType,TKeyType>] sluzi ako BASE CLASS pre ENTITY FRAMEWORK DB CONTEXT, do DATABASE, ktora uklada USERS a ROLES.
+!!! 13. CLASS [UserManager<TUserType>] umoznuje pristup k USERS, ktori su ulozeni v DB. CLASS [UserManager<TUserType>] umoznuje aj pridavanie a odoberanie USERS do a z ROLES. CLASS [UserManager<TUserType>] ma nasledujuce MEMBERS.
+   A. PROPERTY [Users] TYPE [IQueryable<TUserType>] vracia COLLECTION USERS, ktori su ulozeni v DB.
+   B. METHOD [Task<IdentityResult> CreateAsync(TUserType User, string Password)] vytvara noveho USER v DB. RETURN VALUE CLASS [IdentityResult] obsahuje informaciu ci operacia bola uspesna, a ak nie, tak obsahuje zoznam ERRORS, ku ktorym doslo.
+   C. METHOD [Task<IdentityResult> UpdateAsync(TUserType User)] vykonava UPDATE existujuceho USER v DB. RETURN VALUE CLASS [IdentityResult] obsahuje informaciu ci operacia bola uspesna, a ak nie, tak obsahuje zoznam ERRORS, ku ktorym doslo.
+   D. METHOD [Task<IdentityResult> DeleteAsync(TUserType User)] vykonava DELETE existujuceho USER v DB. RETURN VALUE CLASS [IdentityResult] obsahuje informaciu ci operacia bola uspesna, a ak nie, tak obsahuje zoznam ERRORS, ku ktorym doslo.
+   E. METHOD [Task<TUserType> FindByIdAsync(string UserId)] vracia USER ulozeneho v DB na zaklade jeho ID.
+   F. METHOD [Task<IdentityResult> AddToRoleAsync(TUserType User, string Role)] pridava daneho USER do zadanej ROLE v DB. RETURN VALUE CLASS [IdentityResult] obsahuje informaciu ci operacia bola uspesna, a ak nie, tak obsahuje zoznam ERRORS, ku ktorym doslo.
+   G. METHOD [Task<IdentityResult> RemoveFromRoleAsync(TUserType User, string Role)] odstranuje daneho USER do zadanej ROLE v DB. RETURN VALUE CLASS [IdentityResult] obsahuje informaciu ci operacia bola uspesna, a ak nie, tak obsahuje zoznam ERRORS, ku ktorym doslo.
+   H. METHOD [Task<IList<string>> GetRolesAsync(TUserType User)] vracia zoznam vsetkych ROLES v ktorych sa dany USER nachadza.
+   I. METHOD [Task<IList<TUserType>> GetUsersInRoleAsync(string RoleName)] vracia zoznam vsetkych USERS, ktori su zaradeni do danej ROLE.
+   J. METHOD [Task<bool> IsInRoleAsync(TUserType User, string Role)] vracia informaciu ci sa dany USER nachadza v zadanej ROLE.
+14. CLASS [RoleManager<TRoleType>] umoznuje pristup k ROLES, ktore su ulozene v DB. CLASS [RoleManager<TRoleType>] ma nasledujuce MEMBERS.
+   A. PROPERTY [Roles] TYPE [IQueryable<TRoleType>] vracia COLLECTION ROLES, ktore su ulozene v DB.
+   B. METHOD [Task<IdentityResult> CreateAsync(TRoleType Role)] vytvara novu ROLE v DB. RETURN VALUE CLASS [IdentityResult] obsahuje informaciu ci operacia bola uspesna, a ak nie, tak zoznam obsahuje ERRORS, ku ktorym doslo.
+   C. METHOD [Task<IdentityResult> UpdateAsync(TRoleType Role)] vykonava UPDATE existujucej ROLE v DB. RETURN VALUE CLASS [IdentityResult] obsahuje informaciu ci operacia bola uspesna, a ak nie, tak obsahuje zoznam ERRORS, ku ktorym doslo.
+   D. METHOD [Task<IdentityResult> DeleteAsync(TRoleType Role)] vykonava DELETE existujucej ROLE v DB. RETURN VALUE CLASS [IdentityResult] obsahuje informaciu ci operacia bola uspesna, a ak nie, tak obsahuje zoznam ERRORS, ku ktorym doslo.
+   E. METHOD [Task<TRoleType> FindByIdAsync(string RoleID)] vracia ROLE ulozenu v DB podla jej ID.
+   F. METHOD [Task<TRoleType> FindByNameAsync(string RoleName)] vracia ROLE ulozenu v DB podla jej NAME.
+   G. METHOD [Task<bool> RoleExistsAsync(string RoleName)] vracia informaciu ci ROLE s danym NAME existuje v DB.
+15. AUTHORIZATION sa v CONTROLLERS a ACTION METHODS vykonava aplikovanim ATTRIBUTE [AuthorizeAttribute] na CONTROLLER, alebo ACTION METHOD. ATTRIBUTE [AuthorizeAttribute] ma nasledujuce MEMBERS.
+   !!! A. EMPTY CONSTRUCTOR sposobuje, ze pristup k PROTECTED RESOURCE maju VSETCI AUTHENTICATED USERS.
+   B. PROPERTY [Roles] TYPE [string] obsahuje ciarkou oddeleny zoznam ROLES, ktore maju pristup k PROTECTED RESOURCE. USER musi mat pristup aspon k 1 ROLE, aby ziskal pristup k ACITON METHOD.
+   !!! C. PROPERTY [Policy] TYPE [string] obsahuje POLICY, voci ktorej je vykonana AUTHORIZATION. POLICY obsahuje zoznam AUTHORIZATION REQUIREMENTS, ktore urcuju REQUIREMENTS, ktore musi USER splnat, aby bol AUTHORIZED k pristupu k danemu PROTECTED RESOURCE.
+   D. PROPERTY [AuthenticationSchemes] TYPE [string] obsahuje ciarkou oddeleny zoznam SCHEMES z ktorych su USER INFORMATION vytvorene.
+!!!!! 16. Ak je na ACTION METHOD aplikovany ATTRIBUTE [AuthorizeAttribute] VIACKRAT, tak USER ziska pristup k ACTION METHOD iba ak splni podmienky KAZDEHO ATTRIBUTE [AuthorizeAttribute].
+!!! 17. Ak ma by ACTION METHOD alebo ACTION METHOD byt pristupny UNAUTHORIZED USERS, je nutne na ACTION METHOD, alebo ACTION METHOD aplikovat ATTRIBUTE [AllowAnonymousAttribute]. Tento ATTRIBUTE PREPISUJE ucinnost ATTRIBUTE [AuthorizeAttribute], ak su obe aplikovane na ten isty CONTROLLER, alebo ACTION METHOD.
+!!! 18. CLASS [JwtSecurityTokenHandler] sluzi na generovanie JSON WEB TOKENS. Ma nasledujuce METHODS.
+   A. METHOD [SecurityToken CreateToken(SecurityTokenDescriptor TokenDescriptor)] sluzi na vytvorenie TOKEN vo forme instancie CLASS [SecurityToken].
+   B. METHOD [string WriteToken(SecurityToken Token)] zapisuje vygenerovany TOKEN vo forme STRINGU.
+19. AUTHORIZATION v ASP.NET CORE moze byt vykonavana nasledujucimi sposobmi.
+   A. ROLE BASED AUTHORIZATION.
+   B. CLAIM BASED AUTHORIZATION.
+   C. POLICY BASED AUTHORIZATION.
+20. Pre ROLE BASED AUTHORIZATION platia nasledujuce fakty.
+   A. ROLE je mnozina PERMISSIONS, ktore su pridelene danemu USER.
+   B. ROLE moze byt priradena viacerym USERS.
+   C. USERS sa mozu nachadzat vo viacerych ROLES.
+//----------------------------------------------------------------------------------------------------------------------
