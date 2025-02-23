@@ -1,21 +1,15 @@
 ﻿//----------------------------------------------------------------------------------------------------------------------
-namespace Client
+namespace SecurityAndIdentity
 {
 //----------------------------------------------------------------------------------------------------------------------
-	internal class Program
+	public static class CSecurityPolicies
 	{
 //----------------------------------------------------------------------------------------------------------------------
-		static void Main(string[] args)
-		{
-			//CMenuTestConnection								Menu=new CMenuTestConnection();
-			//CMenuMyAccount									Menu=new CMenuMyAccount();
-			//CMenuNewIdentityAPI								Menu=new CMenuNewIdentityAPI();
-			//CMenuUseHttps										Menu=new CMenuUseHttps();
-			//CMenuPasswordPolicy								Menu=new CMenuPasswordPolicy();
-			CMenuModelValidation								Menu=new CMenuModelValidation();
-
-			Menu.Execute();
-		}
+		public const string										MY_POLICY_ROLE_AUTHORIZATION_ADMINISTRATORS_OR_VIPS="MyPolicyAdministratorsOrVIPs";
+		public const string										MY_POLICY_CLAIMS_AUTHORIZATION_VIP_ONLY="VIPOnly";
+		public const string										MY_POLICY_CLAIMS_AUTHORIZATION_ADMINISTRATOR_OR_VIP="AdministratorOrVIP";
+		public const string										MY_POLICY_POLICY_AUTHORIZATION_ADMINISTRATOR="PolicyAdministrator";
+		public const string										MY_POLICY_POLICY_AUTHORIZATION_ADMINISTRATOR_MULTI_HANDLER="PolicyAdministratorMultiHandler";
 //----------------------------------------------------------------------------------------------------------------------
 	}
 //----------------------------------------------------------------------------------------------------------------------

@@ -1,20 +1,25 @@
-﻿//----------------------------------------------------------------------------------------------------------------------
-namespace Client
+﻿using System.ComponentModel.DataAnnotations;
+//----------------------------------------------------------------------------------------------------------------------
+namespace SecurityAndIdentity
 {
 //----------------------------------------------------------------------------------------------------------------------
-	internal class Program
+	public sealed class CCheckAgeAttribute : ValidationAttribute
 	{
 //----------------------------------------------------------------------------------------------------------------------
-		static void Main(string[] args)
+		protected override ValidationResult IsValid(object Value, ValidationContext ValidationContext)
 		{
-			//CMenuTestConnection								Menu=new CMenuTestConnection();
-			//CMenuMyAccount									Menu=new CMenuMyAccount();
-			//CMenuNewIdentityAPI								Menu=new CMenuNewIdentityAPI();
-			//CMenuUseHttps										Menu=new CMenuUseHttps();
-			//CMenuPasswordPolicy								Menu=new CMenuPasswordPolicy();
-			CMenuModelValidation								Menu=new CMenuModelValidation();
+			int													TypedValue=(int) Value;
 
-			Menu.Execute();
+			if (TypedValue>=0 && TypedValue<=18)
+			{
+				return(ValidationResult.Success);
+			}
+			else
+			{
+				ValidationResult								Result=new ValidationResult("Invalid AGE.");
+
+				return(Result);
+			}
 		}
 //----------------------------------------------------------------------------------------------------------------------
 	}

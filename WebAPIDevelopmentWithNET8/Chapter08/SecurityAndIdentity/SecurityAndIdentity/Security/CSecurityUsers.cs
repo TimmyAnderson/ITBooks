@@ -1,21 +1,13 @@
 ﻿//----------------------------------------------------------------------------------------------------------------------
-namespace Client
+namespace SecurityAndIdentity
 {
 //----------------------------------------------------------------------------------------------------------------------
-	internal class Program
+	public static class CSecurityUsers
 	{
 //----------------------------------------------------------------------------------------------------------------------
-		static void Main(string[] args)
-		{
-			//CMenuTestConnection								Menu=new CMenuTestConnection();
-			//CMenuMyAccount									Menu=new CMenuMyAccount();
-			//CMenuNewIdentityAPI								Menu=new CMenuNewIdentityAPI();
-			//CMenuUseHttps										Menu=new CMenuUseHttps();
-			//CMenuPasswordPolicy								Menu=new CMenuPasswordPolicy();
-			CMenuModelValidation								Menu=new CMenuModelValidation();
-
-			Menu.Execute();
-		}
+		public const string										ADMINISTRATOR="MyADMIN";
+		public const string										VIP="MyVIP";
+		public const string										USER="MyUSER";
 //----------------------------------------------------------------------------------------------------------------------
 	}
 //----------------------------------------------------------------------------------------------------------------------

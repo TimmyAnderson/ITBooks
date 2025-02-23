@@ -17,18 +17,20 @@ namespace SecurityAndIdentity
 	// !!! CONTROLLER sluzi na ACCOUNT REGISTRATION a na LOGIN.
 	[ApiController]
 	[Route("[controller]")]
-	public sealed class MyAccountController : ControllerBase
+	public sealed class PasswordPolicyController : ControllerBase
 	{
 //----------------------------------------------------------------------------------------------------------------------
 		private readonly IConfiguration							MConfiguration;
 		private readonly UserManager<CIdentityUser>				MUserManager;
+		private readonly SignInManager<CIdentityUser>			MSingInManager;
 //----------------------------------------------------------------------------------------------------------------------
 //----------------------------------------------------------------------------------------------------------------------
 //----------------------------------------------------------------------------------------------------------------------
-		public MyAccountController(IConfiguration Configuration, UserManager<CIdentityUser> UserManager)
+		public PasswordPolicyController(IConfiguration Configuration, UserManager<CIdentityUser> UserManager, SignInManager<CIdentityUser> SingInManager)
 		{
 			MConfiguration=Configuration;
 			MUserManager=UserManager;
+			MSingInManager=SingInManager;
 		}
 //----------------------------------------------------------------------------------------------------------------------
 //----------------------------------------------------------------------------------------------------------------------
@@ -101,45 +103,22 @@ namespace SecurityAndIdentity
 					User.PhoneNumber=Model.PhoneNumber;
 					User.SecurityStamp=Guid.NewGuid().ToString();
 
-					IdentityResult								IdentityResult1=await MUserManager.CreateAsync(User,Model.Password);
+					IdentityResult								IdentityResult=await MUserManager.CreateAsync(User,Model.Password);
 
 					// !!! USER bol uspesne vytvoreny.
-					if (IdentityResult1.Succeeded==true)
+					if (IdentityResult.Succeeded==true)
 					{
-						List<string>							Roles=new List<string>();
+						string[]								UserRoles=(await MUserManager.GetRolesAsync(User)).ToArray();
 
-						Roles.Add(CSecurityRoles.USERS);
+						// !!! Vygeneruje sa JWT TOKEN.
+						string									Token=GenerateToken(Model.UserName,UserRoles);
+						OkObjectResult							OkResult=Ok(new CMyTokenModel(Token));
 
-						if (User.UserName==CSecurityUsers.VIP)
-						{
-							Roles.Add(CSecurityRoles.VIPS);
-						}
-						else if (User.UserName==CSecurityUsers.ADMINISTRATOR)
-						{
-							Roles.Add(CSecurityRoles.VIPS);
-							Roles.Add(CSecurityRoles.ADMINISTRATORS);
-						}
-
-						IdentityResult							IdentityResult2=await MUserManager.AddToRolesAsync(User,Roles);
-
-						if (IdentityResult2.Succeeded==true)
-						{
-							string[]							UserRoles=(await MUserManager.GetRolesAsync(User)).ToArray();
-
-							// !!! Vygeneruje sa JWT TOKEN.
-							string								Token=GenerateToken(Model.UserName,UserRoles);
-							OkObjectResult						OkResult=Ok(new CMyTokenModel(Token));
-
-							return(OkResult);
-						}
-						else
-						{
-							AddIdentityErrors(ModelState,IdentityResult2);
-						}
+						return(OkResult);
 					}
 					else
 					{
-						AddIdentityErrors(ModelState,IdentityResult1);
+						AddIdentityErrors(ModelState,IdentityResult);
 					}
 				}
 				else
@@ -165,9 +144,9 @@ namespace SecurityAndIdentity
 				if (User!=null)
 				{
 					// !!! Vykona sa VALIDATION zadaneho PASSWORD.
-					bool										ValidPassword=await MUserManager.CheckPasswordAsync(User,Model.Password);
+					Microsoft.AspNetCore.Identity.SignInResult	ValidPassword=await MSingInManager.CheckPasswordSignInAsync(User,Model.Password,true);
 
-					if (ValidPassword==true)
+					if (ValidPassword.Succeeded==true)
 					{
 						string[]								UserRoles=(await MUserManager.GetRolesAsync(User)).ToArray();
 
@@ -179,7 +158,14 @@ namespace SecurityAndIdentity
 					}
 					else
 					{
-						ModelState.AddModelError("","INVALID PASSWORD.");
+						if (ValidPassword.IsLockedOut==false)
+						{
+							ModelState.AddModelError("","INVALID PASSWORD.");
+						}
+						else
+						{
+							ModelState.AddModelError("","ACCOUNT is LOCKED.");
+						}
 					}
 				}
 				else

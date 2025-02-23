@@ -54,22 +54,200 @@
    E. METHOD [Task<TRoleType> FindByIdAsync(string RoleID)] vracia ROLE ulozenu v DB podla jej ID.
    F. METHOD [Task<TRoleType> FindByNameAsync(string RoleName)] vracia ROLE ulozenu v DB podla jej NAME.
    G. METHOD [Task<bool> RoleExistsAsync(string RoleName)] vracia informaciu ci ROLE s danym NAME existuje v DB.
-15. AUTHORIZATION sa v CONTROLLERS a ACTION METHODS vykonava aplikovanim ATTRIBUTE [AuthorizeAttribute] na CONTROLLER, alebo ACTION METHOD. ATTRIBUTE [AuthorizeAttribute] ma nasledujuce MEMBERS.
+15. CLASS [IdentityResult] vracia informaciu o vysledku IDENTITY DB OPERATION. CLASS [IdentityResult] ma nasledujuce MEMBERS.
+   A. PROPERTY [bool Succeeded] obsahuje informaciu ci IDENTITY DB OPERATION uspela.
+   B. PROPERTY [IEnumerable<IdentityError> Errors] obsahuje zoznam ERRORS, ktore pri IDENTITY DB OPERATION nastali.
+16. AUTHORIZATION sa v CONTROLLERS a ACTION METHODS vykonava aplikovanim ATTRIBUTE [AuthorizeAttribute] na CONTROLLER, alebo ACTION METHOD. ATTRIBUTE [AuthorizeAttribute] ma nasledujuce MEMBERS.
    !!! A. EMPTY CONSTRUCTOR sposobuje, ze pristup k PROTECTED RESOURCE maju VSETCI AUTHENTICATED USERS.
    B. PROPERTY [Roles] TYPE [string] obsahuje ciarkou oddeleny zoznam ROLES, ktore maju pristup k PROTECTED RESOURCE. USER musi mat pristup aspon k 1 ROLE, aby ziskal pristup k ACITON METHOD.
    !!! C. PROPERTY [Policy] TYPE [string] obsahuje POLICY, voci ktorej je vykonana AUTHORIZATION. POLICY obsahuje zoznam AUTHORIZATION REQUIREMENTS, ktore urcuju REQUIREMENTS, ktore musi USER splnat, aby bol AUTHORIZED k pristupu k danemu PROTECTED RESOURCE.
    D. PROPERTY [AuthenticationSchemes] TYPE [string] obsahuje ciarkou oddeleny zoznam SCHEMES z ktorych su USER INFORMATION vytvorene.
-!!!!! 16. Ak je na ACTION METHOD aplikovany ATTRIBUTE [AuthorizeAttribute] VIACKRAT, tak USER ziska pristup k ACTION METHOD iba ak splni podmienky KAZDEHO ATTRIBUTE [AuthorizeAttribute].
-!!! 17. Ak ma by ACTION METHOD alebo ACTION METHOD byt pristupny UNAUTHORIZED USERS, je nutne na ACTION METHOD, alebo ACTION METHOD aplikovat ATTRIBUTE [AllowAnonymousAttribute]. Tento ATTRIBUTE PREPISUJE ucinnost ATTRIBUTE [AuthorizeAttribute], ak su obe aplikovane na ten isty CONTROLLER, alebo ACTION METHOD.
-!!! 18. CLASS [JwtSecurityTokenHandler] sluzi na generovanie JSON WEB TOKENS. Ma nasledujuce METHODS.
+!!!!! 17. Ak je na ACTION METHOD aplikovany ATTRIBUTE [AuthorizeAttribute] VIACKRAT, tak USER ziska pristup k ACTION METHOD iba ak splni podmienky KAZDEHO ATTRIBUTE [AuthorizeAttribute].
+!!! 18. Ak ma by ACTION METHOD alebo ACTION METHOD byt pristupny UNAUTHORIZED USERS, je nutne na ACTION METHOD, alebo ACTION METHOD aplikovat ATTRIBUTE [AllowAnonymousAttribute]. Tento ATTRIBUTE PREPISUJE ucinnost ATTRIBUTE [AuthorizeAttribute], ak su obe aplikovane na ten isty CONTROLLER, alebo ACTION METHOD.
+!!! 19. CLASS [JwtSecurityTokenHandler] sluzi na generovanie JSON WEB TOKENS. Ma nasledujuce METHODS.
    A. METHOD [SecurityToken CreateToken(SecurityTokenDescriptor TokenDescriptor)] sluzi na vytvorenie TOKEN vo forme instancie CLASS [SecurityToken].
    B. METHOD [string WriteToken(SecurityToken Token)] zapisuje vygenerovany TOKEN vo forme STRINGU.
-19. AUTHORIZATION v ASP.NET CORE moze byt vykonavana nasledujucimi sposobmi.
+20. AUTHORIZATION v ASP.NET CORE moze byt vykonavana nasledujucimi sposobmi.
    A. ROLE BASED AUTHORIZATION.
    B. CLAIM BASED AUTHORIZATION.
    C. POLICY BASED AUTHORIZATION.
-20. Pre ROLE BASED AUTHORIZATION platia nasledujuce fakty.
+21. Pre ROLE BASED AUTHORIZATION platia nasledujuce fakty.
    A. ROLE je mnozina PERMISSIONS, ktore su pridelene danemu USER.
    B. ROLE moze byt priradena viacerym USERS.
    C. USERS sa mozu nachadzat vo viacerych ROLES.
+   !!! D. Pre ROLE BASED AUTHORIZATION je mozne vytvorit aj CUSTOM POLICY volanim METHOD [AuthorizationPolicyBuilder AuthorizationPolicyBuilder.RequireRole(params string[] Roles)]. Tato METHOD kontroluje ci je dany USER v niektorej z ROLES definovanych v PARAMETER [Roles].
+22. Pre CLAIM BASED AUTHORIZATION platia nasledujuce fakty.
+   A. CLAIMS je zoznam faktov, ktore sa tykaju daneho USER.
+   B. CLAIMS maju FORMAT KEY VALUE a su CASE SENSITIVE.
+   C. CLAIMS mozu obsahovat lubovolne udaje o danom USER.
+   D. Aj ROLE je jednym z CLAIMS.
+   E. CLAIMS su ulozene v nejakom STORAGE, kde su pristupne po AUTHENTICATION daneho USER.
+   F. Na zaklade hodnot jednotlivych CLAIMS je mozne vykonat AUTHORIZATION daneho USER.
+   G. CLAIMS mozu byt sucastou vygenerovaneho TOKEN, aby ked CLIENT zasle na SERVER TOKEN, tak priamo z TOKEN bolo mozne ziskat CLAIMS. Zaroven s CLAIMS je mozne pracovat aj na CLIENT SIDE.
+   H. Pre ROLE BASED AUTHORIZATION je mozne vytvorit CUSTOM POLICY nasledujucimi sposobmi.
+      A. Volanim METHOD [AuthorizationPolicyBuilder AuthorizationPolicyBuilder.RequireClaim(string ClaimType, params string[] AllowedValues)]. Tato METHOD umozni pristup tym USERS, ktori maju CLAIM [ClaimType] pricom CLAIM na niektoru z VALUES v PARAMETER [AllowedValues].
+	  B. Volanim METHOD [AuthorizationPolicyBuilder AuthorizationPolicyBuilder.RequireAssertion(Func<AuthorizationHandlerContext,bool> Handler)]. Tato METHOD umoznuje pristup tym USERS, ktori splnaju CONDITION definovanu v PARAMETER [Handler].
+!!! 23. AUTHORIZATION je interne implementovana nasledujucim sposobom.
+   A. AUTHORIZATION sa konfiguruje v METHOD [IServiceCollection AddAuthorization(this IServiceCollection Services, Action<AuthorizationOptions> Configure)] v CALLBACK PARAMETER [Action<AuthorizationOptions> Configure].
+   B. V CALLBACK METHOD [Action<AuthorizationOptions> Configure] pre kazdy typ AUTHORIZATION, ktoru potrebuje PROGRAM pridat prida novu AUTHORIZATION POLICY volanim METHOD [void AuthorizationOptions.AddPolicy(string name, Action<AuthorizationPolicyBuilder> ConfigurePolicy)]. Kazda AUTHORIZATION POLICY v CALLBACK METHOD v PARAMETER [Action<AuthorizationPolicyBuilder> ConfigurePolicy] nastavuje AUTHORIZATION REQUIREMENTS danej AUTHORIZATION POLICY.
+   C. V CALLBACK METHOD [Action<AuthorizationPolicyBuilder> ConfigurePolicy] sa pridavaju AUTHORIZATION REQUIREMENTS danej AUTHORIZATION POLICY nasledujucimi sposobmi.
+      A. Volanim METHOD [AuthorizationPolicyBuilder RequireRole(params string[] Roles)]. Tato METHOD pridava instanciu CLASS [RolesAuthorizationRequirement] do COLLECTION [IList<IAuthorizationRequirement> AuthorizationPolicyBuilder.Requirements].
+      B. Volanim METHOD [AuthorizationPolicyBuilder RequireClaim(string ClaimType, params string[] AllowedValues)]. Tato METHOD pridava instanciu CLASS [ClaimsAuthorizationRequirement] do COLLECTION [IList<IAuthorizationRequirement> AuthorizationPolicyBuilder.Requirements].
+24. CLASS [AuthorizationHandler<TRequirement>] reprezentuje AUTHORIZATION HANDLER pre AUTHORIZATION REQUIREMENT. Platia pre nu nasledujuce fakty.
+   A. METHOD [Task HandleAsync(AuthorizationHandlerContext Context)] prechadza zoznamom vsetkych AUTHORIZATION REQUIREMENTS v PARAMETER [AuthorizationHandlerContext Context] a pre kazdu vola ABSTRACT METHOD [Task HandleRequirementAsync(AuthorizationHandlerContext Context, TRequirement Requirement)].
+   B. ABSTRACT METHOD [Task HandleRequirementAsync(AuthorizationHandlerContext Context, TRequirement Requirement)] implementuje funkcionalitu AUTHORIZATION HANDLER. V METHOD sa urcuje ci pre daneho USER su AUTHORIZATION REQUIREMENTS splnene.
+25. CLASS [RolesAuthorizationRequirement] reprezentuje ROLE AUTHORIZATION REQUIREMENTS. Platia pre nu nasledujuce fakty.
+   A. CLASS je DERIVED z CLASS [AuthorizationHandler<RolesAuthorizationRequirement>] a implementuje INTERFACE [IAuthorizationRequirement].
+   B. CONSTRUCTOR [RolesAuthorizationRequirement(IEnumerable<string> AllowedRoles)] uklada zoznam vsetkych povolenych ROLES.
+   C. PROPERTY [IEnumerable<string> AllowedRoles] obsahuje zoznam vsetkych povolenych ROLES.
+   D. OVERRIDEN METHOD [Task HandleRequirementAsync(AuthorizationHandlerContext Context, RolesAuthorizationRequirement Requirement)] porovnava zoznam ROLES v ktorych sa nachadza danu USER s zoznamom ROLES v PROPERTY [IEnumerable<string> AllowedRoles]. Ak najde aspon 1 zhodu ROLE, vola METHOD [void AuthorizationHandlerContext.Succeed(IAuthorizationRequirement Requirement)] cim sa poznamena, ze dany AUTHORIZATION REQUIREMENT je splneny.
+26. CLASS [ClaimsAuthorizationRequirement] reprezentuje ROLE AUTHORIZATION REQUIREMENTS. Platia pre nu nasledujuce fakty.
+   A. CLASS je DERIVED z CLASS [AuthorizationHandler<ClaimsAuthorizationRequirement>] a implementuje INTERFACE [IAuthorizationRequirement].
+   B. CONSTRUCTOR [ClaimsAuthorizationRequirement(string ClaimType, IEnumerable<string> AllowedValues)] uklada CLAIM TYPE a zoznam povolenych VALUES.
+   C. PROPERTY [string ClaimType] obsahuje CLAIM TYPE.
+   D. PROPERTY [IEnumerable<string> AllowedValues] obsahuje zoznam povolenych VALUES.
+   E. OVERRIDEN METHOD [Task HandleRequirementAsync(AuthorizationHandlerContext Context, ClaimsAuthorizationRequirement Requirement)] prechadza zoznam vsetkych CLAIMS daneho USER a zistuje ci obsahuje CLAIM TYPE ulozeny v PROPERTY [string ClaimType]. Ak sa takyto CLAIM TYPE nasiel, METHOD porovnana USER VALUE daneho CLAIM s povolenymi VALUES CLAIMS v PROPERTY [IEnumerable<string> AllowedValues]. Ak sa najde zhoda, vola sa METHOD [void AuthorizationHandlerContext.Succeed(IAuthorizationRequirement Requirement)] cim sa poznamena, ze dany AUTHORIZATION REQUIREMENT je splneny.
+27. Kontrola AUTHORIZATION sa v ASP.NET CORE vykonava nasledujucim sposobom.
+   A. Pomocou METHOD [IApplicationBuilder UseAuthorization(this IApplicationBuilder App)] sa do REQUEST PIPELINE prida AUTHORIZATION MIDDLEWARE COMPONENT [AuthorizationMiddleware].
+   B. AUTHORIZATION MIDDLEWARE COMPONENT [AuthorizationMiddleware] v METHOD [Task Invoke(HttpContext Context)] vykonava AUTHORIZATION v nasledujucich krokoch.
+      A. Volanim METHOD [Endpoint GetEndpoint(this HttpContext Context)] sa ziska ENDPOINT, ktory ma dany HTTP REQUEST spracovat.
+	  B. Z METADATA daneho ENDPOINT sa ziska instancia INTERFACE [IAuthorizeData], instancia INTERFACE [AuthorizationPolicy] a instancia INTERFACE [IAuthorizationRequirementData], ktore obsahuju AUTHORIZATION REQUIREMENTS daneho ENDPOINT.
+	  C. Cez DEPENDENCY INJECTION sa ziska instancia INTERFACE [IPolicyEvaluator], ktory vykonava AUTHENTICATION a AUTHORIZATION danej HTTP REQUEST MESSAGE. INTERFACE [IPolicyEvaluator] je implementovany v CLASS [PolicyEvaluator].
+	  D. Vola sa METHOD [Task<AuthenticateResult> IPolicyEvaluator.AuthenticateAsync(AuthorizationPolicy Policy, HttpContext Context)], ktora vykona AUTHENTICATION danej HTTP REQUEST MESSAGE.
+	  E. Vola sa METHOD [Task<PolicyAuthorizationResult> IPolicyEvaluator.AuthorizeAsync(AuthorizationPolicy Policy, AuthenticateResult AuthenticationResult, HttpContext Context, object Resource)], ktora vykona AUTHORIZATION danej HTTP REQUEST MESSAGE. AUTHORIZATION sa vykonava v nasledujucich krokoch.
+	     A. Cez DEPENDENCY INJECTION sa ziska instancia INTERFACE [IAuthorizationService], co je SERVICE, ktory vykonava samotnu AUTHORIZATION. INTERFACE [IAuthorizationService] je implementovany v CLASS [DefaultAuthorizationService].
+		 !!! B. Zavola sa METHOD [Task<AuthorizationResult> IAuthorizationService.AuthorizeAsync(ClaimsPrincipal User, object Resource, string PolicyName)], ktora ziska COLLECTION OBJECTS [IAuthorizationHandler]. Nasledne pre kazdy OBJECT [IAuthorizationHandler] vola METHOD [Task IAuthorizationHandler.HandleAsync(AuthorizationHandlerContext Context)]. Ak AUTHORIZATION REQUIREMENTS pre vsetky instancie INTERFACE [IAuthorizationHandler] su splnene, tak HTTP REQUEST MESSAGE je AUTHORIZED.
+28. Pre POLICY BASED AUTHORIZATION platia nasledujuce fakty.
+   A. POLICY BASED AUTHORIZATION sa aplikuje vtedy, ak AUTHORIZATION sa nevykonava iba na zaklade informacii o USER ziskanych procesom AUTHENTICATION, ale vyzaduje vykonanie CUSTOM LOGIC. Napriklad AUTHORIZATION moze vyzadovat splnenie komplexnych podmienok, ktore sa vykonavaju nad CLAIMS, ktore boli ziskane pomocou AUTHENTICATION.
+   B. POLICY BASED AUTHORIZATION sa realizuje nasledujucim sposobom.
+      A. Definuju sa OBJECTS, ktore implementuju INTERFACE [IAuthorizationRequirement]. Tieto OBJECTS definuju AUTHORIZATION REQUIREMENTS.
+	  B. Definuju sa OBJECTS, ktore su DERIVED z CLASS [AuthorizationHandler<TRequirement>]. Tieto OBJECTS implementuju CUSTOM AUTHORIZATION LOGIC, vyuzivajuc OBJECTS implementujuce INTERFACE [IAuthorizationRequirement] ako aj CLAIMS ziskane v procese AUTHENTICATION.
+	  C. Vytvori sa CUSTOM POLICY, ktora vyuziva OBJECTS implementujuce INTERFACE [IAuthorizationRequirement] a OBJECTS DERIVED z CLASS [AuthorizationHandler<TRequirement>].
+	  D. CUSTOM POLICY sa aplikuje na ACTION METHOD.
+29. CUSTOM AUTHORIZATION HANDLERS sa implementuju nasledujucim sposobom.
+   A. Pre kazdy AUTHORIZATION REQUIREMENT sa definuje OBJECT implementujuci INTERFACE [IAuthorizationRequirement].
+   B. Definuje sa CLASS, ktora je DERIVED z CLASS [AuthorizationHandler<TRequirement>], kde TYPE PARAMETER [TRequirement] reprezentuje AUTHORIZATION REQUIREMENT.
+   C. Implementuje sa METHOD [Task HandleRequirementAsync(AuthorizationHandlerContext context, TRequirement Requirement)], ktora realizuje CUSTOM AUTHORIZATION LOGIC. Implementacia je realizovana nasledovne.
+      A. V pripade, ze METHOD vyhodnoti, ze AUTHORIZATION REQUIREMENT bol splneny musi zavolat METHOD [void AuthorizationHandlerContext.Succeed(IAuthorizationRequirement Requirement)].
+	  !!! B. Ak METHOD zisti, ze AUTHORIZATION REQUIREMENT nebol splneny NEMUSI volat METHOD [void AuthorizationHandlerContext.Fail()], pretoze AUTHORIZATION POLICY moze obsahovat viacero AUTHORIZATION REQUIREMENTS, pricom AUTHORIZATION POLICY moze vyzadovat splnenie iba jedneho z viacerych AUTHORIZATION REQUIREMENTS.
+	  !!! C. METHOD pri zlyhani AUTHORIZATION REQUIREMENT musi volat METHOD [void AuthorizationHandlerContext.Fail()] IBA VTEDY, ak nesplnenie AUTHORIZATION REQUIREMENT znamena zlyhanie celej AUTHORIZATION POLICY. V takom pripade by pri nastavovani AUTHORIZATION POLICIES mala byt nastavena PROPERTY [bool AuthorizationOptions.InvokeHandlersAfterFailure] na VALUE [false], aby sa nevolali dalsie AUTHORIZATION REQUIREMENTS, ak niektory z predoslych zlyhal.
+	  !!! D. CUSTOM AUTHORIZATION HANDLERS mozu spracovavat aj viacero AUTHORIZATION REQUIREMENTS pristupom k PROPERTY [AuthorizationHandlerContext.PendingRequirements], ktora obsahuje zoznam vsetkych AUTHORIZATION REQUIREMENTS, ktore este neboli vyhodnotene.
+	  E. Ak existuje viacero CUSTOM AUTHORIZATION HANDLER tak poradie ich volania je NAHODNE.
+      F. !!!!! ASP.NET CORE vola pre kazdy REQUIREMENT VSETKY AUTHORIZATION HANDLERS pricom NEROZLISUJE ci dany AUTHORIZATION HANDLER je vobec schopny spracovat dany REQUIREMENT. AUTHORIZATION uspeje, ak VSETKY REQUIREMENTS su SPLNENE, bez ohladu na to, ktory HANDLER ich splnil.
+30. ASP.NET CORE 8 definuje NEW IDENTITY API, ktore umoznuje jednoducho implementaciu AUTHENTICATION a AUTHORIZATION. Pre NEW IDENTITY API platia nasledujuce fakty.
+   A. NEW IDENTITY API je vhodne iba pre jednoduche PROGRAMY s jednoduchymi poziadavkami na AUTHENTICATION a AUTHORIZATION.
+   B. NEW IDENTITY API nepouziva JWT TOKENS, ale CUSTOM TOKENS, ktore su pouzitelne iba v ramci daneho PROGRAMU, ktory ich vygeneroval.
+   C. NEW IDENTITY API dokaze automaticky generovat sadu ENDPOINTS potrebnych na REGISTER, LOGIN, TOKEN REFRESH ci RESET PASSWORD, bez nutnosti ich implementacie.
+31. NEW IDENTITY API sa implementuje v nasledujucich krokoch.
+   A. Do PROGRAM sa prida IDENTITY DB CONTEXT volanim METHOD [IServiceCollection AddDbContext<TContext>(this IServiceCollection ServiceCollection, Action<DbContextOptionsBuilder>? OptionsAction, ServiceLifetime ContextLifetime, ServiceLifetime OptionsLifetime)].
+   B. Do PROGRAM sa pridaju AUTHENTICATION ENDPOINT SEVICES volanim METHOD [IdentityBuilder AddIdentityApiEndpoints<TUser>(this IServiceCollection Services)].
+   C. Do PROGRAM sa pridaju ROLES volanim METHOD [IdentityBuilder AddRoles<TRole>()].
+   D. Do PROGRAM sa pridaju TABLES pre ukladanie IDENTITY volanim METHOD [IdentityBuilder AddEntityFrameworkStores<TContext>(this IdentityBuilder Builder)].
+   E. Do PROGRAM sa pridaju AUTHORIZATION SERVICES volanim METHOD [IServiceCollection AddAuthorization(this IServiceCollection Services)].
+   F. Do PROGRAM sa pridaju AUTHENTICATION ENDPOINTS volanim METHOD [IEndpointConventionBuilder MapIdentityApi<TUser>(this IEndpointRouteBuilder Endpoints)].
+32. Pre OAUTH 2.0. platia nasledujuce fakty.
+   A. OAUTH 2.0. impelemntuje DELEGATED AUTHORIZATION MODEL.
+   B. OAUTH 2.0. je mechanizmus na AUTHENTICATION a AUTHORIZATION, ktory umoznuje CLIENT PROGRAMS pristup k PROTECTED RESOURCES daneho USER, bez toho, aby CLIENT PROGRAMS potrebovali USER PASSWORDS.
+33. Na realizacii OAUTH 2.0. sa podielaju nasledujuce ENTITIES.
+   A. RESOURCE OWNER. RESOURCE OWNER je USER, ktory vlastni PROTECTED RESOURCE.
+   B. RESOURCE SERVER. RESOURCE SERVER je SERVER na ktorom je ulozene PROTECTED RESOURCE vlastneny RESOURCE OWNER.
+   C. CLIENT. CLIENT je PROGRAM, ktory potrebuje ziskat pristup k PROTECTED RESOURCE bez toho, aby musel ziskat PASSWORD od RESOURCE OWNER.
+   D. AUTHORIZATION SERVER. AUTHORIZATION SERVER je SERVER implementujuci OAUTH 2.0. PROTOCOL. AUTHORIZATION SERVER je zodpovedny za AUTHORIZATION a AUTHENTICATION CLIENT so suhlasom RESOURCE OWNER. Pre AUTHORIZATION SERVER platia nasledujuce fakty.
+      A. AUTHORIZATION SERVER implementuje OAUTH 2.0. PROTOCOL.
+	  B. AUTHORIZATION SERVER MUSI mat ZAREGISTROVANYCH vsetkych CLIENTS, ktori chcu ziskavat pristup k PROTECTED RESOURCE. To znamena, ze CLIENT musi byt na AUTHORIZATION SERVER zaregistrovany a overeny, pricom CLIENT dostava CLIENT ID a CLIENT SECRET, ktorym vykonava AUTHENTICATION na AUTHORIZATION SERVER a dokazuje, ze je validne zaregistrovany CLIENT na AUTHORIZATION SERVER.
+	  C. AUTHORIZATION SERVER vystavuje minimalne tieto ENDPOINTS.
+	     A. AUTHORIZATION ENDPOINT. ENPOINT je zodpovedny za vykonanie AUTHORIZATION daneho CLIENT, aby CLIENT mohol ziskat pristup k PROTECTED RESOURCE daneho RESOURCE OWNER. V pripade, ze RESOURCE OWNER je clovek, tak AUTHORIZATION ENDPOINT zobrazuje danemu USER LOGIN SCREEN potvrdenie o umozneni ACCESS k PROTECTED RESOURCE pre daneho CLIENT.
+		 B. TOKEN ENDPOINT. ENPOINT je zodpovedny za generovanie ACCESS TOKEN pre CLIENT. CLIENT nasledne pouzije ACCESS TOKEN na pristup k PROTECTED RESOURCE na RESOURCE SERVER.
+34. AUTHENTICATION a AUTHORIZATION sa pomocou OAUTH 2.0. sa vykonava v nasledujucich krokoch.
+   A. RESOURCE OWNER sa pripoji na CLIENT PROGRAM na zaklade ktoreho iniciuje proces povolenia pristupu CLIENT PROGRAM k PROTECTED RESOURCE.
+   B. CLIENT vykona REDIRECT RESOURCE OWNER na AUTHORIZATION SERVER. Presmerovanie sa robi na AUTHORIZATION ENDPOINT daneho AUTHORIZATION SERVER. REDIRECT URL obsahuje CLIENT ID daneho CLIENT, REDIRECT URL identifikujuci CLIENT kam ma byt USER presmerovany po uspesnej AUTHENTICATION a AUTHORIZATION.
+   C. AUTHORIZATION SERVER vykona AUTHENTICATION RESOURCE OWNER pomocou USER NAME a PASSWORD, ktore RESOURCE OWNER zada.
+   D. AUTHORIZATION SERVER vykona AUTHORIZATION poziadavky daneho CLIENT. Pri AUTHORIZATION, AUTHORIZATION SERVER zobrazi RESOURCE OWNER informaciu o CLIENT zo zaslaneho CLIENT ID, ktory ziada o pristup k PROTECTED RESOURCE, ako aj to o aky pristup ziada.
+   E. Ak RESOURCE OWNER umozni pristup k PROTECTED RESOURCE pre daneho CLIENT, AUTHORIZATION SERVER vygeneruje AUTHORIZATION CODE, ktory je vrateny RESOURCE OWNER.
+   F. RESOURCE OWNER na zaklade REDIRECT URL identifikujuci daneho CLIENT vykona REDIRECT na CLIENT, no tentoraz uz REQUEST na CLIENT obsahuje aj AUTHORIZATION CODE.
+   G. CLIENT po ziskani AUTHORIZATION CODE ho spolu so svojim CLIENT ID a CLIENT SECRET odosle na TOKEN ENDPOINT daneho AUTHORIZATION SERVER.
+   H. TOKEN ENDPOINT daneho AUTHORIZATION SERVER overi CLIENT ID, CLIENT SECRET a AUTHORIZATION CODE, a ak su spravne, vygeneruje ACCESS TOKEN pre daneho CLIENT. ACCESS TOKEN je spravidla vo formate JSON WEB TOKEN.
+   I. CLIENT zasle ziskany ACCESS TOKEN na RESOURCE SERVER, aby ziskal pristup k PROTECTED RESOURCE daneho RESOURCE OWNER.
+   J. RESOURCE SERVER overi ACCESS TOKEN a jeho SCOPE, ktory urcuje ACCESS RIGHTS a v pripade, ze je ACCESS TOKEN validny, umozni pristup k PROTECTED RESOURCE daneho RESOURCE OWNER.
+35. OPEN ID je rozsirenie OAUTH 2.0. pre ktore platia nasledujuce fakty.
+   A. OPEN ID umoznuje USERS prihlasovat sa na WEB RESOURCES s CREDENTIALS, ktore maju vytvorene u niektoreho z OPEN ID PROVIDERS, ako su napriklad MICROSOFT ci GOOGLE.
+   B. Vdaka OPEN ID nie je nutne registrovat sa na vsetkych WEB RESOURCES, ktore dany USER pouziva, pretoze mozne pouzit existujuce CREDENTIALS.
+   C. WEB RESOURCES, ktore vyuzivaju OPEN ID dokazu identifikovat daneho USER a zistit jeho CLAIMS i bez toho, aby potrabovali mat daneho USER explicitne zaregistrovaneho pomocou WEB RESOURCE specifickych CREDENTIALS.
+   D. OPEN ID je rozsirenim OAUTH 2.0., ktore je postavene nad OAUTH 2.0., ale riesi moznost identifikovat daneho USER vo WEB RESOURCES co povodny OAUTH 2.0. neumoznoval.
+   E. OPEN ID pouziva specialny TOKEN nazyvany ID TOKEN, ktory je vo formate JSON WEB TOKEN a obsahuje informacie o danom USER a jeho CLAIMS. Tieto informacie moze vyuzit WEB RESOURCE na identifikaciu daneho USER.
+36. METHOD [IApplicationBuilder UseHttpsRedirection(this IApplicationBuilder App)] pridava do REQUEST PIPELINE MIDDLEWARE COMPONENT, ktory vykonava REDIRECTION vsetkych HTTP REQUESTS na HTTPS.
+!!!!! 37. CLASS [HttpClient] BY-DEFAULT AUTOMATICKY vykonava REDIRECT, vratane REDIRECT z HTTP na HTTPS. Automaticky REDIRECT sa da vypnut nasledujucim sposobom.
+   A. Vytvori sa instancia CLASS [HttpClientHander] a nastavi sa jeho PROPERTY [HttpClientHander.AllowAutoRedirect] na VALUE [false].
+   B. Vytvorena instancia CLASS [HttpClientHander] sa vlozi ako PARAMETER do CONSTRUCTOR CLASS [HttpClient].
+38. Aky silny ma byt PASSWORD je mozne nakonfigurovat nasledujucim sposobom.
+   A. Zavola sa METHOD [IServiceCollection Configure<TOptions>(this IServiceCollection Services, Action<TOptions> ConfigureOptions)], ktora v PARAMETER [ConfigureOptions] obsahuje CALLBACK METHOD.
+   B. V CALLBACK METHOD sa pouzije PROPERTY [IdentityOptions.Password] na nastavenie sily PASSWORD.
+39. Nastavenie PASSWORD LOCKOUT je mozne nakonfigurovat nasledujucim sposobom.
+   A. Zavola sa METHOD [IServiceCollection Configure<TOptions>(this IServiceCollection Services, Action<TOptions> ConfigureOptions)], ktora v PARAMETER [ConfigureOptions] obsahuje CALLBACK METHOD.
+   B. V CALLBACK METHOD sa pouzije PROPERTY [IdentityOptions.Lockout] na nastavenie PASSWORD LOCKOUT POLICY.
+   C. Do CONFIGURATION sa vlozi SING IN MANAGER volanim METHOD [IdentityBuilder AddSignInManager(this IdentityBuilder Builder)].
+   !!! D. Na overenie PASSWORD sa MUSI pouzit SING IN MANAGER METHOD [Task<SignInResult> SignInManager<TUser>.CheckPasswordSignInAsync(TUser User, string Password, bool LockoutOnFailure)].
+40. MULTIFACTOR AUTHENTICATION je AUTHENTICATION, ktore okrem PASSWORD vyzaduje aj dalsie potvrdenie daneho USER, zadanim CODE odoslaneho na EMIAL ci MOBIL, alebo pouzitim HARDWARE KEY ci BIOMETRIC DEVICE. Existuju nasledujuce typy MULTIFACTOR AUTHENTICATION.
+   A. TIME BASED ONE TIME PASSWORD. Pri tomto type AUTHENTICATION je CODE zaslany na PROGRAM v MOBILE, pricom CODE ma len velmi kratku casovu platnost. USER musi CODE do stanoveneho casu zadat popri PASSWORD.
+   B. FAST IDENTITY ONLINE 2. Pri tomto type AUTHENTICATION HARDWARE KEYS, alebo BIOMETRIC DEVICES na overenie daneho USER.
+41. STANDARD MIDDLEWARE COMPONENT [RateLimiter] umoznuje limitovat pocet HTTP REQUEST MESSAGES na PROGRAM. MIDDLEWARE COMPONENT [RateLimiter] sa pouziva nasledujucim sposobom.
+   A. Do DEPENDENCY INJECTION CONTAINER sa pridaju SERVICES potrebne pre beh MIDDLEWARE COMPONENT [RateLimiter] volanim METHOD [IServiceCollection AddRateLimiter(this IServiceCollection Services, Action<RateLimiterOptions> ConfigureOptions)]. Pomocou PARAMETER [Action<RateLimiterOptions> ConfigureOptions] sa nakonfiguruju RATE LIMITING POLICIES, ktore sa maju aplikovat na jednotlive URLs.
+   B. Do REQUEST PIPELINE sa prida STANDARD MIDDLEWARE COMPONENT [RateLimiter] volanim METHOD [IApplicationBuilder UseRateLimiter(this IApplicationBuilder Application)].
+   C. Na ACTION METHOD sa aplikuje RATE LIMITING POLICY, ktora bola vytvorena pri registracii SERVICES pomocou ATTRIBUTE [EnableRateLimiting].
+   !!!!! D. Ak je LIMIT RATE LIMITER prekroceny, RATE LIMITER drzi REQUESTS v QUEUE a umozni ich vykonanie az po uplynuti casoveho LIMITU.
+42. MODEL BINDING je proces mapovanie vsetkych dat zasladnych v HTTP REQUEST MESSAGE na PARAMETERS ACTION METHOD. Pre DATA BINDING platia nasledujuce fakty.
+   A. Data do MODEL BINDING prichadzaju z rozlicnych zdrojov.
+      A. QUERY STRING.
+	  B. HEADERS.
+	  C. FORM FIELDS.
+	  D. HTTP REQUEST BODY.
+   B. MODEL BINDING vykonava mapovanie vsetkych dat na DATA OBJECT, ktore su definovane ako PARAMETERS danej ACTION METOD.
+   C. Ak MODEL BINDING zlyha, pretoze napriklad DATA OBJECT je TYPE [int] no VALUE nie je konvertovatelna na TYPE [int], tak ASP.NET CORE automaticky generuje ERROR HTTP RESPONSE MESSAGE.
+43. MODEL VALIDATION je mechanizmus kontrolujuci ci DATA zadane USER splnaju nastavene kriteria.
+44. MODEL VALIDATION je sucastou MODEL BINDING.
+45. MODEL VALIDATION pozostava z nasledujucich casti.
+   A. Detekcie ci zadane DATA su VALIDNE.
+   B. Generovaniu ERRORS, ktore naviguju USERS k zadaniu korektnych dat.
+46. Okrem automatickeho MODEL VALIDATION, ktory je sucastou MODEL BINDING moze PROGRAM v CONTROLLERS vykonavat aj CUSTOM VALIDATION.
+47. ASP.NET CORE implementuje CLASS [ModelStateDictionary], ktora sluzi na zaznamenavanie VALIDATION ERRORS. CLASS [ModelStateDictionary] ma nasledujuce MEMBERS.
+   A. PROPERTY [IsValid] TYPE [bool] vracia informaciu ci instancia CLASS [ModelStateDictionary] obsahuje nejake ERRORS.
+   B. METHOD [void AddModelError(string Key, string ErrorMessage)] pridava novu ERROR MESSAGE do CLASS [ModelStateDictionary], pricom PARAMETER [Key] by mal byt nastaveny na PROPERTY, ktorej VALIDATION ZLYHALA.
+   C. METHOD [ModelValidationState GetValidationState(string Key)] vracia informaciu ci PROPERTY [Key] bola VALIDATED.
+   D. METHOD [void Clear()] odstranuje vsetky ERRORS a vykonava RESET ERROR STATE.
+48. METHOD [ModelValidationState ModelStateDictionary.GetValidationState(string Key)] vracia informaciu ci PROPERTY [Key] bola VALIDATED. METHOD vracia nasledujuce RETURN VALUES.
+   A. VALUE [ModelValidationState.Unvalidated] znamena, ze VALIDATION NEBOLA vykonana. Tato VALUE je spravidla vratena, ak sa PROPERTY [Key] NENACHADZA vo VALIDATED OBJECT.
+   B. VALUE [ModelValidationState.Invalid] znamena, ze VALIDATION ZLYHALA.
+   C. VALUE [ModelValidationState.Valid] znamena, ze VALIDATION bola vykonana USPESNE.
+   D. VALUE [ModelValidationState.Skipped] znamena, ze VALIDATION bola preskocena, pretoze bolo najdenych tolko VALIDATION ERRORS, ze nemalo zmysel pokracovat vo vykonavani VALIDATION.
+49. MANUAL VALIDATION sa vykonava nasledujucim sposobom.
+   A. V ACTION METHOD sa volanim METHOD [ModelStateDictionary.GetValidationState()] vykona verifikacia vsetkych PROPERTIES COMPLEX OBJECT, ktory obsahuje FORM DATA. V pripade detekcie ERROR sa volanim METHOD [ModelStateDictionary.AddModelError()] sa prida ERROR do instancie CLASS [ModelStateDictionary].
+   !!! B. V ACTION METHOD je mozne vykonat aj dodatocne CUSTOM VALIDATIONS, ako napriklad ci je NUMERIC VALUE v urcitom INTERVALE, alebo ci STRING VALUE nie je PRAZDNA. V pripade detekcie ERROR sa volanim METHOD [ModelStateDictionary.AddModelError()] sa prida ERROR do instancie CLASS [ModelStateDictionary].
+   !!! C. Po skonceni VALIDATION by ACTION METHOD mala zistit VALUE PROPERTY [ModelStateDictionary.IsValid]. V pripade, ze obsahuje VALUE [TRUE], je VALIDATION USPESNA moze pokracovat v dalsej cinnosti. V pripade, ze obsahuje VALUE [FALSE], mala by vratit ERROR HTTP RESPONSE MESSAGE.
+!!! 50. ASP.NET rozdeluje VALIDATION ERRORS na nasledujuce typy.
+   A. PROPERTY VALIDATION ERROR je asociovana s konkretnou PROPERTY, ktore VALUE je nespravna. Ak pri volani METHOD [void AddModelError(string Key, string ErrorMessage)] ma PARAMETER [Key] nastaveny na nazov PROPERTY, tak ERROR je povazovana za PROPERTY VALIDATION ERROR.
+   B. MODEL VALIDATION ERROR nie je asociovana so ziadnou konkretnou PROPERTY, ale s celym MODEL. Ak pri volani METHOD [void AddModelError(string Key, string ErrorMessage)] ma PARAMETER [Key] nastaveny na nazov EMPTY STRING, tak ERROR je povazovana za MODEL VALIDATION ERROR.
+51. AUTOMATIC VALIDATION sa vykonava nasledujucim sposobom.
+   A. Na PROPERTIES MODEL OBJECT sa aplikuju VALIDATION ATTRIBUTES. VALIDATION ATTRIBUTES okrem CONDITION mozu definovat aj CUSTOM PROPERTY ERROR MESSAGE.
+   !!! B. VALIDATION ATTRIBUTES su aplikovane este PRED zavolanim ACTION METHODS, takze ACTION METHODS mozu pouzivat MEMBERS CLASS [ModelStateDictionary].
+   C. Ak VALIDATION ATTRIBUTE nedefinuje CUSTOM PROPERTY ERROR MESSAGE, tak je vhodne aplikovat na PROPERTY ATTRIBUTE [DisplayAttribute], ktora definuje PROPERTY NAME, ktora sa vlozi do PROPERTY ERROR MESSAGE.
+52. ASP.NET CORE definuje nasledujuce VALIDATION ATTRIBUTES.
+   A. ATTRIBUTE [CompareAttribute] umoznuje porovnat VALUES 2 PROPERTIES na ci su zhodne. PROPERTY, ktora sa ma porovnat je urcena pomocou PROPERTY [CompareAttribute.OtherProperty].
+   B. ATTRIBUTE [RangeAttribute] umoznuje definovat RANGE v ktorom sa ma VALUE danej PROPERTY nachadzat.
+   C. ATTRIBUTE [RegularExpressionAttribute] umoznuje spravit VALIDATION VALUE danej PROPERTY voci REGULAR EXPRESSION.
+   D. ATTRIBUTE [RequiredAttribute] umoznuje vykonat VALIDATION ci VALUE danej PROPERTY je nastavena.
+   E. ATTRIBUTE [StringLengthAttribute] umoznuje vykonat VALIDATION ci STRING VALUE ma zadany pocet CHARACTERS.
+   F. ATTRIBUTE [CustomValidationAttribute] umoznuje vykonat CUSTOM VALIDATION VALUE danej PROPERTY.
+   G. ATTRIBUTE [MinLengthAttribute] umoznuje vykonat VALIDATION ci STRING VALUE, alebo ARRAY VALUE ma zadany pocet CHARACTERS/ITEMS.
+   H. ATTRIBUTE [MaxLengthAttribute] umoznuje vykonat VALIDATION ci STRING VALUE, alebo ARRAY VALUE nema vacsi ako zadany pocet CHARACTERS/ITEMS.
+53. ASP.NET CORE umoznuje definovat CUSTOM VALIDATION ATTRIBUTES. CUSTOM VALIDATION ATTRIBUTES sa implementuju nasledujucim sposobom.
+   A. Definuje sa ATTRIBUTE CLASS, ktory je DERIVED z CLASS [Attribute] a zaroven implementuje CLASS [ValidationAttribute].
+   B. ATTRIBUTE CLASS musi implementovat METHOD [ValidationResult IsValid(object Value, ValidationContext ValidationContext)]. METHOD musi vykonat VALIDATION a v pripade detekcie VALIDATION ERRORS musi vratit instanciu CLASS [ValidationResult].
+!!! 54. CUSTOM VALIDATION ATTRIBUTES je mozne definovat bud na urovni PROPERTIES VALIDATED OBJECTS (ATTRIBUTE je aplikovany na PROPERTY), alebo na urovni celeho VALIDATED OBJECT (ATTRIBUTE je aplikovany na CLASS).
+55. ENTITY FRAMEWORK standardne generuje QYERUES, ktore su SAFE a maju osetrene INPUTS voci SQL INJECTION. No v ENTITY FRAMEWORK je mozne generovat aj RAW QUERIES, ktore NEMAJU automaticky osetrene INPUTS voci SQL INJECTION a INPUTS je treba rucne osetrit. ENTITY FRAMEWORK definuje nasledujuce UNSAFE METHODS.
+   A. METHOD [FromSqlRaw()].
+   B. METHOD [SqlQeuryRaw()].
+   C. METHOD [ExecuteSqlRaw()].
+56. SENSITIVE DATA by mali byt v DB ulozene v ENCRYPTED forme. ASP.NET CORE definuje ASP.NET CORE DATA PROTECTION LIBRARY, ktora umoznuje ENCRYPTION SENSITIVE DATA v DB.
+57. SENSITIVE CONFIGURATION DATA by NEMALI byt ulozene v CONFIGURATION FILES, ale v SECURE STORES. K SECURE STORES patri AZURE KEY VAULT, alebo AWS SECRET MANAGER.
+58. PROGRAMS pouzivajuce NUGET PACKAGES by mali vzdy co najskor UPDATED na LATEST VERSIONS NUGET PACKAGES.
 //----------------------------------------------------------------------------------------------------------------------

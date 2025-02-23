@@ -1,20 +1,19 @@
-﻿//----------------------------------------------------------------------------------------------------------------------
-namespace Client
+﻿using Microsoft.AspNetCore.Identity;
+//----------------------------------------------------------------------------------------------------------------------
+namespace NewIdentityAPI
 {
 //----------------------------------------------------------------------------------------------------------------------
-	internal class Program
+	// !!! CLASS reprezentuje ROLE v IDENTITY FRAMEWORK.
+	public sealed class CIdentityRole : IdentityRole
 	{
 //----------------------------------------------------------------------------------------------------------------------
-		static void Main(string[] args)
+		public CIdentityRole()
 		{
-			//CMenuTestConnection								Menu=new CMenuTestConnection();
-			//CMenuMyAccount									Menu=new CMenuMyAccount();
-			//CMenuNewIdentityAPI								Menu=new CMenuNewIdentityAPI();
-			//CMenuUseHttps										Menu=new CMenuUseHttps();
-			//CMenuPasswordPolicy								Menu=new CMenuPasswordPolicy();
-			CMenuModelValidation								Menu=new CMenuModelValidation();
-
-			Menu.Execute();
+		}
+//----------------------------------------------------------------------------------------------------------------------
+		public CIdentityRole(string RoleName)
+			: base(RoleName)
+		{
 		}
 //----------------------------------------------------------------------------------------------------------------------
 	}

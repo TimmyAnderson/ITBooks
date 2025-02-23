@@ -1,21 +1,12 @@
-﻿//----------------------------------------------------------------------------------------------------------------------
-namespace Client
+﻿using Microsoft.AspNetCore.Identity;
+//----------------------------------------------------------------------------------------------------------------------
+namespace NewIdentityAPI
 {
 //----------------------------------------------------------------------------------------------------------------------
-	internal class Program
+	// !!! CLASS reprezentuje USER v IDENTITY FRAMEWORK.
+	public sealed class CIdentityUser : IdentityUser
 	{
 //----------------------------------------------------------------------------------------------------------------------
-		static void Main(string[] args)
-		{
-			//CMenuTestConnection								Menu=new CMenuTestConnection();
-			//CMenuMyAccount									Menu=new CMenuMyAccount();
-			//CMenuNewIdentityAPI								Menu=new CMenuNewIdentityAPI();
-			//CMenuUseHttps										Menu=new CMenuUseHttps();
-			//CMenuPasswordPolicy								Menu=new CMenuPasswordPolicy();
-			CMenuModelValidation								Menu=new CMenuModelValidation();
-
-			Menu.Execute();
-		}
 //----------------------------------------------------------------------------------------------------------------------
 	}
 //----------------------------------------------------------------------------------------------------------------------

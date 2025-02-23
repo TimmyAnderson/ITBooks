@@ -2,12 +2,11 @@
 namespace SecurityAndIdentity
 {
 //----------------------------------------------------------------------------------------------------------------------
-	public static class CIdentityRoles
+	public static class CSecurityClaims
 	{
 //----------------------------------------------------------------------------------------------------------------------
-		public const string										ADMINISTRATORS="Administrators";
-		public const string										VIPS="VIPs";
-		public const string										USERS="Users";
+		public const string										MY_CLAIM_1="MyClaim1";
+		public const string										MY_CLAIM_2="MyClaim2";
 //----------------------------------------------------------------------------------------------------------------------
 	}
 //----------------------------------------------------------------------------------------------------------------------

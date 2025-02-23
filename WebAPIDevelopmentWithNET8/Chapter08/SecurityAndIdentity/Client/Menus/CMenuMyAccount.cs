@@ -29,21 +29,21 @@ namespace Client
 
 			if (UserID==1)
 			{
-				string											UserName=CIdentityUsers.ADMINISTRATOR;
+				string											UserName=CSecurityUsers.ADMINISTRATOR;
 				string											Password="zy3pQjPDJB0yL3J&";
 				
 				RawContent=new CMyLoginModel(UserName,Password);
 			}
 			else if (UserID==2)
 			{
-				string											UserName=CIdentityUsers.VIP;
+				string											UserName=CSecurityUsers.VIP;
 				string											Password="Zy4pQjPDJB0yL3J+";
 
 				RawContent=new CMyLoginModel(UserName,Password);
 			}
 			else if (UserID==3)
 			{
-				string											UserName=CIdentityUsers.USER;
+				string											UserName=CSecurityUsers.USER;
 				string											Password="zY5pQjPDJB0yL3J&";
 
 				RawContent=new CMyLoginModel(UserName,Password);
@@ -118,7 +118,7 @@ namespace Client
 
 			if (UserID==1)
 			{
-				string											UserName=CIdentityUsers.ADMINISTRATOR;
+				string											UserName=CSecurityUsers.ADMINISTRATOR;
 				string											PhoneNumber="12345678";
 				string											Password="zy3pQjPDJB0yL3J&";
 				
@@ -126,7 +126,7 @@ namespace Client
 			}
 			else if (UserID==2)
 			{
-				string											UserName=CIdentityUsers.VIP;
+				string											UserName=CSecurityUsers.VIP;
 				string											PhoneNumber="87654321";
 				string											Password="Zy4pQjPDJB0yL3J+";
 
@@ -134,7 +134,7 @@ namespace Client
 			}
 			else if (UserID==3)
 			{
-				string											UserName=CIdentityUsers.USER;
+				string											UserName=CSecurityUsers.USER;
 				string											PhoneNumber="56781234";
 				string											Password="zY5pQjPDJB0yL3J&";
 				
@@ -169,7 +169,7 @@ namespace Client
 		{
 			string												MessageID=CommandID;
 			EMyHttpClientHttpMethod								Method=EMyHttpClientHttpMethod.E_GET;
-			string												URL=$"{BASE_ADDRESS}MySecureRolesAuthorization/SecureMethodAllAuthenticatedUsers";
+			string												URL=$"{BASE_ADDRESS}MySecure/SecureMethodAllAuthenticatedUsers";
 			CMyHttpClientHeaders								Headers=null;
 			CMyHttpClientContent								Content=null;
 			TimeSpan											Timeout=TimeSpan.FromHours(1);
@@ -187,7 +187,7 @@ namespace Client
 			{
 				string											MessageID=CommandID;
 				EMyHttpClientHttpMethod							Method=EMyHttpClientHttpMethod.E_GET;
-				string											URL=$"{BASE_ADDRESS}MySecureRolesAuthorization/SecureMethodAllAuthenticatedUsers";
+				string											URL=$"{BASE_ADDRESS}MySecure/SecureMethodAllAuthenticatedUsers";
 				CMyHttpClientHeaderAuthorization				HeaderAuthorization=new CMyHttpClientHeaderAuthorization("Bearer",Token);
 				CMyHttpClientHeaders							Headers=new CMyHttpClientHeaders(new CMyHttpClientHeader[]{HeaderAuthorization});
 				CMyHttpClientContent							Content=null;
@@ -207,7 +207,7 @@ namespace Client
 			{
 				string											MessageID=CommandID;
 				EMyHttpClientHttpMethod							Method=EMyHttpClientHttpMethod.E_GET;
-				string											URL=$"{BASE_ADDRESS}MySecureRolesAuthorization/SecureMethodAdministratorsOnly";
+				string											URL=$"{BASE_ADDRESS}MySecure/SecureMethodAdministratorsOnly";
 				CMyHttpClientHeaderAuthorization				HeaderAuthorization=new CMyHttpClientHeaderAuthorization("Bearer",Token);
 				CMyHttpClientHeaders							Headers=new CMyHttpClientHeaders(new CMyHttpClientHeader[]{HeaderAuthorization});
 				CMyHttpClientContent							Content=null;
@@ -227,7 +227,7 @@ namespace Client
 			{
 				string											MessageID=CommandID;
 				EMyHttpClientHttpMethod							Method=EMyHttpClientHttpMethod.E_GET;
-				string											URL=$"{BASE_ADDRESS}MySecureRolesAuthorization/SecureMethodUsersOrAdministrators";
+				string											URL=$"{BASE_ADDRESS}MySecure/SecureMethodUsersOrAdministrators";
 				CMyHttpClientHeaderAuthorization				HeaderAuthorization=new CMyHttpClientHeaderAuthorization("Bearer",Token);
 				CMyHttpClientHeaders							Headers=new CMyHttpClientHeaders(new CMyHttpClientHeader[]{HeaderAuthorization});
 				CMyHttpClientContent							Content=null;
@@ -247,7 +247,7 @@ namespace Client
 			{
 				string											MessageID=CommandID;
 				EMyHttpClientHttpMethod							Method=EMyHttpClientHttpMethod.E_GET;
-				string											URL=$"{BASE_ADDRESS}MySecureRolesAuthorization/SecureMethodUsersAndAdministrators";
+				string											URL=$"{BASE_ADDRESS}MySecure/SecureMethodUsersAndAdministrators";
 				CMyHttpClientHeaderAuthorization				HeaderAuthorization=new CMyHttpClientHeaderAuthorization("Bearer",Token);
 				CMyHttpClientHeaders							Headers=new CMyHttpClientHeaders(new CMyHttpClientHeader[]{HeaderAuthorization});
 				CMyHttpClientContent							Content=null;
@@ -267,7 +267,87 @@ namespace Client
 			{
 				string											MessageID=CommandID;
 				EMyHttpClientHttpMethod							Method=EMyHttpClientHttpMethod.E_GET;
-				string											URL=$"{BASE_ADDRESS}MySecureRolesAuthorization/SecureMethodVIPsOrAdministrators";
+				string											URL=$"{BASE_ADDRESS}MySecure/SecureMethodVIPsOrAdministrators";
+				CMyHttpClientHeaderAuthorization				HeaderAuthorization=new CMyHttpClientHeaderAuthorization("Bearer",Token);
+				CMyHttpClientHeaders							Headers=new CMyHttpClientHeaders(new CMyHttpClientHeader[]{HeaderAuthorization});
+				CMyHttpClientContent							Content=null;
+				TimeSpan										Timeout=TimeSpan.FromHours(1);
+				CMyHttpClientOperationRequest					Request=new CMyHttpClientOperationRequest(MessageID,Method,URL,Headers,Content,Timeout);
+
+				CMyHttpClient.ExecuteMessage(Request);
+			}
+		}
+//--------------------------------------------------------------------------------------------------------------------------------
+		private void ExecuteCommandLoginSecureMethodVIPOnly(string CommandID, object[] Parameters)
+		{
+			int													UserID=((int) Parameters[0]);
+			string												Token=DoLogin(CommandID,UserID);
+
+			if (Token!=null)
+			{
+				string											MessageID=CommandID;
+				EMyHttpClientHttpMethod							Method=EMyHttpClientHttpMethod.E_GET;
+				string											URL=$"{BASE_ADDRESS}MySecure/SecureMethodVIPOnly";
+				CMyHttpClientHeaderAuthorization				HeaderAuthorization=new CMyHttpClientHeaderAuthorization("Bearer",Token);
+				CMyHttpClientHeaders							Headers=new CMyHttpClientHeaders(new CMyHttpClientHeader[]{HeaderAuthorization});
+				CMyHttpClientContent							Content=null;
+				TimeSpan										Timeout=TimeSpan.FromHours(1);
+				CMyHttpClientOperationRequest					Request=new CMyHttpClientOperationRequest(MessageID,Method,URL,Headers,Content,Timeout);
+
+				CMyHttpClient.ExecuteMessage(Request);
+			}
+		}
+//--------------------------------------------------------------------------------------------------------------------------------
+		private void SecureMethodAdministratorOrVIP(string CommandID, object[] Parameters)
+		{
+			int													UserID=((int) Parameters[0]);
+			string												Token=DoLogin(CommandID,UserID);
+
+			if (Token!=null)
+			{
+				string											MessageID=CommandID;
+				EMyHttpClientHttpMethod							Method=EMyHttpClientHttpMethod.E_GET;
+				string											URL=$"{BASE_ADDRESS}MySecure/SecureMethodAdministratorOrVIP";
+				CMyHttpClientHeaderAuthorization				HeaderAuthorization=new CMyHttpClientHeaderAuthorization("Bearer",Token);
+				CMyHttpClientHeaders							Headers=new CMyHttpClientHeaders(new CMyHttpClientHeader[]{HeaderAuthorization});
+				CMyHttpClientContent							Content=null;
+				TimeSpan										Timeout=TimeSpan.FromHours(1);
+				CMyHttpClientOperationRequest					Request=new CMyHttpClientOperationRequest(MessageID,Method,URL,Headers,Content,Timeout);
+
+				CMyHttpClient.ExecuteMessage(Request);
+			}
+		}
+//--------------------------------------------------------------------------------------------------------------------------------
+		private void SecureMethodPolicyAuthorizationAdministrator(string CommandID, object[] Parameters)
+		{
+			int													UserID=((int) Parameters[0]);
+			string												Token=DoLogin(CommandID,UserID);
+
+			if (Token!=null)
+			{
+				string											MessageID=CommandID;
+				EMyHttpClientHttpMethod							Method=EMyHttpClientHttpMethod.E_GET;
+				string											URL=$"{BASE_ADDRESS}MySecure/SecureMethodPolicyAuthorizationAdministrator";
+				CMyHttpClientHeaderAuthorization				HeaderAuthorization=new CMyHttpClientHeaderAuthorization("Bearer",Token);
+				CMyHttpClientHeaders							Headers=new CMyHttpClientHeaders(new CMyHttpClientHeader[]{HeaderAuthorization});
+				CMyHttpClientContent							Content=null;
+				TimeSpan										Timeout=TimeSpan.FromHours(1);
+				CMyHttpClientOperationRequest					Request=new CMyHttpClientOperationRequest(MessageID,Method,URL,Headers,Content,Timeout);
+
+				CMyHttpClient.ExecuteMessage(Request);
+			}
+		}
+//--------------------------------------------------------------------------------------------------------------------------------
+		private void SecureMethodPolicyAuthorizationAdministratorMultiHandler(string CommandID, object[] Parameters)
+		{
+			int													UserID=((int) Parameters[0]);
+			string												Token=DoLogin(CommandID,UserID);
+
+			if (Token!=null)
+			{
+				string											MessageID=CommandID;
+				EMyHttpClientHttpMethod							Method=EMyHttpClientHttpMethod.E_GET;
+				string											URL=$"{BASE_ADDRESS}MySecure/SecureMethodPolicyAuthorizationAdministratorMultiHandler";
 				CMyHttpClientHeaderAuthorization				HeaderAuthorization=new CMyHttpClientHeaderAuthorization("Bearer",Token);
 				CMyHttpClientHeaders							Headers=new CMyHttpClientHeaders(new CMyHttpClientHeader[]{HeaderAuthorization});
 				CMyHttpClientContent							Content=null;
@@ -294,6 +374,10 @@ namespace Client
 			CommandsCollection.Add(new CMenuCommand("8","ROLE - LOGIN + SECURE METHOD USERS OR ADMINISTRATORS",new EMenuCommandParameterType[]{EMenuCommandParameterType.E_INT},ExecuteCommandLoginSecureMethodUsersOrAdministrators));
 			CommandsCollection.Add(new CMenuCommand("9","ROLE - LOGIN + SECURE METHOD USERS AND ADMINISTRATORS",new EMenuCommandParameterType[]{EMenuCommandParameterType.E_INT},ExecuteCommandLoginSecureMethodUsersAndAdministrators));
 			CommandsCollection.Add(new CMenuCommand("10","ROLE - LOGIN + SECURE METHOD VIPS OR ADMINISTRATORS",new EMenuCommandParameterType[]{EMenuCommandParameterType.E_INT},ExecuteCommandLoginSecureMethodVIPsOrAdministrators));
+			CommandsCollection.Add(new CMenuCommand("11","CLAIMS - LOGIN + SECURE METHOD VIP ONLY",new EMenuCommandParameterType[]{EMenuCommandParameterType.E_INT},ExecuteCommandLoginSecureMethodVIPOnly));
+			CommandsCollection.Add(new CMenuCommand("12","CLAIMS - LOGIN + SECURE METHOD ADMINISTRATOR OR VIP",new EMenuCommandParameterType[]{EMenuCommandParameterType.E_INT},SecureMethodAdministratorOrVIP));
+			CommandsCollection.Add(new CMenuCommand("13","POLICY - LOGIN + SECURE METHOD ADMINISTRATOR",new EMenuCommandParameterType[]{EMenuCommandParameterType.E_INT},SecureMethodPolicyAuthorizationAdministrator));
+			CommandsCollection.Add(new CMenuCommand("14","POLICY - LOGIN + SECURE METHOD ADMINISTRATOR MULTI HANDLER",new EMenuCommandParameterType[]{EMenuCommandParameterType.E_INT},SecureMethodPolicyAuthorizationAdministratorMultiHandler));
 
 			CMenuCommand[]										Commands=CommandsCollection.ToArray();
 

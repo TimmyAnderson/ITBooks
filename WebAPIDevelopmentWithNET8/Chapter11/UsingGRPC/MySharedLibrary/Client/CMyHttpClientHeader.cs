@@ -2,124 +2,59 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Net;
 using System.Text;
 using System.Threading.Tasks;
+using System.Net;
 //--------------------------------------------------------------------------------------------------------------------------------
 namespace MySharedLibrary
 {
 //--------------------------------------------------------------------------------------------------------------------------------
-	public sealed class CMyHttpClientOperationResponse : CMyHttpClientOperation
+	public class CMyHttpClientHeader
 	{
 //--------------------------------------------------------------------------------------------------------------------------------
-		private readonly EMyHttpClientHttpMethod				MMethod;
-		private readonly string									MUrl;
-		private readonly HttpStatusCode							MStatusCode;
-		private readonly CMyHttpClientHeaders					MHeaders;
-		private readonly CMyHttpClientContent					MContent;
+		private readonly string									MKey;
+		private readonly string[]								MValues;
 //--------------------------------------------------------------------------------------------------------------------------------
 //--------------------------------------------------------------------------------------------------------------------------------
 //--------------------------------------------------------------------------------------------------------------------------------
-		public CMyHttpClientOperationResponse(string MessageID, EMyHttpClientHttpMethod Method, string Url, HttpStatusCode StatusCode, CMyHttpClientHeaders Headers, CMyHttpClientContent Content)
-			: base(MessageID)
+		public CMyHttpClientHeader(string Key, string Value)
 		{
-			MMethod=Method;
-			MUrl=Url;
-			MStatusCode=StatusCode;
-			MHeaders=Headers;
-			MContent=Content;
+			MKey=Key;
+			MValues=new string[]{Value};
+		}
+//--------------------------------------------------------------------------------------------------------------------------------
+		public CMyHttpClientHeader(string Key, string[] Values)
+		{
+			MKey=Key;
+			MValues=Values;
 		}
 //--------------------------------------------------------------------------------------------------------------------------------
 //--------------------------------------------------------------------------------------------------------------------------------
 //--------------------------------------------------------------------------------------------------------------------------------
-		public EMyHttpClientHttpMethod							Method
+		public string											Key
 		{
 			get
 			{
-				return(MMethod);
+				return(MKey);
 			}
 		}
 //--------------------------------------------------------------------------------------------------------------------------------
-		public string											Url
+		public string[]											Values
 		{
 			get
 			{
-				return(MUrl);
-			}
-		}
-//--------------------------------------------------------------------------------------------------------------------------------
-		public HttpStatusCode									StatusCode
-		{
-			get
-			{
-				return(MStatusCode);
-			}
-		}
-//--------------------------------------------------------------------------------------------------------------------------------
-		public CMyHttpClientHeaders								Headers
-		{
-			get
-			{
-				return(MHeaders);
-			}
-		}
-//--------------------------------------------------------------------------------------------------------------------------------
-		public CMyHttpClientContent								Content
-		{
-			get
-			{
-				return(MContent);
+				return(MValues);
 			}
 		}
 //--------------------------------------------------------------------------------------------------------------------------------
 //--------------------------------------------------------------------------------------------------------------------------------
 //--------------------------------------------------------------------------------------------------------------------------------
-		public override string GetMessageAsText()
+		public override string ToString()
 		{
 			StringBuilder										SB=new StringBuilder();
 
-			SB.AppendLine($"ID\t[{MessageID}].");
-			SB.AppendLine();
-			SB.AppendLine($"METHOD\t[{MMethod.EXT_ToString()}].");
-			SB.AppendLine();
-			SB.AppendLine($"URL\t[{MUrl}].");
-			SB.AppendLine();
-			SB.AppendLine($"STATUS\t[{((int)MStatusCode)} - {MStatusCode}].");
-
-			if (MHeaders!=null)
-			{
-				SB.AppendLine();
-				SB.AppendLine($"HEADERS:");
-
-				foreach(CMyHttpClientHeader ClientHeader in MHeaders.Headers)
-				{
-					StringBuilder								Values=new StringBuilder();
-
-					for(int Index=0;Index<ClientHeader.Values.Length;Index++)
-					{
-						if (Index>0)
-						{
-							Values.Append(", ");
-						}
-
-						string									Value=ClientHeader.Values[Index];
-
-						Values.Append(Value);
-					}
-
-					SB.AppendLine($"\tKEY [{ClientHeader.Key}] VALUE [{Values.ToString()}].");
-				}
-			}
-
-			SB.AppendLine();
-			SB.AppendLine($"CONTENT TYPE [{MContent?.ContentType?.ConvertToString()}].");
-			SB.AppendLine();
-			SB.AppendLine($"BODY LENGTH [{MContent?.Content?.Length}].");
-
-			string												Body=MContent.ConvertToString();
-
-			SB.AppendLine();
-			SB.AppendLine($"BODY:\n{Body}");
+			SB.Append($"KEY [{MKey}]");
+			SB.Append($" VALUES [{MValues.Length}]");
 
 			string												Text=SB.ToString();
 

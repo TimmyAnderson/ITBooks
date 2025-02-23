@@ -1,13 +1,13 @@
 ﻿//----------------------------------------------------------------------------------------------------------------------
-namespace SecurityAndIdentity
+namespace NewIdentityAPI
 {
 //----------------------------------------------------------------------------------------------------------------------
-	public static class CIdentityUsers
+	public static class CSecurityUsers
 	{
 //----------------------------------------------------------------------------------------------------------------------
-		public const string										ADMINISTRATOR="MyADMIN";
-		public const string										VIP="MyVIP";
-		public const string										USER="MyUSER";
+		public const string										ADMINISTRATOR="MyADMIN@xxx.xx";
+		public const string										VIP="MyVIP@xxx.xx";
+		public const string										USER="MyUSER@xxx.xx";
 //----------------------------------------------------------------------------------------------------------------------
 	}
 //----------------------------------------------------------------------------------------------------------------------

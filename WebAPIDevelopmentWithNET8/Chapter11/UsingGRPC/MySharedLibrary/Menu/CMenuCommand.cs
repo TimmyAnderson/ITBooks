@@ -1,129 +1,109 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
-using System.Net;
 using System.Text;
 using System.Threading.Tasks;
 //--------------------------------------------------------------------------------------------------------------------------------
 namespace MySharedLibrary
 {
 //--------------------------------------------------------------------------------------------------------------------------------
-	public sealed class CMyHttpClientOperationResponse : CMyHttpClientOperation
+	public sealed class CMenuCommand
 	{
 //--------------------------------------------------------------------------------------------------------------------------------
-		private readonly EMyHttpClientHttpMethod				MMethod;
-		private readonly string									MUrl;
-		private readonly HttpStatusCode							MStatusCode;
-		private readonly CMyHttpClientHeaders					MHeaders;
-		private readonly CMyHttpClientContent					MContent;
+		private readonly string									MCommandID;
+		private readonly string									MCommandText;
+		private readonly EMenuCommandParameterType[]			MCommandParameterTypes;
+		private readonly Action<string,object[]>				MCommandOperation;
 //--------------------------------------------------------------------------------------------------------------------------------
 //--------------------------------------------------------------------------------------------------------------------------------
 //--------------------------------------------------------------------------------------------------------------------------------
-		public CMyHttpClientOperationResponse(string MessageID, EMyHttpClientHttpMethod Method, string Url, HttpStatusCode StatusCode, CMyHttpClientHeaders Headers, CMyHttpClientContent Content)
-			: base(MessageID)
+		public CMenuCommand(string CommandID, string CommandText, EMenuCommandParameterType[] CommandParameterTypes, Action<string,object[]> CommandOperation)
 		{
-			MMethod=Method;
-			MUrl=Url;
-			MStatusCode=StatusCode;
-			MHeaders=Headers;
-			MContent=Content;
+			MCommandID=CommandID;
+			MCommandText=CommandText;
+			MCommandParameterTypes=CommandParameterTypes;
+			MCommandOperation=CommandOperation;
 		}
 //--------------------------------------------------------------------------------------------------------------------------------
 //--------------------------------------------------------------------------------------------------------------------------------
 //--------------------------------------------------------------------------------------------------------------------------------
-		public EMyHttpClientHttpMethod							Method
+		public string											CommandID
 		{
 			get
 			{
-				return(MMethod);
+				return(MCommandID);
 			}
 		}
 //--------------------------------------------------------------------------------------------------------------------------------
-		public string											Url
+		public string											CommandText
 		{
 			get
 			{
-				return(MUrl);
+				return(MCommandText);
 			}
 		}
 //--------------------------------------------------------------------------------------------------------------------------------
-		public HttpStatusCode									StatusCode
+		public EMenuCommandParameterType[]						CommandParameterTypes
 		{
 			get
 			{
-				return(MStatusCode);
+				return(MCommandParameterTypes);
 			}
 		}
 //--------------------------------------------------------------------------------------------------------------------------------
-		public CMyHttpClientHeaders								Headers
+		public Action<string,object[]>							CommandOperation
 		{
 			get
 			{
-				return(MHeaders);
-			}
-		}
-//--------------------------------------------------------------------------------------------------------------------------------
-		public CMyHttpClientContent								Content
-		{
-			get
-			{
-				return(MContent);
+				return(MCommandOperation);
 			}
 		}
 //--------------------------------------------------------------------------------------------------------------------------------
 //--------------------------------------------------------------------------------------------------------------------------------
 //--------------------------------------------------------------------------------------------------------------------------------
-		public override string GetMessageAsText()
+		public void CallCommandOperation(string[] RawCommandParameters)
 		{
-			StringBuilder										SB=new StringBuilder();
+			if (MCommandOperation==null)
+			{
+				return;
+			}
 
-			SB.AppendLine($"ID\t[{MessageID}].");
-			SB.AppendLine();
-			SB.AppendLine($"METHOD\t[{MMethod.EXT_ToString()}].");
-			SB.AppendLine();
-			SB.AppendLine($"URL\t[{MUrl}].");
-			SB.AppendLine();
-			SB.AppendLine($"STATUS\t[{((int)MStatusCode)} - {MStatusCode}].");
-
-			if (MHeaders!=null)
+			if (MCommandParameterTypes.Length!=RawCommandParameters.Length)
 			{
-				SB.AppendLine();
-				SB.AppendLine($"HEADERS:");
+				throw(new InvalidOperationException($"COMMAND [{MCommandID}] has INVALID NUMBER of PARAMETERS. EXPECTED NUMBER of PARAMETERS [{MCommandParameterTypes.Length}]."));
+			}
 
-				foreach(CMyHttpClientHeader ClientHeader in MHeaders.Headers)
+			object[]											CommandParameters=new object[RawCommandParameters.Length];
+
+			for(int Index=0;Index<RawCommandParameters.Length;Index++)
+			{
+				string											RawCommandParameter=RawCommandParameters[Index];
+				EMenuCommandParameterType						CommandParameterType=MCommandParameterTypes[Index];
+
+				if (CommandParameterType==EMenuCommandParameterType.E_STRING)
 				{
-					StringBuilder								Values=new StringBuilder();
+					CommandParameters[Index]=RawCommandParameter;
+				}
+				else if (CommandParameterType==EMenuCommandParameterType.E_INT)
+				{
+					int											CommandParameter;
 
-					for(int Index=0;Index<ClientHeader.Values.Length;Index++)
+					if (int.TryParse(RawCommandParameter,out CommandParameter)==true)
 					{
-						if (Index>0)
-						{
-							Values.Append(", ");
-						}
-
-						string									Value=ClientHeader.Values[Index];
-
-						Values.Append(Value);
+						CommandParameters[Index]=CommandParameter;
 					}
-
-					SB.AppendLine($"\tKEY [{ClientHeader.Key}] VALUE [{Values.ToString()}].");
+					else
+					{
+						throw(new InvalidOperationException($"COMMAND [{MCommandID}] has INVALID VALUE [{RawCommandParameter}] at INDEX [{Index}]. EXPECTED PARAMETER TYPE [{CommandParameterType}]."));
+					}
+				}
+				else
+				{
+					throw(new InvalidOperationException($"COMMAND [{MCommandID}] has UNSUPPORTED PARAMETER TYPE [{CommandParameterType}] at INDEX [{Index}]."));
 				}
 			}
 
-			SB.AppendLine();
-			SB.AppendLine($"CONTENT TYPE [{MContent?.ContentType?.ConvertToString()}].");
-			SB.AppendLine();
-			SB.AppendLine($"BODY LENGTH [{MContent?.Content?.Length}].");
-
-			string												Body=MContent.ConvertToString();
-
-			SB.AppendLine();
-			SB.AppendLine($"BODY:\n{Body}");
-
-			string												Text=SB.ToString();
-
-			return(Text);
+			MCommandOperation(MCommandID,CommandParameters);
 		}
 //--------------------------------------------------------------------------------------------------------------------------------
 	}
