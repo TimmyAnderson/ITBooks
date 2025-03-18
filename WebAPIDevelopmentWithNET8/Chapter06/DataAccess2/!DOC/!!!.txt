@@ -1,0 +1,73 @@
+//----------------------------------------------------------------------------------------------------------------------
+1. Solution demonstruje implementaciu RELATIONSHIPS v ENTITY FRAMEWORK v ASP.NET CORE.
+2. V RELATIONSHIP medzi 2 ENTITIES sa rozlisuju nasledujuce typy ENTITIES.
+   A. PRINCIPAL ENTITY je ENTITY, ktora reprezentuje MASTER ENTITY.
+   B. DEPENDENT ENTITY je ENTITY, ktora reprezentuje DETAIL ENTITY. DEPENDENT ENTITY ma FOREIGN KEY na PRINCIPAL ENTITY.
+3. PRINCIPAL KEY je UNIKATNY KEY v ENTITY. Pre PRINCIPAL KEYS platia nasledujuca fakty.
+   A. PRINCIPAL KEY MUSI mat pre kazdy RECORD vzdy UNIKANTU VALUE v ramci celej DB TABLE.
+   B. PRINCIPAL KEY je kazdy PRIMARY KEY.
+   C. PRINCIAPL KEY je ALTERNATE KEY. ALTERNATE KEY je KEY, ktory NIE JE PRIMARY KEY, ale je UNIKATNY.
+4. DEPEDNENT ENTITIES mozu mat definovany FOREIGN KEY PROPERTY. Pre FOREIGN KEY PROPERTIES platia nasledujuca fakty.
+   A. FOREIGN KEY PROPERTY je vzdy definovany v DEPENDENT ENTITY. DEPENDENT ENTITY pomocou FOREIGN KEY referuje na PRINCIPAL ENTITY.
+   B. FOREIGN KEY PROPERTY je MAPPED do FOREIGN KEY DB COLUMN.
+   !!! C. Ak DEPENDENT ENTITY NEMA explicitne definovanu FOREIGN KEY PROPERTY, tak ENTITY FRAMEWORK vytvori FOREIGN KEY PROPERTY ako SHADOW PROPERTY a zaroven k nemu vytvori aj DB COLUMN.
+   D. Ak ma FOREIGN KEY PROPERTY NON-NULLABLE TYPE, potom je RELATIONSHIP je REQUIRED.
+   E. Ak ma FOREIGN KEY PROPERTY NULLABLE TYPE, potom je RELATIONSHIP je OPTIONAL.
+5. NAVIGATION PROPERTY je PROPERTY referujuca na PRINCIPAL ENTITY, alebo DEPENDENT ENTITY v ENTITY RELATIONSHIP Pre NAVIGATION PROPERTIES platia nasledujuce fakty.
+   A. Pomocou NAVIGATION PROPERTIES je mozny pristup k druhej strane RELATIONSHIP.
+   B. NAVIGATION PROPERTY v PRINCIPAL ENTITY ma TYPE COLLECTION DEPENDENT ENTITY, lebo jednej PRINCIPAL ENTITY prislucha viacero DEPENDENT ENTITIES.
+   C. NAVIGATION PROPERTY v DEPEDNENT ENTITY ma TYPE PRINCIPAL ENTITY, lebo jednej DEPENDENT ENTITY prislucha jedna PRINCIPAL ENTITY.
+   !!! D. NAVIGATION PROPERTIES NIE SU POVINNE. Na vytvorenie RELATIONSHIP staci definovanie FOREIGN KEY PROPERTY v DEPENDENT PROPERTY. Ich definovanie ma zmysel iba vtedy, ak je naozaj potreba pre navigaciu z PRINCIPAL ENTITY na DEPENDENT ENTITIES ci z DEPENDENT ENTITIES na PRINCIPAL ENTITY.
+6. Konfigfuraciu RELATIONALSHIPS v ENTITY FRAMEWORK CORE je mozne vykonat nasledujucimi sposobmi.
+   A. Pouzitim CONVENTIONS.
+   B. Pouzitim DATA ANNOTATIONS.
+   C. Pouzitim FLUENT API.
+7. RELATIONSHIPS medzi 2 ENTITIES je pomocou FLUENT API sa realizuje v nasledujucich krokoch.
+   A. Ziska sa instancia CLASS [EntityTypeBuilder<TEntity>].
+   B. Zavola sa bud METHOD [ReferenceNavigationBuilder<TEntity,TRelatedEntity> EntityTypeBuilder<TEntity>.HasOne<TRelatedEntity>(Expression<Func<TEntity,TRelatedEntity>> NavigationExpression)], alebo METHOD [CollectionNavigationBuilder<TEntity,TRelatedEntity> EntityTypeBuilder<TEntity>.HasMany<TRelatedEntity>(Expression<Func<TEntity,IEnumerable<TRelatedEntity>>> NavigationExpression)], ktora definuje NAVIGATION PROPERTY cez ktoru su 2 ENTITIES RELATED.
+   C. Zavola sa METHOD [ReferenceReferenceBuilder<TEntity,TRelatedEntity> ReferenceNavigationBuilder<TEntity,TRelatedEntity>.WithOne(Expression<Func<TRelatedEntity,TEntity>> NavigationExpression)], METHOD [ReferenceCollectionBuilder<TRelatedEntity,TEntity> WithMany(Expression<Func<TRelatedEntity,IEnumerable<TEntity>>> NavigationExpression)], METHOD [ReferenceCollectionBuilder<TEntity,TRelatedEntity> WithOne(Expression<Func<TRelatedEntity,TEntity>> NavigationExpression)], alebo METHOD [CollectionCollectionBuilder<TRelatedEntity,TEntity> WithMany(Expression<Func<TRelatedEntity,IEnumerable<TEntity>>> NavigationExpression)] na definiciu RELATIONSHIP a zaroven OPTIONALLY aj definovanie INVERSE NAVIGATION PROPERTY.
+   D. Zavola sa METHOD [ReferenceCollectionBuilder<TPrincipalEntity,TDependentEntity> ReferenceCollectionBuilder<TPrincipalEntity,TDependentEntity>.HasForeignKey(Expression<Func<TDependentEntity,object>> ForeignKeyExpression)], alebo METHOD [ReferenceCollectionBuilder<TPrincipalEntity,TDependentEntity> ReferenceReferenceBuilder<TEntity,TRelatedEntity>.HasForeignKey(Expression<Func<TDependentEntity,object>> ForeignKeyExpression)] ktorou sa definuje FOREIGN KEY PROPERTY.
+8. RELATIONSHIP 0/1:N a RELATIONSHIP 1:N sa pomocou FLUENT API na PRINCIPAL ENTITY konfiguruju nasledujucim sposobom.
+   A. Na PRINCIPAL ENTITY sa zavola METHOD [CollectionNavigationBuilder<TEntity,TRelatedEntity> EntityTypeBuilder<TEntity>.HasMany<TRelatedEntity>(Expression<Func<TEntity,IEnumerable<TRelatedEntity>>> NavigationExpression)], ktora nastavi LEFT SIDE RELATIONSHIP.
+   B. Zavola sa METHOD [ReferenceCollectionBuilder<TEntity,TRelatedEntity> CollectionNavigationBuilder<TEntity,TRelatedEntity>.WithOne(Expression<Func<TRelatedEntity,TEntity>> NavigationExpression)], nastavi RIGHT SIDE RELATIONSHIP.
+   C. Zavola sa METHOD [ReferenceCollectionBuilder<TPrincipalEntity,TDependentEntity> ReferenceCollectionBuilder<TPrincipalEntity,TDependentEntity>.HasForeignKey(Expression<Func<TDependentEntity,object>> ForeignKeyExpression)] na urcenie FOREIGN KEY PROPERTY.
+   D. Zavola sa METHOD [ReferenceCollectionBuilder<TPrincipalEntity,TDependentEntity> ReferenceCollectionBuilder<TPrincipalEntity,TDependentEntity>.IsRequired(bool Required)] na urcenie ci je RELATIONSHIP 0/1:N, alebo RELATIONSHIP 1:N.
+9. RELATIONSHIP 0/1:N a RELATIONSHIP 1:N sa pomocou FLUENT API na DEPENDENT ENTITY konfiguruju nasledujucim sposobom.
+   A. Na DEPENDENT ENTITY sa zavola METHOD [ReferenceNavigationBuilder<TEntity,TRelatedEntity> EntityTypeBuilder<TEntity>.HasOne(Expression<Func<TEntity,TRelatedEntity>> NavigationExpression)], ktora nastavi LEFT SIDE RELATIONSHIP.
+   B. Zavola sa METHOD [ReferenceCollectionBuilder<TRelatedEntity,TEntity> ReferenceNavigationBuilder<TEntity,TRelatedEntity>.WithMany(Expression<Func<TRelatedEntity,IEnumerable<TEntity>>> NavigationExpression)], nastavi RIGHT SIDE RELATIONSHIP.
+   C. Zavola sa METHOD [ReferenceCollectionBuilder<TPrincipalEntity,TDependentEntity> ReferenceCollectionBuilder<TPrincipalEntity,TDependentEntity>.HasForeignKey(Expression<Func<TDependentEntity,object>> ForeignKeyExpression)] na urcenie FOREIGN KEY PROPERTY.
+   D. Zavola sa METHOD [ReferenceCollectionBuilder<TPrincipalEntity,TDependentEntity> ReferenceCollectionBuilder<TPrincipalEntity,TDependentEntity>.IsRequired(bool Required)] na urcenie ci je RELATIONSHIP 0/1:N, alebo RELATIONSHIP 1:N.
+!!!!! 10. LINQ OPERATOR [Include] funguje nasledujucim sposobom.
+   !!!!! A. Ak QUERY pre PRINCIPAL ENTITY nacitava pomocou LINQ OPERATOR [Include] dalsich 'N' DEPENDENT ENTITIES, ENTITY FRAMEWORK CORE standardne vytvara 1 VELKU QUERY, ktora pouziva 'N' JOIN CLAUSES. Problemom takejto QUERY je, ze ked pocet RECORDS pre jednotlive DEPENDENT ENTITY CLASSES je (R1,R2...RN), tak celkovy pocet nacitanych ROWS je rovny (ROWS=R1*R2*...*RN). To znamena, ze pri velkom pocte RECORDS je QUERY s pouzitim LINQ OPERATOR [Include] EXTREMNE POMALA. Tento problem sa nazyva CARTESIAN EXPLOSION.
+   !!!!! B. Riesenim problemu CARTESIAN EXPLOSION je pouzitie LINQ OPERATOR [AsSplitQuery], ktory sposobi QUERY SPLITTING. Pri QUERY SPLITTING ENTITY FRAMEWORK CORE NEVYKONA 1 VELKU QUERY s 'N' JOIN CLAUSES, ale vykona 'N' QUERIES. To znamena, ze kazdu ENTITY nacita v OSOBITNEJ QUERY a nasledne spoji vysledky. Tychto 'N' QUERIES vedie k tomu, ze celkovy pocet nacitanych RECORDS je (ROWS=R1+R2+...+RN).
+   !!! C. Umiestnenie LINQ OPERATOR [AsSplitQuery] v QUERY je KLUCOVE, lebo AZ od momentu jeho pouzitia dochadza ku QUERY SPLITTING.
+!!!!! 11. JSON SERIALIZER BY DEFAULT neumoznuje prenasat OBJECTS, ktore obsahuju CYCLES, co je pripad ENTITIES, ktore maju RELATIONSHIPS a maju nastavene NAVIGATIONAL PROPERTIES pre PRINCIPAL ENTITY aj PRINCIPAL ENTITIES. CYCLES je mozne povolit nasledujucim sposobom.
+   A. Volanim METHOD [IMvcBuilder AddJsonOptions(this IMvcBuilder Builder, Action<JsonOptions> Configure)] sa vyvola CALLBACK METHOD v PARAMETER [Action<JsonOptions> Configure].
+   B. V CALLBACK METHOD sa nastavi PROPERTY [ReferenceHandler JsonSerializerOptions.ReferenceHandler] na VALUE [ReferenceHandler.IgnoreCycles].
+12. RELATIONSHIP 0/1:1 a RELATIONSHIP 1:1 sa pomocou FLUENT API konfiguruju nasledujucim sposobom.
+   !!! A. RELATIONSHIP je mozne konfigurovat pre PRINCIPAL ENTITY i DEPENDENT ENTITY.
+   B. Na ENTITY sa zavola METHOD [ReferenceNavigationBuilder<TEntity,TRelatedEntity> EntityTypeBuilder.HasOne<TRelatedEntity>(Expression<Func<TEntity,TRelatedEntity>> NavigationExpression)], ktora nastavi LEFT SIDE RELATIONSHIP.
+   C. Zavola sa METHOD [ReferenceReferenceBuilder<TEntity,TRelatedEntity> ReferenceNavigationBuilder<TEntity,TRelatedEntity>.WithOne(Expression<Func<TRelatedEntity,TEntity>> NavigationExpression)], nastavi RIGHT SIDE RELATIONSHIP.
+   D. Zavola sa METHOD [ReferenceReferenceBuilder<TEntity,TRelatedEntity> ReferenceReferenceBuilder<TEntity,TRelatedEntity>.HasForeignKey<TDependentEntity>(Expression<Func<TDependentEntity,object>> ForeignKeyExpression)] na urcenie FOREIGN KEY PROPERTY.
+   E. Zavola sa METHOD [ReferenceReferenceBuilder<TEntity,TRelatedEntity> ReferenceReferenceBuilder<TEntity,TRelatedEntity>.IsRequired(bool Required)] na urcenie ci je RELATIONSHIP 0/1:1, alebo RELATIONSHIP 1:1.
+!!! 13. Pri RELATIONSHIP 0/1:1 a RELATIONSHIP 1:1 DEPENDENT ENTITY moze mat PRIMARY KEY a FOREIGN KEY nastaveny na TEN ISTY DB COLUMN.
+14. RELATIONSHIP 0/M:N a RELATIONSHIP M:N sa pomocou FLUENT API na PRINCIPAL ENTITY M a PRINCIPAL ENTITY N konfiguruju nasledujucim sposobom.
+   A. Na PRINCIPAL ENTITY M sa zavola METHOD [CollectionNavigationBuilder<TEntity,TRelatedEntity> EntityTypeBuilder<TEntity>.HasMany<TRelatedEntity>(Expression<Func<TEntity,IEnumerable<TRelatedEntity>>> NavigationExpression)], ktora nastavi LEFT SIDE RELATIONSHIP M:MN.
+   B. Zavola sa METHOD [ReferenceCollectionBuilder<TEntity,TRelatedEntity> CollectionNavigationBuilder<TEntity,TRelatedEntity>.WithOne(Expression<Func<TRelatedEntity,TEntity>> NavigationExpression)], nastavi RIGHT SIDE RELATIONSHIP M:MN.
+   C. Zavola sa METHOD [ReferenceCollectionBuilder<TPrincipalEntity,TDependentEntity> ReferenceCollectionBuilder<TPrincipalEntity,TDependentEntity>.HasForeignKey(Expression<Func<TDependentEntity,object>> ForeignKeyExpression)] na urcenie FOREIGN KEY PROPERTY.
+   D. Zavola sa METHOD [ReferenceCollectionBuilder<TPrincipalEntity,TDependentEntity> ReferenceCollectionBuilder<TPrincipalEntity,TDependentEntity>.IsRequired(bool Required)] na urcenie ci je RELATIONSHIP 0/M:N, alebo RELATIONSHIP M:N.
+   E. Na PRINCIPAL ENTITY N sa zavola METHOD [CollectionNavigationBuilder<TEntity,TRelatedEntity> EntityTypeBuilder<TEntity>.HasMany<TRelatedEntity>(Expression<Func<TEntity,IEnumerable<TRelatedEntity>>> NavigationExpression)], ktora nastavi LEFT SIDE RELATIONSHIP N:MN.
+   F. Zavola sa METHOD [ReferenceCollectionBuilder<TEntity,TRelatedEntity> CollectionNavigationBuilder<TEntity,TRelatedEntity>.WithOne(Expression<Func<TRelatedEntity,TEntity>> NavigationExpression)], nastavi RIGHT SIDE RELATIONSHIP N:MN.
+   G. Zavola sa METHOD [ReferenceCollectionBuilder<TPrincipalEntity,TDependentEntity> ReferenceCollectionBuilder<TPrincipalEntity,TDependentEntity>.HasForeignKey(Expression<Func<TDependentEntity,object>> ForeignKeyExpression)] na urcenie FOREIGN KEY PROPERTY.
+   H. Zavola sa METHOD [ReferenceCollectionBuilder<TPrincipalEntity,TDependentEntity> ReferenceCollectionBuilder<TPrincipalEntity,TDependentEntity>.IsRequired(bool Required)] na urcenie ci je RELATIONSHIP 0/M:N, alebo RELATIONSHIP M:N.
+15. RELATIONSHIP 0/M:N a RELATIONSHIP M:N sa pomocou FLUENT API na DEPENDENT ENTITY MN konfiguruju nasledujucim sposobom.
+   A. Na DEPENDENT ENTITY MN sa zavola METHOD [ReferenceNavigationBuilder<TEntity,TRelatedEntity> EntityTypeBuilder<TEntity>.HasOne(Expression<Func<TEntity,TRelatedEntity>> NavigationExpression)], ktora nastavi LEFT SIDE RELATIONSHIP M:MN.
+   B. Zavola sa METHOD [ReferenceCollectionBuilder<TRelatedEntity,TEntity> ReferenceNavigationBuilder<TEntity,TRelatedEntity>.WithMany(Expression<Func<TRelatedEntity,IEnumerable<TEntity>>> NavigationExpression)], nastavi RIGHT SIDE RELATIONSHIP M:MN.
+   C. Zavola sa METHOD [ReferenceCollectionBuilder<TPrincipalEntity,TDependentEntity> ReferenceCollectionBuilder<TPrincipalEntity,TDependentEntity>.HasForeignKey(Expression<Func<TDependentEntity,object>> ForeignKeyExpression)] na urcenie FOREIGN KEY PROPERTY.
+   D. Zavola sa METHOD [ReferenceCollectionBuilder<TPrincipalEntity,TDependentEntity> ReferenceCollectionBuilder<TPrincipalEntity,TDependentEntity>.IsRequired(bool Required)] na urcenie ci je RELATIONSHIP 0/M:N, alebo RELATIONSHIP M:N.
+   E. Na DEPENDENT ENTITY MN sa zavola METHOD [ReferenceNavigationBuilder<TEntity,TRelatedEntity> EntityTypeBuilder<TEntity>.HasOne(Expression<Func<TEntity,TRelatedEntity>> NavigationExpression)], ktora nastavi LEFT SIDE RELATIONSHIP N:MN.
+   F. Zavola sa METHOD [ReferenceCollectionBuilder<TRelatedEntity,TEntity> ReferenceNavigationBuilder<TEntity,TRelatedEntity>.WithMany(Expression<Func<TRelatedEntity,IEnumerable<TEntity>>> NavigationExpression)], nastavi RIGHT SIDE RELATIONSHIP N:MN.
+   G. Zavola sa METHOD [ReferenceCollectionBuilder<TPrincipalEntity,TDependentEntity> ReferenceCollectionBuilder<TPrincipalEntity,TDependentEntity>.HasForeignKey(Expression<Func<TDependentEntity,object>> ForeignKeyExpression)] na urcenie FOREIGN KEY PROPERTY.
+   H. Zavola sa METHOD [ReferenceCollectionBuilder<TPrincipalEntity,TDependentEntity> ReferenceCollectionBuilder<TPrincipalEntity,TDependentEntity>.IsRequired(bool Required)] na urcenie ci je RELATIONSHIP 0/M:N, alebo RELATIONSHIP M:N.
+!!! 16. Pri RELATIONSHIP 0/M:N a RELATIONSHIP M:N DEPENDENT ENTITY MN moze byt PRIMARY KEY COMPOSITE, tvoreny FOREIGN KEY PRINCIPAL ENTITY M a FOREIGN KEY PRINCIPAL ENTITY N. Takyto COMPOSITE PRIMARY KEY tvori FOREIGN KEYS do PRINCIPAL ENTITY M a PRINCIPAL ENTITY N.
+//----------------------------------------------------------------------------------------------------------------------

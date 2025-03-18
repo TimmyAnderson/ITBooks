@@ -194,8 +194,6 @@ namespace Client
 			CMyHttpClientContentType							ContentType=new CMyHttpClientContentType(MEDIA_TYPE_JSON,CHAR_SET_UTF_8);
 			string												SerializedJsonContent=JsonConvert.SerializeObject(JsonContent);
 			byte[]												RawContent=Encoding.UTF8.GetBytes(SerializedJsonContent);
-
-
 			CMyHttpClientContent								Content=new CMyHttpClientContent(ContentType,RawContent);
 
 			return(Content);

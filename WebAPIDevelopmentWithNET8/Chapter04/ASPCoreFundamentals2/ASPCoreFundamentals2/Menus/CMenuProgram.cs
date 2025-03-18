@@ -5,7 +5,7 @@ using System.Text;
 using System.Threading.Tasks;
 using MySharedLibrary;
 //--------------------------------------------------------------------------------------------------------------------------------
-namespace Client
+namespace ASPCoreFundamentals2
 {
 //--------------------------------------------------------------------------------------------------------------------------------
 	public sealed class CMenuProgram : CMenu

@@ -2,7 +2,6 @@ using System;
 using System.IO;
 using System.Net;
 using System.Threading.RateLimiting;
-using Client;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Timeouts;

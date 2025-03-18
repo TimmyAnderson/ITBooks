@@ -90,7 +90,7 @@ namespace MySharedLibrary
 			SB.AppendLine();
 			SB.AppendLine($"BODY LENGTH [{MContent?.Content?.Length}].");
 
-			string												Body=MContent.ConvertToString();
+			string												Body=MContent?.ConvertToString();
 
 			SB.AppendLine();
 			SB.AppendLine($"BODY:\n{Body}");

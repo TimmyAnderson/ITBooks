@@ -1,0 +1,263 @@
+//----------------------------------------------------------------------------------------------------------------------
+1. Solution demonstruje pouzitie gRPC FRAMEWORK.
+2. gRPC je FRAMEWORK, ktory umoznuje vykonavanie REMOTE PROCEDURE CALLS cez HTTP PROTOCOL.
+3. Pre gRPC FRAMEWORK platia nasledujuce fakty.
+   A. gRPC FRAMEWORK je postaveny na PROTOCOLE HTTP 2.0..
+   B. gRPC FRAMEWORK prenasa data pomocou FORMAT [PROTOBUF], ktory je BINARNY.
+   C. gRPC FRAMEWORK pouziva CONTRACT FIRST pristup, kedy sa najprv definuje CONTRACT v LANGUAGE NEUTRAL FORMATE z ktoreho je mozne generovat CODE pre rozne LANGUAGES.
+   D. gRPC FRAMEWORK podporuje STREAMING.
+   !!! E. gRPC FRAMEWORK NIE JE podporovany vo WEB BROWSERS, a preto sa da pouzivat iba na komunikaciu SERVICE TO SERVICE.
+4. gRPC FRAMEWORK prenasa data pomocou FORMAT [PROTOBUF]. REMOTE PROCEDURE CALLS METHODS a REMOTE PROCEDURE CALLS MESSAGES sa definuju v FILES [.proto]. Pre FILES [.proto] platia nasledujuce fakty.
+   A. FILES [.proto] obsahuju definicie REMOTE PROCEDURE CALLS METHODS.
+   B. FILES [.proto] obsahuju definicie REMOTE PROCEDURE CALLS MESSAGES, ktore su vyuzivane v REMOTE PROCEDURE CALLS METHODS.
+   C. FILES [.proto] mozu obsahovat COMMENTS.
+      A. Jednoriadkove COMMENTS sa definuju pomocou SYNTAX [//COMMENT].
+      B. Viacriadkove COMMENTS sa definuju pomocou SYNTAX [/*COMMENT*/].
+   D. LINES su oddelene CHARACTER [;].
+   E. BLOCKS su definovane pomocou SYNTAX [{BLOCK_CONTENT}], kde VALUE [BLOCK_CONTENT] je obsah BLOCK.
+   F. Verzia PROTOBUF sa definuje pomocou SYNTAX [syntax = "VERSION"], kde VALUE [VERSION] je verzia PROTOBUF. Aktualne sa pouziva VALUE [proto3].
+   G. OPTIONS sa definuje pomocou SYNTAX [option OPTION_NAME = "OPTION_VALUE"], kde VALUE [OPTION_NAME] je nazov OPTION a VALUE [OPTION_VALUE] je VALUE danej OPTION.
+   !!! H. Nazov PACKAGE sa definuje pomocou SYNTAX [package PACKAGE_NAME], kde VALUE [PACKAGE_NAME] je nazov PACKAGE. BY-DEFAULT sa pouziva na generovanie NAMESPACES pre konkretny PROGRAMMING LANGUAGE. No nazov PACKAGE moze byt OVERRIDEN nastavenim NAMESPACE pomocou LANGUAGE SPECIFIC OPTION. V C# je to OPTION [csharp_namespace].
+   I. Import inych FILES [.proto] sa realizuje pomocou SYNTAX [import "FILE_NAME"], kde VALUE [FILE_NAME] je nazov importovaneho FILE [.proto].
+   J. SERVICES sa vo FILES [.proto] definuju nasledujucim sposobom.
+      A. SERVICE sa definuje pomocou SYNTAX [service SERVICE_NAME], kde VALUE [SERVICE_NAME] je nazov SERVICE.
+      B. SERVICE METHOD sa definuje pomocou SYNTAX [rpc METHOD_NAME (INPUT_MESSAGE) returns (OUTPUT_MESSAGE)], kde VALUE [METHOD_NAME] je nazov METHOD, VALUE [INPUT_MESSAGE] je nazov INPUT MESSAGE a VALUE [OUTPUT_MESSAGE] je nazov OUTPUT MESSAGE.
+   K. MESSAGES sa vo FILES [.proto] definuju nasledujucim sposobom.
+      A. MESSAGE sa definuje pomocou SYNTAX [message MESSAGE_NAME], kde VALUE [MESSAGE_NAME] je nazov MESSAGE.
+	  B. MESSAGE FIELD sa definuje pomocou SYNTAX [TYPE FIELD_NAME=FIELD_NUMBER], kde VALUE [TYPE] je TYPE FIELD, VALUE [FIELD_NAME] je FIELD NAME a VALUE [FIELD_NUMBER] je FIELD NUMBER daneho FIELD.
+5. MESSAGE FIELDS su vo FILES [.proto] oznacene FIELD NUMBERS. Pre FIELD NUMBERS platia nasledujuce fakty.
+   A. Kazdy FIELD v MESSAGE musi mat UNIKATNY FIELD NUMBER. Tento FIELD NUMBER sa pouziva na identifikaciu FIELD a BINARY SERIALIZED DATA.
+   !!!!! B. SERIALIZED MESSAGES teda nepouzivaju BYTE OFFSET na urcenie pozicie FIELD v BINARY SERIALIZED DATA, ale FIELD NUMBER. Je to preto, lebo BYTE OFFSET je PLATFORM SPECIFIC, kym FIELD NUMBER je PLATFORM NEUTRAL.
+   !!! C. Hodnota FIELD NUMBER urcuje jeho dlzku. VALUES <0,15> potrebuje 1 BYTE na ulozenie FIELD NUMBER, kym VALUES <16,2047> potrebuju 2 BYTES na ulozenie FIELD NUMBER.
+   D. FIELD NUMBERS mozu byt v INTERVALE <1,536870911>.
+   E. FIELD NUMBERS v INTERVALE <19000,19999> su RESERVED.
+   F. Po nastaveni FIELD NUMBER pre dany FIELD uz FIELD NUMBER NESMIE byt ZMENENY, inak	nebude MESSAGE kompatibilna.
+6. Podpora pre gRPC FRAMEWORK je v ASP.NET CORE implementovana v PACKAGE [Grpc.AspNetCore].
+7. Vo FILE [.csproj] v ELEMENTS [Protobuf] a ich PROPERTY [GrpcServices] sa urcuje type CODE, ktory sa ma pre dany FILE [.proto] generovat. PROPERTY moze nadobudat nasledujucich VALUES.
+   A. VALUE [None] znamena, ze PROTOBUF COMPILER nebude generovat ziaden CODE.
+   B. VALUE [Client] znamena, ze PROTOBUF COMPILER bude generovat iba CLIENT SIDE CODE.
+   C. VALUE [Server] znamena, ze PROTOBUF COMPILER bude generovat iba SERVER SIDE CODE.
+   D. VALUE [Both] znamena, ze PROTOBUF COMPILER bude generovat CLIENT SIDE CODE aj SERVER SIDE CODE.
+8. Pre kazdy FILE [NAME.proto] generuje PROTO COMPILER C# FILES BY DEFAULT do DIRECTORY [Debug\Proto], alebo do DIRECTORY urcenom ELEMENT [Protobuf] a FIELD [OutputDir] v FILE [.csproj]. PROTO COMPILER generuje nasledujuce FILES.
+   A. FILE [NAME.cs], ktory obsahuje CLASSES pre vsetky REQUEST MESSAGES a RESPONSE MESSAGES, ktore boli vo FILE [NAME.proto] generovane.
+   B. FILE [NAMEGrpc.cs], ktory pre kazdy SERVICE definovany vo FILE [NAME.cs] obsahuje prislusnu CLASS.
+9. Pre MESSAGE CLASSES platia nasledujuce fakty.
+   A. MESSAGE CLASS implementuje INTERFACE [IMessage<MESSAGE_TYPE>], kde VALUE [MESSAGE_TYPE] je TYPE MESSAGE CLASS.
+   B. MESSAGE CLASS pre kazdy FIELD definovany vo FILE [NAME.proto] obsahuje C# FIELD.
+   C. MESSAGE CLASS pre kazdy FIELD definovany vo FILE [NAME.proto] obsahuje C# PROPERTY.
+   D. MESSAGE CLASS definuje EMPTY CONSTRUCTOR a COPY CONSTRUTOR.
+   E. MESSAGE CLASS definuje METHOD [bool Equals(TYPE Other)].
+   F. MESSAGE CLASS definuje METHOD [bool Equals(object Other)].
+   G. MESSAGE CLASS definuje METHOD [int GetHashCode()].
+   H. MESSAGE CLASS definuje METHOD [string ToString()].
+10. FILE [NAMEGrpc.cs] obsahuje CLASS [NAMEBase] pre ktoru platia nasledujuce fakty.
+   A. CLASS sluzi ako BASE CLASS pre SERVICE CLASS, ktora implementuje funkcionalitu daneho SERVICE.
+   B. CLASS je ABSTRACT.
+   C. CLASS ma pre kazdu METHOD definovanu pre dany SERVICE vo FILE [.proto] definovanu VIRTUAL METHOD, ktora reprezentuje METHOD, ktora sa vola. DEFAULT implementacia vracia EXCEPTION. Tato METHOD MUSI byt OVERRIDEN v DERIVED CLASS.
+!!! 11. Implementacia SERVICES definovanych vo FILE [.proto] sa realizuje v SERVICE CLASSES. Pre SERVICE CLASS platia nasledujuce fakty.
+   A. SERVICE CLASS MUSI byt INHERITED z CLASS [NAMEBase].
+   B. SERVICE CLASS musi vykona METHOD OVERRIDING pre vsetky VIRTUAL METHODS definovane v CLASS [NAMEBase], ktore reprezentuju METHODS daneho SERVICE.
+   C. SERVICE CLASS v CONSTRUCTOR moze vyuzivat DEPENDENCY INJECTION.
+12. METHOD [IGrpcServerBuilder AddGrpc(this IServiceCollection Services)] vklada gRPC FRAMEWORK SERVICE do DEPENDENCY INJECTION CONTAINER.
+13. METHOD [GrpcServiceEndpointConventionBuilder MapGrpcService<TService>(this IEndpointRouteBuilder Builder)] vklada gRPC SERVICE do PROGRAMU.
+14. MESSAGE FIELDS mozu nadobudat nasledujuce TYPES.
+   A. TYPE [double]. Zodpoveda .NET TYPE [double].
+   B. TYPE [float]. Zodpoveda .NET TYPE [float].
+   C. TYPE [int32]. Zodpoveda .NET TYPE [int]. Ma variabilnu dlzku. Uklada SIGNED VALUES.
+   D. TYPE [int64]. Zodpoveda .NET TYPE [long]. Ma variabilnu dlzku. Uklada SIGNED VALUES.
+   E. TYPE [uint32]. Zodpoveda .NET TYPE [uint]. Ma variabilnu dlzku. Uklada UNSIGNED VALUES. Pre SIGNED VALUES je treba pouzit TYPE [sint32].
+   F. TYPE [uint64]. Zodpoveda .NET TYPE [ulong]. Ma variabilnu dlzku. Uklada UNSIGNED VALUES. Pre SIGNED VALUES je treba pouzit TYPE [sint64].
+   G. TYPE [sint32]. Zodpoveda .NET TYPE [int]. Ma variabilnu dlzku. Uklada SIGNED VALUES. Pre UNSIGNED VALUES je treba pouzit TYPE [usint32].
+   H. TYPE [sint64]. Zodpoveda .NET TYPE [long]. Ma variabilnu dlzku. Uklada SIGNED VALUES. Pre UNSIGNED VALUES je treba pouzit TYPE [usint64].
+   I. TYPE [fixed32]. Zodpoveda .NET TYPE [uint]. Ma fixnu dlzku 4 BYTES. Uklada UNSIGNED VALUES.
+   J. TYPE [fixed64]. Zodpoveda .NET TYPE [ulong]. Ma fixnu dlzku 8 BYTES. Uklada UNSIGNED VALUES.
+   K. TYPE [sfixed32]. Zodpoveda .NET TYPE [int]. Ma fixnu dlzku 4 BYTES. Uklada SIGNED VALUES.
+   L. TYPE [sfixed64]. Zodpoveda .NET TYPE [long]. Ma fixnu dlzku 8 BYTES. Uklada SIGNED VALUES.
+   M. TYPE [bool]. Zodpoveda .NET TYPE [bool].
+   N. TYPE [string]. Zodpoveda .NET TYPE [string]. VALUES su ENCODED bud v 7-BIT ASCII, alebo v UTF-8. Maximalna dlzka je 2^32 CHARACTERS.
+   O. TYPE [bytes]. Zodpoveda .NET TYPE [ByteString]. Tento TYPE je definovany v gRPC FRAMEWORK.
+15. PROTOBUF nepodporuje priamo DATE a TIME TYPES. Ale tieto types su definovane ako EXTENSION TYPES. PROTOBUF podporuje nasledujuce DATE a TIME EXTENSION TYPES.
+   A. TYPE [Timestamp].
+   A. TYPE [Duration].
+16. Pre EXTENSION TYPE [Timestamp] platia nasledujuce fakty.
+   A. EXTENSION TYPE [Timestamp] je definovany vo FILE [google/protobuf/timestamp.proto].
+   B. EXTENSION TYPE [Timestamp] je definovany v NAMESPACE [google.protobuf].
+   C. EXTENSION TYPE [Timestamp] je mapovany na .NET TYPE [Google.Protobuf.WellKnownTypes.Timestamp].
+   D. .NET TYPE [Google.Protobuf.WellKnownTypes.Timestamp] ma STATIC METHOD [Timestamp FromDateTime(DateTime DateTime)], ktora konveruje .NET TYPE [DateTime] na TYPE [Google.Protobuf.WellKnownTypes.Timestamp].
+   E. .NET TYPE [Google.Protobuf.WellKnownTypes.Timestamp] ma STATIC METHOD [Timestamp FromDateTimeOffset(DateTimeOffset DateTimeOffset)], ktora konveruje .NET TYPE [DateTimeOffset] na TYPE [Google.Protobuf.WellKnownTypes.Timestamp].
+   F. .NET TYPE [Google.Protobuf.WellKnownTypes.Timestamp] ma METHOD [DateTime ToDateTime()], ktora konveruje TYPE [Google.Protobuf.WellKnownTypes.Timestamp] na .NET TYPE [DateTime].
+   G. .NET TYPE [Google.Protobuf.WellKnownTypes.Timestamp] ma METHOD [DateTimeOffset ToDateTimeOffset()], ktora konveruje TYPE [Google.Protobuf.WellKnownTypes.Timestamp] na .NET TYPE [DateTimeOffset].
+17. Pre EXTENSION TYPE [Duration] platia nasledujuce fakty.
+   A. EXTENSION TYPE [Duration] je definovany vo FILE [google/protobuf/duration.proto].
+   B. EXTENSION TYPE [Duration] je definovany v NAMESPACE [google.protobuf].
+   C. EXTENSION TYPE [Duration] je mapovany na .NET TYPE [Google.Protobuf.WellKnownTypes.Duration].
+   D. .NET TYPE [Google.Protobuf.WellKnownTypes.Duration] ma STATIC METHOD [Duration FromTimeSpan(TimeSpan TimeSpan)], ktora konveruje .NET TYPE [TimeSpan] na TYPE [Google.Protobuf.WellKnownTypes.Duration].
+   E. .NET TYPE [Google.Protobuf.WellKnownTypes.Duration] ma METHOD [TimeSpan ToTimeSpan()], ktora konveruje TYPE [Google.Protobuf.WellKnownTypes.Duration] na .NET TYPE [TimeSpan].
+18. PROTOBUF podporuje ENUM TYPES. Pre ENUM TYPES platia nasledujuce fakty.
+   A. ENUM TYPE sa definuje pomocou SYNTAX [enum ENUM_TYPE_NAME{FIELDS}], kde VALUE [ENUM_TYPE_NAME] je nazov ENUM TYPE a VALUE [FIELDS] obsahuje definiciu FIELDS.
+   B. ENUM TYPE ITEM sa definuje pomocou SYNTAX [NAME=VALUE], kde VALUE [NAME] je nazov ENUM TYPE a VALUE [VALUE] je VALUE ENUM TYPE.
+   !!! C. ENUM TYPE MUSI obsahovat FIELD s VALUE [0], ktory zaroven musi byt 1. ENUM FIELD.
+   D. ENUM TYPE sa mapuje na vygenerovany .NET ENUM TYPE.
+19. PROTOBUF podporuje NULLABLE TYPES. Pre NULLABLE TYPES platia nasledujuce fakty.
+   A. NULLABLE TYPES su definovane vo FILE [google/protobuf/wrappers.proto].
+   B. NULLABLE TYPES su konvertovane na .NET NULLABLE TYPES.
+   C. PROTOBUF definuje nasledujuce NULLABLE TYPES.
+      A. TYPE [google.protobuf.DoubleValue] je konvertovany na .NET TYPE [double?].
+      B. TYPE [google.protobuf.FloatValue] je konvertovany na .NET TYPE [float?].
+      C. TYPE [google.protobuf.Int32Value] je konvertovany na .NET TYPE [int?].
+      D. TYPE [google.protobuf.Int64Value] je konvertovany na .NET TYPE [long?].
+      E. TYPE [google.protobuf.UInt32Value] je konvertovany na .NET TYPE [uint?].
+      F. TYPE [google.protobuf.UInt64Value] je konvertovany na .NET TYPE [ulong?].
+      G. TYPE [google.protobuf.BoolValue] je konvertovany na .NET TYPE [bool?].
+      H. TYPE [google.protobuf.StringValue] je konvertovany na .NET TYPE string]. Oproti TYPE [string], ktory ma DEFAULT VALUE [""] ma TYPE [google.protobuf.StringValue] DEFAULT VALUE [null].
+      I. TYPE [google.protobuf.BytesValue] je konvertovany na .NET TYPE [ByteString]. Oproti TYPE [bytes], ktory ma DEFAULT VALUE EMPTY BYTE ARRAY ma TYPE [google.protobuf.BytesValue] DEFAULT VALUE [null].
+20. PROTOBUF definuje nasledujuce DEFAULT VALUES.
+   A. TYPE [string] ma DEFAULT VALUE EMPTY STRING.
+   B. TYPE [bytes] ma DEFAULT VALUE EMPTY BYTE ARRAY.
+   C. TYPE [bool] ma DEFAULT VALUE [false].
+   D. NUMERIC TYPES maju DEFAULT VALUES [0].
+   E. ENUM TYPES maju DEFAULT VALUES 1. ITEM v ENUM, ktory ma vzdy NUMERIC VALUE [0].
+   F. NULLABLE NUMERIC TYPES maju DEFAULT VALUES [null].
+   G. TYPE [google.protobuf.StringValue] ma DEFAULT VALUE [null].
+   H. TYPE [google.protobuf.BytesValue] ma DEFAULT VALUE [null].
+   I. REPEATED TYPES maju DEFAULT VALUE EMPTY COLLECTION.
+21. PROTOBUF podporuje REPEATED TYPES. Pre REPEATED TYPES platia nasledujuce fakty.
+   A. REPEATED TYPES sa definuju pomocou SYNTAX [repeated TYPE FIELD_NAME=FIELD_NUMBER], kde VALUE [TYPE] je TYPE FIELD, VALUE [FIELD_NAME] je FIELD NAME a VALUE [FIELD_NUMBER] je FIELD NUMBER daneho FIELD.
+   B. REPEATED TYPES umoznuju prenasat COLLECTION v MESSAGES.
+   !!! C. REPEATED TYPES su mapovane do .NET TYPE [RepeatedField<TYPE>], kde VALUE [TYPE] je TYPE FIELD. TYPE [RepeatedField<TYPE>] implementuje .NET INTERFACE [IList<TYPE>].
+   D. REPEATED FIELDS su v generovanych CLASSES READONLY a instancie CLASS [RepeatedField<TYPE>] su vytvarane v DEFAULT CONSTRUCTOR.
+   E. REPEATED TYPES maju DEFAULT VALUE EMPTY COLLECTION.
+22. PROTOBUF podporuje MAP TYPES. Pre MAP TYPES platia nasledujuce fakty.
+   A. MATP TYPES sa definuju pomocou SYNTAX [map<TYPE_KEY,TYPE_VALUE> FIELD_NAME=FIELD_NUMBER], kde VALUE [TYPE_KEY] je KEY TYPE FIELD, VALUE [TYPE_VALUE] je VALUE TYPE FIELD, VALUE [FIELD_NAME] je FIELD NAME a VALUE [FIELD_NUMBER] je FIELD NUMBER daneho FIELD.
+   B. REPEATED TYPES umoznuju prenasat DICTIONARIES v MESSAGES.
+   !!! C. MAP TYPES su mapovane do .NET TYPE [MapField<TYPE_KEY,TYPE_VALUE>], kde VALUE [TYPE_KEY] je KEY TYPE FIELD a VALUE [TYPE_VALUE] je VALUE TYPE FIELD. TYPE [MapField<TYPE_KEY,TYPE_VALUE>] implementuje .NET INTERFACE [IMap<TYPE_KEY,TYPE_VALUE>].
+   D. MAP FIELDS su v generovanych CLASSES READONLY a instancie CLASS [MapField<TYPE_KEY,TYPE_VALUE>] su vytvarane v DEFAULT CONSTRUCTOR.
+   E. MAP TYPES maju DEFAULT VALUE EMPTY COLLECTION.
+   !!! F. MAP TYPES NEUMOZNUJE ukladat viacero ITEMS s rovnakym KEY.
+   G. Ako KEY TYPES sa mozu pouzit INTEGRAL TYPES a STRING TYPE. ENUM TYPES sa ako KEY TYPES pouzivat NEMOZU.
+   H. Ako KEY TYPES sa mozu pouzit MESSAGE TYPES, ale nie ine MAP TYPES.
+23. Implementacia PROTOBUF SERVICES sa realizuje v nasledujucich krokoch.
+   A. Definuje sa FILE [NAME.proto], ktory obsahuje PROTOBUF SERVICES, PROTOBUF METHODS a PROTOBUF MESSAGES.
+   B. Po kompilacii sa z FILE [NAME.proto] vygeneruje C# CLASS [NAMEBase]. CLASS obsahuje pre kazdu PROTOBUF METHOD VIRTUAL METHOD, ktorej IMPLEMENTATION iba hodi EXCEPTION.
+   C. Vytvori sa C# SERVICE CLASS, ktora je INHERITED z CLASS [NAMEBase].
+   D. V SERVICE CLASS sa vykona OVERRIDING vsetkych VIRTUAL METHODS, ktore reprezentuju PROTOBUF METHODS.
+   E. Volanim METHOD [GrpcServiceEndpointConventionBuilder MapGrpcService<TService>(this IEndpointRouteBuilder Builder)] sa prida SERVICE CLASS do DEPENDENCY INJECTION FRAMEWORK.
+24. gRPC CLIENT sa vytvara v nasledujucich krokoch.
+   A. Vytvori sa .NET PROJECT.
+   B. Do .NET PROJECT sa pridaju nasledujuce PACKAGES.
+      A. PACKAGE [Google.Protobuf].
+      B. PACKAGE [Grpc.Net.Client].
+      C. PACKAGE [Grpc.Tools]. Tento PACKAGE sluziaci na generovanie C# CLASSES z FILES [.proto] sa pouziva IBA v COMPILE TIME, a NIE v RUNTIME.
+   C. Do .NET PROJECT sa pridaju FILES [.proto], ktore by mali byt IDENTICKE s tymi, ktore su pridane na SERVER SIDE.
+   D. Pre kazdy PROTOBUF SERVICE je nutne pridat CHILD ELEMENT do FILE [.csproj] a ELEMENT [Protobuf].
+   E. Po kompilacii FILES [.proto] su pre FILE [NAME.proto] generovane nasledujuce FILES.
+      A. FILE [NAME.cs], ktory obsahuje CLASSES pre vsetky REQUEST MESSAGES a RESPONSE MESSAGES, ktore boli vo FILE [NAME.proto] generovane.
+      B. FILE [NAMEGrpc.cs], ktory pre kazdy SERVICE definovany vo FILE [NAME.cs] obsahuje prislusnu CLIENT CLASS pomocou ktore je mozne pristupovat k PROTOBUF SERVICE.
+25. Volanie PROTOBUF SERVICE sa realizuje v nasledujucich krokoch.
+   !!! A. Vytvori sa instancia CHANNEL CLASS [GrpcChannel]. Instancie CLASS [GrpcChannel] by mali byt CACHED, pretoze ich vytvaranie je narocne na RESOURCES.
+   B. Vytvori sa instancia CLIENT CLASS [SERVICE_NAMEClient], kde VALUE [SERVICE_NAME] je nazov PROTOBUF SERVICE. Do CONSTRUCTOR CLIENT CLASS [SERVICE_NAMEClient] sa vlozi vytvorena instancia CLASS [GrpcChannel].
+   C. Vytvori sa instancia REQUEST MESSAGE a naplnia sa jej PROPERTIES.
+   D. Zavola sa PROTOBUF SERVICE METHOD na CLIENT CLASS.
+   E. Vysledkom volania PROTOBUF SERVICE METHOD je instancia RESPONSE CLASS, ktoru je mozne dalej spracovat.
+!!! 26. Pre CHANNEL CLASS [GrpcChannel] platia nasledujuce fakty.
+   A. Vytvorenie instancie CHANNEL CLASS [GrpcChannel] je narocne na RESOURCES a preto by tieto instancie mali byt drzane v MEMORY.
+   !!! B. Z jednej instancie CHANNEL CLASS [GrpcChannel] je mozne vytvorit lubovolny pocet instancii CLIENT CLASSES.
+   !!!!! C. CLIENT CLASSES vytvorene z jednej instancie CHANNEL CLASS [GrpcChannel] mozu paralelne volat PROTOBUF SERVICE METHODS bez nutnosti dodatocnej synchronizacie.
+27. PROTOBUF podporuje nasledujuce typy RPC METHODS.
+   A. UNARY RPC METHOD. Pri UNARY RPC METHOD CLIENT odosiela 1 REQUEST MESSAGE na ktoru dostane 1 RESPONSE MESSAGE.
+   B. SERVER STREAMING RPC METHOD. Pri SERVER STREAMING RPC METHOD CLIENT odosiela 1 REQUEST MESSAGE na ktoru dostane STREAM RESPONSE MESSAGES.
+   C. CLIENT STREAMING RPC METHOD. Pri CLIENT STREAMING RPC METHOD CLIENT odosiela STREAM REQUEST MESSAGES na ktoru dostane 1 RESPONSE MESSAGE.
+   D. BIDIRECTIONAL STREAMING RPC METHOD. Pri BIDIRECTIONAL STREAMING RPC METHOD CLIENT odosiela STREAM REQUEST MESSAGES na ktoru dostava STREAM RESPONSE MESSAGES.
+28. Pre UNARY RPC METHOD platia nasledujuce fakty.
+   A. CLIENT odosiela 1 REQUEST MESSAGE a caka na jej vykonanie na SERVERI.
+   B. SERVER spracovava 1 MESSAGE na ktoru posiela 1 RESPONSE MESSAGE.
+   !!! C. CLIENT NEMOZE po odoslani REQUEST MESSAGE odoslat dalsie REQUEST MESSAGES, az kym neskonci spravoanie prvej REQUEST MESSAGE.
+   D. UNARY RPC METHOD ma SYNTAX [rpc METHOD_NAME (INPUT_MESSAGE) returns (OUTPUT_MESSAGE)], kde VALUE [METHOD_NAME] je nazov METHOD, VALUE [INPUT_MESSAGE] je nazov INPUT MESSAGE a VALUE [OUTPUT_MESSAGE] je nazov OUTPUT MESSAGE.
+29. Pre SERVER STREAMING RPC METHOD platia nasledujuce fakty.
+   A. CLIENT posiela 1 REQUEST MESSAGE na ktoru SERVER odpoveda 'N' RESPONSE MESSAGES.
+   B. SERVER odosiela na 1 REQUEST MESSAGE 'N' RESPONSE MESSAGES.
+   !!! C. CLIENT NEMOZE po odoslani REQUEST MESSAGE odoslat dalsie REQUEST MESSAGES, az kym neskonci spravoanie prvej REQUEST MESSAGE.
+   D. SERVER STREAMING RPC METHOD ma SYNTAX [rpc METHOD_NAME (INPUT_MESSAGE) returns (stream OUTPUT_MESSAGE)], kde VALUE [METHOD_NAME] je nazov METHOD, VALUE [INPUT_MESSAGE] je nazov INPUT MESSAGE a VALUE [OUTPUT_MESSAGE] je nazov OUTPUT MESSAGE.
+   !!! C. Na CLIENT SIDE sa SERVER STREAMING RPC METHOD mapuje na .NET METHOD [AsyncServerStreamingCall<OUTPUT_MESSAGE> METHOD_NAME(INPUT_MESSAGE Request)].
+   !!! D. Na SERVER SIDE sa SERVER STREAMING RPC METHOD mapuje na .NET METHOD [Task METHOD_NAME(INPUT_MESSAGE Request, IServerStreamWriter<OUTPUT_MESSAGE> ResponseStream, ServerCallContext Context)].
+   E. Instancia CLASS [AsyncServerStreamingCall<TMessage>] umoznuje na CLIENT SIDE citanie RESPONSE MESSAGES odoslanych zo SERVER SIDE.
+   F. Instancia INTERFACE [IServerStreamWriter<TMessage>] umoznuje na SERVER SIDE zapis RESPONSE MESSAGES odoslanych na CLIENT.
+   G. CLIENT sa implementuje v nasledujucich krokoch.
+      A. Vytvori sa CLIENT OBJECT.
+	  B. Vytvori sa REQUEST MESSAGE.
+	  C. Pre CLIENT OBJECT sa zavola SERVER METHOD, ktora vracia instanciu OBJECT [AsyncServerStreamingCall<RESPONSE_MESSAGE>].
+	  D. Z instancie OBJECT [AsyncServerStreamingCall<RESPONSE_MESSAGE>] sa ziska PROPERTY [ResponseStream], ktora vracia instanciu OBJECT [IAsyncStreamReader<RESPONSE_MESSAGE>].
+	  E. Zavola sa METHOD [IAsyncStreamReader<RESPONSE_MESSAGE>.ReadAllAsync()], ktora vrati ENUMERABLE OBJECT, ktora vracia instanciu OBJECT [IAsyncEnumerable<RESPONSE_MESSAGE>].
+	  !!! F. Enumeraciou OBJECT [IAsyncEnumerable<RESPONSE_MESSAGE>] je mozne ozne vyberat RESPONSE MESSAGES zaslane zo SERVER.
+	  G. Po skonceni enumeracie, ked uz boli vsetky RESPONSE MESSAGES nacitane sa uvolni OBJECT [AsyncServerStreamingCall<RESPONSE_MESSAGE>] volanim METHOD [AsyncServerStreamingCall<RESPONSE_MESSAGE>.Dispose()].
+	  !!! H. Ak sa METHOD [AsyncServerStreamingCall<RESPONSE_MESSAGE>.Dispose()] zavola pred nacitanim vsetkych RESPONSE MESSAGES, tak je SERVER dostane indikaciu, ze nema viac posielat RESPONSE MESSAGES na CLIENT.
+   I. SERVER sa implementuje v nasledujucich krokoch.
+	  A. V cykle sa kontroluje ci nie je nastaveny CANCELLATION TOKEN [ServerCallContext.CancellationToken], ktory indikuje, ze CLIENT predcasne ukoncil spracovanie METHOD.
+	  B. V cykle sa vytvori instancia RESPONSE MESSAGE.
+	  C. RESPONSE MESSAGE sa odosle na CLIENT volanim METHOD [IServerStreamWriter<RESPONSE_MESSAGE>.WriteAsync()].
+	  D. Po skonceni cyklu, ked su vsetky RESPONSE MESSAGES odoslane sa METHOD ukonci.
+30. Pre CLIENT STREAMING RPC METHOD platia nasledujuce fakty.
+   A. CLIENT posiela 'N' REQUEST MESSAGES na ktore SERVER odpoveda 1 RESPONSE MESSAGE.
+   B. SERVER odosiela na 'N' REQUEST MESSAGES 1' RESPONSE MESSAGE.
+   !!!!! C. CLIENT musi indikovat ukoncenie odosielania MESSAGES volanim METHOD [IClientStreamWriter<REQUEST_MESSAGE>.CompleteAsync()].
+   D. CLIENT STREAMING RPC METHOD ma SYNTAX [rpc METHOD_NAME (stream INPUT_MESSAGE) returns (OUTPUT_MESSAGE)], kde VALUE [METHOD_NAME] je nazov METHOD, VALUE [INPUT_MESSAGE] je nazov INPUT MESSAGE a VALUE [OUTPUT_MESSAGE] je nazov OUTPUT MESSAGE.
+   !!! E. Na CLIENT SIDE sa CLIENT STREAMING RPC METHOD mapuje na .NET METHOD [AsyncClientStreamingCall<INPUT_MESSAGE,OUTPUT_MESSAGE> METHOD_NAME()].
+   !!! F. Na SERVER SIDE sa CLIENT STREAMING RPC METHOD mapuje na .NET METHOD [Task<OUTPUT_MESSAGE> METHOD_NAME(IAsyncStreamReader<INPUT_MESSAGE> RequestStream, ServerCallContext Context)].
+   G. Instancia CLASS [AsyncClientStreamingCall<TInputMessage,TOutputMessage>] umoznuje na CLIENT SIDE odosielanie REQUEST MESSAGES na SERVER a zaroven nacitanie RESPONSE MESSAGE zo SERVER.
+   H. Instancia INTERFACE [IAsyncStreamReader<INPUT_MESSAGE>] umoznuje na SERVER SIDE citanie REQUEST MESSAGES odoslanych z CLIENT.
+   I. CLIENT sa implementuje v nasledujucich krokoch.
+      A. Vytvori sa CLIENT OBJECT.
+	  !!! B. Zavola sa SERVER METHOD volanim METHOD CLIENT OBJECT. Tato METHOD vracia instanciu OBJECT [AsyncClientStreamingCall<INPUT_MESSAGE,OUTPUT_MESSAGE>].
+	  C. Z OBJECT [AsyncClientStreamingCall<INPUT_MESSAGE,OUTPUT_MESSAGE>] sa ziska PROPERTY [IClientStreamWriter<INPUT_MESSAGE> RequestStream].
+	  D. V cykle CLIENT odosiela vytvorene REQUEST MESSAGES na SERVER volanim METHOD [IClientStreamWriter<INPUT_MESSAGE>.WriteAsync()].
+	  !!!!! E. Po odoslani vsetkych REQUEST MESSAGES CLIENT odosle na SERVER indikaciu, ze vsetky REQUEST MESSAGES boli odoslane volanim METHOD [IClientStreamWriter<INPUT_MESSAGE>.CompleteAsync()].
+	  F. CLIENT nacita RESPONSE MESSAGE volanim METHOD [AsyncClientStreamingCall<INPUT_MESSAGE,OUTPUT_MESSAGE>.GetAwaiter().GetResult()].
+	  G. CLIENT ukonci spracovanie volanim METHOD [AsyncClientStreamingCall<INPUT_MESSAGE,OUTPUT_MESSAGE>.Dispose()].
+   J. SERVER sa implementuje v nasledujucich krokoch.
+      A. SERVER METHOD ma ako PARAMETER OBJECT [IAsyncStreamReader<INPUT_MESSAGE>].
+	  B. SERVER zavola METHOD [IAsyncStreamReader<INPUT_MESSAGE>.ReadAllAsync()], ktora vracia instanciu OBJECT [IAsyncEnumerable<INPUT_MESSAGE>].
+	  C. SERVER enumerovanim OBJECT [IAsyncEnumerable<INPUT_MESSAGE>] nacitava REQUEST MESSAGES z CLIENT.
+	  !!!!! D. ENUMERATION skonci, ked CLIENT zavola METHOD METHOD [IClientStreamWriter<INPUT_MESSAGE>.CompleteAsync()] cim indikuje koniec odosielania REQUEST MESSAGES.
+	  E. SERVER vytvori RESPONSE MESSAGE, ktoru vrati ako RETURN VALUE SERVER METHOD.
+31. Pre BIDIRECTIONAL STREAMING RPC METHOD platia nasledujuce fakty.
+   A. CLIENTS aj SERVERS mozu posialat lubovolny pocet MESSAGES az do momentu kym CLIENT CONNECTION neukonci volanim METHOD [IClientStreamWriter<REQUEST_MESSAGE>.CompleteAsync()].
+   B. BIDIRECTIONAL STREAMING RPC METHOD ma SYNTAX [rpc METHOD_NAME (stream INPUT_MESSAGE) returns (stream OUTPUT_MESSAGE)], kde VALUE [METHOD_NAME] je nazov METHOD, VALUE [INPUT_MESSAGE] je nazov INPUT MESSAGE a VALUE [OUTPUT_MESSAGE] je nazov OUTPUT MESSAGE.
+   !!! C. Na CLIENT SIDE sa BIDIRECTIONAL STREAMING RPC METHOD mapuje na .NET METHOD [AsyncDuplexStreamingCall<INPUT_MESSAGE,OUTPUT_MESSAGE> METHOD_NAME()].
+   !!! D. Na SERVER SIDE sa BIDIRECTIONAL STREAMING RPC METHOD mapuje na .NET METHOD [Task METHOD_NAME(IAsyncStreamReader<INPUT_MESSAGE> RequestStream, IServerStreamWriter<OUTPUT_MESSAGE> ResponseStream, ServerCallContext Context)].
+   E. Instancia CLASS [AsyncDuplexStreamingCall<TInputMessage,TOutputMessage>] umoznuje na CLIENT SIDE citanie MESSAGES zo SERVER SIDE a odosielanie MESSAGES na SERVER SIDE.
+   F. Instancia INTERFACE [IAsyncStreamReader<TMessage>] umoznuje na SERVER SIDE citanie REQUEST MESSAGES odoslanych z CLIENT.
+   G. Instancia INTERFACE [IServerStreamWriter<TMessage>] umoznuje na SERVER SIDE odosielanie RESPONSE MESSAGES na CLIENT.
+   H. CLIENT sa implementuje v nasledujucich krokoch.
+      A. Vytvori sa CLIENT OBJECT.
+	  !!! B. Zavola sa SERVER METHOD volanim METHOD CLIENT OBJECT. Tato METHOD vracia instanciu OBJECT [AsyncDuplexStreamingCall<INPUT_MESSAGE,OUTPUT_MESSAGE>].
+	  C. Z OBJECT [AsyncDuplexStreamingCall<INPUT_MESSAGE,OUTPUT_MESSAGE>] sa ziska PROPERTY [IClientStreamWriter<INPUT_MESSAGE> RequestStream] a PROPERTY [IAsyncStreamReader<OUTPUT_MESSAGE> ResponseStream].
+	  D. CLIENT odosiela REQUEST MESSAGES volanim METHOD [Task IClientStreamWriter<TRequestMessage>.WriteAsync(TRequestMessage Message)].
+	  E. CLIENT prijma RESPONSE MESSAGES volanim  METHOD [IAsyncEnumerable<TResponseMessage> IAsyncStreamReader<TResponseMessage>.ReadAllAsync<TResponseMessage>(this IAsyncStreamReader<TResponseMessage> StreamReader, CancellationToken CancellationToken)].
+	  !!!!! F. Ppri ukoceni spracovania MESSAGES CLIENT odosle na SERVER indikaciu, ze vsetky REQUEST MESSAGES boli odoslane volanim METHOD [Task IClientStreamWriter<TRequestMessage>.CompleteAsync()].
+	  G. CLIENT ukonci spracovanie volanim METHOD [AsyncDuplexStreamingCall<INPUT_MESSAGE,OUTPUT_MESSAGE>.Dispose()].
+   I. SERVER sa implementuje v nasledujucich krokoch.
+      A. SERVER METHOD ma PROTOTYPE [Task METHOD_NAME(IAsyncStreamReader<INPUT_MESSAGE> RequestStream, IServerStreamWriter<OUTPUT_MESSAGE> ResponseStream, ServerCallContext Context)].
+	  B. SERVER odosiela REQUEST MESSAGES volanim METHOD [Task IServerStreamWriter<TResponseMessage>.WriteAsync(TResponseMessage Message, CancellationToken CancellationToken)].
+	  C. SERVER prijma RESPONSE MESSAGES volanim  METHOD [IAsyncEnumerable<TRequestMessage> IAsyncStreamReader<TRequestMessage>.ReadAllAsync<TRequestMessage>(this IAsyncStreamReader<TRequestMessage> StreamReader, CancellationToken CancellationToken)].
+	  !!!!! D. Ukoncenie spojenia zo strany CLIENTA je signalizovane nastavenim CANCELLATION TOKEN v PROPERTY [ServerCallContext.CancellationToken].
+32. Pre volanie GRPC SERVICES z ASP.NET CORE PROGRAMOV je mozne vyuzit DEPENDENCY INJECTION. Volanie GRPC SERVICES sa realizuje v nasledujucich krokoch.
+   A. Do PROJECT sa pridaju nasledujuce PACKAGES.
+      A. PACKAGE [Grpc.AspNetCore].
+      B. PACKAGE [Grpc.Net.ClientFactory]. PACKAGE umoznuje ulozit GPRC CHANNEL do DEPENDENCY INJECTION CONTAINER.
+      C. PACKAGE [Grpc.Tools]. PACKAGE umoznuje generovat z FILES [.proto] C# CLASSES.
+   B. Do PROJECT sa vlozia FILES [.proto].
+   C. Vo FILE [.csproj] v ELEMENTS [Protobuf] vlozia RECORDS pre kazdy FILE [.proto], pricom ATTRIBUTE [GrpcServices] sa nastavi na VALUE [Client].
+   !!! D. V PROJECT sa prida GRPC CLIENT do DEPENDENCY INJECTION CONTAINER volanim METHOD [IHttpClientBuilder AddGrpcClient<TClient>(this IServiceCollection Services, Action<GrpcClientFactoryOptions> ConfigureClient)].
+   E. Do CONTROLLER sa vlozi GPRC CLIENT OBJECT. Tento CLIENT OBJECT je vytvoreny pomocou DEPENDENCY INJECTION.
+   F. V ACTION METHOD sa zavola GPRC METHOD pomocou CLIENT OBJECT.
+33. Vacsina zmien vo FILES [.proto] ako odstranenie FIELD, zmena FIELD TYPE ci zmena FIELD NUMBER su BREAKING CHANGES. No nasledujuce zmeny NIE SU BREAKING CHANGES.
+   A. Pridanie noveho SERVICE.
+   B. Pridanie SERVICE METHOD do existujuceho SERVICE.
+   C. Pridanie noveho FIELD do REQUEST MESSAGE.
+   D. Pridanie noveho FIELD do RESPONSE MESSAGE.
+34. FIELDS v SERVICE MESSAGES mozu byt RESERVED. Pre RESERVED FIELDS platia nasledujuce fakty.
+   A. RESERVED FIELDS nesmu byt v buducnosti pridane do SERVICE MESSAGE. Ak su, COMPILER hodi ERROR.
+   B. RESERVED FIELDS sa pouzivaju ak sa z MESSAGE odstranili nejake FIELDS a chce sa zabranit, aby sa v buducnosti pridali nove FIELDS s rovnakym NAME ci FIELD NUMBER. Ak by sa tak stalo, MESSAGE by nebola BACKWARD COMPATIBLE.
+   C. RESERVED FIELDS mozu byt identifikovane podla FIELD NAME pouzitim SYNTAX [reserved "FIELD_NAME_1",...,"FIELD_NAME_N"], kde VALUE [FIELD_NAME_X] je nazov FIELD NAME.
+   C. RESERVED FIELDS mozu byt identifikovane podla FIELD NUMBER pouzitim SYNTAX [reserved FIELD_NUMBER_1,...,FIELD_NUMBER_N], kde VALUE [FIELD_NUMBER_X] je hodnota FIELD NUMBER.
+//----------------------------------------------------------------------------------------------------------------------

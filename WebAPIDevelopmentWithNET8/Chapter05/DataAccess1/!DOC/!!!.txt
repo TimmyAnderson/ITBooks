@@ -1,0 +1,234 @@
+//----------------------------------------------------------------------------------------------------------------------
+1. Solution demonstruje pouzitie ENTITY FRAMEWORK v ASP.NET CORE.
+2. ENTITY FRAMEWORK je OBJECT RELATION MAPPER, ktory umoznuje mapovanie medzi DB TABLES a .NET OBJECTS.
+3. ENTITY FRAMEWORK obsahuje COMMAND LINE TOOL [dotnet-ef]. Platia nasledujuce fakty.
+   A. ENTITY FRAMEWORK umoznuje cinnosti suvisiace s DATABASES.
+   B. ENTITY FRAMEWORK sa instaluje pomocou COMMAND [dotnet tool install --global dotnet-ef].
+4. PROJECT vyuzivajuci ENTITY FRAMEWORK musi obsahovat nasledujuce PACKAGES.
+   A. PACKAGE [Microsoft.EntityFrameworkCore] obsahuje zakladne CLASSES ENTITY FRAMEWORK.
+   B. PACKAGE [Microsoft.EntityFrameworkCore.Design] obsahuje DESIGN TIME COMPONENTS pre ENTITY FRAMEWORK TOOL.
+   C. PACKAGE [Microsoft.EntityFrameworkCore.PROVIDER_NAME], kde VALUE [PROVIDER_NAME] je PROVIDER NAME obsahuje PROVIDER SPECIFIC CLASSES.
+5. ENTITY FRAMEWORK umoznuje pristup k DATABASES pomocou DB CONTEXT CLASSES. Pre DB CONTEXT CLASSES platia nasledujuce fakty.
+   A. DB CONTEXT CLASSES reprezentuju CLASSES, ktore umoznuju nasledujuce cinnosti.
+      A. DB CONTEXT CLASS umoznuje vykonavanie CRUD OPERATIONS na DATABASE.
+	  B. DB CONTEXT CLASS drzi CONNECTION nad DATABASE.
+	  C. DB CONTEXT CLASS vykonava MAPPING medzi DB TABLES a .NET OBJECTS.
+	  D. DB CONTEXT CLASS drzi informaciu o zmenach vykonanych v .NET OBJECTS, ktore je mozne nasledne zaspisat do DATABASE.
+	  E. DB CONTEXT CLASS realizuje TRANSACTIONS.
+   B. DB CONTEXT CLASSES su CLASSES, ktore MUSIA byt DERIVED z CLASS [DbContext].
+   C. DB CONTEXT CLASSES pouzivaju CONNECTION STRINGS na urcenie DB ku ktorym maju DB CONTEXT CLASSES pristupovat.
+   D. DB CONTEXT CLASSES pristupuje k DB TABLES pomocou PUBLIC PROPERTIES TYPE [DbSet<TType>].
+6. ENTITY CLASSES su CLASSES su .NET OBJECTS do ktorych su mapovane DB TABLE RECORDS. Pre ENTITY CLASSES platia nasledujuce fakty.
+   A. ENTITY CLASSES reprezentuju TABLES v DB.
+   B. ENTITY CLASSES su POCO CLASSES, ktore NIE SU DERIVED zo ZIADNYCH CLASSES ani neimplementuju ziadne INTERFACES.
+   C. ENTITY CLASSES a ich PROPERTIES mozu byt oznacene pomocou ATTRIBUTES pomocou, ktorych je mozne definovat ako sa ma dana CLASS/PROPERTY mapovat do DB.
+7. ENTITY FRAMEWORK moze pouzivat na ukladanie casu nasledujuce TYPES.
+   A. TYPE [DataTime], ktory NEUMOZNUJE ulozenie TIME ZONE.
+   B. TYPE [DataTimeOffset], ktory UMOZNUJE ulozenie TIME ZONE.
+8. Volanim METHOD [IServiceCollection AddDbContext<TContext>(this IServiceCollection serviceCollection, Action<DbContextOptionsBuilder> OptionsAction, ServiceLifetime ContextLifetime, ServiceLifetime OptionsLifetime)] sa pridava DB CONTEXT do DEPENDENCY INJECTION CONTAINER.
+9. MIGRATIONS su spravovane pomocou TOOL [dotnet ef]. TOOL podporuje nasledujuce COMMANDS.
+   A. MIGRATION sa pridava volanim COMMAND [dotnet ef migrations add MIGRATION_NAME], kde VALUE [MIGRATION_NAME] je nazov MIGRATION.
+   B. POSLEDNE VYTVORENA MIGRATION sa odstranuje volanim COMMAND [dotnet ef migrations remove].
+   C. UPDATE DB z MIGRATION sa vykonava pomocou COMMAND [dotnet ef database update].
+   D. UPDATE DB z konkretnej MIGRATION sa vykonava pomocou COMMAND [dotnet ef database update MIGRATION_NAME], kde VALUE [MIGRATION_NAME] je nazov MIGRATION, ktora sa ma aplikovat.
+   E. Odstranenie existujuce DB sa vykonava pomocou COMMAND [dotnet ef database drop].
+   F. Vytvorenie SCRIPTU z MIGRATION sa vykonava pomocou COMMAND [dotnet ef migrations script -o FILE_NAME], kde VALUE [FILE_NAME] je FILENAME SCIPT FILE, ktory sa ma vygenerovat.
+10. Volanim METHOD [DataBuilder<TEntity> EntityTypeBuilder<TEntity>.HasData(params TEntity[] Data)] je mozne naplnit DATABASE inicializacnymi DATA RECORDS.
+11. Konfigfuraciu DATABASE v ENTITY FRAMEWORK CORE je mozne vykonat nasledujucimi sposobmi.
+   A. Pouzitim CONVENTIONS.
+   B. Pouzitim DATA ANNOTATIONS.
+   C. Pouzitim FLUENT API.
+12. Pre pouzitie CONVENTIONS platia nasledujuce fakty.
+   A. ENTITY FRAMEWORK CORE definuje CONVENTIONS pre TABLES ci ENTITY CLASS PROPERTIES na zaklade ktorych je ENTITY FRAMEWORK CORE schopny urcit, ktora PROPERTY reprezentuje PRIMARY KEY, FOREIGN KEY ci predstavuje NAVIGATIONAL PROPERTIES.
+   B. CONVENTIONS urcuju nazov a TYPE ENTITY CLASS PROPERTIES, z ktorych je ENTITY FRAMEWORK CORE schopny urcit ich vyznam.
+   C. CONVENTIONS neumoznuju konfigurovat kazdy aspekt DATABASE.
+   !!! D. Konfiguracia pomocou CONVENTIONS je prepisana konfiguraciou nastavenou pomocou DATA ANNOTATIONS a ta je prepisana konfiguraciou pomocou FLUENT API.
+13. TABLE NAME ma BY-CONVENTION rovnaky nazov ako nazov PROPERTY TYPE [DbSet<TEntity>] v DB CONTEXT CLASS.
+14. ENTITY FRAMEWORK definuje pre ENTITY CLASSES nasledujuce CONVENTIONS.
+   A. ENTITY CLASS musi byt PUBLIC CLASS.
+   B. ENTITY CLASS musi byt NON-STATIC CLASS.
+   C. ENTITY CLASS musi mat CONSTRUCTOR, ktory ENTITY FRAMEWORK CORE dokaze pouzit. Moze to byt DEFAULT CONSTRUCTOR, alebo CUSTOM CONSTRUCTOR.
+15. ENTITY FRAMEWORK CORE pre PROPERTIES ENTITY CLASSES aplikuje nasledujuce CONVENTIONS.
+   A. Pre PROPERTY, ktora ma GETTER aj SETTER je v DB TABLE vytvoreny DB COLUMN, ktory ma rovnaky NAME ako PROPERTY NAME.
+   B. PROPERTY GETTER MUSI byt PUBLIC, kym PROPERTY SETTER moze mat lubovolne ACCESS RIGHTS.
+   C. PROPERTY TYPE je mapovany na COLUMN TYPE. Plati, ze .NET PRIMITIVE TYPES ako aj niektore specialne TYPES (String, Guid, DateTime) maju MAPPINGS na DB TYPES.
+   D. Ak je PROPERTY TYPE PRIMITIVE TYPE, alebo STRUCT TYPE, COLUMN je NON-NULL.
+   E. Ak je PROPERTY TYPE NULLABLE PRIMITIVE TYPE, alebo NULLABLE STRUCT TYPE, COLUMN je NULL.
+   F. Ak je PROPERTY TYPE [String], COLUMN je BY DEFAULT NULL. COLUMN je mozne zmenit na NON-NULL pomocou DATA ANNOTATIONS, alebo pomocou FLUENT API.
+   G. Ak je PROPERTY TYPE ENUM, tak COLUMN TYPE je rovny UNDERLYING TYPE ENUM TYPE.
+16. ENTITY FRAMEWORK CORE pre PRIMARY KEYS ENTITY CLASSES aplikuje nasledujuce CONVENTIONS.
+   A. Pomocou CONVENTIONS je mozne definovat IBA PRIMARY KEY tvoreny 1 COLUMN.
+   B. Pomocou CONVENTIONS je za PRIMARY KEY povazovana ta PROPERTY, ktorej NAME je bud VALUE [Id], alebo VALUE [CLASS_NAMEId], kde VALUE [CLASS_NAME] je NAME ENTITY CLASS.
+   C. TYPE PRIMARY KEY je MAPPED na DB TYPE a je nan aplikovany UNIQUE CONSTRAINT.
+17. Pre RELATIONS su definovane nasledujuce CONVENTIONS.
+   A. Ak ENTITY FRAMEWORK detekuje 1:N RELATIONSHIP medzi ENTITY CLASSES, automaticky namapuje NAVIGATION PROPERTY na FOREIGN KEY COLUMN.
+   B. COLUMN je PRIMARY KEY ENTITY FRAMEWORK na automaticky aplikuje CLUSTERED INDEX.
+   C. COLUMN je FOREIGN KEY ENTITY FRAMEWORK na automaticky aplikuje NON-CLUSTERED INDEX.
+18. ENTITY FRAMEWORK CORE vykonava konfigfuraciu RELATIONAL PROPERTIES pouzitim CONVENTIONS v nasledujucich krokoch.
+   A. ENTITY FRAMEWORK CORE prejde DB CONTEXT CLASS a pre kazdu PROPERTY TYPE [DbSet<TEntity>] definuje ENTITY.
+   !!! B. ENTITY FRAMEWORK CORE v kazdej ENTITY CLASS prejde vsetky C# PROPERTIES a vytvori z nich zoznam RELATIONAL PROPERTIES. Ako RELATIONAL PROPERTIES su definovane vsetky NON-SCALAR C# PROPERTIES a C# PROPERTIES, ktore su TYPE [IEnumerable<TType>].
+   !!! C. ENTITY FRAMEWORK CORE pre vsetky najdene RELATIONAL PROPERTIES vykona kontrolu ci TYPES RELATIONAL PROPERTIES maju definovany PRIMARY KEY. Ak nemaju, ani nie su EXCLUDED TYPES, ENTITY FRAMEWORK CORE generuje EXCEPTION.
+19. Pri konfiguracia RELATIONAL PROPERTIES pouzitim CONVENTIONS ENTITY FRAMEWORK CORE urcuje typ RELATIONSHIP na zaklade nasledujucich kriterii.
+   A. TYPE NAVIGATIONAL PROPERTY v PRINCIPAL ENTITY.
+   B. TYPE NAVIGATIONAL PROPERTY v DEPENDENT ENTITY.
+   C. TYPE FOREIGN KEY PROPERTY v DEPENDENT ENTITY.
+20. TYPE RELATIONSHIP pouzitim CONVENTIONS urcuje ENTITY FRAMEWORK CORE nasledujucim sposobom.
+   A. RELATIONSHIP je TYPE 1:0/1, ak NAVIGATIONAL PROPERTY PRINCIPAL ENTITY je TYPE [TDependentEntity], NAVIGATIONAL PROPERTY DEPENDENT ENTITY je TYPE [TPrincipalEntity] a FOREIGN KEY PROPERTY DEPENDENT ENTITY je TYPE [TType?].
+   B. RELATIONSHIP je TYPE 1:1, ak NAVIGATIONAL PROPERTY PRINCIPAL ENTITY je TYPE [TDependentEntity], NAVIGATIONAL PROPERTY DEPENDENT ENTITY je TYPE [TPrincipalEntity] a FOREIGN KEY PROPERTY DEPENDENT ENTITY je TYPE [TType].
+   C. RELATIONSHIP je TYPE 0/1:N, ak NAVIGATIONAL PROPERTY PRINCIPAL ENTITY je TYPE [IEnumerable<TDependentEntity>], NAVIGATIONAL PROPERTY DEPENDENT ENTITY je TYPE [TPrincipalEntity] a FOREIGN KEY PROPERTY DEPENDENT ENTITY je TYPE [TType?].
+   D. RELATIONSHIP je TYPE 1:N, ak NAVIGATIONAL PROPERTY PRINCIPAL ENTITY je TYPE [IEnumerable<TDependentEntity>], NAVIGATIONAL PROPERTY DEPENDENT ENTITY je TYPE [TPrincipalEntity] a FOREIGN KEY PROPERTY DEPENDENT ENTITY je TYPE [TType].
+21. ENTITY FRAMEWORK CORE vyhladava FOREIGN KEY PROPERTIES v DEPENDENT ENTITIES pomocou nasledujucich CONVENTIONS.
+   A. Ak DEPENDENT ENTITY CLASS ma C# PROPERTY, ktora ma rovnaky TYPE a NAME ako PRIMARY KEY PRINCIPAL PROPERTY, potom je takato C# PROPERTY oznacena za FOREIGN KEY.
+   B. Ak DEPENDENT ENTITY CLASS ma C# PROPERTY, ktora ma rovnaky TYPE ako PRIMARY KEY PRINCIPAL PROPERTY a NAME ma FORMAT [<PRINCIPAL_CLASS_NAME><PRINCIPAL_KEY_NAME>], kde VALUE [PRINCIPAL_CLASS_NAME] je nazov PRINCIPAL ENTITY CLASS a VALUE [PRINCIPAL_KEY_NAME] je nazov PRINCIPAL ENTITY CLASS PRIMARY KEY, potom je takato C# PROPERTY oznacena za FOREIGN KEY.
+   C. Ak DEPENDENT ENTITY CLASS ma C# PROPERTY, ktora ma rovnaky TYPE ako PRIMARY KEY PRINCIPAL PROPERTY a NAME ma FORMAT [<NAVIGATION_PROPERTY_NAME><PRINCIPAL_KEY_NAME>], kde VALUE [NAVIGATION_PROPERTY_NAME] je nazov NAVIGATION PROPERTY v DEPENDENT ENTITY a VALUE [PRINCIPAL_KEY_NAME] je nazov PRINCIPAL ENTITY CLASS PRIMARY KEY, potom je takato C# PROPERTY oznacena za FOREIGN KEY.
+22. Ak je RELATIONSHIP konfigurovana BY CONVENTIONS, pri DELETE PRINCIPAL ENTITY platia nasledujuce pravidla.
+   A. Pre RELATIONSHIP je TYPE 1:N a TYPE 1/1 sa pri DELETE PRINCIPAL ENTITY vykonava CASCADE DELETE DEPENDENT ENTITY.
+   B. Pre RELATIONSHIP je TYPE 0/1:N a TYPE 1:0/1 sa pri DELETE PRINCIPAL ENTITY vykonava RESET FOREIGN KEY v DEPENDENT ENTITY. DEPENDENT ENTITY vsak MUSI BYT TRACKED. Ak NIE JE TRACKED, hodi sa EXCEPTION.
+!!! 23. V pripade ze DEPENDENT ENTITY NEDEFINUJE C# PROPERTY reprezentujucu FOREIGN KEY, ENTITY FRAMEWORK CORE automaticky generuje pre DEPENDENT ENTITY SHADOW PROPERTY. Nazov SHADOW PROPERTY je vytvarany na zaklade nasledujucich CONVENTIONS.
+   C. Ak PRINCIPAL ENTITY DEFINUJE NAVIGATIONAL PROPERTY na DEPENDENT PROPERTY NAME SHADOW PROPERTY reprezentujucej v DEPENDENT PROPERTY FOREIGN KEY ma FORMAT [<PRINCIPAL_KEY_NAME>], kde VALUE [PRINCIPAL_KEY_NAME] reprezentuje nazov PRIMARY KEY v PRINCIPAL ENTITY.
+   B. Ak PRINCIPAL ENTITY NEDEFINUJE NAVIGATIONAL PROPERTY na DEPENDENT PROPERTY a NAME PRIMARY KEY PROPERTY ZACINA NAME PRIMARY ENTITY CLASS, tak NAME SHADOW PROPERTY ma FORMAT [<PRINCIPAL_KEY_NAME>], kde VALUE [PRINCIPAL_KEY_NAME] reprezentuje nazov PRIMARY KEY v PRINCIPAL ENTITY.
+   C. Ak PRINCIPAL ENTITY NEDEFINUJE NAVIGATIONAL PROPERTY na DEPENDENT PROPERTY a NAME PRIMARY KEY PROPERTY NEZACINA NAME PRIMARY ENTITY CLASS, tak NAME SHADOW PROPERTY ma FORMAT [<PRINCIPAL_ENTITY_CLASS_NAME><PRINCIPAL_KEY_NAME>], kde VALUE [PRINCIPAL_ENTITY_CLASS_NAME] reprezentuje NAME PRINCIPAL ENTITY a VALUE [PRINCIPAL_KEY_NAME] reprezentuje nazov PRIMARY KEY v PRINCIPAL ENTITY.
+!!! 24. Pouzitim CONVENTION nie je mozne definovat COMPOSITE FOREIGN KEYS. Tie je mozne definovat IBA pomocou FLUENT API.
+25. Pre pouzitie DATA ANNOTATIONS platia nasledujuce fakty.
+   A. DATA ANNOTATIONS sa aplikuju pomocou ATTRIBUTES na ENTITY CLASSES, ich FIELDS a PROPERTIES.
+   B. DATA ANNOTATIONS umoznuju nastavit nazvy DB TABLES, DB COLUMNS, definovat PRIMARY a FOREIGN KEYS, NAVIGATIONAL PROPERTIES ci DATA CONSTRAINTS pre jednotlive DB COLUMNS.
+   C. DATA ANNOTATIONS neumoznuju konfigurovat kazdy aspekt DATABASE.
+   !!! D. Konfiguracia pomocou DATA ANNOTATIONS prepisuje konfiguraciu pomocou CONVENTIONS a je prepisana konfiguraciou pomocou FLUENT API.
+   E. DATA ANNOTATION ATTRIBUTES sa nachadzaju v NAMESPACE [System.ComponentModel.DataAnnotations] a NAMESPACE [System.ComponentModel.DataAnnotations.Schema].
+26. ENTITY FRAMEWORK CORE definuje nasledujuce DATA ANNOTATION ATTRIBUTES.
+   A. ATTRIBUTE [TableAttribute] umoznuje urcit nazov DB TABLE a nazov jej SCHEMA.
+   B. ATTRIBUTE [ColumnAttribute] umoznuje urcit NAME a SQL TYPE DB COLUMN.
+   C. ATTRIBUTE [KeyAttribute] umoznuje oznacit DB COLUMN ako PRIMARY KEY.
+   D. ATTRIBUTE [ForeignKeyAttribute] umoznuje oznacit DB COLUMN ako FOREIGN KEY.
+   E. ATTRIBUTE [NotMappedAttribute] urcuje, ze PROPERTY nebude MAPPED na DB COLUMN.
+   F. ATTRIBUTE [RequiredAttribute] urcuje ze DB COLUMN bude NON-NULL.
+   G. ATTRIBUTE [MaxLengthAttribute] umoznuje urcit maximalnu dlzku variabilnych DB COLUMNS ako su DB COLUMNS TYPE [String] ci DB COLUMNS TYPE [byte[]].
+   H. ATTRIBUTE [IndexAttribute] urcuje, ze na COLUMN sa ma aplikovat INDEX.
+   I. ATTRIBUTE [PrecisionAttribute] umoznuje urcit PRECISION FLOATING NUMBER COLUMNS.
+   J. ATTRIBUTE [DatabaseGeneratedAttribute] pre INTEGER COLUMNS umoznuje urcit sposob akym sa bude generovat DEFAULT VALUE z DATABASE.
+   K. ATTRIBUTE [TimeStampAttribute] oznaci COLUMN, ze reprezentuje TIME STAMP COLUMN pouzivany pre CONCURRENCY MANAGEMENT.
+27. RELATIONSHIPS medzi 2 ENTITIES je pomocou DATA ANNOTATIONS mozne definovat nasledujucimi sposobmi.
+   A. Pouzitim ATTRIBUTE [ForeignKeyAttribute].
+   B. Pouzitim ATTRIBUTE [InversePropertyAttribute].
+28. Pre pouzitie ATTRIBUTE [ForeignKeyAttribute] platia nasledujuce fakty.
+   A. ATTRIBUTE [ForeignKeyAttribute] umoznuje v DEPENDENT PROPERTY sparovat NAVIGATION PROPERTY a FOREIGN KEY PROPERTY.
+   B. Ak je ATTRIBUTE [ForeignKeyAttribute] aplikovany na NAVIGATION PROPERTY musi v PARAMETER definovat nazov FOREIGN KEY PROPERTY s ktorym je sparovany.
+   C. Ak je ATTRIBUTE [ForeignKeyAttribute] aplikovany na FOREIGN KEY PROPERTY musi v PARAMETER definovat nazov NAVIGATION PROPERTY s ktorym je sparovany.
+   !!! D. Ak FOREIGN KEY DEPENDENT ENTITY je COMPOSITE KEY, potom ATTRIBUTE [ForeignKeyAttribute] musi mat uvedene vsetky casti COMPOSITE FOREIGN KEY uvedene ako PARAMETER, kde NAMES su oddelene CHAR [,].
+29. Pre pouzitie ATTRIBUTE [InversePropertyAttribute] platia nasledujuce fakty.
+   A. ATTRIBUTE [InversePropertyAttribute] sa aplikuje na NAVIGATION PROPERTIES.
+   !!! B. ATTRIBUTE [InversePropertyAttribute] sa pouziva vtedy, ak PRINCIPAL ENTITY obsahuje VIACERO NAVIGATION PROPERTIES na TU ISTU DEPENDENT ENTITY. V taktom pripade ENTITY FRAMEWORK CORE NEDOKAZE pouzitim CONVENTIONS urcit ktora NAVIGATION PROPERTY na PRINCIPAL ENTITY je sparovana s ktorou NAVIGATION PROPERTY a FOREIGN KEY na DEPENDENT ENTITY.
+   C. ATTRIBUTE [InversePropertyAttribute] aplikovany na NAVIGATION PROPERTY v PRINCIPAL ENTITY umoznuje urcit nazov NAVIGATION PROPERTY v DEPENDENT ENTITY s ktorou je asociovany.
+   !!!!! D. ATTRIBUTE [InversePropertyAttribute] nijako NERIESI FOREIGN KEY PROPERTIES. Sluzi na parovanie NAVIGATION PROPERTIES v PRINCIPAL a DEPENDENT ENTITIES.
+30. Pre pouzitie FLUENT API platia nasledujuce fakty.
+   A. FLUENT API je reprezentovana CLASS [ModelBuilder], ktora ma sadu METHODS umoznujucich konfiguraciu DATABASE.
+   B. FLUENT API je nutne pouzit v METHOD [void DbContext.OnModelCreating(ModelBuilder ModelBuilder)].
+   C. FLUENT API umoznuju konfigurovat kazdy aspekt DATABASE.
+   !!! D. Konfiguracia pomocou FLUENT API prepisuje konfiguraciu pomocou CONVENTIONS a konfiguraciu pomocou DATA ANNOTATIONS.
+31. DB COLUMNS vygenerovane pre ENTITY CLASS PROPERTIES je mozne menit pomocou FLUENT API.
+   A. METHOD [ModelBuilder HasDefaultSchema(this ModelBuilder ModelBuilder, string Schema)] definuje nazov DATABASE SCHEMA.
+   B. METHOD [EntityTypeBuilder ToTable(this EntityTypeBuilder EntityTypeBuilder, string Name)] definuje nazov TABLE.
+   C. METHOD [PropertyBuilder<TProperty> HasColumnName<TProperty>(this PropertyBuilder<TProperty> PropertyBuilder, string Name)] urcuje DB NAME DB COLUMN.
+   D. METHOD [KeyBuilder<TEntity> EntityTypeBuilder<TEntity>.HasKey(params string[] PropertyNames)] oznaci DB COLUMN za PRIMARY KEY.
+   E. METHOD [EntityTypeBuilder<TEntity> EntityTypeBuilder<TEntity>.Ignore(string PropertyName)] oznaci PROPERTY za IGNORED, takze nebude zapisana do DATABASE.
+   F. METHOD [PropertyBuilder<TProperty> PropertyBuilder<TProperty>.IsRequired(bool Required)] oznaci DB COLUMN ako NOT NULL.
+   G. METHOD [PropertyBuilder<TProperty> HasColumnType<TProperty>(this PropertyBuilder<TProperty> PropertyBuilder, string TypeName)] urcuje DB TYPE DB COLUMN.
+   H. METHOD [PropertyBuilder<TProperty> PropertyBuilder<TProperty>.HasMaxLength(int MaxLength)] urcuje maximalnu dlzku DB COLUMN. Nastavenie sa aplikuje iba na ARRAY TYPES ako je STRING.
+   I. METHOD [IndexBuilder<TEntity> EntityTypeBuilder<TEntity>.HasIndex(params string[] PropertyNames)] nastavuje INDEX na DB COLUMN.
+   J. METHOD [PropertyBuilder<TProperty> PropertyBuilder<TProperty>.IsRowVersion()] oznacuje DB COLUMN za ROW VERSION DB COLUMN.
+   K. METHOD [PropertyBuilder<TProperty> HasDefaultValue<TProperty>(this PropertyBuilder<TProperty> PropertyBuilder)] nastavuje DEFAULT VALUE na DB COLUMN.
+   L. METHOD [PropertyBuilder<TProperty> HasDefaultValueSql<TProperty>(this PropertyBuilder<TProperty> PropertyBuilder)] nastavuje SQL EXPRESSION pre DEFAULT VALUE na DB COLUMN.
+   M. METHOD [PropertyBuilder<TProperty> PropertyBuilder<TProperty>.HasConversion<TConversion>()] nastavuje CONVETER konvertujuci VALUES medzi PROPERTY a DB COLUMN.
+   N. METHOD [PropertyBuilder<TProperty> PropertyBuilder<TProperty>.ValueGeneratedOnAdd()] urcuje sposob, akym sa DB COLUMN VALUE ma v DATABASE generovat pri pridavani noveho RECORD.
+32. RELATIONSHIPS medzi 2 ENTITIES je pomocou FLUENT API sa realizuje v nasledujucich krokoch.
+   A. Ziska sa instancia CLASS [EntityTypeBuilder<TEntity>].
+   B. Zavola sa bud METHOD [ReferenceNavigationBuilder<TEntity,TRelatedEntity> EntityTypeBuilder<TEntity>.HasOne<TRelatedEntity>(Expression<Func<TEntity,TRelatedEntity>> NavigationExpression)], alebo METHOD [CollectionNavigationBuilder<TEntity,TRelatedEntity> EntityTypeBuilder<TEntity>.HasMany<TRelatedEntity>(Expression<Func<TEntity,IEnumerable<TRelatedEntity>>> NavigationExpression)], ktora definuje NAVIGATION PROPERTY cez ktoru su 2 ENTITIES RELATED.
+   C. Zavola sa METHOD [ReferenceReferenceBuilder<TEntity,TRelatedEntity> ReferenceNavigationBuilder<TEntity,TRelatedEntity>.WithOne(Expression<Func<TRelatedEntity,TEntity>> NavigationExpression)], METHOD [ReferenceCollectionBuilder<TRelatedEntity,TEntity> WithMany(Expression<Func<TRelatedEntity,IEnumerable<TEntity>>> NavigationExpression)], METHOD [ReferenceCollectionBuilder<TEntity,TRelatedEntity> WithOne(Expression<Func<TRelatedEntity,TEntity>> NavigationExpression)], alebo METHOD [CollectionCollectionBuilder<TRelatedEntity,TEntity> WithMany(Expression<Func<TRelatedEntity,IEnumerable<TEntity>>> NavigationExpression)] na definiciu RELATIONSHIP a zaroven OPTIONALLY aj definovanie INVERSE NAVIGATION PROPERTY.
+   D. Zavola sa METHOD [ReferenceCollectionBuilder<TPrincipalEntity,TDependentEntity> ReferenceCollectionBuilder<TPrincipalEntity,TDependentEntity>.HasForeignKey(Expression<Func<TDependentEntity,object>> ForeignKeyExpression)], alebo METHOD [ReferenceCollectionBuilder<TPrincipalEntity,TDependentEntity> ReferenceReferenceBuilder<TEntity,TRelatedEntity>.HasForeignKey(Expression<Func<TDependentEntity,object>> ForeignKeyExpression)] ktorou sa definuje FOREIGN KEY PROPERTY.
+33. RELATIONSHIP 0/1:1 a RELATIONSHIP 1:1 sa pomocou FLUENT API konfiguruju nasledujucim sposobom.
+   !!! A. RELATIONSHIP je mozne konfigurovat pre PRINCIPAL ENTITY i DEPENDENT ENTITY.
+   B. Na ENTITY sa zavola METHOD [ReferenceNavigationBuilder<TEntity,TRelatedEntity> EntityTypeBuilder.HasOne<TRelatedEntity>(Expression<Func<TEntity,TRelatedEntity>> NavigationExpression)], ktora nastavi LEFT SIDE RELATIONSHIP.
+   C. Zavola sa METHOD [ReferenceReferenceBuilder<TEntity,TRelatedEntity> ReferenceNavigationBuilder<TEntity,TRelatedEntity>.WithOne(Expression<Func<TRelatedEntity,TEntity>> NavigationExpression)], nastavi RIGHT SIDE RELATIONSHIP.
+   D. Zavola sa METHOD [ReferenceReferenceBuilder<TEntity,TRelatedEntity> ReferenceReferenceBuilder<TEntity,TRelatedEntity>.HasForeignKey<TDependentEntity>(Expression<Func<TDependentEntity,object>> ForeignKeyExpression)] na urcenie FOREIGN KEY PROPERTY.
+   E. Zavola sa METHOD [ReferenceReferenceBuilder<TEntity,TRelatedEntity> ReferenceReferenceBuilder<TEntity,TRelatedEntity>.IsRequired(bool Required)] na urcenie ci je RELATIONSHIP 0/1:1, alebo RELATIONSHIP 1:1.
+!!! 34. Pri RELATIONSHIP 0/1:1 a RELATIONSHIP 1:1 DEPENDENT ENTITY moze mat PRIMARY KEY a FOREIGN KEY nastaveny na TEN ISTY DB COLUMN.
+35. RELATIONSHIP 0/1:N a RELATIONSHIP 1:N sa pomocou FLUENT API na PRINCIPAL ENTITY konfiguruju nasledujucim sposobom.
+   A. Na PRINCIPAL ENTITY sa zavola METHOD [CollectionNavigationBuilder<TEntity,TRelatedEntity> EntityTypeBuilder<TEntity>.HasMany<TRelatedEntity>(Expression<Func<TEntity,IEnumerable<TRelatedEntity>>> NavigationExpression)], ktora nastavi LEFT SIDE RELATIONSHIP.
+   B. Zavola sa METHOD [ReferenceCollectionBuilder<TEntity,TRelatedEntity> CollectionNavigationBuilder<TEntity,TRelatedEntity>.WithOne(Expression<Func<TRelatedEntity,TEntity>> NavigationExpression)], nastavi RIGHT SIDE RELATIONSHIP.
+   C. Zavola sa METHOD [ReferenceCollectionBuilder<TPrincipalEntity,TDependentEntity> ReferenceCollectionBuilder<TPrincipalEntity,TDependentEntity>.HasForeignKey(Expression<Func<TDependentEntity,object>> ForeignKeyExpression)] na urcenie FOREIGN KEY PROPERTY.
+   D. Zavola sa METHOD [ReferenceCollectionBuilder<TPrincipalEntity,TDependentEntity> ReferenceCollectionBuilder<TPrincipalEntity,TDependentEntity>.IsRequired(bool Required)] na urcenie ci je RELATIONSHIP 0/1:N, alebo RELATIONSHIP 1:N.
+36. RELATIONSHIP 0/1:N a RELATIONSHIP 1:N sa pomocou FLUENT API na DEPENDENT ENTITY konfiguruju nasledujucim sposobom.
+   A. Na DEPENDENT ENTITY sa zavola METHOD [ReferenceNavigationBuilder<TEntity,TRelatedEntity> EntityTypeBuilder<TEntity>.HasOne(Expression<Func<TEntity,TRelatedEntity>> NavigationExpression)], ktora nastavi LEFT SIDE RELATIONSHIP.
+   B. Zavola sa METHOD [ReferenceCollectionBuilder<TRelatedEntity,TEntity> ReferenceNavigationBuilder<TEntity,TRelatedEntity>.WithMany(Expression<Func<TRelatedEntity,IEnumerable<TEntity>>> NavigationExpression)], nastavi RIGHT SIDE RELATIONSHIP.
+   C. Zavola sa METHOD [ReferenceCollectionBuilder<TPrincipalEntity,TDependentEntity> ReferenceCollectionBuilder<TPrincipalEntity,TDependentEntity>.HasForeignKey(Expression<Func<TDependentEntity,object>> ForeignKeyExpression)] na urcenie FOREIGN KEY PROPERTY.
+   D. Zavola sa METHOD [ReferenceCollectionBuilder<TPrincipalEntity,TDependentEntity> ReferenceCollectionBuilder<TPrincipalEntity,TDependentEntity>.IsRequired(bool Required)] na urcenie ci je RELATIONSHIP 0/1:N, alebo RELATIONSHIP 1:N.
+37. RELATIONSHIP 0/M:N a RELATIONSHIP M:N sa pomocou FLUENT API na PRINCIPAL ENTITY M a PRINCIPAL ENTITY N konfiguruju nasledujucim sposobom.
+   A. Na PRINCIPAL ENTITY M sa zavola METHOD [CollectionNavigationBuilder<TEntity,TRelatedEntity> EntityTypeBuilder<TEntity>.HasMany<TRelatedEntity>(Expression<Func<TEntity,IEnumerable<TRelatedEntity>>> NavigationExpression)], ktora nastavi LEFT SIDE RELATIONSHIP M:MN.
+   B. Zavola sa METHOD [ReferenceCollectionBuilder<TEntity,TRelatedEntity> CollectionNavigationBuilder<TEntity,TRelatedEntity>.WithOne(Expression<Func<TRelatedEntity,TEntity>> NavigationExpression)], nastavi RIGHT SIDE RELATIONSHIP M:MN.
+   C. Zavola sa METHOD [ReferenceCollectionBuilder<TPrincipalEntity,TDependentEntity> ReferenceCollectionBuilder<TPrincipalEntity,TDependentEntity>.HasForeignKey(Expression<Func<TDependentEntity,object>> ForeignKeyExpression)] na urcenie FOREIGN KEY PROPERTY.
+   D. Zavola sa METHOD [ReferenceCollectionBuilder<TPrincipalEntity,TDependentEntity> ReferenceCollectionBuilder<TPrincipalEntity,TDependentEntity>.IsRequired(bool Required)] na urcenie ci je RELATIONSHIP 0/M:N, alebo RELATIONSHIP M:N.
+   E. Na PRINCIPAL ENTITY N sa zavola METHOD [CollectionNavigationBuilder<TEntity,TRelatedEntity> EntityTypeBuilder<TEntity>.HasMany<TRelatedEntity>(Expression<Func<TEntity,IEnumerable<TRelatedEntity>>> NavigationExpression)], ktora nastavi LEFT SIDE RELATIONSHIP N:MN.
+   F. Zavola sa METHOD [ReferenceCollectionBuilder<TEntity,TRelatedEntity> CollectionNavigationBuilder<TEntity,TRelatedEntity>.WithOne(Expression<Func<TRelatedEntity,TEntity>> NavigationExpression)], nastavi RIGHT SIDE RELATIONSHIP N:MN.
+   G. Zavola sa METHOD [ReferenceCollectionBuilder<TPrincipalEntity,TDependentEntity> ReferenceCollectionBuilder<TPrincipalEntity,TDependentEntity>.HasForeignKey(Expression<Func<TDependentEntity,object>> ForeignKeyExpression)] na urcenie FOREIGN KEY PROPERTY.
+   H. Zavola sa METHOD [ReferenceCollectionBuilder<TPrincipalEntity,TDependentEntity> ReferenceCollectionBuilder<TPrincipalEntity,TDependentEntity>.IsRequired(bool Required)] na urcenie ci je RELATIONSHIP 0/M:N, alebo RELATIONSHIP M:N.
+38. RELATIONSHIP 0/M:N a RELATIONSHIP M:N sa pomocou FLUENT API na DEPENDENT ENTITY MN konfiguruju nasledujucim sposobom.
+   A. Na DEPENDENT ENTITY MN sa zavola METHOD [ReferenceNavigationBuilder<TEntity,TRelatedEntity> EntityTypeBuilder<TEntity>.HasOne(Expression<Func<TEntity,TRelatedEntity>> NavigationExpression)], ktora nastavi LEFT SIDE RELATIONSHIP M:MN.
+   B. Zavola sa METHOD [ReferenceCollectionBuilder<TRelatedEntity,TEntity> ReferenceNavigationBuilder<TEntity,TRelatedEntity>.WithMany(Expression<Func<TRelatedEntity,IEnumerable<TEntity>>> NavigationExpression)], nastavi RIGHT SIDE RELATIONSHIP M:MN.
+   C. Zavola sa METHOD [ReferenceCollectionBuilder<TPrincipalEntity,TDependentEntity> ReferenceCollectionBuilder<TPrincipalEntity,TDependentEntity>.HasForeignKey(Expression<Func<TDependentEntity,object>> ForeignKeyExpression)] na urcenie FOREIGN KEY PROPERTY.
+   D. Zavola sa METHOD [ReferenceCollectionBuilder<TPrincipalEntity,TDependentEntity> ReferenceCollectionBuilder<TPrincipalEntity,TDependentEntity>.IsRequired(bool Required)] na urcenie ci je RELATIONSHIP 0/M:N, alebo RELATIONSHIP M:N.
+   E. Na DEPENDENT ENTITY MN sa zavola METHOD [ReferenceNavigationBuilder<TEntity,TRelatedEntity> EntityTypeBuilder<TEntity>.HasOne(Expression<Func<TEntity,TRelatedEntity>> NavigationExpression)], ktora nastavi LEFT SIDE RELATIONSHIP N:MN.
+   F. Zavola sa METHOD [ReferenceCollectionBuilder<TRelatedEntity,TEntity> ReferenceNavigationBuilder<TEntity,TRelatedEntity>.WithMany(Expression<Func<TRelatedEntity,IEnumerable<TEntity>>> NavigationExpression)], nastavi RIGHT SIDE RELATIONSHIP N:MN.
+   G. Zavola sa METHOD [ReferenceCollectionBuilder<TPrincipalEntity,TDependentEntity> ReferenceCollectionBuilder<TPrincipalEntity,TDependentEntity>.HasForeignKey(Expression<Func<TDependentEntity,object>> ForeignKeyExpression)] na urcenie FOREIGN KEY PROPERTY.
+   H. Zavola sa METHOD [ReferenceCollectionBuilder<TPrincipalEntity,TDependentEntity> ReferenceCollectionBuilder<TPrincipalEntity,TDependentEntity>.IsRequired(bool Required)] na urcenie ci je RELATIONSHIP 0/M:N, alebo RELATIONSHIP M:N.
+!!! 39. Pri RELATIONSHIP 0/M:N a RELATIONSHIP M:N DEPENDENT ENTITY MN moze byt PRIMARY KEY COMPOSITE, tvoreny FOREIGN KEY PRINCIPAL ENTITY M a FOREIGN KEY PRINCIPAL ENTITY N. Takyto COMPOSITE PRIMARY KEY tvori FOREIGN KEYS do PRINCIPAL ENTITY M a PRINCIPAL ENTITY N.
+40. FLUENT API umoznuje presunut konfiguraciu ENTITY CLASS do separatnej CLASS.
+   A. Definuje sa konfiguracna CLASS, ktora implementuje INTERFACE [IEntityTypeConfiguration<TEntity>], kde TYPE [TEntity] je TYPE ENTITY CLASS.
+   B. Konfiguracna CLASS musi definovat METHOD [void Configure(EntityTypeBuilder<TEntity> Builder)] v ktorej pouzije FLUENT API na nakonfigurovanie ENTITY CLASS.
+   C. V METHOD [void DbContext.OnModelCreating(ModelBuilder ModelBuilder)] sa vola METHOD [ModelBuilder ModelBuilder.ApplyConfiguration<TEntity>(IEntityTypeConfiguration<TEntity> Configuration)], ktorej PARAMETER je instancia konfiguracnej CLASS.
+   D. V METHOD [void DbContext.OnModelCreating(ModelBuilder ModelBuilder)] sa vola METHOD [ModelBuilder ApplyConfigurationsFromAssembly(Assembly Assembly, Func<Type,bool> Predicate)], ktorej PARAMETER je ASSEMBLY v ktorej su konfiguracne CLASSES.
+!!!!! 41. LINQ pre ENTITY FRAMEWORK obsahuje nasledujuce rozsirenia.
+   A. Pre LINQ METHODS spustajucich QUERY EXECUTION su definovane ASYNCRHONOUS VERZIE tychto LINQ METHODS v NAMESPACE [Microsoft.EntityFrameworkCore].
+   B. Prikladom ASYNCRHONOUS VERZII LINQ METHODS je METHOD [Task<TSource[]> ToArrayAsync<TSource>(this IQueryable<TSource> Source, CancellationToken CancellationToken)].
+   !!! C. METHOD [TEntity DbSet<TEntityType>.Find(params object[] KeyValues)] umoznuje efektivne nacitavat instancie ENTITY CLASSES. Pre METHOD platia nasledujuce fakty.
+      A. METHOD [TEntity DbSet<TEntityType>.Find(params object[] KeyValues)] umnoznuje vyhladavat instancie ENTITY CLASSES pomocou VALUES PRIMARY KEYS. Ak ma ENTITY viacero PRIMARY KEYS, ich hodnoty su zadane ako PARAMETERS METHOD.
+      !!! B. METHOD [TEntity DbSet<TEntityType>.Find(params object[] KeyValues)] pred vykonanim DB QUERY VZDY skontroluje ci instancia danej ENTITY CLASS uz nebola nacitana a je sucastou DB CONTEXT. Ak ano, tak sa DB QUERY NEVYKONA a je vratena EXISTUJUCA instancia ENTITY CLASS.
+	  C. METHOD [ValueTask<TEntity> DbSet<TEntityType>.FindAsync(object[] KeyValues, CancellationToken CancellationToken)] je ASYNCHRONOUS verzia FIND METHOD.
+!!! 42. LINQ QUERIES pre ENTITY FRAMEWORK CORE su implementovane ako METHODS aplikovane na instancie INTERFACE [IQueryable<TType>]. INTERFACE [IQueryable<TType>] umoznuje rozdelit QUERY EXECUTION medzi CLIENT a DB SERVER, kde cast QUERY, alebo aj cela QUERY moze byt transformovana na postupnost DB COMMANDS, ktore su realizovane priamo na DB SERVERI.
+43. ENTITY FRAMEWORK CORE si pre instancie ENTITY CLASSES drzi TRACKING INFORMATION v instancii CLASS [EntityEntry<TEntityType>], kde TYPE [TEntity] je TYPE ENTITY CLASS.
+44. TRACKING INFORMATION pre danu instanciu ENTITY CLASS je mozne ziskat volanim METHOD [EntityEntry<TEntityType> DbContext.Entry<TEntityType>(TEntityType Entity)].
+!!! 45. NIE pre vsetky instancie ENTITY CLASSES si ENTITY FRAMEWORK CORE drzi TRACKING INFORMATION. Platia nasledujuce pravidla.
+   A. Ak sa instancia ENTITY CLASS vytvori pomocou CONSTRUCTOR, pricom tato instancia NIE JE pouzita ako PARAMETER ziadnej METHOD CLASS [DbContext], tak takato instancia ENTITY CLASS NEMA asociovanu TRACKING INFORMATION.
+   B. Ak sa instancia ENTITY CLASS vytvori pomocou CONSTRUCTOR, pricom tato instancia JE pouzita ako PARAMETER METHOD CLASS [DbContext] ako je napriklad METHOD [EntityEntry<TEntityType> DbSet<TEntityType>.Add(TEntityType Entity)], tak takato instancia ENTITY CLASS MA asociovanu TRACKING INFORMATION.
+   C. Ak sa instancia ENTITY CLASS ziska vykonanim DB QUERY, pricom na DB QUERY NIE JE aplikovana METHOD [IQueryable<TEntityType> IQueryable<TEntityType>.AsNoTracking<TEntityType>()], tak takato instancia ENTITY CLASS MA asociovanu TRACKING INFORMATION.
+   D. Ak sa instancia ENTITY CLASS ziska vykonanim DB QUERY, pricom na DB QUERY JE aplikovana METHOD [IQueryable<TEntityType> IQueryable<TEntityType>.AsNoTracking<TEntityType>()], tak takato instancia ENTITY CLASS NEMA asociovanu TRACKING INFORMATION.
+46. TRACKING INFORMATION, ktora je asociovana s danou ENTITY CLASS obsahuje STATE vyjadreny pomocou ENUM TYPE [EntityState]. ENUM TYPE [EntityState] je pristupna pomocou PROPERTY [EntityEntry.State] a ma nasledujuce VALUES.
+   A. VALUE [Detached] znamena, ze instancia ENTITY CLASS NIE je TRACKED a pri vykonani METHOD [int DbContext.SaveChanges()] je tato instancia ENTITY CLASS IGNOROVANA.
+   B. VALUE [Unchanged] znamena, ze instancia ENTITY CLASS je TRACKED, ale nebola v nej vykonana ziadna zmena a pri volani METHOD [int DbContext.SaveChanges()] je tato instancia ENTITY CLASS IGNOROVANA.
+   C. VALUE [Added] znamena, ze instancia ENTITY CLASS bola pridana do DB CONTEXT a volanie METHOD [int DbContext.SaveChanges()] vykona INSERT nad DB.
+   D. VALUE [Modified] znamena, ze instancia ENTITY CLASS bola zmenena v DB CONTEXT a volanie METHOD [int DbContext.SaveChanges()] vykona UPDATE nad DB.
+   E. VALUE [Deleted] znamena, ze instancia ENTITY CLASS bola vymazana z DB CONTEXT a volanie METHOD [int DbContext.SaveChanges()] vykona DELETE nad DB.
+47. ENTITY FRAMEWORK CORE vykonava vkladanie novych RECORDS do DB realizovanim nasledujucich krokov.
+   A. Vytvori sa instancia ENTITY CLASS, ktora sa ma vlozit do DB. Po vytvoreni instancie ENTITY CLASS je TRACKING INFORMATION STATE danej instancie ENTITY CLASS nastaveny na STATE [EntityEntry.State.Detached].
+   !!! B. Instancia ENTITY CLASS sa vlozi do DB CONTEXT pomocou METHOD [EntityEntry<TEntityType> DbSet<TEntityType>.Add(TEntityType Entity)] daneho DATA SET. Alternativou je pouzitie univerzalnejsej METHOD [EntityEntry<TEntityType> DbContext.Add<TEntityType>(TEntityType Entity)], ktora automaticky identifikuje ENTITY CLASS TYPE a tym padom aj TABLE do ktorej ma byt RECORD pridany.
+   !!! C. Po pridani instancie ENTITY CLASS do DB CONTEXT sa TRACKING INFORMATION STATE instancie ENTITY CLASS zmeni svoj STATE na [EntityEntry.State.Added].
+   D. Zavola sa METHOD [int DbContext.SaveChanges()], ktora prejde TRACKING INFORMATION vsetkych instancii ENTITY CLASS a tie, ktore maju nastavene STATE na [EntityEntry.State.Added] zapise ako nove RECORDS do DB.
+   !!! E. Po vykonani zapisu RECORD do DB, ENTITY FRAMEWORK CORE nacita hodnotu PRIMARY KEY a vrati ju do DB CONTEXT. TRACKING INFORMATION STATE instancie ENTITY CLASS sa zmeni na STATE [EntityEntry.State.Unchanged].
+48. UPDATE pomocou ENTITY FRAMEWORK CORE sa vykonava v nasledujucich krokoch.
+   A. Pomocou ENTITY FRAMEWORK CORE sa nacitaju instancie ENTITY CLASSES, ktore maju byt UPDATED.
+   B. Vykona sa UPDATE instancii ENTITY CLASSES zmenou ich PROPERTY VALUES.
+   C. Vykona sa zapis UPDATES do DB volanim METHOD [int DbContext.SaveChanges()].
+!!! 49. Pri zapise UPDATES do DB volanim METHOD [int DbContext.SaveChanges()] sa vykonavaju nasledujuce kroky.
+   A. ENTITY FRAMEWORK CORE zavola METHOD [void ChangeTracker.DetectChanges()].
+   B. METHOD [void ChangeTracker.DetectChanges()] vykona porovnanie povodnej kopie instancii ENTITY CLASSES nacitanych z DB a zmenenych instancii ENTITY CLASSES. Na zaklade detekcie tychto zmien su vygenerovane UPDATE SQL COMMANDS.
+   C. Detekovane UPDATE SQL COMMANDS su vykonane na DB.
+!!! 50. ENTITY FRAMEWORK definuje METHOD [void PropertyValues.SetValues(object Object)], ktora umoznuje efektivne nastavit PROPERTIES ENTITY CLASSES. Platia nasledujuce fakty.
+   A. METHOD nastavuje vsetky PROPERTIES danej ENTITY CLASS z PARAMETER [object Object] na zaklade zhodnosti mien PROPERTIES tohto OBJECT a ENTITY CLASS.
+   B. METHOD umoznuje nastavit aj PROPERTIES z OBJECT, ktory NEMA rovnaky TYPE ako ENTITY CLASS.
+   !!! C. METHOD NENASTAVUJE NAVIGATIONAL PROPERTIES.
+!!! 51. ENTITY FRAMEWORK umoznuje vykonat DELETE ENTITY OBJECT BEZ nutnosti jeho nacitania do DB CONTEXT. Platia nasledujuce fakty.
+   A. ENTITY FRAMEWORK definuje nasledujuce METHODS na DELETE ENTITY OBJECT BEZ nutnosti jeho nacitania do DB CONTEXT.
+      A. METHOD [int ExecuteDelete<TSource>(this IQueryable<TSource> Source)] je SYNCHRONNA verzia DELETE METHOD. METHOD vracia pocet DELETED RECORDS.
+      B. METHOD [Task<int> ExecuteDeleteAsync<TSource>(this IQueryable<TSource> Source, CancellationToken CancellationToken)] je ASYNCHRONNA verzia DELETE METHOD. METHOD vracia pocet DELETED RECORDS.
+   !!! B. METHODS NEPOUZIVAJU CHANGE TRACKER a okamzite vykonavaju DELETE nad DATABASE.
+   !!!!! C. Vdaka tomu, ze METHODS NEPOUZIVAJU CHANGE TRACKER, nie je vhodne ich kombinovat s METHODS pouzivajucimi CHANGE TRACKER, pretoze vykonane DELETES nie su oznacene v CHANGE TRACKER a po vykonani tychto METHODS moze dojst k nekonzistencii medzi datami v CHANGE TRACKER a datami v DATABASE.
+//----------------------------------------------------------------------------------------------------------------------
