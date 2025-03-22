@@ -7,7 +7,6 @@ namespace DataAccess2
 //----------------------------------------------------------------------------------------------------------------------
 	// !!! CLASS je DEPENDENT ENTITY, pretoze OBSAHUJE FOREIGN KEY PROPERTY.
 	public sealed class CEntityOneToManyDependent
-
 	{
 //----------------------------------------------------------------------------------------------------------------------
 		private int												MEntityDependentID;

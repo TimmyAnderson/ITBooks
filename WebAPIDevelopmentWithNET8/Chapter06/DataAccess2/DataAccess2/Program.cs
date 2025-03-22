@@ -8,8 +8,11 @@ namespace DataAccess2
 //----------------------------------------------------------------------------------------------------------------------
         static void Main(string[] args)
         {
+			//CMenuOneToOneOperations							Menu=new CMenuOneToOneOperations();
 			//CMenuOneToManyOperations							Menu=new CMenuOneToManyOperations();
-			CMenuManyToManyOperations							Menu=new CMenuManyToManyOperations();
+			//CMenuManyToManyOperations							Menu=new CMenuManyToManyOperations();
+			//CMenuOwnedTypeOneToOneOperations					Menu=new CMenuOwnedTypeOneToOneOperations();
+			CMenuOwnedTypeOneToManyOperations					Menu=new CMenuOwnedTypeOneToManyOperations();
 
 			Menu.Execute();
         }

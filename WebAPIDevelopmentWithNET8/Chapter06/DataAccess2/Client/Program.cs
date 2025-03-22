@@ -8,7 +8,11 @@ namespace Client
 		static void Main(string[] args)
 		{
 			//CMenuTestConnection								Menu=new CMenuTestConnection();
-			CMenuOneToMany										Menu=new CMenuOneToMany();
+			//CMenuOneToOne										Menu=new CMenuOneToOne();
+			//CMenuOneToMany									Menu=new CMenuOneToMany();
+			//CMenuManyToMany									Menu=new CMenuManyToMany();
+			//CMenuOwnedTypeOneToOne							Menu=new CMenuOwnedTypeOneToOne();
+			CMenuOwnedTypeOneToMany								Menu=new CMenuOwnedTypeOneToMany();
 
 			Menu.Execute();
 		}

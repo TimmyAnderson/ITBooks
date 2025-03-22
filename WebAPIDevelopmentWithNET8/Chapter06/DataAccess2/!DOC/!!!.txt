@@ -70,4 +70,40 @@
    G. Zavola sa METHOD [ReferenceCollectionBuilder<TPrincipalEntity,TDependentEntity> ReferenceCollectionBuilder<TPrincipalEntity,TDependentEntity>.HasForeignKey(Expression<Func<TDependentEntity,object>> ForeignKeyExpression)] na urcenie FOREIGN KEY PROPERTY.
    H. Zavola sa METHOD [ReferenceCollectionBuilder<TPrincipalEntity,TDependentEntity> ReferenceCollectionBuilder<TPrincipalEntity,TDependentEntity>.IsRequired(bool Required)] na urcenie ci je RELATIONSHIP 0/M:N, alebo RELATIONSHIP M:N.
 !!! 16. Pri RELATIONSHIP 0/M:N a RELATIONSHIP M:N DEPENDENT ENTITY MN moze byt PRIMARY KEY COMPOSITE, tvoreny FOREIGN KEY PRINCIPAL ENTITY M a FOREIGN KEY PRINCIPAL ENTITY N. Takyto COMPOSITE PRIMARY KEY tvori FOREIGN KEYS do PRINCIPAL ENTITY M a PRINCIPAL ENTITY N.
+17. OWNED TYPE je C# CLASS, ktora moze byt ulozena do DB, aj ked nema definovany PRIMARY KEY. Pre OWNED TYPES platia nasledujuce fakty.
+   A. OWNED TYPES sa pouzivaju ak je treba ENTITY CLASS rozdelit na viacero mensich CLASSES, pretoze povodna ENTITY CLASS by mala prilis vela PROPERTIES, alebo sa OWNED TYPE pouziva viackrat v jednej ENTITY, alebo vo viacerich ENTITIES. Typickym prikladom OWNED CLASSES su napriklad CLASSES ukladajuce ADDRESS, ktore je treba pouzit vo viacerych rozlicnych ENTITIES a v kazdej maju rovnaku strukturu.
+   B. OWNED TYPE BY-DEFAULT nema PRIMARY KEY.
+   C. OWNED TYPE moze byt ulozeny do tej istej TABLE ako PARENT ENTITY, alebo do separatnej HIDDEN TABLE s ktorou ENTITY FRAMEWORK CORE na pozadi vytvori 0/1:1 RELATIONSHIP, alebo 0/1:N RELATIONSHIP.
+   D. OWNED TYPES mozu byt NESTED. To znamena, ze jeden OWNED TYPE moze obsahovat ine OWNED TYPES.
+   !!! E. OWNED TYPES su nacitavane AUTOMATICKY ENTITY FRAMEWORK CORE a preto sa na ich nacitanie NEMOZE pouzit LINQ OPERATOR [Include].
+   !!!!! F. PARENT ENTITY moze obsahovat aj COLLECTION OWNED TYPES. V takom pripade su instancie OWNED TYPES ulozene v separatnej TABLE, ktoru ENTITY FRAMEWORK vytvori. Takato TABLE ma svoj PRIMARY KEY a FOREIGN KEY do PARENT ENTITY TABLE.
+18. OWNED TYPES mozu byt v ENTITY FRAMEWORK CORE ukladane nasledujucimi sposobmi.
+   A. V rovnakej TABLE na ktoru je namapovana ENTITY, ktora vyuziva OWNED TYPE.
+   B. V nezavislej HIDDEN TABLE mimo TABLE do ktorej je mapovana ENTITY, ktora vyuziva OWNED TYPE. HIDDEN TABLE vytvara interne ENTITY FRAMEWORK CORE, ktory zaroven vytvori 0/1:1 RELATIONSHIP, alebo 0/1:N RELATIONSHIP s PARENT ENTITY TABLE.
+19. OWNED TYPE sa pomocou DATA ANNOTATIONS vytvara aplikovanim ATTRIBUTE [OwnedAttribute] na OWNED TYPE.
+20. OWNED TYPE sa pomocou FLUENT API pre RELATIONSHIP TYPE 1:1 sa vytvara nasledujucim sposobom.
+   A. V OWNER TYPE sa zavola METHOD [OwnedNavigationBuilder<TEntity,TRelatedEntity> EntityTypeBuilder<TEntity>.OwnsOne<TRelatedEntity>(Expression<Func<TEntity,TRelatedEntity>> NavigationExpression)], ktora v OWNER TYPE referuje na NAVIGATION PROPERTY na OWNED TYPE.
+   !!! B. Ak OWNED TYPE obsahuje REFERENCE PROPERTY na OWNER TYPE, zavola sa METHOD [OwnershipBuilder<TOwnerEntity,TDependentEntity> OwnedNavigationBuilder<TOwnerEntity,TDependentEntity>.WithOwner(Expression<Func<TDependentEntity,TOwnerEntity>> ReferenceExpression)], ktora v OWNED TYPE referuje na NAVIGATION PROPERTY na OWNER TYPE.
+   C. Zavola sa METHOD [OwnershipBuilder<TEntity,TDependentEntity> OwnershipBuilder<TEntity,TDependentEntity>.HasForeignKey(Expression<Func<TDependentEntity,object>> ForeignKeyExpression)], ktorym sa urci FOREIGN KEY na OWNED TYPE.
+   !!! D. Ak je OWNED TYPE ulozeny v separatnej TABLE, zavola sa METHOD [OwnedNavigationBuilder<TOwnerEntity,TDependentEntity> ToTable<TOwnerEntity,TDependentEntity>(this OwnedNavigationBuilder<TOwnerEntity,TDependentEntity> OwnedNavigationBuilder, string Name)].
+   !!! E. Ak je OWNED TYPE ukladany v separatnej TABLE, pre RELATIONSHIP TYPU 1:1 moze byt PRIMARY KEY OWNED TYPE zaroven aj FOREIGN KEY OWNED TYPE.
+21. OWNED TYPE sa pomocou FLUENT API pre RELATIONSHIP TYPE 1:N sa vytvara nasledujucim sposobom.
+   A. V OWNER TYPE sa zavola METHOD [OwnedNavigationBuilder<TEntity,TRelatedEntity> EntityTypeBuilder<TEntity,TRelatedEntity>.OwnsMany<TRelatedEntity>(Expression<Func<TEntity,IEnumerable<TRelatedEntity>>> NavigationExpression)], ktora v OWNER TYPE referuje na NAVIGATION PROPERTY na OWNED TYPE.
+   !!! B. Ak OWNED TYPE obsahuje REFERENCE PROPERTY na OWNER TYPE, zavola sa METHOD [OwnershipBuilder<TOwnerEntity,TDependentEntity> OwnedNavigationBuilder<TOwnerEntity,TDependentEntity>.WithOwner(Expression<Func<TDependentEntity,TOwnerEntity>> ReferenceExpression)], ktora v OWNED TYPE referuje na NAVIGATION PROPERTY na OWNER TYPE.
+   C. Zavola sa METHOD [OwnershipBuilder<TEntity,TDependentEntity> OwnershipBuilder<TEntity,TDependentEntity>.HasForeignKey(Expression<Func<TDependentEntity,object>> ForeignKeyExpression)], ktorym sa urci FOREIGN KEY na OWNED TYPE.
+   !!! D. Zavola sa METHOD [OwnedNavigationBuilder<TOwnerEntity,TDependentEntity> ToTable<TOwnerEntity,TDependentEntity>(this OwnedNavigationBuilder<TOwnerEntity, TDependentEntity> OwnedNavigationBuilder, string Name)], ktorym sa urci nazov TABLE v ktorej sa budu OWNED TYPES ukladat.
+   !!! E. Zavola sa METHOD [KeyBuilder<TDependentEntity> OwnedNavigationBuilder<TEntity,TDependentEntity>.HasKey(Expression<Func<TDependentEntity,Object?>> KeyExpression)], ktorym sa urci PRIMARY KEY PROPERTY na OWNED TYPE.
+   !!!!! F. Pri RELATIONSHIP TYPE 1:N sa MUSIA PRIMARY KEY PROPERTY a FOREIGN KEY PROPERTY lisit.
+22. Ak je OWNED TYPE ulozeny v tej istej TABLE ako PARENT ENTITY, platia nasledujuce fakty.
+   A. ENTITY FRAMEWORK CORE vytvori pre kazdy OWNED TYPE v PARENT ENTITY TABLE COLUMNS pre vsetky PROPERTIES OWNED TYPE. NAMING CONVENTION pre COLUMNS je [(PARENT_TYPE_PROPERTY_NAME)_(OWNED_TYPE_PROPERTY_NAME)], kde VALUE [PARENT_TYPE_PROPERTY_NAME] predstavuje nazov PROPERTY OWNED TYPE v PARENT ENTITY a VALUE [OWNED_TYPE_PROPERTY_NAME] predstavuje nazov PROPERTY OWNED TYPE.
+   !!! B. BY-DEFAULT su vsetky COLUMNS OWNED TYPE oznacene ako NULLABLE, vratane NON NULLABLE PRIMITIVE TYPES ci PROPERTIES oznacenych ako REQUIRED. Je to preto, lebo samotny OWNED TYPE je CLASS, ktory moze mat VALUE NULL. Ak ma VALUE NULL, potom VALUES vsetkych COLUMNS OWNED TYPE je nastavena na NULL a to je pre ENTITY FRAMEWORK CORE indikator, ze OWNED TYPE je NULL.
+   !!! C. OWNED ENTITY moze byt nastavena ako REQUIRED volanim METHOD [NavigationBuilder<TEntity,TNavigation> EntityTypeBuilder<TEntity>.Navigation<TNavigation>(Expression<Func<TEntity,TNavigation>> NavigationExpression)] a nasledne volanim METHOD [NavigationBuilder<TSource,TTarget> NavigationBuilder<TSource,TTarget>.IsRequired(bool Required)].
+   !!!!! D. Ak je OWNED ENTITY REQUIRED, tak pre NON-NULLABLE a REQUIRED PROPERTIES OWNED TYPE je su v DB TABLE vytvorene NON-NULL COLUMNS, kedze OWNED ENTITY NEMOZE nadobudat VALUE NULL.
+23. Ak je OWNED TYPE ulozeny v separatnej TABLE, platia nasledujuce fakty.
+   A. ENTITY FRAMEWORK CORE vytvori pre OWNED TYPE nezavislu TABLE, ktora ma vlastny PRIMARY KEY a FOREIGN KEY.
+   !!! B. Pre RELATIONSHIP TYPE 1:1 moze byt PRIMARY KEY a FOREIGN KEY v tej istej PROPERTY. 
+   !!! C. Pre RELATIONSHIP TYPE 1:N MUSIA byt PRIMARY KEY a FOREIGN KEY ulozene v ROZLICNYCH PROPERTIES.
+   D. COLUMNS OWNED TYPE TABLE su NON-NULLABLE, alebo NULLABLE, podla toho ako su definovane v OWNED TYPE. To znamena, ze nedochadza k zmene NULLABLITY DB COLUMNS ako je to v pripade OWNED TYPES ulozenych v PARENT ENTITY TABLE.
+   E. V pripade, ze OWNED TYPE je nastaveny na NULL, tak sa v DB TABLE OWNED TYPE nevytvori novy RECORD.
+   !!! F. OWNED TYPE TABLE NIE JE priamo pristupna cez DB CONTEXT. Je pristupna IBA pomocou PARENT ENTITY.
 //----------------------------------------------------------------------------------------------------------------------

@@ -135,15 +135,15 @@ namespace RelationalProperties
 		{
 			for(int Index=0;Index<Entities.Length;Index++)
 			{
-				CEntityManyToMany2MNFluentAPI					EntityM=Entities[Index];
-				string											EntityMText=EntityM.Print(Index+1);
+				CEntityManyToMany2MNFluentAPI					Entity=Entities[Index];
+				string											EntityText=Entity.Print(Index+1);
 							
 				if (Index>0)
 				{
 					CConsoleHelpers.WriteLineSeparator();
 				}
 
-				CConsoleHelpers.Write(EntityMText,ConsoleColor.Green);
+				CConsoleHelpers.Write(EntityText,ConsoleColor.Green);
 			}
 		}
 //----------------------------------------------------------------------------------------------------------------------

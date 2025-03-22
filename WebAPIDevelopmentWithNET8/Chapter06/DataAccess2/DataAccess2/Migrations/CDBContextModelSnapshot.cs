@@ -193,6 +193,118 @@ namespace DataAccess2.Migrations
                         });
                 });
 
+            modelBuilder.Entity("DataAccess2.CEntityOneToOneDependent", b =>
+                {
+                    b.Property<int>("EntityDependentID")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("EntityDependentValue")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("EntityPrincipalID")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("EntityDependentID");
+
+                    b.HasIndex("EntityPrincipalID")
+                        .IsUnique();
+
+                    b.ToTable("EntitiesOneToOneDependent", (string)null);
+
+                    b.HasData(
+                        new
+                        {
+                            EntityDependentID = 1,
+                            EntityDependentValue = "DEPENDENT 111",
+                            EntityPrincipalID = 1
+                        },
+                        new
+                        {
+                            EntityDependentID = 2,
+                            EntityDependentValue = "DEPENDENT 222",
+                            EntityPrincipalID = 2
+                        });
+                });
+
+            modelBuilder.Entity("DataAccess2.CEntityOneToOnePrincipal", b =>
+                {
+                    b.Property<int>("EntityPrincipalID")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("EntityPrincipalValue")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("EntityPrincipalID");
+
+                    b.ToTable("EntitiesOneToOnePrincipal", (string)null);
+
+                    b.HasData(
+                        new
+                        {
+                            EntityPrincipalID = 1,
+                            EntityPrincipalValue = "PRINCIPAL 111"
+                        },
+                        new
+                        {
+                            EntityPrincipalID = 2,
+                            EntityPrincipalValue = "PRINCIPAL 222"
+                        });
+                });
+
+            modelBuilder.Entity("DataAccess2.CEntityOwnedOneToManyPrincipal", b =>
+                {
+                    b.Property<int>("EntityPrincipalID")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("EntityPrincipalValue")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("EntityPrincipalID");
+
+                    b.ToTable("EntitiesOwnedOneToManyPrincipal", (string)null);
+
+                    b.HasData(
+                        new
+                        {
+                            EntityPrincipalID = 1,
+                            EntityPrincipalValue = "ENTITY PRINCIPAL 1"
+                        },
+                        new
+                        {
+                            EntityPrincipalID = 2,
+                            EntityPrincipalValue = "ENTITY PRINCIPAL 2"
+                        });
+                });
+
+            modelBuilder.Entity("DataAccess2.CEntityOwnedOneToOnePrincipal", b =>
+                {
+                    b.Property<int>("EntityPrincipalID")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("EntityPrincipalValue")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("EntityPrincipalID");
+
+                    b.ToTable("EntitiesOwnedOneToOnePrincipal", (string)null);
+
+                    b.HasData(
+                        new
+                        {
+                            EntityPrincipalID = 1,
+                            EntityPrincipalValue = "ENTITY PRINCIPAL 1"
+                        },
+                        new
+                        {
+                            EntityPrincipalID = 2,
+                            EntityPrincipalValue = "ENTITY PRINCIPAL 2"
+                        });
+                });
+
             modelBuilder.Entity("DataAccess2.CEntityManyToManyMN", b =>
                 {
                     b.HasOne("DataAccess2.CEntityManyToManyM", "EntityM")
@@ -223,6 +335,107 @@ namespace DataAccess2.Migrations
                     b.Navigation("EntityPrincipal");
                 });
 
+            modelBuilder.Entity("DataAccess2.CEntityOneToOneDependent", b =>
+                {
+                    b.HasOne("DataAccess2.CEntityOneToOnePrincipal", "EntityPrincipal")
+                        .WithOne("EntityDependent")
+                        .HasForeignKey("DataAccess2.CEntityOneToOneDependent", "EntityPrincipalID")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("EntityPrincipal");
+                });
+
+            modelBuilder.Entity("DataAccess2.CEntityOwnedOneToManyPrincipal", b =>
+                {
+                    b.OwnsMany("DataAccess2.CEntityOwnedOneToManyDependent", "EntitiesDependent", b1 =>
+                        {
+                            b1.Property<int>("EntityDependentID")
+                                .ValueGeneratedOnAdd()
+                                .HasColumnType("INTEGER");
+
+                            b1.Property<string>("EntityDependentValue")
+                                .HasColumnType("TEXT");
+
+                            b1.Property<int>("EntityPrincipalID")
+                                .HasColumnType("INTEGER");
+
+                            b1.HasKey("EntityDependentID");
+
+                            b1.HasIndex("EntityPrincipalID");
+
+                            b1.ToTable("EntitiesOwnedOneToManyDependent", (string)null);
+
+                            b1.WithOwner("EntityPrincipal")
+                                .HasForeignKey("EntityPrincipalID");
+
+                            b1.Navigation("EntityPrincipal");
+
+                            b1.HasData(
+                                new
+                                {
+                                    EntityDependentID = 1,
+                                    EntityDependentValue = "ENTITY DEPENDENT 11",
+                                    EntityPrincipalID = 1
+                                },
+                                new
+                                {
+                                    EntityDependentID = 2,
+                                    EntityDependentValue = "ENTITY DEPENDENT 12",
+                                    EntityPrincipalID = 1
+                                },
+                                new
+                                {
+                                    EntityDependentID = 3,
+                                    EntityDependentValue = "ENTITY DEPENDENT 21",
+                                    EntityPrincipalID = 2
+                                },
+                                new
+                                {
+                                    EntityDependentID = 4,
+                                    EntityDependentValue = "ENTITY DEPENDENT 22",
+                                    EntityPrincipalID = 2
+                                });
+                        });
+
+                    b.Navigation("EntitiesDependent");
+                });
+
+            modelBuilder.Entity("DataAccess2.CEntityOwnedOneToOnePrincipal", b =>
+                {
+                    b.OwnsOne("DataAccess2.CEntityOwnedOneToOneDependent", "EntityDependent", b1 =>
+                        {
+                            b1.Property<int>("EntityDependentID")
+                                .HasColumnType("INTEGER");
+
+                            b1.Property<string>("EntityDependentValue")
+                                .HasColumnType("TEXT");
+
+                            b1.HasKey("EntityDependentID");
+
+                            b1.ToTable("EntitiesOwnedOneToOneDependent", (string)null);
+
+                            b1.WithOwner("EntityPrincipal")
+                                .HasForeignKey("EntityDependentID");
+
+                            b1.Navigation("EntityPrincipal");
+
+                            b1.HasData(
+                                new
+                                {
+                                    EntityDependentID = 1,
+                                    EntityDependentValue = "ENTITY DEPENDENT 1"
+                                },
+                                new
+                                {
+                                    EntityDependentID = 2,
+                                    EntityDependentValue = "ENTITY DEPENDENT 2"
+                                });
+                        });
+
+                    b.Navigation("EntityDependent");
+                });
+
             modelBuilder.Entity("DataAccess2.CEntityManyToManyM", b =>
                 {
                     b.Navigation("EntitiesMN");
@@ -236,6 +449,11 @@ namespace DataAccess2.Migrations
             modelBuilder.Entity("DataAccess2.CEntityOneToManyPrincipal", b =>
                 {
                     b.Navigation("EntitiesDependent");
+                });
+
+            modelBuilder.Entity("DataAccess2.CEntityOneToOnePrincipal", b =>
+                {
+                    b.Navigation("EntityDependent");
                 });
 #pragma warning restore 612, 618
         }

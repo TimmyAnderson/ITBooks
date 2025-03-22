@@ -12,11 +12,15 @@ namespace DataAccess2
     public sealed class CDBContext : DbContext
     {
 //----------------------------------------------------------------------------------------------------------------------
+		private DbSet<CEntityOneToOnePrincipal>					MEntitiesOneToOnePrincipal;
+		private DbSet<CEntityOneToOneDependent>					MEntitiesOneToOneDependent;
 		private DbSet<CEntityOneToManyPrincipal>				MEntitiesOneToManyPrincipal;
 		private DbSet<CEntityOneToManyDependent>				MEntitiesOneToManyDependent;
 		private DbSet<CEntityManyToManyM>						MEntitiesManyToManyM;
 		private DbSet<CEntityManyToManyN>						MEntitiesManyToManyN;
 		private DbSet<CEntityManyToManyMN>						MEntitiesManyToManyMN;
+		private DbSet<CEntityOwnedOneToOnePrincipal>			MEntitiesOwnedOneToOnePrincipal;
+		private DbSet<CEntityOwnedOneToManyPrincipal>			MEntitiesOwnedOneToManyPrincipal;
 //----------------------------------------------------------------------------------------------------------------------
 //----------------------------------------------------------------------------------------------------------------------
 //----------------------------------------------------------------------------------------------------------------------
@@ -30,6 +34,30 @@ namespace DataAccess2
 		}
 //----------------------------------------------------------------------------------------------------------------------
 //----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+		public DbSet<CEntityOneToOnePrincipal>					EntitiesOneToOnePrincipal
+		{
+			get
+			{
+				return(MEntitiesOneToOnePrincipal);
+			}
+			set
+			{
+				MEntitiesOneToOnePrincipal=value;
+			}
+		}
+//----------------------------------------------------------------------------------------------------------------------
+		public DbSet<CEntityOneToOneDependent>					EntitiesOneToOneDependent
+		{
+			get
+			{
+				return(MEntitiesOneToOneDependent);
+			}
+			set
+			{
+				MEntitiesOneToOneDependent=value;
+			}
+		}
 //----------------------------------------------------------------------------------------------------------------------
 		public DbSet<CEntityOneToManyPrincipal>					EntitiesOneToManyPrincipal
 		{
@@ -91,7 +119,63 @@ namespace DataAccess2
 			}
 		}
 //----------------------------------------------------------------------------------------------------------------------
+		public DbSet<CEntityOwnedOneToOnePrincipal>				EntitiesOwnedOneToOnePrincipal
+		{
+			get
+			{
+				return(MEntitiesOwnedOneToOnePrincipal);
+			}
+			set
+			{
+				MEntitiesOwnedOneToOnePrincipal=value;
+			}
+		}
 //----------------------------------------------------------------------------------------------------------------------
+		public DbSet<CEntityOwnedOneToManyPrincipal>			EntitiesOwnedOneToManyPrincipal
+		{
+			get
+			{
+				return(MEntitiesOwnedOneToManyPrincipal);
+			}
+			set
+			{
+				MEntitiesOwnedOneToManyPrincipal=value;
+			}
+		}
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+		private void ConfigureEntityOneToOnePrincipal(ModelBuilder ModelBuilder)
+		{
+			EntityTypeBuilder<CEntityOneToOnePrincipal>			Entity=ModelBuilder.Entity<CEntityOneToOnePrincipal>();
+
+			Entity.ToTable("EntitiesOneToOnePrincipal");
+
+			Entity.HasKey(P => P.EntityPrincipalID);
+
+			// !!!!! RELATIONSHIP je CONFIGURED na PRINCIPAL ENTITY.
+
+			// !!!!! Vytvori sa LEFT SIDE RELATIONSHIP.
+			ReferenceNavigationBuilder<CEntityOneToOnePrincipal,CEntityOneToOneDependent>	LeftSide=Entity.HasOne(P => P.EntityDependent);
+
+			// !!!!! Vytvori sa RIGHT SIDE RELATIONSHIP.
+			ReferenceReferenceBuilder<CEntityOneToOnePrincipal,CEntityOneToOneDependent>	RightSide=LeftSide.WithOne(P => P.EntityPrincipal);
+
+			// !!!!! Vytvori sa FOREIGN KEY.
+			RightSide.HasForeignKey<CEntityOneToOneDependent>(P => P.EntityPrincipalID);
+
+			// !!!!! RELATIONSHIP je REQUIRED.
+			RightSide.IsRequired(true);
+		}
+//----------------------------------------------------------------------------------------------------------------------
+		private void ConfigureEntityOneToOneDependent(ModelBuilder ModelBuilder)
+		{
+			EntityTypeBuilder<CEntityOneToOneDependent>			Entity=ModelBuilder.Entity<CEntityOneToOneDependent>();
+
+			Entity.ToTable("EntitiesOneToOneDependent");
+
+			Entity.HasKey(P => P.EntityDependentID);
+		}
 //----------------------------------------------------------------------------------------------------------------------
 		private void ConfigureEntityOneToManyPrincipal(ModelBuilder ModelBuilder)
 		{
@@ -181,7 +265,84 @@ namespace DataAccess2
 			Entity.HasKey(P => P.EntityMNID);
 		}
 //----------------------------------------------------------------------------------------------------------------------
+		private void ConfigureEntityOwnedTypeOneToOnePrincipal(ModelBuilder ModelBuilder)
+		{
+			EntityTypeBuilder<CEntityOwnedOneToOnePrincipal>	Entity=ModelBuilder.Entity<CEntityOwnedOneToOnePrincipal>();
+
+			Entity.ToTable("EntitiesOwnedOneToOnePrincipal");
+
+			Entity.HasKey(P => P.EntityPrincipalID);
+
+			// !!!!! Vytvori sa LEFT SIDE RELATIONSHIP.
+			OwnedNavigationBuilder<CEntityOwnedOneToOnePrincipal,CEntityOwnedOneToOneDependent>	LeftSide=Entity.OwnsOne(P => P.EntityDependent);
+
+			// !!!!! Vytvori sa RIGHT SIDE RELATIONSHIP.
+			OwnershipBuilder<CEntityOwnedOneToOnePrincipal,CEntityOwnedOneToOneDependent>	RightSide=LeftSide.WithOwner(P => P.EntityPrincipal);
+
+			// !!!!! Vytvori sa FOREIGN KEY.
+			RightSide.HasForeignKey(P => P.EntityDependentID);
+		}
 //----------------------------------------------------------------------------------------------------------------------
+		private void ConfigureEntityOwnedTypeOneToOneDependent(ModelBuilder ModelBuilder)
+		{
+			EntityTypeBuilder<CEntityOwnedOneToOnePrincipal>	Entity=ModelBuilder.Entity<CEntityOwnedOneToOnePrincipal>();
+			
+			OwnedNavigationBuilder<CEntityOwnedOneToOnePrincipal,CEntityOwnedOneToOneDependent>	NavigationProperty=Entity.OwnsOne(P => P.EntityDependent);
+
+			// !!!!! OWNED TYPE bude v osobitnej TABLE.
+			NavigationProperty.ToTable("EntitiesOwnedOneToOneDependent");
+		}
+//----------------------------------------------------------------------------------------------------------------------
+		private void ConfigureEntityOwnedTypeOneToManyPrincipal(ModelBuilder ModelBuilder)
+		{
+			EntityTypeBuilder<CEntityOwnedOneToManyPrincipal>	Entity=ModelBuilder.Entity<CEntityOwnedOneToManyPrincipal>();
+
+			Entity.ToTable("EntitiesOwnedOneToManyPrincipal");
+
+			Entity.HasKey(P => P.EntityPrincipalID);
+
+			// !!!!! Vytvori sa LEFT SIDE RELATIONSHIP.
+			OwnedNavigationBuilder<CEntityOwnedOneToManyPrincipal,CEntityOwnedOneToManyDependent>	LeftSide=Entity.OwnsMany(P => P.EntitiesDependent);
+
+			// !!!!! Vytvori sa RIGHT SIDE RELATIONSHIP.
+			OwnershipBuilder<CEntityOwnedOneToManyPrincipal,CEntityOwnedOneToManyDependent>	RightSide=LeftSide.WithOwner(P => P.EntityPrincipal);
+
+			// !!!!! Vytvori sa FOREIGN KEY.
+			RightSide.HasForeignKey(P => P.EntityPrincipalID);
+		}
+//----------------------------------------------------------------------------------------------------------------------
+		private void ConfigureEntityOwnedTypeOneToManyDependent(ModelBuilder ModelBuilder)
+		{
+			EntityTypeBuilder<CEntityOwnedOneToManyPrincipal>	Entity=ModelBuilder.Entity<CEntityOwnedOneToManyPrincipal>();
+			
+			OwnedNavigationBuilder<CEntityOwnedOneToManyPrincipal,CEntityOwnedOneToManyDependent>	NavigationProperty=Entity.OwnsMany(P => P.EntitiesDependent);
+
+			NavigationProperty.HasKey(P => P.EntityDependentID);
+
+			// !!!!! OWNED TYPE bude v osobitnej TABLE.
+			NavigationProperty.ToTable("EntitiesOwnedOneToManyDependent");
+		}
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+		private void FillDataOneToOne(ModelBuilder ModelBuilder)
+		{
+			CEntityOneToOnePrincipal							EntityOneToOnePrincipal1=new CEntityOneToOnePrincipal(1,"PRINCIPAL 111");
+			CEntityOneToOnePrincipal							EntityOneToOnePrincipal2=new CEntityOneToOnePrincipal(2,"PRINCIPAL 222");
+
+			EntityTypeBuilder<CEntityOneToOnePrincipal>			EntityPrincipal=ModelBuilder.Entity<CEntityOneToOnePrincipal>();
+
+			EntityPrincipal.HasData(EntityOneToOnePrincipal1);
+			EntityPrincipal.HasData(EntityOneToOnePrincipal2);
+
+			CEntityOneToOneDependent							EntityOneToOneDependent11=new CEntityOneToOneDependent(1,"DEPENDENT 111",EntityOneToOnePrincipal1.EntityPrincipalID);
+			CEntityOneToOneDependent							EntityOneToOneDependent12=new CEntityOneToOneDependent(2,"DEPENDENT 222",EntityOneToOnePrincipal2.EntityPrincipalID);
+
+			EntityTypeBuilder<CEntityOneToOneDependent>			EntityDependent=ModelBuilder.Entity<CEntityOneToOneDependent>();
+
+			EntityDependent.HasData(EntityOneToOneDependent11);
+			EntityDependent.HasData(EntityOneToOneDependent12);
+		}
 //----------------------------------------------------------------------------------------------------------------------
 		private void FillDataOneToMany(ModelBuilder ModelBuilder)
 		{
@@ -237,10 +398,55 @@ namespace DataAccess2
 			EntityManyToManyNN.HasData(EntityManyToManyMN22);
 		}
 //----------------------------------------------------------------------------------------------------------------------
+		private void FillDataOwnedTypeOneToOne(ModelBuilder ModelBuilder)
+		{
+			CEntityOwnedOneToOnePrincipal						EntityOneToOnePrincipal1=new CEntityOwnedOneToOnePrincipal(1,"ENTITY PRINCIPAL 1");
+			CEntityOwnedOneToOnePrincipal						EntityOneToOnePrincipal2=new CEntityOwnedOneToOnePrincipal(2,"ENTITY PRINCIPAL 2");
+
+			CEntityOwnedOneToOneDependent						EntityOneToOneDependent1=new CEntityOwnedOneToOneDependent(EntityOneToOnePrincipal1.EntityPrincipalID,"ENTITY DEPENDENT 1");
+			CEntityOwnedOneToOneDependent						EntityOneToOneDependent2=new CEntityOwnedOneToOneDependent(EntityOneToOnePrincipal2.EntityPrincipalID,"ENTITY DEPENDENT 2");
+
+			EntityTypeBuilder<CEntityOwnedOneToOnePrincipal>	Entity=ModelBuilder.Entity<CEntityOwnedOneToOnePrincipal>();
+
+			Entity.HasData(EntityOneToOnePrincipal1);
+			Entity.HasData(EntityOneToOnePrincipal2);
+
+			OwnedNavigationBuilder<CEntityOwnedOneToOnePrincipal,CEntityOwnedOneToOneDependent>	Property=Entity.OwnsOne(P => P.EntityDependent);
+
+			Property.HasData(EntityOneToOneDependent1);
+			Property.HasData(EntityOneToOneDependent2);
+		}
+//----------------------------------------------------------------------------------------------------------------------
+		private void FillDataOwnedTypeOneToMany(ModelBuilder ModelBuilder)
+		{
+			CEntityOwnedOneToManyPrincipal						EntityOneToManyPrincipal1=new CEntityOwnedOneToManyPrincipal(1,"ENTITY PRINCIPAL 1");
+			CEntityOwnedOneToManyPrincipal						EntityOneToManyPrincipal2=new CEntityOwnedOneToManyPrincipal(2,"ENTITY PRINCIPAL 2");
+
+			CEntityOwnedOneToManyDependent						EntityOneToManyDependent11=new CEntityOwnedOneToManyDependent(1,"ENTITY DEPENDENT 11",EntityOneToManyPrincipal1.EntityPrincipalID);
+			CEntityOwnedOneToManyDependent						EntityOneToManyDependent12=new CEntityOwnedOneToManyDependent(2,"ENTITY DEPENDENT 12",EntityOneToManyPrincipal1.EntityPrincipalID);
+			CEntityOwnedOneToManyDependent						EntityOneToManyDependent21=new CEntityOwnedOneToManyDependent(3,"ENTITY DEPENDENT 21",EntityOneToManyPrincipal2.EntityPrincipalID);
+			CEntityOwnedOneToManyDependent						EntityOneToManyDependent22=new CEntityOwnedOneToManyDependent(4,"ENTITY DEPENDENT 22",EntityOneToManyPrincipal2.EntityPrincipalID);
+
+			EntityTypeBuilder<CEntityOwnedOneToManyPrincipal>	Entity=ModelBuilder.Entity<CEntityOwnedOneToManyPrincipal>();
+
+			Entity.HasData(EntityOneToManyPrincipal1);
+			Entity.HasData(EntityOneToManyPrincipal2);
+
+			OwnedNavigationBuilder<CEntityOwnedOneToManyPrincipal,CEntityOwnedOneToManyDependent>	Property=Entity.OwnsMany(P => P.EntitiesDependent);
+
+			Property.HasData(EntityOneToManyDependent11);
+			Property.HasData(EntityOneToManyDependent12);
+			Property.HasData(EntityOneToManyDependent21);
+			Property.HasData(EntityOneToManyDependent22);
+		}
+//----------------------------------------------------------------------------------------------------------------------
 //----------------------------------------------------------------------------------------------------------------------
 //----------------------------------------------------------------------------------------------------------------------
 		protected override void OnModelCreating(ModelBuilder ModelBuilder)
 		{
+			ConfigureEntityOneToOnePrincipal(ModelBuilder);
+			ConfigureEntityOneToOneDependent(ModelBuilder);
+
 			ConfigureEntityOneToManyPrincipal(ModelBuilder);
 			ConfigureEntityOneToManyDependent(ModelBuilder);
 
@@ -248,8 +454,17 @@ namespace DataAccess2
 			ConfigureEntityManyToManyN(ModelBuilder);
 			ConfigureEntityManyToManyMN(ModelBuilder);
 
+			ConfigureEntityOwnedTypeOneToOnePrincipal(ModelBuilder);
+			ConfigureEntityOwnedTypeOneToOneDependent(ModelBuilder);
+
+			ConfigureEntityOwnedTypeOneToManyPrincipal(ModelBuilder);
+			ConfigureEntityOwnedTypeOneToManyDependent(ModelBuilder);
+
+			FillDataOneToOne(ModelBuilder);
 			FillDataOneToMany(ModelBuilder);
 			FillDataManyToMany(ModelBuilder);
+			FillDataOwnedTypeOneToOne(ModelBuilder);
+			FillDataOwnedTypeOneToMany(ModelBuilder);
 		}
 //----------------------------------------------------------------------------------------------------------------------
     }
