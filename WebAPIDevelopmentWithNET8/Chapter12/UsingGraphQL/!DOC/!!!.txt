@@ -1,0 +1,208 @@
+//----------------------------------------------------------------------------------------------------------------------
+1. Solution demonstruje pouzitie GraphQL FRAMEWORK.
+2. Pre GraphQL FRAMEWORK platia nasledujuce fakty.
+   A. GraphQL FRAMEWORK umoznuje vycitavanie iba tych dat zo SERVER SIDE, ktore CLIENT SIDE vyzaduje.
+   B. V GraphQL FRAMEWORK CLIENT SIDE definuje v QUERY zoznam dat, vratane RELATIONSHIPS, ktore vyzaduje a SERVER SIDE vrati iba tieto pozadovane data.
+   C. GraphQL FRAMEWORK umoznuje aj modifikaciu dat, ktora sa nazyva MUTATIONS.
+3. Pre API, ktore vystavuju PROGRAMS pouzivajuce GraphQL FRAMEWORK platia nasledujuce fakty.
+   A. PROGRAMS spravidla vystavuju iba 1 ENDPOINT na DEFAULT ADDRESS [/graphql].
+   B. ENDPOINT je popisany pomocou GraphQL SCHEMA DEFINITION LANGUAGE.
+   C. GraphQL SCHEMA popisuje ake QUERIES a MUTATIONS je mozne zaslat na dany API ENDPOINT. To znamena, ze GraphQL SCHEMA DEFINITION LANGUAGE popisuje strukturu dat a OPERATIONS, ktore je mozne nad danymi datami vykonat.
+   D. CLIENT moze pouzit GraphQL SCHEMA na validaciu zaslanych OPERATIONS (QUERIES a MUTATIONS).
+   E. GraphQL FRAMEWORK pracuje s datami pomocou RESOLVERS, ktore su implementovane nad jednotlivych DATA SOURCES.
+!!! 4. GraphQL FRAMEWORK nema MICROSOFT implementaciu v .NET. Najcastejsie sa pouziva LIBRARY [HotChocolate].
+5. HOT CHOCOLATE LIBRARY je implementovana v PACKAGE [HotChocolate.AspNetCore].
+6. GraphQL SERVICES sa pridavaju do DEPENDENCY INJECTION CONTAINER volanim METHOD [IRequestExecutorBuilder AddGraphQLServer(IServiceCollection Services, string SchemaName, int MaxAllowedRequestSize, bool DisableDefaultSecurity)].
+7. GraphQL QUERY sa pridava volanim METHOD [IRequestExecutorBuilder AddQueryType<TQuery>(IRequestExecutorBuilder Builder)].
+8. GraphQL ENDPOINT sa pridava do ASP.NET CORE volanim METHOD [GraphQLEndpointConventionBuilder MapGraphQL(this IEndpointRouteBuilder endpointRouteBuilder, string Path, string SchemaName)].
+9. WEB BROSER pri QUERY na URL [/graphql] zobrazuje HOT CHOCOLATE TEST PAGE na ktorej je mozne vykonavat OPERATIONS.
+10. GraphQL MUTATIONS reprezentuju CREATE, UPDATE a DELETE OPERATIONS. MUTATIONS pozastavaju z nasledujucich casti.
+   A. INPUT. INPUT je CLASS, ktora obsahuje INPUT DATA vstupujuce do MUTATION. BY-CONVENTION INPUT CLASSES maju POSTFIX [Input].
+   B. PAYLOAD. PAYLOAD je CLASS, ktora obsahuje OUTPUT DATA, ktore vracia MUTATION. BY-CONVENTION PAYLOAD CLASSES maju POSTFIX [Payload].
+   C. MUTATION. MUTATION je OPERATION vykonavana nad datami. BY-CONVENTION MUTATION ma NAME [VERB+NOUN].
+11. GraphQL MUTATION ENDPOINTS sa pridavaju volanim METHOD [IRequestExecutorBuilder AddMutationType<TMutation>(this IRequestExecutorBuilder Builder)].
+12. Pre citanie dat, ktore sa nachadzaju v RELATIONSHIPS sa pouzivaju RESOLVERS. Pre RESOLVERS platia nasledujuce fakty.
+   A. RESOLVER umoznuje nacitat RELATED DATA pre dany FIELD, ak QUERY obsahuje poziadavku na nacitanie RELATED DATA z daneho FIELD.
+   B. RESOLVER sa spusti, ked su data nacitavane pre dany FIELD PARENT OBJECT.
+   C. RESOLVER moze citat DATA z rozlicnych SOURCES, ako su DATABASES, WEB API, alebo .NET OBJECTS.
+   !!! D. RESOLVERS umoznuju nevykonavat zbytocne citanie RELATED DATA, ak ich QUERY nepozadovala.
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+Popis GraphQL SCHEMA DEFINITION LANGUAGE.
+
+1. TYPE sa definuje pomocou SYNTAX [type TYPE_NAME{BODY}], kde VALUE [TYPE_NAME] je nazov TYPE a VALUE [BODY] obsahuje definiciu daneho TYPE.
+2. TYPE FIELD sa definuje pomocou SYNTAX [FIELD_NAME: FIELD_TYPE], kde VALUE [FIELD_NAME] je nazov FIELD a VALUE [FIELD_TYPE] je TYPE daneho FIELD.
+3. Pre TYPES platia nasledujuce fakty.
+   A. GraphQL definuje zoznam PRIMITIVE TYPES.
+   B. TYPES su BY-DEFAULT NULLABLE.
+   C. TYPES je mozne definovat ako NON-NULLABLE pomocou SYNTAX [TYPE_NAME!], kde VALUE [TYPE_NAME] je nazov TYPE.
+   !!! D. ARRAYS su definovane pomocou SYNTAX [[TYPE_NAME]], kde VALUE [TYPE_NAME] je nazov TYPE.
+   !!! E. ARRAY TYPES je mozne definovat ako NON-NULLABLE pomocou SYNTAX [[TYPE_NAME]!], kde VALUE [TYPE_NAME] je nazov TYPE.
+4. GraphQL SCHEMA DEFINITION LANGUAGE podporuje nasledujuce PRIMITIVE TYPES.
+   A. TYPE [Int].
+   B. TYPE [Float].
+   C. TYPE [String].
+   D. TYPE [Boolean].
+   E. TYPE [ID]. TYPE reprezentuje unikatny IDENTIFIER, ktory je type STRING.
+   F. TYPE [Byte].
+   G. TYPE [ByteArray]. TYPE reprezentuje BYTE ARRAY zakodovany v BASE-64.
+   H. TYPE [Short].
+   I. TYPE [Long].
+   J. TYPE [Decimal].
+   K. TYPE [Date].
+   L. TYPE [TimeSpan].
+   M. TYPE [DateTime].
+   N. TYPE [Url].
+   O. TYPE [Uuid]. TYPE reprezentuje GUID.
+   P. TYPE [Any]. TYPE reprezentuje lubovolny TYPE.
+5. ENUM TYPE sa definuje pomocou SYNTAX [enum TYPE_NAME{BODY}], kde VALUE [TYPE_NAME] je nazov ENUM TYPE a VALUE [BODY] obsahuje definiciu daneho ENUM TYPE.
+6. ENUM TYPE FIELD sa definuje pomocou SYNTAX [FIELD_NAME], kde VALUE [FIELD_NAME] je nazov ENUM TYPE FIELD.
+7. INPUT TYPE sa definuje pomocou SYNTAX [input TYPE_NAME{BODY}], kde VALUE [TYPE_NAME] je nazov INPUT TYPE a VALUE [BODY] obsahuje definiciu daneho INPUT TYPE.
+!!!!! 8. GraphQL SCHEMA podporuje specialny QUERY TYPE obsahujuci zoznam vsetkych QUERIES. Platia nasledujuce fakty.
+   A. QUERY TYPE je definovany pomocou SYNTAX [type TYPE_NAME{BODY}], kde VALUE [TYPE_NAME] je nazov QUERY TYPE a VALUE [BODY] obsahuje definiciu daneho QUERY TYPE.
+   B. QUERY TYPE obsahuje zoznam QUERY OPERATIONS, ktore umoznuje vykonavat.
+   C. QUERY TYPE OPERATION sa definuje pomocou SYNTAX [OPERATION_NAME(OPERATION_PARAMETERS):OPERATION_RETURN_TYPE], kde VALUE [OPERATION_NAME] je nazov OPERATIONS, VALUE [OPERATION_PARAMETERS] je zoznam PARAMETERS danej OPERATION a VALUE [OPERATION_RETURN_TYPE] je nazov OPERATION RETURN TYPE.
+   D. V SCHEMA sa moze nachadza IBA 1 QUERY TYPE.
+   E. Nazov QUERY TYPE je zaradeny v GraphQL SCHEMA v OBJECT [schema] v PROPERTY [query].
+!!!!! 9. GraphQL SCHEMA podporuje specialny MUTATION TYPE obsahujuci zoznam vsetkych MUTATIONS. Platia nasledujuce fakty.
+   A. MUTATION TYPE je definovany pomocou SYNTAX [type TYPE_NAME{BODY}], kde VALUE [TYPE_NAME] je nazov MUTATION TYPE a VALUE [BODY] obsahuje definiciu daneho MUTATION TYPE.
+   B. MUTATION TYPE obsahuje zoznam MUTATION OPERATIONS, ktore umoznuje vykonavat.
+   C. MUTATION TYPE OPERATION sa definuje pomocou SYNTAX [OPERATION_NAME(OPERATION_PARAMETERS):OPERATION_RETURN_TYPE], kde VALUE [OPERATION_NAME] je nazov OPERATIONS, VALUE [OPERATION_PARAMETERS] je zoznam PARAMETERS danej OPERATION a VALUE [OPERATION_RETURN_TYPE] je nazov OPERATION RETURN TYPE.
+   D. V SCHEMA sa moze nachadza IBA 1 MUTATION TYPE.
+   E. Nazov MUTATION TYPE je zaradeny v GraphQL SCHEMA v OBJECT [schema] v PROPERTY [mutation].
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+Priklady GraphQL OPERATIONS.
+
+1. Nacitanie vsetkych NAMES.
+   A. Nacitanie vsetkych NAMES ma nasledujucu SYNTAX.
+					query MyQuery
+					{
+						myNames
+						{
+							id
+							firstName
+							lastName
+							age
+							sex
+						}
+					}
+   B. VALUE [myNames] je nazov QUERY OPERATION v CAMEL CASE.
+   C. RESPONSE TYPE je definovany na konci QUERY pomocou SYNTAX [{id firstName lastName age sex}].
+2. Nacitanie jedneho NAME.
+   A. Nacitanie jedneho NAME ma nasledujucu SYNTAX.
+					query GetName
+					{
+						myName(id:1)
+						{
+							id
+							firstName
+							lastName
+							age
+							sex
+						}
+					}
+   B. VALUE [myName] je nazov QUERY OPERATION v CAMEL CASE.
+   C. VALUE [id] je nazov PARAMETER v QUERY OPERATION v CAMEL CASE.
+   D. VALUE [1] je VALUE PARAMETER v QUERY OPERATION.
+   E. RESPONSE TYPE je definovany na konci QUERY pomocou SYNTAX [{id firstName lastName age sex}].
+3. Nacitanie jedneho NAME s vyuzitim PARAMETERS.
+   A. Nacitanie jedneho NAME s vyuzitim PARAMETERS ma nasledujucu SYNTAX.
+					query GetNameWithParameters($MyId: Int!)
+					{
+						myName(id: $MyId)
+						{
+							id
+							firstName
+							lastName
+							age
+							sex
+						}
+					}
+   B. PARAMETERS sa definuju pomocou nasledujucej SYNTAX.
+					"variables":
+					{
+						"MyId": 2
+					}
+   C. Cela QUERY ma nasledujucu SYNTAX.
+					{"query":
+						"query GetNameWithParameters($MyId: Int!)
+						{
+							myName(id: $MyId)
+							{
+								id
+								firstName
+								lastName
+								age
+								sex
+							}
+						}",
+						"variables":
+						{
+							"MyId":1
+						}
+					}
+   D. PARAMETERS sa definuju v QUERY pomocou SYNTAX [($PARAMETER_NAME: PARAMETER_TYPE)], kde VALUE [PARAMETER_NAME] je nazov PARAMETER a VALUE [PARAMETER_TYPE] je TYPE daneho PARAMETER.
+   E. PARAMETERS sa v QUERY pouzivaju pomocou SYNTAX [$PARAMETER_NAME], kde VALUE [PARAMETER_NAME] je nazov PARAMETER.
+   F. RESPONSE TYPE je definovany na konci QUERY pomocou SYNTAX [{id firstName lastName age sex}].
+4. Pridanie noveho NAME.
+   A. Pridanie noveho NAME ma nasledujucu SYNTAX.
+					mutation MyMutation
+					{
+						myAddName(myInput:
+						{
+							firstName: "{{FirstName}}", 
+							lastName: "{{LastName}}", 
+							age: {{Age}}, 
+							sex: {{Sex}} 
+						})
+						{
+							id
+							firstName
+							lastName
+							age
+							sex
+						}
+					}
+   B. VALUE [myAddName] je nazov MUTATION OPERATION v CAMEL CASE.
+   C. VALUE [myInput] je nazov PARAMETER v MUTATION OPERATION v CAMEL CASE.
+   D. RESPONSE TYPE je definovany na konci MUTATION pomocou SYNTAX [{id firstName lastName age sex}].
+5. Nacitanie vsetkych OBJECTS, ktore su v RELATIONSHIP 1:1.
+   A. Nacitanie vsetkych OBJECTS, ktore su v RELATIONSHIP 1:1 ma nasledujucu SYNTAX.
+					query GetRelations11
+					{
+						myRelations11
+						{
+							valueParent1
+							valueParent2
+							valueChild
+							{
+								valueChild1
+								valueChild2
+							}
+						}
+					}				
+   B. VALUE [myRelations11] je nazov QUERY OPERATION v CAMEL CASE.
+   C. RESPONSE TYPE je definovany na konci QUERY pomocou SYNTAX [{valueParent1 valueParent2 valueChild{valueChild1 valueChild2}}].
+   !!! D. RESPONSE TYPE ma PARENT TYPE, ktory je v RELATIONSHIP 1:1 k CHILD TYPE pomocou PROPERTY [valueChild].
+6. Nacitanie vsetkych OBJECTS, ktore su v RELATIONSHIP 1:N.
+   A. Nacitanie vsetkych OBJECTS, ktore su v RELATIONSHIP 1:N ma nasledujucu SYNTAX.
+					query GetRelations1N
+					{
+						myRelations1N
+						{
+							valueParent1
+							valueParent2
+							valueChildren
+							{
+								valueChild1
+								valueChild2
+							}
+						}
+					}				
+   B. VALUE [myRelations1N] je nazov QUERY OPERATION v CAMEL CASE.
+   C. RESPONSE TYPE je definovany na konci QUERY pomocou SYNTAX [{valueParent1 valueParent2 valueChildren{valueChild1 valueChild2}}].
+   !!! D. RESPONSE TYPE ma PARENT TYPE, ktory je v RELATIONSHIP 1:N k CHILD TYPE pomocou PROPERTY [valueChildren].
+//----------------------------------------------------------------------------------------------------------------------
