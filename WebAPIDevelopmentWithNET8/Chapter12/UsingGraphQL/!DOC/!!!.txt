@@ -26,6 +26,72 @@
    B. RESOLVER sa spusti, ked su data nacitavane pre dany FIELD PARENT OBJECT.
    C. RESOLVER moze citat DATA z rozlicnych SOURCES, ako su DATABASES, WEB API, alebo .NET OBJECTS.
    !!! D. RESOLVERS umoznuju nevykonavat zbytocne citanie RELATED DATA, ak ich QUERY nepozadovala.
+13. HOT CHOCOLATE LIBRARY umoznuje definovat GraphQL SCHEMAS nasledujucimi sposobmi.
+   A. BY-CONVENTIONS.
+   B. CODE FIRST.
+   C. SCHEMA FIRST.
+14. Pre definovanie GraphQL SCHEMA pomocou BY-CONVENTIONS platia nasledujuce fakty.
+   A. Pri BY-CONVENTIONS HOT CHOCOLATE LIBRARY konvertuje PUBLIC PROPERTIES a PUBLIC METHODS na RESOLVER CLASS, ktory ziskava data volanim tychto PUBLIC METHODS.
+   B. Ak maju PUBLIC METHODS PREFIX [Get], alebo POSTFIX [Async], tak tieto su odstranene z NAME pri generovani RESOLVER CLASS.
+15. Pre definovanie GraphQL SCHEMA pomocou CODE FIRST platia nasledujuce fakty.
+   A. CODE FIRST vyuziva FLUENT API pomocou ktoreho sa definuje GraphQL SCHEMA.
+   B. FLUENT API umoznuje maximalnu uroven CUSTOMIZATION.
+16. Pre definovanie GraphQL SCHEMA pomocou SCHEMA FIRST platia nasledujuce fakty.
+   A. SCHEMA sa definuje priamym vytvorenim GraphQL SCHEMA.
+   B. HOT CHOCOLATE LIBRARY pouzije GraphQL SCHEMA na vygenerovanie zodpovedajucich .NET CLASSES.
+17. FLUENT API pouziva na definovanie GraphQL SCHEMA nasledujuce typy OBJECTS.
+   A. RUNTIME OBJECTS. RUNTIME OBJECT je OBJECT, ktory je vrateny v QUERIES.
+   B. OBJECT TYPES. OBJECT TYPE umoznuje pomocou FLUENT API nakonfigurovat sposob akym sa bude pristupovat k RUNTIME TYPES prostrednictvom QUERIES.
+   C. RESOLVER TYPES. RESOLVER TYPE je TYPE, ktory obsahuje RESOLVERS, ktore nacitavaju DEPENDENT RUNTIME OBJECTS pre dany PRINCIPAL RUNTIME OBJECT FIELD.
+18. Vo FLUENT API sa GraphQL SCHEMA definuje pomocou OBJECT TYPES. Platia nasledujuce fakty.
+   !!!!! A. Ulohou OBJECT TYPE je nakonfigurovat zodpovedajuci RUNTIME TYPE. RUNTIME TYPE je TYPE, ktory GraphQL vracia ako RESPONSE vo svojch QUERIES.
+   B. OBJECT TYPE je CLASS, ktora je dedena z CLASS [ObjectType<TType>], kde TYPE [TType] je RUNTIME TYPE, ktory sa konfiguruje.
+   C. CLASS [ObjectType<TType>] definuje VIRTUAL METHOD [void ObjectType<TType>.Configure(IObjectTypeDescriptor<TType> Descriptor)], ktora umoznuje pouzitim FLUENT API nakonfigurovat dany OBJECT TYPE.
+   !!! D. INTERFACE OBJECT [IObjectTypeDescriptor<TType>] zaslany ako PARAMETER [Descriptor] do METHOD [void ObjectType<TType>.Configure(IObjectTypeDescriptor<TType> Descriptor)] sa pouziva na nakonfigurovanie daneho OBJECT TYPE.
+   !!!!! E. OBJECT TYPE sa definuje ako pre DATA TYPES, ktore tvoria obsah QUERIES a MUTATIONS, tak aj pre QUERY TYPE a MUTATION TYPE.
+19. INTERFACE [IObjectTypeDescriptor<TRuntimeType>] umoznuje pomocou FLUENT API nakonfigurovat RUNTIME OBJECT. Platia nasledujuce fakty.
+   A. TYPE PARAMETER [TRuntimeType] reprezentuje RUNTIME OBJECT, ktory ma byt nakonfigurovany. Nie je to teda OBJECT TYPE, ale realny OBJECT, ktory vracia GraphQL.
+   B. METHOD [IObjectTypeDescriptor<TRuntimeType> Name(string Value)] nastavuje NAME RUNTIME OBJECT. Tento NAME sa pouziva v GraphQL OPERATIONS.
+   C. METHOD [IObjectTypeDescriptor<TRuntimeType> Description(string Value)] nastavuje DESCRIPTION RUNTIME OBJECT.
+   !!! D. METHOD [IObjectFieldDescriptor Field(Expression<Func<TRuntimeType,object>> PropertyOrMethod)] vracia DESCRIPTOR OBJECT pre FIELD daneho RUNTIME OBJECT. DESCRIPTOR OBJECT TYPE [IObjectFieldDescriptor] umoznuje dalej nakonfigurovat dany FIELD.
+20. INTERFACE [IObjectFieldDescriptor] umoznuje pomocou FLUENT API nakonfigurovat FIELD RUNTIME OBJECT. Platia nasledujuce fakty.
+   A. METHOD [IObjectFieldDescriptor Name(string Value)] nastavuje FIELD NAME RUNTIME OBJECT. FIELD NAME sa pouziva v GraphQL OPERATIONS.
+   B. METHOD [IObjectFieldDescriptor Description(string Value)] nastavuje DESCRIPTION FIELD RUNTIME OBJECT.
+   !!!!! C. METHOD [IObjectFieldDescriptor Type<TOutputType>()] umoznuje nastavit OBJECT TYPE, ktory sa pouzije na nakonfigurovanie TYPE daneho FIELD. Typicky sa pouziva vtedy, ak FIELD je CUSTOM TYPE, ktory je treba dalej nakonfigurovat.
+   !!! D. EXTENSION METHOD [IObjectFieldDescriptor Resolve<TResult>(this IObjectFieldDescriptor Descriptor, Func<IResolverContext,TResult> Resolver)] umoznuje nastavit RESOLVER DELEGATE pre SYNCHRONOUS METHODS, ktory umoznuje pre dany FIELD nacitat data, ak bol FIELD pozadovany v QUERY.
+   !!! E. EXTENSION METHOD [IObjectFieldDescriptor Resolve<TResult>(this IObjectFieldDescriptor Descriptor, Func<IResolverContext,Task<TResult>> Resolver)] umoznuje nastavit RESOLVER DELEGATE pre ASYNCHRONOUS METHODS, ktory umoznuje pre dany FIELD nacitat data, ak bol FIELD pozadovany v QUERY.
+   !!! F. METHOD [IObjectFieldDescriptor ResolveWith<TResolver>(Expression<Func<TResolver,object>> PropertyOrMethod)] umoznuje nastavit RESOLVER OBJECT, ktory umoznuje pre dany FIELD nacitat data, ak bol FIELD pozadovany v QUERY.
+21. HOT CHOCOLATE LIBRARY definuje mnozinu STANDARD OBJECT TYPES, ktore obsahuju konfiguracie pre PRIMITIVE RUNTIME TYPES ci ine dolezite STANDARD RUNTIME TYPES. Platia nasledujuce fakty.
+   A. STANDARD OBJECT TYPES su definovane v NAMESPACE [HotChocolate.Types].
+   !!! B. STANDARD OBJECT TYPES sa pouzivaju vo FLUENT API na definovane OBJECT TYPES pre PRIMITIVE RUNTIME TYPES ci ine dolezite STANDARD RUNTIME TYPES.
+   C. Medzi STANDARD OBJECT TYPES patria nasledujuce TYPES.
+      A. TYPE [IntType] je OBJECT TYPE pre RUNTIME TYPE [int].
+      B. TYPE [LongType] je OBJECT TYPE pre RUNTIME TYPE [long].
+      C. TYPE [ShortType] je OBJECT TYPE pre RUNTIME TYPE [short].
+      D. TYPE [ByteType] je OBJECT TYPE pre RUNTIME TYPE [byte].
+      E. TYPE [FloatType] je OBJECT TYPE pre RUNTIME TYPE [double].
+      F. TYPE [BooleanType] je OBJECT TYPE pre RUNTIME TYPE [bool].
+      !!! G. TYPE [ListType<TObjectType>] je OBJECT TYPE pre TYPE [List<TType>]. TYPE PARAMETER [TObjectType] MUSI byt OBJECT TYPE, a NIE RUNTIME TYPE.
+      !!! H. TYPE [NonNullType<TObjectType>] je OBJECT TYPE pre NON NULLABLE TYPE [TType]. TYPE PARAMETER [TObjectType] MUSI byt OBJECT TYPE, a NIE RUNTIME TYPE.
+      I. TYPE [UuidType] je OBJECT TYPE pre RUNTIME TYPE [Guid].
+      J. TYPE [UrlType] je OBJECT TYPE pre RUNTIME TYPE [Uri].
+      K. TYPE [StringType] je OBJECT TYPE pre RUNTIME TYPE [String].
+      L. TYPE [EnumType] je OBJECT TYPE pre RUNTIME ENUM TYPES.
+      M. TYPE [LocalDateTimeType] je OBJECT TYPE pre RUNTIME TYPE [DateTime].
+      N. TYPE [DateTimeType] je OBJECT TYPE pre RUNTIME TYPE [DateTimeOffset].
+!!!!! 22. HOT CHOCOLATE LIBRARY vyuziva RESOLVERS PARALELNE. Platia nasledujuce fakty.
+   A. RESOLVERS su volane PARALELNE z rozlicnych THREADS.
+   !!! B. Ak RESOLVERS vyuzivaju DB CONTEXT, a DB CONTEXT je zaregistrovany v DEPENDENCY INJECTION ako SINGLETON OBJECT, alebo SCOPED OBJECT, dochadza k RACE CONDITION, kedze DB CONTEXT OBJECT NIE je THREADS SAFE.
+!!! 23. HOT CHOCOLATE LIBRARY v RESOLVERS pouzivat DB CONTEXT POOLS. Pre DB CONTEXT POOLS platia nasledujuce fakty.
+   !!! A. Pouzivanie DB CONTEXT POOLS znamena, ze DB CONTEXT OBJECTS su ulozene v DB CONTEXT POOL z ktorej su DB CONTEXT OBJECTS vyberane vzdy ked niektory RESOLVER potrebuje vykonat pristup k DB CONTEXT. Po skonceni cinnosti RESOLVER je DB CONTEXT OBJECT vrateny do POOL a moze ho vyuzit iny RESOLVER. Vo vysledku NIKDY nedochadza k tomu, ze by ten isty DB CONTEXT OBJECT bol pouzity v danom cast viacerymi THREADS.
+   !!! B. HOT CHOCOLATE LIBRARY interne vyuziva ENTITY FRAMEWORK DB CONTEXT POOLS.
+   C. Podpora HOT CHOCOLATE LIBRARY pre DB CONTEXT POOLS implementovana v LIBRARY [HotChocolate.Data.EntityFramework].
+   !!! D. DB CONTEXT OBJECT sa registruje v ENTITY FRAMEWORK DB CONTEXT POOL volanim METHOD [IRequestExecutorBuilder RegisterDbContextFactory<TDbContext>(this IRequestExecutorBuilder Builder)].
+   E. HOT CHOCOLATE LIBRARY podpora pre ENTITY FRAMEWORK DB CONTEXT POOL sa povoluje volanim METHOD [IRequestExecutorBuilder RegisterDbContextFactory<TDbContext>(this IRequestExecutorBuilder Builder)].
+   !!! F. DB CONTEXT POOL sa v RESOLVERS pouziva nasledujucim sposobom.
+      A. V RESOLVER sa ziska cez DEPENDENCY INJECTION OBJECT TYPE [IDbContextFactory<TDbContext>].
+	  !!! B. DB CONTEXT OBJECT sa ziska volanim METHOD [Task<TContext> CreateDbContextAsync(CancellationToken CancellationToken)]. Tato METHOD vyberie DB CONTEXT OBJECT z DB CONTEXT OBJECT POOL.
+	  !!!!! C. Po skonceni OPERATIONS nad DB CONTEXT OBJECT je NUTNE volat METHOD [void IDisposable.Dispose()], aby sa DB CONTEXT OBJECT vratil spat do DB CONTEXT OBJECT POOL.
 //----------------------------------------------------------------------------------------------------------------------
 //----------------------------------------------------------------------------------------------------------------------
 //----------------------------------------------------------------------------------------------------------------------

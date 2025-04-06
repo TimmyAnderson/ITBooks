@@ -276,6 +276,204 @@ namespace Client
 			CMyHttpClient.ExecuteMessage(Request);
 		}
 //--------------------------------------------------------------------------------------------------------------------------------
+		private void ExecuteCommandQueryGetObjectsOneToOne1(string CommandID, object[] Parameters)
+		{
+			string												QueryContent=
+				"""
+					query GetObjectsOneToOne
+					{
+						ObjectsOneToOne1
+						{
+							principalID
+							principalValue
+							myOneToOneDependent1
+							{
+								ID
+								VALUE
+							}
+						}
+					}				
+				""";
+
+			CGraphQLQuery										Query=new CGraphQLQuery(QueryContent);
+
+			string												MessageID=CommandID;
+			EMyHttpClientHttpMethod								Method=EMyHttpClientHttpMethod.E_POST;
+			string												URL=$"{BASE_ADDRESS}graphql";
+			CMyHttpClientHeaders								Headers=null;
+			CMyHttpClientContent								Content=CMyHttpClientContent.CreateContentJsonObject(Query);
+			TimeSpan											Timeout=TimeSpan.FromHours(1);
+			CMyHttpClientOperationRequest						Request=new CMyHttpClientOperationRequest(MessageID,Method,URL,Headers,Content,Timeout);
+
+			CMyHttpClient.ExecuteMessage(Request);
+		}
+//--------------------------------------------------------------------------------------------------------------------------------
+		private void ExecuteCommandQueryGetObjectOneToOne1(string CommandID, object[] Parameters)
+		{
+			int													ID=(int) Parameters[0];
+
+			string												QueryContent=
+				$$"""
+					query GetObjectOneToOne
+					{
+						ObjectOneToOne1(id: {{ID}})
+						{
+							principalID
+							principalValue
+							myOneToOneDependent1
+							{
+								ID
+								VALUE
+							}
+						}
+					}				
+				""";
+
+			CGraphQLQuery										Query=new CGraphQLQuery(QueryContent);
+
+			string												MessageID=CommandID;
+			EMyHttpClientHttpMethod								Method=EMyHttpClientHttpMethod.E_POST;
+			string												URL=$"{BASE_ADDRESS}graphql";
+			CMyHttpClientHeaders								Headers=null;
+			CMyHttpClientContent								Content=CMyHttpClientContent.CreateContentJsonObject(Query);
+			TimeSpan											Timeout=TimeSpan.FromHours(1);
+			CMyHttpClientOperationRequest						Request=new CMyHttpClientOperationRequest(MessageID,Method,URL,Headers,Content,Timeout);
+
+			CMyHttpClient.ExecuteMessage(Request);
+		}
+//--------------------------------------------------------------------------------------------------------------------------------
+		private void ExecuteCommandQueryGetObjectsOneToOne2(string CommandID, object[] Parameters)
+		{
+			string												QueryContent=
+				"""
+					query GetObjectsOneToOne
+					{
+						ObjectsOneToOne2
+						{
+							principalID
+							principalValue
+							myOneToOneDependent2
+							{
+								ID
+								VALUE
+							}
+						}
+					}				
+				""";
+
+			CGraphQLQuery										Query=new CGraphQLQuery(QueryContent);
+
+			string												MessageID=CommandID;
+			EMyHttpClientHttpMethod								Method=EMyHttpClientHttpMethod.E_POST;
+			string												URL=$"{BASE_ADDRESS}graphql";
+			CMyHttpClientHeaders								Headers=null;
+			CMyHttpClientContent								Content=CMyHttpClientContent.CreateContentJsonObject(Query);
+			TimeSpan											Timeout=TimeSpan.FromHours(1);
+			CMyHttpClientOperationRequest						Request=new CMyHttpClientOperationRequest(MessageID,Method,URL,Headers,Content,Timeout);
+
+			CMyHttpClient.ExecuteMessage(Request);
+		}
+//--------------------------------------------------------------------------------------------------------------------------------
+		private void ExecuteCommandQueryGetObjectOneToOne2(string CommandID, object[] Parameters)
+		{
+			int													ID=(int) Parameters[0];
+
+			string												QueryContent=
+				$$"""
+					query GetObjectOneToOne
+					{
+						ObjectOneToOne2(id: {{ID}})
+						{
+							principalID
+							principalValue
+							myOneToOneDependent2
+							{
+								ID
+								VALUE
+							}
+						}
+					}				
+				""";
+
+			CGraphQLQuery										Query=new CGraphQLQuery(QueryContent);
+
+			string												MessageID=CommandID;
+			EMyHttpClientHttpMethod								Method=EMyHttpClientHttpMethod.E_POST;
+			string												URL=$"{BASE_ADDRESS}graphql";
+			CMyHttpClientHeaders								Headers=null;
+			CMyHttpClientContent								Content=CMyHttpClientContent.CreateContentJsonObject(Query);
+			TimeSpan											Timeout=TimeSpan.FromHours(1);
+			CMyHttpClientOperationRequest						Request=new CMyHttpClientOperationRequest(MessageID,Method,URL,Headers,Content,Timeout);
+
+			CMyHttpClient.ExecuteMessage(Request);
+		}
+//--------------------------------------------------------------------------------------------------------------------------------
+		private void ExecuteCommandQueryGetObjectsOneToMany(string CommandID, object[] Parameters)
+		{
+			string												QueryContent=
+				"""
+					query GetObjectsOneToMany
+					{
+						ObjectsOneToMany
+						{
+							principalID
+							principalValue
+							Dependents
+							{
+								ID
+								VALUE
+							}
+						}
+					}				
+				""";
+
+			CGraphQLQuery										Query=new CGraphQLQuery(QueryContent);
+
+			string												MessageID=CommandID;
+			EMyHttpClientHttpMethod								Method=EMyHttpClientHttpMethod.E_POST;
+			string												URL=$"{BASE_ADDRESS}graphql";
+			CMyHttpClientHeaders								Headers=null;
+			CMyHttpClientContent								Content=CMyHttpClientContent.CreateContentJsonObject(Query);
+			TimeSpan											Timeout=TimeSpan.FromHours(1);
+			CMyHttpClientOperationRequest						Request=new CMyHttpClientOperationRequest(MessageID,Method,URL,Headers,Content,Timeout);
+
+			CMyHttpClient.ExecuteMessage(Request);
+		}
+//--------------------------------------------------------------------------------------------------------------------------------
+		private void ExecuteCommandQueryGetObjectOneToMany(string CommandID, object[] Parameters)
+		{
+			int													ID=(int) Parameters[0];
+
+			string												QueryContent=
+				$$"""
+					query GetObjectOneToMany
+					{
+						ObjectOneToMany(id: {{ID}})
+						{
+							principalID
+							principalValue
+							Dependents
+							{
+								ID
+								VALUE
+							}
+						}
+					}				
+				""";
+
+			CGraphQLQuery										Query=new CGraphQLQuery(QueryContent);
+
+			string												MessageID=CommandID;
+			EMyHttpClientHttpMethod								Method=EMyHttpClientHttpMethod.E_POST;
+			string												URL=$"{BASE_ADDRESS}graphql";
+			CMyHttpClientHeaders								Headers=null;
+			CMyHttpClientContent								Content=CMyHttpClientContent.CreateContentJsonObject(Query);
+			TimeSpan											Timeout=TimeSpan.FromHours(1);
+			CMyHttpClientOperationRequest						Request=new CMyHttpClientOperationRequest(MessageID,Method,URL,Headers,Content,Timeout);
+
+			CMyHttpClient.ExecuteMessage(Request);
+		}
+//--------------------------------------------------------------------------------------------------------------------------------
 //--------------------------------------------------------------------------------------------------------------------------------
 //--------------------------------------------------------------------------------------------------------------------------------
 		protected override CMenuCommand[] GetCommands()
@@ -289,6 +487,12 @@ namespace Client
 			CommandsCollection.Add(new CMenuCommand("5","GET TYPES",new EMenuCommandParameterType[0],ExecuteCommandQueryGetTypes));
 			CommandsCollection.Add(new CMenuCommand("6","GET RELATIONS 1:1",new EMenuCommandParameterType[0],ExecuteCommandQueryGetRelations11));
 			CommandsCollection.Add(new CMenuCommand("7","GET RELATIONS 1:N",new EMenuCommandParameterType[0],ExecuteCommandQueryGetRelations1N));
+			CommandsCollection.Add(new CMenuCommand("8","GET OBJECTS ONE TO ONE 1",new EMenuCommandParameterType[0],ExecuteCommandQueryGetObjectsOneToOne1));
+			CommandsCollection.Add(new CMenuCommand("9","GET OBJECT ONE TO ONE 1",new EMenuCommandParameterType[]{EMenuCommandParameterType.E_INT},ExecuteCommandQueryGetObjectOneToOne1));
+			CommandsCollection.Add(new CMenuCommand("10","GET OBJECTS ONE TO ONE 2",new EMenuCommandParameterType[0],ExecuteCommandQueryGetObjectsOneToOne2));
+			CommandsCollection.Add(new CMenuCommand("11","GET OBJECT ONE TO ONE 2",new EMenuCommandParameterType[]{EMenuCommandParameterType.E_INT},ExecuteCommandQueryGetObjectOneToOne2));
+			CommandsCollection.Add(new CMenuCommand("12","GET OBJECTS ONE TO MANY",new EMenuCommandParameterType[0],ExecuteCommandQueryGetObjectsOneToMany));
+			CommandsCollection.Add(new CMenuCommand("13","GET OBJECT ONE TO MANY",new EMenuCommandParameterType[]{EMenuCommandParameterType.E_INT},ExecuteCommandQueryGetObjectOneToMany));
 
 			CMenuCommand[]										Commands=CommandsCollection.ToArray();
 

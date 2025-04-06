@@ -29,15 +29,17 @@ namespace UsingGraphQL
 
 			string												ConnectionString=Builder.Configuration.GetConnectionString("MyConnection");
 
-			// !!! DB CONTEXT sa prida do DEPENDENCY INJECTION CONTAINER.
-			Builder.Services.AddDbContext<CDBContext>(P => ConfigureDbContext(P,ConnectionString));
+			// !!! DB CONTEXT sa prida DB CONTEXT FACTORY vyuzivajuca DB CONTEXT POOL.
+			Builder.Services.AddPooledDbContextFactory<CDBContext>(P => ConfigureDbContext(P,ConnectionString));
 
 			// !!! Prida sa GRAPH QL SERVER.
 			IRequestExecutorBuilder								GraphQLBuilder=Builder.Services.AddGraphQLServer();
 
-			GraphQLBuilder.AddQueryType<CMyQueries>();
+			GraphQLBuilder.AddQueryType<CMyQueriesObjectType>();
 			GraphQLBuilder.AddMutationType<CMyMutations>();
-			//GraphQLBuilder.AddQueryType<CQueriesTypes>();
+
+			// !!! V GRAPH QL sa zaregistruje DB CONTEXT CLASS, aby GRAPH QL vyuzival DB CONTEXT POOL.
+			GraphQLBuilder.RegisterDbContextFactory<CDBContext>();
 
             WebApplication										Application=Builder.Build();
 

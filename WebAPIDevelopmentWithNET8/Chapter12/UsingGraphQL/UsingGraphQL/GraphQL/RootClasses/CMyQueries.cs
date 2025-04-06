@@ -10,6 +10,101 @@ namespace UsingGraphQL
 	public sealed class CMyQueries
 	{
 //----------------------------------------------------------------------------------------------------------------------
+		private CObjectTypeOneToOnePrincipal1[]					MObjectsOneToOnes1;
+		private CObjectTypeOneToOnePrincipal1					MObjectOneToOne1;
+		private CObjectTypeOneToOnePrincipal2[]					MObjectsOneToOnes2;
+		private CObjectTypeOneToOnePrincipal2					MObjectOneToOne2;
+		private CObjectTypeOneToManyPrincipal[]					MObjectsOneToMany;
+		private CObjectTypeOneToManyPrincipal					MObjectOneToMany;
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+		public CMyQueries()
+		{
+			MObjectsOneToOnes1=null;
+			MObjectOneToOne1=null;
+			MObjectsOneToOnes2=null;
+			MObjectOneToOne2=null;
+			MObjectsOneToMany=null;
+			MObjectOneToMany=null;
+		}
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+		public CObjectTypeOneToOnePrincipal1[]					ObjectsOneToOnes1
+		{
+			get
+			{
+				return(MObjectsOneToOnes1);
+			}
+			set
+			{
+				MObjectsOneToOnes1=value;
+			}
+		}
+//----------------------------------------------------------------------------------------------------------------------
+		public CObjectTypeOneToOnePrincipal1					ObjectOneToOne1
+		{
+			get
+			{
+				return(MObjectOneToOne1);
+			}
+			set
+			{
+				MObjectOneToOne1=value;
+			}
+		}
+//----------------------------------------------------------------------------------------------------------------------
+		public CObjectTypeOneToOnePrincipal2[]					ObjectsOneToOnes2
+		{
+			get
+			{
+				return(MObjectsOneToOnes2);
+			}
+			set
+			{
+				MObjectsOneToOnes2=value;
+			}
+		}
+//----------------------------------------------------------------------------------------------------------------------
+		public CObjectTypeOneToOnePrincipal2					ObjectOneToOne2
+		{
+			get
+			{
+				return(MObjectOneToOne2);
+			}
+			set
+			{
+				MObjectOneToOne2=value;
+			}
+		}
+//----------------------------------------------------------------------------------------------------------------------
+		public CObjectTypeOneToManyPrincipal[]					ObjectsOneToMany
+		{
+			get
+			{
+				return(MObjectsOneToMany);
+			}
+			set
+			{
+				MObjectsOneToMany=value;
+			}
+		}
+//----------------------------------------------------------------------------------------------------------------------
+		public CObjectTypeOneToManyPrincipal					ObjectOneToMany
+		{
+			get
+			{
+				return(MObjectOneToMany);
+			}
+			set
+			{
+				MObjectOneToMany=value;
+			}
+		}
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
 		public async Task<CEntityName[]> MyNames(CDBContext Context)
 		{
 			CEntityName[]										Result=await Context.EntitiesNames.ToArrayAsync();
