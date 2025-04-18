@@ -16,6 +16,22 @@ namespace UsingGraphQL
 		private CObjectTypeOneToOnePrincipal2					MObjectOneToOne2;
 		private CObjectTypeOneToManyPrincipal[]					MObjectsOneToMany;
 		private CObjectTypeOneToManyPrincipal					MObjectOneToMany;
+		private CObjectTypeDataLoaderBatchPrincipal[]			MObjectsDataLoaderBatch;
+		private CObjectTypeDataLoaderGroupPrincipal[]			MObjectsDataLoaderGroup;
+		private CObjectTypeInterfacesMyInterface[]				MObjectsMyInterface;
+		private CObjectTypeUnions[]								MObjectsUnions;
+		// !!!!! MUSIA sa vracat ENTITY OBJECTS a nie DATA OBJECTS, inak by sa FILTERING robil v MEMORY, a NIE nad DATABASE.
+		private CEntityFilteringByConvention[]					MObjectsFilteringByConvention;
+		private CEntityFilteringByFluentAPIImplicit[]			MObjectsFilteringByFluentAPIImplicit;
+		private CEntityFilteringByFluentAPIExplicit[]			MObjectsFilteringByFluentAPIExplicit;
+		private CFilteringManually[]							MObjectsFilteringManually;
+		// !!!!! MUSIA sa vracat ENTITY OBJECTS a nie DATA OBJECTS, inak by sa SORTING robil v MEMORY, a NIE nad DATABASE.
+		private CEntitySortingByConvention[]					MObjectsSortingByConvention;
+		private CEntitySortingByFluentAPI[]						MObjectsSortingByFluentAPI;
+		private CSortingManually[]								MObjectsSortingManually;
+		// !!!!! MUSIA sa vracat ENTITY OBJECTS a nie DATA OBJECTS, inak by sa PAGINATION, FILTERING a SORTING robil v MEMORY, a NIE nad DATABASE.
+		private CResolverPaginationCursorBased[]				MObjectsPaginationCursorBased;
+		private CResolverPaginationOffsetBased[]				MObjectsPaginationOffsetBased;
 //----------------------------------------------------------------------------------------------------------------------
 //----------------------------------------------------------------------------------------------------------------------
 //----------------------------------------------------------------------------------------------------------------------
@@ -27,6 +43,16 @@ namespace UsingGraphQL
 			MObjectOneToOne2=null;
 			MObjectsOneToMany=null;
 			MObjectOneToMany=null;
+			MObjectsDataLoaderBatch=null;
+			MObjectsDataLoaderGroup=null;
+			MObjectsMyInterface=null;
+			MObjectsUnions=null;
+			MObjectsFilteringByConvention=null;
+			MObjectsFilteringByFluentAPIImplicit=null;
+			MObjectsFilteringByFluentAPIExplicit=null;
+			MObjectsFilteringManually=null;
+			MObjectsSortingByConvention=null;
+			MObjectsSortingByFluentAPI=null;
 		}
 //----------------------------------------------------------------------------------------------------------------------
 //----------------------------------------------------------------------------------------------------------------------
@@ -100,6 +126,162 @@ namespace UsingGraphQL
 			set
 			{
 				MObjectOneToMany=value;
+			}
+		}
+//----------------------------------------------------------------------------------------------------------------------
+		public CObjectTypeDataLoaderBatchPrincipal[]			ObjectsDataLoaderBatch
+		{
+			get
+			{
+				return(MObjectsDataLoaderBatch);
+			}
+			set
+			{
+				MObjectsDataLoaderBatch=value;
+			}
+		}
+//----------------------------------------------------------------------------------------------------------------------
+		public CObjectTypeDataLoaderGroupPrincipal[]			ObjectsDataLoaderGroup
+		{
+			get
+			{
+				return(MObjectsDataLoaderGroup);
+			}
+			set
+			{
+				MObjectsDataLoaderGroup=value;
+			}
+		}
+//----------------------------------------------------------------------------------------------------------------------
+		public CObjectTypeInterfacesMyInterface[]				ObjectsMyInterface
+		{
+			get
+			{
+				return(MObjectsMyInterface);
+			}
+			set
+			{
+				MObjectsMyInterface=value;
+			}
+		}
+//----------------------------------------------------------------------------------------------------------------------
+		public CObjectTypeUnions[]								ObjectsUnions
+		{
+			get
+			{
+				return(MObjectsUnions);
+			}
+			set
+			{
+				MObjectsUnions=value;
+			}
+		}
+//----------------------------------------------------------------------------------------------------------------------
+		public CEntityFilteringByConvention[]					ObjectsFilteringByConvention
+		{
+			get
+			{
+				return(MObjectsFilteringByConvention);
+			}
+			set
+			{
+				MObjectsFilteringByConvention=value;
+			}
+		}
+//----------------------------------------------------------------------------------------------------------------------
+		public CEntityFilteringByFluentAPIImplicit[]			ObjectsFilteringByFluentAPIImplicit
+		{
+			get
+			{
+				return(MObjectsFilteringByFluentAPIImplicit);
+			}
+			set
+			{
+				MObjectsFilteringByFluentAPIImplicit=value;
+			}
+		}
+//----------------------------------------------------------------------------------------------------------------------
+		public CEntityFilteringByFluentAPIExplicit[]			ObjectsFilteringByFluentAPIExplicit
+		{
+			get
+			{
+				return(MObjectsFilteringByFluentAPIExplicit);
+			}
+			set
+			{
+				MObjectsFilteringByFluentAPIExplicit=value;
+			}
+		}
+//----------------------------------------------------------------------------------------------------------------------
+		public CFilteringManually[]								ObjectsFilteringManually
+		{
+			get
+			{
+				return(MObjectsFilteringManually);
+			}
+			set
+			{
+				MObjectsFilteringManually=value;
+			}
+		}
+//----------------------------------------------------------------------------------------------------------------------
+		public CEntitySortingByConvention[]						ObjectsSortingByConvention
+		{
+			get
+			{
+				return(MObjectsSortingByConvention);
+			}
+			set
+			{
+				MObjectsSortingByConvention=value;
+			}
+		}
+//----------------------------------------------------------------------------------------------------------------------
+		public CEntitySortingByFluentAPI[]						ObjectsSortingByFluentAPI
+		{
+			get
+			{
+				return(MObjectsSortingByFluentAPI);
+			}
+			set
+			{
+				MObjectsSortingByFluentAPI=value;
+			}
+		}
+//----------------------------------------------------------------------------------------------------------------------
+		public CSortingManually[]								ObjectsSortingManually
+		{
+			get
+			{
+				return(MObjectsSortingManually);
+			}
+			set
+			{
+				MObjectsSortingManually=value;
+			}
+		}
+//----------------------------------------------------------------------------------------------------------------------
+		public CResolverPaginationCursorBased[]					ObjectsPaginationCursorBased
+		{
+			get
+			{
+				return(MObjectsPaginationCursorBased);
+			}
+			set
+			{
+				MObjectsPaginationCursorBased=value;
+			}
+		}
+//----------------------------------------------------------------------------------------------------------------------
+		public CResolverPaginationOffsetBased[]					ObjectsPaginationOffsetBased
+		{
+			get
+			{
+				return(MObjectsPaginationOffsetBased);
+			}
+			set
+			{
+				MObjectsPaginationOffsetBased=value;
 			}
 		}
 //----------------------------------------------------------------------------------------------------------------------

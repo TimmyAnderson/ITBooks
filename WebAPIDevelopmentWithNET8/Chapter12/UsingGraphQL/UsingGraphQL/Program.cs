@@ -32,14 +32,27 @@ namespace UsingGraphQL
 			// !!! DB CONTEXT sa prida DB CONTEXT FACTORY vyuzivajuca DB CONTEXT POOL.
 			Builder.Services.AddPooledDbContextFactory<CDBContext>(P => ConfigureDbContext(P,ConnectionString));
 
+			// !!! Zaregistruje sa CUSTOM SERVICE.
+			Builder.Services.AddTransient<IMyLoggerService,CMyLoggerService>();
+
 			// !!! Prida sa GRAPH QL SERVER.
 			IRequestExecutorBuilder								GraphQLBuilder=Builder.Services.AddGraphQLServer();
 
 			GraphQLBuilder.AddQueryType<CMyQueriesObjectType>();
 			GraphQLBuilder.AddMutationType<CMyMutations>();
 
+			// !!! Zaregistruju sa OBJECT TYPES pre TYPES, ktore implementuju INTERFACE.
+			GraphQLBuilder.AddType<CObjectTypeInterfacesMyInterface1>();
+			GraphQLBuilder.AddType<CObjectTypeInterfacesMyInterface2>();
+
 			// !!! V GRAPH QL sa zaregistruje DB CONTEXT CLASS, aby GRAPH QL vyuzival DB CONTEXT POOL.
 			GraphQLBuilder.RegisterDbContextFactory<CDBContext>();
+
+			// !!! Povoli sa FILTERING.
+			GraphQLBuilder.AddFiltering();
+
+			// !!! Povoli sa SORTING.
+			GraphQLBuilder.AddSorting();
 
             WebApplication										Application=Builder.Build();
 
@@ -57,6 +70,9 @@ namespace UsingGraphQL
 
 			// !!! Prida sa GRAPH QL ENDPOINT.
 			Application.MapGraphQL();
+
+			// !!! Prida sa SCHEMA VISUALISER.
+			Application.MapGraphQLVoyager("/voyager");
 
 			Application.StartAsync().Wait();
 

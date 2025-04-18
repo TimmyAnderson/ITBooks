@@ -5,6 +5,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using HotChocolate.Resolvers;
 using HotChocolate.Types;
+using HotChocolate.Types.Pagination;
 using Microsoft.EntityFrameworkCore;
 //----------------------------------------------------------------------------------------------------------------------
 namespace UsingGraphQL
@@ -233,6 +234,224 @@ namespace UsingGraphQL
 			FieldDescriptor.ResolveWith<CResolverOneToManyPrincipal>(P => P.FieldResolverDelegatePrincipal(default));
 		}
 //----------------------------------------------------------------------------------------------------------------------
+		private static void ConfigureFieldObjectsDataLoaderBatch(IObjectTypeDescriptor<CMyQueries> Descriptor)
+		{
+			IObjectFieldDescriptor								FieldDescriptor=Descriptor.Field(P => P.ObjectsDataLoaderBatch);
+
+			FieldDescriptor.Name("ObjectsDataLoaderBatch");
+
+			FieldDescriptor.Description($"This is FIELD [{nameof(CMyQueries.ObjectsDataLoaderBatch)}].");
+
+			// !!! Nastavi sa OBJECT TYPE pre FIELD.
+			// !!!!! Kedze sa vracia COLLECTION, je NUTNE pouzit TYPE [ListType<TType>].
+			FieldDescriptor.Type<ListType<CObjectTypeDataLoaderBatchPrincipal>>();
+
+			FieldDescriptor.ResolveWith<CResolverDataLoaderBatchPrincipal>(P => P.FieldResolverDelegatePrincipalArray(default));
+		}
+//----------------------------------------------------------------------------------------------------------------------
+		private static void ConfigureFieldObjectsDataLoaderGroup(IObjectTypeDescriptor<CMyQueries> Descriptor)
+		{
+			IObjectFieldDescriptor								FieldDescriptor=Descriptor.Field(P => P.ObjectsDataLoaderGroup);
+
+			FieldDescriptor.Name("ObjectsDataLoaderGroup");
+
+			FieldDescriptor.Description($"This is FIELD [{nameof(CMyQueries.ObjectsDataLoaderGroup)}].");
+
+			// !!! Nastavi sa OBJECT TYPE pre FIELD.
+			// !!!!! Kedze sa vracia COLLECTION, je NUTNE pouzit TYPE [ListType<TType>].
+			FieldDescriptor.Type<ListType<CObjectTypeDataLoaderGroupPrincipal>>();
+
+			FieldDescriptor.ResolveWith<CResolverDataLoaderGroupPrincipal>(P => P.FieldResolverDelegatePrincipalArray(default,default));
+		}
+//----------------------------------------------------------------------------------------------------------------------
+		private static void ConfigureFieldObjectsMyInterface(IObjectTypeDescriptor<CMyQueries> Descriptor)
+		{
+			IObjectFieldDescriptor								FieldDescriptor=Descriptor.Field(P => P.ObjectsMyInterface);
+
+			FieldDescriptor.Name("ObjectsMyInterface");
+
+			FieldDescriptor.Description($"This is FIELD [{nameof(CMyQueries.ObjectsMyInterface)}].");
+
+			// !!! Nastavi sa OBJECT TYPE pre FIELD.
+			// !!!!! Kedze sa vracia COLLECTION, je NUTNE pouzit TYPE [ListType<TType>].
+			FieldDescriptor.Type<ListType<CObjectTypeInterfacesMyInterface>>();
+
+			FieldDescriptor.ResolveWith<CResolverInterfacesMyInterface>(P => P.FieldResolverDelegateMyInterfaceArray(default,default,default));
+		}
+//----------------------------------------------------------------------------------------------------------------------
+		private static void ConfigureFieldObjectsMyUnions(IObjectTypeDescriptor<CMyQueries> Descriptor)
+		{
+			IObjectFieldDescriptor								FieldDescriptor=Descriptor.Field(P => P.ObjectsUnions);
+
+			FieldDescriptor.Name("ObjectsUnions");
+
+			FieldDescriptor.Description($"This is FIELD [{nameof(CMyQueries.ObjectsUnions)}].");
+
+			// !!! Nastavi sa OBJECT TYPE pre FIELD.
+			// !!!!! Kedze sa vracia COLLECTION, je NUTNE pouzit TYPE [ListType<TType>].
+			FieldDescriptor.Type<ListType<CObjectTypeUnions>>();
+
+			FieldDescriptor.ResolveWith<CResolverUnions>(P => P.FieldResolverDelegateMyUnionsArray(default,default,default));
+		}
+//----------------------------------------------------------------------------------------------------------------------
+		private static void ConfigureFieldObjectsFilteringByConvention(IObjectTypeDescriptor<CMyQueries> Descriptor)
+		{
+			IObjectFieldDescriptor								FieldDescriptor=Descriptor.Field(P => P.ObjectsFilteringByConvention);
+
+			FieldDescriptor.Name("ObjectsFilteringByConvention");
+
+			FieldDescriptor.Description($"This is FIELD [{nameof(CMyQueries.ObjectsFilteringByConvention)}].");
+
+			// !!! Povoli sa FILTERING.
+			FieldDescriptor.UseFiltering();
+
+			FieldDescriptor.ResolveWith<CResolverFilteringByConvention>(P => P.FieldResolverDelegateFilteringByConventionArray(default,default,default));
+		}
+//----------------------------------------------------------------------------------------------------------------------
+		private static void ConfigureFieldObjectsFilteringByFluentAPIImplicit(IObjectTypeDescriptor<CMyQueries> Descriptor)
+		{
+			IObjectFieldDescriptor								FieldDescriptor=Descriptor.Field(P => P.ObjectsFilteringByFluentAPIImplicit);
+
+			FieldDescriptor.Name("ObjectsFilteringByFluentAPIImplicit");
+
+			FieldDescriptor.Description($"This is FIELD [{nameof(CMyQueries.ObjectsFilteringByFluentAPIImplicit)}].");
+
+			// !!! Povoli sa FILTERING.
+			FieldDescriptor.UseFiltering<CFilterTypeFilteringByFluentAPIImplicit>();
+
+			FieldDescriptor.ResolveWith<CResolverFilteringByFluentAPIImplicit>(P => P.FieldResolverDelegateFilteringByFluentAPIImplicitArray(default,default,default));
+		}
+//----------------------------------------------------------------------------------------------------------------------
+		private static void ConfigureFieldObjectsFilteringByFluentAPIExplicit(IObjectTypeDescriptor<CMyQueries> Descriptor)
+		{
+			IObjectFieldDescriptor								FieldDescriptor=Descriptor.Field(P => P.ObjectsFilteringByFluentAPIExplicit);
+
+			FieldDescriptor.Name("ObjectsFilteringByFluentAPIExplicit");
+
+			FieldDescriptor.Description($"This is FIELD [{nameof(CMyQueries.ObjectsFilteringByFluentAPIExplicit)}].");
+
+			// !!! Povoli sa FILTERING.
+			FieldDescriptor.UseFiltering<CFilterTypeFilteringByFluentAPIExplicit>();
+
+			FieldDescriptor.ResolveWith<CResolverFilteringByFluentAPIExplicit>(P => P.FieldResolverDelegateFilteringByFluentAPIExplicitArray(default,default,default));
+		}
+//----------------------------------------------------------------------------------------------------------------------
+		private static void ConfigureFieldObjectsFilteringManually(IObjectTypeDescriptor<CMyQueries> Descriptor)
+		{
+			IObjectFieldDescriptor								FieldDescriptor=Descriptor.Field(P => P.ObjectsFilteringManually);
+
+			FieldDescriptor.Name("ObjectsFilteringManually");
+
+			FieldDescriptor.Description($"This is FIELD [{nameof(CMyQueries.ObjectsFilteringManually)}].");
+
+			// !!! Povoli sa FILTERING.
+			FieldDescriptor.UseFiltering<CFilterTypeFilteringManually>();
+
+			FieldDescriptor.ResolveWith<CResolverFilteringManually>(P => P.FieldResolverDelegateFilteringManually(default,default,default));
+		}
+//----------------------------------------------------------------------------------------------------------------------
+		private static void ConfigureFieldObjectsSortingByConvention(IObjectTypeDescriptor<CMyQueries> Descriptor)
+		{
+			IObjectFieldDescriptor								FieldDescriptor=Descriptor.Field(P => P.ObjectsSortingByConvention);
+
+			FieldDescriptor.Name("ObjectsSortingByConvention");
+
+			FieldDescriptor.Description($"This is FIELD [{nameof(CMyQueries.ObjectsSortingByConvention)}].");
+
+			// !!! Povoli sa SORTING.
+			FieldDescriptor.UseSorting();
+
+			FieldDescriptor.ResolveWith<CResolverSortingByConvention>(P => P.FieldResolverDelegateArray(default));
+		}
+//----------------------------------------------------------------------------------------------------------------------
+		private static void ConfigureFieldObjectsSortingByFluentAPI(IObjectTypeDescriptor<CMyQueries> Descriptor)
+		{
+			IObjectFieldDescriptor								FieldDescriptor=Descriptor.Field(P => P.ObjectsSortingByFluentAPI);
+
+			FieldDescriptor.Name("ObjectsSortingByFluentAPI");
+
+			FieldDescriptor.Description($"This is FIELD [{nameof(CMyQueries.ObjectsSortingByFluentAPI)}].");
+
+			// !!! Povoli sa SORTING.
+			FieldDescriptor.UseSorting<CSortTypeFilteringByFluentAPI>();
+
+			FieldDescriptor.ResolveWith<CResolverSortingByFluentAPI>(P => P.FieldResolverDelegateArray(default));
+		}
+//----------------------------------------------------------------------------------------------------------------------
+		private static void ConfigureFieldObjectsSortingManually(IObjectTypeDescriptor<CMyQueries> Descriptor)
+		{
+			IObjectFieldDescriptor								FieldDescriptor=Descriptor.Field(P => P.ObjectsSortingManually);
+
+			FieldDescriptor.Name("ObjectsSortingManually");
+
+			FieldDescriptor.Description($"This is FIELD [{nameof(CMyQueries.ObjectsSortingManually)}].");
+
+			// !!! Povoli sa SORTING.
+			FieldDescriptor.UseSorting<CSortTypeSortingManually>();
+
+			FieldDescriptor.ResolveWith<CResolverSortingManually>(P => P.FieldResolverDelegateSortingManually(default,default,default));
+		}
+//----------------------------------------------------------------------------------------------------------------------
+		private static void ConfigureFieldObjectsPaginationCursorBased(IObjectTypeDescriptor<CMyQueries> Descriptor)
+		{
+			IObjectFieldDescriptor								FieldDescriptor=Descriptor.Field(P => P.ObjectsPaginationCursorBased);
+
+			FieldDescriptor.Name("ObjectsPaginationCursorBased");
+
+			FieldDescriptor.Description($"This is FIELD [{nameof(CMyQueries.ObjectsPaginationCursorBased)}].");
+
+			// !!! Nastavi sa OBJECT TYPE pre FIELD.
+			FieldDescriptor.Type<CObjectTypePaginationCursorBased>();
+
+			PagingOptions										PagingOptions=new PagingOptions();
+
+			PagingOptions.DefaultPageSize=5;
+			PagingOptions.IncludeNodesField=true;
+			PagingOptions.IncludeTotalCount=true;
+
+			// !!! Povoli sa PAGINATION.
+			// !!!!! METHOD sa MUSI volat pred METHODS povolujucimi FILTERING a SORTING/
+			FieldDescriptor.UsePaging(options: PagingOptions);
+
+			// !!! Povoli sa FILTERING.
+			FieldDescriptor.UseFiltering<CFilterTypePaginationCursorBased>();
+
+			// !!! Povoli sa SORTING.
+			FieldDescriptor.UseSorting<CSortTypePaginationCursorBased>();
+
+			FieldDescriptor.ResolveWith<CResolverPaginationCursorBased>(P => P.FieldResolverDelegateArray(default));
+		}
+//----------------------------------------------------------------------------------------------------------------------
+		private static void ConfigureFieldObjectsPaginationOffsetBased(IObjectTypeDescriptor<CMyQueries> Descriptor)
+		{
+			IObjectFieldDescriptor								FieldDescriptor=Descriptor.Field(P => P.ObjectsPaginationOffsetBased);
+
+			FieldDescriptor.Name("ObjectsPaginationOffsetBased");
+
+			FieldDescriptor.Description($"This is FIELD [{nameof(CMyQueries.ObjectsPaginationOffsetBased)}].");
+
+			// !!! Nastavi sa OBJECT TYPE pre FIELD.
+			FieldDescriptor.Type<CObjectTypePaginationOffsetBased>();
+
+			PagingOptions										PagingOptions=new PagingOptions();
+
+			PagingOptions.DefaultPageSize=5;
+			PagingOptions.IncludeNodesField=true;
+			PagingOptions.IncludeTotalCount=true;
+
+			// !!! Povoli sa PAGINATION.
+			// !!!!! METHOD sa MUSI volat pred METHODS povolujucimi FILTERING a SORTING/
+			FieldDescriptor.UseOffsetPaging(options: PagingOptions);
+
+			// !!! Povoli sa FILTERING.
+			FieldDescriptor.UseFiltering<CFilterTypePaginationOffsetBased>();
+
+			// !!! Povoli sa SORTING.
+			FieldDescriptor.UseSorting<CSortTypePaginationOffsetBased>();
+
+			FieldDescriptor.ResolveWith<CResolverPaginationOffsetBased>(P => P.FieldResolverDelegateArray(default));
+		}
+//----------------------------------------------------------------------------------------------------------------------
 //----------------------------------------------------------------------------------------------------------------------
 //----------------------------------------------------------------------------------------------------------------------
 		protected override void Configure(IObjectTypeDescriptor<CMyQueries> Descriptor)
@@ -249,6 +468,26 @@ namespace UsingGraphQL
 
 			ConfigureFieldObjectsOneToMany(Descriptor);
 			ConfigureFieldObjectOneToMany(Descriptor);
+
+			ConfigureFieldObjectsDataLoaderBatch(Descriptor);
+
+			ConfigureFieldObjectsDataLoaderGroup(Descriptor);
+
+			ConfigureFieldObjectsMyInterface(Descriptor);
+
+			ConfigureFieldObjectsMyUnions(Descriptor);
+
+			ConfigureFieldObjectsFilteringByConvention(Descriptor);
+			ConfigureFieldObjectsFilteringByFluentAPIImplicit(Descriptor);
+			ConfigureFieldObjectsFilteringByFluentAPIExplicit(Descriptor);
+			ConfigureFieldObjectsFilteringManually(Descriptor);
+
+			ConfigureFieldObjectsSortingByConvention(Descriptor);
+			ConfigureFieldObjectsSortingByFluentAPI(Descriptor);
+			ConfigureFieldObjectsSortingManually(Descriptor);
+
+			ConfigureFieldObjectsPaginationCursorBased(Descriptor);
+			ConfigureFieldObjectsPaginationOffsetBased(Descriptor);
 		}
 //----------------------------------------------------------------------------------------------------------------------
 	}

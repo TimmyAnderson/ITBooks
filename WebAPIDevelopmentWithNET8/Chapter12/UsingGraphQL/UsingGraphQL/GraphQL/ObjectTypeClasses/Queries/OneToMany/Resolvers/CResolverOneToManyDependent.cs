@@ -14,7 +14,10 @@ namespace UsingGraphQL
 //----------------------------------------------------------------------------------------------------------------------
 		public async Task<COneToManyDependent[]> FieldResolverDelegateDependentArray(IResolverContext Context)
 		{
-			Console.WriteLine($"!!!!!!!!!! RESOLVER [{nameof(FieldResolverDelegateDependentArray)}] is EXECUTING on THREAD [{Thread.CurrentThread.ManagedThreadId}].");
+			// !!! SERVICE sa ziska PROGRAMOVO.
+			IMyLoggerService									MyLoggerService=Context.Service<IMyLoggerService>();
+
+			MyLoggerService.LogResolver(nameof(CResolverOneToManyDependent),nameof(FieldResolverDelegateDependentArray));
 
 			// !!!!!! Kvoli THREAD SAFETY sa MUSI pouzivat TYPE [IDbContextFactory<TDbContext>], ktory reprezentuje DB CONTEXT POOL FACTORY.
 			IDbContextFactory<CDBContext>						DBContextFactory=Context.Service<IDbContextFactory<CDBContext>>();

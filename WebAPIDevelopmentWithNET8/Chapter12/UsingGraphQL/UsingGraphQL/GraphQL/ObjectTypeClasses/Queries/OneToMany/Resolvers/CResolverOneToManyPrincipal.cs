@@ -14,7 +14,10 @@ namespace UsingGraphQL
 //----------------------------------------------------------------------------------------------------------------------
 		public async Task<COneToManyPrincipal> FieldResolverDelegatePrincipal(IResolverContext Context)
 		{
-			Console.WriteLine($"!!!!!!!!!! RESOLVER [{nameof(FieldResolverDelegatePrincipal)}] is EXECUTING on THREAD [{Thread.CurrentThread.ManagedThreadId}].");
+			// !!! SERVICE sa ziska PROGRAMOVO.
+			IMyLoggerService									MyLoggerService=Context.Service<IMyLoggerService>();
+
+			MyLoggerService.LogResolver(nameof(CResolverOneToManyPrincipal),nameof(FieldResolverDelegatePrincipal));
 
 			// !!!!! PARAMETER sa cita z ARGUMENT.
 			int													ID=Context.ArgumentValue<int>("id");
@@ -43,7 +46,10 @@ namespace UsingGraphQL
 //----------------------------------------------------------------------------------------------------------------------
 		public async Task<COneToManyPrincipal[]> FieldResolverDelegatePrincipalArray(IResolverContext Context)
 		{
-			Console.WriteLine($"!!!!!!!!!! RESOLVER [{nameof(FieldResolverDelegatePrincipalArray)}] is EXECUTING on THREAD [{Thread.CurrentThread.ManagedThreadId}].");
+			// !!! SERVICE sa ziska PROGRAMOVO.
+			IMyLoggerService									MyLoggerService=Context.Service<IMyLoggerService>();
+
+			MyLoggerService.LogResolver(nameof(CResolverOneToManyPrincipal),nameof(FieldResolverDelegatePrincipalArray));
 
 			// !!!!!! Kvoli THREAD SAFETY sa MUSI pouzivat TYPE [IDbContextFactory<TDbContext>], ktory reprezentuje DB CONTEXT POOL FACTORY.
 			IDbContextFactory<CDBContext>						DBContextFactory=Context.Service<IDbContextFactory<CDBContext>>();

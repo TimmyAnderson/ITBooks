@@ -226,6 +226,26 @@ namespace MySharedLibrary
 
 						return(Object);
 					}
+					else if (MContentType?.MediaType?.ToLowerInvariant()==MEDIA_TYPE_JSON_PROBLEM)
+					{
+						Encoding								Encoding=GetEncoding(MContentType?.CharSet,Encoding.UTF8);
+						string									RawText=Encoding.GetString(MContent);
+						object									DeserializedObject=JsonConvert.DeserializeObject(RawText);
+						string									Text=JsonConvert.SerializeObject(DeserializedObject,Formatting.Indented);
+						TObject									Object=JsonConvert.DeserializeObject<TObject>(Text);
+
+						return(Object);
+					}
+					else if (MContentType?.MediaType?.ToLowerInvariant()==MEDIA_TYPE_JSON_GRAPH_QL)
+					{
+						Encoding								Encoding=GetEncoding(MContentType?.CharSet,Encoding.UTF8);
+						string									RawText=Encoding.GetString(MContent);
+						object									DeserializedObject=JsonConvert.DeserializeObject(RawText);
+						string									Text=JsonConvert.SerializeObject(DeserializedObject,Formatting.Indented);
+						TObject									Object=JsonConvert.DeserializeObject<TObject>(Text);
+
+						return(Object);
+					}
 				}
 			}
 

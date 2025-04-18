@@ -39,10 +39,13 @@
 16. Pre definovanie GraphQL SCHEMA pomocou SCHEMA FIRST platia nasledujuce fakty.
    A. SCHEMA sa definuje priamym vytvorenim GraphQL SCHEMA.
    B. HOT CHOCOLATE LIBRARY pouzije GraphQL SCHEMA na vygenerovanie zodpovedajucich .NET CLASSES.
-17. FLUENT API pouziva na definovanie GraphQL SCHEMA nasledujuce typy OBJECTS.
+17. FLUENT API pouziva nasledujuce typy OBJECTS.
    A. RUNTIME OBJECTS. RUNTIME OBJECT je OBJECT, ktory je vrateny v QUERIES.
    B. OBJECT TYPES. OBJECT TYPE umoznuje pomocou FLUENT API nakonfigurovat sposob akym sa bude pristupovat k RUNTIME TYPES prostrednictvom QUERIES.
    C. RESOLVER TYPES. RESOLVER TYPE je TYPE, ktory obsahuje RESOLVERS, ktore nacitavaju DEPENDENT RUNTIME OBJECTS pre dany PRINCIPAL RUNTIME OBJECT FIELD.
+   D. LOADER TYPES. LOADER TYPE umoznuje citanie data z DATA SOURCE v BATCHES ci GROUPS.
+   E. FILTER INPUT TYPES. FILTER INPUT TYPES definuju PROPERTIES daneho OBJECT na zaklade, ktorych je mozne vykonavat FILTERING.
+   F. SORT INPUT TYPES. SORT INPUT TYPES definuju PROPERTIES daneho OBJECT na zaklade, ktorych je mozne vykonavat SORTING.
 18. Vo FLUENT API sa GraphQL SCHEMA definuje pomocou OBJECT TYPES. Platia nasledujuce fakty.
    !!!!! A. Ulohou OBJECT TYPE je nakonfigurovat zodpovedajuci RUNTIME TYPE. RUNTIME TYPE je TYPE, ktory GraphQL vracia ako RESPONSE vo svojch QUERIES.
    B. OBJECT TYPE je CLASS, ktora je dedena z CLASS [ObjectType<TType>], kde TYPE [TType] je RUNTIME TYPE, ktory sa konfiguruje.
@@ -92,19 +95,206 @@
       A. V RESOLVER sa ziska cez DEPENDENCY INJECTION OBJECT TYPE [IDbContextFactory<TDbContext>].
 	  !!! B. DB CONTEXT OBJECT sa ziska volanim METHOD [Task<TContext> CreateDbContextAsync(CancellationToken CancellationToken)]. Tato METHOD vyberie DB CONTEXT OBJECT z DB CONTEXT OBJECT POOL.
 	  !!!!! C. Po skonceni OPERATIONS nad DB CONTEXT OBJECT je NUTNE volat METHOD [void IDisposable.Dispose()], aby sa DB CONTEXT OBJECT vratil spat do DB CONTEXT OBJECT POOL.
+24. Pre LOADER TYPES platia nasledujude fakty.
+   A. LOADER TYPE umoznuje efektivne nacitavanie skupiny dat z DATA SOURCE.
+   B. LOADER TYPE moze nacitavat data v BATCHES a GROUPS.
+   C. LOADER TYPE po nacitani data pre danu QUERY ich uklada v CACHE, takze dalsi pristup k LOADER TYPE nesposobi opatovne citanie dat z DATA SOURCE, ale iba citanie dat z CACHE, bez pristupu k DATA SOURCE.
+25. Pre BATCH LOADERS platia nasledujuce fakty.
+   !!! A. BATCH LOADERS sa pouzivaju v RELATIONSHIPS 1:1.
+   B. BATCH LOADERS su CLASSES, ktore su DERIVED z CLASS [BatchDataLoader<TKey,TValue>], kde TYPE PARAMETER [TKey] predstavuje KEY TYPE a TYPE PARAMETER [TValue] predstavuje VALUE TYPE.
+   C. BATCH LOADERS musia implementovat METHOD [Task<IReadOnlyDictionary<TKey,TValue>> LoadBatchAsync(IReadOnlyList<TKey> Keys, CancellationToken CancellationToken)].
+   !!! D. V RESOLVERS sa data citaju volanim BATCH LOADER METHOD [Task<TValue> BatchDataLoader<TKey,TValue>.LoadAsync(TKey Key, CancellationToken CancellationToken)].
+   !!! E. RESOLRVERS interne zlucia dotazy na DATA LOADERS, aby sa minimalizovat pocet QUERIES, ktore DATA LOADERS vykonaju.
+26. Pre GROUP LOADERS platia nasledujuce fakty.
+   !!! A. GROUP LOADERS sa pouzivaju v RELATIONSHIPS 1:N.
+   B. GROUP LOADERS su CLASSES, ktore su DERIVED z CLASS [GroupedDataLoader<TKey,TValue>], kde TYPE PARAMETER [TKey] predstavuje KEY TYPE a TYPE PARAMETER [TValue] predstavuje VALUE TYPE.
+   C. GROUP LOADERS musia implementovat METHOD [Task<ILookup<TKey,TValue>> LoadGroupedBatchAsync(IReadOnlyList<TKey> Keys, CancellationToken CancellationToken)].
+   !!! D. V RESOLVERS sa data citaju volanim GROUP LOADER METHOD [Task<TValue> BatchDataLoader<TKey,TValue>.LoadAsync(TKey Key, CancellationToken CancellationToken)].
+   !!! E. RESOLRVERS interne zlucia dotazy na DATA LOADERS, aby sa minimalizovat pocet QUERIES, ktore DATA LOADERS vykonaju.
+27. HOT CHOCOLATE LIBRARY podporuje DEPENDENCY INJECTION. Platia nasledujuce fakty.
+   A. HOT CHOCOLATE LIBRARY umoznuje vkladat do CONSTRUCTORS a METHODS TYPES, ktore HOT CHOCOLATE LIBRARY pouziva vkladat OBJECT z DEPENDENCY INJECTION CONTAINER.
+   !!! B. Pri HOT CHOCOLATE LIBRARY sa odporuca pouzivat DEPENDENCY INJECTION NIE na CONSTRUCTORS, ale na METHODS. Ma to nasledujuce dovody.
+      A. OBJECT TYPES maju SINGLETON SCOPE, a preto vlozenie SERVICE do CONSTRUCTOR by sposobilo, ze tento SERVICE by mal automaticky SINGLETON SCOPE.
+	  B. HOT CHOCOLATE LIBRARY musi synchronizovat pristup k RESOLVERS. Pouzitie DEPENDENCY INJECTION v CONSTRUTORS by znamenalo, ze HOT CHOCOLATE LIBRARY nema kontrolu nad LIFETIME tychto SERVICE.
+   C. SERVICE je mozne ziskat aj PROGRAMOVO volani METHOD [TService IResolverContext.Service<TService>()].
+28. HOT CHOCOLATE LIBRARY podporuje INTERFACES. Pre INTERFACES platia nasledujuce fakty.
+   A. INTERFACE umoznuje zlucit FIELDS do TYPES, ktore potom mozu byt integrovane do inych TYPES.
+   B. INTERFACES mozu byt pouzite iba v OUTPUT TYPES, ktore su vracane v QUERIES. Nemoze byt pouzity v INPUT TYPES.
+   C. OBJECT TYPE pre INTERFACE TYPES je TYPE [InterfaceType<TInterface>], kde TYPE PARAMETER [TInterface] predstavuje INTERFACE.
+   D. INTERFACE TYPE sa registruje volanim METHOD [IObjectTypeDescriptor<TRuntimeType> IObjectTypeDescriptor<TRuntimeType>.Implements<TInterface>()], kde TYPE PARAMETER [TInterface] predstavuje INTERFACE.
+   !!! E. TYPES implementujuce INTERFACE TYPES musia byt zaregistrovane volanim METHOD [IRequestExecutorBuilder AddType<TObjectType>(this IRequestExecutorBuilder Builder)], kde TYPE PARAMETER [TObjectType] predstavuje OBJECT TYPE popisujuci TYPE, ktory implementuje dany INTERFACE.
+29. HOT CHOCOLATE LIBRARY podporuje UNION TYPES. Pre UNION TYPES platia nasledujuce fakty.
+   A. UNION TYPES umoznuju zlucit viacero nezavislych TYPES do jedneho UNION TYPE, kde instancia UNION TYPE moze reprezentovat lubovolny z TYPES, ktory UNION TYPE tvori. UNION TYPES sa podobaju na UNIONS z C++.
+   B. UNION TYPE OBJECT TYPE je TYPE [UnionType].
+   !!! C. OBJECT TYPE [UnionType] musi volanim METHOD [IUnionTypeDescriptor IUnionTypeDescriptor.Type<TObjectType>()] zaregistrovat vsetky OBJECT TYPES reprezentujuce RUNTIME TYPES, ktore UNION TYPE reprezentuje.
+!!! 30. HOT CHOCOLATE LIBRARY podporuje FILTERING, SORTING a PAGINATION. FILTERING, SORTING a PAGINATION su implementovane v LIBRARY [HotChocolate.Data].
+31. HOT CHOCOLATE LIBRARY podporuje FILTERING. Pre FILTERING platia nasledujuce fakty.
+   A. FILTERING umoznuje filtrovanie OBJECTS vratenych v QUERY testovanim PROPERTIES danych OBJECTS.
+   B. FILTERING sa vykonava na urovni DATA SOURCE. V pripade, ze DATA SOURCE je DATABASE, tak FILTERING sa vykonava na urovni DATABASE.
+   !!! C. FILTERING je implementovany pomocou FILTER INPUT TYPES. FILTER INPUT TYPES definuju PROPERTIES daneho OBJECT na zaklade, ktorych je mozne vykonavat FILTERING.
+   D. FILTERING sa povoluje volanim METHOD [IRequestExecutorBuilder AddFiltering(this IRequestExecutorBuilder Builder, string Name, bool CompatibilityMode)].
+   E. FILTERING je mozne realizovat BY-CONVENTION, alebo pomocou FLUENT API.
+32. Pre FILTERING realizovany pomocou BY-CONVENTION platia nasledujuce fakty.
+   A. FILTERING realizovany pomocou BY-CONVENTION sa vykonava v nasledujucich krokoch.
+     A. Pre FIELD, ktory obsahuje OBJECT na ktorych sa ma aplikovat FILTERING sa zavola METHOD [IObjectFieldDescriptor UseFiltering(this IObjectFieldDescriptor Descriptor, string Scope)].
+     B. RESOLVER daneho FIELD MUSI vratit ako RETURN TYPE TYPE [IQueryable<TRuntimeType>], kde TYPE PARAMETER [TRuntimeType] predstavuje RUNTIME OBJECT, nad ktorym sa vykonava FILTERING.
+   B. HOT CHOCOLATE LIBRARY realizuje FILTERING BY-CONVENTION nasledujucim sposobom.
+      A. HOT CHOCOLATE LIBRARY pre RUNTIME OBJECT na zaklade ktoreho sa robi FILTERING FILTER INPUT TYPE, ktory umoznuje FILTERING pre kazdu PROPERTY daneho RUNTIME OBJECT.
+	  !!! B. Vygenerovany FILTER INPUT TYPE obsahuje pre kazdu PROPERTY FILTER INPUT TYPE. Pre PRIMITIVNE TYPES a STANARD TYPES HOT CHOCOLATE LIBRARY definuje vlastne FILTER INPUT TYPES.
+	  !!! C. Do SCHEMA pre RUNTIME TYPE, nad ktorymi je mozne vykonavat FILTERING je pridany PARAMETER [where], ktoreho TYPE je vygenerovany FILTER INPUT TYPE. Vdaka tomuto PARAMETER je mozne vykonavat FILTERING nad danym RUNTIME OBJECT.
+33. HOT CHOCOLATE LIBRARY definuje pre PRIMITIVE TYPES a STANDARD TYPES FILTER INPUT TYPES.
+   A. Pre TYPE [byte] definuje FILTER INPUT TYPE [ByteOperationFilterInputType].
+   b. Pre TYPE [short] definuje FILTER INPUT TYPE [ShortOperationFilterInputType].
+   C. Pre TYPE [int] definuje FILTER INPUT TYPE [IntOperationFilterInputType].
+   D. Pre TYPE [long] definuje FILTER INPUT TYPE [LongOperationFilterInputType].
+   E. Pre TYPE [double] definuje FILTER INPUT TYPE [FloatOperationFilterInputType].
+   F. Pre TYPE [decimal] definuje FILTER INPUT TYPE [DecimalOperationFilterInputType].
+   G. Pre TYPE [Uri] definuje FILTER INPUT TYPE [UrlOperationFilterInputType].
+   H. Pre TYPE [Uuid] definuje FILTER INPUT TYPE [UuidOperationFilterInputType].
+   I. Pre TYPE [String] definuje FILTER INPUT TYPE [StringOperationFilterInputType].
+   J. Pre TYPE [DateOnly] definuje FILTER INPUT TYPE [LocalDateOperationFilterInputType].
+   K. Pre TYPE [TimeOnly] definuje FILTER INPUT TYPE [LocalTimeOperationFilterInputType].
+   L. Pre TYPE [DateTimeOffset] definuje FILTER INPUT TYPE [DateTimeOperationFilterInputType].
+   M. Pre TYPE [TimeSpan] definuje FILTER INPUT TYPE [TimeSpanOperationFilterInputType].
+34. FILTER INPUT TYPE [StringOperationFilterInputType] definuje nasledujuce PROPERTIES pomocou ktorych je mozne vykonavat FILTERING.
+   A. FIELD [eq] porovnava ci STRING je ROVNY ako dana VALUE.
+   B. FIELD [neq] porovnava ci STRING je ROZNY ako dana VALUE.
+   C. FIELD [in] porovnava ci sa STRING NACHADZA v zozname VALUES.
+   D. FIELD [nin] porovnava ci sa STRING NENACHADZA v zozname VALUES.
+   E. FIELD [contains] porovnava ci  STRING OBSAHUJE danu VALUE.
+   F. FIELD [notContains] porovnava ci STRING NEOBSAHUJE danu VALUE.
+   G. FIELD [startsWith] porovnava ci STRING ZACINA danou VALUE.
+   H. FIELD [nstartsWith] porovnava ci STRING NEZACINA danou VALUE.
+   I. FIELD [endsWith] porovnava ci STRING KONCI danou VALUE.
+   J. FIELD [nendsWith] porovnava ci STRING NEKONCI danou VALUE.
+35. HOT CHOCOLATE LIBRARY definuje specialne OPERATORS umoznujuce vykonavat komplexne CONDITIONS. HOT CHOCOLATE LIBRARY definuje nasledujuce specialne OPERATORS.
+   A. OPERATOR [and].
+   B. OPERATOR [or].
+36. Pre SPECIALNY OPERATOR [and] platia nasledujuce fakty.
+   A. SPECIALNY OPERATOR [and] obsahuje ARRAY CONDITION OBJECTS.
+   B. SPECIALNY OPERATOR [and] vracia VALUE [true], ak vsetky CONDITION OBJECTS vracaju VALUE [true]. Inak vracia VALUE [false].
+37. Pre SPECIALNY OPERATOR [or] platia nasledujuce fakty.
+   A. SPECIALNY OPERATOR [or] obsahuje ARRAY CONDITION OBJECTS.
+   B. SPECIALNY OPERATOR [or] vracia VALUE [true], ak aspon 1 CONDITION OBJECT vracia VALUE [true]. Inak vracia VALUE [false].
+38. Pre FILTERING realizovany pomocou FLUENT API platia nasledujuce fakty.
+   A. Pri pouziti FLUENT API je potrebne pre kazdy RUNTIME OBJECT nad ktorym sa vykonava FILTERING definovat CUSTOM FILTER INPUT TYPE.
+   B. CUSTOM FILTER INPUT TYPE sa definuje nasledujucim sposobom.
+      A. Definuje sa CLASS, ktora je INHERITED z CLASS [FilterInputType<TRuntimeType>], kde TYPE PARAMETER [TRuntimeType] reprezentuje RUNTIME TYPE nad ktorym sa vykonava FILTERING.
+	  B. CLASS implementuje METHOD [void FilterInputType<TRuntimeType>.Configure(IFilterInputTypeDescriptor<Student> Descriptor)] kde definuje FIELDS nad ktorymi je mozne vykonavat FILTERING.
+	  !!! C. Volanim METHOD [IFilterInputTypeDescriptor<TRuntimeType> IFilterInputTypeDescriptor<TRuntimeType>.BindFieldsImplicitly()] CUSTOM FILTER INPUT TYPE nastavi, ze vsetky FIELDS budu automaticky pridane do CUSTOM FILTER INPUT TYPE. Jednotlive FIELDS mozu byt vyradane volanim METHOD [IFilterInputTypeDescriptor<TRuntimeType> IFilterInputTypeDescriptor<TRuntimeType>.Ignore(Expression<Func<TRuntimeType,object>> PropertyOrMember)].
+	  !!! D. Volanim METHOD [IFilterInputTypeDescriptor<TRuntimeType> IFilterInputTypeDescriptor<TRuntimeType>.BindFieldsExplicitly()] CUSTOM FILTER INPUT TYPE nastavi, ze ziadne FIELDS nebudu automaticky pridane do CUSTOM FILTER INPUT TYPE. Jednotlive FIELDS mozu byt pridane volanim METHOD [IFilterFieldDescriptor IFilterInputTypeDescriptor<TRuntimeType>.Field<TField>(Expression<Func<TRuntimeType,TField>> PropertyOrMember)].
+   C. CUSTOM FILTER INPUT TYPE sa registruje volanim METHOD [IObjectFieldDescriptor UseFiltering<TFilterInputType>(this IObjectFieldDescriptor Descriptor, string Scope)].
+39. FILTER INPUT TYPES pre pre PRIMITIVE TYPES a STANDARD TYPES mozu byt CUSTOMIZED nasledujucim sposobom.
+   A. FILTER INPUT TYPE je INHERITED z FILTER INPUT TYPE pre PRIMITIVE TYPES a STANDARD TYPES.
+   B. Vykona sa OVERRIDING METHOD [void FilterInputType<TRuntimeType>.Configure(IFilterInputTypeDescriptor Descriptor)] cim sa zrusi povodna funkcionalita FILTER INPUT TYPE.
+   C. Volanim METHOD [IFilterOperationFieldDescriptor IFilterInputTypeDescriptor<TRuntimeType>.Operation(int OperationID)] za ziska OBJECT TYPE [IFilterOperationFieldDescriptor].
+   !!! D. Volanim METHOD [IFilterOperationFieldDescriptor IFilterOperationFieldDescriptor.Type<TInputType>()] pre danu OPERATION je mozne nastavit FILTER OBJECT TYPE, ktory sa ma pre danu OPERATION pouzit.
+40. HOT CHOCOLATE LIBRARY umoznuje aj MANUAL FILTERING. MANUAL FILTERING je nutne implementovat, ak DATA SOURCE nemoze vratit TYPE [IQueryable<TRuntimeType>]. Pre MANUAL FILTERING platia nasledujuce fakty.
+   A. Definuje sa CUSTOM FILTER INPUT TYPE v ktorom su definovane FILTERING FIELDS.
+   B. Pre kazdy FILTERING FIELD, ktory nemoze vratit TYPE [IQueryable<TRuntimeType>] je nutne vytvorit CUSTOM FILTER INPUT TYPE, ktory bude obsahovat vsetky FILTERING OPERATIONS, ktore je mozne nad danym FILTERING FIELD vykonavat.
+   C. CUSTOM FILTER INPUT TYPES pre FILTERING FIELD musia obsahovat zoznam FILTERING OPERATIONS, ktore je mozne vykonavat nad danym FILTERING FIELD.
+   D. Implementuje sa RESOLVER nasledujucim sposobom.
+      A. RESOLVER volanim METHOD [IFilterContext GetFilterContext(this IResolverContext Context)] ziska instanciu TYPE [IFilterContext], ktora umoznuje ziskat informacie o FILTER CONDITION.
+	  B. RESOLVER skontroluje ci bol definovany FILTER. Ak nebol, vykona sa QUERY, ktora vrati vsetky OBJECTS bez aplikovania FILTER.
+	  !!! C. Ak bol FILTER aplikovany, RESOLVER ziska nazov FILTERING FIELD a FILTERING OPERATION z TYPE [IFilterContext]. A na zaklade tychto informacii vykona FILTERING, vraciac FILTERED OBJECTS.
+41. HOT CHOCOLATE LIBRARY podporuje SORTING. Pre SORTING platia nasledujuce fakty.
+   A. SORTING umoznuje triedenie OBJECTS vratenych v QUERY podla PROPERTIES danych OBJECTS.
+   B. SORTING sa vykonava na urovni DATA SOURCE. V pripade, ze DATA SOURCE je DATABASE, tak SORTING sa vykonava na urovni DATABASE.
+   !!! C. SORTING je implementovany pomocou SORT INPUT TYPES. SORT INPUT TYPES definuju PROPERTIES daneho OBJECT na zaklade, ktorych je mozne vykonavat SORTING.
+   D. SORTING sa povoluje volanim METHOD [IRequestExecutorBuilder AddSorting(this IRequestExecutorBuilder Builder, string Name)].
+   E. SORTING je mozne realizovat BY-CONVENTION, alebo pomocou FLUENT API.
+42. Pre SORTING realizovany pomocou BY-CONVENTION platia nasledujuce fakty.
+   A. SORTING realizovany pomocou BY-CONVENTION sa vykonava v nasledujucich krokoch.
+     A. Pre FIELD, ktory obsahuje OBJECT na ktorych sa ma aplikovat SORTING sa zavola METHOD [IObjectFieldDescriptor UseSorting(this IObjectFieldDescriptor Descriptor, string Scope)].
+     B. RESOLVER daneho FIELD MUSI vratit ako RETURN TYPE TYPE [IQueryable<TRuntimeType>], kde TYPE PARAMETER [TRuntimeType] predstavuje RUNTIME OBJECT, nad ktorym sa vykonava SORTING.
+   B. HOT CHOCOLATE LIBRARY realizuje SORTING BY-CONVENTION nasledujucim sposobom.
+      A. HOT CHOCOLATE LIBRARY pre RUNTIME OBJECT na zaklade ktoreho sa robi SORTING SORT INPUT TYPE, ktory umoznuje SORTING pre kazdu PROPERTY daneho RUNTIME OBJECT.
+	  !!! B. Vygenerovany SORT INPUT TYPE obsahuje pre kazdu PROPERTY SORT INPUT TYPE. Pre PRIMITIVNE TYPES a STANARD TYPES HOT CHOCOLATE LIBRARY definuje SORT INPUT TYPE [SortEnumType].
+	  !!! C. Do SCHEMA pre RUNTIME TYPE, nad ktorymi je mozne vykonavat SORTING je pridany PARAMETER [order], ktoreho TYPE je vygenerovany SORT INPUT TYPE. Vdaka tomuto PARAMETER je mozne vykonavat SORTING nad danym RUNTIME OBJECT.
+43. Pre SORTING realizovany pomocou FLUENT API platia nasledujuce fakty.
+   A. Pri pouziti FLUENT API je potrebne pre kazdy RUNTIME OBJECT nad ktorym sa vykonava SORTING definovat CUSTOM SORT INPUT TYPE.
+   B. CUSTOM SORT INPUT TYPE sa definuje nasledujucim sposobom.
+      A. Definuje sa CLASS, ktora je INHERITED z CLASS [SortInputType<TRuntimeType>], kde TYPE PARAMETER [TRuntimeType] reprezentuje RUNTIME TYPE nad ktorym sa vykonava SORTING.
+	  B. CLASS implementuje METHOD [void SortInputType<TRuntimeType>.Configure(ISortInputTypeDescriptor<TRuntimeType> Descriptor)] kde definuje FIELDS nad ktorymi je mozne vykonavat SORTING.
+	  !!! C. Volanim METHOD [ISortInputTypeDescriptor<TRuntimeType> ISortInputTypeDescriptor<TRuntimeType>.BindFieldsImplicitly()] CUSTOM SORT INPUT TYPE nastavi, ze vsetky FIELDS budu automaticky pridane do CUSTOM SORT INPUT TYPE. Jednotlive FIELDS mozu byt vyradane volanim METHOD [ISortInputTypeDescriptor<TRuntimeType> ISortInputTypeDescriptor<TRuntimeType>.Ignore(Expression<Func<TRuntimeType,object>> PropertyOrMember)].
+	  !!! D. Volanim METHOD [ISortInputTypeDescriptor<TRuntimeType> ISortInputTypeDescriptor<TRuntimeType>.BindFieldsExplicitly()] CUSTOM SORT INPUT TYPE nastavi, ze ziadne FIELDS nebudu automaticky pridane do CUSTOM SORT INPUT TYPE. Jednotlive FIELDS mozu byt pridane volanim METHOD [ISortFieldDescriptor ISortInputTypeDescriptor<TRuntimeType>.Field<TField>(Expression<Func<TRuntimeType,TField>> PropertyOrMember)].
+   C. CUSTOM SORT INPUT TYPE sa registruje volanim METHOD [IObjectFieldDescriptor UseSorting<TRuntimeType>(this IObjectFieldDescriptor Descriptor, string Scope)].
+44. HOT CHOCOLATE LIBRARY umoznuje aj MANUAL FILTERING. MANUAL SORTING je nutne implementovat, ak DATA SOURCE nemoze vratit TYPE [IQueryable<TRuntimeType>]. Pre MANUAL SORTING platia nasledujuce fakty.
+   A. Definuje sa CUSTOM SORT INPUT TYPE v ktorom su definovane SORTING FIELDS.
+   B. Implementuje sa RESOLVER nasledujucim sposobom.
+      A. RESOLVER volanim METHOD [TValueNode IResolverContext.ArgumentLiteral<TValueNode>(string Name)] ziska VALUE NODE pre SORT PARAMETER, ktory bol zaslany v QUERY.
+	  B. RESOLVER zisti ci je dany PARAMETER TYPE [ObjectFieldNode] a ak ano pretypuje PARAMETER na tento TYPE.
+	  C. RESOLVER pomocou PROPERTY [IReadOnlyList<ObjectFieldNode> ObjectValueNode.Fields] ziska informacie o OBJECT, ktory obsahuje SORTING PARAMETERS.
+	  D. RESOLVER na zaklade SORTING PARAMETERS vykona SORTING.
+45. HOT CHOCOLATE LIBRARY podporuje PAGINATION. Pre PAGINATION platia nasledujuce fakty.
+   A. PAGINATION je mozne realizovat nasledujucimi sposobmi.
+      A. CURSOR BASED PAGINATION.
+      B. OFFSET BASED PAGINATION.
+   !!! B. HOT CHOCOLATE LIBRARY vie automaticky vykonavat PAGINATION, ak RESOLVER daneho FIELD vracia ako RETURN TYPE TYPE [IQueryable<TRuntimeType>].
+46. Pre CURSOR BASED PAGINATION platia nasledujuce fakty.
+   A. CURSOR BASED PAGINATION je DEFAULT PAGINATION v HOT CHOCOLATE LIBRARY.
+   B. CURSOR BASED PAGINATION sa realizuje na zaklade pozicie CURSOR v zozname RECORDS.
+   C. CURSOR je spravidla bud ID, alebo TIMESTAMP.
+47. CURSOR BASED PAGINATION sa implementuje v nasledujucich krokoch.
+   A. Do PROJECT je treba vlozit PACKAGE [HotChocolate.Types.CursorPagination].
+   B. Pre FIELD, pre ktory ma mat povoleny CURSOR BASED PAGINATION sa zavola METHOD [IObjectFieldDescriptor UsePaging(this IObjectFieldDescriptor Descriptor, Type NodeType, Type EntityType, GetCursorPagingProvider ResolvePagingProvider, string ConnectionName, PagingOptions Options)].
+   !!!!! C. Ak FIELD umoznuje aj FILTERING a SORTING, METHOD [IObjectFieldDescriptor UsePaging(this IObjectFieldDescriptor Descriptor, Type NodeType, Type EntityType, GetCursorPagingProvider ResolvePagingProvider, string ConnectionName, PagingOptions Options)] sa MUSI nachadzat PRED volanim METHOD [[IObjectFieldDescriptor UseFiltering(this IObjectFieldDescriptor Descriptor, string Scope)]] povolujucou FILTERING a METHOD [IObjectFieldDescriptor UseSorting(this IObjectFieldDescriptor Descriptor, string Scope)] povolujucou SORTING.
+48. Ak sa na dany FIELD povoli CURSOR BASED PAGINATION generuje nesledujucu SCHEMA.
+   A. Do FIELD prida nasledujuce PARAMETERS, ktore sa vyuzivaju pri PAGINATION.
+      A. PARAMETER [after] urcuje poziciu CURSOR PO ktorej sa maju vratit RECORDS vygenerovanej PAGE. RECORD na danom CURSOR vsak nie je sucastou vratanych RECORDS.
+      B. PARAMETER [before] urcuje poziciu CURSOR PRED ktorou sa maju vratit RECORDS vygenerovanej PAGE. RECORD na danom CURSOR vsak nie je sucastou vratanych RECORDS.
+	  C. PARAMETER [first] urcuje pocet PRVYCH [first] RECORDS, ktore ma vratena PAGE obsahovat.
+	  D. PARAMETER [last] urcuje pocet POSLEDNYCH [last] RECORDS, ktore ma vratena PAGE obsahovat.
+   !!! B. FIELD vracia ako RETURN VALUE CONNECTION TYPE. CONNECTION TYPE ma nasledujuce FIELDS.
+      A. FIELD [pageInfo] obsahuje TYPE [PageInfo], ktory ma nasledujuce FIELDS.
+	     A. FIELD [startCursor] obsahuje CURSOR VALUE prveho RECORD na PAGE.
+	     B. FIELD [endCursor] obsahuje CURSOR VALUE posledneho RECORD na PAGE.
+	     C. FIELD [hasNextPage] obsahuje informaciu ci za CURRENT PAGE sa nachadza dalsia PAGE.
+	     D. FIELD [hasPreviousPage] obsahuje informaciu ci pred CURRENT PAGE sa nachadza dalsia PAGE.
+	  B. FIELD [edges] obsahuje COLLECTION EDGE TYPES, kde EDGE TYPE ma nasledujuce FIELDS.
+	     !!! A. FIELD [cursor] obsahuje CURSOR VALUE pomocou ktorej je mozne vykonavat PAGINATION.
+		 B. FIELD [node] obsahuje FIELDS daneho RECORD.
+	  !!! C. FIELD [nodes] obsahuje COLLECTION NODE TYPES, kde NODE TYPE obsahuje FIELDS daneho RECORD. Tento FIELD teda obsahuje zoznam vsetkych vratenych RECORDS.
+	  !!! D. FIELD [totalCount] obsahuje celkovy pocet RECORDS, ktore dana QUERY by vratila, ak by nebol zapnuty PAGINATION. Tento FIELD je OPTIONAL a vedie k vykonaniu COUNT QUERY nad DATABASE, ake je DATABASE DATA SOURCE.
+49. Pre OFFSET BASED PAGINATION platia nasledujuce fakty.
+   A. OFFSET BASED PAGINATION pouziva PARAMETER [skip] a PARAMETER [take] na realizaciu PAGINATION.
+   B. OFFSET BASED PAGINATION nie je preferovany sposob vykonavania PAGINATION. Efektivnejsi je CURSOR BASED PAGINATION.
+50. OFFSET BASED PAGINATION sa implementuje v nasledujucich krokoch.
+   A. Do PROJECT je treba vlozit PACKAGE [HotChocolate.Types.CursorPagination].
+   B. Pre FIELD, pre ktory ma mat povoleny OFFSET BASED PAGINATION sa zavola METHOD [IObjectFieldDescriptor UseOffsetPaging(this IObjectFieldDescriptor Descriptor, Type ItemType, Type EntityType, GetOffsetPagingProvider ResolvePagingProvider, string CollectionSegmentName, PagingOptions Options)].
+   !!!!! C. Ak FIELD umoznuje aj FILTERING a SORTING, METHOD [IObjectFieldDescriptor UseOffsetPaging(this IObjectFieldDescriptor Descriptor, Type ItemType, Type EntityType, GetOffsetPagingProvider ResolvePagingProvider, string CollectionSegmentName, PagingOptions Options)] sa MUSI nachadzat PRED volanim METHOD [[IObjectFieldDescriptor UseFiltering(this IObjectFieldDescriptor Descriptor, string Scope)]] povolujucou FILTERING a METHOD [IObjectFieldDescriptor UseSorting(this IObjectFieldDescriptor Descriptor, string Scope)] povolujucou SORTING.
+51. Ak sa na dany FIELD povoli OFFSET BASED PAGINATION generuje nesledujucu SCHEMA.
+   A. Do FIELD prida nasledujuce PARAMETERS, ktore sa vyuzivaju pri PAGINATION.
+      A. PARAMETER [skip] urcuje kolko RECORDS zo zaciatku RESULT SET ma byt preskocenych.
+      B. PARAMETER [take] urcuje kolko RECORDS ma byt vratenych v ramci PAGE.
+   !!! B. FIELD vracia ako RETURN VALUE COLLECTION SEGMENT TYPE. COLLECTION SEGMENT ma nasledujuce FIELDS.
+      A. FIELD [pageInfo] obsahuje TYPE [CollectionSegmentInfo], ktory ma nasledujuce FIELDS.
+	     A. FIELD [hasNextPage] obsahuje informaciu ci za CURRENT PAGE sa nachadza dalsia PAGE.
+	     B. FIELD [hasPreviousPage] obsahuje informaciu ci pred CURRENT PAGE sa nachadza dalsia PAGE.
+	  !!! B. FIELD [items] obsahuje COLLECTION RECORDS. Tento FIELD teda obsahuje zoznam vsetkych vratenych RECORDS.
+	  !!! C. FIELD [totalCount] obsahuje celkovy pocet RECORDS, ktore dana QUERY by vratila, ak by nebol zapnuty PAGINATION. Tento FIELD je OPTIONAL a vedie k vykonaniu COUNT QUERY nad DATABASE, ake je DATABASE DATA SOURCE.
+52. GraphQL SCHEMA moze byt VISUALIZED pomocou VOYAGER PACKAGE. VOYAGER PACKAGE sa pouziva nasledujucim sposobom.
+   A. Do PROJECT sa prida PACKAGE [GraphQL.Server.Ui.Voyager].
+   B. Volanim METHOD [] sa prida MIDDLEWARE zobrazujuci GraphQL SCHEMA. DEFAULT URL je URL [ui/voyager]. URL je mozne zmenit v PARAMETER danej METHOD.
 //----------------------------------------------------------------------------------------------------------------------
 //----------------------------------------------------------------------------------------------------------------------
 //----------------------------------------------------------------------------------------------------------------------
 Popis GraphQL SCHEMA DEFINITION LANGUAGE.
 
 1. TYPE sa definuje pomocou SYNTAX [type TYPE_NAME{BODY}], kde VALUE [TYPE_NAME] je nazov TYPE a VALUE [BODY] obsahuje definiciu daneho TYPE.
-2. TYPE FIELD sa definuje pomocou SYNTAX [FIELD_NAME: FIELD_TYPE], kde VALUE [FIELD_NAME] je nazov FIELD a VALUE [FIELD_TYPE] je TYPE daneho FIELD.
+2. TYPES maju TYPE FIELDS. Pre TYPE FIELDS platia nasledujuce fakty.
+   A. TYPE FIELD sa definuje pomocou SYNTAX [FIELD_NAME: FIELD_TYPE], kde VALUE [FIELD_NAME] je nazov FIELD a VALUE [FIELD_TYPE] je TYPE daneho FIELD.
+   B. TYPE FIELD moze mat PARAMETERS. Pre PARAMETERS platia nasledujuce fakty.
+      A. TYPE FIELD s PARAMETERS sa definuje pomocou SYNTAX [FIELD_NAME(PARAMETERS): FIELD_TYPE], kde VALUE [FIELD_NAME] je nazov FIELD, VALUE [PARAMETERS] je zoznam PARAMETERS a VALUE [FIELD_TYPE] je TYPE daneho FIELD.
+	  B. PARAMETERS maju SYNTAX [PARAMETER_NAME_1:PARAMETER_TYPE_1,...,PARAMETER_NAME_N:PARAMETER_TYPE_N], kde VALUE [PARAMETER_NAME_X] predstavuje PARAMETER NAME a VALUE [PARAMETER_TYPE_X] predstavuje PARAMETER TYPE.
+   C. PARAMETERS sa pouzivaju v QUERIES na parametrizaciu QUERIES.
 3. Pre TYPES platia nasledujuce fakty.
    A. GraphQL definuje zoznam PRIMITIVE TYPES.
    B. TYPES su BY-DEFAULT NULLABLE.
    C. TYPES je mozne definovat ako NON-NULLABLE pomocou SYNTAX [TYPE_NAME!], kde VALUE [TYPE_NAME] je nazov TYPE.
    !!! D. ARRAYS su definovane pomocou SYNTAX [[TYPE_NAME]], kde VALUE [TYPE_NAME] je nazov TYPE.
    !!! E. ARRAY TYPES je mozne definovat ako NON-NULLABLE pomocou SYNTAX [[TYPE_NAME]!], kde VALUE [TYPE_NAME] je nazov TYPE.
+   F. TYPES mozu implementovat INTERFACES pomocou SYNTAX [implements INTERFACE_TYPE], kde VALUE [INTERFACE_TYPE] je INTERFACE TYPE, ktory TYPE implementuje.
 4. GraphQL SCHEMA DEFINITION LANGUAGE podporuje nasledujuce PRIMITIVE TYPES.
    A. TYPE [Int].
    B. TYPE [Float].
@@ -137,6 +327,7 @@ Popis GraphQL SCHEMA DEFINITION LANGUAGE.
    C. MUTATION TYPE OPERATION sa definuje pomocou SYNTAX [OPERATION_NAME(OPERATION_PARAMETERS):OPERATION_RETURN_TYPE], kde VALUE [OPERATION_NAME] je nazov OPERATIONS, VALUE [OPERATION_PARAMETERS] je zoznam PARAMETERS danej OPERATION a VALUE [OPERATION_RETURN_TYPE] je nazov OPERATION RETURN TYPE.
    D. V SCHEMA sa moze nachadza IBA 1 MUTATION TYPE.
    E. Nazov MUTATION TYPE je zaradeny v GraphQL SCHEMA v OBJECT [schema] v PROPERTY [mutation].
+10. UNION TYPE sa definuje pomocou SYNTAX [union UNION_TYPE=TYPE_1 | ... | TYPE_N], kde VALUE [UNION_TYPE] je nazov UNION TYPE a VALUES [TYPE_X] su nazvy TYPES, ktore tvoria UNION TYPE.
 //----------------------------------------------------------------------------------------------------------------------
 //----------------------------------------------------------------------------------------------------------------------
 //----------------------------------------------------------------------------------------------------------------------
@@ -271,4 +462,358 @@ Priklady GraphQL OPERATIONS.
    B. VALUE [myRelations1N] je nazov QUERY OPERATION v CAMEL CASE.
    C. RESPONSE TYPE je definovany na konci QUERY pomocou SYNTAX [{valueParent1 valueParent2 valueChildren{valueChild1 valueChild2}}].
    !!! D. RESPONSE TYPE ma PARENT TYPE, ktory je v RELATIONSHIP 1:N k CHILD TYPE pomocou PROPERTY [valueChildren].
+7. Nacitanie vsetkych OBJECTS, ktore implementuje INTERFACE.
+   A. Nacitanie vsetkych OBJECTS, ktore implementuje INTERFACE ma nasledujucu SYNTAX.
+					query GetObjectionInterface
+					{
+						ObjectsMyInterface
+						{
+							INTERFACE_ID
+							INTERFACE_SHARED_VALUE_1
+							INTERFACE_SHARED_VALUE_2
+							... on CInterfacesMyInterface1
+							{
+								ID
+								INTERFACE_ID
+								INTERFACE_SHARED_VALUE_1
+								INTERFACE_SHARED_VALUE_2
+								SHARED_VALUE_1
+								SHARED_VALUE_2
+								CLASS_1_VALUE_1
+								CLASS_1_VALUE_2
+								__typename
+							}
+							... on CInterfacesMyInterface2
+							{
+								ID
+								INTERFACE_ID
+								INTERFACE_SHARED_VALUE_1
+								INTERFACE_SHARED_VALUE_2
+								SHARED_VALUE_1
+								SHARED_VALUE_2
+								CLASS_2_VALUE_1
+								CLASS_2_VALUE_2
+								__typename
+							}
+							__typename
+						}
+					}
+   B. VALUE [__typename] je nazov TYPE.
+   C. VALUE [... on CInterfacesMyInterface1] urcuje, ktore PROPERTIES sa maju vratit pre TYPE [CInterfacesMyInterface1].
+   D. VALUE [... on CInterfacesMyInterface2] urcuje, ktore PROPERTIES sa maju vratit pre TYPE [CInterfacesMyInterface2].
+8. Nacitanie vsetkych OBJECTS v UNION TYPE.
+   A. Nacitanie vsetkych OBJECTS v UNION TYPE ma nasledujucu SYNTAX.
+					query GetObjectsUnions
+					{
+						ObjectsUnions
+						{
+							__typename
+							... on CUnionsMyClass1
+							{
+								__typename
+								ID
+								SHARED_VALUE_1
+								SHARED_VALUE_2
+								CLASS_1_VALUE_1
+								CLASS_1_VALUE_2
+							}
+							... on CUnionsMyClass2
+							{
+								__typename
+								ID
+								SHARED_VALUE_1
+								SHARED_VALUE_2
+								CLASS_2_VALUE_1
+								CLASS_2_VALUE_2
+							}
+						}
+					}
+   B. VALUE [__typename] je nazov TYPE.
+   C. VALUE [... on CUnionsMyClass1] urcuje, ktore PROPERTIES sa maju vratit pre TYPE [CUnionsMyClass1].
+   D. VALUE [... on CUnionsMyClass2] urcuje, ktore PROPERTIES sa maju vratit pre TYPE [CUnionsMyClass2].
+9. Nacitanie FILTERED OBJECTS.
+   A. Nacitanie FILTERED OBJECTS ma nasledujucu SYNTAX.
+					query GetObjectsFilteringByConvention
+					{
+						ObjectsFilteringByConvention(where: { stringValue: { startsWith: "AAA" } })
+						{
+							id
+							stringValue
+							intValue
+							longValue
+							doubleValue
+						}
+					}
+	B. PARAMETER [where] obsahuje FILTER INPUT TYPE OBJECT pomocou ktoreho sa vykonava FILTERING.
+10. Nacitanie FILTERED OBJECTS s OPERATOR [or].
+   A. Nacitanie FILTERED OBJECTS s OPERATOR [or] ma nasledujucu SYNTAX.
+					query GetObjectsFilteringByConvention
+					{
+						ObjectsFilteringByConvention(where: 
+						{
+							or:
+							[
+								{
+									stringValue:
+									{
+										startsWith: "AAA"
+									}
+								},
+								{
+									stringValue:
+									{
+										endsWith: "2"
+									}
+								}
+							]
+						})
+						{
+							id
+							stringValue
+							intValue
+							longValue
+							doubleValue
+						}
+					}
+	B. PARAMETER [where] obsahuje FILTER INPUT TYPE OBJECT pomocou ktoreho sa vykonava FILTERING.
+11. Nacitanie SORTED OBJECTS.
+   A. Nacitanie SORTED OBJECTS ma nasledujucu SYNTAX.
+					query GetObjectsSortingByConvention
+					{
+						ObjectsSortingByConvention(order: { valueString: ASC, valueInt: DESC })
+						{
+							id
+							valueInt
+							valueString
+						}
+					}
+	B. PARAMETER [order] obsahuje ORDER INPUT TYPE OBJECT pomocou ktoreho sa vykonava ORDERING.
+12. Nacitanie PAGINATED RECORDS s PARAMETER [after].
+   A. Nacitanie PAGINATED RECORDS s PARAMETER [after] ma nasledujucu SYNTAX.
+					query GetObjectsPaginationCursorBased
+					{
+						ObjectsPaginationCursorBased(after: "{{Cursor}}", order: { id: ASC })
+						{
+							pageInfo
+							{
+								startCursor
+								endCursor
+								hasPreviousPage
+								hasNextPage
+							}
+							nodes
+							{
+								id
+								value1
+								value2
+							}
+							edges
+							{
+								cursor
+								node
+								{
+									id
+									value1
+									value2
+								}
+							}
+							totalCount
+						}
+					}
+	B. PARAMETER [after] obsahuje CURSOR a urcuje, ze sa ma zobrazit PAGE s RECORDS, ktore su sa nachadzaju ZA RECORDS na ktory odkazuje CURSOR.
+13. Nacitanie PAGINATED RECORDS s PARAMETER [before].
+   A. Nacitanie PAGINATED RECORDS s PARAMETER [before] ma nasledujucu SYNTAX.
+					query GetObjectsPaginationCursorBased
+					{
+						ObjectsPaginationCursorBased(before: "{{Cursor}}", order: { id: ASC })
+						{
+							pageInfo
+							{
+								startCursor
+								endCursor
+								hasPreviousPage
+								hasNextPage
+							}
+							nodes
+							{
+								id
+								value1
+								value2
+							}
+							edges
+							{
+								cursor
+								node
+								{
+									id
+									value1
+									value2
+								}
+							}
+							totalCount
+						}
+					}
+	B. PARAMETER [before] obsahuje CURSOR a urcuje, ze sa ma zobrazit PAGE s RECORDS, ktore su sa nachadzaju PRED RECORDS na ktory odkazuje CURSOR.
+14. Nacitanie PAGINATED RECORDS s PARAMETER [after] a PARAMETER [first].
+   A. Nacitanie PAGINATED RECORDS s PARAMETER [after] ma nasledujucu SYNTAX.
+					query GetObjectsPaginationCursorBased
+					{
+						ObjectsPaginationCursorBased(after: "{{Cursor}}", first: 3, order: { id: ASC })
+						{
+							pageInfo
+							{
+								startCursor
+								endCursor
+								hasPreviousPage
+								hasNextPage
+							}
+							nodes
+							{
+								id
+								value1
+								value2
+							}
+							edges
+							{
+								cursor
+								node
+								{
+									id
+									value1
+									value2
+								}
+							}
+							totalCount
+						}
+					}
+	B. PARAMETER [after] obsahuje CURSOR a urcuje, ze sa ma zobrazit PAGE s RECORDS, ktore su sa nachadzaju ZA RECORDS na ktory odkazuje CURSOR.
+    C. PARAMETER [first] obsahuje pocet PRVYCH [first] RECORDS, ktore sa z danej PAGE maju vratit.
+	!!! D. Ak je definovany PARAMETER [first], ale NIE JE definovany PARAMETER [after], alebo PARAMETER [before], tak sa berie PRVYCH [first] RECODS celeho SELECT.
+15. Nacitanie PAGINATED RECORDS s PARAMETER [before] a PARAMETER [first].
+   A. Nacitanie PAGINATED RECORDS s PARAMETER [before] a PARAMETER [first] ma nasledujucu SYNTAX.
+					query GetObjectsPaginationCursorBased
+					{
+						ObjectsPaginationCursorBased(before: "{{Cursor}}", first: 3, order: { id: ASC })
+						{
+							pageInfo
+							{
+								startCursor
+								endCursor
+								hasPreviousPage
+								hasNextPage
+							}
+							nodes
+							{
+								id
+								value1
+								value2
+							}
+							edges
+							{
+								cursor
+								node
+								{
+									id
+									value1
+									value2
+								}
+							}
+							totalCount
+						}
+					}
+	B. PARAMETER [before] obsahuje CURSOR a urcuje, ze sa ma zobrazit PAGE s RECORDS, ktore su sa nachadzaju PRED RECORDS na ktory odkazuje CURSOR.
+    C. PARAMETER [first] obsahuje pocet PRVYCH [first] RECORDS, ktore sa z danej PAGE maju vratit.
+	!!! D. Ak je definovany PARAMETER [first], ale NIE JE definovany PARAMETER [after], alebo PARAMETER [before], tak sa berie PRVYCH [first] RECODS celeho SELECT.
+16. Nacitanie PAGINATED RECORDS s PARAMETER [after] a PARAMETER [last].
+   A. Nacitanie PAGINATED RECORDS s PARAMETER [after] a PARAMETER [last] ma nasledujucu SYNTAX.
+					query GetObjectsPaginationCursorBased
+					{
+						ObjectsPaginationCursorBased(after: "{{Cursor}}", last: 3, order: { id: ASC })
+						{
+							pageInfo
+							{
+								startCursor
+								endCursor
+								hasPreviousPage
+								hasNextPage
+							}
+							nodes
+							{
+								id
+								value1
+								value2
+							}
+							edges
+							{
+								cursor
+								node
+								{
+									id
+									value1
+									value2
+								}
+							}
+							totalCount
+						}
+					}
+	B. PARAMETER [after] obsahuje CURSOR a urcuje, ze sa ma zobrazit PAGE s RECORDS, ktore su sa nachadzaju ZA RECORDS na ktory odkazuje CURSOR.
+    C. PARAMETER [last] obsahuje pocet POSLEDNYCH [last] RECORDS, ktore sa z danej PAGE maju vratit.
+	!!! D. Ak je definovany PARAMETER [last], ale NIE JE definovany PARAMETER [after], alebo PARAMETER [before], tak sa berie POSLEDNYCH [last] RECODS celeho SELECT.
+17. Nacitanie PAGINATED RECORDS s PARAMETER [before] a PARAMETER [last].
+   A. Nacitanie PAGINATED RECORDS s PARAMETER [before] a PARAMETER [last] ma nasledujucu SYNTAX.
+					query GetObjectsPaginationCursorBased
+					{
+						ObjectsPaginationCursorBased(before: "{{Cursor}}", last: 3, order: { id: ASC })
+						{
+							pageInfo
+							{
+								startCursor
+								endCursor
+								hasPreviousPage
+								hasNextPage
+							}
+							nodes
+							{
+								id
+								value1
+								value2
+							}
+							edges
+							{
+								cursor
+								node
+								{
+									id
+									value1
+									value2
+								}
+							}
+							totalCount
+						}
+					}
+	B. PARAMETER [before] obsahuje CURSOR a urcuje, ze sa ma zobrazit PAGE s RECORDS, ktore su sa nachadzaju PRED RECORDS na ktory odkazuje CURSOR.
+    C. PARAMETER [last] obsahuje pocet POSLEDNYCH [last] RECORDS, ktore sa z danej PAGE maju vratit.
+	!!! D. Ak je definovany PARAMETER [last], ale NIE JE definovany PARAMETER [after], alebo PARAMETER [before], tak sa berie POSLEDNYCH [last] RECODS celeho SELECT.
+18. Nacitanie PAGINATED RECORDS s PARAMETER [skip] a PARAMETER [take].
+   A. Nacitanie PAGINATED RECORDS s PARAMETER [skip] a PARAMETER [take] ma nasledujucu SYNTAX.
+					query GetObjectsPaginationOffsetBased
+					{
+						ObjectsPaginationOffsetBased(order: { id: ASC }, skip: 5, take: 10)
+						{
+							totalCount
+							pageInfo
+							{
+								hasNextPage
+								hasPreviousPage
+							}
+							items
+							{
+								id
+								value1
+								value2
+							}
+						}
+					}
+    B. PARAMETER [skip] urcuje kolko RECORDS zo zaciatku RESULT SET ma byt preskocenych.
+    C. PARAMETER [take] urcuje kolko RECORDS ma byt vratenych v ramci PAGE.
 //----------------------------------------------------------------------------------------------------------------------

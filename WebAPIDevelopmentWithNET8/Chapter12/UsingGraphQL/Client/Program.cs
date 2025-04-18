@@ -8,7 +8,9 @@ namespace Client
 		static void Main(string[] args)
 		{
 			//CMenuTestConnection								Menu=new CMenuTestConnection();
-			CMenuQueries										Menu=new CMenuQueries();
+			//CMenuQueries										Menu=new CMenuQueries();
+			//CMenuQueriesPaginationCursorBased					Menu=new CMenuQueriesPaginationCursorBased();
+			CMenuQueriesPaginationOffsetBased					Menu=new CMenuQueriesPaginationOffsetBased();
 
 			Menu.Execute();
 		}
