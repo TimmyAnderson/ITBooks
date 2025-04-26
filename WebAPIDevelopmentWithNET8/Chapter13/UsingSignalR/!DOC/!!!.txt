@@ -1,0 +1,150 @@
+//----------------------------------------------------------------------------------------------------------------------
+1. Solution demonstruje pouzitie SignalR.
+2. SignalR je LIBRARY, ktora umoznuje REAL TIME COMMUNICATION prostrednictvom HTTP. Pre SIGNALR platia nasledujuce fakty.
+   A. SignalR je WRAPPER LIBRARY nad existujucimi REAL TIME HTTP PROTOCOLS.
+   B. SignalR zapuzdruje nasledujuce REAL TIME HTTP PROTOCOLS.
+      A. PROTOCOL [WebSockets].
+      B. PROTOCOL [SERVER SENT EVENTS].
+      C. PROTOCOL [AJAX]. AJAX interne vyuziva LONG POLLING.
+   C. API [SignalR] automaticky vybera pre komunikaciu najlepsi dostupny PROTOCOL v nasledujucom poradi.
+      A. API [WebSockets].
+      B. API [SERVER SENT EVENTS].
+      C. API [AJAX] (LONG POLLING).
+   D. SignalR je sucastou .NET CORE.
+   E. SignalR implementuje CLIENT LIBRARIES, ktore umoznuju pripojenie sa k SingalR SERVERS. SignalR podporuje nasledujuce CLIENT LIBRARIES.
+      A. CLIENT LIBRARY pre JAVA SCRIPT CLIENTS.
+      B. CLIENT LIBRARY pre .NET CLIENTS.
+      C. CLIENT LIBRARY pre JAVA CLIENTS.
+3. SignalR na SERVER SIDE musi vystavit SignalR HUB. Pre SignalR HUB platia nasledujuce fakty.
+   A. SignalR HUB je CLASS, ktora je DERIVED z CLASS [Hub].
+   B. SignalR HUB predstavuje abstrakciu pre SignalR REAL TIME COMMUNICATION.
+   C. SignalR HUB vykonava CONNECTION MANAGMENT vsetkych pripojenych CLIENTS.
+   D. SignalR HUB je mozne pouzit na prijimanie MESSAGES od jednotlivych CLIENTS a odosielanie MESSAGES jednotlivym CLIENTS.
+   E. SignalR HUB umonzuje vykonavat MANAGEMENT prihlasenych CLIENTS a MANAGEMENT CLIENT GROUPS.
+   !!! F. SignalR HUB je implementovany ako ASP.NET MIDDLEWARE COMPONENT, takze moze byt vlozena do PIPELINE podobne ako ine MIDDLEWARE COMPONENTS.
+   G. Ked sa na SignalR HUB pripoji novy CLIENT, vytvori sa nova CONNECTION pre tohto CLIENT.
+   !!! H. Jeden CLIENT moze mat viacero CONNECTIONS.
+4. CLASS [Hub] reprezentuje BASE CLASS pre SignalR HUB CLASSES. CLASS [Hub] implementuje INTERFACE [IDisposable]. Ma nasledujuce MEMBERS.
+   A. DEFAULT CONSTRUCTOR.
+   B. PROPERTY [IHubCallerClients Clients]. PROPERTY obsahuje OBJECT, ktory sa pouziva na odosielanie MESSAGES prihlasenym CLIENTS.
+   C. PROPERTY [HubCallerContext Context]. PROPERTY obsahuje HUB CALLER CONTEXT.
+   D. PROPERTY [IGroupManager Groups]. PROPERTY obsahuje GROUP MANAGER.
+   E. METHOD [Task OnConnectedAsync()] je volana, ak sa k HUB pripojil novy CLIENT.
+   F. METHOD [Task OnDisconnectedAsync(Exception Exception)] je volana, ak sa od HUB odpojil existujuci CLIENT.
+   G. METHOD [void Dispose()] uvolnuje RESOURCES alokovane pre OBJECT TYPE [Hub].
+5. INTERFACE [IHubCallerClients] reprezentuje OBJECT, ktory sa pouziva na odosielanie MESSAGES prihlasenym CLIENTS. Ma nasledujuce MEMBERS.
+   A. PROPERTY [HubCallerContext Context] obsahuje CALLER CONTEXT v ktorom su ulozene informacie o CONNECTION, ktora REMOTE METHOD volala.
+   B. PROPERTY [IClientProxy All]. PROPERTY obsahuje PROXY OBJECT, ktory sa vyuziva na odoslanie MESSAGES vsetkym pripojenim CLIENT CONNECTIONS.
+   C. PROPERTY [ISingleClientProxy Caller]. PROPERTY obsahuje PROXY OBJECT, ktory sa vyuziva na odoslanie MESSAGES do CALLER CLIENT CONNECTION, ktora zavolala METHOD na HUB OBJECT.
+   D. PROPERTY [IClientProxy Caller]. PROPERTY obsahuje PROXY OBJECT, ktory sa vyuziva na odoslanie MESSAGES do vsetkych CLIENTS okrem CALLER CLIENT, ktory vyvolal METHOD na HUB OBJECT.
+   E. METHOD [ISingleClientProxy Client(string ConnectionId)] vracia PROXY OBJECT, ktory umoznuje odoslat MESSAGES na specificku CLIENT CONNECTION, ktory je identifikovany pomocou PARAMETER [ConnectionId].
+   F. METHOD [IClientProxy Clients(IReadOnlyList<string> ConnectionIds)] vracia PROXY OBJECT, ktory umoznuje odoslat MESSAGES na CLIENT CONNECTIONS, ktore su identifikovane pomocou PARAMETER [ConnectionIds].
+   G. METHOD [IClientProxy Group(string GroupName)] vracia PROXY OBJECT, ktory umoznuje odoslat MESSAGES do specifickej GROUP, ktora je identifikovana pomocou PARAMETER [GroupName].
+   H. METHOD [IClientProxy Groups(IReadOnlyList<string> GroupNames)] vracia PROXY OBJECT, ktory umoznuje odoslat MESSAGES do GROUPS, ktore su identifikovane pomocou PARAMETER [GroupNames].
+   I. METHOD [IClientProxy User(string UserId)] vracia PROXY OBJECT, ktory umoznuje odoslat MESSAGES vsetkym CONNECTIONS daneho USER, ktory je identifikovany pomocou PARAMETER [UserId].
+   J. METHOD [IClientProxy Users(IReadOnlyList<string> UserIds)] vracia PROXY OBJECT, ktory umoznuje odoslat MESSAGES vsetkym CONNECTIONS danych USERS, ktori su identifikovani pomocou PARAMETER [UserIds].
+   K. METHOD [IClientProxy AllExcept(IReadOnlyList<string> ExcludedConnectionIds)] vracia PROXY OBJECT, ktory umoznuje odoslat MESSAGES na vsetky CLIENT CONNECTIONS, okrem CLIENT CONNECTIONS, ktore su identifikovane pomocou PARAMETER [ExcludedConnectionIds].
+   L. METHOD [IClientProxy GroupExcept(string GroupName, IReadOnlyList<string> ExcludedConnectionIds)] vracia PROXY OBJECT, ktory umoznuje odoslat MESSAGES na vsetky CLIENT CONNECTIONS danej GROUP, okrem CLIENT CONNECTIONS, ktore su identifikovane pomocou PARAMETER [ExcludedConnectionIds].
+   M. METHOD [IClientProxy OthersInGroup(string GroupName)] vracia PROXY OBJECT, ktory umoznuje odoslat MESSAGES na vsetky CLIENT CONNECTIONS GROUP identifikovanej PARAMETER [GroupName], okrem CALLER CLIENT CONNECTION, ktora zavolala METHOD na HUB OBJECT.
+6. CLASS [HubCallerContext] obsahuje informacie o CALLER CONTEXT v ktorom su ulozene informacie o CONNECTION, ktora REMOTE METHOD volala. CLASS ma nasledujuce MEMBERS.
+   A. PROPERTY [string ConnectionId] obsahuje CONNECTION ID tej CONNECTION, ktora volala REMOTE METHOD.
+   B. PROPERTY [ClaimsPrincipal User] obsahuje informacie o USER, ktory vlastni CONNECTION, ktora volala REMOTE METHOD.
+   C. METHOD [void Abort()] umoznuje vykonat ABORT danej CONNECTION.
+7. INTERFACE [IGroupManager] umoznuje GROUP MANAGEMENT. Ma nasledujuce MEMBERS.
+   A. METHOD [Task AddToGroupAsync(string ConnectionId, string GroupName, CancellationToken CancellationToken)] pridava CONNECTION identifikovanu pomocou PARAMETER [ConnectionId] do GROUP [GroupName].
+   B. METHOD [Task RemoveFromGroupAsync(string ConnectionId, string GroupName, CancellationToken CancellationToken)] odstranuje CONNECTION identifikovanu pomocou PARAMETER [ConnectionId] z GROUP [GroupName].
+8. SERVICES, ktore vyuziva SingalR sa pridavaju do SERVICE COLLECTION volanom METHOD [ISignalRServerBuilder AddSignalR(this IServiceCollection Services)].
+9. SignalR vystavuje HUB ENDPOINT umoznujuci pripojenie CLIENTS na HUB volanim METHOD [HubEndpointConventionBuilder MapHub<THub>(this IEndpointRouteBuilder Endpoints, string Pattern)]. TYPE PARAMETER [THub] je CUSTOM CLASS, ktora je DERIVED z CLASS [Hub].
+!!! 10. .NET SignalR CLIENTS MUSIA mat v PROJECT vlozeny PACKAGE [Microsoft.AspNetCore.SignalR.Client], ktory implementuje CLIENT SIDE SignalR FRAMEWORK.
+11. CLIENT PROGRAMS sa pripajaju k SingalR HUB pomocou CLASS [HubConnection]. CLASS ma nasledujuce MEMBERS.
+   A. PROPERTY [HubConnectionState State] obsahuje CONNECTION STATE.
+   B. PROPERTY [string ConnectionId] obsahuje CONNECTION ID. Ak CONNECTION nie je vytvorena, PROPERTY vracia VALUE [null].
+   C. PROPERTY [TimeSpan ServerTimeout] obsahuje SERVER TIMEOUT INTERVAL pre CONNECTION.
+   D. PROPERTY [TimeSpan KeepAliveInterval] obsahuje INTERVAL pre odosielanie PING MESSAGES.
+   E. PROPERTY [TimeSpan HandshakeTimeout] obsahuje TIMEOUT pre INITIAL HANDSHAKE.
+   F. EVENT [Func<Exception,Task> Reconnecting] je vyvolany ako sa CONNECTION pokusa o RECONNECTING po strate spojenia so SingalR HUB.
+   G. EVENT [Func<string,Task> Reconnected] je vyvolany po uspesnom RECONNECT na SingalR HUB. PRVY PARAMETER je novy CONNECTION ID.
+   !!! H. EVENT [Func<Exception,Task> Closed] je vyvolany uzatvoreni CONNECTION na SingalR HUB. V pripade pouzitia RECONNECT je EVENT volany az ked zlyhaju vsetky pokusy o RECONNECT.
+   I. METHOD [Task StartAsync(CancellationToken CancellationToken)] vytvara CONNECTION na SignalR HUB.
+   J. METHOD [Task StopAsync(CancellationToken CancellationToken)] uzatvara CONNECTION na SignalR HUB.
+   K. METHOD [ValueTask DisposeAsync()] uvolnuje instanciu CLASS [HubConnection].
+   L. METHOD [void Remove(string MethodName)] odregistruje METHOD, ktora bude volana pri prichode REMOTE MESSAGE. PARAMETER [MethodName] obsahuje identifikator danej METHOD.
+   M. EXTENSION METHOD [IDisposable On<TYPE_PARAMETERS>(this HubConnection HubConnection, string MethodName, Action<TYPE_PARAMETERS> Handler)] registruje METHOD, ktora bude volana pri prichode REMOTE MESSAGE. PARAMETER [MethodName] obsahuje identifikator danej METHOD. RETURN VALUE obsahuje SUBSCRIPTION OBJECT, ktory je mozne pouzit na UNSUBSCRIBE.
+   N. EXTENSION METHOD [IDisposable On<TYPE_PARAMETERS>(this HubConnection HubConnection, string MethodName, Func<TYPE_PARAMETERS,Task> Handler)] registruje METHOD, ktora bude volana pri prichode REMOTE MESSAGE. PARAMETER [MethodName] obsahuje identifikator danej METHOD. RETURN VALUE obsahuje SUBSCRIPTION OBJECT, ktory je mozne pouzit na UNSUBSCRIBE.
+   O. EXTENSION METHOD [IDisposable On<TYPE_PARAMETERS>(this HubConnection HubConnection, string MethodName, Func<TYPE_PARAMETERS,Task> Handler)] registruje METHOD, ktora bude volana pri prichode REMOTE MESSAGE. PARAMETER [MethodName] obsahuje identifikator danej METHOD. RETURN VALUE obsahuje SUBSCRIPTION OBJECT, ktory je mozne pouzit na UNSUBSCRIBE.
+   P. EXTENSION METHOD [Task InvokeAsync(this HubConnection hubConnection, string MethodName, REMOTE_METHOD_PARAMETERS, CancellationToken CancellationToken)] zavola REMOTE METHOD s nazvom v PARAMETER [MethodName]. METHOD caka kym REMOTE METHOD neskonci.
+   Q. EXTENSION METHOD [Task<TResult> InvokeAsync<TResult>(this HubConnection HubConnection, string MethodName, REMOTE_METHOD_PARAMETERS, CancellationToken CancellationToken)] zavola REMOTE METHOD s nazvom v PARAMETER [MethodName]. METHOD caka kym REMOTE METHOD neskonci. RETUERN VALUE RE< a nevrati RETURN VALUE. RETURN VALUE REMOTE METHOD je vratena v RETURN VALUE.
+12. CLIENTS vytvaraju instanciu CLASS [HubConnection] pomocou CLASS [HubConnectionBuilder]. CLASS [HubConnectionBuilder] ma nasledujuce MEMBERS.
+   A. METHOD [IHubConnectionBuilder WithUrl(this IHubConnectionBuilder HubConnectionBuilder, string Url, HttpTransportType Transports, Action<HttpConnectionOptions> ConfigureHttpConnection)] nastavuje URL SERVER HUB, ako aj CONNECTION SETTINGS ako TIMEOUTS ci zoznam PROTOCOLS cez ktore moze CLIENT so SERVER komunikovat.
+   !!! B. METHOD [IHubConnectionBuilder WithAutomaticReconnect(this IHubConnectionBuilder HubConnectionBuilder, TimeSpan[] ReconnectDelays)] umoznuje nastavit RECONNECTION POLICY v pripade, ze dojde k zlyhaniu komunikacie medzi CLIENT a SERVER.
+   C. METHOD [IHubConnectionBuilder WithStatefulReconnect(this IHubConnectionBuilder HubConnectionBuilder)] povoluje STATEFUL RECONNECT.
+   D. METHOD [IHubConnectionBuilder ConfigureLogging(this IHubConnectionBuilder HubConnectionBuilder, Action<ILoggingBuilder> ConfigureLogging)] nastavuje uroven LOGGING.
+   !!!!! E. METHOD [HubConnection Build()] vytvara instanciu CLASS [HubConnection].
+!!! 13. V pripade ze CLIENT PROGRAMS su WEB BROSERS, ktore pristupuju k SERVER PROGRAM z inej DOMAIN, je NUTNE povolit CROSS ORIGING RESOURCE SHARING [CORS] volanim METHOD [IServiceCollection AddCors(this IServiceCollection Services, Action<CorsOptions> SetupAction)].
+14. Pre AUTHENTICATION a AUTHORIZATION SignalR PROGRAMS platia nasledujuce fakty.
+   !!! A. SignalR PROGRAMS su ASP.NET PROGRAMS, ktore bezia v ASP.NET CORE FRAMEWORK. SignalR je implementovany ako ASP.NET CORE MIDDLEWARE. To znamena, ze SignalR PROGRAMS pouzivaju na AUTHENTICATION a AUTHORIZATION tie iste COMPONENTS ako ine ASP.NET CORE PROGRAMS.
+   B. SignalR LIBRARY ziskava USER ID pomocou INTERFACE [IUserIdProvider]. Tento INTERFACE musi SignalR PROGRAM implementovat a jeho ulohou je vratit pre zadanu CONNECTION unikatny USER ID. USER ID sa moze ziskat z lubovolneho CLAIM, ktory AUTHENTITICATED REQUEST obsahuje. Spravidla sa vyuziva CLAIM [ClaimTypes.NameIdentifier].
+   !!!!! C. ACCESS TOKEN prihlaseneho USER sa MUSI prenasat v QUERY STRING, a NIE v AUTHORIZE HEADER. Je to preto, lebo SingalR interne vyuziva PROTOCOLS ako PROTOCOL [WebSockets] ci PROTOCOL [SERVER SENT EVENTS], ktore NEUMOZNUJU pouzitie AUTHORIZE HEADER.
+   !!!!! D. .NET CLIENT posiela ACCESS TOKEN v AUTHORIZE HEADER aj pre PROTOCOL [WebSockets]. No JAVA SCRIPT CLIENT MUSI VZDY posielat ACCESS TOKEN cez QUERY STRING, pretoze SCRIPT CLIENT WEB SOCKET API NEPODPORUJE odosielanie HEADERS v HTTP REQUEST. Cize toto obmedzenie je cisto obmedzenim JAVA SCRIPT implementacie PROTOCOL [WebSockets].
+15. AUTHENTICATION a AUTHORIZATION SignalR PROGRAMS sa realizuje v nasledujucich krokoch.
+   A. Nastavi sa AUTHENTICATION MIDDLEWARE a AUTHORIZATION MIDDLEWARE, ktore su standardnymi MIDDLEWARES pouzivanymi pre AUTHENTICATION a AUTHORIZATION v ASP.NET.
+   !!! B. AUTHENTICATION MIDDLEWARE musi byt nastaveny tak, aby ACCESS TOKEN preberal z QUERY STRING, a nie z AUTHORIZE HEADER, pretoze PROTOCOL [WebSockets] a PROTOCOL [SERVER SENT EVENTS] nie su schopne pracovat s AUTHORIZE HEADER, iba s QUERY STRING.
+   C. Vytvori sa CLASS, ktora implementuje INTERFACE [IUserIdProvider]. Ulohou tejto CLASS je ziskat USER ID z CLAIMS, ktore vratil AUTHENTICATION MIDDLEWARE. CLASS sa zaradi do DEPENDENCY INJECTION CONTAINER ako SERVICE.
+   D. Implementuje sa LOGIN ENDPOINT, ktory pre zadany USER NAME a PASSWORD vrati ACCESS TOKEN.
+   E. Na HUB CLASS sa aplikuje ATTRIBUTE [Authorize].
+   F. CLIENT pred vytvorenim CONNECTION zavola LOGIN ENDPOINT na ziskanie ACCESS TOKEN.
+   G. CLIENT nastavi odosielanie ACCESS TOKEN na HUB v METHOD [IHubConnectionBuilder WithUrl(this IHubConnectionBuilder HubConnectionBuilder, string Url, Action<HttpConnectionOptions> ConfigureHttpConnection)].
+16. SignalR umoznuje vytvarat aj STRONGLY TYPED HUBS. Pre STRONGLY TYPED HUBS platia nasledujuce fakty.
+   A. STRONGLY TYPED HUB umoznuje definovat CLIENT INTERFACE so vsetkymi CLIENT METHODS, ktore CLIENT podporuje a volat ich silne typovo.
+   B. STRONGLY TYPED HUB sa definuje nasledujucim sposobom.
+      A. Vytvori sa INTERFACE, ktory obsahuje vsetky METHODS, ktore CLIENTS podporuju.
+	  !!!!! B. METHOD NAMES vytvoreneho INTERFACE musia zodpovedat METHOD NAMES, ktore CLIENTS pouziju na zaregistrovanie CALLBACK METHODS.
+      C. Vytvori sa CUSTOM HUB CLASS, ktory je DERIVED z CLASS [Hub<TClientInterface>], kde TYPE PARAMETER [TClientInterface] predstavuje definovany CLIENT INTERFACE s CLIENT METHODS.
+	  !!!!! D. CLASS [Hub<TClientInterface>] obsahuje PROPERTY [IHubCallerClients<TClientInterface> Clients], ktorej METHODS vracaju OBJECT TYPE [TClientInterface]. Vdaka tomu je mozne volat CLIENT METHODS silne typovo.
+17. SignalR umoznuje posielat MESSAGES aj z beznych REST CONTROLLERS. Odosielanie MESSAGES cez SignalR FRAMEWORK cez REST CONTROLLERS sa vykonava v nasledujucich krokoch.
+   A. Definuje sa REST CONTROLLER, ktory vystavi ACTION METHODS pre odosielanie MESSAGES cez SignalR FRAMEWORK.
+   B. Cez DEPENDENCY INJECTION sa do CONTROLLER CONSTRUCTOR vlozi HUB CONTEXT OBJECT. SignalR podporuje nasledujuce HUB CONTEXT OBJECTS.
+      A. OBJECT TYPE [IHubContext<THub>] pre UNTYPED HUBS.
+      B. OBJECT TYPE [IHubContext<THub,TClientInterface>] pre STRONGLY TYPED HUBS.
+   C. ACTION METHODS pomocou HUB CONTEXT OBJECTS odosielaju MESSAGES cez SignalR FRAMEWORK.
+18. HUB CONFIGURATION je mozne vykonat nasledujucimi sposobmi.
+   A. Konfiguraciou pre vsetky HUBS volanim METHOD [ISignalRServerBuilder AddSignalR(this IServiceCollection Services, Action<HubOptions> Configure)].
+   B. Konfiguraciou pre konkretny HUB volanim METHOD [ISignalRServerBuilder AddHubOptions<THub>(this ISignalRServerBuilder SignalrBuilder, Action<HubOptions<THub>> Configure)].
+19. CLASS [HubOptions] a CLASS [HubOptions<THub>] obsahuju konfiguraciu HUB OPTIONS. Maju nasledujuce PROPERTIES.
+   A. PROPERTY [TimeSpan KeepAliveInterval] obsahuje cas za ktory sa vysiela KEEP ALIVE MESSAGE vsetkym CLIENTS. Ak CLIENT neobdrzi KEEP ALIVE MESSAGE v stanovenom case, sam vysiela na SERVER PING MESSAGE na udrzanie CONNECTION. Pri zmenej tejto VALUE sa odporuca zmenit aj na CLIENT PROPERTY [TimeSpan HubConnection.ServerTimeout] a nastavit ju na 2 nasobok VALUE PROPERTY [TimeSpan KeepAliveInterval].
+   B. PROPERTY [TimeSpan ClientTimeoutInterval] obsahuje cas po ktorom SERVER povazuje CLIENT CONNECTION za DISCONNECTED, ak od daneho CLIENT neobdrzi ziadnu MESSAGE. VALUE sa odporuca nastavit ako 2 nasobok VALUE PROPERTY [TimeSpan KeepAliveInterval].
+   C. PROPERTY [bool EnableDetailedErrors] urcuje ci sa maju na CLIENT odosielat detailne informacie o ERRORS.
+   D. PROPERTY [long MaximumReceiveMessageSize] urcuje maximalnu dlzku MESSAGE v BYTES, ktoru SERVER akceptuje.
+   E. PROPERTY [long MaximumReceiveMessageSize] urcuje maximalnu dlzku MESSAGE v BYTES, ktoru SERVER akceptuje.
+   F. PROPERTY [int MaximumParallelInvocationsPerClient] urcuje maximalny pocet PARALELNE vykonavanych METHOD INVOCATIONS na SERVER od jedneho CLIENT.
+   G. PROPERTY [int StreamBufferCapacity] urcuje maximalny pocet ITEMS v BUFFER pre CLIENT UPLOAD STREAM.
+20. SignalR umoznuje pre konkretny HUB konfigurovat prenosove PROTOCOLS a ich SETTINGS volanim METHOD [HubEndpointConventionBuilder MapHub<THub>(this IEndpointRouteBuilder Endpoints, string Pattern, Action<HttpConnectionDispatcherOptions> ConfigureOptions)].
+21. CLASS [HttpConnectionDispatcherOptions] umoznuje pre konkretny HUB konfigurovat prenosove PROTOCOLS a ich SETTINGS.
+   A. PROPERTY [HttpTransportType Transports] obsahuje zoznam TRANSPORT PROTOCOLS, cez ktore moze HUB komunikovat.
+   B. PROPERTY [WebSocketOptions WebSockets] obsahuje SETTINGS pre WEB SOCKET PROTOCOL.
+   C. PROPERTY [LongPollingOptions LongPolling] obsahuje SETTINGS pre LONG POLLING PROTOCOL.
+22. PROPERTY [TimeSpan LongPollingOptions.PollTimeout] urcuje dlzku trvania CONNECTION pri LONG POLLING po ktorej je uzatvorena povodna CONNECTION a otvorena nova.
+23. PROPERTY [TimeSpan WebSocketOptions.CloseTimeout] urcuje cas ktory SERVER po svojom ukonceni caka, aby CLIENTS uzatvorili svoje CONNECTIONS. Ak ich neuzatvoria, CONNECTIONS su TERMINATED.
+24. SignalR CLIENTS mozu konfigurovat PROTOCOLS a ich SETTINGS volanim METHOD [IHubConnectionBuilder WithUrl(this IHubConnectionBuilder HubConnectionBuilder, [StringSyntax(StringSyntaxAttribute.Uri)] string url, HttpTransportType Transports, Action<HttpConnectionOptions> ConfigureHttpConnection)].
+25. CLASS [HttpConnectionOptions] umoznuje CLIENTS konfigurovat PROTOCOLS a ich SETTINGS.
+   A. PROPERTY [Func<Task<string>> AccessTokenProvider] obsahuje ACCESS TOKEN PROVIDER, ktory umoznuje nastavit ACCESS TOKEN pre dany CLIENT.
+   B. PROPERTY [IDictionary<string,string> Headers] obsahuje HTTP HEADERS, ktore su odosielane v kazdej HTTP MESSAGE.
+   C. PROPERTY [CookieContainer Cookies] obsahuje COOKIES, ktore su odosielane v kazdej HTTP MESSAGE.
+   D. PROPERTY [HttpTransportType Transports] obsahuje zoznam COMMUNICATION PROTOCOLS cez ktore moze CLIENT komunikovat so SERVER HUB.
+26. SingalR umoznuje vykonat automaticky CLIENT RECONNECTION. Pre CLIENT RECONNECTION platia nasledujuce fakty.
+   A. CLIENT RECONNECTION sa na CLIENT nastavuje volanim METHOD [IHubConnectionBuilder WithAutomaticReconnect(this IHubConnectionBuilder HubConnectionBuilder, TimeSpan[] ReconnectDelays)]. PARAMETER [ReconnectDelays] umoznuje nastavit casy kedy sa CLIENT pokusi o RECONNECT ak CONNECTION so SERVER zlyha.
+   B. Pri zlyhani CONNECTION je na CLIENT volany EVENT [Func<Exception,Task> Reconnecting].
+   C. Ak RECONNECTION uspeje a CLIENT je znova pripojeny na SERVER, CLIENT vola EVENT [Func<string,Task> Reconnected].
+   !!! D. Ak vsetky pokusy o RECONNECITON zlyhaju, CLIENT vola EVENT [Func<Exception,Task> Closed].
+27. SignalR podporuje aj STATEFUL RECONNECT. Pre STATEFUL RECONNECT platia nasedujuce fakty.
+   A. STATEFUL RECONNECT umoznuje, aby SERVER v case CLIENT RECONNECTION drzat v MEMORY vsetky MESSAGES, ktore su urcene pre daneho CLIENT a po nadviadzani CONNECTION ich odoslal danemu CLIENT.
+   B. Pre STATEFUL RECONNECT CLIENT, ktory bol RECONNECTED pouziva to iste CLIENT ID.
+   C. STATEFUL RECONNECT sa na SEVER nastavuje nasledujucim sposobom.
+      A. PROPERTY [bool HttpConnectionDispatcherOptions.AllowStatefulReconnects] sa nastavi na VALUE [true].
+	  B. PROPERTY [long HubOptions.StatefulReconnectBufferSize] sa nastavi na pocet BYTES, ktory bude obsahovat BUFFER pre STATEFUL RECONNECT.
+   D. STATEFUL RECONNECT sa na CLIENT nastavuje nasledujucim sposobom.
+      A. Zavola sa METHOD [IHubConnectionBuilder WithStatefulReconnect(this IHubConnectionBuilder HubConnectionBuilder)], ktora povoli STATEFUL RECONNECT.
+	  B. V METHOD [IServiceCollection Configure<TOptions>(this IServiceCollection Services, Action<TOptions> ConfigureOptions)] sa vykonaju nastavenia STATEFUL RECONNECT, ako napriklad velkost BUFFER pre STATEFUL RECONNECT.
+!!! 28. Nevyhodou SignalR je, ze vyzaduje jeden centralny SERVER. A teda nie je ho mozne skalovat na vicere SERVERS. SignalR navyse vyzaduje STICKY SESSIONS, co znamena, ze REQUESTS z daneho CLIENT, ktory je pripojeny na SERVER musia byt ROUTED na ten isty SERVER.
+29. AZURE ma SERVICE [AZURE SignalR SERVICE], ktory umoznuje skalovanie SignalR na viacero SERVERS.
+//----------------------------------------------------------------------------------------------------------------------
