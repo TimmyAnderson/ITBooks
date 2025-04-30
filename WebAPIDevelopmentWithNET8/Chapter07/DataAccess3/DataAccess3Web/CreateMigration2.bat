@@ -1,0 +1,1 @@
+dotnet ef migrations add InitialMigration --context CDBContext2

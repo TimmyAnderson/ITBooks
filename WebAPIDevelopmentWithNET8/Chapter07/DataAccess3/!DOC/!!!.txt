@@ -1,0 +1,238 @@
+//----------------------------------------------------------------------------------------------------------------------
+1. Solution demonstruje specificke funcionality ENTITY FRAMEWORK ako DB CONTEXT POOLING, riesenie CONCURRENCY CONFLICTS ci RAW SQL OPERATIONS.
+2. ASP.NET podporuje DB CONTEXT POOLING pre ENTITY FRAMEWORK. DB CONTEXT POOLING funguje nasledujucim sposobom.
+   A. DEPENDENCY INJECTION CONTAINER drzi POOL DB CONTEXT.
+   B. Ak si CODE vyziada DB CONTEXT cez DEPENDENCY INJECTION, tak DB CONTEXT POOL vrati niektory z DB CONTEXTS, ktore ma ulozene v POOL.
+   C. Ak CODE vykona DISPOSE DB CONTEXT, tak tento nie je DIPOSED, ale dojde iba k RESET jeho INTERNAL STATE a DB CONTEXT je vrateny spat do DB CONTEXT POOL na opatovne pouzitie.
+!!! 3. DB CONTEXT POOLING sa aktivuje nasledujucim sposobom.
+   A. DB CONTEXT POOLING sa aktivuje volanim METHOD [IServiceCollection AddDbContextPool<TContext>(this IServiceCollection ServiceCollection, Action<DbContextOptionsBuilder> OptionsAction, int PoolSize)]. Tato METHOD NAHRADZA volanie standardnej METHOD [IServiceCollection AddDbContext<TContext>(this IServiceCollection ServiceCollection, Action<DbContextOptionsBuilder> OptionsAction, ServiceLifetime ContextLifetime, ServiceLifetime OptionsLifetime)], ktora sa pouziva na registraciu DB CONTEXT.
+   B. PARAMETER [int PoolSize] urcuje velkost DB CONTEXT POOL. To znamena, ze urcuje kolko DB CONTEXT OBJECTS drzi POOL. Ak je velkost prekrocena, DB CONTEXT POOL vytvara dalsie DB CONTEXT OBJECTS.
+4. Pouzitie DB CONTEXT POOLING iba pri naozaj vysokom THROUGHPUT. Pouzitie DB CONTEXT POOLING znamena, ze cela inicializacia DB CONTEXT sa nemusi vykonavat opakovane pri kazdom pouziti DB CONTEXT, kedze bez DB CONTEXT POOLING DEPENDENCY INJECTION CONTAINER vytvara novy DB CONTEXT OBJECT pri kazdom jeho pouziti.
+5. ENTITY FRAMEWORK CORE si pre instancie ENTITY CLASSES drzi TRACKING INFORMATION v instancii CLASS [EntityEntry<TEntityType>], kde TYPE [TEntity] je TYPE ENTITY CLASS.
+6. TRACKING INFORMATION pre danu instanciu ENTITY CLASS je mozne ziskat volanim METHOD [EntityEntry<TEntityType> DbContext.Entry<TEntityType>(TEntityType Entity)].
+!!! 7. NIE pre vsetky instancie ENTITY CLASSES si ENTITY FRAMEWORK CORE drzi TRACKING INFORMATION. Platia nasledujuce pravidla.
+   A. Ak sa instancia ENTITY CLASS vytvori pomocou CONSTRUCTOR, pricom tato instancia NIE JE pouzita ako PARAMETER ziadnej METHOD CLASS [DbContext], tak takato instancia ENTITY CLASS NEMA asociovanu TRACKING INFORMATION.
+   B. Ak sa instancia ENTITY CLASS vytvori pomocou CONSTRUCTOR, pricom tato instancia JE pouzita ako PARAMETER METHOD CLASS [DbContext] ako je napriklad METHOD [EntityEntry<TEntityType> DbSet<TEntityType>.Add(TEntityType Entity)], tak takato instancia ENTITY CLASS MA asociovanu TRACKING INFORMATION.
+   C. Ak sa instancia ENTITY CLASS ziska vykonanim DB QUERY, pricom na DB QUERY NIE JE aplikovana METHOD [IQueryable<TEntityType> IQueryable<TEntityType>.AsNoTracking<TEntityType>()], tak takato instancia ENTITY CLASS MA asociovanu TRACKING INFORMATION.
+   D. Ak sa instancia ENTITY CLASS ziska vykonanim DB QUERY, pricom na DB QUERY JE aplikovana METHOD [IQueryable<TEntityType> IQueryable<TEntityType>.AsNoTracking<TEntityType>()], tak takato instancia ENTITY CLASS NEMA asociovanu TRACKING INFORMATION.
+!!! 8. To ci DB CONTEXT bude BY-DEFAULT pri QUERIES pre vratene ENTITIES uklada TRACKING INFORMATION je mozne nastavit pomocou METHOD [DbContextOptionsBuilder<TContext> DbContextOptionsBuilder<TContext>.UseQueryTrackingBehavior(QueryTrackingBehavior QueryTrackingBehavior)].
+9. TRACKING INFORMATION, ktora je asociovana s danou ENTITY CLASS obsahuje STATE vyjadreny pomocou ENUM TYPE [EntityState]. ENUM TYPE [EntityState] je pristupna pomocou PROPERTY [EntityEntry.State] a ma nasledujuce VALUES.
+   A. VALUE [Detached] znamena, ze instancia ENTITY CLASS NIE je TRACKED a pri vykonani METHOD [int DbContext.SaveChanges()] je tato instancia ENTITY CLASS IGNOROVANA.
+   B. VALUE [Unchanged] znamena, ze instancia ENTITY CLASS je TRACKED, ale nebola v nej vykonana ziadna zmena a pri volani METHOD [int DbContext.SaveChanges()] je tato instancia ENTITY CLASS IGNOROVANA.
+   C. VALUE [Added] znamena, ze instancia ENTITY CLASS bola pridana do DB CONTEXT a volanie METHOD [int DbContext.SaveChanges()] vykona INSERT nad DB.
+   D. VALUE [Modified] znamena, ze instancia ENTITY CLASS bola zmenena v DB CONTEXT a volanie METHOD [int DbContext.SaveChanges()] vykona UPDATE nad DB.
+   E. VALUE [Deleted] znamena, ze instancia ENTITY CLASS bola vymazana z DB CONTEXT a volanie METHOD [int DbContext.SaveChanges()] vykona DELETE nad DB.
+!!!!! 10. PROPERTY [EntityEntry.State] nemusi vzdy obsahovat presny STATE. METHOD [void ChangeTracker.DetectChanges()] vykona okamzitu kontrolu STATE vsetkych ENTITIES a vykona UPDATE ich PROPERTY [EntityEntry.State].
+!!! 11. METHOD [TEntity DbSet<TEntityType>.Find(params object[] KeyValues)] umoznuje efektivne nacitavat instancie ENTITY CLASSES. Pre METHOD platia nasledujuce fakty.
+   A. METHOD [TEntity DbSet<TEntityType>.Find(params object[] KeyValues)] umnoznuje vyhladavat instancie ENTITY CLASSES pomocou VALUES PRIMARY KEYS. Ak ma ENTITY viacero PRIMARY KEYS, ich hodnoty su zadane ako PARAMETERS METHOD.
+   !!! B. METHOD [TEntity DbSet<TEntityType>.Find(params object[] KeyValues)] pred vykonanim DB QUERY VZDY skontroluje ci instancia danej ENTITY CLASS uz nebola nacitana a je sucastou DB CONTEXT. Ak ano, tak sa DB QUERY NEVYKONA a je vratena EXISTUJUCA instancia ENTITY CLASS.
+12. ENTITY FRAMEWORK CORE vykonava vkladanie novych RECORDS do DB realizovanim nasledujucich krokov.
+   A. Vytvori sa instancia ENTITY CLASS, ktora sa ma vlozit do DB. Po vytvoreni instancie ENTITY CLASS je TRACKING INFORMATION STATE danej instancie ENTITY CLASS nastaveny na STATE [EntityEntry.State.Detached].
+   !!! B. Instancia ENTITY CLASS sa vlozi do DB CONTEXT pomocou METHOD [EntityEntry<TEntityType> DbSet<TEntityType>.Add(TEntityType Entity)] daneho DATA SET. Alternativou je pouzitie univerzalnejsej METHOD [EntityEntry<TEntityType> DbContext.Add<TEntityType>(TEntityType Entity)], ktora automaticky identifikuje ENTITY CLASS TYPE a tym padom aj TABLE do ktorej ma byt RECORD pridany.
+   !!! C. Po pridani instancie ENTITY CLASS do DB CONTEXT sa TRACKING INFORMATION STATE instancie ENTITY CLASS zmeni svoj STATE na [EntityEntry.State.Added].
+   D. Zavola sa METHOD [int DbContext.SaveChanges()], ktora prejde TRACKING INFORMATION vsetkych instancii ENTITY CLASS a tie, ktore maju nastavene STATE na [EntityEntry.State.Added] zapise ako nove RECORDS do DB.
+   !!! E. Po vykonani zapisu RECORD do DB, ENTITY FRAMEWORK CORE nacita hodnotu PRIMARY KEY a vrati ju do DB CONTEXT. TRACKING INFORMATION STATE instancie ENTITY CLASS sa zmeni na STATE [EntityEntry.State.Unchanged].
+!!! 13. Pri vkladani instancie PRINCIPAL ENTITY CLASS, ktora ma RELATIONS na instancie DEPENDENT ENTITY CLASSES vykonava ENTITY FRAMEWORK CORE nasledujuce operacie.
+   A. ENTITY FRAMEWORK CORE vlozi do DB vsetky instancie DEPENDENT ENTITY CLASSES, ktore su v RELATIONSHIP s instanciou PRINCIPAL ENTITY CLASS.
+   B. ENTITY FRAMEWORK CORE nasledne nacita pre vsetky instancie DEPENDENT ENTITY CLASSES ich PRIMARY KEYS.
+   C. ENTITY FRAMEWORK CORE vlozi do DB instanciu PRIMARY ENTITY CLASS.
+   D. ENTITY FRAMEWORK CORE nasledne nacita pre instanciu PRIMARY ENTITY CLASS jej PRIMARY KEY.
+   !!! E. ENTITY FRAMEWORK CORE odosle PRIMARY KEY instancie PRIMARY ENTITY CLASS a PRIMARY KEYS vsetkych instancii DEPENDENT ENTITY CLASSES do DB CONTEXT.
+   !!! F. ENTITY FRAMEWORK CORE vykona UPDATE PRIMARY KEYS a FOREIGN KEYS vsetkych vlozenych instancii ENTITY CLASSES.
+14. UPDATE pomocou ENTITY FRAMEWORK CORE sa vykonava v nasledujucich krokoch.
+   A. Pomocou ENTITY FRAMEWORK CORE sa nacitaju instancie ENTITY CLASSES, ktore maju byt UPDATED.
+   B. Vykona sa UPDATE instancii ENTITY CLASSES zmenou ich PROPERTY VALUES.
+   C. Vykona sa zapis UPDATES do DB volanim METHOD [int DbContext.SaveChanges()].
+!!! 15. Pri zapise UPDATES do DB volanim METHOD [int DbContext.SaveChanges()] sa vykonavaju nasledujuce kroky.
+   A. ENTITY FRAMEWORK CORE zavola METHOD [void ChangeTracker.DetectChanges()].
+   B. METHOD [void ChangeTracker.DetectChanges()] vykona porovnanie povodnej kopie instancii ENTITY CLASSES nacitanych z DB a zmenenych instancii ENTITY CLASSES. Na zaklade detekcie tychto zmien su vygenerovane UPDATE SQL COMMANDS.
+   C. Detekovane UPDATE SQL COMMANDS su vykonane na DB.
+!!! 16. ENTITY FRAMEWORK CORE umoznuje instanciu ENTITY CLASS, ktora bola MANUALNE VYTVORENA a NIE NACITANA z DB mozne vlozit do DB CONTEXT volanim METHOD [EntityEntry<TEntityType> DbContext.Update<TEntityType>(TEntityType Entity)]. Takato instancia ENTITY CLASS je po volani METHOD [int DbContext.SaveChanges()] UPDATED v DB.
+17. UPDATE RELATIONSHIP 1:1 sa v ENTITY FRAMEWORK CORE vykonava nasledujucimi sposobmi.
+   A. V PRINCIPAL ENTITY sa prida instancia DEPENDENT ENTITY jej priradenim do NAVIGATIONAL PROPERTY na DEPENDENT ENTITY.
+   !!! B. V DEPENDENT ENTITY sa prida instancia PRINCIPAL ENTITY jej priradenim do NAVIGATIONAL PROPERTY na PRINCIPAL ENTITY.
+   !!! C. V DEPENDENT ENTITY sa nastavi VALUE FOREIGN KEY PROPERTY na PRIMARY KEY PRINCIPAL ENTITY. DEPENDENT ENTITY uz musi v DB existovat.
+   !!!!! D. Do DB CONTEXT sa prida instancia DEPENDENT ENTITY, ktora ma nastavenu NAVIGATIONAL PROPERTY na PRINCIPAL ENTITY, alebo FOREIGN KEY na PRINCIPAL ENTITY. V tomto pripade vsak PRINCIPAL ENTITY NESMIE mat priradenu inu DEPENDENT ENTITY, pretoze ENTITY FRAMEWORK CORE by o nej nevedel a pri pokuse o vlozenie novej DEPENDENT ENTITY s rovnakym FOREIGN KEY by doslo k naruseniu FOREIGN KEY CONTRAINT a vzniku EXCEPTION.
+!!!!! 18. Pri vykonavani UPDATE RELATIONSHIP 1:1 plati, ze ak UPDATE, ktory vedie ku CASCADE DELETE je ABSOLUTNE NEVYHNUTNE nacitat DEPENDENT ENTITY pomocou LINQ OPERATOR [Include], aby ENTITY FRAMEWORK vedel zistit ci PRINCIPAL ENTITY je naviazana na DEPENDENT ENTITY a ak je DEPENDENT ENTITY nahradena inou, tak vykonal DELETE existujucej DEPENDENT ENTITY. Ak sa LINQ OPERATOR [Include] NEPOUZIJE tak pokus o takyto UPDATE hodi EXCEPTION, pretoze ENTITY FRAMEWORK CORE prida novu DEPENDENT ENTITY s rovnakym FOREIGN KEY ako ma existujuca DEPENDENT ENTITY (ktora mala byt DELETED) a pri RELATIONSHIP 1:1 dojde k naruseniu UNIKATNOSTI FOREIGN KEY.
+19. UPDATE RELATIONSHIP 1:N sa v ENTITY FRAMEWORK CORE vykonava nasledujucimi sposobmi.
+   A. V PRINCIPAL ENTITY sa prida instancia DEPENDENT ENTITY pridanim do NAVIGATIONAL PROPERTY COLLECTION na DEPENDENT ENTITIES.
+   !!!!! B. V PRINCIPAL ENTITY sa pridaju instancie DEPENDENT ENTITIES nahradenim NAVIGATIONAL PROPERTY COLLECTION na DEPENDENT ENTITIES za novu COLLECTION. Pri tomto type UPDATE je NUTNE nacitat DEPENDENT ENTITIES pomocou LINQ OPERATOR [Include], inak ENTITY FRAMEWORK CORE nebude vediet o tom, ze v DB su existujuce DEPENDENT ENTITIES a pri vymene NAVIGATIONAL PROPERTY COLLECTION na DEPENDENT ENTITIES NEDOJDE k DELETE povodnych DEPENDENT ENTITIES.
+   !!! C. V DEPENDENT ENTITY sa nastavi instancia PRINCIPAL ENTITY priradenim do NAVIGATIONAL PROPERTY na PRINCIPAL ENTITY.
+   !!! D. V DEPENDENT ENTITY sa nastavi VALUE FOREIGN KEY PROPERTY na PRIMARY KEY PRINCIPAL ENTITY. DEPENDENT ENTITY uz musi v DB existovat.
+   E. Do DB CONTEXT sa prida instancia DEPENDENT ENTITY, ktora ma nastavenu NAVIGATIONAL PROPERTY na PRINCIPAL ENTITY, alebo FOREIGN KEY na PRINCIPAL ENTITY.
+20. UPDATE RELATIONSHIP M:N sa v ENTITY FRAMEWORK CORE vykonava nasledujucimi sposobmi.
+   A. V PRINCIPAL ENTITY sa prida instancia DEPENDENT ENTITY pridanim do NAVIGATIONAL PROPERTY COLLECTION na PRINCIPAL ENTITIES.
+   B. Na PRINCIPAL ENTITY sa pridaju instancie DEPENDENT ENTITIES nahradenim NAVIGATIONAL PROPERTY COLLECTION na PRINCIPAL ENTITY za novu COLLECTION.
+   !!! C. V DEPENDENT ENTITY sa nastavi instancia PRINCIPAL ENTITY priradenim do NAVIGATIONAL PROPERTY na PRINCIPAL ENTITY.
+   !!! D. V DEPENDENT ENTITY sa nastavi VALUE FOREIGN KEY PROPERTY na PRIMARY KEY PRINCIPAL ENTITY. DEPENDENT ENTITY uz musi v DB existovat.
+   E. Do DB CONTEXT sa prida instancia DEPENDENT ENTITY, ktora ma nastavenu NAVIGATIONAL PROPERTY na PRINCIPAL ENTITY, alebo FOREIGN KEY na PRINCIPAL ENTITY.
+21. UPDATE AUTOMATICKY VYTVARANEJ RELATIONSHIP M:N sa v ENTITY FRAMEWORK CORE vykonava nasledujucimi sposobmi.
+   A. V ENTITY M sa prida instancia ENTITY N pridanim do NAVIGATIONAL PROPERTY COLLECTION na PRINCIPAL ENTITIES.
+   B. V ENTITY N sa prida instancia ENTITY M pridanim do NAVIGATIONAL PROPERTY COLLECTION na PRINCIPAL ENTITIES.
+22. DELETE ENTITY CLASS sa vykonava nasledujucimi sposobmi.
+   A. Volanim METHOD [EntityEntry<TEntityType> DbSet<TEntityType>.Remove(TEntityType Entity)].
+   B. Volanim METHOD [EntityEntry<TEntityType> DbContext.Remove<TEntityType>(TEntityType entity)].
+23. DELETE ENTITY CLASS, ktora ma RELATIONSHIPS je mozne vykonat v zavislosti od nastavenia DB INTEGRITY nasledujucim sposobom.
+   A. Ak pri DELETE PRINCIPAL ENTITY DEPENDENT ENTITY umoznuje nastavit VALUE FOREIGN KEY na NULL, tak PRINCIPAL ENTITY je DELETED a DEPENDENT ENTITY NIE JE DELETED, ale jeho FOREIGN KEY VALUE na PRINCIPAL ENTITY je nastavena na NULL.
+   B. Ak pri DELETE PRINCIPAL ENTITY DEPENDENT ENTITY umoznuje nastavit VALUE FOREIGN KEY na NULL a v DB je nastaveny CASCADE DELETE, tak sa vykona CASCADE DELETE, kedy je DELETED PRINCIPAL ENTITY a DELETED su aj DEPENDENT ENTITIES.
+!!! 24. Ak sa vykonava DELETE PRINCIPAL ENTITY, ktora ma DEPENDENT ENTITIES je vzdy VHODNE pomocou LINQ OPERATOR [Include] nacitat tieto DEPENDENT ENTITIES. Ak totizto nie su nacitane do DB CONTEXT, ENTITY FRAMEWORK CORE NEVYKONA explicitny DELETE DEPENDENT ENTITIES a je na DB SERVERI ako ma nastaveny DEFAULT BEHAVIOR. Ak ho NEMA nastaveny na CASCADE DELETE, tak DEPENDENT ENTITIES NEBUDU DELETED, no dojde k poruseniu FOREIGN KEY CONSTRAINT co sposobi hodenie EXCEPTION.
+25. LINQ QUERIES pre ENTITY FRAMEWORK CORE su implementovane ako METHODS aplikovane na instancie INTERFACE [IQueryable<TType>]. INTERFACE [IQueryable<TType>] umoznuje rozdelit QUERY EXECUTION medzi CLIENT a DB SERVER, kde cast QUERY, alebo aj cela QUERY moze byt transformovana na postupnost DB COMMANDS, ktore su realizovane priamo na DB SERVERI.
+!!! 26. ENTITY FRAMEWORK CORE dokaze kazdu LINQ QUERY vykonat. No nie vsetky LINQ OPERATORS dokazu DB PROVIDERS vykonat na urovni DB. Niektore su vykonane na CLIENT SIDE co vedie k POOR PERFORMANCE.
+27. Zakladnym INTERFACE cez ktore su realizovane LINQ QUERIES v ENTITY FRAMEWORK CORE je INTERFACE [IQueryable<TType>]. Pre INTERFACE [IQueryable<TType>] platia nasledujuce fakty.
+   A. INTERFACE [IQueryable<TType>] umoznuje rozdelit QUERIES na viacero separatnych casti.
+   B. INTERFACE [IQueryable<TType>] umoznuje ENTITY FRAMEWORK CORE transformovat casti QUERIES, alebo cele QUERIES na DB SCRIPTS, ktore je mozne vykonat priamo na DB SERVERI.
+   C. INTERFACE [IQueryable<TType>] interne reprezentuje QUERIES v tvare EXPRESSION TREES.
+28. LINQ QUERIES vyjadrene pomocou INTERFACE [IQueryable<TType>] su konvertovane ENTITY FRAMEWORK CORE na SQL COMMANDS v nasledujucich krokoch.
+   A. LINQ QUERY je na urovni C# COMPILER transformovana do podoby LINQ EXPRESSION TREE.
+   B. ENTITY FRAMEWORK CORE vykona konverziu LINQ EXPRESSION TREE do INTERNAL FORM, ktory je mozne transformovat na SQL COMMANDS.
+   C. ENTITY FRAMEWORK CORE DATABASE PROVIDER vykona konverziu z INTERNAL FORM do podoby SQL COMMANDS pre specificky typ DB PROVIDER.
+!!! 29. ENTITY FRAMEWORK CORE umoznuje vykonavat cast QUERY na SERVER SIDE a cast QUERY na CLIENT SIDE. Tato FEATURE sa vola CLIENT VS. SERVER SIDE EVALUATION a platia prenho nasledujuce fakty.
+   A. CLIENT VS. SERVER SIDE EVALUATION umoznuje spustit cast QUERY, ak ju nie je mozne vykonat na DB SERVERI, vykonat na CLIENT SIDE.
+   B. Typickym prikladom CODE, ktory nie je mozne na SERVER SIDE je volanie CUSTOM C# METHOD v QUERY.
+   !!! C. Pomocou CLIENT VS. SERVER SIDE EVALUATION je mozne spustit CODE na CLIENT SIDE, ktory je sucastou POSLEDNEJ CASTI QUERY. Typicky sa jedna o LINQ OPERATOR [Select].
+   !!!!! D. V pripade, ze QUERY obsahuje CODE, ktory nie je mozne spustit na SERVER SIDE aj v INYCH CASTIACH QUERY ako v POSLEDNEJ CASTI QUERY, ENTITY FRAMEWORK CORE hodi EXCEPTION.
+   !!!!! E. Pri CLIENT SIDE EVALULATION je mozne pouzivat iba STATIC METHODS a CONSTRUCTORS. NON-STATIC METHODS nie je mozne pouzit, kedze by to znamenalo nutnost ulozit aj OBJECT. Pri pokuse o pouzitie NON-STATIC METHODS ENTITY FRAMEWORK CORE hodi EXCEPTION.
+!!!!! 30. Ak QUERY obsahuje volanie NON-DEFAULT CONSTRUCTOR, je to vlastne volanie CUSTOM C# METHOD, kde sa aplikuju principy CLIENT VS. SERVER SIDE EVALUATION.
+   A. V QUERY, ktora obsahuje volanie NON-DEFAULT CONSTRUCTOR je mozne volanie NON-DEFAULT CONSTRUCTOR pouzit IBA v POSLEDNEJ CASTI QUERY. V takom pripade sa tento CODE vykona na CLIENT SIDE.
+   B. Ak by sa v QUERY, ktora obsahuje volanie NON-DEFAULT CONSTRUCTOR pouzilo volanie NON-DEFAULT CONSTRUCTOR v INEJ CASTI QUERY za ktorou by sa nachadzali dalsie LINQ OPERATORS, ktore maju byt vykonane na SERVER SIDE, ENTITY FRAMEWORK CORE by hodilo EXCEPTION, pretoze volanie NON-DEFAULT CONSTRUCTOR, co je vlastne CUSTOM C# CODE by NEDOKAZAL na SERVER SIDE prelozit do SQL.
+31. ENTITY FRAMEWORK umoznuje vytvarat RAW QUERIES podla nasledujucich METHODS.
+   A. METHOD [FromSql()].
+   B. METHOD [FromSqlRaw()].
+   C. METHOD [SqlQuery()].
+   D. METHOD [SqlQueryRaw()].
+   E. METHOD [ExecuteSql()].
+   F. METHOD [ExecuteSqlRaw()].
+32. Pre METHOD [FromSql()] platia nasledujuce fakty.
+   A. METHOD ma PROTOTYPE [IQueryable<TEntity> FromSql<TEntity>(this DbSet<TEntity> Source, FormattableString Sql)].
+   B. METHOD prijima QUERY ako PARAMETER TYPE [FormattableString]. Tento TYPE vyzaduje, aby STRING bol definovany pomocou INTERPOLATED STRING SYNTAX, kde jednotlive PARAMETERS su CONVERTED na TYPE [DbParameter].
+   !!! C. QUERY MUSI vracat VSETKY PROPERTIES danej ENTITY, inak by vrateny RESULT SET nedokazal ENTITY FRAMEWORK namapovat na C# ENTITY CLASS.
+   !!! D. QUERY MUSI vracat COLUMN NAMES, ktore zodpovedaju PROPERTY NAMES danej ENTITY.
+   !!! E. QUERY MUSI byt vykonana iba na 1 TABLE. V pripade nutnosti vykonat QUERY nad REFERENCED TABLE, je treba NAJPRV pouzit LINQ OPERATOR [Include] a az nan aplikovat opat METHOD [FromSql()].
+   E. Na ENTITY OBJECTS, ktore vrati METHOD je mozne aplikovat LINQ OPERATORS.
+   !!! G. QUERY NEUMOZNUJE parametrizaciu TABLE NAME ci COLUMN NAMES.
+   !!!!! H. METHOD je BEZPECNA voci SQL INJECTION ATTACKS.
+33. Pre METHOD [FromSqlRaw()] platia nasledujuce fakty.
+   A. METHOD ma PROTOTYPE [IQueryable<TEntity> FromSqlRaw<TEntity>(this DbSet<TEntity> Source, string Sql, object[] Parameters)].
+   !!! B. METHOD prijima QUERY ako PARAMETER TYPE [string]. To znamena, ze tento tento TYPE nie je NIJAKO osetreny voci SQL INJECTION ATTACKS.
+   !!! C. PARAMETER [object[] Parameters] moze obsahovat PARAMETERS. Platia nasledujuce fakty.
+      A. Ak PARAMETER je CLASS, ktora je DERIVED z CLASS [DbParameter], tak pre tieto PARAMETERS sa vykonava kontrolu voci SQL INJECTION ATTACKS.
+	  B. V SQL SERVER CLASS [SqlParameter] je DERIVED z CLASS [DbParameter].
+	  C. V SQLITE CLASS [SqliteParameter] je DERIVED z CLASS [DbParameter].
+   !!! D. QUERY MUSI vracat VSETKY PROPERTIES danej ENTITY, inak by vrateny RESULT SET nedokazal ENTITY FRAMEWORK namapovat na C# ENTITY CLASS.
+   !!! E. QUERY MUSI vracat COLUMN NAMES, ktore zodpovedaju PROPERTY NAMES danej ENTITY.
+   !!! F. QUERY MUSI byt vykonana iba na 1 TABLE. V pripade nutnosti vykonat QUERY nad REFERENCED TABLE, je treba NAJPRV pouzit LINQ OPERATOR [Include] a az nan aplikovat opat METHOD [FromSqlRaw()].
+   G. Na ENTITY OBJECTS, ktore vrati METHOD je mozne aplikovat LINQ OPERATORS.
+   !!! H. QUERY UMOZNUJE parametrizaciu TABLE NAME ci COLUMN NAMES.
+   !!!!! I. METHOD NIE je BEZPECNA voci SQL INJECTION ATTACKS. Osetrenie voci SQL INJECTION ATTACKS je treba vykonat manualne.
+34. Pre METHOD [SqlQuery()] platia nasledujuce fakty.
+   A. METHOD ma PROTOTYPE [IQueryable<TResult> SqlQuery<TResult>(this DatabaseFacade DatabaseFacade, FormattableString Sql)].
+   B. METHOD vykonava QUERY, ktora vracia <1,N> SCALAR VALUES.
+   C. METHOD prijima QUERY ako PARAMETER TYPE [FormattableString]. Tento TYPE vyzaduje, aby STRING bol definovany pomocou INTERPOLATED STRING SYNTAX, kde jednotlive PARAMETERS su CONVERTED na TYPE [DbParameter].
+   !!! D. QUERY MUSI vracat <1,N> SCALAR VALUES.
+   E. Na VALUES, ktore vrati METHOD je mozne aplikovat LINQ OPERATORS.
+   !!! F. QUERY NEUMOZNUJE parametrizaciu TABLE NAME ci COLUMN NAMES.
+   !!!!! G. METHOD je BEZPECNA voci SQL INJECTION ATTACKS.
+35. Pre METHOD [SqlQueryRaw()] platia nasledujuce fakty.
+   A. METHOD ma PROTOTYPE [IQueryable<TResult> SqlQueryRaw<TResult>(this DatabaseFacade DatabaseFacade, string Sql, params object[] Parameters)].
+   B. METHOD vykonava QUERY, ktora vracia <1,N> SCALAR VALUES.
+   !!! C. METHOD prijima QUERY ako PARAMETER TYPE [string]. To znamena, ze tento tento TYPE nie je NIJAKO osetreny voci SQL INJECTION ATTACKS.
+   !!! D. PARAMETER [object[] Parameters] moze obsahovat PARAMETERS. Platia nasledujuce fakty.
+      A. Ak PARAMETER je CLASS, ktora je DERIVED z CLASS [DbParameter], tak pre tieto PARAMETERS sa vykonava kontrolu voci SQL INJECTION ATTACKS.
+	  B. V SQL SERVER CLASS [SqlParameter] je DERIVED z CLASS [DbParameter].
+	  C. V SQLITE CLASS [SqliteParameter] je DERIVED z CLASS [DbParameter].
+   !!! E. QUERY MUSI vracat <1,N> SCALAR VALUES.
+   F. Na VALUES, ktore vrati METHOD je mozne aplikovat LINQ OPERATORS.
+   !!! G. QUERY UMOZNUJE parametrizaciu TABLE NAME ci COLUMN NAMES.
+   !!!!! H. METHOD NIE je BEZPECNA voci SQL INJECTION ATTACKS. Osetrenie voci SQL INJECTION ATTACKS je treba vykonat manualne.
+36. Pre METHOD [ExecuteSql()] platia nasledujuce fakty.
+   A. METHOD ma PROTOTYPE [int ExecuteSql(this DatabaseFacade DatabaseFacade, FormattableString Sql)].
+   B. METHOD vykonava COMMAND, ktory nevracia ziadnu VALUE.
+   C. METHOD prijima QUERY ako PARAMETER TYPE [FormattableString]. Tento TYPE vyzaduje, aby STRING bol definovany pomocou INTERPOLATED STRING SYNTAX, kde jednotlive PARAMETERS su CONVERTED na TYPE [DbParameter].
+   !!! D. QUERY NEUMOZNUJE parametrizaciu TABLE NAME ci COLUMN NAMES.
+   !!!!! E. METHOD je BEZPECNA voci SQL INJECTION ATTACKS.
+37. Pre METHOD [ExecuteSqlRaw()] platia nasledujuce fakty.
+   A. METHOD ma PROTOTYPE [int ExecuteSqlRaw(this DatabaseFacade DatabaseFacade, string Sql, params object[] Parameters)].
+   B. METHOD vykonava COMMAND, ktory nevracia ziadnu VALUE.
+   !!! C. METHOD prijima QUERY ako PARAMETER TYPE [string]. To znamena, ze tento tento TYPE nie je NIJAKO osetreny voci SQL INJECTION ATTACKS.
+   !!! D. PARAMETER [object[] Parameters] moze obsahovat PARAMETERS. Platia nasledujuce fakty.
+      A. Ak PARAMETER je CLASS, ktora je DERIVED z CLASS [DbParameter], tak pre tieto PARAMETERS sa vykonava kontrolu voci SQL INJECTION ATTACKS.
+	  B. V SQL SERVER CLASS [SqlParameter] je DERIVED z CLASS [DbParameter].
+	  C. V SQLITE CLASS [SqliteParameter] je DERIVED z CLASS [DbParameter].
+   !!! E. QUERY UMOZNUJE parametrizaciu TABLE NAME ci COLUMN NAMES.
+   !!!!! F. METHOD NIE je BEZPECNA voci SQL INJECTION ATTACKS. Osetrenie voci SQL INJECTION ATTACKS je treba vykonat manualne.
+38. ENTITY FRAMEWORK podporuje BULK OPERATIONS. Pre BULK OPERATIONS platia nasledujuce fakty.
+   A. BULK OPERATIONS umoznuju vykonat UPDATE a DELETE nad viacerymi RECORDS bez toho, aby tieto RECORDS museli byt nacitane do DB CONTEXT. BULK OPERATIONS su vykonavane vylucne nad DATABASE.
+   !!! B. BULK OPERATIONS po vykonani nevykonavaju UPDATE DB CONTEXT. To znamena, ze moze dojst k nekonzistencii medzi DB CONTEXT a datami v DATABASE.
+   C. BULK OPERATIONS nevyzaduju volanie METHOD [int DbContext.SaveChanges()]. Su vykonane okamzite po zavolani prislusnej METHOD reprezentujucej BULK OPERATION.
+   !!! D. BULK OPERATIONS su na rozdiel od SQL RAW OPERATIONS TYPE SAFE. Pouzivaju sa ENTITY CLASSES namiesto RAW SQL COMMANDS.
+   !!!!! E. BULK OPERATIONS mozu obsahovat WHERE CLAUSE, ktora sa vykona na SERVER SIDE v DATABASE.
+39. Pre BULK OPERATION UPDATE platia nasledujuce fakty.
+   A. Na SYNCHRONNE vykonanie BULK UPDATE sa pouziva METHOD [int ExecuteUpdate<TSource>(this IQueryable<TSource> Source, Expression<Func<SetPropertyCalls<TSource>,SetPropertyCalls<TSource>>> SetPropertyCalls)].
+   B. Na ASYNCHRONNE vykonanie BULK UPDATE sa pouziva METHOD [Task<int> ExecuteUpdateAsync<TSource>(this IQueryable<TSource> Source, Expression<Func<SetPropertyCalls<TSource>,SetPropertyCalls<TSource>>> SetPropertyCalls, CancellationToken CancellationToken)].
+   !!! C. LINQ QUERY obsahujuca volanie BULK UPDATE METHOD moze pred jej pouzitim aplikovat LINQ OPERATOR [Where], ktory sa aplikuje na DATABASE. LINQ OPERATOR [Where] je mozne aplikovat aj na ine ENTITIES.
+   !!!!! D. PARAMETER [Expression<Func<SetPropertyCalls<TSource>,SetPropertyCalls<TSource>>> SetPropertyCalls] umoznuje modifikovat PROPERTIES daneho ENTITY CLASS OBJECT. Volania METHODS tohto OBJECT je mozne retazit na zmenu viacerych PROPERTIES daneho ENTITY CLASS OBJECT.
+   !!! E. BULK UPDATE je vykonany okamzite po volani prislusnej METHOD, pricom DB CONTEXT nie je UPDATED po vykonani BULK UPDATE.
+40. Pre BULK OPERATION DELETE platia nasledujuce fakty.
+   A. Na SYNCHRONNE vykonanie BULK DELETE sa pouziva METHOD [int ExecuteDelete<TSource>(this IQueryable<TSource> Source)].
+   B. Na ASYNCHRONNE vykonanie BULK DELETE sa pouziva METHOD [Task<int> ExecuteDeleteAsync<TSource>(this IQueryable<TSource> Source, CancellationToken CancellationToken)].
+   !!! C. LINQ QUERY obsahujuca volanie BULK DELETE METHOD moze pred jej pouzitim aplikovat LINQ OPERATOR [Where], ktory sa aplikuje na DATABASE. LINQ OPERATOR [Where] je mozne aplikovat aj na ine ENTITIES.
+   !!! D. BULK DELETE je vykonany okamzite po volani prislusnej METHOD, pricom DB CONTEXT nie je UPDATED po vykonani BULK DELETE.
+41. CONCURRENCY PROBLEMS v DATABASES vznikaju vtedy, ak v tom istom case viacero USERS sa pokusi modifikovat tie iste DB RECORDS. V takom pripade dochadza k vzniku CONCURRENCY PROBLEM.
+42. CONCURRENCY PROBLEMS v DATABASES je mozne riesit nasledujcimi sposobmi.
+   A. OPTIMISTIC CONCURRENCY CONTROL.
+   B. PESIMISTIC CONCURRENCY CONTROL.
+43. Pre OPTIMISTIC CONCURRENCY CONTROL platia nasledujuce fakty.
+   A. OPTIMISTIC CONCURRENCY CONTROL NEPOUZIVA LOCKS.
+   B. OPTIMISTIC CONCURRENCY CONTROL sa realizuje v nasledujucich krokoch.
+      A. TABLES, ktore podporuju OPTIMISTIC CONCURRENCY CONTROL musia mat pridany VERSION CONTROL COLUMN, ktory sa meni ATOMICKY vzdy pri zmene danej DB RECORD.
+      B. Ak USER sa pokusi vykonat zmenu RECORDS v DB, najpv pre tieto RECORDS vycita hodnoty VERSION CONTROL COLUMN a porovna ich s tymi, ktore zaslal USER.
+	  C. Ak sa VALUES zhoduju, znamena to, ze RECORDS v DB neboli zmenene a je mozne ich zmenit. Po ich zmene sa automaticky zmenia aj hodnoty VERSION CONTROL COLUMN prislusnych DB RECORDS.
+	  D. Ak sa VALUES roznia, znamena to, ze RECORDS v DB BOLI ZMENENE a USER dostane ERROR MESSAGE o vzniku  CONCURRENCY PROBLEM. USER nasledne moze rozhodnut co spravit. Spravidla sa spravi nacitanie novsich DB RECORDS z DATABASE a po ich validacii sa vykona dalsi zapis.
+   !!! C. ENTITY FRAMEWORK PODPORUJE PESIMISTIC CONCURRENCY CONTROL.
+44. Pre PESIMISTIC CONCURRENCY CONTROL platia nasledujuce fakty.
+   A. PESIMISTIC CONCURRENCY CONTROL POUZIVA LOCKS.
+   B. PESIMISTIC CONCURRENCY CONTROL sa realizuje v nasledujucich krokoch.
+      A. Ak USER sa pokusi vykonat zmenu RECORDS v DB, na tieto RECORDS sa pred vykonanim zmenin najprv aplikuje LOCK.
+	  B. Po aplikovani LOCK USER zmeni dane DB RECORDS. Kedze LOCK je aplikovany, iny USERS v danom case nemozu menit tie DB RECORDS, ktore su LOCKED.
+	  C. Po dokonceni zmien nad RECORDS v DB je LOCK uvolneny, co umozni dalsim USERS modifikovat tieto RECORDS.
+   C. PESIMISTIC CONCURRENCY CONTROL sposobuje PERFORMANCE ISSUES.
+   !!! D. ENTITY FRAMEWORK NEPODPORUJE PESIMISTIC CONCURRENCY CONTROL.
+45. CONCURRENCY CONFLITS je mozne riesit v ENTITY FRAMEWORK nasledujucimi sposobmi.
+   A. Pomocou DB GENERATED TIMESTAMPS.
+   B. Pomocou CLIENT GENERATED CONCURRENCY TOKENS.
+46. Riesenie CONCURRENCY CONFLICTS pomocou TIMESTAMPS sa realizuje pomocou nasledujucich krokov.
+   A. Do ENTITY sa prida PROPERTY, ktora sa oznaci ako TIMESTAMP. TYPE tejto PROPERTY je DATABASE PROVIDER SPECIFIC. V SQL SERVER je to TYPE [byte[]].
+   B. Pri nacitanii ENTITY z DATABASE, ENTITY FRAMEWORK CORE si ulozi ORIGINAL VALUE TIMESTAMP PROPERTY.
+   !!! C. Pri vykonani UPDATE je AUTOMATICKY v DATABASE modifikovana VALUE TIMESTAMP PROPERTY.
+   D. Pri vykonavani UPDATE danej ENTITY, ENTITY FRAMEWORK CORE generuje UPDATE COMMAND, ktory vo WHERE CLAUSE porovnava ORIGINAL VALUE TIMESTAMP PROPERTY s CURRENT VALUE TIMESTAMP PROPERTY.
+   E. V pripade, ze UPDATE COMMAND modifikuje 1 RECORD, znamena to, ze VALUE TIMESTAMP PROPERTY nebola modifikovana inym UPDATE a teda NEDOSLO k vzniku CONCURRENCY CONFLICT. UPDATE je tym padom uspesne vykonany.
+   !!! F. V pripade, ze UPDATE COMMAND nemodifikuje ziaden RECORD, znamena to, ze VALUE TIMESTAMP PROPERTY bola modifikovana inym UPDATE a v takom pripade ENTITY FRAMEWORK CORE hodi EXCEPTION [DbUpdateConcurrencyException].
+47. Nastavenie ENTITY PROPERTY ako TIMESTAMP je mozne realizovat nasledujucimi sposobmi.
+   A. BY DATA ANNOTATIONS. Na TIMESTAMP PROPERTY sa aplikuje ATTRIBUTE [TimestampAttribute].
+   B. BY FLUENT API. Pre TIMESTAMP PROPERTY sa zavola METHOD [PropertyBuilder<TProperty> PropertyBuilder<TProperty>.IsRowVersion()], ktora oznaci PROPERTY za TIMESTAMP PROPERTY.
+!!!!! 48. SQLITE NEPODPORUJE TIMESTAMPS. Pre testovanie TIMESTAMPS je NUTNE pouzit SQL SERVER.
+49. Riesenie CONCURRENCY CONFLICTS pomocou CONCURRENCY TOKENS sa realizuje pomocou nasledujucich krokov.
+   A. Jeden, alebo viacero PROPERTIES danej ENTITY sa oznaci ako CONCURRENCY TOKENS.
+   B. Pri nacitani ENTITY z DATABASE, ENTITY FRAMEWORK CORE si ulozi ORIGINAL VALUES vsetkych CONCURRENCY TOKEN PROPERTIES.
+   !!! C. Pri vykonani UPDATE je NEVYHNUTNE, aby bola VZDY zmenena aj VALUE aspon jednej CONCURRENCY TOKEN PROPERTY, inak ENTITY FRAMEWORK CORE NEBUDE schopny detekovat CONCURRENCY CONFLICT.
+   D. Pri vykonavani UPDATE danej ENTITY, ENTITY FRAMEWORK CORE generuje UPDATE COMMAND, ktory vo WHERE CLAUSE porovnava ORIGINAL VALUES CONCURRENCY TOKEN PROPERTIES s CURRENT VALUES CONCURRENCY TOKEN PROPERTIES.
+   E. V pripade, ze UPDATE COMMAND modifikuje 1 RECORD, znamena to, ze VALUES CONCURRENCY TOKEN PROPERTIES neboli modifikovane inym UPDATE a teda NEDOSLO k vzniku CONCURRENCY CONFLICT. UPDATE je tym padom uspesne vykonany.
+   !!! F. V pripade, ze UPDATE COMMAND nemodifikuje ziaden RECORD, znamena to, ze VALUES CONCURRENCY TOKEN PROPERTIES boli modifikovane inym UPDATE a v takom pripade ENTITY FRAMEWORK CORE hodi EXCEPTION [DbUpdateConcurrencyException].
+50. Nastavenie ENTITY PROPERTIES ako CONCURRENCY TOKENS je mozne realizovat nasledujucimi sposobmi.
+   A. BY DATA ANNOTATIONS. Na kazdu PROPERTY, ktora reprezentuje CONCURRENCY TOKEN sa aplikuje ATTRIBUTE [ConcurrencyCheckAttribute].
+   B. BY FLUENT API. Pre kazdu PROPERTY sa zavola METHOD [PropertyBuilder<TProperty> PropertyBuilder<TProperty>.IsConcurrencyToken(bool ConcurrencyToken)], ktora oznaci PROPERTY za CONCURRENCY TOKEN.
+!!! 51. Vyhoda CONCURRENCY TOKENS oproti TIMESTAMPS spociva v tom, ze CONCURRENCY TOKENS nevyzaduju ziadnu specialnu podporu zo strany DATABASES, pretoze vyuzivaju iba WHERE CLAUSE UPDATE COMMAND. Naopak, TIMESTAMPS vyzaduju specialnu podporu zo strany DATABASES.
+!!! 52. Nevyhoda CONCURRENCY TOKENS oproti TIMESTAMPS spociva v tom, ze CONCURRENCY TOKENS funguju iba ak sa MANUALNE pri kazdej zmene lubovolneho COLUMN zmeni zaroven aj VALUE aspon jednej CONCURRENCY TOKEN PROPERTY. Ak k tomu nedojde, ENTITY FRAMEWORK CORE NIE JE schopna zachytit vznik CONCURRENCY CONFLICTS, pretoze sa ziadna z VALUES CONCURRENCY TOKEN PROPERTIES nezmenila. Pri TIMESTAMPS su ich VALUES AUTOMATICKY menene DATABASE pri zmene VALUE lubovolneho COLUMN. Tym padom je kazda zmena kazdeho COLUMN detekovana.
+!!!!! 53. ENTITY FRAMEWORK CORE vykonava detekciu CONCURRENCY CONFLICTS aj pri DELETE. To znamena, ze ak sa CODE pokusi vykonat UPDATE, alebo DELETE ENTITY, ktora bola v inom THREAD uz DELETED, tak dojde k vzniku EXCEPTION [DbUpdateConcurrencyException].
+54. EXCEPTION CLASS [DbUpdateConcurrencyException] obsahuje PROPERTY [IReadOnlyList<EntityEntry> Entries], ktora obsahuje vsetky ENTITIES, ktore sposobili CONCURRENCY CONFLICTS. Tieto ENTITIES je mozne pouzit na opravu CONCURRENCY CONFLICTS.
+55. DATABASE FIRST umoznuje vytvorit ENTITY CLASSES a DB CONTEXT CLASS z existujucej DATABASE. DATABASE FIRST funguje nasledujucim sposobom.
+   A. Pomocou COMMAND LINE COMMAND, alebo VISUAL STUDIO PACKAGE MANAGER CONSOLE COMMAND sa nad EXISTUJUCOU DATABASE spusti proces SCAFFOLDING.
+   B. ENTITY FRAMEWORK CORE vytvori z existujucej DATABASE vlastny DATABASE MODEL.
+   C. Z vytvoreneho DATABASE MODEL su vygenerovane ENTITY CLASSES a DB CONTEXT CLASS.
+56. COMMAND LINE COMMAND [dotnet ef dbcontext scaffold CONNECTION_STRING PROVIDER_NAME --output-dir OUTPUT_DIRECTORY] vytvara pre DATABASE na ktoru sa da napojit pomocou CONNECTION STRING [CONNECTION_STRING] a PROVIDER [PROVIDER_NAME] ENTITY CLASSES a DB CONTEXT CLASS, ktore ulozi do DIRECTORY [OUTPUT_DIRECTORY]. OPTION [--data-annotations] nastavuje, aby vygenerovane ENTITY CLASSES pouzivali tam kde sa da DATA ANNOTATIONS namiesto FLUENT API.
+57. SCAFFOLDING je implementovany v PACKAGE [Microsoft.EntityFrameworkCore.Design].
+58. .NET podporuje dalsie OBJECT RELATIONSHIP MAPPERS.
+   A. DAPPER je LIGHWEIGHED. Je velmi rychly, ale nepodporuje vsetky FEATURES ENTITY FRAMWORK.
+   B. NHIBERNATE je ORM odvodeny z HIBERNATE, ktory bol vyvinuty v JAVE. Jeho implementacia pre .NET Ma podobne funkcionality ako ENTITY FRAMEWORK.
+   C. PETA POCO je LIGHWEIGHED. Je podobne rychly, ako DAPPER a tiez nepodporuje vsetky FEATURES ENTITY FRAMWORK. Ma definovane PROVIDERS pre vacsinu MAIN DATABASE SYSTEMS.
+//----------------------------------------------------------------------------------------------------------------------
