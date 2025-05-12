@@ -1,0 +1,1 @@
+az resource list --resource-group MyResources

@@ -1,0 +1,1 @@
+az webapp delete --name MyAzureProgram --resource-group MyBook --keep-empty-plan

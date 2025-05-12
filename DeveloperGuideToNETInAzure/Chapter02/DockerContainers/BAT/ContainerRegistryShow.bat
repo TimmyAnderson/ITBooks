@@ -1,0 +1,1 @@
+az acr show --resource-group MyResources --name containertimmyanderson

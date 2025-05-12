@@ -1,0 +1,1 @@
+az devops project create --name MyAzureProgramProject --organization https://dev.azure.com/timmyanderson1976/ --visibility private

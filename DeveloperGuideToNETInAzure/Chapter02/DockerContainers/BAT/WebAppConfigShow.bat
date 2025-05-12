@@ -1,0 +1,1 @@
+az webapp config show --resource-group MyResources --name MyWebProgramDevOps

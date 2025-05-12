@@ -1,0 +1,1 @@
+az webapp delete --name MyWebProgramDevOps --resource-group MyResources --keep-empty-plan

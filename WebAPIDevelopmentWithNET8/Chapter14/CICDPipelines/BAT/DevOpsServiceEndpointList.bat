@@ -1,0 +1,1 @@
+az devops service-endpoint list --project MyAzureProgramProject --organization https://dev.azure.com/timmyanderson1976/

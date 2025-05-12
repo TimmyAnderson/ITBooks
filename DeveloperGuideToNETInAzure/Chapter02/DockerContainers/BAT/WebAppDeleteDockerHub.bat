@@ -1,0 +1,1 @@
+az webapp delete --name MyWebProgramDockerHub --resource-group MyResources --keep-empty-plan

@@ -1,0 +1,1 @@
+az pipelines create --name MyBuildDockerImagePipeline --description "My build docker image pipeline." --project MyAzureProgramProject --organization https://dev.azure.com/timmyanderson1976/ --repository https://timmyanderson1976@dev.azure.com/timmyanderson1976/MyAzureProgramProject/_git/MyAzureProgramProject --branch master --yml-path docker_build_azure-pipelines.yml

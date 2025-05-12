@@ -1,0 +1,1 @@
+az identity create --name MyIdentity --resource-group MyResources

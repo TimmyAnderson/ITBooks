@@ -1,0 +1,1 @@
+az acr update --name mybookcontainer --admin-enabled true

@@ -1,5 +1,7 @@
 # See https://aka.ms/customizecontainer to learn how to customize your debug container and how Visual Studio uses this Dockerfile to build your images for faster debugging.
 
+# !!!!!! DOCKER FILE bol vytvoreny s CONTEXT nastavenym na SOLUTION DIRECTORY. To je vhodne, ak PROJECT obsahuje ASSEMBLIES na ine PROJECTS v ramci toho isteho SOLUTION.
+
 # COMMAND nastavuje IMAGE, ktory bude pouzity pre nasledujuce COMMANDS.
 # IMAGE [mcr.microsoft.com/dotnet/aspnet:8.0] je zakladny ASP.NET IMAGE obsahujuci ASP.NET CORE RUNTIME FILES.
 # !!! IMAGE je potrebny pre spustenie ASP.NET PROGRAMU.

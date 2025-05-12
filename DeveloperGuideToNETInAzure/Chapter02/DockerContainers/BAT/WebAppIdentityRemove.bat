@@ -1,0 +1,3 @@
+REM !!!!! VALUE ["/subscriptions/b5f70a84-6ba2-4485-84cd-ac0883d618c5/resourcegroups/MyResources/providers/Microsoft.ManagedIdentity/userAssignedIdentities/MyIdentity"] je ID (pozor NIE PRINCIPAL ID) danej MANAGED IDENTITY.
+
+az webapp identity remove --resource-group MyResources --name MyWebProgramDevOps --identities "/subscriptions/b5f70a84-6ba2-4485-84cd-ac0883d618c5/resourcegroups/MyResources/providers/Microsoft.ManagedIdentity/userAssignedIdentities/MyIdentity"

@@ -1,0 +1,1 @@
+az appservice plan create --name MyBookPlan --resource-group MyBook --location polandcentral --is-linux --sku FREE

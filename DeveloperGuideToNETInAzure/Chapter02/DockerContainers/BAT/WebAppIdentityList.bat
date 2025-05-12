@@ -1,0 +1,1 @@
+az webapp identity show --resource-group MyResources --name MyWebProgramDevOps

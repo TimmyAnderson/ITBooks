@@ -1,0 +1,1 @@
+az group create --name MyResources --location polandcentral

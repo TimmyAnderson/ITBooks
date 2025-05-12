@@ -1,0 +1,1 @@
+az webapp start --name MyWebProgramDockerHub --resource-group MyResources

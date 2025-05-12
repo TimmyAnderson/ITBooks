@@ -1,0 +1,1 @@
+az appservice plan delete --name MyBookPlan --resource-group MyBook

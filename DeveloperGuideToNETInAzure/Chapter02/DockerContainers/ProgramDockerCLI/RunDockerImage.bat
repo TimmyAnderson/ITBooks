@@ -1,0 +1,1 @@
+docker container run --env ASPNETCORE_HTTP_PORTS=5001 --publish 5001:5001 --name MyContainerCLI my_project_cli

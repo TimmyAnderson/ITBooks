@@ -1,0 +1,3 @@
+REM !!!!! VALUE ["/subscriptions/b5f70a84-6ba2-4485-84cd-ac0883d618c5/resourceGroups/MyResources/providers/Microsoft.Web/sites/MyWebProgramDevOps/config/web"] predstavuje ID RESOURCE, ktoreho PROPERTY ma byt zmenena.
+
+az resource update --ids "/subscriptions/b5f70a84-6ba2-4485-84cd-ac0883d618c5/resourceGroups/MyResources/providers/Microsoft.Web/sites/MyWebProgramDevOps/config/web" --set properties.acrUseManagedIdentityCreds=True

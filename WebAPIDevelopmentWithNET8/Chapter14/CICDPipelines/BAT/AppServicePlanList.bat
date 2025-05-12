@@ -1,0 +1,1 @@
+az appservice plan list --resource-group MyBook

@@ -1,0 +1,1 @@
+az acr create --resource-group MyBook --name mybookcontainer --sku Basic

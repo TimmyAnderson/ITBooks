@@ -1,0 +1,1 @@
+az webapp start --name MyAzureProgram --resource-group MyBook

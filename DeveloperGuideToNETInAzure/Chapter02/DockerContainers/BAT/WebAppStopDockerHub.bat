@@ -1,0 +1,1 @@
+az webapp stop --name MyWebProgramDockerHub --resource-group MyResources

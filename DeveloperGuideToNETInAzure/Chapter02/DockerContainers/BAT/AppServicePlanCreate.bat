@@ -1,0 +1,1 @@
+az appservice plan create --name MyAppServicePlan --resource-group MyResources --location centralus --is-linux --sku FREE

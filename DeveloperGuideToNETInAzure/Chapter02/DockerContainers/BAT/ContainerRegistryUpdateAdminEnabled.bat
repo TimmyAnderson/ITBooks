@@ -1,0 +1,1 @@
+az acr update --name containertimmyanderson --admin-enabled true

@@ -1,0 +1,1 @@
+az pipelines create --name MyBuild --description "My build." --project MyDevOpsProject --organization https://dev.azure.com/timmyanderson1976/ --repository https://timmyanderson1976@dev.azure.com/timmyanderson1976/MyDevOpsProject/_git/MyDevOpsProject --branch master --yml-path azure-pipelines.yml

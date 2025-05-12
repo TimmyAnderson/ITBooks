@@ -1,0 +1,1 @@
+az webapp start --name MyWebProgram --resource-group MyResources

@@ -1,0 +1,47 @@
+# PIPELINE pre BUILD PROJECTU a spustenie TESTS.
+
+trigger: none
+
+# !!!!! BUILD sa spusti iba pri vykonani PULL REQUEST do BRANCH [main].
+pr:
+  branches:
+    include:
+    - main
+
+# !!!!! Pre BUILD sa pouzije LINUX UBUNTU.
+pool:
+  vmImage: 'ubuntu-latest'
+
+# !!!!! Definuju sa VARIABLES, ktore sa vyuziju v CODE FILE [.YML].
+variables:
+# !!!!! WILDCARD [**] znamena rekurzivne prehladavanie vsetkych DIRECTORIES.
+  solution: '**/*.sln'
+  buildPlatform: 'Any CPU'
+  buildConfiguration: 'Release'
+
+# !!!!! Definuju sa STEPS, ktore ma PIPELINE vykonat.
+steps:
+
+# !!!!! STEP stiahne .NET SDK.
+- task: UseDotNet@2
+  displayName: 'use dotnet cli'
+  inputs:
+    packageType: 'sdk'
+    version: '8.0.x'
+
+# !!!!! STEP spusti .NET COMMAND [build], ktory vykona BUILD daneho PROGRAMU.
+- task: DotNetCoreCLI@2
+  displayName: 'dotnet build'
+  inputs:
+    command: 'build'
+    arguments: '--configuration $(buildConfiguration)'
+# !!!!!! PARAMETER obsahuje PATH na FILE [.sln], aby sa vykonal BUILD vsetkych PROJECTS v danom SOLUTION.
+    projects: '$(solution)'
+
+# !!!!! STEP spusti .NET COMMAND [test], ktory spusti TESTS nad danym PROGRAMOM.
+- task: DotNetCoreCLI@2
+  displayName: 'dotnet test - unit tests'
+  inputs:
+    command: 'test'
+    arguments: '--configuration $(buildConfiguration) --no-build --no-restore --logger trx --collect "Code coverage"'
+    projects: '**/*Tests.csproj'

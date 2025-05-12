@@ -1,0 +1,1 @@
+az acr create --resource-group MyResources --name containertimmyanderson --sku Basic

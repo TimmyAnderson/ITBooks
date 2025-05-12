@@ -2,13 +2,12 @@
 namespace Client
 {
 //--------------------------------------------------------------------------------------------------------------------------------
-	public class Program
+	internal class Program
 	{
 //--------------------------------------------------------------------------------------------------------------------------------
 		static void Main(string[] args)
 		{
-			//CMenuTestConnection								Menu=new CMenuTestConnection();
-			CMenuMyAzureProgram									Menu=new CMenuMyAzureProgram();
+			CMenuTestConnection									Menu=new CMenuTestConnection();
 
 			Menu.Execute();
 		}

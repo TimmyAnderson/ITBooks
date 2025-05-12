@@ -1,0 +1,1 @@
+az acr credential show --name containertimmyanderson

@@ -1,0 +1,1 @@
+az acr delete --resource-group MyBook --name mybookcontainer

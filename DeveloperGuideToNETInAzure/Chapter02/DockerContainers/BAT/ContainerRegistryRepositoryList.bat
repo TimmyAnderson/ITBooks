@@ -1,0 +1,1 @@
+az acr repository list --name containertimmyanderson --output table

@@ -1,0 +1,1 @@
+docker container run --publish 5002:8080 --name MyContainerVS my_project_vs

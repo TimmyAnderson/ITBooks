@@ -1,0 +1,1 @@
+az webapp delete --name MyWebProgram --resource-group MyResources --keep-empty-plan

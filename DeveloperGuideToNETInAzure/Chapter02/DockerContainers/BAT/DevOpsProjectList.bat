@@ -1,0 +1,1 @@
+az devops project list --organization https://dev.azure.com/timmyanderson1976/
