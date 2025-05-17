@@ -1,0 +1,1 @@
+az pipelines create --name MyReleasePipeline --description "My release pipeline." --project MyAzureProgramProject --organization https://dev.azure.com/timmyanderson1976/ --repository https://timmyanderson1976@dev.azure.com/timmyanderson1976/MyAzureProgramProject/_git/MyAzureProgramProject --branch master --yml-path release-pipeline.yml

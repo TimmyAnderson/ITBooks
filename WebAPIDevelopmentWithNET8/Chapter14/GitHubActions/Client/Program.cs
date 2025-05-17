@@ -2,12 +2,12 @@
 namespace Client
 {
 //--------------------------------------------------------------------------------------------------------------------------------
-	public class Program
+	internal class Program
 	{
 //--------------------------------------------------------------------------------------------------------------------------------
 		static void Main(string[] args)
 		{
-			CMenuTestConnection									Menu=new CMenuTestConnection();
+			CMenuMyGitHubActions								Menu=new CMenuMyGitHubActions();
 
 			Menu.Execute();
 		}

@@ -9,18 +9,15 @@ using MySharedLibrary;
 namespace Client
 {
 //--------------------------------------------------------------------------------------------------------------------------------
-	public sealed class CMenuMyAzureProgram : CMenu
+	public sealed class CMenuMyGitHubActions : CMenu
 	{
 //--------------------------------------------------------------------------------------------------------------------------------
-		private const string									BASE_ADDRESS_LOCAL="https://localhost:7000/";
-		// !!!!! Pri CONNECTION k DOCKER, HTTPS nie je podporovane, pretoze nie je mozne overit CERTIFICATE. Preto treba pouzit HTTP.
-		private const string									BASE_ADDRESS_DOCKER_LOCAL="http://localhost:7000/";
-		// !!!!! Pri CONNECTION k DOCKER, HTTPS nie je podporovane, pretoze nie je mozne overit CERTIFICATE. Preto treba pouzit HTTP.
-		private const string									BASE_ADDRESS_AZURE="http://myazureprogram.azurewebsites.net/";
+		private const string									BASE_ADDRESS_LOCAL_HTTPS="https://localhost:7000/";
+		private const string									BASE_ADDRESS_LOCAL_HTTP="http://localhost:5000/";
 //--------------------------------------------------------------------------------------------------------------------------------
 //--------------------------------------------------------------------------------------------------------------------------------
 //--------------------------------------------------------------------------------------------------------------------------------
-		public CMenuMyAzureProgram()
+		public CMenuMyGitHubActions()
 			: base(new CMenuCommand("q","QUIT",new EMenuCommandParameterType[0],null))
 		{
 		}
@@ -34,11 +31,11 @@ namespace Client
 //--------------------------------------------------------------------------------------------------------------------------------
 //--------------------------------------------------------------------------------------------------------------------------------
 //--------------------------------------------------------------------------------------------------------------------------------
-		private void ExecuteCommandHelloWorldLocal(string CommandID, object[] Parameters)
+		private void ExecuteCommandHelloWorldLocalHttps(string CommandID, object[] Parameters)
 		{
 			string												MessageID=CommandID;
 			EMyHttpClientHttpMethod								Method=EMyHttpClientHttpMethod.E_GET;
-			string												URL=$"{BASE_ADDRESS_LOCAL}HelloWorld";
+			string												URL=$"{BASE_ADDRESS_LOCAL_HTTPS}HelloWorld";
 			CMyHttpClientHeaders								Headers=null;
 			CMyHttpClientContent								Content=null;
 			TimeSpan											Timeout=TimeSpan.FromHours(1);
@@ -47,24 +44,11 @@ namespace Client
 			CMyHttpClient.ExecuteMessage(Request);
 		}
 //--------------------------------------------------------------------------------------------------------------------------------
-		private void ExecuteCommandHelloWorldDockerLocal(string CommandID, object[] Parameters)
+		private void ExecuteCommandHelloWorldLocalHttp(string CommandID, object[] Parameters)
 		{
 			string												MessageID=CommandID;
 			EMyHttpClientHttpMethod								Method=EMyHttpClientHttpMethod.E_GET;
-			string												URL=$"{BASE_ADDRESS_DOCKER_LOCAL}HelloWorld";
-			CMyHttpClientHeaders								Headers=null;
-			CMyHttpClientContent								Content=null;
-			TimeSpan											Timeout=TimeSpan.FromHours(1);
-			CMyHttpClientOperationRequest						Request=new CMyHttpClientOperationRequest(MessageID,Method,URL,Headers,Content,Timeout);
-
-			CMyHttpClient.ExecuteMessage(Request);
-		}
-//--------------------------------------------------------------------------------------------------------------------------------
-		private void ExecuteCommandHelloWorldAzure(string CommandID, object[] Parameters)
-		{
-			string												MessageID=CommandID;
-			EMyHttpClientHttpMethod								Method=EMyHttpClientHttpMethod.E_GET;
-			string												URL=$"{BASE_ADDRESS_AZURE}HelloWorld";
+			string												URL=$"{BASE_ADDRESS_LOCAL_HTTP}HelloWorld";
 			CMyHttpClientHeaders								Headers=null;
 			CMyHttpClientContent								Content=null;
 			TimeSpan											Timeout=TimeSpan.FromHours(1);
@@ -79,9 +63,8 @@ namespace Client
 		{
 			List<CMenuCommand>									CommandsCollection=new List<CMenuCommand>();
 
-			CommandsCollection.Add(new CMenuCommand("1","LOCAL",new EMenuCommandParameterType[0],ExecuteCommandHelloWorldLocal));
-			CommandsCollection.Add(new CMenuCommand("2","DOCKER LOCAL",new EMenuCommandParameterType[0],ExecuteCommandHelloWorldDockerLocal));
-			CommandsCollection.Add(new CMenuCommand("3","AZURE",new EMenuCommandParameterType[0],ExecuteCommandHelloWorldAzure));
+			CommandsCollection.Add(new CMenuCommand("1","LOCAL HTTPS",new EMenuCommandParameterType[0],ExecuteCommandHelloWorldLocalHttps));
+			CommandsCollection.Add(new CMenuCommand("2","LOCAL HTTP",new EMenuCommandParameterType[0],ExecuteCommandHelloWorldLocalHttp));
 
 			CMenuCommand[]										Commands=CommandsCollection.ToArray();
 

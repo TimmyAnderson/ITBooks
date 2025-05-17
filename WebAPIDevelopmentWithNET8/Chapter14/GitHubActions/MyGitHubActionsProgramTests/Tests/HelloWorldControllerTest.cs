@@ -1,15 +1,25 @@
-﻿//--------------------------------------------------------------------------------------------------------------------------------
-namespace Client
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
+using MyGitHubActionsProgram;
+//--------------------------------------------------------------------------------------------------------------------------------
+namespace MyGitHubActionsProgramTests
 {
 //--------------------------------------------------------------------------------------------------------------------------------
-	public class Program
+	public sealed class HelloWorldControllerTest
 	{
 //--------------------------------------------------------------------------------------------------------------------------------
-		static void Main(string[] args)
+		[Fact]
+		public void GetValueOK()
 		{
-			CMenuTestConnection									Menu=new CMenuTestConnection();
+		    HelloWorldController								Controller=new HelloWorldController();
+			string												Result=Controller.GetValue();
 
-			Menu.Execute();
+			Assert.NotNull(Result);
+			Assert.Equal("Hello WORLD !",Result);
 		}
 //--------------------------------------------------------------------------------------------------------------------------------
 	}

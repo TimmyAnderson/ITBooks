@@ -7,7 +7,7 @@ namespace Client
 //--------------------------------------------------------------------------------------------------------------------------------
 		static void Main(string[] args)
 		{
-			CMenuTestConnection									Menu=new CMenuTestConnection();
+			CMenuMyAzureProgram									Menu=new CMenuMyAzureProgram();
 
 			Menu.Execute();
 		}

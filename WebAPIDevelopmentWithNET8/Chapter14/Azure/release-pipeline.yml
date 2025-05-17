@@ -1,0 +1,54 @@
+# Starter pipeline
+# Start with a minimal pipeline that you can customize to build and deploy your code.
+# Add steps that build, run tests, deploy, and more:
+# https://aka.ms/yaml
+
+trigger: none
+
+pr: none
+
+pool:
+  vmImage: ubuntu-latest
+
+variables:
+  containerRegistry: 'mybookcontainer.azurecr.io'
+  imageRepository: 'myazureprogram'
+  tag: 'latest'
+
+steps:
+# !!!!! TASK pripravi SETTINGS.
+- task: AzureAppServiceSettings@1
+  displayName: Update settings
+  inputs:
+    # !!!!! AZURE SUBSCRIPTION sa ziskava pomocou COMMAND [az account subscription list].
+    azureSubscription: 'My FREE subscription(b5f70a84-6ba2-4485-84cd-ac0883d618c5)'
+    appName: 'MyAzureProgram'
+    resourceGroupName: 'MyBook'
+    appSettings: |
+      [
+        {
+          "name": "DOCKER_REGISTRY_SERVER_URL",
+
+          "value": "$(containerRegistry)",
+          "slotSetting": false
+        },
+        {
+          "name": "DOCKER_REGISTRY_SERVER_USERNAME",
+          # !!!!! USER NAME sa ziskava pomocou COMMAND [az acr credential show].
+          "value": "mybookcontainer",
+          "slotSetting": false
+        },
+        {
+          "name": "DOCKER_REGISTRY_SERVER_PASSWORD",
+          # !!!!! VALUE sa cita z vytvorenej VARIABLE.
+          # !!!!! PASSWORD sa ziskava pomocou COMMAND [az acr credential show].
+          "value": "$(MyPassword)",
+          "slotSetting": false
+        }
+      ]
+- task: AzureWebAppContainer@1
+  inputs:
+    azureSubscription: 'My FREE subscription(b5f70a84-6ba2-4485-84cd-ac0883d618c5)'
+    appName: 'MyAzureProgram'
+    containers: '$(containerRegistry)/$(imageRepository):$(tag)'
+    containerCommand: 'dotnet MyAzureProgram.dll'

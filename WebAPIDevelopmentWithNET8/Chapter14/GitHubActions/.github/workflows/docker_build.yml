@@ -1,0 +1,50 @@
+# This workflow will build a .NET project
+# For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-net
+
+# !!!!! FILE predstavuje DOCKER BUILD PIPELINE, ktora vykona vytvori DOCKER IMAGE a vlozi ho do AZURE CONTAINER REGISTRY.
+
+name: My DOCKER BUILD and PUBLISH to AZURE.
+
+on:
+  push:
+    branches: [ "main" ]
+
+
+jobs:
+  docker_build_and_push:
+    runs-on: ubuntu-latest
+    # !!!!! ENVIRONMENT sa nastavuje, pretoze sa do ENVIRONMENT uklada USER NAME a PASSWORD do AZURE CONTAINER REGISTRY.
+    environment: Production
+
+    steps:
+    # !!!!! Nastavi sa ENVIRONMENT na .NET 8.0..
+    - uses: actions/checkout@v4
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: 8.0.x
+
+    # !!!!! Stiahnu sa DEPENDENCIES pre .NET 8.0..
+    - name: Restore dependencies
+      run: dotnet restore
+
+    # !!!!! Spustia sa testy PROGRAMU.
+    - name: Build
+      run: dotnet build --no-restore
+
+    - name: Login to Azure Container Registry.
+      uses: azure/docker-login@v2
+      with:
+        # !!!!! LOGIN SERVER sa zistuje pomocou COMMAND [az acr list].
+        login-server: mybookcontainer.azurecr.io
+        # !!!!! USERNAME a PASSWORD sa zistuju pomocou COMMAND [az acr credential show --name mybookcontainer].
+        # !!!!! USERNAME a PASSWORD musia byt ulozene ako ENVIRONMENT SECRET VARIABLES v GITHUB REPOSITORY.
+        username: ${{ secrets.AZURE_CONTAINER_REGISTRY_USERNAME }}
+        password: ${{ secrets.AZURE_CONTAINER_REGISTRY_PASSWORD }}
+
+    - name: Push to Azure Container Registry.
+      run: |
+        # !!!!! Vytvori sa BUILD DOCKER IMAGE.
+        docker build -f ${{ github.workspace }}/MyGitHubActionsProgram/Dockerfile -t mybookcontainer.azurecr.io/mygithubactionsprogram:${{ github.run_id }} -t mybookcontainer.azurecr.io/mygithubactionsprogram:latest .
+        docker push mybookcontainer.azurecr.io/mygithubactionsprogram:${{ github.run_id }}
+        docker push mybookcontainer.azurecr.io/mygithubactionsprogram:latest

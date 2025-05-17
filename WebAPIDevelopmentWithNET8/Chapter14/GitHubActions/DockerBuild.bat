@@ -1,0 +1,1 @@
+docker build -f MyGitHubActionsProgram/Dockerfile -t mybookcontainer.azurecr.io/mygithubactionsprogram:latest .
