@@ -1,0 +1,1 @@
+az aks nodepool stop --nodepool-name mynodepool --cluster-name MyBookCluster --resource-group MyBook

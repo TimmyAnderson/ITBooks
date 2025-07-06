@@ -1,0 +1,1 @@
+az identity list --resource-group MyBook

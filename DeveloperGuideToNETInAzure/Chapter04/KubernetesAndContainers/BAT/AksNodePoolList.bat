@@ -1,0 +1,1 @@
+az aks nodepool list --cluster-name MyBookCluster --resource-group MyBook

@@ -1,0 +1,1 @@
+az aks nodepool add --nodepool-name mynodepool --cluster-name MyBookCluster --resource-group MyBook --mode User --node-vm-size "Standard_D2s_v3" --min-count 1 --max-count 20 --max-pods 30 --enable-cluster-autoscaler --scale-down-mode Delete

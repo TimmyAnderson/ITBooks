@@ -1,0 +1,1 @@
+az aks delete --name MyBookCluster --resource-group MyBook

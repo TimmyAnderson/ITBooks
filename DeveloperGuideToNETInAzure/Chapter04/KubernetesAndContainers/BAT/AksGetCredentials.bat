@@ -1,0 +1,1 @@
+az aks get-credentials --name MyBookCluster --resource-group MyBook

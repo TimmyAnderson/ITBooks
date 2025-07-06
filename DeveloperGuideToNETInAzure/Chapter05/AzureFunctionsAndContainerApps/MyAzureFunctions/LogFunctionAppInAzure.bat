@@ -1,0 +1,1 @@
+func azure functionapp logstream myfunctionta

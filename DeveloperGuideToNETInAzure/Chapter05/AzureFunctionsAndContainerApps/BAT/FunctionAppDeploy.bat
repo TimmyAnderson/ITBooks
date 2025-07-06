@@ -1,0 +1,1 @@
+az functionapp deploy --name myfunctionta --resource-group MyBook --src-path "MyAzureFunctions.zip" --type zip --clean true

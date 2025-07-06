@@ -1,0 +1,1 @@
+az functionapp keys list --name myfunctionta --resource-group MyBook

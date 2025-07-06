@@ -1,0 +1,1 @@
+az containerapp create --name "my-container-apps" --resource-group MyBook --image "docker.io/timmyanderson/mycontainerapps:1.0.0" --environment "/subscriptions/b5f70a84-6ba2-4485-84cd-ac0883d618c5/resourceGroups/MyBook/providers/Microsoft.App/managedEnvironments/MyBookEnvironment" --ingress external --allow-insecure --target-port 8080

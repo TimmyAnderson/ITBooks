@@ -1,0 +1,1 @@
+az functionapp delete --name durfunctionta --resource-group MyBook

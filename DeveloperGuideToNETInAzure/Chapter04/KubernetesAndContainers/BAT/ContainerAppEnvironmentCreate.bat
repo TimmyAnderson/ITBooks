@@ -1,0 +1,1 @@
+az containerapp env create --name "MyBookEnvironment" --resource-group MyBook --location "West US 2"

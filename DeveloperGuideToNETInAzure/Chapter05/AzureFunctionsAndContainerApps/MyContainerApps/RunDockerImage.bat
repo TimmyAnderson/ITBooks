@@ -1,0 +1,1 @@
+docker container run --publish 5000:8080 --name MyContainerApps timmyanderson/mycontainerapps:1.0.0

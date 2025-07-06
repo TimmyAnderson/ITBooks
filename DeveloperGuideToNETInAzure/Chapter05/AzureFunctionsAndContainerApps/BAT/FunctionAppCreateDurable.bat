@@ -1,0 +1,1 @@
+az functionapp create --name durfunctionta --resource-group MyBook --consumption-plan-location "westus2" --runtime dotnet-isolated --functions-version 4 --storage-account mystorageta

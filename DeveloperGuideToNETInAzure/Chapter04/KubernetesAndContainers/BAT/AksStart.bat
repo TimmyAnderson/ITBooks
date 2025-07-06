@@ -1,0 +1,1 @@
+az aks start --name MyBookCluster --resource-group MyBook

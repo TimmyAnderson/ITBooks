@@ -1,0 +1,1 @@
+az aks create --name MyBookCluster --resource-group MyBook --tier free --location polandcentral --os-sku Ubuntu --generate-ssh-keys --os-sku Ubuntu --nodepool-name mynodepool --node-vm-size "Standard_D2s_v3" --min-count 1 --max-count 20 --max-pods 30 --enable-cluster-autoscaler

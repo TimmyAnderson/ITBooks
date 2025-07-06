@@ -1,0 +1,1 @@
+az functionapp delete --name myfunctionta --resource-group MyBook

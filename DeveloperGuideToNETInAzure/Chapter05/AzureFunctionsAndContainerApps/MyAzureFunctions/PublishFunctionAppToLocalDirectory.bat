@@ -1,0 +1,1 @@
+dotnet publish MyAzureFunctions.csproj --output Deploy

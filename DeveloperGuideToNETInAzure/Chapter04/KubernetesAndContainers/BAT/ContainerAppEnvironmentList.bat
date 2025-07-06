@@ -1,0 +1,1 @@
+az containerapp env list

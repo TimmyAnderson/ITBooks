@@ -1,0 +1,1 @@
+az functionapp list --resource-group MyBook

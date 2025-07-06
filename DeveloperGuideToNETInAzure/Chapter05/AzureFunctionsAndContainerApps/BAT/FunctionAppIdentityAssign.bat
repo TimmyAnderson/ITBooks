@@ -1,0 +1,3 @@
+REM !!! VALUE [/subscriptions/b5f70a84-6ba2-4485-84cd-ac0883d618c5/resourcegroups/MyBook/providers/Microsoft.ManagedIdentity/userAssignedIdentities/MyIdentity] je ID danej MANAGED IDENTITY.
+
+az functionapp identity assign --name myfunctionta --resource-group MyBook --identities "/subscriptions/b5f70a84-6ba2-4485-84cd-ac0883d618c5/resourcegroups/MyBook/providers/Microsoft.ManagedIdentity/userAssignedIdentities/MyIdentity"
