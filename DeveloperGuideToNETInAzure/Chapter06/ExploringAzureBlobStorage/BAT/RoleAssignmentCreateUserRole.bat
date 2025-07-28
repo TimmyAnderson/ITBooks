@@ -1,0 +1,4 @@
+REM !!!!! VALUE [5138f3d7-3ec0-4d89-97f5-40a6f6000528] je PRINCIPAL ID USER ACCOUNT. Zoznam USER ACCOUNTS vracia COMMAND [az ad user list].
+REM !!!!! VALUE [/subscriptions/b5f70a84-6ba2-4485-84cd-ac0883d618c5/resourceGroups/Chapter06/providers/Microsoft.Storage/storageAccounts/mystorageta] je STORAGE CONTAINER ID. Ziskava sa pomocou COMMAND [az storage account list --resource-group Chapter06].
+
+az role assignment create --assignee "5138f3d7-3ec0-4d89-97f5-40a6f6000528" --scope "/subscriptions/b5f70a84-6ba2-4485-84cd-ac0883d618c5/resourceGroups/Chapter06/providers/Microsoft.Storage/storageAccounts/mystorageta" --role "Storage Blob Data Contributor"

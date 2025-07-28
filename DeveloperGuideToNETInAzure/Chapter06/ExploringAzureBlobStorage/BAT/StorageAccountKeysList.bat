@@ -1,0 +1,1 @@
+az storage account keys list --account-name mystorageta --resource-group Chapter06

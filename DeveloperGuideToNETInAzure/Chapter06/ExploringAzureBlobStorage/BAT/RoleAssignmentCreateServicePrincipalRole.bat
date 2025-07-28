@@ -1,0 +1,5 @@
+REM !!!!! COMMAND prideluje ROLE SERVICE PRINCIPAL, ktory je vytvoreny pre potreby CLIENT ID a CLIENT SECRET AUTHENTICATION a AUTHORIZAION.
+REM !!!!! VALUE [221500d1-c96a-428e-a0dc-059c5484d23b] je APPLICATION ID (CLIENT ID) pre vytvorenu APPLICATION REGISTRATION. VALUE je mozne ziskat z PROPERTY [appId] pomocou COMMAND [az ad app list].
+REM !!!!! VALUE [/subscriptions/b5f70a84-6ba2-4485-84cd-ac0883d618c5/resourceGroups/Chapter06/providers/Microsoft.Storage/storageAccounts/mystorageta] je STORAGE CONTAINER ID. Ziskava sa pomocou COMMAND [az storage account list --resource-group Chapter06].
+
+az role assignment create --assignee "221500d1-c96a-428e-a0dc-059c5484d23b" --scope "/subscriptions/b5f70a84-6ba2-4485-84cd-ac0883d618c5/resourceGroups/Chapter06/providers/Microsoft.Storage/storageAccounts/mystorageta" --role "Storage Blob Data Contributor"

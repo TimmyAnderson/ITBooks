@@ -1,0 +1,1 @@
+az ad user show --id "5138f3d7-3ec0-4d89-97f5-40a6f6000528"

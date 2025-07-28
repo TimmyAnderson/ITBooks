@@ -1,0 +1,586 @@
+//----------------------------------------------------------------------------------------------------------------------
+1. Solution demonstruje pouzitie AZURE BLOB STORAGE.
+2. AZURE BLOB STORAGE je AZURE SERVICE pre ktoru platia nasledujuce fakty.
+   A. AZURE BLOB STORAGE umonzuje ukladanie UNSTRUCTURED DATA, ako su napriklad TEXT DOCUMENTS, IMAGES ci VIDEOS.
+   B. AZURE BLOB STORAGE je SCALABLE a umoznuje ukladat subory o velkosti par BYTES i subory o velkosti TERABYTES.
+   C. AZURE BLOB STORAGE umoznuje zalohovat data roznych DATA CENTERS a REGIONS, cim sa zabezpecuje ich REDUNDANCY.
+   D. AZURE BLOB STORAGE podporuje platobny model PAY AS YOU GO a nasledujuce sposoby TIERS.
+      A. HOT TIER STORAGE pre data ku ktorym sa pristupuje casto.
+      B. COLD TIER STORAGE pre data ku ktorym sa pristupuje zriedkavo.
+   E. AZURE BLOB STORAGE definuje AZURE STORAGE SDK pre .NET, ktory umoznuje jednoduchy pristup k FILES ulozenym v AZURE BLOB STORAGE.
+   F. AZURE BLOB STORAGE implementuje SECURITY pomocou SHARED ACCESS SIGNATURES a AZURE ACTIVE DIRECTORY.
+   G. AZURE BLOB STORAGE definuje REST API na pristup k FILES ulozenym v AZURE BLOB STORAGE.
+3. AZURE BLOB STORAGE podporuje nasledujuce typy BLOBS.
+   A. BLOCK BLOBS.
+   B. PAGE BLOBS.
+   C. APPEND BLOBS.
+4. Pre BLOCK BLOBS platia nasledujuce fakty.
+   A. BLOCK BLOBS umoznuju ulozit FILES rozdelene na viacero nezavisle ukladanych BLOCKS.
+   B. BLOCK BLOBS BLOCKS mozu byt prenasane PARALELNE a nezavisle na ostatnych BLOCKS.
+   C. BLOCK BLOBS sa pouzivaju na ukladanie MEDIA FILES, BACKUPS ci AI MODELS, ktore vyzaduju ulozenie velkych FILES.
+   D. BLOCK BLOBS BLOCKS maju unikatne ID na zaklade ktoreho su ukladane.
+   !!! E. BLOCK BLOBS BLOCKS mozu byt prenasane v lubovolnom poradi. Po preneseni su COMMITED do BLOCK BLOBS, kde COMMIT urci ich poradie v BLOCK BLOBS. Ak su prenesene vsetky BLOCK BLOBS BLOCKS, tak je preneseny cely FILE.
+   F. BLOCK BLOBS mozu ukladat FILES az do velkosti 4.75 TB.
+   G. BLOCK BLOBS umoznuju paralelny prenos viacernych BLOCK BLOBS BLOCKS cim sa zvysuje efektivita prenosu.
+   H. BLOCK BLOBS su odolne voci chybam prenosu, pretoze pri chybe prenostu jedneho BLOCK BLOBS BLOCK staci opatovne preniest iba tento BLOCK BLOBS BLOCK, bez nutnosti prenasat cely FILE.
+   I. BLOCK BLOBS umoznuju UPDATE lubovolneho BLOCK BLOBS BLOCK.
+   J. BLOCK BLOBS mozu byt ukladane v rozlicnych DATA CENTERS a REGIONS ci sa zvysuje dostupnost daneho BLOCK BLOB.
+5. Pre PAGE BLOBS platia nasledujuce fakty.
+   A. PAGE BLOBS sluzia na ukladanie RANDOM ACCESS DATA, ktore vyzaduju efektivne READ OPERATIONS a WRITE OPERATIONS na lubovolnom mieste v BLOBE.
+   B. PAGE BLOBS delia BLOBS na PAGES, kde kazda PAGE ma fixne definovanu dlzku 512 BYTES.
+   C. PAGE BLOBS mozu mat maximalnu dlku 8 TB.
+   D. PAGE BLOBS umoznuju individualnu adresaciu a nezavisly pristup ku kazdej PAGE.
+   E. PAGE BLOBS podporuju RANDOM READ OPERATIONS a RANDOM WRITE OPERATIONS k lubovolnej PAGE bez nutnosti citat ci zapisovat cely BLOB.
+   !!! F. PAGE BLOBS podporuju vytvaranie SNAPSHOTS. SNAPSHOT je okamzita kopia celeho BLOB v danom momente. SNAPSHOTS su vyhodne pre vytvaranie BACKUPS.
+   !!! G. PAGE BLOBS podporuju INCREMENTAL COPY celeho BLOBU. Pri INCREMENTAL COPY sa kopiruju iba tie PAGES, ktore boli realne zmenene, a nie je nutne kopirovat cely BLOB.
+   H. PAGE BLOBS sa typicky pouzivaju na ukladanie VIRTUAL HARD DISKS, alebo DATABASE FILES. Vyhodne su aj pre vytvaranie BACKUP FILES.
+   I. PAGE BLOBS podporuju SPARSE ALLOCATION, kedy sa pri vytvoreni alokuje iba minimalny SPACE a ten sa alokuje postupne, ako narastaju naroky na velkost daneho BLOBU. SPARSE ALLOCATION umoznuje financne efektivne ukladanie dat bez nutnosti rezervovat velke BLOBS, ak realne nie su vyuzite.
+   !!! J. PAGE BLOBS funguju efektivne ak su zapisovane v ramci PAGE BOUNDARIES. Kedze PAGE SIZE v PAGE BLOB je vzdy 512 BYTES, je mozne realizovat READ OPERATIONS a WRITE OPERATIONS tak, aby vzdy citali data so zarovnanymi PAGES, aby nedochadzalo k citaniu dat od polovice prvej PAGE do polovice druhej PAGE, co by znamenalo nutnost vykonania OPERATION na dvoma, namiesto jednej PAGE.
+6. Pre APPEND BLOBS platia nasledujuce fakty.
+   A. APPEND BLOBS su BLOBS, ktore su specialne upravene na pridavanie novych dat na koniec BLOBU.
+   B. APPEND BLOBS su podobne ako BLOCK BLOCK tvorene BLOCKS od dlzke 4 MB. Na rozdiel od BLOCK BLOCK vsak nove data je mozne pridavat iba na koniec APPEND BLOB.
+   C. APPEND BLOBS maju maximalnu dlzku 195 GB.
+   D. APPEND BLOBS umoznuju vykonavanie WRITE OPERATION IBA na KONIEC APPEND BLOB.
+   !!! E. APPEND BLOBS vykonavani READ OPERATIONS a WRITE OPERATIONS ATOMICKY cim zabranuju, aby viacero WRITE OPERATIONS poskodilo konzistenciu dat.
+   F. APPEND BLOBS podporuju vytvaranie SNAPSHOTS. SNAPSHOT je okamzita kopia celeho BLOB v danom momente. SNAPSHOTS su vyhodne pre vytvaranie BACKUPS.
+   G. APPEND BLOBS sa typicky pouzivaju na zapis LOGS, TELEMETRY DATA z IOT DEVICES, alebo EVENTS generovanych EVENT DRIVEN SYSTEMS.
+   H. APPEND BLOBS na zabezpecenie konzistencie WRITE OPERATIONS umoznuju pridelit unikatny IDENTIFIER (napriklad GUID, ci TIMESTAMP) ci sa zabrani narusenie konzistencie dat.
+7. AZURE BLOB STORAGE podporuje nasledujuce typy TIERS.
+   A. HOT TIER.
+   B. COOL TIER.
+   C. COLD TIER.
+   D. ARCHIVE TIER.
+8. Pre HOT TIER platia nasledujuce fakty.
+   A. HOT TIER umoznuje najrychlejsi pristup k datam ulozenym v AZURE BLOB.
+   B. HOT TIER ma NAJVYSSIU cenu za ulozenie 1 GB dat.
+   C. HOT TIER ma NAJNIZSIU cenu za pristup k datam.
+   D. HOT TIER sa pouziva na ukladanie dat, ku ktorym je nutne pristupovat velmi casto, a vyzaduju okamzitu dostupnost dat.
+9. Pre COOL TIER platia nasledujuce fakty.
+   A. COOL TIER umoznuje o nieco pomalsi pristup k datam v AZURE BLOB ako HOT TIER, no data su stale relativne rychlo dostupne.
+   B. COOL TIER ma nizsiu cenu za ulozenie 1 GB dat ako HOT TIER.
+   C. COOL TIER ma vyssiu cenu za pristup k datam ako HOT TIER.
+   D. COOL TIER definuje minimalny cas ulozenia dat na 30 dni. Ak su data vymazane skor, je toto vymazanie spoplatnene.
+   E. COOL TIER sa pouziva na ukladanie dat, ku ktorym sa pristupuje zriedkavejsie ako k datam v HOT TIER, ale pri poziadavke o pristup je nutny stale relativne rychly pristup k tymto datam.
+10. Pre COLD TIER platia nasledujuce fakty.
+   A. COLD TIER umoznuje pomaly pristup k datam, kde pristup k datam moze trvat aj niekolko hodin.
+   B. COLD TIER ma nizsiu cenu za ulozenie 1 GB dat ako COOL TIER.
+   C. COLD TIER ma vyssiu cenu za pristup k datam ako COOL TIER.
+   D. COLD TIER definuje minimalny cas ulozenia dat na 180 dni. Ak su data vymazane skor, je toto vymazanie spoplatnene.
+   E. COLD TIER sa pouziva na ukladanie zriedkavo pristupovanych dat, kde pristup k datam moze trvat aj niekolko hodin.
+11. Pre ARCHIVE TIER platia nasledujuce fakty.
+   A. ARCHIVE TIER umoznuje pomaly pristup k datam, kde data nie su okamzite ONLINE pristupne a pristup k nim moze trvat aj niekolko hodin.
+   B. ARCHIVE TIER ma NAJNIZSIU cenu za ulozenie 1 GB dat.
+   C. ARCHIVE TIER ma NAJVYSSIU cenu za pristup k datam.
+   D. ARCHIVE TIER definuje minimalny cas ulozenia dat na 180 dni. Ak su data vymazane skor, je toto vymazanie spoplatnene.
+   !!! E. ARCHIVE TIER nemusi mat data priamo ONLINE pristupne, ale mozu byt ulozene v dlhodobych STORAGE, kde pred pristupom musia byt tieto data obnovene (REHYDRATED).
+   F. COLD TIER sa pouziva na ukladanie dat, ku ktorym sa pristupuje velmi zriedkavo a, kde pristup k datam moze trvat aj niekolko hodin.
+12. AZURE BLOB STORAGE podporuje nasledujuce typy PREFORMANCE LEVELS.
+   A. STANDARD PERFORMANCE LEVEL.
+   B. PREMIUM PERFORMANCE LEVEL.
+13. Pre STANDARD PERFORMANCE LEVEL platia nasledujuce fakty.
+   A. STANDARD PERFORMANCE LEVEL poskytuje optimalny pomer medzi PERFORMANCE a nakladmi.
+   B. STANDARD PERFORMANCE LEVEL poskytuje nizsiu cenu za ulozenie 1 GB dat ako PREMIUM PERFORMANCE LEVEL.
+   C. STANDARD PERFORMANCE LEVEL podporuje vsetky typy BLOBS.
+   D. STANDARD PERFORMANCE LEVEL umoznuje pristup k datam cez SHARED CONNECTIONS, ktore nie su tak rychle ako DEDICATED CONNECTIONS poskytovane PREMIUM PERFORMANCE LEVEL.
+   E. STANDARD PERFORMANCE LEVEL podporuje AZURE BLOB STORAGE LIFECYCLE MANAGEMENT, ktore umoznuju definovat RULES na zaklade ktorych maju byt BLOBS ukladane, alebo po urcitom case odstranovane.
+   F. STANDARD PERFORMANCE LEVEL je podporovany vo vacsine REGIONS.
+14. Pre PREMIUM PERFORMANCE LEVEL platia nasledujuce fakty.
+   A. PREMIUM PERFORMANCE LEVEL podporuje vysoko rychlostny pristup k BLOBS, no za cenu vyssich nakladov.
+   B. PREMIUM PERFORMANCE LEVEL je spoplatneny na zaklade mnozstva ulozenych dat, ako aj na zaklade mnozstva vykonanych IO OPERATIONS.
+   C. PREMIUM PERFORMANCE LEVEL uklada BLOBS na SSD DISKS, cim umoznuje rychlejsi pristup k datam.
+   D. PREMIUM PERFORMANCE LEVEL podporuje iba BLOCK BLOBS a APPEND BLOBS.
+   E. PREMIUM PERFORMANCE LEVEL umoznuje pristup k datam cez DEDICATED CONNECTIONS, ktore umoznuju rychlejsi pristup k datam ako STANDARD PERFORMANCE LEVEL.
+   F. PREMIUM PERFORMANCE LEVEL podporuje AZURE BLOB STORAGE LIFECYCLE MANAGEMENT, ktore umoznuju definovat RULES na zaklade ktorych maju byt BLOBS ukladane, alebo po urcitom case odstranovane.
+   G. PREMIUM PERFORMANCE LEVEL ma obmedzenu dostupnost iba v niektorych REGIONS.
+15. AZURE BLOB STORAGE podporuje LIFECYCLE MANAGEMENT. Pre LIFECYCLE MANAGEMENT platia nasledujuce fakty.
+   A. LIFECYCLE MANAGEMENT umoznuje definovat POLICIES, ktore umoznuju definovat spravanie BLOBS, ako napriklad ich presun medzi jednotlivymi TIERS, alebo keby ma byt BLOB odstraneny.
+   B. LIFECYCLE MANAGEMENT POLICIES su aplikovane na BLOBS.
+   C. LIFECYCLE MANAGEMENT POLICY definuje <1,N> LIFECYCLE MANAGEMENT RULES.
+   D. LIFECYCLE MANAGEMENT RULES obsahuju pravidla, ktore sa aplikuju na dane BLOBS.
+   E. LIFECYCLE MANAGEMENT POLICIES su definovane pomocou JSON FILES.
+16. LIFECYCLE MANAGEMENT POLICIES su definovane pomocou JSON FILES, ktore maju nasledujucu strukturu.
+   A. ELEMENT [rules] je ARRAY obsahujuci RULES, ktore definuje dana POLICY.
+   B. ELEMENT [rules.name] je NAME daneho RULE. Je HUMAN READABLE.
+   C. ELEMENT [rules.enabled] urcuje ci RULE je aktivne.
+   D. ELEMENT [rules.type] urcuje TYPE daneho RULE.
+   E. ELEMENT [rules.definition] obsahuje DEFINITION daneho RULE.
+   F. ELEMENT [rules.definition.filters] obsahuje zoznam FILTERS, ktore maju byt aplikovane na dany RULE.
+   G. ELEMENT [rules.definition.filters.blobTypes] obsahuje ARRAY BLOB TYPES na ktore sa ma dany RULE aplikovat.
+   H. ELEMENT [rules.definition.filters.prefixMatch] obsahuje ARRAY NAME PREFIXES tych BLOBS na ktore sa ma RULE aplikovat.
+   I. ELEMENT [rules.definition.actions] obsahuje zoznam ACTIONS, ktore ma dany RULE vykonat.
+   J. ELEMENT [rules.definition.actions.baseBlob] obsahuje zoznam ACTIONS, ktore sa maju aplikovat na samotny BLOB.
+   K. ELEMENT [rules.definition.actions.baseBlob.tierToCool] obsahuje CONDITIONS pri splneni ktorych sa ma BLOB presunut do COOL TIER.
+   L. ELEMENT [rules.definition.actions.baseBlob.delete] obsahuje CONDITIONS pri splneni ktorych sa ma BLOB odstranit
+17. AZURE BLOB STORAGE vyzaduje vytvorenie nasledujucich RESOURCES.
+   A. STORAGE ACCOUNT. STORAGE ACCOUNT je konto, ktorym sa pristupujue k AZURE BLOB STORAGE.
+   B. STORAGE CONTAINER. STORAGE CONTAINER je CONTAINER, ktory sa sluzi na ukladanie BLOBS. STORAGE CONTAINERS sa vytvaraju pre jednotlive STORAGE ACCOUNTS.
+   C. BLOBS. BLOBS sa ukladaju do STORAGE CONTAINER.
+18. AUTHENTICATION a AUTHORIZATION v AZURE BLOB STORAGE sa vykonava nasledujucimi sposobom.
+   A. Pomocou STORAGE ACCOUNT KEYS.
+   B. Pomocou USER LOGIN ACCOUNT.
+19. AUTHENTICATION a AUTHORIZATION pomocou STORAGE ACCOUNT KEYS sa vykonava v nasledujucich krokoch.
+   A. STORAGE ACCOUNT KEYS je mozne ziskat volanim COMMAND [az storage account keys list]. Prikladom je COMMAND [az storage account keys list --account-name mystorageta --resource-group Chapter06].
+   B. Pri AZURE BLOB STORAGE COMMANDS je nutne nastavit OPTIONAL PARAMETER [--account-key KEY], kde VALUE [KEY] je ziskany STORAGE ACCOUNT KEY. Prikladom je COMMAND [az storage container create --name myblobcontainer --account-name mystorageta --account-key FmqLupK6EHkJi4h3mQFX/SQSMAzXGiPEwT0OqxzLTWnr49wJcULvrIemlP/gZXSSk7mNeEmnj5Dx+AStwovDVQ==].
+20. AUTHENTICATION a AUTHORIZATION pomocou USER LOGIN ACCOUNT sa vykonava v nasledujucich krokoch.
+   A. Pomocou COMMAND [az ad user] sa ziska USER ACCOUNT ID.
+   !!!!! B. USER ACCOUNT je nutne pre RESOURCE typu STORAGE ACCOUNT treba nastavit ROLE [Storage Blob Data Contributor]. Plati to aj pre ADMINISTRATOR ACCOUNTS. ROLE sa nastavuje pomocou COMMAND [az role assignment create]. Prikladom je COMMAND [az role assignment create --assignee "5138f3d7-3ec0-4d89-97f5-40a6f6000528" --scope "/subscriptions/b5f70a84-6ba2-4485-84cd-ac0883d618c5/resourceGroups/Chapter06/providers/Microsoft.Storage/storageAccounts/mystorageta" --role "Storage Blob Data Contributor"].
+   C. Pri AZURE BLOB STORAGE COMMANDS je nutne nastavit OPTIONAL PARAMETER [--auth-mode login]. Prikladom je COMMAND [az storage container create --name myblobcontainer --account-name mystorageta --auth-mode login].
+   !!! D. V pripade, ze uz USER ACCOUNT nepotrebuje pristupovat k AZURE BLOB STORAGE je mozne ROLE [Storage Blob Data Contributor] odstranit pomcou COMMAND [az role assignment delete]. Prikladom je COMMAND [az role assignment delete --assignee "5138f3d7-3ec0-4d89-97f5-40a6f6000528" --scope "/subscriptions/b5f70a84-6ba2-4485-84cd-ac0883d618c5/resourceGroups/Chapter06/providers/Microsoft.Storage/storageAccounts/mystorageta" --role "Storage Blob Data Contributor"].
+21. So STORAGE ACCOUNTS sa pracuje pomocou nasledujucich COMMANDS.
+   A. COMMAND [az storage account create] vytvara novy STORAGE ACCOUNT. Prikladom je COMMAND [az storage account create --name mystorageta --resource-group Chapter06 --location "West US" --sku "Standard_LRS" --allow-blob-public-access false --encryption-services blob].
+   B. COMMAND [az storage account delete] odstranuje existujuci STORAGE ACCOUNT. Prikladom je COMMAND [az storage account delete --name mystorageta --resource-group Chapter06].
+   C. COMMAND [az storage account keys list] vracia ACCESS KEYS asociovane s danym STORAGE ACCOUNT. Prikladom je COMMAND [az storage account keys list --account-name mystorageta --resource-group Chapter06].
+   D. COMMAND [az storage account list] vracia zoznam vsetkych STORAGE ACCOUNTS. Prikladom je COMMAND [az storage account list --resource-group Chapter06].
+22. So STORAGE CONTAINERS je mozne pracovat az po priradeni ROLE [Storage Blob Data Contributor] pre STORAGE ACCOUNT danemu USER ACCOUNT. So STORAGE CONTAINERS sa pracuje pomocou nasledujucich COMMANDS.
+   A. COMMAND [az storage container create] vytvara novy STORAGE CONTAINER. Prikladom je COMMAND [az storage container create --name myblobcontainer --account-name mystorageta --auth-mode login].
+   B. COMMAND [az storage container delete] odstranuje existujuci STORAGE CONTAINER. Prikladom je COMMAND [az storage container delete --name myblobcontainer --account-name mystorageta --auth-mode login].
+   C. COMMAND [az storage container list] vracia zoznam vsetkych STORAGE CONTAINERS. Prikladom je COMMAND [az storage container list --account-name mystorageta --auth-mode login].
+23. So STORAGE BLOBS je mozne pracovat az po priradeni ROLE [Storage Blob Data Contributor] pre STORAGE ACCOUNT danemu USER ACCOUNT. So STORAGE BLOBS sa pracuje pomocou nasledujucich COMMANDS.
+   A. COMMAND [az storage blob upload] vykonava UPLOAD BLOBU do STORAGE CONTAINER. Prikladom je COMMAND [az storage blob upload --account-name mystorageta --container-name myblobcontainer --name SomeBlobFile.txt --file SomeBlobFile.txt --auth-mode login].
+   B. COMMAND [az storage blob download] vykonava DOWNLOAD BLOBU zo STORAGE CONTAINER. Prikladom je COMMAND [az storage blob download --account-name mystorageta --container-name myblobcontainer --name SomeBlobFile.txt --file DownloadedSomeBlobFile.txt --auth-mode login].
+   C. COMMAND [az storage blob delete] vykonava DELETE BLOBU zo STORAGE CONTAINER. Prikladom je COMMAND [az storage blob delete --account-name mystorageta --container-name myblobcontainer --name SomeBlobFile.txt --auth-mode login].
+   D. COMMAND [az storage blob list] vracia zoznam BLOBS v STORAGE CONTAINERS. Prikladom je COMMAND [az storage blob list --account-name mystorageta --container-name myblobcontainer --auth-mode login].
+24. So STORAGE ACCOUNTS je mozne asociovat LIFECYCLE MANAGEMENT POLICIES. S LIFECYCLE MANAGEMENT POLICIES sa pracuje pomocou nasledujucich COMMANDS.
+   A. COMMAND [az storage account management-policy create] priradzuje LIFECYCLE MANAGEMENT POLICY danemu STORAGE ACCOUNT. Prikladom je COMMAND [az storage account management-policy create --account-name mystorageta --resource-group Chapter06 --policy "MyBlobPolicy.json"].
+   B. COMMAND [az storage account management-policy delete] odstranuje LIFECYCLE MANAGEMENT POLICY z daneho STORAGE ACCOUNT. Prikladom je COMMAND [az storage account management-policy delete --account-name mystorageta --resource-group Chapter06].
+   C. COMMAND [az storage account management-policy show] vracia LIFECYCLE MANAGEMENT POLICY, ktore je priradena danemu STORAGE ACCOUNT. Prikladom je COMMAND [az storage account management-policy show --account-name mystorageta --resource-group Chapter06].
+25. AZURE umoznuje automaticku replikaciu BLOBS v ramci jedneho DATA CENTER, jedneho REGIONU, alebo viacerych REGIONOV. AZURE podporuje nasledujuce REPLICATION OPTIONS.
+   A. LOCALLY REDUNDANT STORAGE.
+   B. ZONE REDUNDANT STORAGE.
+   C. GEO REDUNDANT STORAGE.
+   D. READ ACCESS GEO REDUNDANT STORAGE.
+26. LOCALLY REDUNDANT STORAGE platia nasledujuce fakty.
+   A. BLOBS su ulozene vzdy v 3 kopiach v ramci 1 DATA CENTER.
+   B. REPLICATION OPTION neposkytuje odolnost voci REGIONAL DISASTER.
+   C. Je to najlacnejsia REPLICATION OPTION.
+27. ZONE REDUNDANT STORAGE platia nasledujuce fakty.
+   A. BLOBS su ulozene vzdy v 3 kopiach v ramci viacerych DATA CENTER v ramcie 1 REGIONU.
+   B. REPLICATION OPTION poskytuje odolnost voci zlyhaniu 1 DATA CENTER.
+   C. REPLICATION OPTION je drahsia ako LOCALLY REDUNDANT STORAGE.
+28. GEO REDUNDANT STORAGE platia nasledujuce fakty.
+   A. BLOBS su ulozene vzdy v 6 kopiach v ramci 2 REGIONS.
+   B. REPLICATION OPTION poskytuje odolnost voci zlyhaniu celeho REGIONU.
+   C. REPLICATION OPTION je drahsia ako ZONE REDUNDANT STORAGE.
+29. READ ACCESS GEO REDUNDANT STORAGE platia nasledujuce fakty.
+   A. BLOBS su ulozene vzdy v 6 kopiach v ramci 2 REGIONS, pricom v 2. REGION su BLOBS dostupne pre citanie.
+   B. REPLICATION OPTION poskytuje odolnost voci zlyhaniu celeho REGIONU.
+   C. REPLICATION OPTION je najdrahsia zo vsetkych REPLICATION OPTIONS.
+30. AZURE SDK definuje AZURE STORAGE CLIENT LIBRARY pre pracu s BLOBS. Pre AZURE STORAGE CLIENT LIBRARY platia nasledujuce fakty.
+   A. AZURE STORAGE CLIENT LIBRARY je sucastou AZURE SDK FOR .NET.
+   B. AZURE STORAGE CLIENT LIBRARY obsahuje CLASSES, ktore umoznuju efektivnu pracu s BLOBS v .NET.
+   !!! C. AZURE STORAGE CLIENT LIBRARY interne vyuziva REST API CALLS, ktore AZURE BLOB STORAGE vystavuje.
+   D. AZURE STORAGE CLIENT LIBRARY sa nachadza v PACKAGE [Azure.Storage.Blobs].
+31. CLASS [BlobServiceClient] umoznuje pristup k AZURE BLOB STORAGE. Ma nasledujuce MEMBERS.
+   A. PROPERTY [string AccountName] obsahuje ACCOUNT NAME s ktorym sa instancia CLASS prihlasuje do AZURE BLOB STORAGE.
+   B. METHOD [Task<Response<BlobContainerClient>> CreateBlobContainerAsync(string BlobContainerName, PublicAccessType PublicAccessType, IDictionary<string,string> Metadata, CancellationToken CancellationToken)] vytvara novy BLOB CONTAIMER.
+   C. METHOD [Task<Response> DeleteBlobContainerAsync(string BlobContainerName, BlobRequestConditions Conditions, CancellationToken CancellationToken)] odstranuje existujuci BLOB CONTAIMER.
+   D. METHOD [AsyncPageable<BlobContainerItem> GetBlobContainersAsync(BlobContainerTraits Traits, BlobContainerStates States, string Prefix, CancellationToken CancellationToken)] vracia vsetky BLOB CONTAINERS.
+   E. METHOD [Task<Response<BlobServiceProperties>> GetPropertiesAsync(CancellationToken CancellationToken)] vracia AZURE BLOB STORAGE SERVICE PROPERTIES, ako je LOGGING, METRICS, ci CORS CONFIGURATION.
+   F. METHOD [Task<Response> SetPropertiesAsync(BlobServiceProperties Properties, CancellationToken CancellationToken)] nastavuje AZURE BLOB STORAGE SERVICE PROPERTIES, ako je LOGGING, METRICS, ci CORS CONFIGURATION.
+32. CLASS [BlobContainerClient] reprezentuje BLOB CONTAINER a umoznuje UPLOAD, DOWNLOAD ci DELETE BLOBS v BLOB CONTAINER. Ma nasledujuce MEMBERS.
+   A. PROPERTY [string AccountName] obsahuje ACCOUNT NAME s ktorym sa instancia CLASS prihlasuje do AZURE BLOB STORAGE.
+   B. PROPERTY [string Name] obsahuje BLOB CONTAINER NAME.
+   C. METHOD [Task<Response<BlobContentInfo>> UploadBlobAsync(string BlobName, Stream content, CancellationToken CancellationToken)] vykonava UPLOAD BLOB do BLOB CONTAINER.
+   D. METHOD [BlobClient GetBlobClient(string BlobName)] vracia instanciu CLASS [BlobClient], ktora reprezentuje dany BLOB.
+   E. METHOD [AsyncPageable<BlobItem> GetBlobsAsync(BlobTraits Traits, BlobStates States, string Prefix, CancellationToken CancellationToken)] vykonava DOWNLOAD BLOBS z BLOB CONTAINER.
+   F. METHOD [Task<Response> DeleteBlobAsync(string BlobName, DeleteSnapshotsOption SnapshotsOption, BlobRequestConditions Conditions, CancellationToken CancellationToken)] odstranuje BLOB z BLOB CONTAINER.
+   G. METHOD [Task<Response<BlobContainerAccessPolicy>> GetAccessPolicyAsync(BlobRequestConditions Conditions, CancellationToken CancellationToken)] vracia BLOB CONTAINER ACCESS POLICY.
+   H. METHOD [Task<Response<BlobContainerInfo>> SetAccessPolicyAsync(PublicAccessType AccessType, IEnumerable<BlobSignedIdentifier> Permissions, BlobRequestConditions Conditions, CancellationToken CancellationToken)] nastavuje BLOB CONTAINER ACCESS POLICY.
+33. CLASS [BlobBaseClient] reprezentuje BASE CLASS pre pracu so vsetkymi tympi BLOBS. Umoznuje DOWNLOAD, DELETE ci SNAPSHOT BLOBS. Ma nasledujuce MEMBERS.
+   A. PROPERTY [string AccountName] obsahuje ACCOUNT NAME s ktorym sa instancia CLASS prihlasuje do AZURE BLOB STORAGE.
+   B. PROPERTY [string BlobContainerName] obsahuje BLOB CONTAINER NAME.
+   C. PROPERTY [string Name] obsahuje BLOB NAME.
+   D. METHOD [Task<Response<BlobDownloadInfo>> DownloadAsync(CancellationToken CancellationToken)] vykonava DOWNLOAD daneho BLOB.
+   E. METHOD [Task<Response<BlobDownloadInfo>> DownloadAsync(HttpRange Range, BlobRequestConditions Conditions, bool RangeGetContentHash, CancellationToken CancellationToken)] vykonava DOWNLOAD casti daneho BLOB.
+   F. METHOD [Task<Response> DeleteAsync(DeleteSnapshotsOption SnapshotsOption, BlobRequestConditions Conditions, CancellationToken CancellationToken)] vykonava DELETE daneho BLOB.
+   G. METHOD [Task<Response<BlobSnapshotInfo>> CreateSnapshotAsync(IDictionary<string,string> Metadata, BlobRequestConditions Conditions, CancellationToken CancellationToken)] vykonava SNAPSHOT daneho BLOB.
+   H. METHOD [Task<Response> SetAccessTierAsync(AccessTier AccessTier, BlobRequestConditions Conditions, RehydratePriority? RehydratePriority, CancellationToken CancellationToken)] nastavuje ACCESS TIER daneho BLOB.
+34. CLASS [BlobClient] reprezentuje CLASS pre pracu so vsetkymi tympi BLOBS. Umoznuje UPLOAD, DOWNLOAD, DELETE ci SNAPSHOT BLOBS. CLASS je DERIVED z CLASS [BlobBaseClient]. Ma nasledujuce MEMBERS.
+   A. METHOD [Task<Response<BlobContentInfo>> UploadAsync(Stream Content, BlobUploadOptions Options, CancellationToken CancellationToken)] vykonava UPLOAD STREAM do daneho BLOB.
+   B. METHOD [Task<Response<BlobContentInfo>> UploadAsync(string Path, BlobUploadOptions Options, CancellationToken CancellationToken)] vykonava UPLOAD FILE do daneho BLOB.
+35. CLASS [BlockBlobClient] reprezentuje CLASS pre pracu s BLOCK BLOBS. Umoznuje UPLOAD, DOWNLOAD, DELETE ci SNAPSHOT BLOBS. CLASS je DERIVED z CLASS [BlobBaseClient]. Ma nasledujuce MEMBERS.
+   A. PROPERTY [long BlockBlobMaxUploadBlobLongBytes] vracia maximalny pocet BYTES, ktore mozu byt UPLOADED v ramci jednej opracie UPLOAD.
+   B. METHOD [Task<Response<BlobContentInfo>> UploadAsync(Stream Content, BlobUploadOptions Options, CancellationToken CancellationToken)] vykonava UPLOAD STREAM do daneho BLOCK BLOB.
+   C. METHOD [Task<Response<BlockInfo>> StageBlockAsync(string Base64BlockId, Stream Content, BlockBlobStageBlockOptions Options, CancellationToken CancellationToken)] uklada BLOCK do STAGE AREA, aby neskor mohol byt COMMITTED do daneho BLOCK BLOB.
+   D. METHOD [Task<Response<BlobContentInfo>> CommitBlockListAsync(IEnumerable<string> Base64BlockIds, CommitBlockListOptions Options, CancellationToken CancellationToken)] vykonava COMMIT STAGED BLOCKS do daneho BLOCK BLOB.
+   E. METHOD [Task<Response<BlockList>> GetBlockListAsync(BlockListTypes BlockListTypes, string Snapshot, BlobRequestConditions Conditions, CancellationToken CancellationToken)] vracia zoznam vsetkych BLOCKS daneho BLOCK BLOB.
+36. CLASS [AppendBlobClient] reprezentuje CLASS pre pracu s APPEND BLOBS. Umoznuje UPLOAD, APPEND, DOWNLOAD, DELETE ci SNAPSHOT BLOBS. CLASS je DERIVED z CLASS [BlobBaseClient]. Ma nasledujuce MEMBERS.
+   A. PROPERTY [int AppendBlobMaxAppendBlockBytes] vracia maximalny pocet BYTES, ktore mozu byt APPENDED v ramci jednej opracie APPEND.
+   B. METHOD [Task<Response<BlobContentInfo>> CreateAsync(AppendBlobCreateOptions Options, CancellationToken CancellationToken)] vytvara novy APPEND BLOB s dlzkou 0.
+   C. METHOD [Task<Response<BlobAppendInfo>> AppendBlockAsync(Stream content, AppendBlobAppendBlockOptions Options, CancellationToken CancellationToken)] vykonava APPEND do existujuceho APPEND BLOB.
+   D. METHOD [Task<Response<BlobInfo>> SealAsync(AppendBlobRequestConditions Conditions, CancellationToken CancellationToken)] vykonava SEAL existujuceho BLOB, takze do APPEND BLOB nie je mozne pridavat nove data.
+37. CLASS [PageBlobClient] reprezentuje CLASS pre pracu s PAGE BLOBS. Umoznuje UPLOAD, DOWNLOAD, DELETE ci SNAPSHOT BLOBS. CLASS je DERIVED z CLASS [BlobBaseClient]. Ma nasledujuce MEMBERS.
+   A. PROPERTY [int PageBlobPageBytes] vracia dlzku PAGE v BYTES.
+   B. METHOD [Task<Response<BlobContentInfo>> CreateAsync(long Size, PageBlobCreateOptions Options, CancellationToken CancellationToken)] vytvara novy PAGE BLOB s definovanou dlzkou.
+   C. METHOD [Task<Response<PageInfo>> UploadPagesAsync(Stream Content, long Offset, PageBlobUploadPagesOptions Options, CancellationToken CancellationToken)] vykonava UPLOAD PAGES do existujuceho PAGE BLOB.
+   D. METHOD [Task<Response<PageInfo>> ClearPagesAsync(HttpRange Range, PageBlobRequestConditions Conditions, CancellationToken CancellationToken)] vykonava CLEAR PAGES v existujucom PAGE BLOB.
+   E. METHOD [AsyncPageable<PageRangeItem> GetAllPageRangesAsync(GetPageRangesOptions Options, CancellationToken CancellationToken)] vracia zoznam validnych PAGE RANGES v existujucom PAGE BLOB.
+   F. METHOD [Task<Response<PageRangesInfo>> GetPageRangesAsync(HttpRange Range, string Snapshot, PageBlobRequestConditions Conditions, CancellationToken CancellationToken)] vracia zoznam validnych PAGE RANGES v RANGE existujuceho PAGE BLOB.
+   G. METHOD [Task<Response<PageRangesInfo>> GetPageRangesDiffAsync(HttpRange Range, string Snapshot, string PreviousSnapshot, PageBlobRequestConditions Conditions, CancellationToken CancellationToken)] vracia zoznam zmenenych PAGE RANGES medzi existujucim PAGE BLOB a SNAPSHOT.
+   H. METHOD [Task<Response<PageBlobInfo>> ResizeAsync(long Size, PageBlobRequestConditions Conditions, CancellationToken CancellationToken)] vykonava RESIZE daneho PAGE BLOB.
+38. CLASS [BlobLeaseClient] reprezentuje CLASS pre pracu s BLOB CONTAINER LEASES a BLOB LEASES. LEASE umoznuje priradit exkluzivny ACCESS pre BLOB CONTAINER, alebo BLOB na definovany cas, pocas ktoreho nemozu dalsi USERS pristupovat k danemu BLOB CONTAINER, alebo BLOB. Ma nasledujuce MEMBERS.
+   A. PROPERTY [Uri Uri] obsahuje URI na OBJECT na ktory sa LEASE aplikuje.
+   B. PROPERTY [string LeaseId] obsahuje LEASE ID.
+   C. METHOD [Task<Response<BlobLease>> AcquireAsync(TimeSpan duration, RequestConditions Conditions, CancellationToken CancellationToken)] ziskava LEASE (exkluzivny pristup) k danemu BLOB CONTAINER, alebo BLOB.
+   D. METHOD [Task<Response<BlobLease>> RenewAsync(RequestConditions Conditions, CancellationToken CancellationToken)] obnovuje LEASE (exkluzivny pristup) k danemu BLOB CONTAINER, alebo BLOB.
+   E. METHOD [Task<Response<ReleasedObjectInfo>> ReleaseAsync(RequestConditions Conditions, CancellationToken CancellationToken)] uvolnuje LEASE (exkluzivny pristup) k danemu BLOB CONTAINER, alebo BLOB.
+   F. METHOD [Task<Response<BlobLease>> ChangeAsync(string ProposedId, RequestConditions Conditions, CancellationToken CancellationToken)] meni LEASE ID k danemu BLOB CONTAINER, alebo BLOB.
+   G. METHOD [Task<Response<BlobLease>> BreakAsync(TimeSpan BreakPeriod, RequestConditions Conditions, CancellationToken CancellationToken)] definuje BREAK PERIOD pre LEASE k danemu BLOB CONTAINER, alebo BLOB.
+39. CLASS [BlobDownloadInfo] reprezentuje CLASS obsahujucu vysledok DOWNLOAD BLOB. CLASS implementuje INTERFACE [IDisposable]. Ma nasledujuce MEMBERS.
+   A. PROPERTY [BlobType BlobType] obsahuje BLOB TYPE.
+   B. PROPERTY [long ContentLength] obsahuje dlzku CONTENT ulozenom v STREAM.
+   C. PROPERTY [Stream Content] obsahuje STREAM s obsahom BLOBU.
+   D. PROPERTY [string ContentType] obsahuje CONTENT TYPE BLOBU.
+   E. PROPERTY [byte[] ContentHash] obsahuje HASH BLOBU.
+   F. PROPERTY [BlobDownloadDetails Details] obsahuje detaily DOWNLOAD BLOBU.
+   G. METHOD [void Dispose()] uvolnuje instanciu CLASS.
+40. CLASS [BlobRequestConditions] reprezentuje CLASS obsahujucu CONDITIONS, ktore sa maju aplikovat pri vykonavani BLOB OPERATIONS. Ma nasledujuce MEMBERS.
+   A. PROPERTY [string TagConditions] obsahuje SQL STATEMENT aplikovany na BLOB TAGS.
+   B. PROPERTY [string LeaseId] obsahuje LEASE ID ktory musi REQUEST obsahovat.
+41. CLASS [BlobContainerEncryptionScopeOptions] reprezentuje CLASS obsahujucu ENCTYPTION SCOPE OPTIONS pre BLOB CONTAINER, ktore sa aplikuje pri CREATE BLOB CONTAINER a UPDATE BLOB CONTAINER. Ma nasledujuce MEMBERS.
+   A. PROPERTY [string DefaultEncryptionScope] obsahuje DEFAULT ENCRYPTION SCOPE, ktory sa aplikuje pre vsetky WRITE OPERATIONS nad danym BLOB CONTAINER.
+   B. PROPERTY [bool PreventEncryptionScopeOverride] ak je nastaveny na VALUE [true], zabranuje REQUESTS nastavit iny ENCRYPTION SCOPE na BLOB CONTAINER.
+42. CLASS [BlobSasBuilder] reprezentuje CLASS pouzivana na generovanie SHARED ACCESS SIGNATURE pre BLOB CONTAINER, alebo BLOB. Ma nasledujuce MEMBERS.
+   A. PROPERTY [SasProtocol Protocol] obsahuje PROTOCOL, ktory sa pouziva pri REQUESTS vyuzivajucich SHARED ACCESS SIGNATURE.
+   B. PROPERTY [DateTimeOffset StartsOn] obsahuje cas od ktoreho je SHARED ACCESS SIGNATURE validna.
+   C. PROPERTY [DateTimeOffset ExpiresOn] obsahuje cas od ktoreho je SHARED ACCESS SIGNATURE exspirovana.
+   D. PROPERTY [string Permissions] obsahuje PERMISSIONS, ktore su asociovane so SHARED ACCESS SIGNATURE.
+   E. PROPERTY [SasIPRange IPRange] obsahuje mnozinu IP ADDRESSES, od ktorych su akceptovane REQUESTS.
+   F. PROPERTY [string BlobContainerName] obsahuje BLOB CONTAINER NAME.
+   G. PROPERTY [string BlobName] obsahuje BLOB NAME.
+   H. PROPERTY [string Snapshot] obsahuje SNAPSHOT NAME.
+   I. PROPERTY [string BlobVersionId] obsahuje BLOB VERSION ID.
+   J. PROPERTY [string Resource] obsahuje RESOURCE, ktory ma byt cez SHARED ACCESS SIGNATURE pristupny.
+   K. METHOD [void SetPermissions(BlobSasPermissions Permissions)] nastavuje PERMISSIONS pre BLOB SHARED ACCESS SIGNATURE.
+   L. METHOD [void SetPermissions(BlobAccountSasPermissions Permissions)] nastavuje PERMISSIONS pre BLOB ACCOUNT LEVEL SHARED ACCESS SIGNATURE.
+   M. METHOD [void SetPermissions(BlobContainerSasPermissions Permissions)] nastavuje PERMISSIONS pre BLOB CONTAINER SHARED ACCESS SIGNATURE.
+   N. METHOD [void SetPermissions(SnapshotSasPermissions Permissions)] nastavuje PERMISSIONS pre SNAPSHOT SHARED ACCESS SIGNATURE.
+   O. METHOD [void SetPermissions(BlobVersionSasPermissions Permissions)] nastavuje PERMISSIONS pre VERSION SHARED ACCESS SIGNATURE.
+   P. METHOD [void SetPermissions(string RawPermissions, bool Normalize)] nastavuje PERMISSIONS pre SHARED ACCESS SIGNATURE pouzitim RAW STRING.
+43. CLASS [BlobUploadOptions] reprezentuje CLASS obsahujucu OPTIONS pre BLOB UPLOAD. Ma nasledujuce MEMBERS.
+   A. PROPERTY [BlobHttpHeaders HttpHeaders] obsahuje HTTP HEADERS, ktore budu asociovane s BLOB.
+   B. PROPERTY [IDictionary<string,string> Metadata] obsahuje METADATA, ktore budu asociovane s BLOB.
+   C. PROPERTY [IDictionary<string,string> Tags] obsahuje TAGS, ktore budu asociovane s BLOB.
+   D. PROPERTY [BlobRequestConditions Conditions] obsahuje CONDITIONS, ktore budu asociovane s BLOB.
+   E. PROPERTY [IProgress<long> ProgressHandler] obsahuje CALLBACK METHOD, ktora informuje o progrese vykonavaneho BLOB UPLOAD.
+   F. PROPERTY [AccessTier AccessTier] obsahuje ACCESS TIER, ktory ma byt nastaveny na danom BLOBE.
+   G. PROPERTY [StorageTransferOptions TransferOptions] obsahuje OPTIONS pre PARALLEL UPLOAD.
+   H. PROPERTY [BlobImmutabilityPolicy ImmutabilityPolicy] obsahuje IMMUTABILITY POLICY, ktora ma byt nastavena na danom BLOBE.
+   I. PROPERTY [bool LegalHold] obsahuje ci ma by na BLOBE nastaveny LEGAL HOLD.
+   J. PROPERTY [UploadTransferValidationOptions TransferValidation] obsahuje nastavenia validacie BLOB UPLOAD.
+44. CLASS [BlobDownloadOptions] reprezentuje CLASS obsahujucu OPTIONS pre BLOB DOWNLOAD. Ma nasledujuce MEMBERS.
+   A. PROPERTY [HttpRange Range] obsahuje RANGE BYTES, ktore maju byt DOWNLOADED z daneho BLOB. Ak VALUE nie je definovana vykona sa DOWNLOAD celeho BLOB.
+   B. PROPERTY [BlobRequestConditions Conditions] obsahuje CONDITIONS, ktore su asociovane s BLOB.
+   C. PROPERTY [IProgress<long> ProgressHandler] obsahuje CALLBACK METHOD, ktora informuje o progrese vykonavaneho BLOB DOWNLOAD.
+   D. PROPERTY [DownloadTransferValidationOptions TransferValidation] obsahuje nastavenia validacie BLOB DOWNLOAD.
+45. AZURE BLOB STORAGE umoznuje na BLOB CONTAINERS nastavit PUBLIC ACCESS LEVELS. Pre PUBLIC ACCESS LEVELS platia nasledujuce fakty.
+   A. BLOB CONTAINERS je mozne nastavit na nasledujuce PUBLIC ACCESS LEVELS.
+      A. PUBLIC ACCESS LEVEL [PRIVATE]. Tento PUBLIC ACCESS LEVEL vyzaduje AUTHORIZATION kazdeho REQUEST na BLOB CONTAINER ci BLOBS v BLOB CONTAINERS.
+      B. PUBLIC ACCESS LEVEL [BLOB]. Tento PUBLIC ACCESS LEVEL umoznuje pristup k jednotlivym BLOBS, ale neumoznuje ziskat METADATA BLOB CONTAINER ani zoznam vsetkych BLOBS v BLOB CONTAINER.
+      C. PUBLIC ACCESS LEVEL [CONTAINER]. Tento PUBLIC ACCESS LEVEL umoznuje pristupovat k vsetkym BLOBS v BLOB CONTAINER a ziskat METADATA BLOB CONTAINER.
+   B. PUBLIC ACCESS LEVEL je mozne nastavit pomocou CLI COMMAND [az storage container create] cez OPTION [--public-access].
+   C. PUBLIC ACCESS LEVEL je mozne nastavit pomocou AZURE STORAGE CLIENT LIBRARY METHOD [Response<BlobContainerClient> BlobServiceClient.CreateBlobContainer(string BlobContainerName, PublicAccessType PublicAccessType, IDictionary<string,string> Metadata, CancellationToken CancellationToken)].
+46. SHARED ACCESS SIGNATURE je jednym zo sposobom ako je mozne garantovat pristup k BLOBS v AZURE. Pre SHARED ACCESS SIGNATURE platia nasledujuce fakty.
+   A. SHARED ACCESS SIGNATURE ma tvar URL, ktory sa posiela ako sucast HTTP REQUEST pri dotaze na ziskanie pristupu k BLOB CONTAINERS, alebo BLOBS.
+   !!! B. SHARED ACCESS SIGNATURE je mozne aplikovat nielen na BLOB CONTAINERS a BLOBS, ale aj na FILES, TABLES ci QUEUES ulozenych v AZURE STORAGE.
+   !!!!! C. SHARED ACCESS SIGNATURE je mozne aplikovat IBA na BLOB CONTAINERS a BLOB. SHARED ACCESS SIGNATURE NIE je mozne aplikovat na samotny AZURE BLOB STORAGE SERVICE. Pristup k nemu musi byt AUTHENTICATED a AUTHORIZED inymi mechanizmami.
+   D. SHARED ACCESS SIGNATURE umoznuje definovat PERMISSIONS pre RESOURCES, kde RESOURC moze byt bud BLOB CONTAINERS, alebo jednotlive BLOBS.
+   E. SHARED ACCESS SIGNATURE umoznuje definovat TIME RANGE pocas ktoreho je dany RESOURCE pristupny.
+   F. SHARED ACCESS SIGNATURE je podpisany STORAGE ACCOUNT ACCESS KEY, cim sa zarucuje jeho autenticita.
+   G. SHARED ACCESS SIGNATURE umoznuje definovat obmedzenia na IP ADDRESSES ci ine CONDITIONS, ktore musia byt splnene pre udelenie ACCESS ku BLOB CONTAINER ci BLOB.
+   H. SHARED ACCESS SIGNATURE moze byt generovany pomocou AZURE GUI, AZURE CLI i AZURE STORAGE CLIENT LIBRARY.
+   !!! I. SHARED ACCESS SIGNATURE mozu byt aplikovane pomocou REUSABLE STORED ACCESS POLICIES na BLOB CONTAINERS.
+   J. SHARED ACCESS SIGNATURE je mozne pouzivat aj bez nutnosti pouzitia inych SECURITY mechanizmov ako napriklad AZURE ACTIVE DIRECTORY.
+   !!!!! K. SHARED ACCESS SIGNATURE musi byt distribuovany a ukladany bezpecne, pretoze jeho vlastnictvo umoznuje automaticky ziskanie k BLOB CONTAINER, alebo BLOB.
+!!! 47. SHARED ACCESS SIGNATURE ma format URI, ktory ma pre STRUCTURE [https://ACCOUNT_NAME/SERVICE_NAME/RESOURCE_PATH?PARAMETER_1=VALUE_1&...&PARAMETER_N=VALUE_N]. Jednotlive VALUES maju nasledujuci vyznam.
+   A. VALUE [ACCOUNT_NAME] obsahuje ACCOUNT NAME pre ktory je dany AZURE STORAGE RESOURCE vytvoreny.
+   B. VALUE [SERVICE_NAME] obsahuje STRING identifikujuci danu SERVICE. Pre AZURE BLOB STORAGE SERVICE je to STRING [blob.core.windows.net].
+   C. VALUE [RESOURCE_PATH] je PATH k danemu RESOURCE.
+      A. Pre BLOB CONTAINER ma VALUE [RESOURCE_PATH] VALUE [CONTAINER_NAME], kde VALUE [CONTAINER_NAME] je nazov CONTAINER.
+      B. Pre BLOB ma VALUE [RESOURCE_PATH] VALUE [CONTAINER_NAME/BLOB_NAME], kde VALUE [CONTAINER_NAME] je nazov CONTAINER a VALUE [BLOB_NAME] je nazov BLOB.
+   D. VALUES [PARAMETER_X=VALUE_X] obsahuju QUERY STRING PARAMETERS a ich VALUES, ktore definuju cas platnosti SHARED ACCESS SIGNATURE, pozadovane PERMISSIONS, IP RESTRICTIONS ci dalsie CUSTOM CONDITIONS, ktore musia byt splnene, aby pristup k BLOB CONTAINER ci BLOB mohol byt prideleny.
+48. SHARED ACCESS SIGNATURE moze obsahovat nasledujuce QUERY STRING PARAMETERS.
+   A. PARAMETER [sv] obsahuje STORAGE SERVICE VERSION.
+   B. PARAMETER [st] obsahuje START TIME odkedy je SHARED ACCESS SIGNATURE platna.
+   C. PARAMETER [se] obsahuje EXPIRATION TIME dokedy je SHARED ACCESS SIGNATURE platna.
+   D. PARAMETER [sp] obsahuje pozadovane PERMISSIONS k danemu RESOURCE.
+      A. BLOB CONTAINER moze obsahovat nasledujuce PERMISSIONS.
+         A. PERMISSION [l] znamena LIST ACCESS, ktory umoznuje zobrazovat obsah BLOB CONTAINER.
+         B. PERMISSION [r] znamena READ ACCESS, ktory umoznuje citat BLOBS z BLOB CONTAINER.
+         C. PERMISSION [w] znamena WRITE ACCESS, ktory umoznuje zapisovat BLOBS do BLOB CONTAINER.
+         D. PERMISSION [d] znamena DELETE ACCESS, ktory umoznuje odstranit BLOBS z BLOB CONTAINER.
+      B. BLOB moze obsahovat nasledujuce PERMISSIONS.
+         A. PERMISSION [r] znamena READ ACCESS, ktory umoznuje citat dany BLOB.
+         B. PERMISSION [w] znamena WRITE ACCESS, ktory umoznuje zapisovat dany BLOB.
+         C. PERMISSION [d] znamena DELETE ACCESS, ktory umoznuje odstranit dany BLOB.
+   E. PARAMETER [sig] obsahuje SIGNATURE, ktora je podpisana STORAGE ACCESS KEY, cim sa zabezpecuje jej bezpecnost.
+49. SIGNATURE pre SHARED ACCESS SIGNATURE sa generuje nasledujucim sposobom.
+   A. Vytvori sa STRING TO SIGN. STRING TO SIGN obsahuje nasledujuce casti.
+      A. RESOURCE.
+      B. Vsetky SHARED ACCESS SIGNATURE QUERY STRING PARAMETERS okrem PARAMETER SIGNATURE.
+   B. STRING TO SIGN je ENCRYPTED pomocou ALGORITHM HMAC-SHA256, kde ako KEY sa pouzije STORAGE ACCOUNT ACCESS KEY.
+50. SHARED ACCESS SIGNATURE sa pomocou AZURE SDK vytvara pomocou CLASS [BlobSasBuilder]. CLASS ma nasledujuce MEMBERS.
+   A. PROPERTY [SasProtocol Protocol] obsahuje PROTOCOL SHARED ACCESS SIGNATURE. Odporucana VALUE [SasProtocol.Https] znamena pouzitie HTTPS PROTOCOL.
+   B. PROPERTY [DateTimeOffset StartsOn] obsahuje START TIME odkedy je SHARED ACCESS SIGNATURE platna.
+   C. PROPERTY [DateTimeOffset ExpiresOn] obsahuje EXPIRATION TIME dokedy je SHARED ACCESS SIGNATURE platna.
+   D. PROPERTY [string Permissions] obsahuje PERMISSIONS, ktore prideluje SHARED ACCESS SIGNATURE.
+   E. PROPERTY [SasIPRange IPRange] obsahuje IP RANGE povolenych IP ADDRESSES.
+   F. PROPERTY [string BlobContainerName] obsahuje BLOB CONTAINER NAME na ktory je SHARED ACCESS SIGNATURE aplikovana.
+   G. PROPERTY [string BlobName] obsahuje BLOB NAME na ktory je SHARED ACCESS SIGNATURE aplikovana.
+   I. METHOD [void SetPermissions(BlobContainerSasPermissions Permissions)] nastavuje BLOB CONTAINER PERMISSIONS.
+   J. METHOD [void SetPermissions(BlobSasPermissions Permissions)] nastavuje BLOB PERMISSIONS.
+   K. METHOD [BlobSasQueryParameters ToSasQueryParameters(StorageSharedKeyCredential SharedKeyCredential)] generuje SHARED ACCESS SIGNATURE SHARED ACCESS SIGNATURE.
+51. SHARED ACCESS SIGNATURE BLOB CONTAINER QUERY STRING sa pomocou AZURE SDK vykonava v nasledujucich krokoch.
+   A. Vytvori sa instancia CLASS [BlobSasBuilder].
+   B. Nastavia sa PROPERTY [Protocol], PROPERTY [StartsOn] a PROPERTY [ExpiresOn].
+   C. V PROPERTY [BlobContainerName] sa nastavi BLOB CONTAINER NAME.
+   D. V PROPERTY [Resource] sa nastavi na VALUE [c].
+   E. Volanim METHOD [void BlobSasBuilder.SetPermissions(BlobContainerSasPermissions Permissions)] sa nastavia BLOB CONTAINER PERMISSIONS.
+   !!! F. Vytvori sa instancia CLASS [StorageSharedKeyCredential], ktorej PARAMETERS su STORAGE ACCOUNT NAME a STORAGE ACCOUNT KEY. Tato instancia CLASS [StorageSharedKeyCredential] sluzi na vytvorenie SIGNATURE.
+   G. Volanim METHOD [BlobSasQueryParameters ToSasQueryParameters(StorageSharedKeyCredential SharedKeyCredential)] sa vytvori instancia CLASS [BlobSasQueryParameters].
+   H. Volanim METHOD [string BlobSasQueryParameters.ToString()] sa ziska SHARED ACCESS SIGNATURE BLOB CONTAINER QUERY STRING.
+52. SHARED ACCESS SIGNATURE BLOB QUERY STRING sa pomocou AZURE SDK vykonava v nasledujucich krokoch.
+   A. Vytvori sa instancia CLASS [BlobSasBuilder].
+   B. Nastavia sa PROPERTY [Protocol], PROPERTY [StartsOn] a PROPERTY [ExpiresOn].
+   C. V PROPERTY [BlobContainerName] sa nastavi BLOB CONTAINER NAME.
+   D. V PROPERTY [BlobName] sa nastavi BLOB NAME.
+   E. V PROPERTY [Resource] sa nastavi na VALUE [b].
+   F. Volanim METHOD [void BlobSasBuilder.SetPermissions(BlobSasPermissions Permissions)] sa nastavia BLOB PERMISSIONS.
+   !!! G. Vytvori sa instancia CLASS [StorageSharedKeyCredential], ktorej PARAMETERS su STORAGE ACCOUNT NAME a STORAGE ACCOUNT KEY. Tato instancia CLASS [StorageSharedKeyCredential] sluzi na vytvorenie SIGNATURE.
+   H. Volanim METHOD [BlobSasQueryParameters BlobSasBuilder.ToSasQueryParameters(StorageSharedKeyCredential SharedKeyCredential)] sa vytvori instancia CLASS [BlobSasQueryParameters].
+   I. Volanim METHOD [string BlobSasQueryParameters.ToString()] sa ziska SHARED ACCESS SIGNATURE BLOB QUERY STRING.
+53. AUTHENTICATION a AUTHORIZATION BLOB CONTAINER sa pomocou AZURE SDK vykonava v nasledujucich krokoch.
+   A. Ziska sa SHARED ACCESS SIGNATURE BLOB CONTAINER QUERY STRING.
+   B. Vytvori sa BLOB CONTAINER URI bez BLOB CONTAINER QUERY STRING. Standardne ma FORMAT [{https://STORAGE_ACCOUNT_NAME.blob.core.windows.net/BLOB_CONTAINER_NAME}], kde VALUE [STORAGE_ACCOUNT_NAME] je STORAGE ACCOUNT NAME a VALUE [BLOB_CONTAINER_NAME] je BLOB CONTAINER NAME.
+   C. Z SHARED ACCESS SIGNATURE BLOB CONTAINER QUERY STRING sa vytvori instancia CLASS [AzureSasCredential].
+   D. Vytvori sa intancia CLASS [BlobContainerClient], ktora ma ako parameter BLOB CONTAINER URI a instanciu CLASS [AzureSasCredential].
+   E. Pomocou instancie CLASS [BlobContainerClient] je mozne pristupovat k BLOB CONTAINER.
+54. AUTHENTICATION a AUTHORIZATION BLOB sa pomocou AZURE SDK vykonava v nasledujucich krokoch.
+   A. Ziska sa SHARED ACCESS SIGNATURE BLOB QUERY STRING.
+   B. Vytvori sa BLOB URI bez BLOB QUERY STRING. Standardne ma FORMAT [{https://STORAGE_ACCOUNT_NAME.blob.core.windows.net/BLOB_CONTAINER_NAME/BLOB_NAME}], kde VALUE [STORAGE_ACCOUNT_NAME] je STORAGE ACCOUNT NAME, VALUE [BLOB_CONTAINER_NAME] je BLOB CONTAINER NAME a VALUE [BLOB_NAME] je BLOB NAME.
+   C. Z SHARED ACCESS SIGNATURE BLOB QUERY STRING sa vytvori instancia CLASS [AzureSasCredential].
+   D. Vytvori sa intancia CLASS [BlobClient], ktora ma ako parameter BLOB URI a instanciu CLASS [AzureSasCredential].
+   E. Pomocou instancie CLASS [BlobClient] je mozne pristupovat k BLOB.
+55. AZURE BLOB STORAGE SERVICE moze byt AUTHENTICATED a AUTHORIZED s pouzitim AZURE ACTIVE DIRECTORY. Pre AUTHENTICATION a AUTHORIZATION s pouzitim AZURE ACTIVE DIRECTORY platia nasledujuce fakty.
+   A. AZURE BLOB STORAGE moze vyuzivat AZURE ACTIVE DIRECTORY MECHANISMS pre AUTHENTICATION a AUTHORIZATION USERS a SERVICES.
+   B. AZURE BLOB STORAGE moze vyuzivat nasldujuce AZURE ACTIVE DIRECTORY MECHANISMS.
+      A. MANAGED IDENTITIES. MANAGED IDENTITIES su pouzivane na ziskanie ACCESS TOKEN, ktore su pouzite na AUTHENTICATION a AUTHORIZATION v AZURE BLOB STORAGE.
+      B. SERVICE PRINCIPALS. SERVICE PRINCIPALS su IDENTITIES vytvarane pre PROGRAMS. SERVICE PRINCIPALS je mozne pouzit na AUTHENTICATION a AUTHORIZATION v AZURE BLOB STORAGE.
+      C. USER IDENTITIES. USER IDENTITIES su klasicke USER ACCOUNTS, ktore je mozne pouzit na AUTHENTICATION a AUTHORIZATION v AZURE BLOB STORAGE.
+56. AZURE BLOB STORAGE SERVICE moze byt AUTHENTICATED a AUTHORIZED s pouzitim CLIENT SECRET CREDENTIALS. Platia nasledujuce fakty.
+   A. CLIENT SECRET CREDENTIALS pozostavaju z CLIENT ID a CLIENT SECRET.
+   !!!!! B. Pouzitie CLIENT SECRET CREDENTIALS vyzaduje APPLICATION REGISTRATION v AZURE. APPLICATION REGISTRATION je cisto virtualna cinnost, ktora nemusi byt naviazana na ziadnu realnu APPLICATION, ako je napriklad CONTAINER APP. Je to len registracia, ktora vygeneruje CLIENT ID a CLIENT SECRET, ktore je mozne pouzit na AUTHENTICATION a AUTHORIZATION.
+   C. CLIENT SECRET CREDENTIALS sa v AZURE SDK vytvaraju pomocou CLASS [ClientSecretCredential], ktorej PARAMETERS su CLIENT ID a CLIENT SECRET.
+!!! 57. APPLICATION REGISTRATION, ktora vygeneruje CLIENT ID a CLIENT SECRET sa vytvara v nasledujucich krokoch.
+   A. APPLICATION REGISTRATION sa vykona pomocou COMMAND [az ad app create]. Prikladom je COMMAND [az ad app create --display-name "my-blob-container-apps"].
+   !!! B. Pre vytvorenu APPLICATION REGISTRATION sa vygeneruje CLIENT SECRET pomocou COMMAND [az ad app credential reset]. Prikladom je COMMAND [az ad app credential reset --id "ffc56ede-3197-4a50-b902-997042c385b3" --display-name MyClientSecret].
+   !!!!! C. COMMAND [az ad app credential reset] vracia nasledujuce udaje.
+      A. VALUE [tenant] obsahuje TENANT ID.
+      B. VALUE [appId] obsahuje CLIENT ID (APPLICATION ID).
+      !!! C. VALUE [password] obsahuje CLIENT SECRET.
+   !!! D. Pre vytvorenu APPLICATION REGISTRATION sa vytvori SERVICE PRINCIPAL pomocou COMMAND [az ad sp create]. Prikladom je COMMAND [az ad sp create --id "a26df14b-95c1-40dc-a934-4cd470c9e264"].
+   !!!!! E. Vytvorenemu SERVICE PRINCIPAL je nutne pridelit niektoru z BLOB ROLES volanim COMMAND [az role assignment create]. Prikladom je COMMAND [az role assignment create --assignee "a26df14b-95c1-40dc-a934-4cd470c9e264" --scope "/subscriptions/b5f70a84-6ba2-4485-84cd-ac0883d618c5/resourceGroups/Chapter06/providers/Microsoft.Storage/storageAccounts/mystorageta" --role "Storage Blob Data Contributor"].
+   F. TENANT ID, CLIENT ID a CLIENT SECRET je mozne vlozit do CLASS [ClientSecretCredential] na ziskanie pristupu k AZURE BLOB STORAGE.
+58. AZURE BLOB STORAGE definuje nasledujuce ROLE BASED ACCESS CONTROL ROLES, ktore umoznuju definovat ACCESS k BLOB RESOURCES.
+   A. ROLE [Storage Blob Data Contributor]. ROLE umoznuje USERS vykonat READ, WRITE a DELETE dat v AZURE BLOB STORAGE.
+   B. ROLE [Storage Blob Data Reader]. ROLE umoznuje USERS vykonat READ dat v AZURE BLOB STORAGE.
+   C. ROLE [Storage Blob Delegator]. ROLE umoznuje USERS ziskat DELEGATION KEY, ktory moze byt pouzity na vytvorenie DELEGATION SHARED ACCESS SIGNATURE.
+59. AZURE BLOB STORAGE podporuje ENCRYPTION BLOBS pomocou STORAGE SERVICE ENCRYPTION. Pre STORAGE SERVICE ENCRYPTION platia nasledujuce fakty.
+   A. STORAGE SERVICE ENCRYPTION je BUILT-IN mechanizmus, ktory automaticky zabezpecuje ENCRYPTION vsetkych BLOBS, ktore su ulozene v AZURE BLOB STORAGE.
+   B. STORAGE SERVICE ENCRYPTION zabezpecuje, ze BLOBS su ENCRYPTED pred zapisom do AZURE BLOB STORAGE a DECRYPTED pri citanie BLOBS pred ich odoslanim na CLIENT.
+   C. STORAGE SERVICE ENCRYPTION pouziva ADVANCED ENCRYPTION STANDARD na zabezpecenie ENCRYPTION a DECRYPTION. Pouzivaju sa 256 BITOVE KEYS.
+   !!! D. STORAGE SERVICE ENCRYPTION je plne transparentny voci CLIENTS. CLIENTS nemusia pre jeho vyuzitie urobit nic.
+60. ENCRYPTION pri prenose dat medzi CLIENT a AZURE BLOB STORAGE je automaticky zabezpecena ak sa pouziva PROTOCOL HTTPS.
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+AZURE ROLE BASED ACCESS CONTROL SCOPES.
+
+1. SCOPE je mnozina RESOURCES na ktore sa aplikuju ACCESS RIGHTS danej ROLE v ROLE BASED ACCESS CONTROL.
+2. V AZURE existuju nasledujuce SCOPE LEVELS, zotriedene podla PARENT-CHILD HIERARCHY.
+   A. SCOPE LEVEL [MANAGEMENT GROUP].
+   B. SCOPE LEVEL [SUBSCRIPTION].
+   C. SCOPE LEVEL [RESOURCE GROUP].
+   D. SCOPE LEVEL [RESOURCE].
+3. SCOPE LEVELS su usporiadane v PARENT CHILD HIERARCHY co znamena, ze ACCESS RIGHTS aplikovane na PARENT SCOPE LEVEL sa automaticky aplikuju aj na vsetkych CHILD SCOPE LEVELS.
+4. V COMMAND LINE TOOLS su SCOPES identifikovane pomocou SCOPE STRINGS. Platia nasledujuce fakty.
+   A. Pre SCOPE LEVEL [MANAGEMENT GROUP] ma SCOPE STRING FORMAT [/providers/Microsoft.Management/managementGroups/MANAGEMENT_GROUP_NAME], kde VALUE [MANAGEMENT_GROUP_NAME] je nazov MANAGEMENT GROUP.
+   B. Pre ostatne SCOPE LEVELS ma SCOPE STRING FORMAT [/subscriptions/SUBSCRIPTION_ID/resourcegroups/RESOURCE_GROUP_NAME/providers/PROVIDER_NAME/RESOURCE_TYPE/RESOURCE_SUB_TYPE_1/RESOURCE_SUB_TYPE_2/.../RESOURCE_SUB_TYPE_N/RESOURCE_NAME], kde jednotlive VALUES maju nasledujuci vyznam.
+      A. VALUE [SUBSCRIPTION_ID] je SUBSCRIPTION ID, ktore je vo formate GUID.
+      B. VALUE [RESOURCE_GROUP_NAME] je nazov RESOURCE GROUP.
+      C. VALUE [PROVIDER_NAME] je nazov RESOURCE PROVIDER. Tieto VALUES su pevne definovane v AZURE.
+      D. VALUES [RESOURCE_SUB_TYPE_X] su nazvy RESOURCE PROVIDER SUB TYPES. Tieto VALUES su OPTIONAL v zavislosti od typu RESOURCE.
+      E. VALUE [RESOURCE_NAME] je nazov RESOURCE.
+   C. Priklady SCOPE STRIGS.
+      A. SCOPE LEVEL [MANAGEMENT GROUP] SCOPE STRING [/providers/Microsoft.Management/managementGroups/marketing-group].
+      B. SCOPE LEVEL [SUBSCRIPTION] SCOPE STRING [/subscriptions/00000000-0000-0000-0000-000000000000].
+      C. SCOPE LEVEL [RESOURCE GROUP] SCOPE STRING [/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/Example-Storage-rg].
+      D. SCOPE LEVEL [RESOURCE] SCOPE STRING [/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/Example-Storage-rg/providers/Microsoft.Storage/storageAccounts/azurestorage12345/blobServices/default/containers/blob-container-01].
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+AZURE CLI COMMANDS - PROVIDERS.
+
+1. COMMAND [az provider list]. COMMAND zobrazuje zoznam registrovanych a neregistrovanych PROVIDERS.
+2. COMMAND [az provider register --namespace PROVIDER_NAMESPACE].
+   A. COMMAND registruje PROVIDER.
+   B. OPTION [--namespace PROVIDER_NAMESPACE] vo VALUE [PROVIDER_NAMESPACE] obsahuje nazov PROVIDER.
+3. COMMAND [az provider unregister --namespace PROVIDER_NAMESPACE].
+   A. COMMAND odregistruje PROVIDER.
+   B. OPTION [--namespace PROVIDER_NAMESPACE] vo VALUE [PROVIDER_NAMESPACE] obsahuje nazov PROVIDER.
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+AZURE CLI COMMANDS - STORAGE ACCOUNTS.
+
+1. COMMAND [az storage account list --resource-group RESOURCE_GROUP_NAME].
+   A. COMMAND vracia zoznam vsetkych STORAGE ACCOUNTS.
+   B. OPTION [--resource-group RESOURCE_GROUP_NAME] vo VALUE [RESOURCE_GROUP_NAME] urcuje RESOURCE GROUP NAME.
+2. COMMAND [az storage account create --name STORAGE_ACCOUNT_NAME --resource-group RESOURCE_GROUP_NAME --location LOCATION_NAME --sku SKU_TYPE --access-tier ACCESS_TIER --min-tls-version MIN_TLS_VERSION --allow-blob-public-access PUBLIC_ACCESS --encryption-services ENCRYPTION_SERVICES].
+   A. COMMAND vytvara novy STORAGE ACCOUNT.
+   B. OPTION [--name STORAGE_ACCOUNT_NAME] vo VALUE [STORAGE_ACCOUNT_NAME] obsahuje nazov STORAGE ACCOUNT.
+   C. OPTION [--resource-group RESOURCE_GROUP_NAME] vo VALUE [RESOURCE_GROUP_NAME] urcuje RESOURCE GROUP NAME.
+   D. OPTION [--location LOCATION_NAME] vo VALUE [LOCATION_NAME] obsahuje nazov LOCATION.
+   E. OPTION [--sku SKU_TYPE] vo VALUE [SKU_TYPE] urcuje type STOCK KEEPING UNIT.
+   F. OPTION [--access-tier ACCESS_TIER] vo VALUE [ACCESS_TIER] urcuje ACCESS TIER do ktoreho sa budu BLOBS ukladat.
+   G. OPTION [--min-tls-version MIN_TLS_VERSION] vo VALUE [MIN_TLS_VERSION] urcuje verziu TLS.
+   H. OPTION [--allow-blob-public-access PUBLIC_ACCESS] vo VALUE [PUBLIC_ACCESS] urcuje ci STORAGE ACCOUNT ma umoznit PUBLIC ACCESS pre BLOB STORAGE.
+   I. OPTION [--encryption-services ENCRYPTION_SERVICES] vo VALUE [ENCRYPTION_SERVICES] obsahuje zoznam SERVICES, ku ktorymi SERVICES ma byt pristup ENCRYPTED. VALUE moze niektore z VALUE [blob], VALUE [file], VALUE [queue] a VALUE [table].
+3. COMMAND [az storage account delete --name STORAGE_ACCOUNT_NAME --resource-group RESOURCE_GROUP_NAME].
+   A. COMMAND odstranuje existujuci STORAGE ACCOUNT.
+   B. OPTION [--name STORAGE_ACCOUNT_NAME] vo VALUE [STORAGE_ACCOUNT_NAME] obsahuje nazov STORAGE ACCOUNT.
+   C. OPTION [--resource-group RESOURCE_GROUP_NAME] vo VALUE [RESOURCE_GROUP_NAME] urcuje RESOURCE GROUP NAME.
+4. COMMAND [az storage account keys list --account-name STORAGE_ACCOUNT_NAME --resource-group RESOURCE_GROUP_NAME].
+   A. COMMAND vracia zoznam SECURE KEYS pre AZURE STORAGE ACCOUNT.
+   B. OPTION [--account-name STORAGE_ACCOUNT_NAME] vo VALUE [STORAGE_ACCOUNT_NAME] obsahuje nazov STORAGE ACCOUNT.
+   C. OPTION [--resource-group RESOURCE_GROUP_NAME] vo VALUE [RESOURCE_GROUP_NAME] urcuje RESOURCE GROUP NAME.
+5. COMMAND [az storage account management-policy create --account-name STORAGE_ACCOUNT_NAME --resource-group RESOURCE_GROUP_NAME --policy POLICY_FILE_PATH].
+   A. COMMAND priradzuje LIFECYCLE MANAGEMENT POLICY k danemu AZURE STORAGE ACCOUNT.
+   B. OPTION [--account-name STORAGE_ACCOUNT_NAME] vo VALUE [STORAGE_ACCOUNT_NAME] obsahuje nazov STORAGE ACCOUNT.
+   C. OPTION [--resource-group RESOURCE_GROUP_NAME] vo VALUE [RESOURCE_GROUP_NAME] urcuje RESOURCE GROUP NAME.
+   D. OPTION [--policy POLICY_FILE_PATH] vo VALUE [POLICY_FILE_PATH] urcuje PATH na LIFECYCLE MANAGEMENT POLICY FILE.
+6. COMMAND [az storage account management-policy delete --account-name STORAGE_ACCOUNT_NAME --resource-group RESOURCE_GROUP_NAME].
+   A. COMMAND odstranuje LIFECYCLE MANAGEMENT POLICY z daneho AZURE STORAGE ACCOUNT.
+   B. OPTION [--account-name STORAGE_ACCOUNT_NAME] vo VALUE [STORAGE_ACCOUNT_NAME] obsahuje nazov STORAGE ACCOUNT.
+   C. OPTION [--resource-group RESOURCE_GROUP_NAME] vo VALUE [RESOURCE_GROUP_NAME] urcuje RESOURCE GROUP NAME.
+7. COMMAND [az storage account management-policy show --account-name STORAGE_ACCOUNT_NAME --resource-group RESOURCE_GROUP_NAME].
+   A. COMMAND zobrazuje LIFECYCLE MANAGEMENT POLICY asociovanu s danym AZURE STORAGE ACCOUNT.
+   B. OPTION [--account-name STORAGE_ACCOUNT_NAME] vo VALUE [STORAGE_ACCOUNT_NAME] obsahuje nazov STORAGE ACCOUNT.
+   C. OPTION [--resource-group RESOURCE_GROUP_NAME] vo VALUE [RESOURCE_GROUP_NAME] urcuje RESOURCE GROUP NAME.
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+AZURE CLI COMMANDS - STORAGE CONTAINERS.
+
+1. COMMAND [az storage container list --account-name STORAGE_ACCOUNT_NAME --auth-mode AUTHENTICATION_MODE --account-key STORAGE_ACCOUNT_KEY].
+   A. COMMAND vracia zoznam vsetkych STORAGE CONTAINERS pre STORAGE ACCOUNT.
+   B. OPTION [--account-name STORAGE_ACCOUNT_NAME] vo VALUE [STORAGE_ACCOUNT_NAME] obsahuje nazov STORAGE ACCOUNT.
+   C. OPTION [--auth-mode AUTHENTICATION_MODE] vo VALUE [AUTHENTICATION_MODE] obsahuje AUTHENTICATION MODE pre STORAGE CONTAINER. Odporucana VALUE [login] znamena, ze sa na vykonanie COMMAND pouzije USER ACCOUNT, ktorym je USER prihlaseny do AZURE.
+   !!! D. OPTION [--account-key STORAGE_ACCOUNT_KEY] vo VALUE [STORAGE_ACCOUNT_KEY] obsahuje STORAGE ACCOUNT KEY, ktory je mozne ziskat pomocou COMMAND [az storage account keys list]. OPTION sa nastavuje IBA ak OPTION [--auth-mode AUTHENTICATION_MODE] vo VALUE [AUTHENTICATION_MODE] obsahuje VALUE [key].
+2. COMMAND [az storage container create --name CONTAINER_NAME --account-name STORAGE_ACCOUNT_NAME --auth-mode AUTHENTICATION_MODE --account-key STORAGE_ACCOUNT_KEY].
+   A. COMMAND vytvara novy AZURE STORAGE CONTAINER.
+   B. OPTION [--name CONTAINER_NAME] vo VALUE [CONTAINER_NAME] obsahuje nazov STORAGE CONTAINER.
+   C. OPTION [--account-name STORAGE_ACCOUNT_NAME] vo VALUE [STORAGE_ACCOUNT_NAME] obsahuje nazov STORAGE ACCOUNT.
+   D. OPTION [--auth-mode AUTHENTICATION_MODE] vo VALUE [AUTHENTICATION_MODE] obsahuje AUTHENTICATION MODE pre STORAGE CONTAINER. Odporucana VALUE [login] znamena, ze sa na vykonanie COMMAND pouzije USER ACCOUNT, ktorym je USER prihlaseny do AZURE.
+   !!! E. OPTION [--account-key STORAGE_ACCOUNT_KEY] vo VALUE [STORAGE_ACCOUNT_KEY] obsahuje STORAGE ACCOUNT KEY, ktory je mozne ziskat pomocou COMMAND [az storage account keys list]. OPTION sa nastavuje IBA ak OPTION [--auth-mode AUTHENTICATION_MODE] vo VALUE [AUTHENTICATION_MODE] obsahuje VALUE [key].
+3. COMMAND [az storage container delete --name CONTAINER_NAME --account-name STORAGE_ACCOUNT_NAME --auth-mode AUTHENTICATION_MODE --account-key STORAGE_ACCOUNT_KEY].
+   A. COMMAND odstranuje existujuci AZURE STORAGE CONTAINER.
+   B. OPTION [--name CONTAINER_NAME] vo VALUE [CONTAINER_NAME] obsahuje nazov STORAGE CONTAINER.
+   C. OPTION [--account-name STORAGE_ACCOUNT_NAME] vo VALUE [STORAGE_ACCOUNT_NAME] obsahuje nazov STORAGE ACCOUNT.
+   D. OPTION [--auth-mode AUTHENTICATION_MODE] vo VALUE [AUTHENTICATION_MODE] obsahuje AUTHENTICATION MODE pre STORAGE CONTAINER. Odporucana VALUE [login] znamena, ze sa na vykonanie COMMAND pouzije USER ACCOUNT, ktorym je USER prihlaseny do AZURE.
+   !!! E. OPTION [--account-key STORAGE_ACCOUNT_KEY] vo VALUE [STORAGE_ACCOUNT_KEY] obsahuje STORAGE ACCOUNT KEY, ktory je mozne ziskat pomocou COMMAND [az storage account keys list]. OPTION sa nastavuje IBA ak OPTION [--auth-mode AUTHENTICATION_MODE] vo VALUE [AUTHENTICATION_MODE] obsahuje VALUE [key].
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+AZURE CLI COMMANDS - STORAGE BLOBS.
+
+1. COMMAND [az storage blob list --account-name STORAGE_ACCOUNT_NAME --container-name CONTAINER_NAME --auth-mode AUTHENTICATION_MODE --account-key STORAGE_ACCOUNT_KEY].
+   A. COMMAND vracia zoznam vsetkych BLOBS v STORAGE CONTAINER.
+   B. OPTION [--account-name STORAGE_ACCOUNT_NAME] vo VALUE [STORAGE_ACCOUNT_NAME] obsahuje nazov STORAGE ACCOUNT.
+   C. OPTION [--container-name CONTAINER_NAME] vo VALUE [CONTAINER_NAME] obsahuje nazov STORAGE CONTAINER.
+   D. OPTION [--auth-mode AUTHENTICATION_MODE] vo VALUE [AUTHENTICATION_MODE] obsahuje AUTHENTICATION MODE pre STORAGE CONTAINER. Odporucana VALUE [login] znamena, ze sa na vykonanie COMMAND pouzije USER ACCOUNT, ktorym je USER prihlaseny do AZURE.
+   !!! E. OPTION [--account-key STORAGE_ACCOUNT_KEY] vo VALUE [STORAGE_ACCOUNT_KEY] obsahuje STORAGE ACCOUNT KEY, ktory je mozne ziskat pomocou COMMAND [az storage account keys list]. OPTION sa nastavuje IBA ak OPTION [--auth-mode AUTHENTICATION_MODE] vo VALUE [AUTHENTICATION_MODE] obsahuje VALUE [key].
+2. COMMAND [az storage blob upload --account-name STORAGE_ACCOUNT_NAME --container-name CONTAINER_NAME --name FILE_NAME --file FILE_PATH --auth-mode AUTHENTICATION_MODE --account-key STORAGE_ACCOUNT_KEY].
+   A. COMMAND vykona UPLOAD FILE do BLOB v STORAGE CONTAINER.
+   B. OPTION [--account-name STORAGE_ACCOUNT_NAME] vo VALUE [STORAGE_ACCOUNT_NAME] obsahuje nazov STORAGE ACCOUNT.
+   C. OPTION [--container-name CONTAINER_NAME] vo VALUE [CONTAINER_NAME] obsahuje nazov STORAGE CONTAINER.
+   D. OPTION [--name FILE_NAME] vo VALUE [FILE_NAME] obsahuje FILE NAME, cez ktory bude BLOB identifikovany v BLOB CONTAINER.
+   E. OPTION [--file FILE_PATH] vo VALUE [FILE_PATH] obsahuje PATH k FILE, ktory ma byt UPLOADED do BLOB.
+   F. OPTION [--auth-mode AUTHENTICATION_MODE] vo VALUE [AUTHENTICATION_MODE] obsahuje AUTHENTICATION MODE pre STORAGE CONTAINER. Odporucana VALUE [login] znamena, ze sa na vykonanie COMMAND pouzije USER ACCOUNT, ktorym je USER prihlaseny do AZURE.
+   !!! G. OPTION [--account-key STORAGE_ACCOUNT_KEY] vo VALUE [STORAGE_ACCOUNT_KEY] obsahuje STORAGE ACCOUNT KEY, ktory je mozne ziskat pomocou COMMAND [az storage account keys list]. OPTION sa nastavuje IBA ak OPTION [--auth-mode AUTHENTICATION_MODE] vo VALUE [AUTHENTICATION_MODE] obsahuje VALUE [key].
+3. COMMAND [az storage blob download --account-name STORAGE_ACCOUNT_NAME --container-name CONTAINER_NAME --name FILE_NAME --file FILE_PATH --auth-mode AUTHENTICATION_MODE --account-key STORAGE_ACCOUNT_KEY].
+   A. COMMAND vykona DOWNLOAD BLOB z STORAGE CONTAINER do FILE.
+   B. OPTION [--account-name STORAGE_ACCOUNT_NAME] vo VALUE [STORAGE_ACCOUNT_NAME] obsahuje nazov STORAGE ACCOUNT.
+   C. OPTION [--container-name CONTAINER_NAME] vo VALUE [CONTAINER_NAME] obsahuje nazov STORAGE CONTAINER.
+   D. OPTION [--name FILE_NAME] vo VALUE [FILE_NAME] obsahuje FILE NAME, cez ktory je BLOB identifikovany v BLOB CONTAINER.
+   E. OPTION [--file FILE_PATH] vo VALUE [FILE_PATH] obsahuje PATH kde sa ulozi stiahnuty FILE.
+   F. OPTION [--auth-mode AUTHENTICATION_MODE] vo VALUE [AUTHENTICATION_MODE] obsahuje AUTHENTICATION MODE pre STORAGE CONTAINER. Odporucana VALUE [login] znamena, ze sa na vykonanie COMMAND pouzije USER ACCOUNT, ktorym je USER prihlaseny do AZURE.
+   !!! G. OPTION [--account-key STORAGE_ACCOUNT_KEY] vo VALUE [STORAGE_ACCOUNT_KEY] obsahuje STORAGE ACCOUNT KEY, ktory je mozne ziskat pomocou COMMAND [az storage account keys list]. OPTION sa nastavuje IBA ak OPTION [--auth-mode AUTHENTICATION_MODE] vo VALUE [AUTHENTICATION_MODE] obsahuje VALUE [key].
+4. COMMAND [az storage blob delete --account-name STORAGE_ACCOUNT_NAME --container-name CONTAINER_NAME --name FILE_NAME --auth-mode AUTHENTICATION_MODE --account-key STORAGE_ACCOUNT_KEY].
+   A. COMMAND vykona DELETE existujuceho BLOB v STORAGE CONTAINER.
+   B. OPTION [--account-name STORAGE_ACCOUNT_NAME] vo VALUE [STORAGE_ACCOUNT_NAME] obsahuje nazov STORAGE ACCOUNT.
+   C. OPTION [--container-name CONTAINER_NAME] vo VALUE [CONTAINER_NAME] obsahuje nazov STORAGE CONTAINER.
+   D. OPTION [--name FILE_NAME] vo VALUE [FILE_NAME] obsahuje FILE NAME, cez ktory je BLOB identifikovany v BLOB CONTAINER.
+   E. OPTION [--auth-mode AUTHENTICATION_MODE] vo VALUE [AUTHENTICATION_MODE] obsahuje AUTHENTICATION MODE pre STORAGE CONTAINER. Odporucana VALUE [login] znamena, ze sa na vykonanie COMMAND pouzije USER ACCOUNT, ktorym je USER prihlaseny do AZURE.
+   !!! F. OPTION [--account-key STORAGE_ACCOUNT_KEY] vo VALUE [STORAGE_ACCOUNT_KEY] obsahuje STORAGE ACCOUNT KEY, ktory je mozne ziskat pomocou COMMAND [az storage account keys list]. OPTION sa nastavuje IBA ak OPTION [--auth-mode AUTHENTICATION_MODE] vo VALUE [AUTHENTICATION_MODE] obsahuje VALUE [key].
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+AZURE CLI COMMANDS - USER ACCOUNTS.
+
+1. COMMAND [az ad user list] vracia zoznam vsetkych USER ACCOUNTS.
+2. COMMAND [az ad user show --id USER_ID].
+   A. COMMAND zobrazuje detaily daneho USER ACCOUNT.
+   B. OPTION [--id USER_ID] vo VALUE [USER_ID] obsahuje USER ACCOUNT ID.
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+AZURE CLI COMMANDS - APPLICATION REGISTRATIONS.
+
+1. COMMAND [az ad app create --display-name DISPLAY_NAME].
+   A. COMMAND vytvara novu APPLICATION REGISTRATION.
+   B. OPTION [--display-name DISPLAY_NAME] vo VALUE [DISPLAY_NAME] obsahuje DISPLAY NAME danej APPLICATION REGISTRATION.
+2. COMMAND [az ad app delete --id APPLICATION_ID].
+   A. COMMAND odstranuje existujucu APPLICATION REGISTRATION.
+   B. OPTION [--id APPLICATION_ID] vo VALUE [APPLICATION_ID] obsahuje ID danej APPLICATION REGISTRATION.
+3. COMMAND [az ad app list] vracia zoznam vsetkych APPLICATION REGISTRATIONS.
+4. COMMAND [az ad app show --id APPLICATION_ID].
+   A. COMMAND zobrazuje detialy danej APPLICATION REGISTRATION.
+   B. OPTION [--id APPLICATION_ID] vo VALUE [APPLICATION_ID] obsahuje ID danej APPLICATION REGISTRATION.
+5. COMMAND [az ad app credential list --id APPLICATION_ID].
+   A. COMMAND zobrazuje zoznam CREDENTIALS asociovanych s danou APPLICATION REGISTRATION.
+   B. OPTION [--id APPLICATION_ID] vo VALUE [APPLICATION_ID] obsahuje ID danej APPLICATION REGISTRATION.
+6. COMMAND [az ad app credential reset --id APPLICATION_ID --display-name CREDENTIALS_DISPLAY_NAME --append].
+   !!!!! A. COMMAND vykonava RESET APPLICATION REGISTRATION CREDENTIALS. COMMAND v RESULT vracia vygenerovany TENANT ID, CLIENT ID a CLIENT CREDENTIALS, ktore je nutne uschovat, pretoze si opatovne nie je mozne ziskat.
+   B. OPTION [--id APPLICATION_ID] vo VALUE [APPLICATION_ID] obsahuje ID danej APPLICATION REGISTRATION.
+   C. OPTION [--display-name CREDENTIALS_DISPLAY_NAME] vo VALUE [CREDENTIALS_DISPLAY_NAME] obsahuje DISPALY NAME CREDENTIALS.
+   !!! D. OPTIONAL OPTION [--append] urcuje ci sa ma pridat novy CREDENTIALS, alebo sa ma vykonat RESET vsetkych existujucich.
+7. COMMAND [az ad app credential delete --id APPLICATION_ID --key-id CREDENTIALS_ID].
+   A. COMMAND odstranuje existujuce APPLICATION REGISTRATION CREDENTIALS.
+   B. OPTION [--id APPLICATION_ID] vo VALUE [APPLICATION_ID] obsahuje ID danej APPLICATION REGISTRATION.
+   C. OPTION [--key-id CREDENTIALS_ID] vo VALUE [CREDENTIALS_ID] obsahuje CREDENTIALS ID.
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+AZURE CLI COMMANDS - SERVICE PRINCIPALS.
+
+1. COMMAND [az ad sp create --id OBJECT_ID].
+   A. COMMAND vytvara novy SERVICE PRINCIPAL.
+   B. OPTION [--id OBJECT_ID] vo VALUE [OBJECT_ID] obsahuje APPLICATION ID.
+2. COMMAND [az ad sp delete --id SERVICE_PRINCIPAL_ID].
+   A. COMMAND odstranuje existujuci SERVICE PRINCIPAL.
+   B. OPTION [--id SERVICE_PRINCIPAL_ID] vo VALUE [SERVICE_PRINCIPAL_ID] obsahuje SERVICE PRINCIPAL ID.
+3. COMMAND [az ad sp list] vracia zoznam vsetkych SERVICE PRINCIPALS.
+4. COMMAND [az ad sp show --id SERVICE_PRINCIPAL_ID].
+   A. COMMAND zobrazuje detaily o SERVICE PRINCIPAL.
+   B. OPTION [--id SERVICE_PRINCIPAL_ID] vo VALUE [SERVICE_PRINCIPAL_ID] obsahuje SERVICE PRINCIPAL ID.
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+AZURE CLI COMMANDS - AZURE SUBSCRIPTIONS.
+
+1. COMMAND [az account list] vracia zoznam vsetkych AZURE SUBSCRIPTIONS.
+2. COMMAND [az account show --name SUBSCRIPTION_NAME].
+   A. COMMAND zobrazuje detaily danej AZURE SUBSCRIPTION.
+   B. OPTION [--name SUBSCRIPTION_NAME] vo VALUE [SUBSCRIPTION_NAME] obsahuje SUBSCRIPTION NAME.
+//----------------------------------------------------------------------------------------------------------------------

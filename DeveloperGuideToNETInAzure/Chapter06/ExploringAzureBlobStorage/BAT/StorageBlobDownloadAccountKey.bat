@@ -1,0 +1,3 @@
+REM !!!!! VALUE [FmqLupK6EHkJi4h3mQFX/SQSMAzXGiPEwT0OqxzLTWnr49wJcULvrIemlP/gZXSSk7mNeEmnj5Dx+AStwovDVQ==] sa ziskava pomocou COMMAND [az storage account keys list --account-name mystorageta --resource-group Chapter06].
+
+az storage blob download --account-name mystorageta --container-name myblobcontainer --name SomeBlobFile.txt --file DownloadedSomeBlobFile.txt --account-key FmqLupK6EHkJi4h3mQFX/SQSMAzXGiPEwT0OqxzLTWnr49wJcULvrIemlP/gZXSSk7mNeEmnj5Dx+AStwovDVQ==

@@ -1,0 +1,1 @@
+az account show --name "My Subscription"

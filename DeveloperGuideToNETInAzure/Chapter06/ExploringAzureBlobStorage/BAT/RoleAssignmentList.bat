@@ -1,0 +1,1 @@
+az role assignment list --all
