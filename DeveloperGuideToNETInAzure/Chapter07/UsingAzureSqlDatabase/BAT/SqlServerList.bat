@@ -1,0 +1,1 @@
+az sql server list --resource-group Chapter07

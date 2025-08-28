@@ -1,0 +1,1 @@
+az network private-dns link vnet list --resource-group Chapter07 --zone-name "myprivatelink.database.windows.net"

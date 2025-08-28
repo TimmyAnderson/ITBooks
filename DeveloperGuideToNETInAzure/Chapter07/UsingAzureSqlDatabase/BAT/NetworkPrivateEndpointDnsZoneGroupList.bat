@@ -1,0 +1,1 @@
+az network private-endpoint dns-zone-group list --endpoint-name MyPrivateEndpoint --resource-group Chapter07

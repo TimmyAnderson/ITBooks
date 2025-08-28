@@ -1,0 +1,1 @@
+az deployment group create --name MyDeploymentDatabase --resource-group Chapter07 --template-file "DatabaseTemplate.json" --parameters "@DatabaseParameters.json"

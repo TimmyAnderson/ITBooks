@@ -1,0 +1,1 @@
+az network private-endpoint dns-zone-group delete --name MyDnsZoneGroup --endpoint-name MyPrivateEndpoint --resource-group Chapter07

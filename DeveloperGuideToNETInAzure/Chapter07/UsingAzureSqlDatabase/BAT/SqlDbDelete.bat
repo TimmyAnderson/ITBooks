@@ -1,0 +1,1 @@
+az sql db delete --name MyDatabase --server ta76dbserver --resource-group Chapter07

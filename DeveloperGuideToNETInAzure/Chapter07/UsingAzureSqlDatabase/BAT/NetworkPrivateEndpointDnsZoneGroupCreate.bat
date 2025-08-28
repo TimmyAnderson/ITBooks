@@ -1,0 +1,1 @@
+az network private-endpoint dns-zone-group create --name MyDnsZoneGroup --endpoint-name MyPrivateEndpoint --private-dns-zone "myprivatelink.database.windows.net" --resource-group Chapter07 --zone-name MyPrivateZone

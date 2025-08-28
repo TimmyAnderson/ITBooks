@@ -1,0 +1,571 @@
+//----------------------------------------------------------------------------------------------------------------------
+1. Solution demonstruje pouzitie AZURE SQL DATABASE.
+2. AZURE podporuje SQL SERVER DATABASES ako nasledujuce SERVICES.
+   A. SQL SERVER ON AZURE VIRTUAL MACHINES.
+   B. AZURE SQL MANAGED INSTANCE.
+   C. AZURE SQL DATABASE.
+3. Pre SQL SERVER ON AZURE VIRTUAL MACHINES platia nasledujuce fakty.
+   A. SERVICE predstavuje INFRASTRUCTURE AS A SERVICE (IAAS).
+   B. SQL SERVER bezi v dedikovanej AZURE VIRTUAL MACHINE.
+   C. SQL SERVER beziaci vo VIRTUAL MACHINE zabezpecuje 100% kompatibilitu s ON PREMISE SQL SERVERS.
+   D. SERVICE zabezpecuje pristup k VIRTUAL MACHINE na urovni OPERATING SYSTEM ci umoznuje kompletny manazment OPERATING SYSTEM a SQL SERVER.
+   E. SQL SERVER moze bezat na WINDOWS, alebo LINUX.
+   F. SQL SERVER moze bezat pod FREE LICENSE, alebo pod DEDICATED LICENSE.
+   !!! G. USER je plne zodpovedny za manazment SQL SERVER, vratane BACKUP MANAGEMENT ci AVAILABILITY.
+   H. SERVICE je vhodny pre jednoduchu migraciu existujucich SQL SERVER PROGRAMOV do AZURE.
+4. Pre AZURE SQL MANAGED INSTANCE platia nasledujuce fakty.
+   A. SERVICE predstavuje PLATFORM AS A SERVICE (PAAS).
+   B. SERVICE podporuje takmer vsetky INSTANCE LEVEL a DATABASE LEVEL CAPABILITIES, ale uz nie manazment na urovni OPERATING SYSTEM.
+   C. Na rozdiel od SQL SERVER ON AZURE VIRTUAL MACHINES, SERVICE poskytuje BUILT IN SERVICES ako PATCHING, BACKUP MANAGEMENT a RECOVERY MANAGEMENT.
+   D. SERVICE je vhodny pre jednoduchu migraciu existujucich SQL SERVER PROGRAMOV do AZURE.
+5. Pre AZURE SQL DATABASE platia nasledujuce fakty.
+   A. SERVICE poskytuje SQL SERVER, ktory je spravovany AZURE PLATROFM.
+   B. SERVICE NEPODPORUJE vsetky funkcionality TRANSACT SQL a preto migracia existujucich PROGRAMOV na tento SERVICE je narocnejsia.
+   C. SERVICE umoznuje beh SQL SERVERS na dedikovanych VIRTUAL MACHINES, alebo POOL SHARED VIRTUAL MACHINES.
+6. AZURE SQL DATABASE podporuje nasledujuce typy DEPLOYMENTS.
+   A. SINGLE DATABASE DEPLOYMENT.
+   B. ELASTIC POOL DEPLOYMENT.
+7. Pre AZURE SQL DATABASE SINGLE DATABASE DEPLOYMENT platia nasledujuce fakty.
+   A. DATABASE bezi na dedikovanej instancie SQL SERVER.
+   B. SQL SERVER ma pridelene vlastne dedikovane RESOURCES.
+   C. SINGLE DATABASE DEPLOYMENT podporuje nasledujuce typy TIERS.
+      A. VIRTUAL CORE BASED PURCHASING MODEL. Pre tento PURCHASING MODEL platia nasledujuce fakty.
+         A. DATABASE bezi v SERVERLESS MODE, kde pridelovanie DATABASE jednotlivych VIRTUAL CORES je dynamocne a automaticky skalovane podla vyuzivanie DATABASE.
+         !!! B. Pridelovanie VIRTUAL CORES je plne automaticky na zaklade zataze. V pripade, ze DATABASE je urcity cas nepozivana, tak su jej odobrate VIRTUAL CORES.
+         C. USER plati pocet sekund, pocas ktorych realne bezi DATABASE na VIRTUAL CORES.
+         D. PURCHASING MODEL je vhodny pre PROGRAMS, ktore maju velku variablitu pouzitia, ktora sa v case meni. AUTOSCALING umoznuje efektivne pridelovanie VIRTUAL CORES beziadim DATABASES.
+         !!!!! E. PROGRAMS vyuzivajuce tento PURCHASING MODEL musia implementovat RETRY logiku pri pristupe k DATABASE. Je to preto, lebo nevyuzivanym DATABASES su odoberane VIRTUAL CORES a tym padom nebeziacim DATABASES moze nejaky cas trvat kym nabehnu.
+      B. DATABASE TRANSACTION UNIT BASED PURCHASING MODEL. Pre tento PURCHASING MODEL platia nasledujuce fakty.
+         A. DATABASE TRANSACTION UNIT BASED PURCHASING MODEL ma predefinovany pocet VIRTUAL CORES, ktore su vzdy spustene.
+         B. USER plati za pocet hodin pocas ktorych VIRTUAL CORES bezia.
+8. Pre AZURE SQL DATABASE ELASTIC POOL DEPLOYMENT platia nasledujuce fakty.
+   A. DATABASES zidelaju DATABASE RESOURCES, ktore su automaticky pridelovane z DATABASE RESOURCE POOL.
+   B. ELASTIC POOL DEPLOYMENT poskytuje efektivny SCALING, kde RESOURCES su DATABASES pridelovane, iba ak su realne vyuzivane.
+   C. DATABASES mozu byt dynamicky pridavane a odoberane z ELASTIC POOL.
+9. Vytvaranie a odstranovanie instancii SQL SERVERS sa robi pomocou nasledujucich COMMANDS.
+   A. Nova instancia SQL SERVER sa vytvara pomocou COMMAND [az sql server create].
+   B. Existujuca instancia SQL SERVER sa odstranuje pomocou COMMAND [az sql server delete].
+   C. Zoznam existujucich instancii SQL SERVER sa vracia pomocou COMMAND [az sql server list].
+10. Vytvaranie a odstranovanie DATABASES sa robi pomocou nasledujucich COMMANDS.
+   A. Nova DATABASE sa vytvara pomocou COMMAND [az sql db create].
+   B. Existujuca DATABASE sa odstranuje pomocou COMMAND [az sql db delete].
+   C. Zoznam existujucich DATABASES beziacich instancii SQL SERVER sa vracia pomocou COMMAND [az sql db list].
+11. AZURE RESOURCE MANAGER TEMPLATES (ARM TEMPLATES) umoznuju DEPLOY roznych AZURE SERVICES pomocou JSON FILES. Pre AZURE RESOURCE MANAGER TEMPLATES platia nasledujuce fakty.
+   A. AZURE RESOURCE MANAGER TEMPLATES predstavuje mechanizmus INFRASTRUCTURE AS CODE (IaC), ktory umoznuje PROGRAMOVO definovat pozadovane AZURE RESOURCES vo forme JSON FILES, ktore je potom mozne vlozit do AZURE.
+   B. AZURE RESOURCE MANAGER TEMPLATES pouzivaju JSON FILES na popis RESOURCES, ktore maju byt v AZURE vytvorene.
+   C. AZURE RESOURCE MANAGER TEMPLATES umoznuju pomocou JSON FILES definovat RESOURCES, ako aj ich CONFIGURATION SETTINGS, ktore maju pri vytvarani tychto RESOURCES sa aplikovat.
+   D. AZURE RESOURCE MANAGER TEMPLATES JSON FILES mozno importovat do AZURE pomocou CLI COMMANDS.
+   E. AZURE RESOURCE MANAGER TEMPLATES JSON FILES mozno exportovat z AZURE pomocou AZURE PORTAL. Exportovany FILE [.ZIP] obsahuje nasledujuce FILES.
+      A. FILE [template.json] obsahuje informacie o RESOURCE, ktopry je pomocou AZURE RESOURCE MANAGER TEMPLATE vytvarany.
+      B. FILE [parameters.json] obsahuje PARAMETERS daneho RESOURCE, ktore sa nastavia pri jeho vytvarani.
+   !!! F. Alternativou k AZURE RESOURCE MANAGER TEMPLATES je AZURE BICEP, co je PROGRAMMING LANGAUGE, ktory umoznuje definovat RESOURCES pre AZURE RESOURCE MANAGER, podobne ako JSON FILES v AZURE RESOURCE MANAGER TEMPLATES.
+12. RESOURCES sa pomocou AZURE RESOURCE MANAGER TEMPLATES odstranuju pomocou nasledujucich COMMANDS.
+   A. Novy RESOURCE DEPLOYMENT sa vytvara pomocou COMMAND [az deployment group create]. COMMAND zaroven vytvara RESOURCES, ktore RESOURCE DEPLOYMENT obsahuje.
+   B. Existujuci RESOURCE DEPLOYMENT sa odstranuje pomocou COMMAND [az deployment group delete].
+   C. Zoznam existujucich RESOURCE DEPLOYMENTS sa vracia pomocou COMMAND [az deployment group list].
+13. K AZURE SQL DATABASE sa je mozne pripojit pomocou ENTITY FRAMEWORK CORE. Platia nasledujuce fakty.
+   A. ENTITY FRAMEWORK CORE musi pouzit standardny SQL SERVER PROVIDER na pristup k AZURE SQL DATABASE. PROVIDER je ulozeny v PACKAGE [Microsoft.EntityFrameworkCore.SqlServer].
+   B. ENTITY FRAMEWORK CORE vyzaduje CONNECTION STRING. CONNECTION STRING sa da ziskat z AZURE PORTAL v sekcii [MY_DATABASE->Overview->Connection strings], alebo pomocou COMMAND [az sql db show-connection-string]. Prikladom je COMMAND [az sql db show-connection-string --server ta76dbserver --name MyDatabase --client "ado.net" --auth-type "ADIntegrated"].
+14. Pripojenie sa k AZURE SQL DATABASE vyzauje nasledujuce konfiguracie.
+   A. Vytvorit SQL SERVER pomocou COMMAND [az sql server create]. Prikladom je COMMAND [az sql server create --name ta76dbserver --resource-group Chapter07 --location westus --admin-user mydbadmin --admin-password 'Qaxwsx123+.'].
+   B. Vytvorit SQL SERVER DATABASE pomocou COMMAND [az sql db create]. Prikladom je COMMAND [az sql db create --name MyDatabase --server ta76dbserver --resource-group Chapter07 --compute-model Provisioned --edition Basic].
+   C. Povolit IP ADDRESS LOCAL MACHINE na pristup k DATABASE pomocou COMMAND [az sql server firewall-rule create]. Prikladom je COMMAND [az sql server firewall-rule create --name rulemyip --resource-group Chapter07 --server ta76dbserver --start-ip-address 178.40.58.85 --end-ip-address 178.40.58.85].
+   D. Povolit AZURE ACTIVE DIRECTORY ACCOUNT pristup k SQL SERVER pomocou COMMAND [az sql server ad-admin create]. Prikladom je COMMAND [az sql server ad-admin create --resource-group Chapter07 --server ta76dbserver --object-id "5138f3d7-3ec0-4d89-97f5-40a6f6000528" --display-name "Timmy Anderson"].
+   E. Povolit AZURE ACTIVE DIRECTORY ACCESS ONLY pristup k SQL SERVER pomocou COMMAND [az sql server ad-only-auth enable]. Prikladom je COMMAND [az sql server ad-only-auth enable --resource-group Chapter07 --name ta76dbserver].
+   !!!!! F. Ak maju k SQL SERVER pristupovat ine AZURE SERVICE ako napriklad WEB APPLICATIONS, je nutne povolit pristup na FIREWALL pomocou COMMAND [az sql server firewall-rule create --name AllowAzureService --resource-group Chapter07 --server ta76dbserver --start-ip-address 0.0.0.0 --end-ip-address 0.0.0.0].
+15. S AZURE SQL SERVER FIREWALL RULES sa pracuje pomocou nasledujucich COMMNDS.
+   A. Novy AZURE SQL SERVER FIREWALL RULE sa vytvara pomocou COMMAND [az sql server firewall-rule create]. Prikladom je COMMAND [az sql server firewall-rule create --name rulemyip --resource-group Chapter07 --server ta76dbserver --start-ip-address 178.40.58.85 --end-ip-address 178.40.58.85].
+   B. Existujuci AZURE SQL SERVER FIREWALL RULE sa odstranuje pomocou COMMAND [az sql server firewall-rule delete]. Prikladom je COMMAND [az sql server firewall-rule delete --name rulemyip --resource-group Chapter07 --server ta76dbserver].
+   C. Zoznam AZURE SQL SERVER FIREWALL RULES vracia COMMAND [az sql server firewall-rule list]. Prikladom je COMMAND [az sql server firewall-rule list --resource-group Chapter07 --server ta76dbserver].
+16. S AZURE SQL SERVER ACTIVE DIRECTORY ADMINISTRATOR ACCOUNTS sa pracuje pomocou nasledujucich COMMNDS.
+   A. Novy AZURE SQL SERVER ACTIVE DIRECTORY ADMINISTRATOR ACCOUNT sa registruje pomocou COMMAND [az sql server ad-admin create]. Prikladom je COMMAND [az sql server ad-admin create --resource-group Chapter07 --server ta76dbserver --object-id "5138f3d7-3ec0-4d89-97f5-40a6f6000528" --display-name "Timmy Anderson"].
+   B. Existujuci AZURE SQL SERVER ACTIVE DIRECTORY ADMINISTRATOR ACCOUNT sa registruje pomocou COMMAND [az sql server ad-admin delete --resource-group Chapter07 --server ta76dbserver]. Prikladom je COMMAND [az sql server ad-admin delete --resource-group Chapter07 --server ta76dbserver].
+   C. Zoznam AZURE SQL SERVER ACTIVE DIRECTORY ADMINISTRATOR ACCOUNTS vracia COMMAND [az sql server ad-admin list]. Prikladom je COMMAND [az sql server ad-admin list --resource-group Chapter07 --server ta76dbserver].
+17. S AZURE SQL SERVER ACTIVE DIRECTORY ONLY SETTINGS sa pracuje pomocou nasledujucich COMMNDS.
+   A. AZURE SQL SERVER ACTIVE DIRECTORY ONLY SETTINGS sa povoluje pomocou COMMAND [az sql server ad-only-auth enable]. Prikladom je COMMAND [az sql server ad-only-auth enable --resource-group Chapter07 --name ta76dbserver].
+   B. AZURE SQL SERVER ACTIVE DIRECTORY ONLY SETTINGS sa blokuje pomocou COMMAND [az sql server ad-only-auth disable]. Prikladom je COMMAND [az sql server ad-only-auth disable --resource-group Chapter07 --name ta76dbserver].
+   C. Aktualny AZURE SQL SERVER ACTIVE DIRECTORY ONLY SETTINGS vracia COMMAND [az sql server ad-only-auth get]. Prikladom je COMMAND [az sql server ad-only-auth get --resource-group Chapter07 --name ta76dbserver].
+18. MIGRATIONS sa aplikuju pomocou COMMAND [dotnet ef database update InitialMigration].
+19. Pre AUTHENTICATION v AZURE SQL SERVER platia nasledujuce fakty.
+   A. AZURE SQL SERVER podporuje viacere sposoby AUTHENTICATION, od USER/PASSWORD AUTHENTICATION, az po MANAGED IDENTITY AUTHENTICATION.
+   B. AUTHENTICATION sa vykonava na nasledujucich urovniach.
+      A. Na urovni AZURE SQL SERVER.
+      B. Na urovni AZURE SQL SERVER DATABASE.
+   C. AUTHENTICATION na urovni AZURE SQL SERVER DATABASE je vykonavana pomocou CONNECTION STRING, ktory musi obsahovat vsetky potrebne informacie pre vykonanie AUTHENTICATION.
+   !!!!! D. Mnohe typy AUTHENTICATION, ako napriklad MANAGED IDENTITIES funguju BY-DEFAULT IBA pre v AZURE ENVIRONMENT. To znamena, ze AUTHENTICATION mozu pouzivat iba AZURE SERVICES ako napriklad WEB APPLICATION, ale nemozu ich pouzivat CLIENT PROGRAMS, ktore su spustene v externom prostredi.
+   E. AZURE SQL SERVER podporuje nasledujuce typy AUTHENTICATIONS.
+      A. AUTHENTICATION [ACTIVE DIRECTORY DEFAULT].
+      B. AUTHENTICATION [SQL USER NAME PASSWORD].
+      C. AUTHENTICATION [SYSTEM ASSIGNED MANAGED IDENTITY].
+      D. AUTHENTICATION [USER ASSIGNED MANAGED IDENTITY].
+20. Pre AUTHENTICATION [ACTIVE DIRECTORY DEFAULT] platia nasledujuce fakty.
+   A. Tento typ AUTHENTICATION je mozne pouzit aj z EXTERNAL ENVIRONMENTS, ktore bezia mimo AZURE.
+   B. AUTHENTICATION ziskava CREDENTIALS s rozlicnych zdrojov, ako napriklad ENVIRONMENT VARIABLES, AZURE CLI STORAGE, AZURE POWER SHELL STORAGE, VISUAL STUDIO STORAGE.
+   C. AUTHENTICATION vyzaduje, aby CREDENTIALS boli zapisane v niektorom zo STORAGES z ktorych sa ich pokusa ziskat.
+   D. AUTHENTICATION sa vykonava v nasledujucich krokoch.
+      A. Vytvori sa AZURE SQL SERVER pomocou COMMAND [az sql server create]. Prikladom je COMMAND [az sql server create --name ta76dbserver --resource-group Chapter07 --location westus --admin-user mydbadmin --admin-password "Qaxwsx123+."].
+      B. Na AZURE SQL SERVER sa vytvori FIREWALL RULE, ktory povoli pristup z LOCAL MACHINE pomocou COMMAND [az sql server firewall-rule create]. Prikladom je COMMAND [az sql server firewall-rule create --name rulemyip --resource-group Chapter07 --server ta76dbserver --start-ip-address 178.40.58.85 --end-ip-address 178.40.58.85].
+      C. AZURE USER ACCOUNT sa nastavi ako ADMINISTRATOR ACCOUNT pre AZURE SQL SERVER pomocou pomocou COMMAND [az sql server ad-admin create]. Prikladom je COMMAND [az sql server ad-admin create --resource-group Chapter07 --server ta76dbserver --object-id "5138f3d7-3ec0-4d89-97f5-40a6f6000528" --display-name "Timmy Anderson"]. VALUE [5138f3d7-3ec0-4d89-97f5-40a6f6000528] je ID AZURE ACCOUNT.
+      D. OPTIONALLY sa na AZURE SQL SERVER nastavi, aby pouzival iba ACTIVE DIRECTORY AUTHENTICATION pomocou COMMAND [az sql server ad-only-auth enable]. Prikladom je COMMAND [az sql server ad-only-auth enable --resource-group Chapter07 --name ta76dbserver].
+      E. Vytvori sa AZURE SQL SERVER DATABASE pomocou COMMAND [az sql db create]. Prikladom je COMMAND [az sql db create --name MyDatabase --server ta76dbserver --resource-group Chapter07 --compute-model Provisioned --edition Basic].
+      F. Pouzije sa CONNECTION STRING, ktory ma SYNTAX [Server=tcp:ta76dbserver.database.windows.net,1433;Initial Catalog=MyDatabase;Encrypt=True;TrustServerCertificate=False;Connection Timeout=30;Authentication="Active Directory Default";].
+21. Pre AUTHENTICATION [SQL USER NAME PASSWORD] platia nasledujuce fakty.
+   A. Tento typ AUTHENTICATION je mozne pouzit aj z EXTERNAL ENVIRONMENTS, ktore bezia mimo AZURE.
+   B. USER NAME a PASSWORD, ktore sa pouziju na AUTHENTICATION su sucastou CONNECTION STRING.
+   C. V AZURE SQL SERVER a v AZURE SQL SERVER DATABASE musi byt pridany dany SQL USER.
+   D. AUTHENTICATION pre AZURE SQL SERVER ADMIN USER sa vykonava v nasledujucich krokoch.
+      A. Vytvori sa AZURE SQL SERVER pomocou COMMAND [az sql server create]. Prikladom je COMMAND [az sql server create --name ta76dbserver --resource-group Chapter07 --location westus --admin-user mydbadmin --admin-password "Qaxwsx123+."]. COMMAND MUSI obsahovat definiciu AZURE SQL SERVER ADMIN USER a AZURE SQL SERVER ADMIN PASSWORD.
+      B. Na AZURE SQL SERVER sa vytvori FIREWALL RULE, ktory povoli pristup z LOCAL MACHINE pomocou COMMAND [az sql server firewall-rule create]. Prikladom je COMMAND [az sql server firewall-rule create --name rulemyip --resource-group Chapter07 --server ta76dbserver --start-ip-address 178.40.58.85 --end-ip-address 178.40.58.85].
+      C. Vytvori sa AZURE SQL SERVER DATABASE pomocou COMMAND [az sql db create]. Prikladom je COMMAND [az sql db create --name MyDatabase --server ta76dbserver --resource-group Chapter07 --compute-model Provisioned --edition Basic].
+      D. Pouzije sa CONNECTION STRING, ktory ma SYNTAX [Server=tcp:ta76dbserver.database.windows.net,1433;Initial Catalog=MyDatabase;Persist Security Info=False;User ID=mydbadmin;Password=Qaxwsx123+.;MultipleActiveResultSets=False;Encrypt=True;TrustServerCertificate=False;Connection Timeout=30;].
+22. Pre AUTHENTICATION [SYSTEM ASSIGNED MANAGED IDENTITY] platia nasledujuce fakty.
+   A. Tento typ AUTHENTICATION je mozne pouzit IBA z AZURE ENVIRONMENT.
+   B. AUTHENTICATION sa typicky pouziva pre PROGRAMS, ktore bezia v AZURE a potrebuju sa pripojit na AZURE SQL SERVER DATABASE.
+   C. AUTHENTICATION vyuziva SYSTEM ASSIGNED MANAGED IDENTITY, ktora je spravidla vytovrena spolu s RESOURCE, ktory sa potrebuje na AZURE SQL SERVER DATABASE. V pripade, ze sa na AZURE SQL SERVER DATABASE potrebuje pripojit WEB APPLICATION< tak SYSTEM ASSIGNED MANAGED IDENTITY je asociovany s WEB APPLICATION.
+   D. CONNECTION STRING neobsahuje USER NAME ani PASSWORD, takze tento sposob AUTHENTICATION je bezpecnejsi ako pouzitie USER NAMES a PASSWORDS.
+   E. AUTHENTICATION pre AZURE SQL SERVER pre WEB APPLICATION sa vykonava v nasledujucich krokoch.
+      A. Vytvori sa AZURE SQL SERVER pomocou COMMAND [az sql server create]. Prikladom je COMMAND [az sql server create --name ta76dbserver --resource-group Chapter07 --location westus --admin-user mydbadmin --admin-password "Qaxwsx123+."].
+      B. Na AZURE SQL SERVER sa vytvori FIREWALL RULE, ktory povoli pristup pre AZURE SERVICES pomocou COMMAND [az sql server firewall-rule create]. Prikladom je COMMAND [az sql server firewall-rule create --name AllowAzureService --resource-group Chapter07 --server ta76dbserver --start-ip-address 0.0.0.0 --end-ip-address 0.0.0.0].
+      C. Vytvori sa APP SERVICE PLAN pomocou COMMAND [az appservice plan create]. Prikladom je COMMAND [az appservice plan create --name MyAppServicePlan --resource-group Chapter07 --location centralus --is-linux --sku FREE].
+      D. Vytvori sa WEB APPLICATION pomocou COMMAND [az webapp create]. Prikladom je COMMAND [az webapp create --name MyWebProgram --plan MyAppServicePlan --resource-group Chapter07 --container-image-name docker.io/timmyanderson/using_azure_sql_database:1.0.0].
+      !!! E. Pre WEB APPLICATION sa vytvori SYSTEM ASSIGNED MANAGED IDENTITY pomocou COMMAND [az webapp identity assign]. Prikladom je COMMAND [az webapp identity assign --name MyWebProgram --resource-group Chapter07 --identities [system]].
+      !!!!! F. Z WEB APPLICATION SYSTEM ASSIGNED MANAGED IDENTITY sa vytvori AZURE SQL SERVER ADMINISTRATOR volanim COMMAND [az sql server ad-admin create]. Prikladom je COMMAND [az sql server ad-admin create --resource-group Chapter07 --server ta76dbserver --object-id "d4ab845e-2b8f-4e1d-9649-b2f7f8584566" --display-name "My System Managed Identity"]. VALUE [d4ab845e-2b8f-4e1d-9649-b2f7f8584566] je PRINCIPAL ID SYSTEM ASSINGNED MANAGED IDENTITY, ktora bola pridelena WEB APPLICATION. VALUE sa ziskava z COMMAND [az webapp identity show --name MyWebProgram --resource-group Chapter07] z PROPERTY [principalId].
+      G. OPTIONALLY sa na AZURE SQL SERVER nastavi, aby pouzival iba ACTIVE DIRECTORY AUTHENTICATION pomocou COMMAND [az sql server ad-only-auth enable]. Prikladom je COMMAND [az sql server ad-only-auth enable --resource-group Chapter07 --name ta76dbserver].
+      H. Vytvori sa AZURE SQL SERVER DATABASE pomocou COMMAND [az sql db create]. Prikladom je COMMAND [az sql db create --name MyDatabase --server ta76dbserver --resource-group Chapter07 --compute-model Provisioned --edition Basic].
+      I. Pouzije sa CONNECTION STRING, ktory ma SYNTAX [Server=tcp:ta76dbserver.database.windows.net,1433;Initial Catalog=MyDatabase;Encrypt=True;TrustServerCertificate=False;Connection Timeout=30;Authentication=Active Directory Managed Identity;].
+   F. AUTHENTICATION pre AZURE SQL SERVER pre WEB APPLICATION bez POUZITIA ADMIN RIGHTS sa vykonava v nasledujucich krokoch.
+      A. Vytvori sa AZURE SQL SERVER pomocou COMMAND [az sql server create]. Prikladom je COMMAND [az sql server create --name ta76dbserver --resource-group Chapter07 --location westus --admin-user mydbadmin --admin-password "Qaxwsx123+."].
+      B. Na AZURE SQL SERVER sa vytvori FIREWALL RULE, ktory povoli pristup pre AZURE SERVICES pomocou COMMAND [az sql server firewall-rule create]. Prikladom je COMMAND [az sql server firewall-rule create --name AllowAzureService --resource-group Chapter07 --server ta76dbserver --start-ip-address 0.0.0.0 --end-ip-address 0.0.0.0].
+      C. Vytvori sa APP SERVICE PLAN pomocou COMMAND [az appservice plan create]. Prikladom je COMMAND [az appservice plan create --name MyAppServicePlan --resource-group Chapter07 --location centralus --is-linux --sku FREE].
+      D. Vytvori sa WEB APPLICATION pomocou COMMAND [az webapp create]. Prikladom je COMMAND [az webapp create --name MyWebProgram --plan MyAppServicePlan --resource-group Chapter07 --container-image-name docker.io/timmyanderson/using_azure_sql_database:1.0.0].
+      !!! E. Pre WEB APPLICATION sa vytvori SYSTEM ASSIGNED MANAGED IDENTITY pomocou COMMAND [az webapp identity assign]. Prikladom je COMMAND [az webapp identity assign --name MyWebProgram --resource-group Chapter07 --identities [system]].
+      !!!!! F. Z WEB APPLICATION SYSTEM ASSIGNED MANAGED IDENTITY sa vytvori AZURE SQL SERVER ADMINISTRATOR volanim COMMAND [az sql server ad-admin create]. Prikladom je COMMAND [az sql server ad-admin create --resource-group Chapter07 --server ta76dbserver --object-id "d4ab845e-2b8f-4e1d-9649-b2f7f8584566" --display-name "My System Managed Identity"]. VALUE [d4ab845e-2b8f-4e1d-9649-b2f7f8584566] je PRINCIPAL ID SYSTEM ASSINGNED MANAGED IDENTITY, ktora bola pridelena WEB APPLICATION. VALUE sa ziskava z COMMAND [az webapp identity show --name MyWebProgram --resource-group Chapter07] z PROPERTY [principalId].
+      G. OPTIONALLY sa na AZURE SQL SERVER nastavi, aby pouzival iba ACTIVE DIRECTORY AUTHENTICATION pomocou COMMAND [az sql server ad-only-auth enable]. Prikladom je COMMAND [az sql server ad-only-auth enable --resource-group Chapter07 --name ta76dbserver].
+      H. Vytvori sa AZURE SQL SERVER DATABASE pomocou COMMAND [az sql db create]. Prikladom je COMMAND [az sql db create --name MyDatabase --server ta76dbserver --resource-group Chapter07 --compute-model Provisioned --edition Basic].
+      I. Pouzije sa CONNECTION STRING, ktory ma SYNTAX [Server=tcp:ta76dbserver.database.windows.net,1433;Initial Catalog=MyDatabase;Encrypt=True;TrustServerCertificate=False;Connection Timeout=30;Authentication=Active Directory Managed Identity;].
+      !!! J. Teraz CLIENT PROGRAM moze pristupit na WEB APPLICATION, ktora pristupi na AZURE SQL SERVER DATABASE s pouzitim ADMIN ACCOUNT.
+      !!!!! K. AZURE USER ACCOUNT sa nastavi ako ADMINISTRATOR ACCOUNT pre AZURE SQL SERVER pomocou pomocou COMMAND [az sql server ad-admin create]. Prikladom je COMMAND [az sql server ad-admin create --resource-group Chapter07 --server ta76dbserver --object-id "5138f3d7-3ec0-4d89-97f5-40a6f6000528" --display-name "Timmy Anderson"]. VALUE [5138f3d7-3ec0-4d89-97f5-40a6f6000528] je ID AZURE ACCOUNT. Tym padom SYSTEM ASSIGNED MANAGED IDENTITY uz NEBUDE ADMIN ACCOUNT.
+      !!! L. Na AZURE SQL SERVER sa vytvori FIREWALL RULE, ktory povoli pristup z LOCAL MACHINE pomocou COMMAND [az sql server firewall-rule create]. Prikladom je COMMAND [az sql server firewall-rule create --name rulemyip --resource-group Chapter07 --server ta76dbserver --start-ip-address 178.40.58.85 --end-ip-address 178.40.58.85]. Tento COMMAND je nutny, aby bolo mozne vykonat SQL COMMANDS nad AZURE SQL SERVER DATABASE.
+      !!!!! M. Nad AZURE SQL SERVER DATABASE sa vykonaju nasledujuce SQL COMMANDS.
+         A. COMMAND [CREATE USER [MyWebProgram] FROM EXTERNAL PROVIDER;] vytvori DATABASE USER v DATABASE. VALUE [MyWebProgram] je NAZOV WEB APPLICATION.
+         B. COMMAND [ALTER ROLE db_datareader ADD MEMBER [MyWebProgram];] prideli DATA READER ROLE vytorenemu DATABASE USER.
+         C. COMMAND [ALTER ROLE db_datawriter ADD MEMBER [MyWebProgram];] prideli DATA WRITER ROLE vytorenemu DATABASE USER.
+         D. COMMAND [ALTER ROLE db_dbowner ADD MEMBER [MyWebProgram];] prideli DDL ADMIN ROLE vytorenemu DATABASE USER.
+      !!! N. Teraz CLIENT PROGRAM moze pristupit na WEB APPLICATION, ktora pristupi na AZURE SQL SERVER DATABASE BEZ pouzitia ADMIN ACCOUNT.
+23. Pre AUTHENTICATION [USER ASSIGNED MANAGED IDENTITY] platia nasledujuce fakty.
+   A. Tento typ AUTHENTICATION je mozne pouzit IBA z AZURE ENVIRONMENT.
+   B. AUTHENTICATION sa typicky pouziva pre PROGRAMS, ktore bezia v AZURE a potrebuju sa pripojit na AZURE SQL SERVER DATABASE.
+   C. AUTHENTICATION vyuziva USER ASSIGNED MANAGED IDENTITY, ktora vytvorena nezavisle na PROGRAM, ktory ju pouziva.
+   D. CONNECTION STRING neobsahuje USER NAME ani PASSWORD, takze tento sposob AUTHENTICATION je bezpecnejsi ako pouzitie USER NAMES a PASSWORDS.
+   E. AUTHENTICATION pre AZURE SQL SERVER pre WEB APPLICATION sa vykonava v nasledujucich krokoch.
+      A. Vytvori sa USER ASSIGNED MANAGED IDENTITY pomocou COMMAND [az identity create]. Prikladom je COMMAND [az identity create --name MyIdentity --resource-group Chapter07].
+      B. Vytvori sa AZURE SQL SERVER s nastavenou USER ASSIGNED MANAGED IDENTITY pomocou COMMAND [az sql server create]. Prikladom je COMMAND [az sql server create --name ta76dbserver --resource-group Chapter07 --location westus --admin-user mydbadmin --admin-password "Qaxwsx123+." --assign-identity --identity-type "UserAssigned" --user-assigned-identity-id "/subscriptions/b5f70a84-6ba2-4485-84cd-ac0883d618c5/resourcegroups/Chapter07/providers/Microsoft.ManagedIdentity/userAssignedIdentities/MyIdentity" --primary-user-assigned-identity-id "/subscriptions/b5f70a84-6ba2-4485-84cd-ac0883d618c5/resourcegroups/Chapter07/providers/Microsoft.ManagedIdentity/userAssignedIdentities/MyIdentity"].
+      C. Na AZURE SQL SERVER sa vytvori FIREWALL RULE, ktory povoli pristup pre AZURE SERVICES pomocou COMMAND [az sql server firewall-rule create]. Prikladom je COMMAND [az sql server firewall-rule create --name AllowAzureService --resource-group Chapter07 --server ta76dbserver --start-ip-address 0.0.0.0 --end-ip-address 0.0.0.0].
+      !!!!! D. Z USER ASSIGNED MANAGED IDENTITY sa vytvori AZURE SQL SERVER ADMINISTRATOR volanim COMMAND [az sql server ad-admin create]. Prikladom je COMMAND [az sql server ad-admin create --resource-group Chapter07 --server ta76dbserver --object-id "0c45f51b-16b3-473e-8e1b-6103a0b91608" --display-name "My User Managed Identity"]. VALUE [0c45f51b-16b3-473e-8e1b-6103a0b91608] je PRINCIPAL ID USER ASSINGNED MANAGED IDENTITY. VALUE sa ziskava z COMMAND [az identity list --resource-group Chapter07] z PROPERTY [principalId].
+      E. OPTIONALLY sa na AZURE SQL SERVER nastavi, aby pouzival iba ACTIVE DIRECTORY AUTHENTICATION pomocou COMMAND [az sql server ad-only-auth enable]. Prikladom je COMMAND [az sql server ad-only-auth enable --resource-group Chapter07 --name ta76dbserver].
+      F. Vytvori sa AZURE SQL SERVER DATABASE pomocou COMMAND [az sql db create]. Prikladom je COMMAND [az sql db create --name MyDatabase --server ta76dbserver --resource-group Chapter07 --compute-model Provisioned --edition Basic].
+      G. Vytvori sa APP SERVICE PLAN pomocou COMMAND [az appservice plan create]. Prikladom je COMMAND [az appservice plan create --name MyAppServicePlan --resource-group Chapter07 --location centralus --is-linux --sku FREE].
+      !!!!! H. Vykona sa UPDATE CONNECTION STRING, aby zahrnal USER ASSIGNED MANAGED IDENTITY CLIENT ID.
+      I. Vytvori sa WEB APPLICATION pomocou COMMAND [az webapp create]. Prikladom je COMMAND [az webapp create --name MyWebProgram --plan MyAppServicePlan --resource-group Chapter07 --container-image-name docker.io/timmyanderson/using_azure_sql_database:1.0.0].
+      J. WEB APPLICATION sa priradi USER ASSIGNED MANAGED IDENTITY pomocou COMMAND [az webapp identity assign]. Prikladom je COMMAND [az webapp identity assign --name MyWebProgram --resource-group Chapter07 --identities "/subscriptions/b5f70a84-6ba2-4485-84cd-ac0883d618c5/resourcegroups/Chapter07/providers/Microsoft.ManagedIdentity/userAssignedIdentities/MyIdentity"].
+      !!! K. Pouzije sa CONNECTION STRING, ktory ma SYNTAX [Server=tcp:ta76dbserver.database.windows.net,1433;User Id=8e1679f6-1fe8-446f-920d-10dd3eeed5d9;Initial Catalog=MyDatabase;Encrypt=True;TrustServerCertificate=False;Connection Timeout=30;Authentication=Active Directory Managed Identity;]. VALUE [8e1679f6-1fe8-446f-920d-10dd3eeed5d9] je CLIENT ID vytvorenej USER ASSIGNED MANAGED IDENTITY.
+   F. AUTHENTICATION pre AZURE SQL SERVER pre WEB APPLICATION bez POUZITIA ADMIN RIGHTS sa vykonava v nasledujucich krokoch.
+      A. Vytvori sa USER ASSIGNED MANAGED IDENTITY pomocou COMMAND [az identity create]. Prikladom je COMMAND [az identity create --name MyIdentity --resource-group Chapter07].
+      B. Vytvori sa AZURE SQL SERVER s nastavenou USER ASSIGNED MANAGED IDENTITY pomocou COMMAND [az sql server create]. Prikladom je COMMAND [az sql server create --name ta76dbserver --resource-group Chapter07 --location westus --admin-user mydbadmin --admin-password "Qaxwsx123+." --assign-identity --identity-type "UserAssigned" --user-assigned-identity-id "/subscriptions/b5f70a84-6ba2-4485-84cd-ac0883d618c5/resourcegroups/Chapter07/providers/Microsoft.ManagedIdentity/userAssignedIdentities/MyIdentity" --primary-user-assigned-identity-id "/subscriptions/b5f70a84-6ba2-4485-84cd-ac0883d618c5/resourcegroups/Chapter07/providers/Microsoft.ManagedIdentity/userAssignedIdentities/MyIdentity"].
+      C. Na AZURE SQL SERVER sa vytvori FIREWALL RULE, ktory povoli pristup pre AZURE SERVICES pomocou COMMAND [az sql server firewall-rule create]. Prikladom je COMMAND [az sql server firewall-rule create --name AllowAzureService --resource-group Chapter07 --server ta76dbserver --start-ip-address 0.0.0.0 --end-ip-address 0.0.0.0].
+      !!!!! D. Z USER ASSIGNED MANAGED IDENTITY sa vytvori AZURE SQL SERVER ADMINISTRATOR volanim COMMAND [az sql server ad-admin create]. Prikladom je COMMAND [az sql server ad-admin create --resource-group Chapter07 --server ta76dbserver --object-id "0c45f51b-16b3-473e-8e1b-6103a0b91608" --display-name "My User Managed Identity"]. VALUE [0c45f51b-16b3-473e-8e1b-6103a0b91608] je PRINCIPAL ID USER ASSINGNED MANAGED IDENTITY. VALUE sa ziskava z COMMAND [az identity list --resource-group Chapter07] z PROPERTY [principalId].
+      E. OPTIONALLY sa na AZURE SQL SERVER nastavi, aby pouzival iba ACTIVE DIRECTORY AUTHENTICATION pomocou COMMAND [az sql server ad-only-auth enable]. Prikladom je COMMAND [az sql server ad-only-auth enable --resource-group Chapter07 --name ta76dbserver].
+      F. Vytvori sa AZURE SQL SERVER DATABASE pomocou COMMAND [az sql db create]. Prikladom je COMMAND [az sql db create --name MyDatabase --server ta76dbserver --resource-group Chapter07 --compute-model Provisioned --edition Basic].
+      G. Vytvori sa APP SERVICE PLAN pomocou COMMAND [az appservice plan create]. Prikladom je COMMAND [az appservice plan create --name MyAppServicePlan --resource-group Chapter07 --location centralus --is-linux --sku FREE].
+      !!!!! H. Vykona sa UPDATE CONNECTION STRING, aby zahrnal USER ASSIGNED MANAGED IDENTITY CLIENT ID.
+      I. Vytvori sa WEB APPLICATION pomocou COMMAND [az webapp create]. Prikladom je COMMAND [az webapp create --name MyWebProgram --plan MyAppServicePlan --resource-group Chapter07 --container-image-name docker.io/timmyanderson/using_azure_sql_database:1.0.0].
+      J. WEB APPLICATION sa priradi USER ASSIGNED MANAGED IDENTITY pomocou COMMAND [az webapp identity assign]. Prikladom je COMMAND [az webapp identity assign --name MyWebProgram --resource-group Chapter07 --identities "/subscriptions/b5f70a84-6ba2-4485-84cd-ac0883d618c5/resourcegroups/Chapter07/providers/Microsoft.ManagedIdentity/userAssignedIdentities/MyIdentity"].
+      !!! K. Pouzije sa CONNECTION STRING, ktory ma SYNTAX [Server=tcp:ta76dbserver.database.windows.net,1433;User Id=8e1679f6-1fe8-446f-920d-10dd3eeed5d9;Initial Catalog=MyDatabase;Encrypt=True;TrustServerCertificate=False;Connection Timeout=30;Authentication=Active Directory Managed Identity;]. VALUE [8e1679f6-1fe8-446f-920d-10dd3eeed5d9] je CLIENT ID vytvorenej USER ASSIGNED MANAGED IDENTITY.
+      !!! L. Teraz CLIENT PROGRAM moze pristupit na WEB APPLICATION, ktora pristupi na AZURE SQL SERVER DATABASE s pouzitim ADMIN ACCOUNT.
+      !!!!! M. AZURE USER ACCOUNT sa nastavi ako ADMINISTRATOR ACCOUNT pre AZURE SQL SERVER pomocou pomocou COMMAND [az sql server ad-admin create]. Prikladom je COMMAND [az sql server ad-admin create --resource-group Chapter07 --server ta76dbserver --object-id "5138f3d7-3ec0-4d89-97f5-40a6f6000528" --display-name "Timmy Anderson"]. VALUE [5138f3d7-3ec0-4d89-97f5-40a6f6000528] je ID AZURE ACCOUNT. Tym padom USER ASSIGNED MANAGED IDENTITY uz NEBUDE ADMIN ACCOUNT.
+      !!! N. Na AZURE SQL SERVER sa vytvori FIREWALL RULE, ktory povoli pristup z LOCAL MACHINE pomocou COMMAND [az sql server firewall-rule create]. Prikladom je COMMAND [az sql server firewall-rule create --name rulemyip --resource-group Chapter07 --server ta76dbserver --start-ip-address 178.40.58.85 --end-ip-address 178.40.58.85]. Tento COMMAND je nutny, aby bolo mozne vykonat SQL COMMANDS nad AZURE SQL SERVER DATABASE.
+      !!!!! O. Nad AZURE SQL SERVER DATABASE sa vykonaju nasledujuce SQL COMMANDS.
+         A. COMMAND [CREATE USER [MyIdentity] FROM EXTERNAL PROVIDER;] vytvori DATABASE USER v DATABASE. VALUE [MyIdentity] je NAZOV USER ASSIGNED MANAGED IDENTITY.
+         B. COMMAND [ALTER ROLE db_datareader ADD MEMBER [MyIdentity];] prideli DATA READER ROLE vytorenemu DATABASE USER.
+         C. COMMAND [ALTER ROLE db_datawriter ADD MEMBER [MyIdentity];] prideli DATA WRITER ROLE vytorenemu DATABASE USER.
+         D. COMMAND [ALTER ROLE db_dbowner ADD MEMBER [MyIdentity];] prideli DDL ADMIN ROLE vytorenemu DATABASE USER.
+      !!! P. Teraz CLIENT PROGRAM moze pristupit na WEB APPLICATION, ktora pristupi na AZURE SQL SERVER DATABASE BEZ pouzitia ADMIN ACCOUNT.
+!!! 24. AZURE umoznuje priamy pristup k AZURE SQL SERVER pomocou OPTION [Allow Azure services and resources to access this server], ktory je mozne nastavit aj pomocou COMMAND [az sql server firewall-rule create --name AllowAzureService --resource-group Chapter07 --server ta76dbserver --start-ip-address 0.0.0.0 --end-ip-address 0.0.0.0]. Problem tohto pristupu je, ze k takto nastavenemu AZURE SQL SERVER ma pristup hocijaka AZURE SERVICE, ktora pozna CONNECTION STRING co predstavuje bezpecnostne riziko. Bezpecnejsim riesenim je obmedzit tento PUBLIC ACCESS na PRIVATE ACCESS pomocou VIRTUAL NETWORK AZURE VNET. Pre AZURE VNET platia nasledujuce fakty.
+   A. AZURE VNET je ISOLATED CLOUD NETWORK v ktorej mozu bezat AZURE RESOURCES v kontrolovanom prostredi s pridelenim vlastnych IP ADDRESSES.
+   B. AZURE VNET mozu mat vlastne SUBNETS. SUBNETS umoznuje segmentovanie IP RANGE pridelenej AZURE VNET.
+   C. Na realizaciu bezpecnej komunikacie medzi AZURE SERVICES je nutne v AZURE VNET vytvorit PRIVATE ENDPOINTS. PRIVATE ENDPOINT je NETWORK INTERFACE, ktory zabezpecuje PRIVATE a SECURE CONNECTION na SERVICE povoleny AZURE PRIVATE LINK.
+   D. Pouzitie PRIVATE ENDPOINT vyzaduje nakonfigurovanie PRIVATE DNS ZONE, ktora umoznuje DNS RESOLUTION DNS ADDRESSES v AZURE VNET.
+25. S AZURE VNET NETWORKS sa pracuje pomocou nasledujucich COMMANDS.
+   A. AZURE VNET NETWORK sa vytvara pomocou COMMAND [az network vnet create]. Prikladom je COMMAND [az network vnet create --name MyNetwork --resource-group Chapter07 --address-prefix 10.0.0.0/16].
+   B. AZURE VNET NETWORK sa odstranuje pomocou COMMAND [az network vnet delete]. Prikladom je COMMAND [az network vnet delete --name MyNetwork --resource-group Chapter07].
+   C. Zoznam AZURE VNET NETWORKS sa vracia pomocou COMMAND [az network vnet list]. Prikladom je COMMAND [az network vnet list --resource-group Chapter07].
+26. S AZURE VNET SUBNETS sa pracuje pomocou nasledujucich COMMANDS.
+   A. AZURE VNET SUBNET sa vytvara pomocou COMMAND [az network vnet subnet create]. Prikladom je COMMAND [az network vnet subnet create --name MySubnet --vnet-name MyNetwork --resource-group Chapter07 --address-prefixes 10.0.1.0/24].
+   B. AZURE VNET SUBNET sa odstranuje pomocou COMMAND [az network vnet subnet delete]. Prikladom je COMMAND [az network vnet subnet delete --name MySubnet --vnet-name MyNetwork --resource-group Chapter07].
+   C. Zoznam AZURE VNET SUBNETS sa vracia pomocou COMMAND [az network vnet subnet list]. Prikladom je COMMAND [az network vnet subnet list --vnet-name MyNetwork --resource-group Chapter07].
+27. S AZURE PRIVATE NETWORK ENDPOINTS sa pracuje pomocou nasledujucich COMMANDS.
+   A. AZURE PRIVATE NETWORK ENDPOINT sa vytvara pomocou COMMAND [az network private-endpoint create]. Prikladom je COMMAND [az network private-endpoint create --name MyPrivateEndpoint --resource-group Chapter07 --vnet-name MyNetwork --subnet MySubnet --private-connection-resource-id "/subscriptions/b5f70a84-6ba2-4485-84cd-ac0883d618c5/resourceGroups/Chapter07/providers/Microsoft.Sql/servers/ta76dbserver" --group-ids sqlServer --connection-name MyConnection]. VALUE [/subscriptions/b5f70a84-6ba2-4485-84cd-ac0883d618c5/resourceGroups/Chapter07/providers/Microsoft.Sql/servers/ta76dbserver] je RESOURCE ID AZURE SQL SERVER ktoremu je AZURE PRIVATE NETWORK ENDPOINT prideleny.
+   B. AZURE PRIVATE NETWORK ENDPOINT sa odstranuje pomocou COMMAND [az network private-endpoint delete]. Prikladom je COMMAND [az network private-endpoint delete --name MyPrivateEndpoint --resource-group Chapter07].
+   C. Zoznam AZURE PRIVATE NETWORK ENDPOINTS sa vracia pomocou COMMAND [az network private-endpoint list]. Prikladom je COMMAND [az network private-endpoint list --resource-group Chapter07].
+   !!! D. COMMAND [az network private-link-resource list] vracia GROUP ID pre RESOURCE, ktoremu ma byt AZURE PRIVATE NETWORK ENDPOINT priradeny. GROUP ID sa vklada ako PARAMETER do COMMAND [az network private-endpoint create]. Prikladom je COMMAND [az network private-link-resource list --id "/subscriptions/b5f70a84-6ba2-4485-84cd-ac0883d618c5/resourceGroups/Chapter07/providers/Microsoft.Sql/servers/ta76dbserver"].
+28. S AZURE PRIVATE DNS ZONES sa pracuje pomocou nasledujucich COMMANDS.
+   A. AZURE PRIVATE DNS ZONE sa vytvara pomocou COMMAND [az network private-dns zone create]. Prikladom je COMMAND [az network private-dns zone create --name "myprivatelink.database.windows.net" --resource-group Chapter07].
+   B. AZURE PRIVATE DNS ZONE sa odstranuje pomocou COMMAND [az network private-dns zone delete]. Prikladom je COMMAND [az network private-dns zone delete --name "myprivatelink.database.windows.net" --resource-group Chapter07].
+   C. Zoznam AZURE AZURE PRIVATE DNS ZONES sa vracia pomocou COMMAND [az network private-dns zone list]. Prikladom je COMMAND [az network private-dns zone list --resource-group Chapter07].
+29. S AZURE PRIVATE DNS ZONE LINKS sa pracuje pomocou nasledujucich COMMANDS.
+   A. AZURE PRIVATE DNS ZONE LINK sa vytvara pomocou COMMAND [az network private-dns link vnet create]. Prikladom je COMMAND [az network private-dns link vnet create --name MyDnsZoneLink --resource-group Chapter07 --virtual-network MyNetwork --zone-name "myprivatelink.database.windows.net" --registration-enabled false].
+   B. AZURE PRIVATE DNS ZONE LINK sa odstranuje pomocou COMMAND [az network private-dns link vnet delete]. Prikladom je COMMAND [az network private-dns link vnet delete --name MyDnsZoneLink --resource-group Chapter07 --zone-name "myprivatelink.database.windows.net"].
+   C. Zoznam AZURE AZURE PRIVATE DNS ZONE LINKS sa vracia pomocou COMMAND [az network private-dns link vnet list]. Prikladom je COMMAND [az network private-dns link vnet list --resource-group Chapter07 --zone-name "myprivatelink.database.windows.net"].
+30. S AZURE PRIVATE DNS ZONE GROUPS sa pracuje pomocou nasledujucich COMMANDS.
+   A. AZURE PRIVATE DNS ZONE GROUP sa vytvara pomocou COMMAND [az network private-endpoint dns-zone-group create]. Prikladom je COMMAND [az network private-endpoint dns-zone-group create --name MyDnsZoneGroup --endpoint-name MyPrivateEndpoint --private-dns-zone "myprivatelink.database.windows.net" --resource-group Chapter07 --zone-name MyPrivateZone].
+   B. AZURE PRIVATE DNS ZONE GROUP sa odstranuje pomocou COMMAND [az network private-endpoint dns-zone-group delete]. Prikladom je COMMAND [az network private-endpoint dns-zone-group delete --name MyDnsZoneGroup --endpoint-name MyPrivateEndpoint --resource-group Chapter07].
+   C. Zoznam AZURE AZURE PRIVATE DNS ZONE GROUPS sa vracia pomocou COMMAND [az network private-endpoint dns-zone-group list]. Prikladom je COMMAND [az network private-endpoint dns-zone-group list --endpoint-name MyPrivateEndpoint --resource-group Chapter07].
+31. S WEB APPLICATION INTEGRATIONS s AZURE VNET pracuje pomocou nasledujucich COMMANDS.
+   A. WEB APPLICATION INTEGRATION s AZURE VNET sa vytvara pomocou COMMAND [az webapp vnet-integration add]. Prikladom je COMMAND [az webapp vnet-integration add --name MyWebProgram --resource-group Chapter07 --vnet MyNetwork --subnet MySubnetApplication].
+   B. WEB APPLICATION INTEGRATION s AZURE VNET sa odstranuje pomocou COMMAND [az webapp vnet-integration remove]. Prikladom je COMMAND [az webapp vnet-integration remove --name MyWebProgram --resource-group Chapter07].
+   C. Zoznam WEB APPLICATION INTEGRATIONS s AZURE VNET sa vracia pomocou COMMAND [az webapp vnet-integration list]. Prikladom je COMMAND [az webapp vnet-integration list --name MyWebProgram --resource-group Chapter07].
+32. Nasadenie WEB APPLICATION pouzivajucej AZURE SQL SERVER a AZURE VNET sa realizuje v nasledujucich krokoch.
+   A. Vytvori sa USER ASSIGNED MANAGED IDENTITY pomocou COMMAND [az identity create]. Prikladom je COMMAND [az identity create --name MyIdentity --resource-group Chapter07].
+   B. Vytvori sa AZURE SQL SERVER s nastavenou USER ASSIGNED MANAGED IDENTITY pomocou COMMAND [az sql server create]. Prikladom je COMMAND [az sql server create --name ta76dbserver --resource-group Chapter07 --location centralus --admin-user mydbadmin --admin-password "Qaxwsx123+." --assign-identity --identity-type "UserAssigned" --user-assigned-identity-id "/subscriptions/b5f70a84-6ba2-4485-84cd-ac0883d618c5/resourcegroups/Chapter07/providers/Microsoft.ManagedIdentity/userAssignedIdentities/MyIdentity" --primary-user-assigned-identity-id "/subscriptions/b5f70a84-6ba2-4485-84cd-ac0883d618c5/resourcegroups/Chapter07/providers/Microsoft.ManagedIdentity/userAssignedIdentities/MyIdentity"].
+   C. Na AZURE SQL SERVER sa vytvori FIREWALL RULE, ktory povoli pristup pre AZURE SERVICES pomocou COMMAND [az sql server firewall-rule create]. Prikladom je COMMAND [az sql server firewall-rule create --name AllowAzureService --resource-group Chapter07 --server ta76dbserver --start-ip-address 0.0.0.0 --end-ip-address 0.0.0.0].
+   !!! D. Na AZURE SQL SERVER sa vytvori FIREWALL RULE, ktory povoli pristup z LOCAL MACHINE pomocou COMMAND [az sql server firewall-rule create]. Prikladom je COMMAND [az sql server firewall-rule create --name rulemyip --resource-group Chapter07 --server ta76dbserver --start-ip-address 178.40.58.85 --end-ip-address 178.40.58.85]. Tento COMMAND je nutny, aby bolo mozne vykonat SQL COMMANDS nad AZURE SQL SERVER DATABASE.
+   !!!!! E. AZURE USER ACCOUNT sa nastavi ako ADMINISTRATOR ACCOUNT pre AZURE SQL SERVER pomocou pomocou COMMAND [az sql server ad-admin create]. Prikladom je COMMAND [az sql server ad-admin create --resource-group Chapter07 --server ta76dbserver --object-id "5138f3d7-3ec0-4d89-97f5-40a6f6000528" --display-name "Timmy Anderson"]. VALUE [5138f3d7-3ec0-4d89-97f5-40a6f6000528] je ID AZURE ACCOUNT.
+   F. OPTIONALLY sa na AZURE SQL SERVER nastavi, aby pouzival iba ACTIVE DIRECTORY AUTHENTICATION pomocou COMMAND [az sql server ad-only-auth enable]. Prikladom je COMMAND [az sql server ad-only-auth enable --resource-group Chapter07 --name ta76dbserver].
+   G. Vytvori sa AZURE SQL SERVER DATABASE pomocou COMMAND [az sql db create]. Prikladom je COMMAND [az sql db create --name MyDatabase --server ta76dbserver --resource-group Chapter07 --compute-model Provisioned --edition Basic].
+   H. Vytvori sa APP SERVICE PLAN pomocou COMMAND [az appservice plan create]. Prikladom je COMMAND [az appservice plan create --name MyAppServicePlan --resource-group Chapter07 --location centralus --is-linux --sku FREE].
+   !!!!! I. Vykona sa UPDATE CONNECTION STRING, aby zahrnal USER ASSIGNED MANAGED IDENTITY CLIENT ID a spravi sa BUILD DOCKER IMAGE a jeho DEPLOY do DOCKER CONTAINER REPOSITORY.
+   J. Vytvori sa WEB APPLICATION pomocou COMMAND [az webapp create]. Prikladom je COMMAND [az webapp create --name MyWebProgram --plan MyAppServicePlan --resource-group Chapter07 --container-image-name docker.io/timmyanderson/using_azure_sql_database:1.0.0].
+   K. WEB APPLICATION sa priradi USER ASSIGNED MANAGED IDENTITY pomocou COMMAND [az webapp identity assign]. Prikladom je COMMAND [az webapp identity assign --name MyWebProgram --resource-group Chapter07 --identities "/subscriptions/b5f70a84-6ba2-4485-84cd-ac0883d618c5/resourcegroups/Chapter07/providers/Microsoft.ManagedIdentity/userAssignedIdentities/MyIdentity"].
+   !!!!! L. Nad AZURE SQL SERVER DATABASE sa vykonaju nasledujuce SQL COMMANDS.
+      A. COMMAND [CREATE USER [MyIdentity] FROM EXTERNAL PROVIDER;] vytvori DATABASE USER v DATABASE. VALUE [MyIdentity] je NAZOV USER ASSIGNED MANAGED IDENTITY.
+      B. COMMAND [ALTER ROLE db_datareader ADD MEMBER [MyIdentity];] prideli DATA READER ROLE vytorenemu DATABASE USER.
+      C. COMMAND [ALTER ROLE db_datawriter ADD MEMBER [MyIdentity];] prideli DATA WRITER ROLE vytorenemu DATABASE USER.
+      D. COMMAND [ALTER ROLE db_dbowner ADD MEMBER [MyIdentity];] prideli DDL ADMIN ROLE vytorenemu DATABASE USER.
+   !!! M. Pouzije sa CONNECTION STRING, ktory ma SYNTAX [Server=tcp:ta76dbserver.database.windows.net,1433;User Id=8e1679f6-1fe8-446f-920d-10dd3eeed5d9;Initial Catalog=MyDatabase;Encrypt=True;TrustServerCertificate=False;Connection Timeout=30;Authentication=Active Directory Managed Identity;]. VALUE [8e1679f6-1fe8-446f-920d-10dd3eeed5d9] je CLIENT ID vytvorenej USER ASSIGNED MANAGED IDENTITY.
+   !!! N. Teraz CLIENT PROGRAM moze pristupit na WEB APPLICATION, ktora pristupi na AZURE SQL SERVER DATABASE bez pouzitia ADMIN ACCOUNT.
+   O. Vytvori sa AZURE VNET NETWORK pomocou COMMAND [az network vnet create]. Prikladom je COMMAND [az network vnet create --name MyNetwork --resource-group Chapter07 --address-prefix 10.0.0.0/16].
+   P. Vytvori sa AZURE VNET SUBNET pre SQL SERVER pomocou COMMAND [az network vnet subnet create]. Prikladom je COMMAND [az network vnet subnet create --name MySubnetDatabase --vnet-name MyNetwork --resource-group Chapter07 --address-prefixes 10.0.1.0/24].
+   Q. Vytvori sa AZURE VNET SUBNET pre WEB APPLICATION pomocou COMMAND [az network vnet subnet create]. Prikladom je COMMAND [az network vnet subnet create --name MySubnetApplication --vnet-name MyNetwork --resource-group Chapter07 --address-prefixes 10.0.0.0/24].
+   R. Vytvori sa AZURE PRIVATE NETWORK ENDPOINT pomocou COMMAND [az network private-endpoint create]. Prikladom je COMMAND [az network private-endpoint create --name MyPrivateEndpoint --resource-group Chapter07 --vnet-name MyNetwork --subnet MySubnetDatabase --private-connection-resource-id "/subscriptions/b5f70a84-6ba2-4485-84cd-ac0883d618c5/resourceGroups/Chapter07/providers/Microsoft.Sql/servers/ta76dbserver" --group-ids sqlServer --connection-name MyConnection].
+   S. Vytvori sa AZURE PRIVATE DNS ZONE pomocou COMMAND [az network private-dns zone create]. Prikladom je COMMAND [az network private-dns zone create --name "myprivatelink.database.windows.net" --resource-group Chapter07].
+   T. Vytvori sa AZURE PRIVATE DNS ZONE LINK pomocou COMMAND [az network private-dns link vnet create]. Prikladom je COMMAND [az network private-dns link vnet create --name MyDnsZoneLink --resource-group Chapter07 --virtual-network MyNetwork --zone-name "myprivatelink.database.windows.net" --registration-enabled false].
+   U. Vytvori sa AZURE PRIVATE DNS ZONE GROUP pomocou COMMAND [az network private-endpoint dns-zone-group create]. Prikladom je COMMAND [az network private-endpoint dns-zone-group create --name MyDnsZoneGroup --endpoint-name MyPrivateEndpoint --private-dns-zone "myprivatelink.database.windows.net" --resource-group Chapter07 --zone-name MyPrivateZone].
+   V. Vytvori sa WEB APPLICATION INTEGRATIONS s AZURE VNET pomocou COMMAND [az webapp vnet-integration add]. Prikladom je COMMAND [az webapp vnet-integration add --name MyWebProgram --resource-group Chapter07 --vnet MyNetwork --subnet MySubnetApplication].
+   !!! W. Odstrani sa FIREWALL RULE pre pristup AZURE SERVICE k WEB APPLICATION pomocou COMMAND [az sql server firewall-rule create]. Prikladom je COMMAND [az sql server firewall-rule create --name AllowAzureService --resource-group Chapter07 --server ta76dbserver --start-ip-address 0.0.0.0 --end-ip-address 0.0.0.0].
+   !!! X. Teraz by WEB APPLICATION mala komunikovat z AZURE SQL SERVICE cez AZURE VNET.
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+AZURE CLI COMMANDS - SQL SERVER.
+
+1. COMMAND [az sql server list --resource-group RESOURCE_GROUP_NAME].
+   A. COMMAND vracia zoznam vytvorenych SQL SERVERS.
+   B. OPTION [--resource-group RESOURCE_GROUP_NAME] vo VALUE [RESOURCE_GROUP_NAME] urcuje RESOURCE GROUP NAME.
+2. COMMAND [az sql server create --name SERVER_NAME --resource-group RESOURCE_GROUP_NAME --location LOCATION_NAME --admin-user ADMINISTRATOR_USER_NAME --admin-password ADMINISTRATOR_PASSWORD --assign-identity --identity-type IDENTITY_TYPE --user-assigned-identity-id USER_ASSIGNED_IDENTITY_ID --primary-user-assigned-identity-id PRIMARY_ASSIGNED_IDENTITY_ID].
+   A. COMMAND vytvara novu instanciu SQL SERVER.
+   B. OPTION [--name SERVER_NAME] vo VALUE [SERVER_NAME] urcuje SQL SERVER NAME.
+   C. OPTION [--name RESOURCE_GROUP_NAME] vo VALUE [RESOURCE_GROUP_NAME] urcuje RESOURCE GROUP NAME.
+   D. OPTION [--name LOCATION_NAME] vo VALUE [LOCATION_NAME] urcuje LOCATION, kde ma byt SQL SERVER vytvoreny.
+   E. OPTION [--admin-user ADMINISTRATOR_USER_NAME] vo VALUE [ADMINISTRATOR_USER_NAME] obsahuje nazov ADMINISTRATOR ACCOUNT.
+   F. OPTION [--admin-password ADMINISTRATOR_PASSWORD] vo VALUE [ADMINISTRATOR_PASSWORD] obsahuje heslo ADMINISTRATOR ACCOUNT.
+   G. OPTION [--assign-identity] urcuje, ze SQL SERVER maju byt priradena MANAGED IDENTITY.
+   H. OPTION [--identity-type IDENTITY_TYPE] vo VALUE [IDENTITY_TYPE] obsahuje typ MANAGED IDENTITY. VALUE [UserAssigned] znamena ze bude priradena USER ASSIGNED MANAGED IDENTITY.
+   I. OPTION [--user-assigned-identity-id USER_ASSIGNED_IDENTITY_ID] vo VALUE [USER_ASSIGNED_IDENTITY_ID] obsahuje USER ASSIGNED MANAGED IDENTITY ID.
+   !!! J. OPTION [--primary-user-assigned-identity-id PRIMARY_ASSIGNED_IDENTITY_ID] vo VALUE [PRIMARY_ASSIGNED_IDENTITY_ID] obsahuje PRIMARY ASSIGNED MANAGED IDENTITY ID. PRIMARY ASSIGNED MANAGED IDENTITY ID sa moze zhodovat s USER ASSIGNED MANAGED IDENTITY ID.
+3. COMMAND [az sql server delete --name SERVER_NAME --resource-group RESOURCE_GROUP_NAME --ids SERVER_IDS].
+   A. COMMAND odstranuje existujucu instanciu SQL SERVER.
+   B. OPTION [--name SERVER_NAME] vo VALUE [SERVER_NAME] urcuje SQL SERVER NAME.
+   !!!!!! C. OPTIONAL OPTION [--ids SERVER_IDS] vo VALUE [SERVER_IDS] obsahuje zoznam SQL SERVER IDs, ktore maju byt odstranene.
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+AZURE CLI COMMANDS - SQL SERVER FIREWALL.
+
+1. COMMAND [az sql server firewall-rule list --resource-group RESOURCE_GROUP_NAME --server SERVER_NAME].
+   A. COMMAND vracia zoznam FIREWALL RULES na danom DATABASE SERVERI.
+   B. OPTION [--resource-group RESOURCE_GROUP_NAME] vo VALUE [RESOURCE_GROUP_NAME] urcuje RESOURCE GROUP NAME.
+   C. OPTION [--server SERVER_NAME] vo VALUE [SERVER_NAME] urcuje SQL SERVER NAME.
+2. COMMAND [az sql server firewall-rule create --name RULE_NAME --resource-group RESOURCE_GROUP_NAME --server SERVER_NAME --start-ip-address START_IP_ADDRESS --end-ip-address END_IP_ADDRESS].
+   A. COMMAND vytvara novy FIREWALL RULE na danom DATABASE SERVERI.
+   B. OPTION [--name RULE_NAME] vo VALUE [RULE_NAME] urcuje nazov FIREWALL RULE.
+   C. OPTION [--resource-group RESOURCE_GROUP_NAME] vo VALUE [RESOURCE_GROUP_NAME] urcuje RESOURCE GROUP NAME.
+   D. OPTION [--server SERVER_NAME] vo VALUE [SERVER_NAME] urcuje SQL SERVER NAME.
+   E. OPTION [--start-ip-address START_IP_ADDRESS] vo VALUE [START_IP_ADDRESS] urcuje START IP ADDRESS.
+   F. OPTION [--end-ip-address END_IP_ADDRESS] vo VALUE [END_IP_ADDRESS] urcuje END IP ADDRESS.
+3. COMMAND [az sql server firewall-rule delete --name RULE_NAME --resource-group RESOURCE_GROUP_NAME --server SERVER_NAME].
+   A. COMMAND odstranuje existujuci FIREWALL RULE na danom DATABASE SERVERI.
+   B. OPTION [--name RULE_NAME] vo VALUE [RULE_NAME] urcuje nazov FIREWALL RULE.
+   C. OPTION [--resource-group RESOURCE_GROUP_NAME] vo VALUE [RESOURCE_GROUP_NAME] urcuje RESOURCE GROUP NAME.
+   D. OPTION [--server SERVER_NAME] vo VALUE [SERVER_NAME] urcuje SQL SERVER NAME.
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+AZURE CLI COMMANDS - SQL DATABASE.
+
+1. COMMAND [az sql db list --server SERVER_NAME --resource-group RESOURCE_GROUP_NAME].
+   A. COMMAND vracia zoznam DATABASES vytvorenych na danom SQL SERVER.
+   B. OPTION [--server SERVER_NAME] vo VALUE [SERVER_NAME] urcuje SQL SERVER NAME.
+   C. OPTION [--resource-group RESOURCE_GROUP_NAME] vo VALUE [RESOURCE_GROUP_NAME] urcuje RESOURCE GROUP NAME.
+2. COMMAND [az sql db create --name DATABASE_NAME --server SERVER_NAME --resource-group RESOURCE_GROUP_NAME --compute-model COMPUTE_MODEL --edition EDITION].
+   A. COMMAND vytvara novu DATABASE.
+   B. OPTION [--name DATABASE_NAME] vo VALUE [DATABASE_NAME] urcuje DATABASE NAME.
+   C. OPTION [--server SERVER_NAME] vo VALUE [SERVER_NAME] urcuje SQL SERVER NAME.
+   D. OPTION [--resource-group RESOURCE_GROUP_NAME] vo VALUE [RESOURCE_GROUP_NAME] urcuje RESOURCE GROUP NAME.
+   E. OPTION [--compute-model COMPUTE_MODEL] vo VALUE [COMPUTE_MODEL] obsahuje COMPUTE MODEL danej DATABASE. VALUE [Provisioned] znamena, ze DATABASE bude mat vzdy dedikovane VIRTUAL CORES. VALIE [Serverless] znamena, ze VIRTUAL CORES budu DATABASE pridelovane podla zataze.
+   F. OPTION [--edition EDITION] vo VALUE [EDITION] obsahuje DATABASE TIER. Pre testovacie ucely sa odporuca VALUE [Basic].
+3. COMMAND [az sql db delete --name DATABASE_NAME --server SERVER_NAME --resource-group RESOURCE_GROUP_NAME --ids DATABASE_IDS].
+   A. COMMAND odstranuje existujucu DATABASE.
+   B. OPTION [--name DATABASE_NAME] vo VALUE [DATABASE_NAME] urcuje DATABASE NAME.
+   C. OPTION [--server SERVER_NAME] vo VALUE [SERVER_NAME] urcuje SQL SERVER NAME.
+   D. OPTION [--resource-group RESOURCE_GROUP_NAME] vo VALUE [RESOURCE_GROUP_NAME] urcuje RESOURCE GROUP NAME.
+   !!!!!! E. OPTIONAL OPTION [--ids DATABASE_IDS] vo VALUE [DATABASE_IDS] obsahuje zoznam DATABASE IDs, ktore maju byt odstranene.
+4. COMMAND [az sql db show-connection-string --server SERVER_NAME --name DATABASE_NAME --client CLIENT_TYPE --auth-type AUTHENTICATION_TYPE].
+   A. COMMAND vracia CONNECTION STRING k DATABASE.
+   B. OPTION [--server SERVER_NAME] vo VALUE [SERVER_NAME] urcuje SQL SERVER NAME.
+   C. OPTION [--name DATABASE_NAME] vo VALUE [DATABASE_NAME] urcuje DATABASE NAME.
+   D. OPTION [--client CLIENT_TYPE] vo VALUE [CLIENT_TYPE] urcuje CLIENT TYPE. Pre ENTITY FRAMEWORK je nutne pouzit VALUE [ado.net].
+   E. OPTION [--auth-type AUTHENTICATION_TYPE] vo VALUE [AUTHENTICATION_TYPE] urcuje AUTHENTICATION TYPE CONNECTION STRING.
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+AZURE CLI COMMANDS - SQL SERVER ACTIVE DIRECTORY ADMIN.
+
+1. COMMAND [az sql server ad-admin create --resource-group RESOURCE_GROUP_NAME --server SERVER_NAME --object-id OBJECT_ID --display-name DISPLAY_NAME].
+   A. COMMAND prideluje danemu ACTIVE DIRECTORY ACCOUNT ADMINISTRATOR RIGHTS pre SQL SERVER.
+   B. OPTION [--resource-group RESOURCE_GROUP_NAME] vo VALUE [RESOURCE_GROUP_NAME] urcuje RESOURCE GROUP NAME.
+   C. OPTION [--server SERVER_NAME] vo VALUE [SERVER_NAME] urcuje SQL SERVER NAME.
+   D. OPTION [--object-id OBJECT_ID] vo VALUE [OBJECT_ID] obsahuje identifikator ACTIVE DIRECTORY ACCOUNT.
+   E. OPTION [--display-name DISPLAY_NAME] vo VALUE [DISPLAY_NAME] obsahuje DISPLAY NAME ACTIVE DIRECTORY ACCOUNT.
+2. COMMAND [az sql server ad-admin create --resource-group RESOURCE_GROUP_NAME --server SERVER_NAME --object-id OBJECT_ID --display-name DISPLAY_NAME].
+   A. COMMAND odobera danemu ACTIVE DIRECTORY ACCOUNT ADMINISTRATOR RIGHTS pre SQL SERVER.
+   B. OPTION [--resource-group RESOURCE_GROUP_NAME] vo VALUE [RESOURCE_GROUP_NAME] urcuje RESOURCE GROUP NAME.
+   C. OPTION [--server SERVER_NAME] vo VALUE [SERVER_NAME] urcuje SQL SERVER NAME.
+3. COMMAND [az sql server ad-admin list --resource-group RESOURCE_GROUP_NAME --server SERVER_NAME].
+   A. COMMAND vracia zoznam ACTIVE DIRECTORY ACCOUNTS, ktore maju pridelene ADMINISTRATOR RIGHTS pre SQL SERVER.
+   B. OPTION [--resource-group RESOURCE_GROUP_NAME] vo VALUE [RESOURCE_GROUP_NAME] urcuje RESOURCE GROUP NAME.
+   C. OPTION [--server SERVER_NAME] vo VALUE [SERVER_NAME] urcuje SQL SERVER NAME.
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+AZURE CLI COMMANDS - SQL SERVER ACTIVE DIRECTORY ONLY AUTHENTICATION.
+
+1. COMMAND [az sql server ad-only-auth enable --resource-group RESOURCE_GROUP_NAME --name SERVER_NAME].
+   A. COMMAND pre SQL SERVER nastavuje AUTHENTICATION iba prostrednictvo ACTIVE DIRECTORY.
+   B. OPTION [--resource-group RESOURCE_GROUP_NAME] vo VALUE [RESOURCE_GROUP_NAME] urcuje RESOURCE GROUP NAME.
+   C. OPTION [--server SERVER_NAME] vo VALUE [SERVER_NAME] urcuje SQL SERVER NAME.
+2. COMMAND [az sql server ad-only-auth disable --resource-group RESOURCE_GROUP_NAME --name SERVER_NAME].
+   A. COMMAND pre SQL SERVER odstranuje nastavenie AUTHENTICATION iba prostrednictvo ACTIVE DIRECTORY.
+   B. OPTION [--resource-group RESOURCE_GROUP_NAME] vo VALUE [RESOURCE_GROUP_NAME] urcuje RESOURCE GROUP NAME.
+   C. OPTION [--server SERVER_NAME] vo VALUE [SERVER_NAME] urcuje SQL SERVER NAME.
+3. COMMAND [az sql server ad-only-auth get --resource-group RESOURCE_GROUP_NAME --name SERVER_NAME].
+   A. COMMAND pre SQL SERVER vracia nastavenie AUTHENTICATION iba prostrednictvo ACTIVE DIRECTORY.
+   B. OPTION [--resource-group RESOURCE_GROUP_NAME] vo VALUE [RESOURCE_GROUP_NAME] urcuje RESOURCE GROUP NAME.
+   C. OPTION [--server SERVER_NAME] vo VALUE [SERVER_NAME] urcuje SQL SERVER NAME.
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+AZURE CLI COMMANDS - RESOURCE DEPLOYMENTS.
+
+1. COMMAND [az deployment group list --resource-group RESOURCE_GROUP_NAME].
+   A. COMMAND vracia zoznam existujucich RESOURCE DEPLOYMENTS.
+   B. OPTION [--resource-group RESOURCE_GROUP_NAME] vo VALUE [RESOURCE_GROUP_NAME] urcuje RESOURCE GROUP NAME.
+2. COMMAND [az deployment group create --name RESOURCE_DEPOLYMENT_NAME --resource-group RESOURCE_GROUP_NAME --template-file TEPLATE_FILE_PATH --parameters PARAMETERS].
+   !!! A. COMMAND vytvara novy RESOURCE DEPLOYMENT. COMMAND zaroven vytvara RESOURCES, ktore obsahuje RESOURCE DEPLOYMENT.
+   B. OPTION [--name RESOURCE_DEPOLYMENT_NAME] vo VALUE [RESOURCE_DEPOLYMENT_NAME] urcuje RESOURCE DEPLOYMENT NAME.
+   C. OPTION [--resource-group RESOURCE_GROUP_NAME] vo VALUE [RESOURCE_GROUP_NAME] urcuje RESOURCE GROUP NAME.
+   !!! D. OPTION [--template-file TEPLATE_FILE_PATH] vo VALUE [TEPLATE_FILE_PATH] obsahuje PATH k TEMPLATE FILE. TEMPLATE FILE moze byt bud JSON FILE, alebo BICEP FILE.
+   !!!!! E. OPTION [--parameters PARAMETERS] vo VALUE [PARAMETERS] obsahuje PARAMETERS daneho RESOURCE. PARAMETERS mozu byt definovane nasledujucimi sposobmi.
+      A. SYNTAX [@PATH] obsahuje PATH k JSON FILE, ktory obsahuje PARAMETERS daneho RESOURCE.
+      B. JSON STRING obsahuje JSON STRING, ktory obsahuje PARAMETERS daneho RESOURCE.
+      C. SYNTAX [KEY=VALUE] obsahuje KEY a VALUE danej CONFIGURATION PROPERTY. V takomto pripade sa moze OPTION [--parameters PARAMETERS] nachadzat v COMMAND opakovane.
+3. COMMAND [az deployment group delete --name RESOURCE_DEPOLYMENT_NAME --resource-group RESOURCE_GROUP_NAME].
+   !!! A. COMMAND odstranuje existujuci RESOURCE DEPLOYMENT.
+   B. OPTION [--name RESOURCE_DEPOLYMENT_NAME] vo VALUE [RESOURCE_DEPOLYMENT_NAME] urcuje RESOURCE DEPLOYMENT NAME.
+   C. OPTION [--resource-group RESOURCE_GROUP_NAME] vo VALUE [RESOURCE_GROUP_NAME] urcuje RESOURCE GROUP NAME.
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+AZURE CLI COMMANDS - WEB APP.
+
+1. COMMAND [az webapp create --name WEB_PROGRAM_NAME --plan APP_SERVICE_PLANE_NAME --resource-group RESOURCE_GROUP_NAME --container-registry-user USER_NAME --container-registry-password PASSWORD --container-image-name DOCKER_IMAGE_NAME].
+   A. COMMAND vytvara APP SERVICE WEB PROGRAM, ktory po uspesnom vytvoreni aj spusti.
+   B. OPTION [--name WEB_PROGRAM_NAME] vo VALUE [WEB_PROGRAM_NAME] obsahuje nazov WEB PROGRAM.
+   C. OPTION [--plan APP_SERVICE_PLANE_NAME] vo VALUE [APP_SERVICE_PLANE_NAME] obsahuje nazov APP SERVICE RESOURCE PLAN.
+   D. OPTION [--resource-group RESOURCE_GROUP_NAME] vo VALUE [RESOURCE_GROUP_NAME] urcuje RESOURCE GROUP NAME.
+   E. OPTION [--container-registry-user USER_NAME] vo VALUE [USER_NAME] urcuje USER NAME CONTAINER REGISTRY.
+   F. OPTION [--container-registry-password PASSWORD] vo VALUE [PASSWORD] urcuje PASSWORD CONTAINER REGISTRY.
+   !!! G. OPTION [--container-image-name DOCKER_IMAGE_NAME] vo VALUE [DOCKER_IMAGE_NAME] urcuje DOCKER IMAGE NAME.
+2. COMMAND [az webapp delete --name WEB_PROGRAM_NAME --resource-group RESOURCE_GROUP_NAME --keep-empty-plan].
+   A. COMMAND odstranuje APP SERVICE WEB PROGRAM, ktory predtym ukonci.
+   B. OPTION [--name WEB_PROGRAM_NAME] vo VALUE [WEB_PROGRAM_NAME] obsahuje nazov WEB PROGRAM.
+   C. OPTION [--resource-group RESOURCE_GROUP_NAME] vo VALUE [RESOURCE_GROUP_NAME] urcuje RESOURCE GROUP NAME.
+   D. OPTION [--keep-empty-plan] urcuje, aby sa neodstranoval prazdny APP SERVICE RESOURCE PLAN.
+3. COMMAND [az webapp list --resource-group RESOURCE_GROUP_NAME].
+   A. COMMAND zobrazuje zoznam odstranuje APP SERVICE WEB PROGRAMS.
+   B. OPTION [--resource-group RESOURCE_GROUP_NAME] vo VALUE [RESOURCE_GROUP_NAME] urcuje RESOURCE GROUP NAME.
+4. COMMAND [az webapp start --name WEB_PROGRAM_NAME --resource-group RESOURCE_GROUP_NAME].
+   A. COMMAND spusta APP SERVICE WEB PROGRAM.
+   B. OPTION [--name WEB_PROGRAM_NAME] vo VALUE [WEB_PROGRAM_NAME] obsahuje nazov WEB PROGRAM.
+   C. OPTION [--resource-group RESOURCE_GROUP_NAME] vo VALUE [RESOURCE_GROUP_NAME] urcuje RESOURCE GROUP NAME.
+5. COMMAND [az webapp stop --name WEB_PROGRAM_NAME --resource-group RESOURCE_GROUP_NAME].
+   A. COMMAND zastavuje APP SERVICE WEB PROGRAM.
+   B. OPTION [--name WEB_PROGRAM_NAME] vo VALUE [WEB_PROGRAM_NAME] obsahuje nazov WEB PROGRAM.
+   C. OPTION [--resource-group RESOURCE_GROUP_NAME] vo VALUE [RESOURCE_GROUP_NAME] urcuje RESOURCE GROUP NAME.
+6. COMMAND [az webapp config show --resource-group RESOURCE_GROUP_NAME --name WEB_PROGRAM_NAME].
+   A. COMMAND zobrazuje nastavenia APP SERVICE WEB PROGRAM.
+   B. OPTION [--resource-group RESOURCE_GROUP_NAME] vo VALUE [RESOURCE_GROUP_NAME] urcuje RESOURCE GROUP NAME.
+   C. OPTION [--name WEB_PROGRAM_NAME] vo VALUE [WEB_PROGRAM_NAME] obsahuje nazov WEB PROGRAM.
+7. COMMAND [az webapp identity assign --resource-group RESOURCE_GROUP_NAME --name WEB_PROGRAM_NAME --identities IDENTITY_ID].
+   A. COMMAND priradzuje IDENTITY pre APP SERVICE WEB PROGRAM.
+   B. OPTION [--resource-group RESOURCE_GROUP_NAME] vo VALUE [RESOURCE_GROUP_NAME] urcuje RESOURCE GROUP NAME.
+   C. OPTION [--name WEB_PROGRAM_NAME] vo VALUE [WEB_PROGRAM_NAME] obsahuje nazov WEB PROGRAM.
+   !!! D. OPTION [--identities IDENTITY_ID] vo VALUE [IDENTITY_ID] obsahuje IDENTITY ID. IDENTITY ID je ROZNA VALUE od IDENTITY PRINCIPAL ID. VALUE [system] znamena, ze sa bude pridelovat SYSTEM IDENTITY danej.
+8. COMMAND [az webapp identity remove --resource-group RESOURCE_GROUP_NAME --name WEB_PROGRAM_NAME --identities IDENTITY_ID].
+   A. COMMAND odobera IDENTITY pre APP SERVICE WEB PROGRAM.
+   B. OPTION [--resource-group RESOURCE_GROUP_NAME] vo VALUE [RESOURCE_GROUP_NAME] urcuje RESOURCE GROUP NAME.
+   C. OPTION [--name WEB_PROGRAM_NAME] vo VALUE [WEB_PROGRAM_NAME] obsahuje nazov WEB PROGRAM.
+   !!! D. OPTION [--identities IDENTITY_ID] vo VALUE [IDENTITY_ID] obsahuje IDENTITY ID. IDENTITY ID je ROZNA VALUE od IDENTITY PRINCIPAL ID. VALUE [system] znamena, ze sa bude odstranovat SYSTEM IDENTITY danej WEB APPLICATION.
+9. COMMAND [az webapp identity show --resource-group RESOURCE_GROUP_NAME --name WEB_PROGRAM_NAME --ids IDENTITIES].
+   A. COMMAND zobrazuje IDENTITY pridelenu APP SERVICE WEB PROGRAM.
+   B. OPTION [--resource-group RESOURCE_GROUP_NAME] vo VALUE [RESOURCE_GROUP_NAME] urcuje RESOURCE GROUP NAME.
+   C. OPTION [--name WEB_PROGRAM_NAME] vo VALUE [WEB_PROGRAM_NAME] obsahuje nazov WEB PROGRAM.
+   !!!!! D. OPTION [--ids IDENTITIES] vo VALUE [IDENTITIES] obsahuje IDENTITY IDs, ktorych PROPERTIES sa maju zobrazit. Ak VALUE nie je definovana, zobrazia sa PROPERTIES SYSTEM IDENTITY priradenej danej WEB APPLICATION.
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+AZURE CLI COMMANDS - WEB APP VPN INTEGRATIONS.
+
+1. COMMAND [az webapp vnet-integration add --name WEB_PROGRAM_NAME --resource-group RESOURCE_GROUP_NAME --vnet NETWORK_NAME --subnet SUBNET_NAME].
+   A. COMMAND vytvara nova WEB APPLICATION INTEGRATION s AZURE VNET.
+   B. OPTION [--name WEB_PROGRAM_NAME] vo VALUE [WEB_PROGRAM_NAME] obsahuje nazov WEB PROGRAM.
+   C. OPTION [--resource-group RESOURCE_GROUP_NAME] vo VALUE [RESOURCE_GROUP_NAME] urcuje RESOURCE GROUP NAME.
+   D. OPTION [--vnet NETWORK_NAME] vo VALUE [NETWORK_NAME] obsahuje nazov NETWORK.
+   E. OPTION [--subnet SUBNET_NAME] vo VALUE [SUBNET_NAME] obsahuje nazov SUBNET.
+2. COMMAND [az webapp vnet-integration remove --name WEB_PROGRAM_NAME --resource-group RESOURCE_GROUP_NAME].
+   A. COMMAND odstranuje existujuca WEB APPLICATION INTEGRATION s AZURE VNET.
+   B. OPTION [--name WEB_PROGRAM_NAME] vo VALUE [WEB_PROGRAM_NAME] obsahuje nazov WEB PROGRAM.
+   C. OPTION [--resource-group RESOURCE_GROUP_NAME] vo VALUE [RESOURCE_GROUP_NAME] urcuje RESOURCE GROUP NAME.
+3. COMMAND [az webapp vnet-integration list --name WEB_PROGRAM_NAME --resource-group RESOURCE_GROUP_NAME].
+   A. COMMAND vracia zoznam vsetkych WEB APPLICATION INTEGRATIONS s AZURE VNET.
+   B. OPTION [--name WEB_PROGRAM_NAME] vo VALUE [WEB_PROGRAM_NAME] obsahuje nazov WEB PROGRAM.
+   C. OPTION [--resource-group RESOURCE_GROUP_NAME] vo VALUE [RESOURCE_GROUP_NAME] urcuje RESOURCE GROUP NAME.
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+AZURE CLI COMMANDS - AZURE VNET NETWORKS.
+
+1. COMMAND [az network vnet create --name NETWORK_NAME --resource-group RESOURCE_GROUP_NAME --address-prefix ADDRESS_PREFIX].
+   A. COMMAND vytvara novu NETWORK v AZURE VNET.
+   B. OPTION [--name NETWORK_NAME] vo VALUE [NETWORK_NAME] obsahuje nazov NETWORK.
+   C. OPTION [--resource-group RESOURCE_GROUP_NAME] vo VALUE [RESOURCE_GROUP_NAME] urcuje RESOURCE GROUP NAME.
+   D. OPTION [--address-prefix ADDRESS_PREFIX] vo VALUE [ADDRESS_PREFIX] obsahuje ADDRESS PREFIX. Prikladom je VALUE [10.0.0.0/16].
+2. COMMAND [az network vnet delete --name NETWORK_NAME --resource-group RESOURCE_GROUP_NAME].
+   A. COMMAND odstranuje existujucu NETWORK z AZURE VNET.
+   B. OPTION [--name NETWORK_NAME] vo VALUE [NETWORK_NAME] obsahuje nazov NETWORK.
+   C. OPTION [--resource-group RESOURCE_GROUP_NAME] vo VALUE [RESOURCE_GROUP_NAME] urcuje RESOURCE GROUP NAME.
+3. COMMAND [az network vnet list --resource-group RESOURCE_GROUP_NAME].
+   A. COMMAND vracia zoznam vsetkych NETWORKS v AZURE VNET.
+   B. OPTION [--resource-group RESOURCE_GROUP_NAME] vo VALUE [RESOURCE_GROUP_NAME] urcuje RESOURCE GROUP NAME.
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+AZURE CLI COMMANDS - AZURE VNET SUBNETS.
+
+1. COMMAND [az network vnet subnet create --name SUBNET_NAME --vnet-name NETWORK_NAME --resource-group RESOURCE_GROUP_NAME --address-prefixes SUBNET_ADDRESS_PREFIX].
+   A. COMMAND vytvara novu SUBNET v AZURE VNET NETWORK.
+   B. OPTION [--name SUBNET_NAME] vo VALUE [SUBNET_NAME] obsahuje nazov SUBNET.
+   C. OPTION [--vnet-name NETWORK_NAME] vo VALUE [NETWORK_NAME] obsahuje nazov NETWORK.
+   D. OPTION [--resource-group RESOURCE_GROUP_NAME] vo VALUE [RESOURCE_GROUP_NAME] urcuje RESOURCE GROUP NAME.
+   E. OPTION [--address-prefix SUBNET_ADDRESS_PREFIX] vo VALUE [SUBNET_ADDRESS_PREFIX] obsahuje SUBNET ADDRESS PREFIX. Prikladom je VALUE [10.0.1.0/24].
+2. COMMAND [az network vnet subnet delete --name SUBNET_NAME --vnet-name NETWORK_NAME --resource-group RESOURCE_GROUP_NAME].
+   A. COMMAND odstranuje existujucu SUBNET z AZURE VNET NETWORK.
+   B. OPTION [--name SUBNET_NAME] vo VALUE [SUBNET_NAME] obsahuje nazov SUBNET.
+   C. OPTION [--vnet-name NETWORK_NAME] vo VALUE [NETWORK_NAME] obsahuje nazov NETWORK.
+   D. OPTION [--resource-group RESOURCE_GROUP_NAME] vo VALUE [RESOURCE_GROUP_NAME] urcuje RESOURCE GROUP NAME.
+3. COMMAND [az network vnet subnet list --vnet-name NETWORK_NAME --resource-group RESOURCE_GROUP_NAME].
+   A. COMMAND vracia zoznam vsetkych SUBNETS v AZURE VNET NETWORK.
+   B. OPTION [--vnet-name NETWORK_NAME] vo VALUE [NETWORK_NAME] obsahuje nazov NETWORK.
+   C. OPTION [--resource-group RESOURCE_GROUP_NAME] vo VALUE [RESOURCE_GROUP_NAME] urcuje RESOURCE GROUP NAME.
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+AZURE CLI COMMANDS - AZURE PRIVATE NETWORK ENDPOINTS.
+
+1. COMMAND [az network private-endpoint create --name ENDPOINT_NAME --resource-group RESOURCE_GROUP_NAME --vnet-name NETWORK_NAME --subnet SUBNET_NAME --private-connection-resource-id RESOURCE_ID --group-ids RESOURCE_GROUP_ID --connection-name CONNECTION_NAME].
+   A. COMMAND vytvara novy AZURE PRIVATE NETWORK ENDPOINT.
+   B. OPTION [--name ENDPOINT_NAME] vo VALUE [ENDPOINT_NAME] obsahuje nazov AZURE PRIVATE NETWORK ENDPOINT.
+   C. OPTION [--resource-group RESOURCE_GROUP_NAME] vo VALUE [RESOURCE_GROUP_NAME] urcuje RESOURCE GROUP NAME.
+   D. OPTION [--vnet-name NETWORK_NAME] vo VALUE [NETWORK_NAME] obsahuje nazov NETWORK.
+   E. OPTION [--subnet SUBNET_NAME] vo VALUE [SUBNET_NAME] obsahuje nazov SUBNET.
+   F. OPTION [--private-connection-resource-id RESOURCE_ID] vo VALUE [RESOURCE_ID] obsahuje RESOURCE ID toho RESOURCE, ktoremu ma byt AZURE PRIVATE NETWORK ENDPOINT prideleny.
+   !!! G. OPTION [--group-ids RESOURCE_GROUP_ID] vo VALUE [RESOURCE_GROUP_ID] obsahuje RESOURCE GROUP ID toho RESOURCE, ktoremu ma byt AZURE PRIVATE NETWORK ENDPOINT prideleny. VALUE sa da ziskat volanim COMMAND [az network private-link-resource list].
+   H. OPTION [--connection-name CONNECTION_NAME] vo VALUE [CONNECTION_NAME] obsahuje CONNECTION NAME AZURE PRIVATE NETWORK ENDPOINT.
+2. COMMAND [az network private-endpoint delete --name ENDPOINT_NAME --resource-group RESOURCE_GROUP_NAME].
+   A. COMMAND odstranuje existujuci AZURE PRIVATE NETWORK ENDPOINT.
+   B. OPTION [--name ENDPOINT_NAME] vo VALUE [ENDPOINT_NAME] obsahuje nazov AZURE PRIVATE NETWORK ENDPOINT.
+   C. OPTION [--resource-group RESOURCE_GROUP_NAME] vo VALUE [RESOURCE_GROUP_NAME] urcuje RESOURCE GROUP NAME.
+3. COMMAND [az network private-endpoint list --resource-group RESOURCE_GROUP_NAME].
+   A. COMMAND vracia zoznam vsetkych AZURE PRIVATE NETWORK ENDPOINTS.
+   C. OPTION [--resource-group RESOURCE_GROUP_NAME] vo VALUE [RESOURCE_GROUP_NAME] urcuje RESOURCE GROUP NAME.
+4. COMMAND [az network private-link-resource list --id RESOURCE_ID].
+   A. COMMAND vracia zoznam PRIVATE LINK RESOURCES.
+   B. OPTION [--id RESOURCE_ID] vo VALUE [RESOURCE_ID] obsahuje RESOURCE ID pre ktory ma byt vrateny zoznam PRIVATE LINK RESOURCES.
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+AZURE CLI COMMANDS - AZURE PRIVATE DNS ZONES.
+
+1. COMMAND [az network private-dns zone create --name DNS_ZONE_NAME --resource-group RESOURCE_GROUP_NAME].
+   A. COMMAND vytvara novu AZURE PRIVATE DNS ZONE.
+   !!! B. OPTION [--name DNS_ZONE_NAME] vo VALUE [DNS_ZONE_NAME] obsahuje nazov DNS ZONE. Prikladom je VALUE [myprivatelink.database.windows.net].
+   C. OPTION [--resource-group RESOURCE_GROUP_NAME] vo VALUE [RESOURCE_GROUP_NAME] urcuje RESOURCE GROUP NAME.
+2. COMMAND [az network private-dns zone delete --name DNS_ZONE_NAME --resource-group RESOURCE_GROUP_NAME].
+   A. COMMAND odstranuje existujucu AZURE PRIVATE DNS ZONE.
+   !!! B. OPTION [--name DNS_ZONE_NAME] vo VALUE [DNS_ZONE_NAME] obsahuje nazov DNS ZONE. Prikladom je VALUE [myprivatelink.database.windows.net].
+   C. OPTION [--resource-group RESOURCE_GROUP_NAME] vo VALUE [RESOURCE_GROUP_NAME] urcuje RESOURCE GROUP NAME.
+3. COMMAND [az network private-dns zone list --resource-group RESOURCE_GROUP_NAME].
+   A. COMMAND vracia zoznam vsetkych AZURE PRIVATE DNS ZONES.
+   B. OPTION [--resource-group RESOURCE_GROUP_NAME] vo VALUE [RESOURCE_GROUP_NAME] urcuje RESOURCE GROUP NAME.
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+AZURE CLI COMMANDS - AZURE PRIVATE DNS ZONE LINKS.
+
+1. COMMAND [az network private-dns link vnet create --name DNS_ZONE_LINK_NAME --resource-group RESOURCE_GROUP_NAME --virtual-network NETWORK_NAME --zone-name DNS_ZONE_NAME --registration-enabled REGISTRATION_ENABLED].
+   A. COMMAND vytvara novy AZURE PRIVATE DNS ZONE LINK.
+   B. OPTION [--name DNS_ZONE_LINK_NAME] vo VALUE [DNS_ZONE_LINK_NAME] obsahuje nazov DNS ZONE LINK.
+   C. OPTION [--resource-group RESOURCE_GROUP_NAME] vo VALUE [RESOURCE_GROUP_NAME] urcuje RESOURCE GROUP NAME.
+   D. OPTION [--virtual-network NETWORK_NAME] vo VALUE [NETWORK_NAME] obsahuje nazov NETWORK.
+   !!! E. OPTION [--zone-name DNS_ZONE_NAME] vo VALUE [DNS_ZONE_NAME] obsahuje nazov DNS ZONE. Prikladom je VALUE [myprivatelink.database.windows.net].
+   F. OPTION [--registration-enabled REGISTRATION_ENABLED] vo VALUE [REGISTRATION_ENABLED] urcuje ci AZURE PRIVATE DNS ZONE LINK je REGISTRATION ENABLED.
+2. COMMAND [az network private-dns link vnet delete --name DNS_ZONE_LINK_NAME --resource-group RESOURCE_GROUP_NAME --zone-name DNS_ZONE_NAME].
+   A. COMMAND odstranuje existujuci AZURE PRIVATE DNS ZONE LINK.
+   B. OPTION [--name DNS_ZONE_LINK_NAME] vo VALUE [DNS_ZONE_LINK_NAME] obsahuje nazov DNS ZONE LINK.
+   C. OPTION [--resource-group RESOURCE_GROUP_NAME] vo VALUE [RESOURCE_GROUP_NAME] urcuje RESOURCE GROUP NAME.
+   !!! D. OPTION [--zone-name DNS_ZONE_NAME] vo VALUE [DNS_ZONE_NAME] obsahuje nazov DNS ZONE. Prikladom je VALUE [myprivatelink.database.windows.net].
+3. COMMAND [az network private-dns link vnet list --resource-group RESOURCE_GROUP_NAME --zone-name DNS_ZONE_NAME].
+   A. COMMAND vracia zoznam vsetkych AZURE PRIVATE DNS ZONE LINKS.
+   B. OPTION [--resource-group RESOURCE_GROUP_NAME] vo VALUE [RESOURCE_GROUP_NAME] urcuje RESOURCE GROUP NAME.
+   !!! C. OPTION [--zone-name DNS_ZONE_NAME] vo VALUE [DNS_ZONE_NAME] obsahuje nazov DNS ZONE. Prikladom je VALUE [myprivatelink.database.windows.net].
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+AZURE CLI COMMANDS - AZURE PRIVATE DNS ZONE GROUPS.
+
+1. COMMAND [az network private-endpoint dns-zone-group create --name DNS_ZONE_GROUP_NAME --endpoint-name ENDPOINT_NAME --private-dns-zone PRIVATE_DNS_ZONE_NAME --resource-group RESOURCE_GROUP_NAME --zone-name DNS_ZONE_NAME].
+   A. COMMAND vytvara novy AZURE PRIVATE DNS ZONE GROUP.
+   B. OPTION [--name DNS_ZONE_GROUP_NAME] vo VALUE [DNS_ZONE_GROUP_NAME] obsahuje nazov DNS ZONE LINK GROUP.
+   C. OPTION [--endpoint-name ENDPOINT_NAME] vo VALUE [ENDPOINT_NAME] obsahuje nazov AZURE PRIVATE NETWORK ENDPOINT.
+   !!! D. OPTION [--private-dns-zone PRIVATE_DNS_ZONE_NAME] vo VALUE [PRIVATE_DNS_ZONE_NAME] obsahuje nazov PRIVATE DNS ZONE. Prikladom je VALUE [myprivatelink.database.windows.net].
+   E. OPTION [--resource-group RESOURCE_GROUP_NAME] vo VALUE [RESOURCE_GROUP_NAME] urcuje RESOURCE GROUP NAME.
+   !!! F. OPTION [--zone-name DNS_ZONE_NAME] vo VALUE [DNS_ZONE_NAME] obsahuje nazov PRIVATE DNS ZONE. Prikladom je VALUE [MyPrivateZone].
+2. COMMAND [az network private-endpoint dns-zone-group delete --name DNS_ZONE_GROUP_NAME --endpoint-name ENDPOINT_NAME --resource-group RESOURCE_GROUP_NAME].
+   A. COMMAND odstranuje existujuci AZURE PRIVATE DNS ZONE GROUP.
+   B. OPTION [--name DNS_ZONE_GROUP_NAME] vo VALUE [DNS_ZONE_GROUP_NAME] obsahuje nazov DNS ZONE LINK GROUP.
+   C. OPTION [--endpoint-name ENDPOINT_NAME] vo VALUE [ENDPOINT_NAME] obsahuje nazov AZURE PRIVATE NETWORK ENDPOINT.
+   D. OPTION [--resource-group RESOURCE_GROUP_NAME] vo VALUE [RESOURCE_GROUP_NAME] urcuje RESOURCE GROUP NAME.
+3. COMMAND [az network private-endpoint dns-zone-group list --endpoint-name ENDPOINT_NAME --resource-group RESOURCE_GROUP_NAME].
+   A. COMMAND vracia zoznam vsetkych AZURE PRIVATE DNS ZONE GROUPS.
+   B. OPTION [--endpoint-name ENDPOINT_NAME] vo VALUE [ENDPOINT_NAME] obsahuje nazov AZURE PRIVATE NETWORK ENDPOINT.
+   C. OPTION [--resource-group RESOURCE_GROUP_NAME] vo VALUE [RESOURCE_GROUP_NAME] urcuje RESOURCE GROUP NAME.
+//----------------------------------------------------------------------------------------------------------------------

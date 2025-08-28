@@ -1,0 +1,1 @@
+az sql db create --name MyDatabase --server ta76dbserver --resource-group Chapter07 --compute-model Provisioned --edition Basic

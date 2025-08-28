@@ -1,0 +1,4 @@
+REM !!!!! VALUE ["/subscriptions/b5f70a84-6ba2-4485-84cd-ac0883d618c5/resourceGroups/Chapter07/providers/Microsoft.Sql/servers/ta76dbserver"] sa ziska volanim COMMAND [az sql server list --resource-group Chapter07] z PROPERTY [id].
+REM !!!!! VALUE [sqlServer] vracia COMMAND [az network private-link-resource list --id "/subscriptions/b5f70a84-6ba2-4485-84cd-ac0883d618c5/resourceGroups/Chapter07/providers/Microsoft.Sql/servers/ta76dbserver"] v PROPERTY [properties.groupId].
+
+az network private-endpoint create --name MyPrivateEndpoint --resource-group Chapter07 --vnet-name MyNetwork --subnet MySubnetDatabase --private-connection-resource-id "/subscriptions/b5f70a84-6ba2-4485-84cd-ac0883d618c5/resourceGroups/Chapter07/providers/Microsoft.Sql/servers/ta76dbserver" --group-ids sqlServer --connection-name MyConnection

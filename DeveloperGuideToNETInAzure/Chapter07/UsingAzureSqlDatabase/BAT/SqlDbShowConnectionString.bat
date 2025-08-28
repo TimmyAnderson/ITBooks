@@ -1,0 +1,1 @@
+az sql db show-connection-string --server ta76dbserver --name MyDatabase --client "ado.net" --auth-type "ADIntegrated"

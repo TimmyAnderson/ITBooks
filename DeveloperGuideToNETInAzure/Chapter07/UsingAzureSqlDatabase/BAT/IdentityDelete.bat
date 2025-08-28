@@ -1,0 +1,1 @@
+az identity delete --name MyIdentity --resource-group Chapter07

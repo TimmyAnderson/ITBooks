@@ -1,0 +1,1 @@
+az sql server firewall-rule delete --name rulemyip --resource-group Chapter07 --server ta76dbserver

@@ -1,0 +1,4 @@
+REM !!!!! [/subscriptions/b5f70a84-6ba2-4485-84cd-ac0883d618c5/resourceGroups/Chapter07/providers/Microsoft.Network/virtualNetworks/MyNetwork] je NETWORK ID, ktora sa da ziskat volanim COMMAND [az network vnet list --resource-group Chapter07] z PROPERTY [id].
+REM !!!!! [/subscriptions/b5f70a84-6ba2-4485-84cd-ac0883d618c5/resourceGroups/Chapter07/providers/Microsoft.Network/virtualNetworks/MyNetwork/subnets/MySubnetApplication] je SUBNET ID, ktora sa da ziskat volanim COMMAND [az network vnet subnet list --vnet-name MyNetwork --resource-group Chapter07] z PROPERTY [id].
+
+az webapp vnet-integration add --name MyWebProgram --resource-group Chapter07 --vnet "/subscriptions/b5f70a84-6ba2-4485-84cd-ac0883d618c5/resourceGroups/Chapter07/providers/Microsoft.Network/virtualNetworks/MyNetwork" --subnet "/subscriptions/b5f70a84-6ba2-4485-84cd-ac0883d618c5/resourceGroups/Chapter07/providers/Microsoft.Network/virtualNetworks/MyNetwork/subnets/MySubnetApplication"

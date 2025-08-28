@@ -1,0 +1,1 @@
+az webapp identity remove --name MyWebProgram --resource-group Chapter07 --identities [system]

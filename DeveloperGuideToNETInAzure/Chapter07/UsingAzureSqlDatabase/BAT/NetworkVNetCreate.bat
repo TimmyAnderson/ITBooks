@@ -1,0 +1,1 @@
+az network vnet create --name MyNetwork --resource-group Chapter07 --address-prefix 10.0.0.0/16

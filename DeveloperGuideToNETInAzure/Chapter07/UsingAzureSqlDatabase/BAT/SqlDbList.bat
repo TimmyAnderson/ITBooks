@@ -1,0 +1,1 @@
+az sql db list --server ta76dbserver --resource-group Chapter07

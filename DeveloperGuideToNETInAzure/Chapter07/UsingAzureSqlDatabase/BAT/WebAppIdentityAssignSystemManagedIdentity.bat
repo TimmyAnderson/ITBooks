@@ -1,0 +1,1 @@
+az webapp identity assign --name MyWebProgram --resource-group Chapter07 --identities [system]

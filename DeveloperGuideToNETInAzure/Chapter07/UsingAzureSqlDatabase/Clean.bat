@@ -4,6 +4,9 @@ rmdir /S /Q Client\obj
 rmdir /S /Q MySharedLibrary\bin
 rmdir /S /Q MySharedLibrary\obj
 
-del /Q ExploringAzureBlobStorage.slnLaunch.user
+rmdir /S /Q UsingAzureSqlDatabase\bin
+rmdir /S /Q UsingAzureSqlDatabase\obj
+
+del /Q UsingAzureSqlDatabase.slnLaunch.user
 
 rmdir /S /Q .vs

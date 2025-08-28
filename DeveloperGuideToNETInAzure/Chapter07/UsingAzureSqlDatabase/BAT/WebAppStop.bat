@@ -1,0 +1,1 @@
+az webapp stop --name MyWebProgram --resource-group Chapter07

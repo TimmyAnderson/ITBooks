@@ -1,0 +1,1 @@
+az deployment group list --resource-group Chapter07

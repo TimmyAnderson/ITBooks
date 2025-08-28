@@ -1,0 +1,1 @@
+az network vnet subnet create --name MySubnetDatabase --vnet-name MyNetwork --resource-group Chapter07 --address-prefixes 10.0.1.0/24

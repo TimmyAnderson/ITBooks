@@ -1,0 +1,3 @@
+REM !!!!! VALUE ["/subscriptions/b5f70a84-6ba2-4485-84cd-ac0883d618c5/resourcegroups/Chapter07/providers/Microsoft.ManagedIdentity/userAssignedIdentities/MyIdentity"] sa ziskava z PROPERTY [id], ktoru vracia COMMAND [az identity list --resource-group Chapter07].
+
+az webapp identity assign --name MyWebProgram --resource-group Chapter07 --identities "/subscriptions/b5f70a84-6ba2-4485-84cd-ac0883d618c5/resourcegroups/Chapter07/providers/Microsoft.ManagedIdentity/userAssignedIdentities/MyIdentity"

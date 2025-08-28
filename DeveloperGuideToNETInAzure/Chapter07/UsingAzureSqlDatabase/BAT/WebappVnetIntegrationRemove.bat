@@ -1,0 +1,1 @@
+az webapp vnet-integration remove --name MyWebProgram --resource-group Chapter07

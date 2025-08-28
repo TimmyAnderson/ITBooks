@@ -1,0 +1,1 @@
+az network private-dns zone list --resource-group Chapter07

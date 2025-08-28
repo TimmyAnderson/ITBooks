@@ -1,0 +1,1 @@
+az network private-dns zone create --name "myprivatelink.database.windows.net" --resource-group Chapter07

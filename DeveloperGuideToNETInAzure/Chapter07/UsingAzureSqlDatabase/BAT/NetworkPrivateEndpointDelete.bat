@@ -1,0 +1,1 @@
+az network private-endpoint delete --name MyPrivateEndpoint --resource-group Chapter07

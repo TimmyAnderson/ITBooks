@@ -1,0 +1,3 @@
+REM !!!!! VALUE [6c134deb-a2b8-457a-9e5a-fd9f6a912c86] je PRINCIPAL ID SYSTEM ASSINGNED MANAGED IDENTITY, ktora bola pridelena WEB APPLICATION. VALUE sa ziskava z COMMAND [az webapp identity show --name MyWebProgram --resource-group Chapter07] z PROPERTY [principalId].
+
+az sql server ad-admin create --resource-group Chapter07 --server ta76dbserver --object-id "6c134deb-a2b8-457a-9e5a-fd9f6a912c86" --display-name "My System Managed Identity"

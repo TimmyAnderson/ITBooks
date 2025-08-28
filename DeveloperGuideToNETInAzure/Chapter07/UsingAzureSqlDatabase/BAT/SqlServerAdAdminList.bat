@@ -1,0 +1,1 @@
+az sql server ad-admin list --resource-group Chapter07 --server ta76dbserver

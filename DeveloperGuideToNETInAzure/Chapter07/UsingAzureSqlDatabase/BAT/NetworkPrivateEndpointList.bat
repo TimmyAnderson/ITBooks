@@ -1,0 +1,1 @@
+az network private-endpoint list --resource-group Chapter07

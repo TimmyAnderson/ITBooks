@@ -1,0 +1,1 @@
+az sql server ad-only-auth get --resource-group Chapter07 --name ta76dbserver

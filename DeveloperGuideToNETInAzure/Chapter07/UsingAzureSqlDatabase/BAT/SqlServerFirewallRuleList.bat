@@ -1,0 +1,1 @@
+az sql server firewall-rule list --resource-group Chapter07 --server ta76dbserver

@@ -1,0 +1,1 @@
+az deployment group create --name MyDeploymentSqlServer --resource-group Chapter07 --template-file "SqlServerTemplate.json" --parameters "@SqlServerParameters.json"

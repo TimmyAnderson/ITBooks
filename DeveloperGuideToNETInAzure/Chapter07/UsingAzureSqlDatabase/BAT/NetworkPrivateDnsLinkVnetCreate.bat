@@ -1,0 +1,1 @@
+az network private-dns link vnet create --name MyDnsZoneLink --resource-group Chapter07 --virtual-network MyNetwork --zone-name "myprivatelink.database.windows.net" --registration-enabled false

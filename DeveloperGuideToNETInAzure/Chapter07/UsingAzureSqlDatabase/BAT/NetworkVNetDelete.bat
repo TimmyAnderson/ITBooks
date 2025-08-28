@@ -1,0 +1,1 @@
+az network vnet delete --name MyNetwork --resource-group Chapter07

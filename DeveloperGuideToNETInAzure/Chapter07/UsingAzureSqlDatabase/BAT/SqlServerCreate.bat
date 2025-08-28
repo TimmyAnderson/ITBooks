@@ -1,0 +1,1 @@
+az sql server create --name ta76dbserver --resource-group Chapter07 --location centralus --admin-user mydbadmin --admin-password "Qaxwsx123+."
