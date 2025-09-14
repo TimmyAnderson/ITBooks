@@ -1,0 +1,1 @@
+az cosmosdb list --resource-group Chapter08

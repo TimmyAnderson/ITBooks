@@ -1,0 +1,1 @@
+az cosmosdb sql role definition list --account-name mycosmosaccountta --resource-group Chapter08

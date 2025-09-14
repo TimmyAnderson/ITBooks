@@ -1,0 +1,1 @@
+az cosmosdb sql role assignment list --account-name mycosmosaccountta --resource-group Chapter08

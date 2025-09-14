@@ -1,0 +1,1 @@
+az cosmosdb sql container delete --name differenttypes --account-name mycosmosaccountta --resource-group Chapter08 --database-name "mydb"

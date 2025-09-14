@@ -1,0 +1,1 @@
+az cosmosdb sql database list --account-name mycosmosaccountta --resource-group Chapter08

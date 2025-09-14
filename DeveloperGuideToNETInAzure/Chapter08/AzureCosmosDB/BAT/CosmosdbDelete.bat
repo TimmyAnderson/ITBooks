@@ -1,0 +1,1 @@
+az cosmosdb delete --name mycosmosaccountta --resource-group Chapter08

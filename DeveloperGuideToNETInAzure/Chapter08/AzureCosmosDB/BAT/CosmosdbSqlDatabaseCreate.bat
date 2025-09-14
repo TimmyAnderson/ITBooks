@@ -1,0 +1,1 @@
+az cosmosdb sql database create --name mydb --account-name mycosmosaccountta --resource-group Chapter08

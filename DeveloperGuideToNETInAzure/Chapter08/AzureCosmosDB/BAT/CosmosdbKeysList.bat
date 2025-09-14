@@ -1,0 +1,1 @@
+az cosmosdb keys list --name mycosmosaccountta --resource-group Chapter08 --type connection-strings

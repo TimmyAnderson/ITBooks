@@ -1,0 +1,1 @@
+az cosmosdb show --name mycosmosaccountta --resource-group Chapter08

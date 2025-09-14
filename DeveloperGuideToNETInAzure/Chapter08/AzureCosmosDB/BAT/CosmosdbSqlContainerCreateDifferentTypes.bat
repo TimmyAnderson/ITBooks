@@ -1,0 +1,1 @@
+az cosmosdb sql container create --name differenttypes --account-name mycosmosaccountta --resource-group Chapter08 --database-name "mydb" --partition-key-path "/userID"

@@ -1,0 +1,1 @@
+az cosmosdb create --name mycosmosaccountta --resource-group Chapter08 --default-consistency-level "Session" --kind GlobalDocumentDB --locations regionName=centralus failoverPriority=0 isZoneRedundant=false --enable-free-tier true
