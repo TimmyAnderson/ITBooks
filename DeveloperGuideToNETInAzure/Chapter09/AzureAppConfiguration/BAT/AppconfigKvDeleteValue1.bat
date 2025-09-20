@@ -1,0 +1,1 @@
+az appconfig kv delete --name MyConfigurationTA76 --key "value1"

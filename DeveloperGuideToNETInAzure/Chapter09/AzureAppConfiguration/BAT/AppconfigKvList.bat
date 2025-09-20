@@ -1,0 +1,1 @@
+az appconfig kv list --name MyConfigurationTA76

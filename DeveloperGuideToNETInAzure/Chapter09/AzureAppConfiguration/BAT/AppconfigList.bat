@@ -1,0 +1,1 @@
+az appconfig list --resource-group Chapter09

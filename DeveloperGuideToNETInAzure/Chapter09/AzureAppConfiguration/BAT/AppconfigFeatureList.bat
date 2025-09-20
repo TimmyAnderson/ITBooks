@@ -1,0 +1,1 @@
+az appconfig feature list --name MyConfigurationTA76

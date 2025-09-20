@@ -1,0 +1,1 @@
+az appconfig feature set --name MyConfigurationTA76 --feature MyAzureFeature1

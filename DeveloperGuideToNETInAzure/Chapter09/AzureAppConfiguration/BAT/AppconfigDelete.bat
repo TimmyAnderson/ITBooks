@@ -1,0 +1,1 @@
+az appconfig delete --name MyConfigurationTA76 --resource-group Chapter09

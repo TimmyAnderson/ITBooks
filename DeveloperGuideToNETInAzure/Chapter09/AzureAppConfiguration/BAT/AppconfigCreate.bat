@@ -1,0 +1,1 @@
+az appconfig create --name MyConfigurationTA76 --resource-group Chapter09 --location centralus --sku free

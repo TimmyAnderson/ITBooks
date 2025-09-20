@@ -1,0 +1,1 @@
+az appconfig kv set --name MyConfigurationTA76 --key "value2" --value "111111"

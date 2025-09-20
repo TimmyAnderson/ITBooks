@@ -1,0 +1,1 @@
+az appconfig feature delete --name MyConfigurationTA76 --feature MyAzureFeature2

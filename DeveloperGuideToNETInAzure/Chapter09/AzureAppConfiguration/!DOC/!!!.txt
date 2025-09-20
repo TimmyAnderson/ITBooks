@@ -1,0 +1,128 @@
+//----------------------------------------------------------------------------------------------------------------------
+1. Solution demonstruje pouzitie AZURE APP CONFIGURATION.
+2. AZURE APP CONFIGURATION umoznuje centralizovanu spravu CONFIGURATIONS pre PROGRAMS. Pre AZURE APP CONFIGURATION platia nasledujuce fakty.
+   A. AZURE APP CONFIGURATION umoznuje centralizovanu spravu CONFIGURATIONS pre PROGRAMS beziace v AZURE aj nezavisle mimo AZURE.
+   B. AZURE APP CONFIGURATION mozu vyuzivat vsetky typy PROGRAMOV.
+   C. AZURE APP CONFIGURATION umoznuju BEZPECNE ukladat CONFIGURATION SETTINGS.
+   D. AZURE SDK definuje API pre nacitanie CONFIGURATION z AZURE APP CONFIGURATION pre .NET a ine LANGUAGES.
+   E. AZURE definuje aj REST API pre ziskanie CONFIGURATION z AZURE APP CONFIGURATION.
+3. S AZURE APP CONFIGURATION sa pracuje pomocou nasledujucich COMMANDS.
+   A. AZURE APP CONFIGURATION sa vytvara pomocou COMMAND [az appconfig create]. Prikladom je COMMAND [az appconfig create --name MyConfigurationTA76 --resource-group Chapter09 --location centralus --sku free].
+   B. AZURE APP CONFIGURATION sa odstranuje pomocou COMMAND [az appconfig delete]. Prikladom je COMMAND [az appconfig delete --name MyConfigurationTA76 --resource-group Chapter09].
+   C. Zoznam AZURE APP CONFIGURATIONS vracia COMMAND [az appconfig list]. Prikladom je COMMAND [az appconfig list --resource-group Chapter09].
+   D. CREDENTIALS k AZURE APP CONFIGURATION sa ziskavaju pomocou COMMAND [az appconfig credential list]. Prikladom je COMMAND [az appconfig credential list --name MyConfigurationTA76 --resource-group Chapter09].
+4. S AZURE APP CONFIGURATION KEY VALUES sa pracuje pomocou nasledujucich COMMANDS.
+   A. AZURE APP CONFIGURATION KEY VALUE sa vytvara pomocou COMMAND [az appconfig kv set]. Prikladom je COMMAND [az appconfig kv set --name MyConfigurationTA76 --key ProgramName --value "MyWebProgram"].
+   B. AZURE APP CONFIGURATION KEY VALUE sa odstranuje pomocou COMMAND [az appconfig kv delete]. Prikladom je COMMAND [az appconfig kv delete --name MyConfigurationTA76 --key ProgramName].
+   C. Zoznam AZURE APP CONFIGURATION KEY VALUES vracia COMMAND [az appconfig kv list]. Prikladom je COMMAND [az appconfig kv list --name MyConfigurationTA76].
+5. .NET LIBRARY pre pracu s AZURE APP CONFIGURATION pre ASP.NET CORE sa nachadza v PACKAGE [Microsoft.Azure.AppConfiguration.AspNetCore].
+6. ASP.NET CORE PROGRAM pracuje s AZURE APP CONFIGURATION nasledovnym sposobom.
+   A. Volanim METHOD [IConfigurationBuilder AddAzureAppConfiguration(this IConfigurationBuilder ConfigurationBuilder, string ConnectionString, bool Optional)] dojde k nacitaniu vsetkych KEY VALUES z AZURE APP CONFIGURATION.
+   B. Volanim METHOD [IServiceCollection AddAzureAppConfiguration(this IServiceCollection Services)] sa pridaju SERVICES potrebne pre pracu s AZURE APP CONFIGURATION.
+   !!! C. Volanim METHOD [IApplicationBuilder UseAzureAppConfiguration(this IApplicationBuilder Builder)] sa prida MIDDLEWARE, ktory kontroluje dynamicke zmeny KEY VALUES v AZURE APP CONFIGURATION a dynamicky ich z AZURE APP CONFIGURATION nacita.
+   D. Nasledne je mozne pouzit METHOD INTERFACE [IConfiguration] na nacitanie KEY VALUES, ktore boli nacitane z AZURE APP CONFIGURATION.
+7. AZURE APP CONFIGURATION umoznuje dynamicke nacitavanie CONFIGURATIONS pri ich zmene. To umoznuje vykonat zmenu CONFIGURATION bez nutnosti vykonat RESTART PROGRAMU. Dynamicke nacitavanie CONFIGURATIONS sa vykonava v nasledujucich krokoch.
+   A. V AZURE APP CONFIGURATION sa definuje SENTINEL KEY VALUE. SENTINEL KEY VALUE je KEY VALUE, ktora by mala byt modifikovana vzdy po zmene CONFIGURATION. To znamena, ze po zmene vsetkych pozadovanych KEY VALUES sa ako posledna zmeni VALUE SENTINEL KEY VALUE.
+   B. PROGRAM v pravidelnych intervaloch monitoruje zmenu SENTINEL KEY VALUE vykonavanim periodickych REQUESTS na AZURE APP CONFIGURATION.
+   C. V pripade, ze PROGRAM detekuje zmenu VALUE SENTINEL KEY VALUE, opatove nacita vsetky KEY VALUES z AZURE APP CONFIGURATION a PROGRAM ma aktualizovane CONFIGURATIONS.
+8. Dynamicke nacitavanie CONFIGURATIONS sa implementuje v nasledujucich krokoch.
+   A. Dynamicke nacitavanie CONFIGURATIONS sa konfiguruje pomocou METHOD [IConfigurationBuilder AddAzureAppConfiguration(this IConfigurationBuilder ConfigurationBuilder, Action<AzureAppConfigurationOptions> Action, bool Optional)].
+   B. Pomocou METHOD [AzureAppConfigurationOptions AzureAppConfigurationOptions.Connect(string ConnectionString)] sa vykonava pripojenie PROGRAMU na AZURE APP CONFIGURATION.
+   C. Pomocou METHOD [AzureAppConfigurationOptions AzureAppConfigurationOptions.Select(string KeyFilter, string LabelFilter, IEnumerable<string> TagFilters)] sa nastavuje, ktore KEY VALUES maju byt z AZURE APP CONFIGURATION nacitane.
+   D. Detaily dynamickeho nacitavania CONFIGURATIONS sa konfiguruju pomocou METHOD [AzureAppConfigurationOptions AzureAppConfigurationOptions.ConfigureRefresh(Action<AzureAppConfigurationRefreshOptions> Configure)].
+   E. Pomocou METHOD [AzureAppConfigurationRefreshOptions AzureAppConfigurationRefreshOptions.Register(string Key, bool RefreshAll)] sa konfiguruje nazov SENTINEL KEY VALUE.
+   !!! F. Pomocou METHOD [AzureAppConfigurationRefreshOptions AzureAppConfigurationRefreshOptions.SetRefreshInterval(TimeSpan RefreshInterval)] sa konfiguruje REFRESH INTERVAL, po akom case je VALUE SENTINEL KEY VALUE na detekciu zmeny CONFIGURATION neplatna a pri vykonani dalsie REQUEST sa opatovne nacita.
+   !!!!! G. Volanim METHOD [IApplicationBuilder UseAzureAppConfiguration(this IApplicationBuilder Builder)] sa prida MIDDLEWARE, ktore vykonava dynamicke citanie CONFIGURATIONS z AZURE APP CONFIGURATION. MIDDLEWARE kontroluje ci SENTINEL KEY VALUE nie je EXPIRED, a ak ano, nacita jeho VALUE z AZURE APP CONFIGURATION.
+9. FEATURE FLAGS je PATTERN umoznujuci zmenou CONFIGURATION povolovat jednotlive casti PROGRAMU. Pre FEATURE FLAGS platia nasledujuce fakty.
+   A. FEATURE FLAGS su CUSTOM CONFIGURATION SETTINGS, ktore umoznuju povolit, alebo zakazat casti funkcionality daneho PROGRAMU.
+   B. MICROSOFT definoval LIBRARY na pracu s FEATURE FLAGS v PACKAGE [Microsoft.FeatureManagement.AspNetCore].
+   C. FEATURE FLAGS su definovane vo FILE [appsettings.json], ako KEY VALUES v CONFIGIRATION SECTION [FeatureManagement].
+   !!! D. FEATURE FLAGS mozu byt citane aj z AZURE APP CONFIGURATION.
+   E. SERVICES implementujuce FEATURE FLAGS sa do ASP.NET CORE PROGRAM pridavaju volanim METHOD [IFeatureManagementBuilder AddFeatureManagement(this IServiceCollection Services)].
+   F. S FEATURE FLAGS sa pracuje pomocou INTERFACE [IFeatureManager].
+10. INTERFACE [IFeatureManager] umoznuje pracu s FEATURE FLAGS. INTERFACE ma nasledujuce MEMBERS.
+   A. METHOD [IAsyncEnumerable<string> GetFeatureNamesAsync()] vracia ITERATOR umoznujuci iteraciu cez FEATURE FLAGS.
+   B. METHOD [Task<bool> IsEnabledAsync(string Feature)] vracia informaciu ci FEATURE FLAG s danym NAME je povoleny, alebo nie.
+   C. METHOD [Task<bool> IsEnabledAsync<TContext>(string Feature, TContext Context)] vracia informaciu ci FEATURE FLAG s danym NAME je povoleny, alebo nie.
+11. FEATURE FLAGS je mozne aplikovat aj deklarativne nasledujucim sposobom.
+   A. Na CONTROLLER, alebo ACTION METHOD sa aplikuje ATTRIBUTE [FeatureGate], ktory obsahuje nazov FEATURE FLAG, ktory sa ma kontrolovat.
+   B. V pripade, ze FEATURE FLAG je nastaveny na VALUE [false], pri pokuse o dotaz na dany CONTROLLER, alebo ACTION METHOD ASP.NET CORE hodi HTTP RESPONSE CODE [404].
+12. FEATURE FLAGS je mozne aplikovat aj na MIDDLEWARE COMPONENTS nasledujucimi sposobmi.
+   A. Pomocou METHOD [IApplicationBuilder UseMiddlewareForFeature<TComponent>(this IApplicationBuilder App, string FeatureName)], ktora aplikuje MIDDLEWARE COMPONENT, ak je nastaveny FEATURE FLAG.
+   B. Pomocou METHOD [IApplicationBuilder UseForFeature(this IApplicationBuilder App, string FeatureName, Action<IApplicationBuilder> Configuration)], ktora v pripade, ze je FEATURE FLAG nastaveny, vytvori novu PIPELINE BRANCH, ktora po skonceni sa vrati do MAIN PIPELINE.
+13. FEATURE FLAGS je mozne aplikovat vo VIEWS nasledujucim sposobom.
+   A. Do FILE [_ViewImports.cshtml] sa prida FEATURE TAG HELPERS pomocou CODE [@addTagHelper *, Microsoft.FeatureManagement.AspNetCore].
+   B. Vo VIEWS sa pouzije TAG HELPER [feature]. HTML CONTENT, ktory sa nachadza v ramci TAG HELPER [feature] sa zobrazi iba ak je povoleny dany FEATURE FLAG.
+14. FEATURE FLAGS je mozne nacitat aj z AZURE APP CONFIGURATION. Nacianie FEATURE FLAGS z AZURE APP CONFIGURATION sa vykonava nasledovne.
+   A. V AZURE APP CONFIGURATION sa vytvori FEATURE FLAG pomocou COMMAND [az appconfig feature set].
+   B. Zavola sa METHOD [AzureAppConfigurationOptions UseFeatureFlags(Action<FeatureFlagOptions> Configure)], ktora povoli nacitavanie FEATURE FLAGS z AZURE APP CONFIGURATION.
+15. S FEATURE FLAGS sa v AZURE APP CONFIGURATION pracuje pomocou nasledujucich COMMANDS.
+   A. FEATURE FLAG sa vytvara pomocou COMMAND [az appconfig feature set]. Prikladom je COMMAND [az appconfig feature set --name MyConfigurationTA76 --feature MyAzureFeature1].
+   B. FEATURE FLAG sa odstranuje pomocou COMMAND [az appconfig feature delete]. Prikladom je COMMAND [az appconfig feature delete --name MyConfigurationTA76 --feature MyAzureFeature1].
+   C. FEATURE FLAG sa povoluje pomocou COMMAND [az appconfig feature enable]. Prikladom je COMMAND [az appconfig feature enable --name MyConfigurationTA76 --feature MyAzureFeature1].
+   D. FEATURE FLAG sa zakazuje pomocou COMMAND [az appconfig feature disable]. Prikladom je COMMAND [az appconfig feature disable --name MyConfigurationTA76 --feature MyAzureFeature1].
+   E. Zoznam FEATURE FLAGS vracia COMMAND [az appconfig feature list]. Prikladom je COMMAND [az appconfig feature list --name MyConfigurationTA76].
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+AZURE CLI COMMANDS - AZURE APP CONFIGURATIONS.
+
+1. COMMAND [az appconfig create --name CONFIGURATION_NAME --resource-group RESOURCE_GROUP_NAME --location LOCATION_NAME --sku SKU_TYPE].
+   A. COMMAND vytvara novu AZURE APP CONFIGURATION.
+   B. OPTION [--name CONFIGURATION_NAME] vo VALUE [CONFIGURATION_NAME] obsahuje nazov AZURE APP CONFIGURATION.
+   C. OPTION [--resource-group RESOURCE_GROUP_NAME] vo VALUE [RESOURCE_GROUP_NAME] urcuje RESOURCE GROUP NAME.
+   D. OPTION [--location LOCATION_NAME] vo VALUE [LOCATION_NAME] urcuje LOCATION, kde ma byt AZURE APP CONFIGURATION vytvoreny. Prikladom moze byt [centralus].
+   !!! E. OPTION [--name SKU_TYPE] vo VALUE [SKU_TYPE] urcuje obsahuje type STOCK KEEPING UNIT. Pre studijne ucely sa odporuca VALUE [FREE].
+2. COMMAND [az appconfig delete --name CONFIGURATION_NAME --resource-group RESOURCE_GROUP_NAME].
+   A. COMMAND odstranuje existujucu AZURE APP CONFIGURATION.
+   B. OPTION [--name CONFIGURATION_NAME] vo VALUE [CONFIGURATION_NAME] obsahuje nazov AZURE APP CONFIGURATION.
+   C. OPTION [--resource-group RESOURCE_GROUP_NAME] vo VALUE [RESOURCE_GROUP_NAME] urcuje RESOURCE GROUP NAME.
+3. COMMAND [az appconfig list --resource-group RESOURCE_GROUP_NAME].
+   A. COMMAND vracia zoznam existujucich AZURE APP CONFIGURATIONS.
+   B. OPTION [--resource-group RESOURCE_GROUP_NAME] vo VALUE [RESOURCE_GROUP_NAME] urcuje RESOURCE GROUP NAME.
+4. COMMAND [az appconfig credential list --name CONFIGURATION_NAME --resource-group RESOURCE_GROUP_NAME].
+   A. COMMAND vracia CREDENTIALS k AZURE APP CONFIGURATION.
+   B. OPTION [--name CONFIGURATION_NAME] vo VALUE [CONFIGURATION_NAME] obsahuje nazov AZURE APP CONFIGURATION.
+   C. OPTION [--resource-group RESOURCE_GROUP_NAME] vo VALUE [RESOURCE_GROUP_NAME] urcuje RESOURCE GROUP NAME.
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+AZURE CLI COMMANDS - AZURE APP CONFIGURATION KEY VALUES.
+
+1. COMMAND [az appconfig kv set --name CONFIGURATION_NAME --key KEY_NAME --value VALUE_VALUE].
+   A. COMMAND vytvara novy AZURE APP CONFIGURATION KEY VALUE.
+   B. OPTION [--name CONFIGURATION_NAME] vo VALUE [CONFIGURATION_NAME] obsahuje nazov AZURE APP CONFIGURATION.
+   C. OPTION [--key KEY_NAME] vo VALUE [KEY_NAME] obsahuje nazov KEY danej KEY VALUE.
+   D. OPTION [--value VALUE_VALUE] vo VALUE [VALUE_VALUE] obsahuje VALUE danej KEY VALUE.
+2. COMMAND [az appconfig kv delete --name CONFIGURATION_NAME --key KEY_NAME].
+   A. COMMAND odstranuje existujuci AZURE APP CONFIGURATION KEY VALUE.
+   B. OPTION [--name CONFIGURATION_NAME] vo VALUE [CONFIGURATION_NAME] obsahuje nazov AZURE APP CONFIGURATION.
+   C. OPTION [--key KEY_NAME] vo VALUE [KEY_NAME] obsahuje nazov KEY danej KEY VALUE.
+3. COMMAND [az appconfig kv list --name CONFIGURATION_NAME].
+   A. COMMAND vracia zoznam existujucich AZURE APP CONFIGURATION KEY VALUES.
+   B. OPTION [--name CONFIGURATION_NAME] vo VALUE [CONFIGURATION_NAME] obsahuje nazov AZURE APP CONFIGURATION.
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+AZURE CLI COMMANDS - AZURE APP CONFIGURATION FEATURE FLAGS.
+
+1. COMMAND [az appconfig feature set --name CONFIGURATION_NAME --feature FEATURE_FLAG_NAME].
+   A. COMMAND vytvara novy AZURE APP CONFIGURATION FEATURE FLAG.
+   B. OPTION [--name CONFIGURATION_NAME] vo VALUE [CONFIGURATION_NAME] obsahuje nazov AZURE APP CONFIGURATION.
+   C. OPTION [--feature FEATURE_FLAG_NAME] vo VALUE [FEATURE_FLAG_NAME] obsahuje nazov AZURE APP CONFIGURATION FEATURE FLAG.
+2. COMMAND [az appconfig feature delete --name CONFIGURATION_NAME --feature FEATURE_FLAG_NAME].
+   A. COMMAND odstranuje existujuci AZURE APP CONFIGURATION FEATURE FLAG.
+   B. OPTION [--name CONFIGURATION_NAME] vo VALUE [CONFIGURATION_NAME] obsahuje nazov AZURE APP CONFIGURATION.
+   C. OPTION [--feature FEATURE_FLAG_NAME] vo VALUE [FEATURE_FLAG_NAME] obsahuje nazov AZURE APP CONFIGURATION FEATURE FLAG.
+3. COMMAND [az appconfig feature enable --name CONFIGURATION_NAME --feature FEATURE_FLAG_NAME].
+   A. COMMAND povoluje AZURE APP CONFIGURATION FEATURE FLAG.
+   B. OPTION [--name CONFIGURATION_NAME] vo VALUE [CONFIGURATION_NAME] obsahuje nazov AZURE APP CONFIGURATION.
+   C. OPTION [--feature FEATURE_FLAG_NAME] vo VALUE [FEATURE_FLAG_NAME] obsahuje nazov AZURE APP CONFIGURATION FEATURE FLAG.
+4. COMMAND [az appconfig feature disable --name CONFIGURATION_NAME --feature FEATURE_FLAG_NAME].
+   A. COMMAND zakazuje AZURE APP CONFIGURATION FEATURE FLAG.
+   B. OPTION [--name CONFIGURATION_NAME] vo VALUE [CONFIGURATION_NAME] obsahuje nazov AZURE APP CONFIGURATION.
+   C. OPTION [--feature FEATURE_FLAG_NAME] vo VALUE [FEATURE_FLAG_NAME] obsahuje nazov AZURE APP CONFIGURATION FEATURE FLAG.
+5. COMMAND [az appconfig feature list --name CONFIGURATION_NAME].
+   A. COMMAND vracia zoznam vsetkych AZURE APP CONFIGURATION FEATURE FLAGS.
+   B. OPTION [--name CONFIGURATION_NAME] vo VALUE [CONFIGURATION_NAME] obsahuje nazov AZURE APP CONFIGURATION.
+//----------------------------------------------------------------------------------------------------------------------

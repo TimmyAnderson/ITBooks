@@ -1,0 +1,1 @@
+az appconfig credential list --name MyConfigurationTA76 --resource-group Chapter09

@@ -1,0 +1,1 @@
+az appconfig kv set --name MyConfigurationTA76 --key "complexConfiguration:value2" --value "222222"
