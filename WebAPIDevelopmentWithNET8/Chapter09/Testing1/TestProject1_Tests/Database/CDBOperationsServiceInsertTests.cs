@@ -52,6 +52,7 @@ namespace TestProject1_Tests
 				Assert.True(Name.ID!=0);
 				Assert.Equal(ExpectedName.FirstName,Name.FirstName);
 				Assert.Equal(ExpectedName.LastName,Name.LastName);
+				Assert.Equal(ExpectedName.Age,Name.Age);
 				Assert.Equal(ExpectedName.Sex,Name.Sex);
 			}
 
@@ -82,6 +83,7 @@ namespace TestProject1_Tests
 				Assert.Equal(ExpectedName.FirstName,Name.FirstName);
 				Assert.Equal(ExpectedName.LastName,Name.LastName);
 				Assert.Equal(ExpectedName.Sex,Name.Sex);
+				Assert.Equal(ExpectedName.Age,Name.Age);
 			}
 
 			Console.WriteLine($"TEST STOPPED - FIRST NAME [{FirstName}] LAST NAME [{LastName}] AGE [{Age}] SEX [{Sex}].");

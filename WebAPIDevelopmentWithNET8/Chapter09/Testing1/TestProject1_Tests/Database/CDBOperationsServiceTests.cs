@@ -50,6 +50,7 @@ namespace TestProject1_Tests
 					Assert.Equal(ExpectedName.ID,Name.ID);
 					Assert.Equal(ExpectedName.FirstName,Name.FirstName);
 					Assert.Equal(ExpectedName.LastName,Name.LastName);
+					Assert.Equal(ExpectedName.Age,Name.Age);
 					Assert.Equal(ExpectedName.Sex,Name.Sex);
 				}
 			}
@@ -76,6 +77,7 @@ namespace TestProject1_Tests
 				Assert.Equal(ExpectedName.ID,Name.ID);
 				Assert.Equal(ExpectedName.FirstName,Name.FirstName);
 				Assert.Equal(ExpectedName.LastName,Name.LastName);
+				Assert.Equal(ExpectedName.Age,Name.Age);
 				Assert.Equal(ExpectedName.Sex,Name.Sex);
 			}
 		}

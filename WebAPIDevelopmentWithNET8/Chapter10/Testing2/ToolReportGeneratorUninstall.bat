@@ -1,0 +1,1 @@
+dotnet tool uninstall --global dotnet-reportgenerator-globaltool

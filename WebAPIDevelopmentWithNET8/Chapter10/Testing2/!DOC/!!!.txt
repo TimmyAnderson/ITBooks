@@ -1,0 +1,97 @@
+//----------------------------------------------------------------------------------------------------------------------
+1. SOLUTION demonstruje INTERGRATION TESTING v ASP.NET CORE.
+2. Pri INTEGRATION TESTING sa testuje interakcia medzi roznym komponentami CODE ci spolocne funguju podla ocakavania. INTEGRATION TESTS tiez mozu vyuzivat MOCK OBJECTS simulujuce funkcionalitu externych systemov.
+3. Pre INTEGRATION TESTING platia nasledujuce fakty.
+   A. INTEGRATION TESTING netestuju jednotlive COMPONENTS, ale PROGRAM ako celok.
+   !!! B. INTEGRATION TESTING spravidla nepouzivaju MOCK OBJECTS, ale pouzivaju realne OBJECTS, ktore pristupuju k realnym RESOURCES, ako su DATABASES ci WEB SERVICES. V pripade, ze EXTERNAL SERVICES nie su dostupne pocas testovanie, je namiesto nich mozne pouzit MOCK OBJECTS.
+   C. Pri INTEGRATION TESTING ASP.NET PROGRAMS CORE sa spravidla vytvara HTTP SERVER, aby mohla byt otestovana cela ASP.NET CORE PIPELINE, ci funguje tak ako je to ocakavane.
+   D. INTEGRATION TESTING je vyrazne pomalsie ako UNIT TESTING.
+!!! 4. ASP.NET CORE pre realizaciu INTEGRATION TESTING implementuje BUILT-IT TEST WEB HOST, ktory je mozne pouzit na testovanie ASP.NET CORE PROGRAMS. Pre BUILT-IT TEST WEB HOST platia nasledujuce fakty.
+   A. BUILT-IT TEST WEB HOST je implementovany v PACKAGE [Microsoft.AspNetCore.Mvc.Testing].
+   B. BUILT-IT TEST WEB HOST umoznuje zaviest ASP.NET CORE PROGRAM do WEB SERVER a testovat ho ako WEB PROGRAM, vratane testovania cele ASP.NET CORE PIPELINE.
+   C. BUILT-IT TEST WEB HOST umoznuje testovanie rozlicnych ASP.NET CORE PROGRAM CONFIGURATIONS.
+   D. BUILT-IT TEST WEB HOST nerealizuje WEB TRAFFIC, kedze HTTP REQUEST su realizovane IN-PROCESS sposobom.
+   E. BUILT-IT TEST WEB HOST je implementovany v CLASS [WebApplicationFactory<TEntryPoint>], kde TYPE PARAMETER [TEntryPoint] je nazov PROGRAM CLASS testovaneho PROGRAMU, kde sa inicializuje ASP.NET CORE PIPELINE.
+5. CLASS [WebApplicationFactory<TEntryPoint>] implementuje BUILT-IT TEST WEB HOST a ma nasledujuce MEMBERS.
+   A. CONSTRUCTOR vytvara instanciu CLASS [WebApplicationFactory<TEntryPoint>].
+   B. FINALIZER vola METHOD [void Dispose()] cim uvolnuje instanciu CLASS [WebApplicationFactory<TEntryPoint>].
+   C. PROPERTY [TestServer Server] vracia instanciu TEST HTTP SERVER.
+   D. PROPERTY [IServiceProvider Services] vracia SERVICE PROVIDER asociovany s TEST HTTP SERVER.
+   E. PROPERTY [IReadOnlyList<WebApplicationFactory<TEntryPoint>> Factories] vracia zoznam FACTORIES vytvorenych pre tento OBJECT.
+   F. PROPERTY [WebApplicationFactoryClientOptions ClientOptions] vracia instanciu CLASS [WebApplicationFactoryClientOptions] na konfiguraciu HTTP CLIENT, ktoru TEST HTTP SERVER vytvara pre potreby testovania.
+   G. PROTECTED METHOD [IEnumerable<TAssembly> GetTestAssemblies()] vracia zoznam ASSEMBLIES, ktore obsahuju FUNCTIONAL TESTS.
+   H. PROTECTED METHOD [IHostBuilder CreateHostBuilder()] vracia instanciu INTERFACE [IHostBuilder], ktora umoznuje nakonfigurovat TEST HTTP SERVER. METHOD v TYPE PARAMETER [TEntryPoint] hlada METHOD [IHostBuilder CreateHostBuilder(string[] Args)] a zavola ju.
+   I. PROTECTED METHOD [IWebHostBuilder CreateWebHostBuilder()] vracia instanciu INTERFACE [IWebHostBuilder], ktora umoznuje nakonfigurovat TEST HTTP SERVER. METHOD v TYPE PARAMETER [TEntryPoint] hlada METHOD [IWebHostBuilder CreateWebHostBuilder(string[] Args)] a zavola ju.
+   !!! J. PROTECTED METHOD [TestServer CreateServer(IWebHostBuilder Builder)] pre instanciu INTERFACE [IWebHostBuilder] vytvara novu instanciu CLASS [TestServer]. Tato METHOD sa vola iba ak sa na vytvorenie TEST HTTP SERVER pouziva instancia INTERFACE [IWebHostBuilder].
+   !!! K. PROTECTED METHOD [IHost CreateHost(IHostBuilder Builder)] vytvara pre instanciu INTERFACE [IHostBuilder] novu instanciu INTERFACE [IHost]. Tato METHOD sa vola iba ak sa na vytvorenie TEST HTTP SERVER pouziva instancia INTERFACE [IHostBuilder].
+   !!! L. PROTECTED METHOD [void ConfigureWebHost(IWebHostBuilder Builder)] ak je OVERRIDEN, umoznuje FIXTURE CLASSES konfigurovat instanciu INTERFACE [IWebHostBuilder].
+   !!! M. PROTECTED METHOD [void ConfigureClient(HttpClient Client)] ak je OVERRIDEN, umoznuje FIXTURE CLASSES konfigurovat instanciu CLASS [HttpClient] pred jeho pouzitim.
+   N. METHOD [void Dispose()] uvolnuje RESOURCES asociovane s CURRENT OBJECT.
+   O. METHOD [ValueTask DisposeAsync()] ASYNCHRONNE uvolnuje RESOURCES asociovane s CURRENT OBJECT.
+   P. METHOD [WebApplicationFactory<TEntryPoint> WithWebHostBuilder(Action<IWebHostBuilder> Configuration] vytvara novu instanciu CLASS [WebApplicationFactory<TEntryPoint>] nakonfigurovanym VALUES z instancie INTERFACE [IWebHostBuilder].
+   Q. METHOD [HttpClient CreateClient()] vytvara instanciu HTTP CLIENT k TEST HTTP SERVER.
+   R. METHOD [HttpClient CreateClient(WebApplicationFactoryClientOptions Options)] vytvara instanciu HTTP CLIENT k TEST HTTP SERVER s konfiguraciou ulozenou v instancii CLASS [WebApplicationFactoryClientOptions].
+   S. METHOD [HttpClient CreateDefaultClient(params DelegatingHandler[] Handlers)] vytvara DEFAULT instanciu HTTP CLIENT k TEST HTTP SERVER.
+   T. METHOD [HttpClient CreateDefaultClient(Uri BaseAddress, params DelegatingHandler[] Handlers)] vytvara DEFAULT instanciu HTTP CLIENT k TEST HTTP SERVER.
+6. CLASS [WebApplicationFactory<TEntryPoint>] umoznuje CUSTOMIZATION WEB ENVIRONMENT pre ktory vytvori TEST HTTP SERVER. CUSTOMIZATION WEB ENVIRONMENT sa vykonava v nasledujucich krokoch.
+   A. Definuje sa CUSTOM CLASS, ktore je DERIVED z CLASS [WebApplicationFactory<TEntryPoint>].
+   !!!!! B. Pri vytvarani WEB ENVIRONMENT CLASS [WebApplicationFactory<TEntryPoint>] najprv nacita WEB ENVIRONEMNT z CLASS [TEntryPoint] a tym ziska DEFAULT WEB ENVIRONMENT, ako ho konfiguruje CLASS [TEntryPoint].
+   C. Nasledne sa vola METHOD [void ConfigureWebHost(IWebHostBuilder Builder)], ktora pomocou PARAMETER TYPE [IWebHostBuilder] moze zmenit konfiguraciu WEB ENVIRONEMNT.
+   !!! D. Kedze CLASS [WebApplicationFactory<TEntryPoint>] uz nacitala povodny WEB ENVIRONMENT, METHOD [void ConfigureWebHost(IWebHostBuilder Builder)] s tym musi pocitat. To znamena, ze ak napriklad chce definovat CUSTOM ENTITY FRAMEWORK DB CONTEXT, tak najprv musi odstranit existujuci, a az potom pridat novy.
+7. Pre PARALELIZMUS vykonavania TESTS v TESTING LIBRARY [xUnit] platia nasledujuce fakty.
+   A. TESTS su organizovane do TESTS COLLECTIONS.
+   !!! B. Vsetky TESTS v ramci 1 TESTS COLLECTION bezia SEKVENCNE. To znamena, ze pre kazdy TEST sa vytvara nova instancia TEST CLASS, ktora po skonceni TEST je uvolnena volanim METHOD [void IDisposable.Dispose()], ak TEST CLASS INTERFACE [IDisposable] implementuje.
+   !!! C. TESTS beziace v ramci rozdielnych TESTS COLLECTIONS bezia PARALELNE.
+   !!!!! D. Pre TESTS beziace ramci tej istej TESTS COLLECTION su vytvorene SHARED INSTANCES FIXTURE CLASES. Instancie FIXTURE CLASES su teda zdielane medzi vsetkymi TESTS v ramci jednej TESTS COLLECTION.
+   !!!!! E. BY DEFAULT, 1 TEST CLASS tvori 1 TESTS COLLECTION. To znamemna, ze BY-DEFAULT TESTS beziace v ramci 1 TEST CLASS bezia SEKVENCNE.
+   F. Ak nevyhovuje funkcionalita TESTING LIBRARY [xUnit], kde kazda TEST CLASS predstavuje nezavislu TESTS COLLECTION, je mozne toto chovanie zmenit implementaciou CUSTOM TESTS COLLECTION. CUSTOM TESTS COLLECTION sa implementuje nasledujucim sposobom.
+      A. Definuje sa FIXTURE CLASS, ktora ma byt SHARED medzi viacerymi TEST CLASSES v ramci 1 TESTS COLLECTION.
+      B. Pre FIXTURE CLASS sa definuje sa FIXTURE COLLECTION CLASS. FIXTURE COLLECTION CLASS sa definuje nasledujucim sposobom.
+         A. FIXTURE COLLECTION CLASS musi implementovat INTERFACE ICollectionFixture<TFixtureClass>, kde TYPE [TFixtureClass] reprezentuje TYPE FIXTURE CLASS.
+         B. Na FIXTURE COLLECTION CLASS sa aplikuje ATTRIBUTE [CollectionDefinition], ktory definuje NAME FIXTURE COLLECTION.
+      C. Na vsetky TEST CLASSES, ktore maju byt v tej istej TESTS COLLECTION a maju zdielat tu istu instanciu FIXTURE CLASS sa aplikuje ATTRIBUTE [Collection], ktoreho NAME je zhodny s NAME FIXTURE COLLECTION.
+      !!!!! D. Pre tieto TEST CLASSES bude vytvorena iba 1 spolocna instancia FIXTURE CLASS a vsetky TESTS v tejto TESTS COLLECTION budu vykonavane SEKVENCNE.
+8. AUTHORIZATION a AUTHENTICATION TESTING sa moze realizovat nasledujucimi sposobmi.
+   A. Pri AUTHORIZATION a AUTHENTICATION TESTING sa vola realny AUTHENTICATION ENDPOINT, ktory vytvori realny ACCESS TOKEN, s ktorym sa vykonavaju TESTS. Tento sposob vsak vyzaduje neustalu dostupnost realny AUTHENTICATION ENDPOINT, co nie je vzdy moze.
+   B. Pri AUTHORIZATION a AUTHENTICATION TESTING sa priamo v TEST CODE vygeneruje realny ACCESS TOKEN, s ktorym sa vykonavaju TESTS. Tento sposob je mozne realizovat iba vtedy, ak je sposob generovania ACCESS TOKEN znamy. Ak je ACCESS TOKEN generovany externymi SERVICES, ktorych SOURCE CODE nie je pristupny, tento sposob nie je mozne pouzit.
+   C. Pri AUTHORIZATION a AUTHENTICATION TESTING sa vytvori CUSTOM AUTHORIZATION HANDLER, ktory pri vykonavani INTEGRATION TESTS nahradi povodny AUTHORIZATION HANDLER, ktory PROGRAM pouziva. Toto je najuniverzalnejsi sposob vykonavania AUTHORIZATION a AUTHENTICATION TESTING.
+9. AUTHORIZATION a AUTHENTICATION TESTING pomocou implementacia CUSTOM AUTHORIZATION HANDLER sa realizuje v nasledujucich krokoch.
+   A. Definuje sa CUSTOM AUTHENTICATION SCHEME OPTION CLASS. Ta se definuje nasledujucim sposobom.
+      A. Definuje sa CLASS, ktora je DERIVED z CLASS [AuthenticationSchemeOptions].
+      B. Do CLASS sa doplnia CUSTOM PROPERTIES, ktore sluzia na CUSTOM konfiguraciu CUSTOM AUTHORIZATION HANDLER.
+   B. Definuje sa CUSTOM AUTHORIZATION HANDLER. Ta se definuje nasledujucim sposobom.
+      A. DEFINUJE sa CLASS, ktora je DERIVED z CLASS [AuthenticationHandler<TCustomAuthenticationSchemeOptions>], kde TYPE PARAMETER [TCustomAuthenticationSchemeOptions] reprezentuje CUSTOM AUTHENTICATION SCHEME OPTION CLASS.
+      B. CLASS musi mat definovany CONSTRUCTOR [CAuthenticationHandlerTest(IOptionsMonitor<TCustomAuthenticationSchemeOptions> Options, ILoggerFactory Logger, UrlEncoder Encoder)]. Tento CONSTRUCTOR musi volat BASE CONSTRUCTOR, a zaroven, moze napriklad nacitat VALUES CUSTOM AUTHENTICATION SCHEME OPTION CLASS z PARAMETER [IOptionsMonitor<TCustomAuthenticationSchemeOptions> Options].
+      C. CLASS musi vykona OVERRIDE METHOD [Task<AuthenticateResult> HandleAuthenticateAsync()]. V tejto METHOD sa musia realizovat nasledujuce cinnosti.
+         A. Vytvorit instanciu CLASS [ClaimsIdentity], ktora bude obsahovat zoznam CLAIMS a nazov AUTHENTICATION SCHEME. Idealne je pouzit CUSTOM NAME pre AUTHENTICATION SCHEME.
+         B. Vytvorit instanciu CLASS [ClaimsPrincipal], ktora bude obsahovat instanciu CLASS [ClaimsIdentity].
+         C. Vytvorit instanciu CLASS [AuthenticationTicket], ktora bude obsahovat instanciu CLASS [ClaimsPrincipal].
+         D. Vytvorit instanciu CLASS [AuthenticateResult], ktora obsahuje vysledok AUTHENTICATION. V pripade uspesnej AUTHENTICATION obsahuje vysledok instanciu CLASS [AuthenticationTicket]. V pripade ERROR obsahuje ERROR CODE.
+    C. Pre CLASS [WebApplicationFactory<TEntryPoint>] sa vytvori FIXTURE CLASS, ktora obsahuje CUSTOM AUTHORIZATION HANDLER. Ta sa vytvara nasledujucim sposobom.
+      A. DEFINUJE sa CLASS, ktora je DERIVED z CLASS [WebApplicationFactory<TEntryPoint>], kde TYPE PARAMETER [TEntryPoint], kde TYPE PARAMETER [TEntryPoint] je nazov PROGRAM CLASS testovaneho PROGRAMU, kde sa inicializuje ASP.NET CORE PIPELINE.
+	  B. Vykona sa OVERRIDE METHOD [void ConfigureWebHost(IWebHostBuilder Builder)], kde sa vola METHOD [IWebHostBuilder IWebHostBuilder.ConfigureServices(Action<IServiceCollection> ConfigureServices)] na nakonfigurovanie CUSTOM SERVICES.
+	  C. Pri konfiguracii CUSTOM SERVICES sa realizuju nasledujuce kroky.
+	     A. Pomocou METHOD [IServiceCollection Configure<TOptions>(this IServiceCollection Services, Action<TOptions> ConfigureOptions)] sa nakonfiguruje CUSTOM AUTHENTICATION SCHEME OPTION CLASS.
+	     B. Pomocou METHOD [AuthenticationBuilder AddAuthentication(this IServiceCollection Services)] sa nakonfiguruje CUSTOM AUTHORIZATION HANDLER.
+	     C. Pomocou METHOD [AuthenticationBuilder AuthenticationBuilder.AddScheme<TOptions,THandler>(string SuthenticationScheme, string DisplayName, Action<TOptions> ConfigureOptions)] sa prida CUSTOM AUTHENTICATION SCHEME.
+    D. Definuje sa UNIT TEST CLASS, ktora pouzije FIXTURE CLASS na realizaciu CUSTOM AUTHORIZATION a CUSTOM AUTHENTICATION pocas vykonavania TESTS.
+10. CODE COVERAGE je METRICS, ktora meria aka cast CODE je pokryta TESTS.
+11. CODE COVERAGE sa realizuje v nasledujucich fazach.
+   A. COLLECTION TEST DATA. Pocas tejto fazy specialne COLLECTOR TOOLS spustia implementovane TESTS a meraju aka cast CODE je tymito TESTS pokryta. Vysledkom je REPORT v formate XML, alebo JSON.
+   B. GENERATING REPORT. Pocas tejto fazy je z vysledkov COLLECTION TEST DATA fazy generovany HUMAN READABLE REPORT. Ten je spravidla vo formate HTML.
+12. V ASP.NET CORE sa ako COLLECTOR TOOL pouziva TOOL [COVERLET COLLECTOR]. Pre TOOL [COVERLET COLLECTOR] platia nasledujuce fakty.
+   A. TOOL je implementovany v PACKAGE [coverlet.collector].
+   B. TOOL je DEFAULT PACKAGE v ASP.NET CORE PROJECTS.
+   C. TOOL sa spusta pomocou COMMAND LINE COMMAND [dotnet test --collect:COLLECTOR_NAME], kde VALUE [COLLECTOR_NAME] je nazov COLLECTOR. Odporucany je COLLECTOR [XPlat Code Coverage].
+   D. TOOL uklada vysledny REPORT do FILE [TEST_PROJECT_PATH/TestResults/GUID/coverage.cobertura.xml], kde VALUE [TEST_PROJECT_PATH] je PATH TEST PROJECT a VALUE [GUID] je unikatny GUID, ktory sa generuje pri kazdom spusteni TOOL.
+   E. COLLECTOR TOOL [COVERLET COLLECTOR] existuje aj ako GLOBAL CONSOLE TOOL [COVERLET CONSOLE]. S CONSOLE TOOL [COVERLET CONSOLE] sa pracuje pomocou nasledujucich COMMANDS.
+      A. COLLECTOR TOOL [COVERLET COLLECTOR] sa instaluje pomocou COMMAND LINE [dotnet tool install --global coverlet.console].
+      B. COLLECTOR TOOL [COVERLET COLLECTOR] sa odinstaluje pomocou COMMAND LINE [dotnet tool uninstall --global coverlet.console].
+      !!! C. COLLECTOR TOOL [COVERLET COLLECTOR] sa spusta pomocou COMMAND [coverlet UNIT_TEST_DLL_PATH --target "dotnet" --targetargs "test UNIT_TEST_PROJECT_PATH --no-build"], kde VALUE [UNIT_TEST_DLL_PATH] je PATH k UNIT TEST DLL LIBRARY a VALUE [UNIT_TEST_PROJECT_PATH] je PATH k UNIT TEST PROJECT.
+13. V ASP.NET CORE sa ako REPORT GENERATOR TOOL pouziva TOOL [REPORT GENERATOR]. Pre TOOL [REPORT GENERATOR] platia nasledujuce fakty.
+   A. TOOL [REPORT GENERATOR] generuje HUMAN READABLE REPORTS z REPORTS, ktore vygeneroval TOOL [COVERLET COLLECTOR].
+   B. S TOOL [REPORT GENERATOR] sa pracuje pomocou nasledujucich COMMANDS.
+      A. TOOL [REPORT GENERATOR] sa instaluje pomocou COMMAND [dotnet tool install --global dotnet-reportgenerator-globaltool].
+      B. TOOL [REPORT GENERATOR] sa odinstaluje pomocou COMMAND [dotnet tool uninstall --global dotnet-reportgenerator-globaltool].
+      !!! C. TOOL [REPORT GENERATOR] sa spusta pomocou COMMAND [reportgenerator "-reports:SOURCE_REPORT_PATH" "-targetdir:TARGET_PATH" "-reporttypes:Html;HtmlSummary"], kde VALUE [SOURCE_REPORT_PATH] je PATH k COLLECTOR TOOL [COVERLET COLLECTOR] REPORT FILE [coverage.cobertura.xml], z ktoreho sa ma generovat HUMAN READABLE REPORT. VALUE [TARGET_PATH] obsahuje PATH, kde sa ma vygenerovany HUMAN READABLE REPORT ulozit.
+//----------------------------------------------------------------------------------------------------------------------

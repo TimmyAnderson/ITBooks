@@ -57,6 +57,7 @@ namespace TestProject1_Tests
 				Assert.Equal(InputName.ID,OutputName.ID);
 				Assert.Equal(InputName.FirstName,OutputName.FirstName);
 				Assert.Equal(InputName.LastName,OutputName.LastName);
+				Assert.Equal(InputName.Age,OutputName.Age);
 				Assert.Equal(InputName.Sex,OutputName.Sex);
 			}
 		}
@@ -130,6 +131,7 @@ namespace TestProject1_Tests
 				OutputName.ID.Should().Be(InputName.ID,$"NAMES ARRAY ITEM [{Index}] PROPERTY [{nameof(OutputName.ID)}] has UNEXPECTED VALUE.");
 				OutputName.FirstName.Should().Be(InputName.FirstName,$"NAMES ARRAY ITEM [{Index}] PROPERTY [{nameof(OutputName.FirstName)}] has UNEXPECTED VALUE.");
 				OutputName.LastName.Should().Be(InputName.LastName,$"NAMES ARRAY ITEM [{Index}] PROPERTY [{nameof(OutputName.LastName)}] has UNEXPECTED VALUE.");
+				OutputName.Age.Should().Be(InputName.Age,$"NAMES ARRAY ITEM [{Index}] PROPERTY [{nameof(OutputName.Age)}] has UNEXPECTED VALUE.");
 				OutputName.Sex.Should().Be(InputName.Sex,$"NAMES ARRAY ITEM [{Index}] PROPERTY [{nameof(OutputName.Sex)}] has UNEXPECTED VALUE.");
 			}
 		}
