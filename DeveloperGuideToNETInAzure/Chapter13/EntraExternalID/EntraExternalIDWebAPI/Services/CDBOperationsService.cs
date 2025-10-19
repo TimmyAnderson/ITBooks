@@ -1,85 +1,81 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
+﻿using System.Linq;
 using System.Threading.Tasks;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.ChangeTracking;
 //----------------------------------------------------------------------------------------------------------------------
-namespace Testing2
+namespace EntraExternalIDWebAPI
 {
 //----------------------------------------------------------------------------------------------------------------------
-    public sealed class CSecureName
-    {
+	public class CDBOperationsService : IDBOperationsService
+	{
 //----------------------------------------------------------------------------------------------------------------------
-		private string											MFirstName;
-		private string											MLastName;
-		private int												MAge;
-		private ESex											MSex;
+		private readonly CDBContext								MContext;
 //----------------------------------------------------------------------------------------------------------------------
 //----------------------------------------------------------------------------------------------------------------------
 //----------------------------------------------------------------------------------------------------------------------
-		public CSecureName()
+		public CDBOperationsService(CDBContext Context)
 		{
-		}
-//----------------------------------------------------------------------------------------------------------------------
-		public CSecureName(string FirstName, string LastName, int Age, ESex Sex)
-		{
-			MFirstName=FirstName;
-			MLastName=LastName;
-			MAge=Age;
-			MSex=Sex;
+			MContext=Context;
 		}
 //----------------------------------------------------------------------------------------------------------------------
 //----------------------------------------------------------------------------------------------------------------------
 //----------------------------------------------------------------------------------------------------------------------
-		public string											FirstName
+		public async Task<CEntityName[]> GetNames()
 		{
-			get
+			CEntityName[]										Names=await MContext.EntitiesNames.ToArrayAsync();
+
+			return(Names);
+		}
+//----------------------------------------------------------------------------------------------------------------------
+		public async Task<CEntityName> GetName(int ID)
+		{
+			CEntityName											Name=await MContext.EntitiesNames.Where(P => P.ID==ID).FirstOrDefaultAsync();
+
+			return(Name);
+		}
+//----------------------------------------------------------------------------------------------------------------------
+		public async Task<CEntityName> InsertName(CEntityName Name)
+		{
+			MContext.EntitiesNames.Add(Name);
+
+			await MContext.SaveChangesAsync();
+
+			return(Name);
+		}
+//----------------------------------------------------------------------------------------------------------------------
+		public async Task<CEntityName> UpdateName(CEntityName Name)
+		{
+			CEntityName											NameFromDB=await MContext.EntitiesNames.Where(P => P.ID==Name.ID).FirstOrDefaultAsync();
+
+			if (NameFromDB!=null)
 			{
-				return(MFirstName);
+				EntityEntry<CEntityName>						Entry=MContext.Entry(NameFromDB);
+
+				// !!!!! METHOD nastavi z NON-ENTITY CLASS [CNonEntityName] PROPERTIES v ENTITY CLASS [CEntityName] na zaklade zhodnosti NAME a TYPE jednotlovych PROPERTIES.
+				Entry.CurrentValues.SetValues(Name);
+
+				await MContext.SaveChangesAsync();
 			}
-			set
+
+			return(NameFromDB);
+		}
+//----------------------------------------------------------------------------------------------------------------------
+		public async Task<bool> DeleteName(int ID)
+		{
+			// !!!!! METHOD [Task<int> ExecuteDeleteAsync<TSource>(this IQueryable<TSource> Source, CancellationToken CancellationToken)] umoznuje vykonat DELETE ENTITY OBJECT BEZ nutnosti jeho nacitania do DB CONTEXT.
+			int													NumberOfDeletedItems=await MContext.EntitiesNames.Where(P => P.ID==ID).ExecuteDeleteAsync();
+
+			if (NumberOfDeletedItems==1)
 			{
-				MFirstName=value;
+				return(true);
+			}
+			else
+			{
+				return(false);
 			}
 		}
 //----------------------------------------------------------------------------------------------------------------------
-		public string											LastName
-		{
-			get
-			{
-				return(MLastName);
-			}
-			set
-			{
-				MLastName=value;
-			}
-		}
-//----------------------------------------------------------------------------------------------------------------------
-		public int												Age
-		{
-			get
-			{
-				return(MAge);
-			}
-			set
-			{
-				MAge=value;
-			}
-		}
-//----------------------------------------------------------------------------------------------------------------------
-		public ESex												Sex
-		{
-			get
-			{
-				return(MSex);
-			}
-			set
-			{
-				MSex=value;
-			}
-		}
-//----------------------------------------------------------------------------------------------------------------------
-    }
+	}
 //----------------------------------------------------------------------------------------------------------------------
 }
 //----------------------------------------------------------------------------------------------------------------------

@@ -3,83 +3,64 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata.Builders;
 //----------------------------------------------------------------------------------------------------------------------
-namespace Testing2
+namespace EntraExternalIDWebAPI
 {
 //----------------------------------------------------------------------------------------------------------------------
-    public sealed class CSecureName
-    {
+	public sealed class CDBContext : DbContext
+	{
 //----------------------------------------------------------------------------------------------------------------------
-		private string											MFirstName;
-		private string											MLastName;
-		private int												MAge;
-		private ESex											MSex;
+		private DbSet<CEntityName>								MEntitiesNames;
 //----------------------------------------------------------------------------------------------------------------------
 //----------------------------------------------------------------------------------------------------------------------
 //----------------------------------------------------------------------------------------------------------------------
-		public CSecureName()
+		public CDBContext(DbContextOptions<CDBContext> Options)
+			: base(Options)
 		{
 		}
 //----------------------------------------------------------------------------------------------------------------------
-		public CSecureName(string FirstName, string LastName, int Age, ESex Sex)
-		{
-			MFirstName=FirstName;
-			MLastName=LastName;
-			MAge=Age;
-			MSex=Sex;
-		}
 //----------------------------------------------------------------------------------------------------------------------
 //----------------------------------------------------------------------------------------------------------------------
-//----------------------------------------------------------------------------------------------------------------------
-		public string											FirstName
+		public DbSet<CEntityName>								EntitiesNames
 		{
 			get
 			{
-				return(MFirstName);
+				return(MEntitiesNames);
 			}
 			set
 			{
-				MFirstName=value;
+				MEntitiesNames=value;
 			}
 		}
 //----------------------------------------------------------------------------------------------------------------------
-		public string											LastName
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+		private void ConfigureEntityNames(ModelBuilder ModelBuilder)
 		{
-			get
-			{
-				return(MLastName);
-			}
-			set
-			{
-				MLastName=value;
-			}
+			ModelBuilder.Entity<CEntityName>().ToTable("EntitiesNames");
+
+			ModelBuilder.Entity<CEntityName>().HasKey(P => P.ID);
 		}
 //----------------------------------------------------------------------------------------------------------------------
-		public int												Age
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+		protected override void OnModelCreating(ModelBuilder ModelBuilder)
 		{
-			get
-			{
-				return(MAge);
-			}
-			set
-			{
-				MAge=value;
-			}
+			ConfigureEntityNames(ModelBuilder);
+
+			EntityTypeBuilder<CEntityName>						Entity=ModelBuilder.Entity<CEntityName>();
+
+			List<CEntityName>									Names=new List<CEntityName>();
+
+			Names.Add(new CEntityName(1,"Timmy","Anderson",12,ESex.E_MALE));
+			Names.Add(new CEntityName(2,"Jenny","Thompson",13,ESex.E_FEMALE));
+
+			Entity.HasData(Names);
 		}
 //----------------------------------------------------------------------------------------------------------------------
-		public ESex												Sex
-		{
-			get
-			{
-				return(MSex);
-			}
-			set
-			{
-				MSex=value;
-			}
-		}
-//----------------------------------------------------------------------------------------------------------------------
-    }
+	}
 //----------------------------------------------------------------------------------------------------------------------
 }
 //----------------------------------------------------------------------------------------------------------------------

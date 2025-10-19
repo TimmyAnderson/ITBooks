@@ -100,7 +100,7 @@ namespace Testing2
 			Application.UseHttpsRedirection();
 
 			// !!! Do REQUEST PIPELINE sa pridaju AUTHORIZATION MIDDLEWARE COMPONENTS.
-            Application.UseAuthorization();
+			Application.UseAuthorization();
 
 			Application.MapControllers();
 
