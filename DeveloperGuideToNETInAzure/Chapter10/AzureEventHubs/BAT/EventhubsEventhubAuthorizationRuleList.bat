@@ -1,0 +1,1 @@
+az eventhubs eventhub authorization-rule list --eventhub-name MyHubTA76 --namespace-name MyNamespaceTA76 --resource-group Chapter10

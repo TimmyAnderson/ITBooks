@@ -1,0 +1,1 @@
+az eventhubs namespace authorization-rule delete --name MyNamespaceConsumerRule --namespace-name MyNamespaceTA76 --resource-group Chapter10

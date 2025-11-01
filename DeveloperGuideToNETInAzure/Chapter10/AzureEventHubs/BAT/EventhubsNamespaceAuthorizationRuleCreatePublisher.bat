@@ -1,0 +1,1 @@
+az eventhubs namespace authorization-rule create --name MyNamespacePublisherRule --namespace-name MyNamespaceTA76 --resource-group Chapter10 --rights Send

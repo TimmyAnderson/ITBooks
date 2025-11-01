@@ -1,0 +1,1 @@
+az eventhubs eventhub delete --name MyHubTA76 --namespace-name MyNamespaceTA76 --resource-group Chapter10

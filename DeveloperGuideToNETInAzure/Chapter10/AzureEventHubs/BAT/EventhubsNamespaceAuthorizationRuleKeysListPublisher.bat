@@ -1,0 +1,1 @@
+az eventhubs namespace authorization-rule keys list --name MyNamespacePublisherRule --namespace-name MyNamespaceTA76 --resource-group Chapter10

@@ -1,0 +1,233 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+using Azure.Messaging.EventHubs;
+using Azure.Messaging.EventHubs.Consumer;
+using Azure.Messaging.EventHubs.Processor;
+using Azure.Storage.Blobs;
+using Constants.Constants;
+using MySharedLibrary;
+//--------------------------------------------------------------------------------------------------------------------------------
+namespace EventHubsEventConsumer2
+{
+//--------------------------------------------------------------------------------------------------------------------------------
+	public sealed class CMenuEventConsumer : CMenu
+	{
+//--------------------------------------------------------------------------------------------------------------------------------
+		private EventProcessorClient							MEventProcessorClient;
+//--------------------------------------------------------------------------------------------------------------------------------
+//--------------------------------------------------------------------------------------------------------------------------------
+//--------------------------------------------------------------------------------------------------------------------------------
+		public CMenuEventConsumer()
+			: base(new CMenuCommand("q","QUIT",new EMenuCommandParameterType[0],null))
+		{
+		}
+//--------------------------------------------------------------------------------------------------------------------------------
+//--------------------------------------------------------------------------------------------------------------------------------
+//--------------------------------------------------------------------------------------------------------------------------------
+		private void CloseProcessor()
+		{
+			if (MEventProcessorClient==null)
+			{
+				return;
+			}
+
+			try
+			{
+				MEventProcessorClient.StopProcessingAsync().Wait();
+
+				Console.WriteLine("EVENT PROCESSING STOPPED.");
+			}
+			catch(EventHubsException E)
+			{
+				Console.WriteLine($"EXCEPTION [{E.Message}]. EVENT HUB NAME [{E.EventHubName}] REASON [{E.Reason}].");
+			}
+			catch(Exception E)
+			{
+				Console.WriteLine($"EXCEPTION [{E.Message}].");
+			}
+
+			MEventProcessorClient.ProcessEventAsync-=MEventProcessorClientProcessEventAsync;
+			MEventProcessorClient.ProcessErrorAsync-=MEventProcessorClientProcessErrorAsync;
+
+			MEventProcessorClient=null;
+		}
+//--------------------------------------------------------------------------------------------------------------------------------
+//--------------------------------------------------------------------------------------------------------------------------------
+//--------------------------------------------------------------------------------------------------------------------------------
+		private Task MEventProcessorClientProcessEventAsync(ProcessEventArgs Args)
+		{
+			PartitionContext									PartitionContext=Args.Partition;
+			EventData											EventData=Args.Data;
+
+			string												PartitionID=PartitionContext?.PartitionId ?? "";
+			string												FullyQualifiedNamespace=PartitionContext?.FullyQualifiedNamespace ?? "";
+			string												EventHubName=PartitionContext?.EventHubName ?? "";
+			string												ConsumerGroup=PartitionContext?.ConsumerGroup ?? "";
+
+			string												MessageID=EventData?.MessageId ?? "";
+			string												ContentType=EventData?.ContentType ?? "";
+			
+			byte[]												BodyRaw=EventData?.EventBody?.ToArray();
+			string												BodyString=(BodyRaw!=null) ? Encoding.UTF8.GetString(BodyRaw) : "";
+
+			Console.WriteLine($"EVENT DETECTED. PARTITION ID [{PartitionID}] NAMESPACE [{FullyQualifiedNamespace}] HUB NAME [{EventHubName}] CONSUMER GROUP [{ConsumerGroup}] MESSAGE ID [{MessageID}] CONTENT TYPE [{ContentType}] BODY [{BodyString}].");
+
+			// !!!!! Vykona sa UPDATE CHECKPOINT, aby EVENT bol oznaceny ako spracovany a nebol opatovne vyberany z EVENT HUBS PARTITION.
+			Args.UpdateCheckpointAsync().Wait();
+
+			Task												Result=Task.CompletedTask;
+
+			return(Result);
+		}
+//--------------------------------------------------------------------------------------------------------------------------------
+		private Task MEventProcessorClientProcessErrorAsync(ProcessErrorEventArgs Args)
+		{
+			string												PartitionID=Args.PartitionId;
+			string												Operation=Args.Operation;
+			Exception											Exception=Args.Exception;
+			
+			string												ExceptionMessage=Exception?.Message ?? "";
+
+			if ((Exception is EventHubsException)==true)
+			{
+				EventHubsException								TypedException=(EventHubsException) Exception;
+
+				string											EventHubName=TypedException.EventHubName ?? "";
+				string											FailureReason=TypedException.Reason.ToString() ?? "";
+
+				Console.WriteLine($"ERROR DETECTED. PARTITION ID [{PartitionID}] OPERATION [{Operation}] EXCEPTION [{ExceptionMessage}] EVENT HUB NAME [{EventHubName}] REASON [{FailureReason}].");
+			}
+			else
+			{
+				Console.WriteLine($"ERROR DETECTED. PARTITION ID [{PartitionID}] OPERATION [{Operation}] EXCEPTION [{ExceptionMessage}].");
+			}
+
+			Task												Result=Task.CompletedTask;
+
+			return(Result);
+		}
+//--------------------------------------------------------------------------------------------------------------------------------
+//--------------------------------------------------------------------------------------------------------------------------------
+//--------------------------------------------------------------------------------------------------------------------------------
+		private void ExecuteCommandStartReceivingMessages(string CommandID, object[] Parameters)
+		{
+			if (MEventProcessorClient!=null)
+			{
+				Console.WriteLine("EVENT PROCESSOR CLIENT is ALREADY CREATED.");
+				return;
+			}
+
+			try
+			{
+				BlobContainerClient								BlobContainerClient=new BlobContainerClient(CConstants.BLOB_STORAGE_CONNECTION_STRING,CConstants.BLOB_CONTAINER_NAME);
+
+				MEventProcessorClient=new EventProcessorClient(BlobContainerClient,EventHubConsumerClient.DefaultConsumerGroupName,CConstants.EVENT_HUBS_CONNECTION_STRING,CConstants.EVENT_HUB_NAME);
+
+				MEventProcessorClient.ProcessEventAsync+=MEventProcessorClientProcessEventAsync;
+				MEventProcessorClient.ProcessErrorAsync+=MEventProcessorClientProcessErrorAsync;
+
+				MEventProcessorClient.StartProcessingAsync().Wait();
+
+				Console.WriteLine("EVENT PROCESSING STARTED.");
+			}
+			catch(EventHubsException E)
+			{
+				Console.WriteLine($"EXCEPTION [{E.Message}]. EVENT HUB NAME [{E.EventHubName}] REASON [{E.Reason}].");
+			}
+			catch(Exception E)
+			{
+				Console.WriteLine($"EXCEPTION [{E.Message}].");
+
+				CloseProcessor();
+			}
+		}
+//--------------------------------------------------------------------------------------------------------------------------------
+		private void ExecuteCommandStartReceivingMessagesWithCustomerGroup(string CommandID, object[] Parameters)
+		{
+			if (MEventProcessorClient!=null)
+			{
+				Console.WriteLine("EVENT PROCESSOR CLIENT is ALREADY CREATED.");
+				return;
+			}
+
+			string												ConsumerGroup=((string) Parameters[0]);
+			int													StategyValue=((int) Parameters[1]);
+
+			LoadBalancingStrategy								Strategy;
+
+			if (StategyValue==1)
+			{
+				Strategy=LoadBalancingStrategy.Greedy;
+			}
+			else if (StategyValue==2)
+			{
+				Strategy=LoadBalancingStrategy.Balanced;
+			}
+			else
+			{
+				Console.WriteLine("INVALID VALUE for LOAD BALANCING STRATEGY.");
+				return;
+			}
+
+			try
+			{
+				EventProcessorClientOptions						ClientOptions=new EventProcessorClientOptions();
+
+				ClientOptions.LoadBalancingStrategy=Strategy;
+
+				BlobContainerClient								BlobContainerClient=new BlobContainerClient(CConstants.BLOB_STORAGE_CONNECTION_STRING,CConstants.BLOB_CONTAINER_NAME);
+
+				MEventProcessorClient=new EventProcessorClient(BlobContainerClient,ConsumerGroup,CConstants.EVENT_HUBS_CONNECTION_STRING,CConstants.EVENT_HUB_NAME,ClientOptions);
+
+				MEventProcessorClient.ProcessEventAsync+=MEventProcessorClientProcessEventAsync;
+				MEventProcessorClient.ProcessErrorAsync+=MEventProcessorClientProcessErrorAsync;
+
+				MEventProcessorClient.StartProcessingAsync().Wait();
+
+				Console.WriteLine("EVENT PROCESSING STARTED.");
+			}
+			catch(EventHubsException E)
+			{
+				Console.WriteLine($"EXCEPTION [{E.Message}]. EVENT HUB NAME [{E.EventHubName}] REASON [{E.Reason}].");
+			}
+			catch(Exception E)
+			{
+				Console.WriteLine($"EXCEPTION [{E.Message}].");
+
+				CloseProcessor();
+			}
+		}
+//--------------------------------------------------------------------------------------------------------------------------------
+		private void ExecuteCommandStopReceivingMessages(string CommandID, object[] Parameters)
+		{
+			if (MEventProcessorClient==null)
+			{
+				Console.WriteLine("EVENT PROCESSOR CLIENT doesn't EXIST.");
+				return;
+			}
+
+			CloseProcessor();
+		}
+//--------------------------------------------------------------------------------------------------------------------------------
+//--------------------------------------------------------------------------------------------------------------------------------
+//--------------------------------------------------------------------------------------------------------------------------------
+		protected override CMenuCommand[] GetCommands()
+		{
+			List<CMenuCommand>									CommandsCollection=new List<CMenuCommand>();
+
+			CommandsCollection.Add(new CMenuCommand("1","START RECEIVING MESSAGES",new EMenuCommandParameterType[0],ExecuteCommandStartReceivingMessages));
+			CommandsCollection.Add(new CMenuCommand("2","START RECEIVING MESSAGES WITH CUSTOMER GROUP",new EMenuCommandParameterType[]{EMenuCommandParameterType.E_STRING,EMenuCommandParameterType.E_INT},ExecuteCommandStartReceivingMessagesWithCustomerGroup));
+			CommandsCollection.Add(new CMenuCommand("3","STOP RECEIVING MESSAGES",new EMenuCommandParameterType[0],ExecuteCommandStopReceivingMessages));
+
+			CMenuCommand[]										Commands=CommandsCollection.ToArray();
+
+			return(Commands);
+		}
+//--------------------------------------------------------------------------------------------------------------------------------
+	}
+//--------------------------------------------------------------------------------------------------------------------------------
+}
+//--------------------------------------------------------------------------------------------------------------------------------

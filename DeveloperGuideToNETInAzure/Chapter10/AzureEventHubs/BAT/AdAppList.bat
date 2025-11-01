@@ -1,0 +1,1 @@
+az ad app list --output table

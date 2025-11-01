@@ -1,0 +1,1 @@
+az eventhubs namespace authorization-rule create --name MyNamespaceConsumerRule --namespace-name MyNamespaceTA76 --resource-group Chapter10 --rights Listen

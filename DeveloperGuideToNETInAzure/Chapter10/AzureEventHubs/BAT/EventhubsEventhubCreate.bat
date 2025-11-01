@@ -1,0 +1,1 @@
+az eventhubs eventhub create --name MyHubTA76 --namespace-name MyNamespaceTA76 --resource-group Chapter10 --retention-time 24 --cleanup-policy Delete

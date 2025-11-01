@@ -1,0 +1,1 @@
+az provider unregister --namespace "Microsoft.EventHub"

@@ -1,0 +1,1 @@
+az eventhubs eventhub list --namespace-name MyNamespaceTA76 --resource-group Chapter10

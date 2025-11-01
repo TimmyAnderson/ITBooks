@@ -1,0 +1,1 @@
+az ad app create --display-name "MyHubsConsumer"

@@ -1,0 +1,1 @@
+az eventhubs namespace create --name MyNamespaceTA76 --resource-group Chapter10 --location centralus --sku Standard

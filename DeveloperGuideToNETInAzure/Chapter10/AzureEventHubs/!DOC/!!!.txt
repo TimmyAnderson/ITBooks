@@ -1,0 +1,510 @@
+//----------------------------------------------------------------------------------------------------------------------
+1. SOLUTION demonstruje pouzitie AZURE EVENT HUBS v .NET CORE.
+2. AZURE EVENT HUBS je BIG DATA STREAMING PLATFORM a EVENT INGESTION SERVICE.
+3. AZURE EVENT HUBS umoznuje spracovanie velkeho mnozstva dat, ktore mozu generovat rozlicne zariadenia, ako napriklad INTERNET OF THING DEVICES. Tieto DEVICES maju tendenciu generovat velke mnozstvo dat, ktore vyzaduje dodatocne spracovanie na casto velkom pocte MACHINES. AZURE EVENT HUBS umoznuje vyuzit AZURE PLATFORM na spracovanie tychto dat v REAL TIME.
+!!! 4. AZURE EVENT HUBS je urceny na spracovanie velkeho mnozstva dat. Pre EVENT DRIVEN PROGRAMMING su vhodnejsie nasledujuce technologie.
+   A. AZURE EVENT GRID. Pre AZURE EVENT GRID platia nasledujuce fakty.
+      A. AZURE EVENT GRID je HIGH AVAILABILITY SERVICE urcena na spracovanie EVENTS, ktore si vymienaju jednotlive SERVICES.
+      B. AZURE EVENT GRID umoznuje REACTIVE PROGRAMMING.
+      C. AZURE EVENT GRID implementuje PUBLISHER-SUBSCRIBER MODEL.
+      !!! D. AZURE EVENT GRID implementuje PUSH MODEL, ked EVENTS odoslane PUBLISHERS su OKAMZITE dorucene do SUBSCRIBERS.
+   B. AZURE SERVICE BUS. Pre AZURE SERVICE BUS platia nasledujuce fakty.
+      A. AZURE SERVICE BUS je ENTERPRISE MESSAGING PLATFORM podporujuca MESSAGE QUEUES, MESSAGE SESSIONS, MESSAGE TOPICS, ci MESSAGE SUBSCRIPTION.
+      !!! B. AZURE SERVICE BUS implementuje PULL MODEL, kedy PUBLISHERS odosielaju MESSAGES do MESSAGE QUEUES, kde su ulozene, az kym sa SUBSCRIBERS nerozhodnu ich vycitat a spracovat.
+5. AZURE EVENT HUBS spracuvaju EVENTS. Pre EVENTS platia nasledujuce fakty.
+   A. EVENTS obsahuju casovu seriu dat, ktore su zaznamenane zdrojom dat, ako su napriklad INTERNET OF THING DEVICES, a ktoru si tymito DEVICES odosielane do AZURE EVENT HUBS prostrednictvom INTERNETU.
+   !!!!! B. Klucovou charakteristikou EVENTS v AZURE EVENT HUBS, ze EVENTS prichadzaju KONTINUALNE vo forme STREAMU. Napriklad, ak su data merane INTERNET OF THING DEVICE kazdu minutu, tak prichadzaju kazdu minutu. Nejedna sa teda o jednorazove EVENTS, ako napriklad spustenie nejakeho procesu zo strany HUMAN USER na spracovanie ktorych su vhodnejsie technologie ako AZURE EVENT GRID a AZURE SERVICE BUS.
+   C. EVENTS v AZURE EVENT HUBS obsahuju nasledujuce data.
+      A. PAYLOAD. PAYLOAD su aktualne data, ktore DATA SOURCES generuju.
+      B. METADATA. METADATA su popisne data, ktore popisuju PAYLOAD data.
+6. EVENTS produkuju EVENT PRODUCERS. Pre EVENT PRODUCERS platia nasledujuce fakty.
+   A. EVENT PRODUCER je DEVICE, alebo PROCESS, ktory generuje EVENTS.
+   B. EVENT PRODUCERS odosielaju EVENTS prostrednictvom INTERNETU do AZURE EVENT HUBS, kde su tieto EVENTS docasne ulozene, aby mohli byt spracovane EVENT CONSUMERS.
+   C. Prikladom EVENT PRODUCERS su INTERNET OF THING DEVICES, alebo LOG SYSTEMS, ktore generuju kontinualny STREAM EVENTS.
+7. EVENTS spracuvaju EVENT CONSUMERS. Pre EVENT CONSUMERS platia nasledujuce fakty.
+   A. EVENT CONSUMERS su PROCESSES, ktore su zodpovedne sa spracovanie EVENTS, ktore vyprodukovali EVENT PRODUCERS.
+   B. EVENT CONSUMERS nacitavaju EVENTS z AZURE EVENT HUBS, kde su EVENTS docasne ulozene EVENT PRODUCERS a spracovavaju ich podla potreby.
+   C. Prikladom EVENT CONSUMERS su SERVICES vykonavajuce spracovanie EVENTS, alebo DATABASES do ktorych sa EVENTS ukladane.
+8. AZURE EVENT HUBS podporuju PARTITIONS. Pre PARTITIONS platia nasledujuce fakty.
+   A. PARTITIONS umoznuju paralelne spracovanie EVENTS viacerymi EVENT CONSUMERS.
+   B. Kazda PARTITION obsahuje vlastny CHAIN OF EVENTS, ktore drzia EVENTS po urcitu dobu, az kym nie su spracovane v EVENT CONSUMERS, alebo neuplynie TIMEOUT, kedy su EVENTS zahodene.
+   !!! C. PARTITIONS reprezentuju nezavisle STREAMS EVENTS.
+   D. Kazda PARTITION ma unikatny PARTITION IDENTIFIER.
+   E. EVENTS je mozne odosielat do PARTITIONS nasledujucimi sposobmi.
+      A. Pomocou PARTITION IDENTIFIER, kedy je EVENT odoslany do konkretnej PARTITION identifikovanej jej PARTITION IDENTIFIER.
+      B. Pomocou PARTITION KEY, ktory reprezentuje HINT do ktorej PARTITION ma byt EVENT odoslany. Tento HINT nemusi AZURE EVENT HUBS respektovat a teda nie je garantovane, ze EVENTS s rovnakym PARTITION KEY skoncia v tej istej PARTITION.
+9. AZURE EVENT HUBS podporuju EVENT HUBS NAMESPACES. Pre EVENT HUBS NAMESPACES platia nasledujuce fakty.
+   A. EVENT HUBS NAMESPACES su CONTAINERS, ktore umoznuju spajanie viacerych EVENT HUBS do GROUPS.
+   B. EVENT HUBS NAMESPACES zjednodusuju spravu EVENT HUBS.
+10. EVENT INGESTION v AZURE EVENT HUBS prebieha nasledujucim sposobom.
+   A. EVENTS su zasielane do AZURE EVENT HUBS pomocou PROTOCOL [AMQP], PROTOCOL [HTTPS] (HTTP POST) a PROTOCOL [APACHE KAFKA].
+   B. EVENTS mozu byt zlucovane do BATCHES, pricom plati, ze maximalna dlzka BATCH je 1 MB.
+   C. Po prichode EVENTS do AZURE EVENT HUBS su EVENTS zaradene do prislusnej AZURE EVENT HUBS PARTITION. V PARTITIONS su EVENTS ukladane podla casu v ktorom dorazili.
+11. EVENT PROCESSING v AZURE EVENT HUBS prebieha nasledujucim sposobom.
+   A. AZURE EVENT HUBS integruje viacero AZURE SERVICES, ktore mozu citat EVENTS z AZURE EVENT HUBS. Prikladom je AZURE EVENT GRID, AZURE FUNCTIONS, AZURE STREAM ANALYTICS, ci AZURE LOGIC APPS.
+   B. EVENTS z AZURE EVENT HUBS mozu byt spracovavane aj pomocou CUSTOM PROGRAMS, ktore nebezia priamo v AZURE, ak vyuzivaju AZURE EVENT HUBS PROCESSOR PACKAGE.
+12. EVENTS generovane EVENT PRODUCERS su v AZURE EVENT HUBS ukladane nasledujucim sposobom.
+   A. EVENTS su ukladane do PARTITIONS na definovany cas, ktory sa nazyva RETENTION PERIOD.
+   B. RETENTION PERIOD je BY-DEFAULT nastaveny na 1 den, ale da sa predlzit na 7 dni.
+   C. EVENTS po prichode do PARTITIONS nie je mozne editovat ani vymazavat. Vymazavane su az po uplynuti RETENTION PERIOD.
+   D. EVENTS su v PARTITIONS podla casu svojho prichodu.
+   E. EVENTS su z PARTITIONS citane FIRST IN FIRST OUT (FIFO) sposobom.
+   F. AZURE EVENT HUBS umoznuje pre potreby dlhej RETENTION PERIOD, REPLICATION, DISASTER RECOVERY a HIGH AVAILABILITY ukladat EVENTS do AZURE BLOB STORAGE a AZURE DATA LAKE STORAGE.
+13. AZURE EVENT HUBS podporuje SCALING.
+   A. SCALING v AZURE EVENT HUBS je realizovany pomocou THROUGHPUT UNITS.
+   B. THROUGHPUT UNIT umoznuje spracovanie definovaneho poctu EVENTS za sekundu.
+   C. Jedna THROUGHPUT UNIT garantuje spracovanie 1 MB EVENTS generovanych EVENT PRODUCERS a 2 MB EVENTS spracovanych v EVENT CONSUMERS.
+   D. AZURE EVENT HUBS PARTITIONS umoznuju dalsiu uroven SCALING.
+14. AZURE EVENT HUBS podporuje AVAILABILITY a RELIABLITY.
+   A. AZURE EVENT HUBS automaticky replikuje PARTITIONS 3 krat v ramci toho isteho DATA CENTER.
+   B. AZURE EVENT HUBS umoznuje nakonfigurovat replikaciu PARTITIONS do viacerych DATA CENTERS v ramci toho isteho AZURE REGION.
+   C. AZURE EVENT HUBS umoznuje sparovat 2 AZURE EVENT HUBS NAMESPACES v roznych AZURE REGIONS. Pri vypadku jedneho AZURE REGION sa je mozne prepnut do AZURE EVENT HUBS NAMESPACE v sekundarnom AZURE REGION.
+15. AZURE EVENT HUBS automaticky replikuje svoju INFRASTRUCTURE na zabezpecenie vysokej AVAILABILITY a RELIABLITY. Platia nasledujuce fakty.
+   A. AZURE SERVICE [AVAILABILITY ZONES] automaticky distribuuje AZURE EVENT HUBS INFRASTRUCTURE medzi viacerymi DATA CENTERS v ramci toho isteho AZURE REGION na zvysenie AVAILABILITY a RELIABLITY.
+   B. AZURE SERVICE [GEO DISASTER RECOVERY] vykonava parovanie PRIMARY AZURE EVENT HUBS NAMESPACE so SECONDARY AZURE EVENT HUBS NAMESPACE, ktory sa nechadza v inom AZURE REGION, vdaka comu sa da realizovat BACKUP na SECONDARY AZURE EVENT HUBS NAMESPACE v pripade vypadku PRIMARY AZURE REGION.
+16. Vytvorenie EVENT HUBS HUB pozostava z nasledujucich krokov.
+   A. Zaregistrovanie RESOURCE PROVIDER [Microsoft.EventHub].
+   B. Vytvorenie EVENT HUBS NAMESPACE.
+   C. Vytvorenie EVENT HUBS HUB.
+17. S EVENT HUBS NAMESPACES sa pracuje pomocou nasledujucich COMMANDS.
+   A. EVENT HUBS NAMESPACE sa vytvara pomocou COMMAND [az eventhubs namespace create]. Prikladom je COMMAND [az eventhubs namespace create --name MyNamespaceTA76 --resource-group Chapter10 --location centralus --sku Basic].
+   B. EVENT HUBS NAMESPACE sa odstranuje pomocou COMMAND [az eventhubs namespace delete]. Prikladom je COMMAND [az eventhubs namespace delete --name MyNamespaceTA76 --resource-group Chapter10].
+   C. Zoznam EVENT HUBS NAMESPACES vracia COMMAND [az eventhubs namespace list]. Prikladom je COMMAND [az eventhubs namespace list --resource-group Chapter10].
+   D. EVENT HUBS NAMESPACE CONNECTION STRING sa ziskava pomocou COMMAND [az eventhubs namespace authorization-rule keys list]. Prikladom je COMMAND [az eventhubs namespace authorization-rule keys list --namespace-name MyNamespaceTA76 --resource-group Chapter10 --name RootManageSharedAccessKey].
+18. S EVENT HUBS HUBS sa pracuje pomocou nasledujucich COMMANDS.
+   A. EVENT HUBS HUB sa vytvara pomocou COMMAND [az eventhubs eventhub create]. Prikladom je COMMAND [az eventhubs eventhub create --name MyHubTA76 --namespace-name MyNamespaceTA76 --resource-group Chapter10 --retention-time 24 --cleanup-policy Delete].
+   B. EVENT HUBS HUB sa odstranuje pomocou COMMAND [az eventhubs eventhub delete]. Prikladom je COMMAND [az eventhubs eventhub delete --name MyHubTA76 --namespace-name MyNamespaceTA76 --resource-group Chapter10].
+   C. Zoznam EVENT HUBS HUBS vracia COMMAND [az eventhubs eventhub list]. Prikladom je COMMAND [az eventhubs eventhub list --namespace-name MyNamespaceTA76 --resource-group Chapter10].
+19. EVENT HUBS HUBS podporuje koncept CHECKPOINTS. Pre CHECKPOINTS platia nasledujuce fakty.
+   A. CHECKPOINT urcuje POSITION v EVENT HUBS PARTITION, z ktorej bol ako z poslednej uspesne nacitany EVENT v EVENT STREAM.
+   B. CHECKPOINTS umoznuju EVENT CONSUMERS zaznamenat POSITION, kde skoncili so spracovanim EVENTS v EVENT HUBS PARTITIONS, aby nedochadzalo k duplicitnemu spracovanie tych istych EVENTS, alebo vynechaniu spracovania niektorych EVENTS.
+   !!! C. CHECKPOINTS sa ukladaju do BLOB STORAGE. Preto EVENT CONSUMERS musia mat zaregistrovany BLOB STORAGE, aby mohli vycitavat EVENTS z EVENT HUBS PARTITIONS.
+   !!! D. EVENT CONSUMERS mozu zapisovat CHECKPOINTS podla potreby. Plati, ze cim tazsie sa CHECKPOINT zapisuje, tym to ma vacsi dopad na vykonnost. Na druhej strane, nizsia frekvencia zapisov CHECKPOINTS moze viest k vzniku duplicitnych EVENTS.
+20. .NET CLIENT LIBRARY pre AZURE EVENT HUBS sa nachadza v nasledujucich PACKAGES.
+   A. .NET CLIENT LIBRARY pre AZURE EVENT HUBS PRODUCER je ulozena v PACKAGE [Azure.Messaging.EventHubs].
+   B. .NET CLIENT LIBRARY pre AZURE EVENT HUBS CONSUMER je ulozena v PACKAGE [Azure.Messaging.EventHubs.Processor].
+!!! 21. Pre odosielanie EVENTS do AZURE EVENT HUBS v EVENT HUBS PRODUCER je nutne vytvorit nasledujuce RESOURCES.
+   A. EVENT HUBS NAMESPACE.
+   B. EVENT HUBS HUB.
+22. EVENTS su v AZURE EVENT HUBS odosielane nasledujucim sposobom.
+   A. Vytvori sa instancia CLASS [EventHubProducerClient], ktora ma nasledujuce PARAMETERS.
+      A. CONNECTION STRING na PARTITION. CONNECTION STRING na PARTITION sa da ziskat volanim COMMAND [az eventhubs namespace authorization-rule keys list].
+      B. EVENT HUB NAME.
+   B. Vytvoria sa instancie CLASS [EventData], ktore obsahuju EVENT DATA EVENTS.
+   C. EVENTS sa odoslu do AZURE EVENT HUBS niektorym z nasledujucich sposobov.
+      A. EVENTS sa odoslu ako COLLECTION EVENTS volanim METHOD [Task EventHubProducerClient.SendAsync(IEnumerable<EventData> EventBatch, CancellationToken CancellationToken)].
+      B. EVENTS sa odoslu ako BATCH v nasledujucich krokoch.
+         A. Vytvori sa instancia CLASS [EventDataBatch] volanim METHOD [ValueTask<EventDataBatch> EventHubProducerClient.CreateBatchAsync(CancellationToken CancellationToken)].
+         B. EVENTS sa vlozia do BATCH volanim METHOD [bool EventDataBatch.TryAdd(EventData EventData)].
+         C. Cely BATCH sa odosle do AZURE EVENT HUBS volanim METHOD [Task EventHubProducerClient.SendAsync(EventDataBatch EventBatch, CancellationToken CancellationToken)].
+         D. Instancia CLASS [EventDataBatch] sa uvolni volanim METHOD [void EventDataBatch.Dispose()].
+   D. Instancia CLASS [EventHubProducerClient] sa uvolni volanim METHOD [ValueTask EventHubProducerClient.DisposeAsync()].
+23. CLASS [EventHubProducerClient] umoznuje odosielanie EVENTS do AZURE EVENT HUBS. Pre CLASS platia nasledujuce fakty.
+   A. CLASS implementuje INTERFACE [IAsyncDisposable], ktory umoznuje asynchronne uvolnenie RESOURCES.
+   B. CONSTRUCTOR vytvara instanciu CLASS [EventHubProducerClient]. Ako PARAMETER sa zadava CONNECTION STRING, ktory sa da ziskat pomocou COMMAND [az eventhubs namespace authorization-rule keys list].
+   C. PROPERTY [string FullyQualifiedNamespace] obsahuje FULLY QUALIFIED EVENT HUBS NAMESPACE.
+   D. PROPERTY [string EventHubName] obsahuje nazov EVENT HUBS HUB.
+   E. PROPERTY [string Identifier] obsahuje unikatny identifikator AZURE EVENT HUBS PRODUCER.
+   F. PROPERTY [bool IsClosed] obsahuje informaciu ci CONNECTION na AZURE EVENT HUBS je uzatvorena.
+   G. METHOD [ValueTask DisposeAsync()] asynchronne uvolnuje RESOURCES AZURE EVENT HUBS CONNECTION.
+   H. METHOD [Task CloseAsync(CancellationToken CancellationToken)] uzatvara CONNECTION na AZURE EVENT HUBS.
+   I. METHOD [Task<PartitionPublishingProperties> GetPartitionPublishingPropertiesAsync(string PartitionId, CancellationToken CancellationToken)] vracia informacie o EVENT HUBS PARTITION do ktorej bude EVENT zaslany. METHOD vracia informacie o EVENT HUBS PARTITION az po odoslani aspon 1 EVENT.
+   J. METHOD [Task<EventHubProperties> GetEventHubPropertiesAsync(CancellationToken CancellationToken)] vracia informacie o EVENT HUBS HUB do ktoreho bude EVENT zaslany. METHOD vracia informaciu o pocte PARTITIONS a PARTITION IDENTIFIERS.
+   K. METHOD [Task<string[]> GetPartitionIdsAsync(CancellationToken CancellationToken)] vracia zoznam PARTITION IDENTIFIERS EVENT HUBS HUB ku ktoremu je OBJECT pripojeny.
+   L. METHOD [Task<PartitionProperties> GetPartitionPropertiesAsync(string PartitionId, CancellationToken CancellationToken)] vracia informacie o PARTITION identifikovanej pomocou PARTITION IDENTIFIER EVENT HUBS HUB ku ktoremu je OBJECT pripojeny.
+   M. METHOD [Task SendAsync(IEnumerable<EventData> EventBatch, SendEventOptions Options, CancellationToken CancellationToken)] odosiela mnozinu EVENTS do EVENT HUBS HUB.
+   N. METHOD [ValueTask<EventDataBatch> CreateBatchAsync(CreateBatchOptions Options, CancellationToken CancellationToken)] vytvara EVENT BATCH pre odosielanie EVENTS do EVENT HUBS HUB.
+   O. METHOD [Task SendAsync(EventDataBatch EventBatch, CancellationToken CancellationToken)] odosiela EVENTS ako BATCH do EVENT HUBS HUB.
+24. CLASS [EventDataBatch] umoznuje odosielanie EVENTS do AZURE EVENT HUBS ako BATCH. Pre CLASS platia nasledujuce fakty.
+   A. CLASS implementuje INTERFACE [IDisposable], ktory umoznuje uvolnenie RESOURCES.
+   B. PROPERTY [long MaximumSizeInBytes] obsahuje maximalny pocet BYTES, ktore moze obsahovat BATCH.
+   C. PROPERTY [long SizeInBytes] obsahuje pocet BYTES, ktore obsahuje BATCH.
+   D. PROPERTY [int Count] obsahuje EVENTS, ktore obsahuje BATCH.
+   E. METHOD [void Dispose()] uvolnuje RESOURCES AZURE EVENT BATCH.
+   F. METHOD [bool TryAdd(EventData EventData)] sa pokusi vlozit EVENT do BATCH. METHOD vrati VALUE [true], ak sa EVENT podarilo vlozit do BATCH a VALUE [false], ak sa EVENT nepodarilo vlozit do BATCH, pretoze BATCH by prekrocil maximalnu dlzku.
+25. CLASS [EventData] reprezentuje EVENT DATA daneho EVENT a EVENT METADATA daneho EVENT. Pre CLASS platia nasledujuce fakty.
+   A. CLASS [EventData] je DERIVED z CLASS [MessageContent].
+   B. CONSTRUCTOR vytvara instanciu CLASS [EventData].
+   C. PROPERTY [BinaryData EventBody] obsahuje BINARY DATA asociovane s EVENT.
+   D. PROPERTY [ReadOnlyMemory<byte> Body] obsahuje BINARY DATA asociovane s EVENT.
+   E. PROPERTY [Stream BodyAsStream] obsahuje BINARY DATA asociovane s EVENT.
+   F. PROPERTY [string ContentType] obsahuje MIME TYPE dat, ktore su asociovane s EVENT.
+   G. PROPERTY [string MessageId] obsahuje CUSTOM IDENTIFIER daneho EVENT.
+   H. PROPERTY [string CorrelationId] obsahuje CUSTOM CORRELATION IDENTIFIER daneho EVENT.
+   I. PROPERTY [IDictionary<string,object> Properties] obsahuje METADATA daneho EVENT.
+   J. PROPERTY [IReadOnlyDictionary<string,object> SystemProperties] obsahuje SYSTEM METADATA daneho EVENT.
+   K. PROPERTY [long SequenceNumber] obsahuje SEQUENCE NUMBER daneho EVENT. SEQUENCE NUMBER urcuje poradove cislo s ktorym je EVENT vlozeny do EVENT HUBS PARTITION.
+   L. PROPERTY [string OffsetString] obsahuje OFFSET s ktorym bol EVENT nacitany z danej EVENT HUBS PARTITION.
+   M. PROPERTY [DateTimeOffset EnqueuedTime] obsahuje UTC TIME kedy bol EVENT vlozeny do PARTITION.
+   N. PROPERTY [string PartitionKey] obsahuje PARTITION KEY daneho EVENT.
+   O. METHOD [AmqpAnnotatedMessage GetRawAmqpMessage()] vracia reprezentaciu EVENT vo formate PROTOCOLU AMQP.
+!!!!! 26. Pre nacitavanie EVENTS z AZURE EVENT HUBS v EVENT HUBS CONSUMER je nutne vytvorit nasledujuce RESOURCES.
+   A. EVENT HUBS NAMESPACE.
+   B. EVENT HUBS HUB.
+   !!! C. AZURE STORAGE ACCOUNT.
+   !!! D. AZURE STORAGE BLOB CONTAINER.
+27. EVENTS su z AZURE EVENT HUBS nacitavane nasledujucim sposobom.
+   A. Vytvori sa instancia CLASS [BlobContainerClient], ktora ma nasledujuce PARAMETERS.
+      A. CONNECTION STRING na AZURE STORAGE ACCOUNT.
+      B. AZURE STORAGE BLOB CONTAINER NAME.
+   B. Vytvori sa instancia CLASS [EventProcessorClient], ktora ma nasledujuce PARAMETERS.
+      A. CONNECTION STRING na PARTITION. CONNECTION STRING na PARTITION sa da ziskat volanim COMMAND [az eventhubs namespace authorization-rule keys list].
+      B. EVENT HUB NAME.
+   C. Zaregistruje sa EVENT [Func<ProcessEventArgs,Task> EventProcessorClient.ProcessEventAsync] na odber zachytenych EVENTS.
+   D. Zaregistruje sa EVENT [Func<ProcessErrorEventArgs,Task> EventProcessorClient.ProcessErrorAsync] na odber detekovanych ERRORS.
+   E. Volanim METHOD [Task EventProcessorClient.StartProcessingAsync(CancellationToken CancellationToken)] sa spusta zachytavanie EVENTS z AZURE EVENT HUBS.
+   !!! F. V EVENT HANDLER EVENT [Func<ProcessEventArgs,Task> EventProcessorClient.ProcessEventAsync] je po skonceni spracovania EVENT nutne vykonat UPDATE CHECKPOINT, aby EVENT nebol vycitavany opakovane. UPDATE CHECKPOINT sa robi volanim METHOD [Task ProcessEventArgs.UpdateCheckpointAsync(CancellationToken CancellationToken)].
+   G. Volanim METHOD [Task EventProcessorClient.StopProcessingAsync(CancellationToken CancellationToken)] sa zastavuje zachytavanie EVENTS z AZURE EVENT HUBS.
+28. CLASS [EventProcessorClient] umoznuje citanie EVENTS z AZURE EVENT HUBS. Pre CLASS platia nasledujuce fakty.
+   A. CLASS [EventProcessorClient] je DERIVED z CLASS [EventProcessor<EventProcessorPartition>].
+   B. CONSTRUCTOR vytvara instanciu CLASS [EventProcessorClient]. CONSTRUCTOR vyzaduje CONNECTION STRING, ktory sa da ziskat pomocou COMMAND [az eventhubs namespace authorization-rule keys list].
+   C. PROPERTY [string FullyQualifiedNamespace] obsahuje FULLY QUALIFIED EVENT HUBS NAMESPACE.
+   D. PROPERTY [string EventHubName] obsahuje nazov EVENT HUBS HUB.
+   E. PROPERTY [string Identifier] obsahuje unikatny identifikator AZURE EVENT HUBS CONSUMER.
+   F. PROPERTY [string ConsumerGroup] obsahuje CONSUMER GROUP s ktorym je AZURE EVENT HUBS CONSUMER asociovany.
+   G. PROPERTY [bool IsRunning] obsahuje informaciu ci AZURE EVENT HUBS CONSUMER aktualne bezi.
+   H. EVENT [Func<PartitionInitializingEventArgs,Task> PartitionInitializingAsync] je volany ak je PARTITION inicializovana.
+   I. EVENT [Func<PartitionClosingEventArgs,Task> PartitionClosingAsync] je volany ak je PARTITION uzatvorena.
+   J. EVENT [Func<ProcessEventArgs,Task> ProcessEventAsync] je volany pri nacitavani EVENT z PARTITION.
+   K. EVENT [Func<ProcessErrorEventArgs,Task> ProcessErrorAsync] je volany pri nacitavani EVENTS z PARTITION doslo k ERROR.
+   L. PROTECTED METHOD [Task OnProcessingEventBatchAsync(IEnumerable<EventData> Events, EventProcessorPartition Partition, CancellationToken CancellationToken)] vykonava cinnosti potrebne na spracovanie EVENT BATCH.
+   M. PROTECTED METHOD [Task OnProcessingErrorAsync(Exception Exception, EventProcessorPartition Partition, string OperationDescription, CancellationToken CancellationToken)] vykonava cinnosti potrebne na spracovanie ERROR, ktora sa vyskytla pri nacitavani EVENTS z AZURE EVENT HUBS PARTITION.
+   N. PROTECTED METHOD [Task OnInitializingPartitionAsync(EventProcessorPartition Partition, CancellationToken CancellationToken)] vykonava cinnosti potrebne na spracovanie PARTITION INITIALIZATION.
+   O. PROTECTED METHOD [Task OnPartitionProcessingStoppedAsync(EventProcessorPartition Partition, ProcessingStoppedReason Reason, CancellationToken CancellationToken)] vykonava cinnosti potrebne na spracovanie PARTITION STOPPING.
+   P. PROTECTED METHOD [Task<EventProcessorCheckpoint> GetCheckpointAsync(string PartitionId, CancellationToken CancellationToken)] vracia CHECKPOINT pre EVENT HUB, CONSUMER GROUP a PARTITION IDENTIFIER, ktory je asociovany s AZURE EVENT HUBS CONSUMER.
+   Q. PROTECTED METHOD [Task UpdateCheckpointAsync(string PartitionId, CheckpointPosition StartingPosition, CancellationToken CancellationToken)] vykonava CHECKPOINT UPDATE pre danu PARTITION.
+   S. PROTECTED METHOD [Task<IEnumerable<EventProcessorPartitionOwnership>> ListOwnershipAsync(CancellationToken CancellationToken)] vracia zoznam OWENERSHIP ASSIGNMENTS pre PARTITIONS medzi vsetkymi spolupracujucimi AZURE EVENT HUBS CONSUMERS.
+   S. PROTECTED METHOD [Task<IEnumerable<EventProcessorPartitionOwnership>> ClaimOwnershipAsync(IEnumerable<EventProcessorPartitionOwnership> DesiredOwnership, CancellationToken CancellationToken)] vracia CLAIM OWENERSHIP danej PARTITION.
+   T. PROTECTED METHOD [Task ValidateProcessingPreconditions(CancellationToken CancellationToken)] vykonava VALIDATION CONFIGURATION a PERMISSIONS vsetkych DEPENDENCIES, ktore AZURE EVENT HUBS CONSUMER potrebuje na svoju cinnost.
+   U. PROTECTED METHOD [EventHubConnection CreateConnection()] otvara CONNECTION na AZURE EVENT HUBS.
+   V. METHOD [void StartProcessing(CancellationToken CancellationToken)] synchronne spusta zachytavanie EVENTS z AZURE EVENT HUBS.
+   W. METHOD [Task StartProcessingAsync(CancellationToken CancellationToken)] asynchronne spusta zachytavanie EVENTS z AZURE EVENT HUBS.
+   X. METHOD [void StopProcessing(CancellationToken CancellationToken)] synchronne zastavuje zachytavanie EVENTS z AZURE EVENT HUBS.
+   Y. METHOD [Task StopProcessingAsync(CancellationToken CancellationToken)] asynchronne zastavuje zachytavanie EVENTS z AZURE EVENT HUBS.
+29. STRUCTURE [ProcessEventArgs] obsahuje informacie o PARITION obsahujuce EVENTS, ktore AZURE EVENT HUBS CONSUMER nacital z AZURE EVENT HUBS PARTITION. Pre STRUCTURE platia nasledujuce fakty.
+   A. CONSTRUCTOR vytvara instanciu STRUCTURE [ProcessEventArgs].
+   B. PROPERTY [EventData Data] obsahuje EVENT DATA asociovane s EVENT. Moze obsahovat VALUE [null], ak pri nacitani EVENT DATA exspiroval TIMEOUT.
+   C. PROPERTY [PartitionContext Partition] obsahuje PARTITION CONTEXT AZURE EVENT HUBS PARTITION.
+   !!! D. PROPERTY [CancellationToken CancellationToken] obsahuje CANCELLATION TOKEN, ktory ked je nastaveny, C# EVENT HANDLER spracovavajuci EVENT by mal okamzite ukoncit spracovanie daneho EVENT.
+   E. PROPERTY [bool HasEvent] obsahuje informaciu ci instancia STRUCTURE [ProcessEventArgs] obsahuje EVENT DATA.
+   F. METHOD [Task UpdateCheckpointAsync(CancellationToken CancellationToken)] vykonava UPDATE CHECKPOINT pre PARTITION CONTEXT a EVENT DATA, ktore obsahuje STRUCTURE [ProcessEventArgs].
+30. STRUCTURE [ProcessErrorEventArgs] obsahuje informacie o EXCEPTION ku ktorej doslo pri nacitavani EVENTS z AZURE EVENT HUBS PARTITION v AZURE EVENT HUBS CONSUMER. Pre STRUCTURE platia nasledujuce fakty.
+   A. CONSTRUCTOR vytvara instanciu STRUCTURE [ProcessErrorEventArgs].
+   B. PROPERTY [string PartitionId] obsahuje PARTITION IDENTIFIER v ktorej doslo k EXCEPTION pri vycitavani EVENTS.
+   C. PROPERTY [string Operation] obsahuje popis OPERATION, pri ktorej doslo k EXCEPTION.
+   D. PROPERTY [Exception Exception] obsahuje EXCEPTION ku ktorej doslo pri nacitani EVENTS z AZURE EVENT HUBS PARTITION.
+   !!! E. PROPERTY [CancellationToken CancellationToken] obsahuje CANCELLATION TOKEN, ktory ked je nastaveny, C# EVENT HANDLER spracovavajuci EVENT by mal okamzite ukoncit spracovanie daneho EVENT.
+31. EVENTS su do PARTITIONS zaradzovane nasledujucim sposobom.
+   A. BY-DEFAULT, AZURE EVENT HUBS zaradzuje EVENTS do jednotlivych PARTITIONS pomocou ROUND ROBIN sposobu, aby pocet EVENTS v jednotlivych PARTITIONS bol rovnomerny.
+   B. EVENTS mozu byt zaslane do konkretnej PARTITION, ktora je identifikovana pomocou PARTITION IDENTIFIER. Platia nasledujuce fakty.
+      A. PARTITION IDENTIFIER sa nastavuje pomocou PROPERTY [string SendEventOptions.PartitionId].
+      B. EVENT HUBS HUBS garantuje, ze EVENT s nastavenym PARTITION IDENTIFIER bude odoslany do PARTITION s danym PARTITION IDENTIFIER.
+      !!! C. PARTITION s nastavenym PARTITION IDENTIFIER musi existovat, aby do nej mohol AZURE EVENT HUBS odoslat EVENT.
+   C. EVENTS mozu byt zaslane do PARTITION pomocou PARTITION KEY. Platia nasledujuce fakty.
+      A. PARTITION KEY sa nastavuje pomocou PROPERTY [string SendEventOptions.PartitionKey].
+      !!! B. EVENT HUBS HUBS NEGARANTUJE, do ktorej konkretne PARTITION bude EVENT s nastavenym PARTITION KEY realne odoslany. Je to iba HINT. To znamena, ze sa moze stat, ze EVENTS s rovnakym PARTITION KEY budu ulozene v rozdielnych PARTITIONS.
+32. AZURE EVENT HUBS definuje CONSUMER GROUPS. Pre CONSUMER GROUPS platia nasledujuce fakty.
+   A. CONSUMER GROUP reprezentuje VIEW EVENT CONSUMERS na EVENTS, ktore su ulozene v AZURE EVENT HUBS HUB.
+   !!! B. Kazda CONSUMER GROUP obsahuje mnozinu OFFSETS (SEQUENCE NUMBERS) pre kazdu PARTITION v AZURE EVENT HUBS HUB, ktora je nezavisla na ostatnych CONSUMER GROUPS.
+   C. CONSUMER GROUPS umoznuju EVENT CONSUMERS v CONSUMER GROUPS citanie a spracovanie EVENTS, ktore je NEZAVISLE na inych CONSUMER GROUPS.
+   !!!!! D. Ak viacero EVENT CONSUMERS citat EVENTS z tej istej CONSUMER GROUP, AZURE EVENT HUBS rozdeli spracovanie EVENTS ulozenym v roznych PARTITIONS roznym EVENT CONSUMERS, aby EVENT CONSUMERS vzajomne necitali duplicitne tie iste EVENTS.
+   !!! E. CONSUMER GROUPS umoznuju EVENT CONSUMERS zvolit nasledujuce strategie citania a spracovanie EVENTS.
+      A. GREEDY PROCESSING. Pri GREEDY PROCESSING sa dany EVENT CONSUMER pokusa citat EVENTS z co najvacsieho poctu PARTITIONS.
+      B. BALANCED PROCESSING. Pri BALANCED PROCESSING AZURE EVENT HUBS jednotlivym EVENT CONSUMERS priraduje rovnomerny pocet PARTITIONS, aby kazdy EVENT CONSUMER bol priblizne rovnako zatazeny.
+   !!! F. CONSUMER GROUPS musia byt explicitne vytvorene pomocou COMMAND [az eventhubs eventhub consumer-group].
+   G. Pri vytvoreni AZURE HUBS HUB sa vytvori DEFAULT CONSUMER GROUP s NAME [$Default].
+   H. CONSUMER GROUPS SETTINGS sa nastavuje pomocou CLASS [EventProcessorClientOptions].
+   !!! I. Pouzitie CONSUMER GROUPS vyzaduje STANDARD TIER.
+33. S EVENT HUBS CONSUMER GROUPS sa pracuje pomocou nasledujucich COMMANDS.
+   A. EVENT HUBS CONSUMER GROUP sa vytvara pomocou COMMAND [az eventhubs eventhub consumer-group create]. Prikladom je COMMAND [az eventhubs eventhub consumer-group create --name Group1 --eventhub-name MyHubTA76 --namespace-name MyNamespaceTA76 --resource-group Chapter10].
+   B. EVENT HUBS CONSUMER GROUP sa odstranuje pomocou COMMAND [az eventhubs eventhub consumer-group delete]. Prikladom je COMMAND [az eventhubs eventhub consumer-group delete --name Group1 --eventhub-name MyHubTA76 --namespace-name MyNamespaceTA76 --resource-group Chapter10].
+   C. Zoznam EVENT HUBS CONSUMER GROUPS vracia COMMAND [az eventhubs eventhub consumer-group list]. Prikladom je COMMAND [az eventhubs eventhub consumer-group list --eventhub-name MyHubTA76 --namespace-name MyNamespaceTA76 --resource-group Chapter10].
+34. CLASS [EventHubBufferedProducerClient] umoznuje odosielat EVENTS do AZURE EVENT HUBS s vyuzitim FEATURES ako IDEMPOTENT RETRIES, CONCURRENCY CONTROL, EVENT BUFFERING ci WAIT TIME MANAGEMENT. Pre CLASS platia nasledujuce fakty.
+   A. CLASS implementuje INTERFACE [IAsyncDisposable], ktory umoznuje asynchronne uvolnenie RESOURCES.
+   B. CONSTRUCTOR vytvara instanciu CLASS [EventHubBufferedProducerClient]. Ako PARAMETER sa zadava CONNECTION STRING, ktory sa da ziskat pomocou COMMAND [az eventhubs namespace authorization-rule keys list].
+   C. PROPERTY [string FullyQualifiedNamespace] obsahuje FULLY QUALIFIED EVENT HUBS NAMESPACE.
+   D. PROPERTY [string EventHubName] obsahuje nazov EVENT HUBS HUB.
+   E. PROPERTY [string Identifier] obsahuje unikatny identifikator AZURE EVENT HUBS PRODUCER.
+   F. PROPERTY [bool IsClosed] obsahuje informaciu ci CONNECTION na AZURE EVENT HUBS je uzatvorena.
+   G. PROPERTY [bool IsPublishing] obsahuje informaciu OBJECT odosiela EVENTS na AZURE EVENT HUBS.
+   H. PROPERTY [int TotalBufferedEventCount] obsahuje pocet EVENTS, ktore su v BUFFER a cakaju na odoslanie do AZURE EVENT HUBS.
+   I. EVENT [Func<SendEventBatchSucceededEventArgs,Task> SendEventBatchSucceededAsync] je volany ak bol EVENT BATCH uspesne odoslany do AZURE EVENT HUBS.
+   J. EVENT [Func<SendEventBatchFailedEventArgs,Task> SendEventBatchFailedAsync] je volany ak dojde k ERROR pri odosielani EVENT BATCH do AZURE EVENT HUBS.
+   K. METHOD [ValueTask DisposeAsync()] asynchronne uvolnuje RESOURCES AZURE EVENT HUBS CONNECTION.
+   L. PROTECTED METHOD [Task OnSendSucceededAsync(IReadOnlyList<EventData> Events, string PartitionId, CancellationToken CancellationToken)] je zodpovedna za odoslanie EVENT [Func<SendEventBatchSucceededEventArgs,Task> SendEventBatchSucceededAsync].
+   M. PROTECTED METHOD [Task OnSendFailedAsync(IReadOnlyList<EventData> Events, Exception Exception, string PartitionId, CancellationToken CancellationToken)] je zodpovedna za odoslanie EVENT [Func<SendEventBatchFailedEventArgs,Task> SendEventBatchFailedAsync].
+   N. METHOD [Task CloseAsync(bool Flush, CancellationToken CancellationToken)] asynchronne uzatvara CONNECTION a uvolnuje RESOURCES AZURE EVENT HUBS CONNECTION.
+   O. METHOD [Task FlushAsync(CancellationToken CancellationToken)] okamzite odosle vsetky EVENTS v BUFFER do AZURE EVENT HUBS.
+   P. METHOD [Task<EventHubProperties> GetEventHubPropertiesAsync(CancellationToken CancellationToken)] vracia informacie o EVENT HUBS HUB do ktoreho bude EVENT zaslany. METHOD vracia informaciu o pocte PARTITIONS a PARTITION IDENTIFIERS.
+   Q. METHOD [Task<string[]> GetPartitionIdsAsync(CancellationToken CancellationToken)] vracia zoznam PARTITION IDENTIFIERS EVENT HUBS HUB ku ktoremu je OBJECT pripojeny.
+   R. METHOD [Task<PartitionProperties> GetPartitionPropertiesAsync(string PartitionId, CancellationToken CancellationToken)] vracia informacie o PARTITION identifikovanej pomocou PARTITION IDENTIFIER EVENT HUBS HUB ku ktoremu je OBJECT pripojeny.
+   S. METHOD [int GetBufferedEventCount(string PartitionId)] vracia pocet EVENTS, ktore su v BUFFERI a su urcene na odoslanie do PARTITION identifikovanej pomocou PARTITION IDENTIFIER.
+   T. METHOD [Task<int> EnqueueEventAsync(EventData EventData, EnqueueEventOptions Options, CancellationToken CancellationToken)] uklada EVENT do BUFFER, aby neskor mohla byt odoslana do AZURE EVENT HUBS.
+   U. METHOD [Task<int> EnqueueEventsAsync(IEnumerable<EventData> Events, EnqueueEventOptions Options, CancellationToken CancellationToken)] uklada EVENTS do BUFFER, aby neskor mohli byt odoslane do AZURE EVENT HUBS.
+35. CLASS [EventHubsRetryOptions] umoznuje nastavit EVENT HUBS RETRY OPTIONS. Pre CLASS platia nasledujuce fakty.
+   A. PROPERTY [EventHubsRetryMode Mode] urcuje RETRY MODE. VALUE [EventHubsRetryMode.Fixed] znamena, ze casy medzi jednotlivymi RETRIES budu konstantne. VALUE [EventHubsRetryMode.Exponential], ze casu medzi jednotlivymi RETRIES budu exponencialne narastat.
+   B. PROPERTY [int MaximumRetries] urcuje maximalny pocet RETRIES.
+   C. PROPERTY [TimeSpan Delay] urcuje DELAY medzi jednotlivymi RETRIES. Pri FIXED MODE je cas konstantny. Pri EXPONENTIAL MODE sa neustale exponencialne predlzuje.
+   D. PROPERTY [TimeSpan MaximumDelay] urcuje maximalny mozny DELAY medzi jednotlivymi RETRIES.
+   E. PROPERTY [TimeSpan TryTimeout] urcuje maximalny mozny cas na ukoncenie 1 RETRY, bez ohladu na to ci sa jedna o prvy ATTEMPT, alebo nasledujuce RETRIES.
+   F. PROPERTY [EventHubsRetryPolicy CustomRetryPolicy] urcuje CUSTOM RETRY POLICY, ktoru je mozne definovant implementovanim CLASS [EventHubsRetryPolicy].
+36. AZURE EVENT HUBS CLASSES pri vzniku EXCEPTION hadzu EXCEPTION TYPE [EventHubsException]. Pre EXCEPTION TYPE [EventHubsException] platia nasledujuce fakty.
+   A. CLASS je DERIVED z CLASS INTERFACE [Exception].
+   B. CONSTRUCTOR vytvara instanciu CLASS [Exception].
+   C. PROPERTY [bool IsTransient] urcuje ci EXCEPTION ma byt povazovana za TRANSIENT, alebo FINAL.
+   D. PROPERTY [string EventHubName] urcuje nazov EVENT HUBS HUB s ktorou je EXCEPTION asociovana.
+   E. PROPERTY [FailureReason Reason] urcuje REASON danej EXCEPTION.
+   F. INNER ENUM [FailureReason] obsahuje REASONS danej EXCEPTION.
+37. ENUM [EventHubsException.FailureReason] definuje EXCEPTION CODE EXCEPTION [EventHubsException]. ENUM ma nasledujuce MEMBERS.
+   A. VALUE [GeneralError] znamena, ze doslo ku GENERAL ERROR v CLIENT LIBRARY.
+   B. VALUE [ClientClosed] znamena, ze doslo k pokusu o vykonanie OPERATION nad CLIENT, ktory je uz CLOSED.
+   C. VALUE [ConsumerDisconnected] znamena, ze CONSUMER bol nasilne odpojeny od EVENT HUBS. K tejto situacii dochadza vtedy, ak iny CONSUMER s vyssim OWNER LEVEL preberie vlastnictvo nad PARTITION a CONSUMER GROUP.
+   D. VALUE [ResourceNotFound] znamena, ze EVENT HUBS RESOURCE nebol najdeny. Prikladom je EVENT HUBS HUB, CONSUMER GROUP, alebo PARTITION.
+   E. VALUE [MessageSizeExceeded] znamena, ze MESSAGE je vacsia ako maximalna velkost MESSAGE, ktora moze byt prenesena.
+   F. VALUE [QuotaExceeded] znamena, ze QUOTA aplikovana na EVENT HUBS bola prekrocena.
+   G. VALUE [ServiceBusy] znamena, ze EVENT HUBS je BUSY a momentalne nemoze vykonat pozadovanu OPERATION.
+   H. VALUE [ServiceTimeout] znamena, ze doslo k TIMEOUT EXSPIRATION pri vykonavani OPERATION nad EVENT HUBS.
+   I. VALUE [ServiceCommunicationProblem] znamena, ze doslo k vseobecnej ERROR pri komunikacii s AZURE HUBS.
+   J. VALUE [ProducerDisconnected] znamena, ze PRODUCER bol nasilne odpojeny od EVENT HUBS. K tejto situacii dochadza vtedy, ak iny PRODUCER s vyssim OWNER LEVEL preberie vlastnictvo nad PARTITION a PRODUCER GROUP.
+   K. VALUE [InvalidClientState] znamena, ze CLIENT je v INVALID STATE, z ktoreho sa nemoze zostavit. Odporuca sa CLIENT uzatvorit a vytvorit novu instanciu CLIENT.
+38. AZURE EVENT HUBS je mozne monitorovat nasledujucimi sposobmi.
+   A. Pouzitim AZURE MONITOR. AZURE MONITOR implementuje CLASS [TelemetryClient], ktora umoznuje monitoring AZURE EVENT HUBS.
+   B. Pouzitim AZURE ALERTS. AZURE ALERTS umoznuju definovat RULES, kedy ma byt odoslana NOTIFICATION o vzniku vynimocnej situacie.
+39. PROGRAMS, ktore pristpuju k AZURE EVENT HUBS mozu mat definovane ROLES obmezujuce ich ACCESS RIGHTS pomocou SHARED ACCESS SIGNATURES. Pre SHARED ACCESS SIGNATURES platia nasledujuce fakty.
+   A. SHARED ACCESS SIGNATURE umoznuju pouzivanie nasledujucich ROLES.
+      A. ROLE [Send]. ROLE umoznuje odosielat EVENTS do AZURE EVENT HUBS.
+      B. ROLE [Listen]. ROLE umoznuje nacitavat EVENTS z AZURE EVENT HUBS.
+      C. ROLE [Manage]. ROLE umoznuje spravu AZURE EVENT HUBS HUBS, vratane zapisovania a citania EVENTS.
+   B. SHARED ACCESS SIGNATURE moze byt aplikovana vytvorenim AUTHORIZATION RULES na nasledujuce AZURE EVENT HUBS RESOURCES.
+      A. RESOURCE [EVENT_HUBS_NAMESPACE]. Pre RESOURCE [EVENT_HUBS_NAMESPACE] sa AUTHORIZATION RULE vytvara pomocou COMMAND [az eventhubs namespace authorization-rule create].
+      B. RESOURCE [EVENT_HUBS_HUB]. Pre RESOURCE [EVENT_HUBS_HUB] sa AUTHORIZATION RULE vytvara pomocou COMMAND [az eventhubs eventhub authorization-rule create].
+   C. Pri pristupe k AZURE EVENT HUBS pomocou SHARED ACCESS SIGNATURES je nutne vytvorit ACCESS TOKEN. ACCESS TOKEN je tvoreny nasledujucimi PARAMETERS.
+      A. PARAMETER [RESOURCE_URL]. PARAMETER [RESOURCE_URL] ma FORMAT [EVENT_HUB_NAMESPACE.servicebus.windows.net/EVENT_HUB_NAME], kde VALUE [EVENT_HUB_NAMESPACE] je nazov EVENT HUB NAMESPACE a OPTIONAL VALUE [EVENT_HUB_NAME] je nazov EVENT HUB NAME.
+      B. PARAMETER [KEY_NAME]. PARAMETER [KEY_NAME] je nazov AUTHORIZATION RULE, ktory je pre EVENT HUBS NAMESPACES vytvoreny pomocou COMMAND [az eventhubs namespace authorization-rule create] a pre EVENT HUBS HUBS vytvoreny pomocou COMMAND [az eventhubs eventhub authorization-rule create].
+      C. PARAMETER [KEY_VALUE]. PARAMETER [KEY_VALUE] je AUTHORIZATION RULE KEY VALUE, ktora je pre EVENT HUBS NAMESPACES ziskana pomocou COMMAND [az eventhubs namespace authorization-rule keys list] a pre EVENT HUBS HUBS ziskana pomocou COMMAND [az eventhubs eventhub authorization-rule keys list].
+   D. Vytvoreny ACCESS TOKEN sa vlozi ako PARAMETER do CONSTRUCTOR CLASS [AzureSasCredential], ktora sa pre EVENT HUBS PRODUCERS pouzije ako PARAMETER do CLASS [EventHubProducerClient] a pre EVENT HUBS CONSUMERS pouzije ako PARAMETER do CLASS [EventProcessorClient].
+40. AZURE HUBS PUBLISHER pripajajuci sa pomocou SHARED ACCESS SIGNATURE sa implementuje nasledujucim sposobom.
+   A. Pre existujuci AZURE HUBS RESOURCE sa vytvori AUTHORIZATION RULE, ktora musi mat ACCESS RIGTS [Send]. Vytvorenie AUTHORIZATION RULE zavisi od typu AZURE HUBS RESOURCE.
+      A. Pre AZURE HUBS NAMESPACE sa AUTHORIZATION RULE vytvara pomocou COMMAND [az eventhubs namespace authorization-rule create]. Prikladom je COMMAND [az eventhubs namespace authorization-rule create --name MyNamespacePublisherRule --namespace-name MyNamespaceTA76 --resource-group Chapter10 --rights Send].
+      B. Pre AZURE HUBS HUB sa AUTHORIZATION RULE vytvara pomocou COMMAND [az eventhubs eventhub authorization-rule create]. Prikladom je COMMAND [az eventhubs eventhub authorization-rule create --name MyHubPublisherRule --eventhub-name MyHubTA76 --namespace-name MyNamespaceTA76 --resource-group Chapter10 --rights Send].
+   B. Pre existujuci AZURE HUBS RESOURCE sa ziska AUTHORIZATION RULE KEY. Ziskanie AUTHORIZATION RULE KEY zavisi od typu AZURE HUBS RESOURCE.
+      A. Pre AZURE HUBS NAMESPACE sa AUTHORIZATION RULE KEY ziskava pomocou COMMAND [az eventhubs namespace authorization-rule keys list]. Prikladom je COMMAND [az eventhubs namespace authorization-rule keys list --name MyNamespacePublisherRule --namespace-name MyNamespaceTA76 --resource-group Chapter10].
+      B. Pre AZURE HUBS HUB sa AUTHORIZATION RULE KEY ziskava pomocou COMMAND [az eventhubs eventhub authorization-rule keys list]. Prikladom je COMMAND [az eventhubs eventhub authorization-rule keys list --name MyHubPublisherRule --eventhub-name MyHubTA76 --namespace-name MyNamespaceTA76 --resource-group Chapter10].
+   C. Vygeneruje sa ACCESS TOKEN pomocou nasledujucich PARAMETERS.
+      A. PARAMETER [RESOURCE_URL]. PARAMETER [RESOURCE_URL] ma nasleduujuci FORMAT.
+         A. Pre AZURE HUBS NAMESPACE ma FORMAT [EVENT_HUB_NAMESPACE.servicebus.windows.net/EVENT_HUB_NAME], kde VALUE [EVENT_HUB_NAMESPACE] je nazov EVENT HUB NAMESPACE.
+         B. AZURE HUBS HUB ma FORMAT [EVENT_HUB_NAMESPACE.servicebus.windows.net/EVENT_HUB_NAME], kde VALUE [EVENT_HUB_NAMESPACE] je nazov EVENT HUB NAMESPACE a VALUE [EVENT_HUB_NAME] je nazov EVENT HUB NAME.
+      B. PARAMETER [KEY_NAME]. RESOURCE [KEY_NAME] je nazov AUTHORIZATION RULE, ktory je pre EVENT HUBS NAMESPACES vytvoreny pomocou COMMAND [az eventhubs namespace authorization-rule create] a pre EVENT HUBS HUBS vytvoreny pomocou COMMAND [az eventhubs eventhub authorization-rule create].
+      C. PARAMETER [KEY_VALUE]. RESOURCE [KEY_VALUE] je AUTHORIZATION RULE KEY VALUE, ktora je pre EVENT HUBS NAMESPACES ziskana pomocou COMMAND [az eventhubs namespace authorization-rule keys list] a pre EVENT HUBS HUBS ziskana pomocou COMMAND [az eventhubs eventhub authorization-rule keys list].
+   D. Vytvori sa instancia CLASS [AzureSasCredential], ktorej PARAMETER je vygenerovany ACCESS TOKEN.
+   E. Instancia CLASS [AzureSasCredential] sa pouzije ako PARAMETER instancie CLASS [EventHubProducerClient].
+41. AZURE HUBS CONSUMER pripajajuci sa pomocou SHARED ACCESS SIGNATURE sa implementuje nasledujucim sposobom.
+   A. Pre existujuci AZURE HUBS RESOURCE sa vytvori AUTHORIZATION RULE, ktora musi mat ACCESS RIGTS [Listen]. Vytvorenie AUTHORIZATION RULE zavisi od typu AZURE HUBS RESOURCE.
+      A. Pre AZURE HUBS NAMESPACE sa AUTHORIZATION RULE vytvara pomocou COMMAND [az eventhubs namespace authorization-rule create]. Prikladom je COMMAND [az eventhubs namespace authorization-rule create --name MyNamespaceConsumerRule --namespace-name MyNamespaceTA76 --resource-group Chapter10 --rights Listen].
+      B. Pre AZURE HUBS HUB sa AUTHORIZATION RULE vytvara pomocou COMMAND [az eventhubs eventhub authorization-rule create]. Prikladom je COMMAND [az eventhubs eventhub authorization-rule create --name MyHubConsumerRule --eventhub-name MyHubTA76 --namespace-name MyNamespaceTA76 --resource-group Chapter10 --rights Listen].
+   B. Pre existujuci AZURE HUBS RESOURCE sa ziska AUTHORIZATION RULE KEY. Ziskanie AUTHORIZATION RULE KEY zavisi od typu AZURE HUBS RESOURCE.
+      A. Pre AZURE HUBS NAMESPACE sa AUTHORIZATION RULE KEY ziskava pomocou COMMAND [az eventhubs namespace authorization-rule keys list]. Prikladom je COMMAND [az eventhubs namespace authorization-rule keys list --name MyNamespaceConsumerRule --namespace-name MyNamespaceTA76 --resource-group Chapter10].
+      B. Pre AZURE HUBS HUB sa AUTHORIZATION RULE KEY ziskava pomocou COMMAND [az eventhubs eventhub authorization-rule keys list]. Prikladom je COMMAND [az eventhubs eventhub authorization-rule keys list --name MyHubConsumerRule --eventhub-name MyHubTA76 --namespace-name MyNamespaceTA76 --resource-group Chapter10].
+   C. Vygeneruje sa ACCESS TOKEN pomocou nasledujucich PARAMETERS.
+      A. PARAMETER [RESOURCE_URL]. PARAMETER [RESOURCE_URL] ma nasleduujuci FORMAT.
+         A. Pre AZURE HUBS NAMESPACE ma FORMAT [EVENT_HUB_NAMESPACE.servicebus.windows.net/EVENT_HUB_NAME], kde VALUE [EVENT_HUB_NAMESPACE] je nazov EVENT HUB NAMESPACE.
+         B. AZURE HUBS HUB ma FORMAT [EVENT_HUB_NAMESPACE.servicebus.windows.net/EVENT_HUB_NAME], kde VALUE [EVENT_HUB_NAMESPACE] je nazov EVENT HUB NAMESPACE a VALUE [EVENT_HUB_NAME] je nazov EVENT HUB NAME.
+      B. PARAMETER [KEY_NAME]. RESOURCE [KEY_NAME] je nazov AUTHORIZATION RULE, ktory je pre EVENT HUBS NAMESPACES vytvoreny pomocou COMMAND [az eventhubs namespace authorization-rule create] a pre EVENT HUBS HUBS vytvoreny pomocou COMMAND [az eventhubs eventhub authorization-rule create].
+      C. PARAMETER [KEY_VALUE]. RESOURCE [KEY_VALUE] je AUTHORIZATION RULE KEY VALUE, ktora je pre EVENT HUBS NAMESPACES ziskana pomocou COMMAND [az eventhubs namespace authorization-rule keys list] a pre EVENT HUBS HUBS ziskana pomocou COMMAND [az eventhubs eventhub authorization-rule keys list].
+   D. Vytvori sa instancia CLASS [AzureSasCredential], ktorej PARAMETER je vygenerovany ACCESS TOKEN.
+   E. Instancia CLASS [EventProcessorClient] sa pouzije ako PARAMETER instancie CLASS [EventHubProducerClient].
+42. S AUTHORIZATION RULES pre EVENT HUBS NAMESPACES sa pracuje pomocou nasledujucich COMMANDS.
+   A. EVENT HUBS NAMESPACE AUTHORIZATION RULE sa vytvara pomocou COMMAND [az eventhubs namespace authorization-rule create]. Prikladom je COMMAND [az eventhubs namespace authorization-rule create --name MyNamespaceConsumerRule --namespace-name MyNamespaceTA76 --resource-group Chapter10 --rights Listen].
+   B. EVENT HUBS NAMESPACE AUTHORIZATION RULE sa odstranuje pomocou COMMAND [az eventhubs namespace authorization-rule delete]. Prikladom je COMMAND [az eventhubs namespace authorization-rule delete --name MyNamespaceConsumerRule --namespace-name MyNamespaceTA76 --resource-group Chapter10].
+   C. Zoznam EVENT HUBS NAMESPACE AUTHORIZATION RULES vracia COMMAND [az eventhubs namespace authorization-rule list]. Prikladom je COMMAND [az eventhubs namespace authorization-rule list --namespace-name MyNamespaceTA76 --resource-group Chapter10].
+   D. EVENT HUBS NAMESPACE AUTHORIZATION RULE KEYS sa ziskavaju pomocou COMMAND [az eventhubs namespace authorization-rule keys list]. Prikladom je COMMAND [az eventhubs namespace authorization-rule keys list --name MyNamespacePublisherRule --namespace-name MyNamespaceTA76 --resource-group Chapter10].
+43. S AUTHORIZATION RULES pre EVENT HUBS HUBS sa pracuje pomocou nasledujucich COMMANDS.
+   A. EVENT HUBS HUB AUTHORIZATION RULE sa vytvara pomocou COMMAND [az eventhubs eventhub authorization-rule create]. Prikladom je COMMAND [az eventhubs eventhub authorization-rule create --name MyHubConsumerRule --eventhub-name MyHubTA76 --namespace-name MyNamespaceTA76 --resource-group Chapter10 --rights Listen].
+   B. EVENT HUBS HUB AUTHORIZATION RULE sa odstranuje pomocou COMMAND [az eventhubs eventhub authorization-rule delete]. Prikladom je COMMAND [az eventhubs eventhub authorization-rule delete --name MyHubConsumerRule --eventhub-name MyHubTA76 --namespace-name MyNamespaceTA76 --resource-group Chapter10].
+   C. Zoznam EVENT HUBS HUB AUTHORIZATION RULES vracia COMMAND [az eventhubs eventhub authorization-rule list]. Prikladom je COMMAND [az eventhubs eventhub authorization-rule list --eventhub-name MyHubTA76 --namespace-name MyNamespaceTA76 --resource-group Chapter10].
+   D. EVENT HUBS HUB AUTHORIZATION RULE KEYS sa ziskavaju pomocou COMMAND [az eventhubs eventhub authorization-rule keys list]. Prikladom je COMMAND [az eventhubs eventhub authorization-rule keys list --name MyHubConsumerRule --eventhub-name MyHubTA76 --namespace-name MyNamespaceTA76 --resource-group Chapter10].
+44. PROGRAMS, ktore pristpuju k AZURE EVENT HUBS mozu mat definovane ROLES obmezujuce ich ACCESS RIGHTS pomocou ROLE BASED ACCESS CONTROL. Pre ROLE BASED ACCESS CONTROL platia nasledujuce fakty.
+   A. ROLE BASED ACCESS CONTROL umoznuje pridelenie ROLES nasledujucim ENTITIES.
+      A. ENTITY [USER].
+      B. ENTITY [GROUP].
+      C. ENTITY [MANAGED IDENTITY].
+      D. ENTITY [APPLICATION REGISTRATION]. Vyuziva CLIENT ID a CLIENT SECRET.
+   B. ROLE BASED ACCESS CONTROL umoznuju pouzivanie nasledujucich ROLES.
+      A. ROLE [Azure Event Hubs Data sender]. ROLE umoznuje odosielat EVENTS do AZURE EVENT HUBS.
+      B. ROLE [Azure Event Hubs Data receiver]. ROLE umoznuje nacitavat EVENTS z AZURE EVENT HUBS.
+      C. ROLE [Azure Event Hubs Data owner]. ROLE umoznuje spravu AZURE EVENT HUBS HUBS, vratane zapisovania a citania EVENTS.
+45. AZURE HUBS CONSUMER pripajajuci sa pomocou ROLE BASED ACCESS CONTROL s vyuzitim ENTITY [APPLICATION REGISTRATION] sa implementuje nasledujucim sposobom.
+   A. Pre AZURE HUBS CONSUMER sa vytvori APPLICATION REGISTRATION.
+      A. APPLICATION REGISTRATION sa vykona pomocou COMMAND [az ad app create]. Prikladom je COMMAND [az ad app create --display-name "MyHubsConsumer"].
+      B. Z vykonaneho COMMAND sa ulozi PROPERTY [id].
+   B. Pre vytvorenu APPLICATION REGISTRATION sa vykona PASSWORD RESET.
+      A. PASSWORD RESET sa vykona pomocou COMMAND [az ad app credential reset]. Prikladom je COMMAND [az ad app credential reset --id "2a4d223d-1729-4b93-9296-75f615c30bdb" --display-name MyClientSecretConsumer --append].
+      B. VALUE [2a4d223d-1729-4b93-9296-75f615c30bdb] je PROPERTY [id] z COMMAND [az ad app create].
+      C. Z vykonaneho COMMAND sa ulozi PROPERTY [appId], PROPERTY [password] a PROPERTY [tenant].
+   C. Pre vytvorenu APPLICATION REGISTRATION sa vytvori SERVICE PRINCIPAL.
+      A. SERVICE PRINCIPAL sa vytvara pomcou COMMAND [az ad sp create]. Prikladom je COMMAND [az ad sp create --id "01293af8-ccbb-46fd-bdd2-f158360de86c"].
+      B. VALUE [01293af8-ccbb-46fd-bdd2-f158360de86c] je PROPERTY [appId] z COMMAND [az ad app credential reset].
+   D. Vytvorenej APPLICATION REGISTRATION sa priradi ROLE [Azure Event Hubs Data receiver].
+      A. ROLE sa priraduje pomocou COMMAND [az role assignment create]. Prikladom je COMMAND [az role assignment create --assignee "01293af8-ccbb-46fd-bdd2-f158360de86c" --scope "/subscriptions/b5f70a84-6ba2-4485-84cd-ac0883d618c5/resourceGroups/Chapter10/providers/Microsoft.EventHub/namespaces/MyNamespaceTA76" --role "Azure Event Hubs Data receiver"].
+      B. VALUE [01293af8-ccbb-46fd-bdd2-f158360de86c] je PROPERTY [appId] z COMMAND [az ad app credential reset].
+      C. VALUE [/subscriptions/b5f70a84-6ba2-4485-84cd-ac0883d618c5/resourceGroups/Chapter10/providers/Microsoft.EventHub/namespaces/MyNamespaceTA76] je SCOPE pre AZURE HUBS NAMESPACE.
+   E. Vytvori sa instancia CLASS [ClientSecretCredential].
+      A. PARAMETER [TenantID] je VALUE [tenant], ktoru vrati COMMAND [az ad app credential reset].
+      B. PARAMETER [ClientID] je VALUE [appId], ktoru vrati COMMAND [az ad app credential reset].
+      C. PARAMETER [ClientSecret] je VALUE [password], ktoru vrati COMMAND [az ad app credential reset].
+   F. Vytvori sa instancia CLASS [EventProcessorClient], ktora ma ako PARAMETER instanciu CLASS [ClientSecretCredential]. Ta sa pouzije na citanie EVENTS z AZURE EVENT HUBS.
+46. AZURE HUBS PRODUCER pripajajuci sa pomocou ROLE BASED ACCESS CONTROL s vyuzitim ENTITY [APPLICATION REGISTRATION] sa implementuje nasledujucim sposobom.
+   A. Pre AZURE HUBS PRODUCER sa vytvori APPLICATION REGISTRATION.
+      A. APPLICATION REGISTRATION sa vykona pomocou COMMAND [az ad app create]. Prikladom je COMMAND [az ad app create --display-name "MyHubsProducer"].
+      B. Z vykonaneho COMMAND sa ulozi PROPERTY [id].
+   B. Pre vytvorenu APPLICATION REGISTRATION sa vykona PASSWORD RESET.
+      A. PASSWORD RESET sa vykona pomocou COMMAND [az ad app credential reset]. Prikladom je COMMAND [az ad app credential reset --id "37a10182-1da7-49cd-9aaf-0d2abad495f8" --display-name MyClientSecretProducer --append].
+      B. VALUE [37a10182-1da7-49cd-9aaf-0d2abad495f8] je PROPERTY [id] z COMMAND [az ad app create].
+      C. Z vykonaneho COMMAND sa ulozi PROPERTY [appId], PROPERTY [password] a PROPERTY [tenant].
+   C. Pre vytvorenu APPLICATION REGISTRATION sa vytvori SERVICE PRINCIPAL.
+      A. SERVICE PRINCIPAL sa vytvara pomcou COMMAND [az ad sp create]. Prikladom je COMMAND [az ad sp create --id "5dd09559-5d06-4c9e-9ba2-4af439a247e7"].
+      B. VALUE [5dd09559-5d06-4c9e-9ba2-4af439a247e7] je PROPERTY [appId] z COMMAND [az ad app credential reset].
+   D. Vytvorenej APPLICATION REGISTRATION sa priradi ROLE [Azure Event Hubs Data sender].
+      A. ROLE sa priraduje pomocou COMMAND [az role assignment create]. Prikladom je COMMAND [az role assignment delete --assignee "5dd09559-5d06-4c9e-9ba2-4af439a247e7" --scope "/subscriptions/b5f70a84-6ba2-4485-84cd-ac0883d618c5/resourceGroups/Chapter10/providers/Microsoft.EventHub/namespaces/MyNamespaceTA76" --role "Azure Event Hubs Data sender"].
+      B. VALUE [5dd09559-5d06-4c9e-9ba2-4af439a247e7] je PROPERTY [appId] z COMMAND [az ad app credential reset].
+      C. VALUE [/subscriptions/b5f70a84-6ba2-4485-84cd-ac0883d618c5/resourceGroups/Chapter10/providers/Microsoft.EventHub/namespaces/MyNamespaceTA76] je SCOPE pre AZURE HUBS NAMESPACE.
+   E. Vytvori sa instancia CLASS [ClientSecretCredential].
+      A. PARAMETER [TenantID] je VALUE [tenant], ktoru vrati COMMAND [az ad app credential reset].
+      B. PARAMETER [ClientID] je VALUE [appId], ktoru vrati COMMAND [az ad app credential reset].
+      C. PARAMETER [ClientSecret] je VALUE [password], ktoru vrati COMMAND [az ad app credential reset].
+   F. Vytvori sa instancia CLASS [EventHubProducerClient], ktora ma ako PARAMETER instanciu CLASS [ClientSecretCredential]. Ta sa pouzije na odosielanie EVENTS do AZURE EVENT HUBS.
+47. AZURE EVENT HUBS vykonava BY-DEFAULT ENCRYPTION vsetkych EVENTS a celej komunikacie v ramci AZURE EVENT HUBS.
+   A. DATA IN TRANSIT. DATA IN TRANSIT znamena, ze data su prenasane pomocou PROTOCOL TRANSPORT SECURITY LAYER (TLS), ktory umoznuje bezpecnu komunikaciu po sieti kryptovanim MESSAGES zasielanych sietou.
+   B. DATA AT REST. DATA AT REST znamena, ze data ukladane v PARTITIONS su ENCRYPTED pomocou AZURE STORAGE SERVICE ENCRYPTION. AZURE STORAGE SERVICE ENCRYPTION vykonava ENCRYPTION ulozenych EVENTS pomocou 256 BITS AES ENCRYPTION. Tato ENCRYPTION je zapnuta BY-DEFAULT, pricom CUSTOMERS mozu definovat pouzitie vlastnych KEYS.
+48. AZURE EVENT HUBS umoznuje definovat AUTO INFLATE POLICIES. AUTO INFLATE POLICIES umoznuju skalovat THROUGHPUT UNITS podla aktualnej zataze, bez nutnosti vykonavat toto skalovanie manualne.
+49. AZURE EVENT HUBS umoznuje definovat AUTO EXPIRATION POLICIES. AUTO EXPIRATION POLICIES umoznuju definovat cas ako dlho maju byt EVENTS ulozene v PARTITIONS predtym, nez su z nich odstranene.
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+APPLICATION REGISTRATIONS.
+
+1. APPLICATION REGISTRATION je sposob akym zaregistrovat PROGRAM v AZURE, tak aby AZURE pre tento PROGRAM vygeneroval CLIENT ID a CLIENT SECRET, ktorymi PROGRAM v AZURE moze preukazat svoju IDENTITY.
+2. APPLICATION REGISTRATION je mozne pouzit pre PROGRAMY, ktore bezia priamo v AZURE, ale aj pre PROGRAMY, ktore bezia mimo AZURE, vratane LOCAL MACHINES.
+3. Overenie cez APPLICATION REGISTRATION neznamena, ze AZURE PLATROFM doveruje danemu PROGRAMU. Je to len dokaz, ze PROGRAM ma prislusne CREDENTIALS a na zaklade ACCESS RIGHTS, ktore su pridelene danemu APPLICATION REGISTRATION moze v AZURE vykonavat prislusne operacie.
+4. APPLICATION REGISTRATION sa realizuje v nasledujucich krokoch.
+   A. APPLICATION REGISTRATION sa vykona pomocou COMMAND [az ad app create].
+   B. Po vytvoreni APPLICATION REGISTRATION je NUTNE vykonat PASSWORD RESET, aby sa vygeneroval CLIENT ID a CLIENT SECRET. PASSWORD RESET sa vykonava pomoocou COMMAND [az ad app credential reset].
+   !!! C. Aby APPLICATION REGISTRATION bolo mozne pridelovat ROLES a ACCESS RIGHTS, je nutne pre APPLICATION REGISTRATION vytvorit SERVICE PRINCIPAL. SERVICE PRINCIPAL sa vytvara pomocou COMMAND [az ad sp create].
+   D. Vytvorenemu SERVICE PRINCIPAL je nutne nastavit ROLES. ROLES sa nastavuju pomocou COMMAND [az role assignment create].
+   !!! E. Pre AUTHENTICATION a AUTHORIZATION v AZURE je nutne CLIENT ID a CLIENT SECRET vlozit do instancie CLASS [ClientSecretCredential] a tu pouzit v AZURE API na AUTHENTICATION a AUTHORIZATION.
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+AZURE CLI COMMANDS - EVENT HUBS NAMESPACES.
+
+1. COMMAND [az eventhubs namespace create --name NAMESPACE_NAME --resource-group RESOURCE_GROUP_NAME --location LOCATION_NAME --sku SKU_TYPE].
+   A. COMMAND vytvara novy EVENT HUBS NAMESPACE.
+   B. OPTION [--name NAMESPACE_NAME] vo VALUE [NAMESPACE_NAME] obsahuje nazov EVENT HUBS NAMESPACE.
+   C. OPTION [--resource-group RESOURCE_GROUP_NAME] vo VALUE [RESOURCE_GROUP_NAME] urcuje RESOURCE GROUP NAME.
+   D. OPTION [--location LOCATION_NAME] vo VALUE [LOCATION_NAME] urcuje nazov LOCATION.
+   !!! E. OPTION [--name SKU_TYPE] vo VALUE [SKU_TYPE] urcuje type STOCK KEEPING UNIT. Pre studijne ucely sa odporuca VALUE [Basic].
+2. COMMAND [az eventhubs namespace delete --name NAMESPACE_NAME --resource-group RESOURCE_GROUP_NAME].
+   A. COMMAND odstranuje existujuci EVENT HUBS NAMESPACE.
+   B. OPTION [--name NAMESPACE_NAME] vo VALUE [NAMESPACE_NAME] obsahuje nazov EVENT HUBS NAMESPACE.
+   C. OPTION [--resource-group RESOURCE_GROUP_NAME] vo VALUE [RESOURCE_GROUP_NAME] urcuje RESOURCE GROUP NAME.
+3. COMMAND [az eventhubs namespace list --resource-group RESOURCE_GROUP_NAME].
+   A. COMMAND vracia zoznam existujucich EVENT HUBS NAMESPACES.
+   B. OPTION [--resource-group RESOURCE_GROUP_NAME] vo VALUE [RESOURCE_GROUP_NAME] urcuje RESOURCE GROUP NAME.
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+AZURE CLI COMMANDS - EVENT HUBS HUBS.
+
+1. COMMAND [az eventhubs eventhub create --name HUB_NAME --namespace-name NAMESPACE_NAME --resource-group RESOURCE_GROUP_NAME --retention-time RETENTION_TIME --cleanup-policy CLEANUP_POLICY].
+   A. COMMAND vytvara novy EVENT HUBS HUB.
+   B. OPTION [--name HUB_NAME] vo VALUE [HUB_NAME] obsahuje nazov EVENT HUBS HUB.
+   C. OPTION [--namespace-name NAMESPACE_NAME] vo VALUE [NAMESPACE_NAME] obsahuje nazov EVENT HUBS NAMESPACE.
+   D. OPTION [--resource-group RESOURCE_GROUP_NAME] vo VALUE [RESOURCE_GROUP_NAME] urcuje RESOURCE GROUP NAME.
+   E. OPTION [--retention-time RETENTION_TIME] vo VALUE [RETENTION_TIME] urcuje RETENTION TIME v hodinach.
+   F. OPTION [--cleanup-policy CLEANUP_POLICY] vo VALUE [CLEANUP_POLICY] urcuje type CLEANUP POLICY. Moze obsahovat VALUE [Compact], VALUE [Delete], alebo VALUE [DeleteOrCompact].
+2. COMMAND [az eventhubs eventhub delete --name HUB_NAME --namespace-name NAMESPACE_NAME --resource-group RESOURCE_GROUP_NAME].
+   A. COMMAND odstranuje existujuci EVENT HUBS HUB.
+   B. OPTION [--name HUB_NAME] vo VALUE [HUB_NAME] obsahuje nazov EVENT HUBS HUB.
+   C. OPTION [--namespace-name NAMESPACE_NAME] vo VALUE [NAMESPACE_NAME] obsahuje nazov EVENT HUBS NAMESPACE.
+   D. OPTION [--resource-group RESOURCE_GROUP_NAME] vo VALUE [RESOURCE_GROUP_NAME] urcuje RESOURCE GROUP NAME.
+3. COMMAND [az eventhubs eventhub list --namespace-name NAMESPACE_NAME --resource-group RESOURCE_GROUP_NAME].
+   A. COMMAND vracia zoznam existujucich EVENT HUBS HUBS.
+   B. OPTION [--name NAMESPACE_NAME] vo VALUE [NAMESPACE_NAME] obsahuje nazov EVENT HUBS NAMESPACE.
+   C. OPTION [--resource-group RESOURCE_GROUP_NAME] vo VALUE [RESOURCE_GROUP_NAME] urcuje RESOURCE GROUP NAME.
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+AZURE CLI COMMANDS - EVENT HUBS CONSUMER GROUPS.
+
+1. COMMAND [az eventhubs eventhub consumer-group create --name CONSUMER_GROUP_NAME --eventhub-name HUB_NAME --namespace-name NAMESPACE_NAME --resource-group RESOURCE_GROUP_NAME].
+   A. COMMAND vytvara novu EVENT HUBS CONSUMER GROUP.
+   B. OPTION [--name CONSUMER_GROUP_NAME] vo VALUE [CONSUMER_GROUP_NAME] obsahuje nazov EVENT HUBS CONSUMER GROUP.
+   C. OPTION [--eventhub-name HUB_NAME] vo VALUE [HUB_NAME] obsahuje nazov EVENT HUBS HUB.
+   D. OPTION [--namespace-name NAMESPACE_NAME] vo VALUE [NAMESPACE_NAME] obsahuje nazov EVENT HUBS NAMESPACE.
+   E. OPTION [--resource-group RESOURCE_GROUP_NAME] vo VALUE [RESOURCE_GROUP_NAME] urcuje RESOURCE GROUP NAME.
+2. COMMAND [az eventhubs eventhub consumer-group delete --name CONSUMER_GROUP_NAME --eventhub-name HUB_NAME --namespace-name NAMESPACE_NAME --resource-group RESOURCE_GROUP_NAME].
+   A. COMMAND odstranuje existujucu EVENT HUBS CONSUMER GROUP.
+   B. OPTION [--name CONSUMER_GROUP_NAME] vo VALUE [CONSUMER_GROUP_NAME] obsahuje nazov EVENT HUBS CONSUMER GROUP.
+   C. OPTION [--eventhub-name HUB_NAME] vo VALUE [HUB_NAME] obsahuje nazov EVENT HUBS HUB.
+   D. OPTION [--namespace-name NAMESPACE_NAME] vo VALUE [NAMESPACE_NAME] obsahuje nazov EVENT HUBS NAMESPACE.
+   E. OPTION [--resource-group RESOURCE_GROUP_NAME] vo VALUE [RESOURCE_GROUP_NAME] urcuje RESOURCE GROUP NAME.
+3. COMMAND [az eventhubs eventhub consumer-group list --eventhub-name HUB_NAME --namespace-name NAMESPACE_NAME --resource-group RESOURCE_GROUP_NAME].
+   A. COMMAND vracia zoznam existujucich EVENT HUBS CONSUMER GROUPS.
+   B. OPTION [--eventhub-name HUB_NAME] vo VALUE [HUB_NAME] obsahuje nazov EVENT HUBS HUB.
+   C. OPTION [--namespace-name NAMESPACE_NAME] vo VALUE [NAMESPACE_NAME] obsahuje nazov EVENT HUBS NAMESPACE.
+   D. OPTION [--resource-group RESOURCE_GROUP_NAME] vo VALUE [RESOURCE_GROUP_NAME] urcuje RESOURCE GROUP NAME.
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+AZURE CLI COMMANDS - EVENT HUBS NAMESPACE AUTHORIZATION RULES.
+
+1. COMMAND [az eventhubs namespace authorization-rule create --name RULE_NAME --namespace-name NAMESPACE_NAME --resource-group RESOURCE_GROUP_NAME --rights RULE_RIGHTS].
+   A. COMMAND vytvara novu EVENT HUBS NAMESPACE AUTHORIZATION RULE.
+   B. OPTION [--name RULE_NAME] vo VALUE [RULE_NAME] obsahuje nazov AUTHORIZATION RULE.
+   C. OPTION [--namespace-name NAMESPACE_NAME] vo VALUE [NAMESPACE_NAME] obsahuje nazov EVENT HUBS NAMESPACE.
+   D. OPTION [--resource-group RESOURCE_GROUP_NAME] vo VALUE [RESOURCE_GROUP_NAME] urcuje RESOURCE GROUP NAME.
+   E. OPTION [--rights RULE_RIGHTS] vo VALUE [RULE_RIGHTS] obsahuje RULE RIGHTS. Moze obsahovat VALUE [Send], VALUE [Listen], alebo VALUE [Manage].
+2. COMMAND [az eventhubs namespace authorization-rule delete --name RULE_NAME --namespace-name NAMESPACE_NAME --resource-group RESOURCE_GROUP_NAME].
+   A. COMMAND odstranuje existujucu EVENT HUBS NAMESPACE AUTHORIZATION RULE.
+   B. OPTION [--name RULE_NAME] vo VALUE [RULE_NAME] obsahuje nazov AUTHORIZATION RULE.
+   C. OPTION [--namespace-name NAMESPACE_NAME] vo VALUE [NAMESPACE_NAME] obsahuje nazov EVENT HUBS NAMESPACE.
+   D. OPTION [--resource-group RESOURCE_GROUP_NAME] vo VALUE [RESOURCE_GROUP_NAME] urcuje RESOURCE GROUP NAME.
+3. COMMAND [az eventhubs namespace authorization-rule list --namespace-name NAMESPACE_NAME --resource-group RESOURCE_GROUP_NAME].
+   A. COMMAND vracia zoznam existujucich EVENT HUBS NAMESPACE AUTHORIZATION RULES.
+   B. OPTION [--namespace-name NAMESPACE_NAME] vo VALUE [NAMESPACE_NAME] obsahuje nazov EVENT HUBS NAMESPACE.
+   C. OPTION [--resource-group RESOURCE_GROUP_NAME] vo VALUE [RESOURCE_GROUP_NAME] urcuje RESOURCE GROUP NAME.
+4. COMMAND [az eventhubs namespace authorization-rule keys list --name RULE_NAME --namespace-name NAMESPACE_NAME --resource-group RESOURCE_GROUP_NAME].
+   A. COMMAND vracia EVENT HUBS NAMESPACE AUTHORIZATION RULE KEYS A CONNECTION STRINGS.
+   B. OPTION [--name RULE_NAME] vo VALUE [RULE_NAME] obsahuje nazov AUTHORIZATION RULE.
+   C. OPTION [--namespace-name NAMESPACE_NAME] vo VALUE [NAMESPACE_NAME] obsahuje nazov EVENT HUBS NAMESPACE.
+   D. OPTION [--resource-group RESOURCE_GROUP_NAME] vo VALUE [RESOURCE_GROUP_NAME] urcuje RESOURCE GROUP NAME.
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+AZURE CLI COMMANDS - EVENT HUBS HUB AUTHORIZATION RULES.
+
+1. COMMAND [az eventhubs eventhub authorization-rule create --name RULE_NAME --eventhub-name HUB_NAME --namespace-name NAMESPACE_NAME --resource-group RESOURCE_GROUP_NAME --rights RULE_RIGHTS].
+   A. COMMAND vytvara novu EVENT HUBS HUB AUTHORIZATION RULE.
+   B. OPTION [--name RULE_NAME] vo VALUE [RULE_NAME] obsahuje nazov AUTHORIZATION RULE.
+   C. OPTION [--eventhub-name HUB_NAME] vo VALUE [HUB_NAME] obsahuje nazov EVENT HUBS HUB.
+   D. OPTION [--namespace-name NAMESPACE_NAME] vo VALUE [NAMESPACE_NAME] obsahuje nazov EVENT HUBS NAMESPACE.
+   E. OPTION [--resource-group RESOURCE_GROUP_NAME] vo VALUE [RESOURCE_GROUP_NAME] urcuje RESOURCE GROUP NAME.
+   F. OPTION [--rights RULE_RIGHTS] vo VALUE [RULE_RIGHTS] obsahuje RULE RIGHTS. Moze obsahovat VALUE [Send], VALUE [Listen], alebo VALUE [Manage].
+2. COMMAND [az eventhubs eventhub authorization-rule delete --name RULE_NAME --eventhub-name HUB_NAME --namespace-name NAMESPACE_NAME --resource-group RESOURCE_GROUP_NAME].
+   A. COMMAND odstranuje existujucu EVENT HUBS HUB AUTHORIZATION RULE.
+   B. OPTION [--name RULE_NAME] vo VALUE [RULE_NAME] obsahuje nazov AUTHORIZATION RULE.
+   C. OPTION [--eventhub-name HUB_NAME] vo VALUE [HUB_NAME] obsahuje nazov EVENT HUBS HUB.
+   D. OPTION [--namespace-name NAMESPACE_NAME] vo VALUE [NAMESPACE_NAME] obsahuje nazov EVENT HUBS NAMESPACE.
+   E. OPTION [--resource-group RESOURCE_GROUP_NAME] vo VALUE [RESOURCE_GROUP_NAME] urcuje RESOURCE GROUP NAME.
+3. COMMAND [az eventhubs eventhub authorization-rule list --eventhub-name RULE_NAME --namespace-name NAMESPACE_NAME --resource-group RESOURCE_GROUP_NAME].
+   A. COMMAND vracia zoznam existujucich EVENT HUBS HUB AUTHORIZATION RULES.
+   B. OPTION [--eventhub-name HUB_NAME] vo VALUE [HUB_NAME] obsahuje nazov EVENT HUBS HUB.
+   C. OPTION [--namespace-name NAMESPACE_NAME] vo VALUE [NAMESPACE_NAME] obsahuje nazov EVENT HUBS NAMESPACE.
+   D. OPTION [--resource-group RESOURCE_GROUP_NAME] vo VALUE [RESOURCE_GROUP_NAME] urcuje RESOURCE GROUP NAME.
+4. COMMAND [az eventhubs eventhub authorization-rule keys list --name RULE_NAME --eventhub-name HUB_NAME --namespace-name NAMESPACE_NAME --resource-group RESOURCE_GROUP_NAME].
+   A. COMMAND vracia EVENT HUBS HUB AUTHORIZATION RULE KEYS A CONNECTION STRINGS.
+   B. OPTION [--name RULE_NAME] vo VALUE [RULE_NAME] obsahuje nazov AUTHORIZATION RULE.
+   C. OPTION [--eventhub-name HUB_NAME] vo VALUE [HUB_NAME] obsahuje nazov EVENT HUBS HUB.
+   D. OPTION [--namespace-name NAMESPACE_NAME] vo VALUE [NAMESPACE_NAME] obsahuje nazov EVENT HUBS NAMESPACE.
+   E. OPTION [--resource-group RESOURCE_GROUP_NAME] vo VALUE [RESOURCE_GROUP_NAME] urcuje RESOURCE GROUP NAME.
+//----------------------------------------------------------------------------------------------------------------------

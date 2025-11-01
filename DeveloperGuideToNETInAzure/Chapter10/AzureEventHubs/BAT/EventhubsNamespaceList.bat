@@ -1,0 +1,1 @@
+az eventhubs namespace list --resource-group Chapter10

@@ -1,0 +1,4 @@
+REM !!!!! VALUE [5dd09559-5d06-4c9e-9ba2-4af439a247e7] sa ziskava z PROPERTY [appId] pomocou COMMAND [az ad app list] pre PROGRAM [MyHubsProducer].
+REM !!!!! VALUE [/subscriptions/b5f70a84-6ba2-4485-84cd-ac0883d618c5/resourceGroups/Chapter10/providers/Microsoft.EventHub/namespaces/MyNamespaceTA76] je AZURE HUBS NAMESPACE ID. Ziskava sa pomocou COMMAND [az eventhubs namespace list --resource-group Chapter10].
+
+az role assignment delete --assignee "01293af8-ccbb-46fd-bdd2-f158360de86c" --scope "/subscriptions/b5f70a84-6ba2-4485-84cd-ac0883d618c5/resourceGroups/Chapter10/providers/Microsoft.EventHub/namespaces/MyNamespaceTA76" --role "Azure Event Hubs Data receiver"
