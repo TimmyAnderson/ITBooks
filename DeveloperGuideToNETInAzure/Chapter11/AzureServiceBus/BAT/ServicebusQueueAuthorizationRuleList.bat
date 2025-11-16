@@ -1,0 +1,1 @@
+az servicebus queue authorization-rule list --queue-name MyQueueTA76 --namespace-name MyServiceBusNamespaceTA76 --resource-group Chapter11

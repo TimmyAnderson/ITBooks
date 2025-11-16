@@ -1,0 +1,1 @@
+az servicebus namespace create --name MyServiceBusNamespaceTA76 --resource-group Chapter11 --location centralus --sku Standard --min-tls 1.2

@@ -1,0 +1,1 @@
+az provider register --namespace "Microsoft.ServiceBus"

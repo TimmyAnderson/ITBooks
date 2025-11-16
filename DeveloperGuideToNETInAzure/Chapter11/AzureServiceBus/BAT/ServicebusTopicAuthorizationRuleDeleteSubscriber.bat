@@ -1,0 +1,1 @@
+az servicebus topic authorization-rule delete --name MyBusTopicSubscriberRule --topic-name MyTopicTA76 --namespace-name MyServiceBusNamespaceTA76 --resource-group Chapter11

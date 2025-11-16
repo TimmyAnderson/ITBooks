@@ -1,0 +1,1 @@
+az servicebus topic subscription create --name MySubscriptionTA76Filter1 --namespace-name MyServiceBusNamespaceTA76 --resource-group Chapter11 --topic-name MyTopicTA76 --max-delivery-count 10 --enable-dead-lettering-on-message-expiration true --status Active

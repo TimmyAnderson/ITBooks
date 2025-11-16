@@ -1,0 +1,4 @@
+REM !!!!! VALUE [acfb710d-a804-4a1e-8229-7eccde6c6908] sa ziskava z PROPERTY [appId] pomocou COMMAND [az ad app list] pre PROGRAM [MyBusPublisher].
+REM !!!!! VALUE [/subscriptions/b5f70a84-6ba2-4485-84cd-ac0883d618c5/resourceGroups/Chapter11/providers/Microsoft.ServiceBus/namespaces/MyServiceBusNamespaceTA76] je AZURE SERVICE BUS NAMESPACE ID. Ziskava sa pomocou COMMAND [az eventhubs namespace list --resource-group Chapter10].
+
+az role assignment delete --assignee "acfb710d-a804-4a1e-8229-7eccde6c6908" --scope "/subscriptions/b5f70a84-6ba2-4485-84cd-ac0883d618c5/resourceGroups/Chapter11/providers/Microsoft.ServiceBus/namespaces/MyServiceBusNamespaceTA76" --role "Azure Service Bus Data Sender"

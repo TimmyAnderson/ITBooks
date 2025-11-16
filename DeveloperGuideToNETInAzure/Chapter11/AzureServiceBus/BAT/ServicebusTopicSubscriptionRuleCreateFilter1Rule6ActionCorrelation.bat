@@ -1,0 +1,1 @@
+az servicebus topic subscription rule create --name MySubscriptionTA76Filter1Rule6 --namespace-name MyServiceBusNamespaceTA76 --resource-group Chapter11 --topic-name MyTopicTA76 --subscription-name MySubscriptionTA76Filter1 --filter-type CorrelationFilter --correlation-filter "MyTextProperty=ABC" --to "XXX" --action-sql-expression "SET MyRuleProperty1=300;REMOVE MyProperty1"

@@ -1,0 +1,1 @@
+az servicebus topic delete --name MyTopicTA76 --namespace-name MyServiceBusNamespaceTA76 --resource-group Chapter11

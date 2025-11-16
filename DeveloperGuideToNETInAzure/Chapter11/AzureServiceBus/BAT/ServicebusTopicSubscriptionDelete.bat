@@ -1,0 +1,1 @@
+az servicebus topic subscription delete --name MySubscriptionTA76 --namespace-name MyServiceBusNamespaceTA76 --resource-group Chapter11 --topic-name MyTopicTA76

@@ -1,0 +1,1 @@
+az servicebus namespace list --resource-group Chapter11

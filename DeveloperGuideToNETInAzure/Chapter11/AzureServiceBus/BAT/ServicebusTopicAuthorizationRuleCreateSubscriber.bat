@@ -1,0 +1,1 @@
+az servicebus topic authorization-rule create --name MyBusTopicSubscriberRule --topic-name MyTopicTA76 --namespace-name MyServiceBusNamespaceTA76 --resource-group Chapter11 --rights Listen

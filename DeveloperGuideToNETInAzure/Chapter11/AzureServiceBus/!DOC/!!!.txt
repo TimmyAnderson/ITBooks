@@ -1,0 +1,672 @@
+//----------------------------------------------------------------------------------------------------------------------
+1. SOLUTION demonstruje pouzitie AZURE SERVICE BUS v .NET CORE.
+2. Pre AZURE SERVICE BUS platia nasledujuce fakty.
+   A. AZURE SERVICE BUS je MESSAGING technologia, umoznujuca zasielat MESSAGES medzi SERVICES.
+   B. AZURE SERVICE BUS implementuje MESSAGE QUEUES do ktorych su MESSAGES ukladane FIRST IN FIRST OUT sposobom.
+   !!! C. V AZURE SERVICE BUS je kazda MESSAGE citana vzdy iba 1 RECEPIENT, pricom po jej vycitani je MESSAGE odstranena z MESSAGE QUEUE.
+   !!! D. AZURE SERVICE BUS MESSAGE QUEUES podporuju TRANSACTIONS. To znamena, ze odosielanie a citanie MESSAGES z MESSAGE QUEUES moze byt sucastou TRANSACTION, ktora moze zahrnat aj ine TRANSACTIONAL RESOURCES.
+   E. AZURE SERVICE BUS podporuje BATCH SENDING a BATCH RECEIVING viacerych MESSAGES z MESSAGE QUEUES.
+   F. AZURE SERVICE BUS umoznuje AUTO FORWARDING MESSAGES z jednej MESSAGE QUEUE do inej MESSAGE QUEUE.
+   G. AZURE SERVICE BUS podporuje SCHEDULER DELIVERY, kedy MESSAGES su nie su odoslane do MESSAGE QUEUES okamzite, ale az v definovanom case.
+   H. AZURE SERVICE BUS podporuje DEAD LETTER QUEUES do ktorych su ukladane MESSAGES, ktore nemohli byt dorucene do MESSAGE QUEUES, alebo spracovane z MESSAGE QUEUES.
+   I. AZURE SERVICE BUS podporuje ADVANCED MESSAGE QUEUEING PROTOCOL (AMQP).
+3. AZURE SERVICE BUS funguje nasledujucim sposobom.
+   A. SENDER (PUBLISHER) posiela MESSAGES do definovanych TOPICS.
+   B. RECEIVERS (SUBSCRIBERS) citaju tieto MESSAGES z definovanych SUBSCRIPTIONS.
+4. COMMUNICATION prostrednictvom AZURE SERVICE BUS podporuje nasledujuce COMMUNICATION PATTERNS.
+   A. AZURE SERVICE BUS umoznuje, aby PUBLISHERS a SUBSCRIBERS boli od seba logicky uplne oddeleni. To znamena, ze PUBLISHERS nevedia nic o SUBSCRIBERS a SUBSCRIBERS nevedia nic o PUBLISHERS.
+   B. AZURE SERVICE BUS podporuje PATTERN LOAD LEVELING, kedy PUBLISHERS aj SUBSCRIBERS mozu odosielat a citat MESSAGES svojim vlastnym tempom. Nespracovane MESSAGES ostavaju v QUEUE, az kym ich SUBSCRIBERS nespracuju.
+   !!! C. AZURE SERVICE BUS podporuje PATTERN COMPETING COSNUMER, kedy AZURE v pripade, ze v MESSAGE QUEUE je prilis vela MESSAGES, pretoze ich SUBSCRIBER nestiha spracovavat, moze dynamicky vytvorit novych SUBSCRIBERS, ktori budu paralelne spracovavat viacero MESSAGES z MESSAGE QUEUE v danom case. No stale plati, ze kazdy SUBSCRIBER spracovava iba svoj SET MESSAGES a nedochadza k duplicitnemu spracovanie tej istej MESSAGE viacerymi SUBSCRIBERS.
+5. TOPICS a SUBSCRIPTIONS umoznuju aby 1 MESSAGE bola spracovana viacerymi SUBSCRIBERS. Platia nasledujuce fakty.
+   A. Pri priamom pouziti MESSAGE QUEUES je 1 MESSAGE odoslana PUBLISHER do MESSAGE QUEUE, odkial ju vycitava vzdy 1 SUBSCRIBER.
+   B. Pri pouziti TOPICS a SUBSCRIPTIONS moze byt 1 MESSAGE odoslana do MESSAGE QUEUE spracovana viacerymi SUBSCRIBERS.
+   C. TOPICS a SUBSCRIPTIONS funguju nasledujucim sposobom.
+      A. PUBLISHER neodosiela MESSAGES priamo do MESSAGE QUEUE, ale odosiela ich do TOPICS, ktore su nadstavbou nad MESSAGE QUEUE.
+      B. Kazda MESSAGE, ktora bola PUBLISHED do MESSAGE QUEUE nie je vycitavana priamo z MESSAGE QUEUES, ale zo SUBSCRIPTIONS, ktore su nadstavbou nad MESSAGE QUEUE.
+      C. SUBSCRIPTIONS su pre jednotlive TOPICS REGISTROVANE v AZURE SERVICE BUS.
+      !!! D. Kazda SUBSCRIPTION umoznuje spracovanie MESSAGES z MESSAGE QUEUES, ktore je NEZAVISLE od ostatnych SUBSCRIPTIONS. To znamena, ze jedna a ta ista MESSAGE moze byt spracovana viacerymi SUBSCRIBERS, ak su pripojene k rozlicnym SUBSCRIPTIONS.
+      !!! E. Distribucia MESSAGES medzi TOPICS a SUBSCRIPTIONS je dana nastavenim RULES. BY-DEFAULT, kazda MESSAGE, ktora dojde do TOPIC je distribuovana do vsetkych registrovanych SUBSCRIPTIONS. No SUBSCRIPTIONS mozu mat nastavene RULES, ktore filtruju, ake MESSAGES maju byt zasielane do danych SUBSCRIPTIONS. SUBSCRIPTIONS zaroven mozu mat nastavene ACTIONS, ktore mozu modifikovat dane MESSAGES predtym, ako su odoslane do prislusnej SUBSCRIPTION.
+6. AZURE SERVICE BUS umoznuje nacitavat MESSAGES nasledujucimi sposobmi.
+   A. MODE [RECEIVE AND DELETE]. Pri tomto MODE je MESSAGE pri uspesnom nacitani z MESSAGE QUEUE z MESSAGE QUEUE odstranena. Nevyhodou tohto MODE je, ze ak po vycitani MESSAGE z MESSAGE QUEUE dojde k ERROR v SUBSCRIBER a ta nedokonci jej spracovanie, MESSAGE je navzdy stratena.
+   B. MODE [PEEK LOCK]. Pri tomto MODE prebieha spracovanie MESSAGE nasledujucim sposobom.
+      A. MESSAGE po vycitavani SUBSCRIBER z MESSAGE QUEUE je LOCKED na urceny TIMEOUT.
+      B. SUBSCRIBER po uspesnom spracovani oznaci MESSAGE za CONSUMED a MESSAGE je nasledne odstranena z MESSAGE QUEUE.
+      !!! C. Ak SUBSCRIBER nedokaze MESSAGE spracovat, oznaci MESSAGE za ABANDONED a MESSAGE QUEUE uvolni LOCK nad danou MESSAGE, aby mohla byt spracovana inym SUBSCRIBER.
+      !!! D. Ak SUBSCRIBER do stanoveneho TIMEOUT neoznaci MESSAGE sa CONSUMED, ani ABANDONED, tak MESSAGE QUEUE uvolni LOCK nad danou MESSAGE, aby mohla byt spracovana inym SUBSCRIBER.
+7. AZURE SERVICE BUS podporuje PARTITIONING MESSAGE QUEUES. Pre PARTITIONING platia nasledujuce fakty.
+   A. NON-PARTITIONED MESSAGE QUEUES maju iba 1 MESSAGE BROKER, ktory vycitava MESSAGES z MESSAGE QUEUE a 1 MESSAGE QUEUE STORAGE, kde su MESSAGES ukladane.
+   B. PARTITIONED MESSAGE QUEUES maju viacero PARTITIONS, kde pre kazdu PARTITION existuje nezavisly MESSAGE BROKER a nezavisly MESSAGE QUEUE STORAGE.
+   C. PARTITIONED MESSAGE QUEUES umoznuju existenciu viacerych nezavislych SUBSCRIBERS, ktore citaju MESSAGES z tej istej MESSAGE QUEUE a tym zvysuju rychlost spracovanie MESSAGES.
+   D. PARTITIONED MESSAGE QUEUES umoznuju pri ERROR v jednej PARTITION pokracovat vo vycitavani MESSAGES z inych MESSAGE QUEUE PARTITIONS.
+   !!!!!! E. PARTITIONED MESSAGE QUEUES NEGARANTUJU FIRST IN FIRST OUT MESSAGE PROCESSING. Pri PARTITIONED MESSAGE QUEUES dostane SUBSCRIBER najstarsiu MESSAGE tej PARTITION, ktore ako prva odpovie na poziadavku na zaslanie MESSAGE. Tato MESSAGE vsak nemusi byt najstarsou MESSAGE v celej MESSAGE QUEUE.
+   F. Kazda PARTITION ma vlastny PARTITION KEY.
+   G. PARTITIONED MESSAGE QUEUES funguju nasledujucim sposobom.
+      A. Po odoslani MESSAGE PUBLISHER do PARTITIONED MESSAGE QUEUE AZURE SERVICE BUS odosle MESSAGE do jeden z vytvorenych PARTITIONS, bud nahodne, alebo na zaklade definovaneho PARTITION KEY.
+      !!! B. Ked SUBSCRIBER sa pokusi vycitat MESSAGE z PARTITIONED MESSAGE QUEUE, tak AZURE SERVICE BUS oslovi vsetky PARTITIONS, aby vratili svoje najstarsie MESSAGES. Do SUBSCRIBER je zaslana MESSAGE z tej PARTITION, ktora ako PRVA odpovedala na poziadavku na zaslanie svojich najstarsich MESSAGES. To znamena, ze vratena MESSAGE NEMUSI byt nutne NAJSTARSOU MESSAGE v celej PARTITIONED MESSAGE QUEUE.
+      C. SERVICE BUS si uklada do CACHE vratene najstarsie MESSAGES z jednotlivych PARTITIONS, aby pri dalsom citani mohol vratit tieto MESSAGES z CACHE a nemusel znova oslovovat jednotlive PARTITIONS.
+8. AZURE SERVICE BUS podporuje NAMESPACES. Pre NAMESPACES platia nasledujuce fakty.
+   A. NAMESPACE je CONTAINER, ktory obsahuje vsetky MESSAGING COMPONENTS, ako su MESSAGE QUEUES, alebo TOPICS.
+   B. NAMESPACE moze mat jednu, alebo viacero MESSAGE QUEUES a TOPICS.
+   C. NAMESPACES su automaticky distribuovane na 3 AZURE AVAILABILITY ZONES.
+9. AZURE SERVICE BUS podporuje nasledujuce SECURITY MECHANISMS.
+   A. AZURE SERVICE BUS umoznuje AUTHENTICATION a AUTHORIZATION nasledujucimi sposobmi.
+      A. Vyuzitim AZURE ACTIVE DIRECTORY s ktorou je AZURE SERVICE BUS integrovana.
+      B. Pouzitim SHARED ACCESS SIGNANTURES.
+   B. AZURE SERVICE BUS umoznuje definovat obmedzenia na IP ADDRESSES, ktore mozu pristupovat k MESSAGE QUEUES.
+   C. AZURE SERVICE BUS podporuje ENCRYPTION MESSAGES nasledujucimi sposobmi.
+      A. ENCRYPTION DATA IN TRANSIT. MESSAGES prenasane medzi PUBLISHERS, MESSAGES QUEUES su prenasane pomocou PROTOCOL TRANSPORT SECURITY LAYER (TLS), ktory umoznuje bezpecnu komunikaciu po sieti kryptovanim MESSAGES zasielanych sietou.
+      B. ENCRYPTION DATA AT REST. MESSAGES ulozene v MESSAGE QUEUES su automaticky ENCRYPTED. CUSTOMER mozu definovat vlastne KEYS na ENCRYPTION MESSAGES.
+10. AZURE SERVICE BUS podporuje MOTIRING MESSAGE QUEUES pomocou AZURE MONITOR.
+11. AZURE SERVICE BUS podporuje DEAD LETTER QUEUES. Pre DEAD LETTER QUEUES platia nasledujuce fakty.
+   A. Do DEAD LETTER QUEUES su ukladane MESSAGES, ktore nemohli byt dorucene, alebo spracovane ani po opakovanych pokusoch.
+   B. DEAD LETTER QUEUES umoznuju vykonat RETRY FAILED MESSAGES, ak princiny ERRORS, ktore poslali MESSAGES do DEAD LETTER QUEUES boli odstranene.
+   !!! C. USERS AZURE SERVICE BUS musia pravidelne monitorovat obsah DEAD LETTER QUEUES a vyberat z nich nespracovane MESSAGES, aby nedoslo k zaplnaniu DEAD LETTER QUEUES.
+12. AZURE SERVICE BUS vyzaduje vytvorenie nasledujucich RESOURCES.
+   A. RESOURCE [SERVICE BUS NAMESPACE].
+   B. RESOURCE [SERVICE BUS QUEUE].
+   C. RESOURCE [SERVICE BUS TOPIC].
+   D. RESOURCE [SERVICE BUS SUBSCRIPTION].
+13. S SERVICE BUS NAMESPACES sa pracuje pomocou nasledujucich COMMANDS.
+   A. SERVICE BUS NAMESPACE sa vytvara pomocou COMMAND [az servicebus namespace create]. Prikladom je COMMAND [az servicebus namespace create --name MyServiceBusNamespaceTA76 --resource-group Chapter11 --location centralus --sku Standard --min-tls 1.2].
+   B. SERVICE BUS NAMESPACE sa odstranuje pomocou COMMAND [az servicebus namespace delete]. Prikladom je COMMAND [az servicebus namespace delete --name MyServiceBusNamespaceTA76 --resource-group Chapter11].
+   C. Zoznam SERVICE BUS NAMESPACES vracia COMMAND [az servicebus namespace list]. Prikladom je COMMAND [az servicebus namespace list --resource-group Chapter11].
+14. S SERVICE BUS QUEUES sa pracuje pomocou nasledujucich COMMANDS.
+   A. SERVICE BUS QUEUE sa vytvara pomocou COMMAND [az servicebus queue create]. Prikladom je COMMAND [az servicebus queue create --name MyQueueTA76 --namespace-name MyServiceBusNamespaceTA76 --resource-group Chapter11].
+   B. SERVICE BUS QUEUE sa odstranuje pomocou COMMAND [az servicebus queue delete]. Prikladom je COMMAND [az servicebus queue delete --name MyQueueTA76 --namespace-name MyServiceBusNamespaceTA76 --resource-group Chapter11].
+   C. Zoznam SERVICE BUS QUEUES vracia COMMAND [az servicebus queue list]. Prikladom je COMMAND [az servicebus queue list --namespace-name MyServiceBusNamespaceTA76 --resource-group Chapter11].
+15. S SERVICE BUS TOPICS sa pracuje pomocou nasledujucich COMMANDS.
+   A. SERVICE BUS TOPIC sa vytvara pomocou COMMAND [az servicebus topic create]. Prikladom je COMMAND [az servicebus topic create --name MyTopicTA76 --namespace-name MyServiceBusNamespaceTA76 --resource-group Chapter11].
+   B. SERVICE BUS TOPIC sa odstranuje pomocou COMMAND [az servicebus topic delete]. Prikladom je COMMAND [az servicebus topic delete --name MyTopicTA76 --namespace-name MyServiceBusNamespaceTA76 --resource-group Chapter11].
+   C. Zoznam SERVICE BUS TOPICS vracia COMMAND [az servicebus topic list]. Prikladom je COMMAND [az servicebus topic list --namespace-name MyServiceBusNamespaceTA76 --resource-group Chapter11].
+16. S SERVICE BUS SUBSCRIPTIONS sa pracuje pomocou nasledujucich COMMANDS.
+   A. SERVICE BUS SUBSCRIPTION sa vytvara pomocou COMMAND [az servicebus topic subscription create]. Prikladom je COMMAND [az servicebus topic subscription create --name MySubscriptionTA76 --namespace-name MyServiceBusNamespaceTA76 --resource-group Chapter11 --topic-name MyTopicTA76 --max-delivery-count 10 --enable-dead-lettering-on-message-expiration true --status Active].
+   B. SERVICE BUS SUBSCRIPTION sa odstranuje pomocou COMMAND [az servicebus topic subscription delete]. Prikladom je COMMAND [az servicebus topic subscription delete --name MySubscriptionTA76 --namespace-name MyServiceBusNamespaceTA76 --resource-group Chapter11 --topic-name MyTopicTA76].
+   C. Zoznam SERVICE BUS SUBSCRIPTIONS vracia COMMAND [az servicebus topic subscription list]. Prikladom je COMMAND [az servicebus topic subscription list --namespace-name MyServiceBusNamespaceTA76 --resource-group Chapter11 --topic-name MyTopicTA76].
+17. Na pristup k AZURE SERVICE BUS je potrebny CONNECTION STRING na SERVICE BUS NAMESPACE. DEFAULT CONNECTION STRING na SERVICE BUS NAMESPACE sa ziskava v nasledujucich krokoch.
+   A. Pomocou COMMAND [az servicebus namespace authorization-rule list] sa ziska zoznam AUTHORIZATION RULES pre dany SERVICE BUS NAMESPACE. Prikladom je COMMAND [az servicebus namespace authorization-rule list --namespace-name MyServiceBusNamespaceTA76 --resource-group Chapter11].
+   B. BY-DEFAULT pre SERVICE BUS NAMESPACE sa vytvara AUTHORIZATION RULE [RootManageSharedAccessKey], ktora ma ACCESS RIGHTS na pristup k AZURE SERVICE BUS.
+   C. Pomocou COMMAND [az servicebus namespace authorization-rule keys list] sa ziska CONNECTION STRING na SERVICE BUS NAMESPACE. Prikladom je COMMAND [az servicebus namespace authorization-rule keys list --authorization-rule-name RootManageSharedAccessKey --namespace-name MyServiceBusNamespaceTA76 --resource-group Chapter11].
+18. CLIENT LIBRARY pre AZURE SERVICE BUS je implementovana v PACKAGE [Azure.Messaging.ServiceBus].
+!!! 19. CLASS [ServiceBusClient] reprezentuje CONNECTION na AZURE SERVICE BUS. CLASS umoznuje vytvaranie inych AZURE SERVICE BUS CLASSES na pracu so AZURE SERVICE BUS CLASS. Instancia CLASS musi existovat po celu dobu kym existuju instancie CLASSES, ktore vytvorila. Pre CLASS platia nasledujuce fakty.
+   A. CLASS implementuje INTERFACE [IAsyncDisposable], ktory umoznuje asynchronne uvolnenie RESOURCES.
+   B. CONSTRUCTOR vytvara instanciu CLASS [ServiceBusClient]. Ako PARAMETER sa zadava CONNECTION STRING, ktory sa da ziskat pomocou COMMAND [az servicebus namespace authorization-rule keys list].
+   C. PROPERTY [string Identifier] obsahuje IDENTIFIER instancie CLASS.
+   D. PROPERTY [string FullyQualifiedNamespace] obsahuje FULLY QUALIFIED NAME pre SERVICE BUS NAMESPACE.
+   E. PROPERTY [bool IsClosed] obsahuje informaciu ci instancia CLASS bola CLOSED.
+   F. PROPERTY [ServiceBusTransportType TransportType] obsahuje TRANSPORT TYPE, ktory instancia CLASS pouziva.
+   G. METHOD [ValueTask DisposeAsync()] asynchronne uvolnuje RESOURCES CLASS [ServiceBusClient].
+   H. METHOD [ServiceBusSender CreateSender(string QueueOrTopicName, ServiceBusSenderOptions Options)] vytvara instanciu CLASS [ServiceBusSender] pre SERICE BUS QUEUE, alebo SERICE BUS TOPIC.
+   I. METHOD [ServiceBusReceiver CreateReceiver(string QueueName, ServiceBusReceiverOptions Options)] vytvara instanciu CLASS [ServiceBusReceiver] pre SERICE BUS QUEUE.
+   J. METHOD [ServiceBusReceiver CreateReceiver(string TopicName, string SubscriptionName, ServiceBusReceiverOptions Options)] vytvara instanciu CLASS [ServiceBusReceiver] pre SERICE BUS SUBSCRIPTION.
+   K. METHOD [Task<ServiceBusSessionReceiver> AcceptSessionAsync(string QueueName, string SessionID, ServiceBusSessionReceiverOptions Options, CancellationToken CancellationToken)] vytvara instanciu CLASS [ServiceBusSessionReceiver] pre SERICE BUS QUEUE. Instanciu CLASS [ServiceBusSessionReceiver] sa vytvara pre SESSION ENABLED QUEUE, ktorej SESSION ID je definovane ako PARAMETER.
+   L. METHOD [Task<ServiceBusSessionReceiver> AcceptSessionAsync(string TopicName, string SubscriptionName, string SessionID, ServiceBusSessionReceiverOptions Options, CancellationToken CancellationToken)] vytvara instanciu CLASS [ServiceBusSessionReceiver] pre SERICE BUS SUBSCRIPTION. Instanciu CLASS [ServiceBusSessionReceiver] sa vytvara pre SESSION ENABLED SUBSCRIPTION, ktorej SESSION ID je definovane ako PARAMETER.
+   M. METHOD [Task<ServiceBusSessionReceiver> AcceptNextSessionAsync(string QueueName, ServiceBusSessionReceiverOptions Options, CancellationToken CancellationToken)] vytvara instanciu CLASS [ServiceBusSessionReceiver] pre SERICE BUS QUEUE. Instanciu CLASS [ServiceBusSessionReceiver] sa vytvara akceptovanim NEXT UNLOCKED SESSION pre SESSION ENABLED QUEUE.
+   N. METHOD [Task<ServiceBusSessionReceiver> AcceptNextSessionAsync(string TopicName, string SubscriptionName, ServiceBusSessionReceiverOptions Options, CancellationToken CancellationToken)] vytvara instanciu CLASS [ServiceBusSessionReceiver] pre SERICE BUS SUBSCRIPTION. Instanciu CLASS [ServiceBusSessionReceiver] sa vytvara akceptovanim NEXT UNLOCKED SESSION pre SESSION ENABLED QUEUE.
+   O. METHOD [ServiceBusProcessor CreateProcessor(string QueueName, ServiceBusProcessorOptions Options)] vytvara instanciu CLASS [ServiceBusProcessor] pre SERICE BUS QUEUE.
+   P. METHOD [ServiceBusProcessor CreateProcessor(string TopicName, string SubscriptionName, ServiceBusProcessorOptions Options)] vytvara instanciu CLASS [ServiceBusProcessor] pre SERICE BUS SUBSCRIPTION.
+   Q. METHOD [ServiceBusSessionProcessor CreateSessionProcessor(string QueueName, ServiceBusSessionProcessorOptions Options)] vytvara instanciu CLASS [ServiceBusSessionProcessor] pre SERICE BUS QUEUE. Instanciu CLASS [ServiceBusSessionProcessor] sa pouziva na spracovanie SESSION MESSAGES.
+   R. METHOD [ServiceBusSessionProcessor CreateSessionProcessor(string TopicName, string SubscriptionName, ServiceBusSessionProcessorOptions Options)] vytvara instanciu CLASS [ServiceBusSessionProcessor] pre SERICE BUS SUBSCRIPTION. Instanciu CLASS [ServiceBusSessionProcessor] sa pouziva na spracovanie SESSION MESSAGES.
+20. CLASS [ServiceBusSender] sluzi na odosielanie MESSAGES do SERICE BUS QUEUE, alebo SERICE BUS TOPIC. CLASS moze byt pouzita pre SESSION aj NON-SESSION ENTITIES. Pre CLASS platia nasledujuce fakty.
+   A. CLASS implementuje INTERFACE [IAsyncDisposable], ktory umoznuje asynchronne uvolnenie RESOURCES.
+   B. CONSTRUCTOR vytvara instanciu CLASS [ServiceBusSender].
+   C. PROPERTY [string Identifier] obsahuje IDENTIFIER instancie CLASS.
+   D. PROPERTY [string FullyQualifiedNamespace] obsahuje FULLY QUALIFIED NAME pre SERVICE BUS NAMESPACE.
+   E. PROPERTY [bool IsClosed] obsahuje informaciu ci instancia CLASS bola CLOSED.
+   F. PROPERTY [string EntityPath] obsahuje PATH k SERVICE BUS ENTITY ku ktorej je instancia CLASS pripojena.
+   G. METHOD [ValueTask DisposeAsync()] asynchronne uvolnuje RESOURCES CLASS [ServiceBusReceiver].
+   H. METHOD [Task CloseAsync(CancellationToken CancellationToken)] asynchronne uzatvara instanciu CLASS a uvolnuje vsetky RESOURCES.
+   I. METHOD [Task SendMessageAsync(ServiceBusMessage Message, CancellationToken CancellationToken)] odosiela MESSAGE do SERICE BUS QUEUE, alebo SERICE BUS TOPIC.
+   J. METHOD [Task SendMessagesAsync(IEnumerable<ServiceBusMessage> Messages, CancellationToken CancellationToken)] odosiela MESSAGES do SERICE BUS QUEUE, alebo SERICE BUS TOPIC.
+   K. METHOD [ValueTask<ServiceBusMessageBatch> CreateMessageBatchAsync(CreateMessageBatchOptions Options, CancellationToken CancellationToken)] vytvori BATCH s obmedzenou velkostou, ktory sluzi na odosielanie MESSAGES formou BATCHES.
+   L. METHOD [Task SendMessagesAsync(ServiceBusMessageBatch MessageBatch, CancellationToken CancellationToken)] odosiela MESSAGES formou BATCH do SERICE BUS QUEUE, alebo SERICE BUS TOPIC.
+   M. METHOD [Task<long> ScheduleMessageAsync(ServiceBusMessage Message, DateTimeOffset ScheduledEnqueueTime, CancellationToken CancellationToken)] vykona SCHEDULE MESSAGE, ktora bude v stanovenom case odoslana do SERICE BUS QUEUE, alebo SERICE BUS TOPIC.
+   N. METHOD [Task<IReadOnlyList<long>> ScheduleMessagesAsync(IEnumerable<ServiceBusMessage> Messages, DateTimeOffset ScheduledEnqueueTime, CancellationToken CancellationToken)] vykona SCHEDULE MESSAGES, ktore bude v stanovenom case odoslane do SERICE BUS QUEUE, alebo SERICE BUS TOPIC.
+   O. METHOD [Task CancelScheduledMessageAsync(long SequenceNumber, CancellationToken CancellationToken)] vykona CANCEL SCHEDULE MESSAGE.
+21. CLASS [ServiceBusReceiver] sluzi na citanie MESSAGES zo SERICE BUS QUEUE, alebo SERICE BUS SUBSCRIPTION. Pre CLASS platia nasledujuce fakty.
+   A. CLASS implementuje INTERFACE [IAsyncDisposable], ktory umoznuje asynchronne uvolnenie RESOURCES.
+   B. CONSTRUCTOR vytvara instanciu CLASS [ServiceBusReceiver].
+   C. PROPERTY [string Identifier] obsahuje IDENTIFIER instancie CLASS.
+   D. PROPERTY [string FullyQualifiedNamespace] obsahuje FULLY QUALIFIED NAME pre SERVICE BUS NAMESPACE.
+   E. PROPERTY [bool IsClosed] obsahuje informaciu ci instancia CLASS bola CLOSED.
+   F. PROPERTY [string EntityPath] obsahuje PATH k SERVICE BUS ENTITY ku ktorej je instancia CLASS pripojena.
+   G. PROPERTY [ServiceBusReceiveMode ReceiveMode] obsahuje MODE, ako su MESSAGES spracovavane v instancii CLASS.
+   H. PROPERTY [int PrefetchCount] obsahuje pocet MESSAGES, ktore su dopredu nacitane zo SERVICE BUS QUEUE, alebo SERVICE BUS SUBSCRIPTION do LOCAL CACHE.
+   I. METHOD [ValueTask DisposeAsync()] asynchronne uvolnuje RESOURCES CLASS [ServiceBusReceiver].
+   J. METHOD [Task CloseAsync(CancellationToken CancellationToken)] asynchronne uzatvara instanciu CLASS a uvolnuje vsetky RESOURCES.
+   K. METHOD [Task<ServiceBusReceivedMessage> ReceiveMessageAsync(TimeSpan? MaxWaitTime, CancellationToken CancellationToken)] nacita MESSAGE zo SERICE BUS QUEUE, alebo SERICE BUS SUBSCRIPTION.
+   L. METHOD [Task<IReadOnlyList<ServiceBusReceivedMessage>> ReceiveMessagesAsync(int MaxMessages, TimeSpan? MaxWaitTime, CancellationToken CancellationToken)] nacita definovany pocet MESSAGES zo SERICE BUS QUEUE, alebo SERICE BUS SUBSCRIPTION.
+   M. METHOD [IAsyncEnumerable<ServiceBusReceivedMessage> ReceiveMessagesAsync(CancellationToken CancellationToken)] nacita definovany pocet MESSAGES zo SERICE BUS QUEUE, alebo SERICE BUS SUBSCRIPTION a vrati ich ako ASYNCHRONOUS ENUMERABLE.
+   N. METHOD [Task<ServiceBusReceivedMessage> PeekMessageAsync(long? FromSequenceNumber, CancellationToken CancellationToken)] vykona PEEK MESSAGE zo SERICE BUS QUEUE, alebo SERICE BUS SUBSCRIPTION.
+   O. METHOD [Task<IReadOnlyList<ServiceBusReceivedMessage>> PeekMessagesAsync(int MaxMessages, long? FromSequenceNumber, CancellationToken CancellationToken)] vykona PEEK definovaneho poctu MESSAGES zo SERICE BUS QUEUE, alebo SERICE BUS SUBSCRIPTION.
+   P. METHOD [Task CompleteMessageAsync(ServiceBusReceivedMessage Message, CancellationToken CancellationToken)] vykona MESSAGE COMPLETE co znamena, ze MESSAGE je odstranena zo SERICE BUS QUEUE, alebo SERICE BUS SUBSCRIPTION.
+   Q. METHOD [Task AbandonMessageAsync(ServiceBusReceivedMessage Message, IDictionary<string,object> PropertiesToModify, CancellationToken CancellationToken)] vykona MESSAGE ABANDON co znamena, ze MESSAGE je vratena spat do SERICE BUS QUEUE, alebo SERICE BUS SUBSCRIPTION a moze byt opat spracovana.
+   R. METHOD [Task DeadLetterMessageAsync(ServiceBusReceivedMessage Message, IDictionary<string,object> PropertiesToModify, string DeadLetterReason, string DeadLetterErrorDescription, CancellationToken CancellationToken)] presunie MESSAGE do DEAD LETTER SUBQUEUE.
+   S. METHOD [Task DeferMessageAsync(ServiceBusReceivedMessage Message, IDictionary<string,object> PropertiesToModify, CancellationToken CancellationToken)] oznacuje MESSAGE za DEFERRED. DEFERRED MESSAGES mozu byt spracovane neskor.
+   T. METHOD [Task<ServiceBusReceivedMessage> ReceiveDeferredMessageAsync(long SequenceNumber, CancellationToken CancellationToken)] nacitava DEFFERED MESSAGE, aby mohla byt spracovana.
+   U. METHOD [Task RenewMessageLockAsync(ServiceBusReceivedMessage Message, CancellationToken CancellationToken)] vykona RENEW LOCK nad MESSAGE.
+22. CLASS [ServiceBusProcessor] sluzi na citanie MESSAGES zo SERICE BUS QUEUE, alebo SERICE BUS SUBSCRIPTION. CLASS [ServiceBusProcessor] je WRAPPER okolo CLASS [ServiceBusReceiver]. Pre CLASS platia nasledujuce fakty.
+   A. CLASS implementuje INTERFACE [IAsyncDisposable], ktory umoznuje asynchronne uvolnenie RESOURCES.
+   B. CONSTRUCTOR vytvara instanciu CLASS [ServiceBusProcessor].
+   C. PROPERTY [string Identifier] obsahuje IDENTIFIER instancie CLASS.
+   D. PROPERTY [string FullyQualifiedNamespace] obsahuje FULLY QUALIFIED NAME pre SERVICE BUS NAMESPACE.
+   E. PROPERTY [bool IsClosed] obsahuje informaciu ci instancia CLASS bola CLOSED.
+   F. PROPERTY [string EntityPath] obsahuje PATH k SERVICE BUS ENTITY ku ktorej je instancia CLASS pripojena.
+   G. PROPERTY [ServiceBusReceiveMode ReceiveMode] obsahuje MODE, ako su MESSAGES spracovavane v instancii CLASS.
+   H. PROPERTY [int PrefetchCount] obsahuje pocet MESSAGES, ktore su dopredu nacitane zo SERVICE BUS QUEUE, alebo SERVICE BUS SUBSCRIPTION do LOCAL CACHE.
+   I. PROPERTY [bool IsProcessing] urcuje ci instancia CLASS aktualne prijima MESSAGES.
+   J. PROPERTY [int MaxConcurrentCalls] urcuje maximalny pocet CONCURRENT CALLS na MESSAGE HANDLER, ktore moze instancia CLASS vykonat.
+   K. PROPERTY [bool AutoCompleteMessages] urcuje ci instancia CLASS ma automaticky vykonat MESSAGE COMPLETE potom ako MESSAGE HANDLER spracoval MESSAGE. Ak pri spracovani MESSAGE dojde, k EXCEPTION, k MESSAGE COMPLETE nedojde.
+   L. PROPERTY [TimeSpan MaxAutoLockRenewalDuration] obsahuje maximalnu DURATION pocas ktorej bude LOCK automaticky obnoveny.
+   M. EVENT [Func<ProcessMessageEventArgs,Task> ProcessMessageAsync] je volany pri nacitavani MESSAGES z SERVICE BUS QUEUE, alebo SERVICE BUS SUBSCRIPTION.
+   N. EVENT [Func<ProcessErrorEventArgs,Task> ProcessErrorAsync] je volany ak pri nacitavani MESSAGES z SERVICE BUS QUEUE, alebo SERVICE BUS SUBSCRIPTION doslo k ERROR.
+   O. METHOD [ValueTask DisposeAsync()] asynchronne uvolnuje RESOURCES CLASS [ServiceBusProcessor].
+   P. PROTECTED METHOD [Task OnProcessMessageAsync(ProcessMessageEventArgs Args)] vola EVENT [Func<ProcessMessageEventArgs,Task> ProcessMessageAsync].
+   Q. PROTECTED METHOD [Task OnProcessErrorAsync(ProcessErrorEventArgs Args)] vola EVENT [Func<ProcessErrorEventArgs,Task> ProcessErrorAsync].
+   R. METHOD [Task StartProcessingAsync(CancellationToken CancellationToken)] asynchronne spusta zachytavanie MESSAGES z SERVICE BUS QUEUE, alebo SERVICE BUS SUBSCRIPTION.
+   S. METHOD [Task StopProcessingAsync(CancellationToken CancellationToken)] asynchronne zastavuje zachytavanie MESSAGES z SERVICE BUS QUEUE, alebo SERVICE BUS SUBSCRIPTION.
+   T. METHOD [Task CloseAsync(CancellationToken CancellationToken)] asynchronne uzatvara instanciu CLASS a uvolnuje vsetky RESOURCES.
+   U. METHOD [void UpdateConcurrency(int MaxConcurrentCalls)] nastavuje VALUE PROPERTY [int MaxConcurrentCalls].
+   V. METHOD [void UpdatePrefetchCount(int PrefetchCount)] nastavuje VALUE PROPERTY [int PrefetchCount].
+23. CLASS [ProcessMessageEventArgs] obsahuje informacie o MESSAGE, ktora bola nacitana z SERVICE BUS QUEUE, alebo SERVICE BUS SUBSCRIPTION. Pre CLASS platia nasledujuce fakty.
+   A. CLASS je DERIVED z CLASS [EventArgs].
+   B. CONSTRUCTOR vytvara instanciu CLASS [ProcessMessageEventArgs].
+   C. PROPERTY [ServiceBusReceivedMessage Message] obsahuje MESSAGE.
+   !!! D. PROPERTY [CancellationToken CancellationToken] obsahuje CANCELLATION TOKEN, ktory ked je nastaveny, C# EVENT HANDLER spracovavajuci MESSAGE by mal okamzite ukoncit spracovanie danej MESSAGE.
+   E. PROPERTY [string Identifier] obsahuje IDENTIFIER instancie CLASS.
+   F. PROPERTY [string FullyQualifiedNamespace] obsahuje FULLY QUALIFIED NAME pre SERVICE BUS NAMESPACE.
+   G. PROPERTY [string EntityPath] obsahuje PATH k SERVICE BUS ENTITY ku ktorej je instancia CLASS pripojena.
+   H. EVENT [Func<MessageLockLostEventArgs,Task> MessageLockLostAsync] je volany je MESSAGE LOCK je strateny.
+   I. PROTECTED METHOD [Task OnMessageLockLostAsync(MessageLockLostEventArgs Args)] vola EVENT [Func<MessageLockLostEventArgs,Task> MessageLockLostAsync].
+   J. METHOD [Task CompleteMessageAsync(ServiceBusReceivedMessage Message, CancellationToken CancellationToken)] vykona MESSAGE COMPLETE co znamena, ze MESSAGE je odstranena zo SERICE BUS QUEUE, alebo SERICE BUS SUBSCRIPTION.
+   K. METHOD [Task AbandonMessageAsync(ServiceBusReceivedMessage Message, IDictionary<string,object> PropertiesToModify, CancellationToken CancellationToken)] vykona MESSAGE ABANDON co znamena, ze MESSAGE je vratena spat do SERICE BUS QUEUE, alebo SERICE BUS SUBSCRIPTION a moze byt opat spracovana.
+   L. METHOD [Task DeadLetterMessageAsync(ServiceBusReceivedMessage Message, IDictionary<string,object> PropertiesToModify, string DeadLetterReason, string DeadLetterErrorDescription, CancellationToken CancellationToken)] presunie MESSAGE do DEAD LETTER SUBQUEUE.
+   M. METHOD [Task DeferMessageAsync(ServiceBusReceivedMessage Message, IDictionary<string,object> PropertiesToModify, CancellationToken CancellationToken)] oznacuje MESSAGE za DEFERRED. DEFERRED MESSAGES mozu byt spracovane neskor.
+   N. METHOD [Task RenewMessageLockAsync(ServiceBusReceivedMessage Message, CancellationToken CancellationToken)] vykona RENEW LOCK nad MESSAGE.
+   O. METHOD [ProcessorReceiveActions GetReceiveActions()] vracia instanciu CLASS [], ktora umoznuje spracovat dalsie MESSAGES.
+24. CLASS [ProcessErrorEventArgs] obsahuje informacie o EXCEPTION ku ktorej doslo pri nacitavani MESSAGES zo SERVICE BUS QUEUE, alebo SERVICE BUS SUBSCRIPTION. Pre CLASS platia nasledujuce fakty.
+   A. CLASS je DERIVED z CLASS [EventArgs].
+   B. CONSTRUCTOR vytvara instanciu CLASS [ProcessErrorEventArgs].
+   C. PROPERTY [string Identifier] obsahuje IDENTIFIER instancie PROCESSOR CLASS.
+   D. PROPERTY [string FullyQualifiedNamespace] obsahuje FULLY QUALIFIED NAME pre SERVICE BUS NAMESPACE v ktorej doslo k ERROR.
+   E. PROPERTY [string EntityPath] obsahuje PATH k SERVICE BUS ENTITY v ktorej doslo k ERROR.
+   F. PROPERTY [ServiceBusErrorSource ErrorSource] obsahuje SOURCE, ktory je asociovany s danym EVENT.
+   G. PROPERTY [Exception Exception] obsahuje EXCEPTION ku ktorej doslo pri nacitani MESSAGES z AZURE SERVICE BUS.
+   !!! H. PROPERTY [CancellationToken CancellationToken] obsahuje CANCELLATION TOKEN, ktory ked je nastaveny, C# EVENT HANDLER spracovavajuci ERROR by mal okamzite ukoncit spracovanie daneho ERROR.
+25. CLASS [ServiceBusAdministrationClient] umoznuje vytvarat, odstranovat a spravovat vsetky SERVICE BUS ENTITIES. Pre CLASS platia nasledujuce fakty.
+   1. CONSTRUCTOR vytvara instanciu CLASS [ServiceBusAdministrationClient]. Ako PARAMETER sa zadava CONNECTION STRING, ktory sa da ziskat pomocou COMMAND [az servicebus namespace authorization-rule keys list].
+   2. METHOD [Task<Response<QueueProperties>> CreateQueueAsync(CreateQueueOptions Options, CancellationToken CancellationToken)] vytvara SERVICE BUS QUEUE.
+   3. METHOD [Task<Response<TopicProperties>> CreateTopicAsync(CreateTopicOptions Options, CancellationToken CancellationToken)] vytvara SERVICE BUS TOPIC.
+   4. METHOD [Task<Response<SubscriptionProperties>> CreateSubscriptionAsync(CreateSubscriptionOptions Options, CreateRuleOptions Rule, CancellationToken CancellationToken)] vytvara SERVICE BUS SUBSCRIPTION.
+   5. METHOD [Task<Response<RuleProperties>> CreateRuleAsync(string TopicName, string SubscriptionName, CreateRuleOptions Options, CancellationToken CancellationToken)] vytvara SERVICE BUS SUBSCRIPTION RULE.
+   6. METHOD [Task<Response<QueueProperties>> UpdateQueueAsync(QueueProperties Queue, CancellationToken CancellationToken)] vykona UPDATE SERVICE BUS QUEUE.
+   7. METHOD [Task<Response<TopicProperties>> UpdateTopicAsync(TopicProperties Topic, CancellationToken CancellationToken)] vykona UPDATE SERVICE BUS TOPIC.
+   8. METHOD [Task<Response<SubscriptionProperties>> UpdateSubscriptionAsync(SubscriptionProperties Subscription, CancellationToken CancellationToken)] vykona UPDATE SERVICE BUS SUBSCRIPTION.
+   9. METHOD [Task<Response<RuleProperties>> UpdateRuleAsync(string TopicName, string SubscriptionName, RuleProperties Rule, CancellationToken CancellationToken)] vykona UPDATE SERVICE BUS SUBSCRIPTION RULE.
+   10. METHOD [Task<Response> DeleteQueueAsync(string Name, CancellationToken CancellationToken)] odstranuje SERVICE BUS QUEUE.
+   11. METHOD [Task<Response> DeleteTopicAsync(string Name, CancellationToken CancellationToken)] odstranuje SERVICE BUS TOPIC.
+   12. METHOD [Task<Response> DeleteSubscriptionAsync(string TopicName, string SubscriptionName, CancellationToken CancellationToken)] odstranuje SERVICE BUS SUBSCRIPTION.
+   13. METHOD [Task<Response> DeleteRuleAsync(string TopicName, string SubscriptionName, string RuleName, CancellationToken CancellationToken)] odstranuje SERVICE BUS SUBSCRIPTION RULE.
+   14. METHOD [Task<Response<bool>> QueueExistsAsync(string Name, CancellationToken CancellationToken)] vracia informaciu ci SERVICE BUS QUEUE existuje.
+   15. METHOD [Task<Response<bool>> TopicExistsAsync(string Name, CancellationToken CancellationToken)] vracia informaciu ci SERVICE BUS TOPIC existuje.
+   16. METHOD [Task<Response<bool>> SubscriptionExistsAsync(string TopicName, string SubscriptionName, CancellationToken CancellationToken)] vracia informaciu ci SERVICE BUS SUBSCRIPTION existuje.
+   17. METHOD [Task<Response<bool>> RuleExistsAsync(string TopicName, string SubscriptionName, string RuleName, CancellationToken CancellationToken)] vracia informaciu ci SERVICE BUS SUBSCRIPTION RULE existuje.
+   18. METHOD [Task<Response<NamespaceProperties>> GetNamespacePropertiesAsync(CancellationToken CancellationToken)] vracia PROPERTIES SERVICE BUS NAMESPACE.
+   19. METHOD [Task<Response<QueueProperties>> GetQueueAsync(string Name, CancellationToken CancellationToken)] vracia PROPERTIES SERVICE BUS QUEUE.
+   20. METHOD [Task<Response<TopicProperties>> GetTopicAsync(string Name, CancellationToken CancellationToken)] vracia PROPERTIES SERVICE BUS TOPIC.
+   21. METHOD [Task<Response<SubscriptionProperties>> GetSubscriptionAsync(string TopicName, string SubscriptionName, CancellationToken CancellationToken)] vracia PROPERTIES SERVICE BUS SUBSCRIPTION.
+   22. METHOD [Task<Response<RuleProperties>> GetRuleAsync(string TopicName, string SubscriptionName, string RuleName, CancellationToken CancellationToken)] vracia PROPERTIES SERVICE BUS SUBSCRIPTION RULE.
+   23. METHOD [Task<Response<QueueRuntimeProperties>> GetQueueRuntimePropertiesAsync(string Name, CancellationToken CancellationToken)] vracia RUNTIME PROPERTIES SERVICE BUS QUEUE.
+   24. METHOD [Task<Response<TopicRuntimeProperties>> GetTopicRuntimePropertiesAsync(string Name, CancellationToken CancellationToken)] vracia RUNTIME PROPERTIES SERVICE BUS TOPIC.
+   25. METHOD [Task<Response<SubscriptionRuntimeProperties>> GetSubscriptionRuntimePropertiesAsync(string TopicName, string SubscriptionName, CancellationToken CancellationToken)] vracia RUNTIME PROPERTIES SERVICE BUS SUBSCRIPTION.
+   26. METHOD [AsyncPageable<QueueProperties> GetQueuesAsync(CancellationToken CancellationToken)] vracia zoznam SERVICE BUS QUEUES.
+   27. METHOD [AsyncPageable<TopicProperties> GetTopicsAsync(CancellationToken CancellationToken)] vracia zoznam SERVICE BUS TOPICS.
+   28. METHOD [AsyncPageable<SubscriptionProperties> GetSubscriptionsAsync(string TopicName, CancellationToken CancellationToken)] vracia zoznam SERVICE BUS SUBSCRIPTIONS.
+   29. METHOD [AsyncPageable<RuleProperties> GetRulesAsync(string TopicName, string SubscriptionName, CancellationToken CancellationToken)] vracia zoznam SERVICE BUS SUBSCRIPTION RULES.
+   30. METHOD [AsyncPageable<QueueRuntimeProperties> GetQueuesRuntimePropertiesAsync(CancellationToken CancellationToken)] vracia zoznam RUNTIME PROPERTIES SERVICE BUS QUEUES.
+   31. METHOD [AsyncPageable<TopicRuntimeProperties> GetTopicsRuntimePropertiesAsync(CancellationToken CancellationToken)] vracia zoznam RUNTIME PROPERTIES SERVICE BUS TOPICS.
+   32. METHOD [AsyncPageable<SubscriptionRuntimeProperties> GetSubscriptionsRuntimePropertiesAsync(string TopicName, CancellationToken CancellationToken)] vracia zoznam RUNTIME PROPERTIES SERVICE BUS SUBSCRIPTIONS.
+!!! 26. Pre odosielanie MESSAGES do AZURE SERVICE BUS v MESSAGE PUBLISHER je nutne vytvorit nasledujuce RESOURCES.
+   A. SERVICE BUS NAMESPACE.
+   B. SERVICE BUS QUEUE, alebo SERVICE BUS TOPIC.
+27. MESSAGES su v AZURE SERVICE BUS odosielane nasledujucim sposobom.
+   A. Vytvori sa instancia CLASS [ServiceBusClient], ktora ako PARAMETER CONNECTION STRING na SERVICE BUS NAMESPACE, ktory sa da ziskat volanim COMMAND [az servicebus namespace authorization-rule keys list --authorization-rule-name RootManageSharedAccessKey --namespace-name MyServiceBusNamespaceTA76 --resource-group Chapter11].
+   B. Pomocou instancie CLASS [ServiceBusClient] sa vytvori instancia CLASS [ServiceBusSender], ktora ma ako PARAMETER nazov SERVICE BUS QUEUE, alebo nazov SERVICE BUS TOPIC.
+   C. Vytvoria sa instancie CLASS [ServiceBusMessage], ktore obsahuju MESSAGE DATA.
+   D. MESSAGES sa odoslu do SERVICE BUS QUEUE, alebo SERVICE BUS TOPIC niektorym z nasledujucich sposobov.
+      A. MESSAGES sa odoslu ako COLLECTION MESSAGES volanim METHOD [Task ServiceBusSender.SendMessagesAsync(IEnumerable<ServiceBusMessage> Messages, CancellationToken CancellationToken)].
+      B. MESSAGES sa odoslu ako BATCH v nasledujucich krokoch.
+         A. Vytvori sa instancia CLASS [ServiceBusMessageBatch] volanim METHOD [ValueTask<ServiceBusMessageBatch> ServiceBusSender.CreateMessageBatchAsync(CancellationToken CancellationToken)].
+         B. MESSAGES sa vlozia do BATCH volanim METHOD [bool TryAddMessage(ServiceBusMessage Message)].
+         C. Cely BATCH sa odosle do SERVICE BUS QUEUE, alebo SERVICE BUS TOPIC volanim METHOD [Task ServiceBusSender.SendMessagesAsync(ServiceBusMessageBatch MessageBatch, CancellationToken CancellationToken)].
+         D. Instancia CLASS [ServiceBusMessageBatch] sa uvolni volanim METHOD [void ServiceBusMessageBatch.Dispose()].
+   E. Instancia CLASS [ServiceBusSender] sa uvolni volanim METHOD [ValueTask ServiceBusSender.DisposeAsync()].
+   F. Instancia CLASS [ServiceBusClient] sa uvolni volanim METHOD [ValueTask ServiceBusClient.DisposeAsync()].
+28. Pre nacitavanie MESSAGES z AZURE SERVICE BUS v EVENT BUS SUBSCRIBER je nutne vytvorit nasledujuce RESOURCES.
+   A. SERVICE BUS NAMESPACE.
+   B. SERVICE BUS QUEUE, alebo SERVICE BUS SUBSCRIPTION.
+29. MESSAGES su z AZURE SERVICE BUS pomocou CLASS [ServiceBusProcessor] nacitavane nasledujucim sposobom.
+   A. Vytvori sa instancia CLASS [ServiceBusClient], ktora ako PARAMETER CONNECTION STRING na SERVICE BUS NAMESPACE, ktory sa da ziskat volanim COMMAND [az servicebus namespace authorization-rule keys list --authorization-rule-name RootManageSharedAccessKey --namespace-name MyServiceBusNamespaceTA76 --resource-group Chapter11].
+   B. Pomocou instancie CLASS [ServiceBusClient] sa vytvori instancia CLASS [ServiceBusProcessor], ktora ma ako PARAMETER nazov SERVICE BUS QUEUE, alebo nazov SERVICE BUS TOPIC a nazov SERVICE BUS SUBSCRIPTION.
+   C. Zaregistruje sa EVENT [Func<ProcessMessageEventArgs,Task> ServiceBusProcessor.ProcessMessageAsync] na odber zachytenych MESSAGES.
+   D. Zaregistruje sa EVENT [Func<ProcessErrorEventArgs,Task> ServiceBusProcessor.ProcessErrorAsync] na odber detekovanych ERRORS.
+   E. Volanim METHOD [Task ServiceBusProcessor.StartProcessingAsync(CancellationToken CancellationToken)] sa spusta zachytavanie MESSAGES zo SERVICE BUS QUEUE, alebo SERVICE BUS SUBSCRIPTION.
+   !!! F. V EVENT HANDLER EVENT [Func<ProcessMessageEventArgs,Task> ServiceBusProcessor.ProcessMessageAsync] je po skonceni spracovania MESSAGE, ak nema byt viac spracovana ju odstranit zo SERVICE BUS QUEUE, alebo SERVICE BUS SUBSCRIPTION volanim METHOD [Task ProcessMessageEventArgs.CompleteMessageAsync(ServiceBusReceivedMessage Message, CancellationToken CancellationToken)].
+   G. Volanim METHOD [Task ServiceBusProcessor.StopProcessingAsync(CancellationToken CancellationToken)] sa zastavuje zachytavanie MESSAGES zo SERVICE BUS QUEUE, alebo SERVICE BUS SUBSCRIPTION.
+   H. Instancia CLASS [ServiceBusProcessor] sa uvolni volanim METHOD [ValueTask ServiceBusProcessor.DisposeAsync()].
+   I. Instancia CLASS [ServiceBusClient] sa uvolni volanim METHOD [ValueTask ServiceBusClient.DisposeAsync()].
+30. MESSAGES su z AZURE SERVICE BUS pomocou CLASS [ServiceBusReceiver] nacitavane nasledujucim sposobom.
+   A. Vytvori sa instancia CLASS [ServiceBusClient], ktora ako PARAMETER CONNECTION STRING na SERVICE BUS NAMESPACE, ktory sa da ziskat volanim COMMAND [az servicebus namespace authorization-rule keys list --authorization-rule-name RootManageSharedAccessKey --namespace-name MyServiceBusNamespaceTA76 --resource-group Chapter11].
+   B. Pomocou instancie CLASS [ServiceBusClient] sa vytvori instancia CLASS [ServiceBusReceiver], ktora ma ako PARAMETER nazov SERVICE BUS QUEUE, alebo nazov SERVICE BUS TOPIC a nazov SERVICE BUS SUBSCRIPTION.
+   C. Pomocou METHOD [Task<IReadOnlyList<ServiceBusReceivedMessage>> ServiceBusReceiver.ReceiveMessagesAsync(int MaxMessages, TimeSpan? MaxWaitTime, CancellationToken CancellationToken)] sa nacitaju MESSAGES zo SERVICE BUS QUEUE, alebo SERVICE BUS SUBSCRIPTION.
+   !!! D. Ak MESSAGES nemaju byt spracovane inymi SUBSCRIBERS, potom je nutne volanim METHOD [Task ServiceBusReceiver.CompleteMessageAsync(ServiceBusReceivedMessage Message, CancellationToken CancellationToken)] ich oznacit ako spracovane, aby boli vymazane zo SERVICE BUS QUEUE, alebo SERVICE BUS SUBSCRIPTION.
+   E. Instancia CLASS [ServiceBusReceiver] sa uvolni volanim METHOD [ValueTask ServiceBusReceiver.DisposeAsync()].
+   F. Instancia CLASS [ServiceBusClient] sa uvolni volanim METHOD [ValueTask ServiceBusClient.DisposeAsync()].
+31. PROGRAMS, ktore pristpuju k AZURE SERVICE BUS mozu mat definovane ROLES obmezujuce ich ACCESS RIGHTS pomocou SHARED ACCESS SIGNATURES. Pre SHARED ACCESS SIGNATURES platia nasledujuce fakty.
+   A. SHARED ACCESS SIGNATURE umoznuju pouzivanie nasledujucich ROLES.
+      A. ROLE [Send]. ROLE umoznuje odosielat MESSAGES do AZURE SERVICE BUS.
+      B. ROLE [Listen]. ROLE umoznuje nacitavat MESSAGES z AZURE SERVICE BUS.
+      C. ROLE [Manage]. ROLE umoznuje spravu AZURE SERVICE BUS, vratane zapisovania a citania MESSAGES.
+   B. SHARED ACCESS SIGNATURE moze byt aplikovana vytvorenim AUTHORIZATION RULES na nasledujuce AZURE SERVICE BUS RESOURCES.
+      A. RESOURCE [SERVICE_BUS_NAMESPACE]. Pre RESOURCE [SERVICE_BUS_NAMESPACE] sa AUTHORIZATION RULE vytvara pomocou COMMAND [az servicebus namespace authorization-rule create].
+      B. RESOURCE [SERVICE_BUS_QUEUE]. Pre RESOURCE [SERVICE_BUS_QUEUE] sa AUTHORIZATION RULE vytvara pomocou COMMAND [az servicebus queue authorization-rule create].
+      C. RESOURCE [SERVICE_BUS_TOPIC]. Pre RESOURCE [SERVICE_BUS_TOPIC] sa AUTHORIZATION RULE vytvara pomocou COMMAND [az servicebus topic authorization-rule create].
+   C. Pri pristupe k AZURE SERVICE BUS pomocou SHARED ACCESS SIGNATURES je nutne vytvorit ACCESS TOKEN. ACCESS TOKEN je tvoreny nasledujucimi PARAMETERS.
+      A. PARAMETER [RESOURCE_URL]. PARAMETER [RESOURCE_URL] ma FORMAT [SEVICE_BUS_NAMESPACE.servicebus.windows.net/SERVICE_BUS_RESOURCE_NAME], kde VALUE [SEVICE_BUS_NAMESPACE] je nazov SERVICE BUS NAMESPACE a OPTIONAL VALUE [SERVICE_BUS_RESOURCE_NAME] je nazov SERVICE BUS QUEUE, alebo SERVICE BUS TOPIC.
+      B. PARAMETER [KEY_NAME]. PARAMETER [KEY_NAME] je nazov AUTHORIZATION RULE, ktory je pre SERVICE BUS NAMESPACES vytvoreny pomocou COMMAND [az servicebus namespace authorization-rule create], pre SERVICE BUS QUEUE vytvoreny pomocou COMMAND [az servicebus queue authorization-rule create] a pre SERVICE BUS TOPIC vytvoreny pomocou COMMAND [az servicebus topic authorization-rule create].
+      C. PARAMETER [KEY_VALUE]. PARAMETER [KEY_VALUE] je AUTHORIZATION RULE KEY VALUE, ktora je pre SERVICE BUS NAMESPACES ziskana pomocou COMMAND [az servicebus namespace authorization-rule keys list], pre SERVICE BUS QUEUES ziskana pomocou COMMAND [az servicebus queue authorization-rule keys list] a pre SERVICE BUS TOPIC ziskana pomocou COMMAND [az servicebus topic authorization-rule create].
+   D. Vytvoreny ACCESS TOKEN sa vlozi ako PARAMETER do CONSTRUCTOR CLASS [AzureSasCredential], ktora sa pouzije ako PARAMETER do CLASS [ServiceBusClient].
+32. SERVICE BUS PUBLISHER pripajajuci sa pomocou SHARED ACCESS SIGNATURE sa implementuje nasledujucim sposobom.
+   A. Pre existujuci SERVICE BUS RESOURCE sa vytvori AUTHORIZATION RULE, ktora musi mat ACCESS RIGTS [Send]. Vytvorenie AUTHORIZATION RULE zavisi od typu SERVICE BUS RESOURCE.
+      A. Pre SERVICE BUS NAMESPACE sa AUTHORIZATION RULE vytvara pomocou COMMAND [az servicebus namespace authorization-rule create].
+      B. Pre SERVICE BUS QUEUE sa AUTHORIZATION RULE vytvara pomocou COMMAND [az servicebus queue authorization-rule create].
+      C. Pre SERVICE BUS TOPIC sa AUTHORIZATION RULE vytvara pomocou COMMAND [az servicebus topic authorization-rule create].
+   B. Pre existujuci SERVICE BUS RESOURCE sa ziska AUTHORIZATION RULE KEY. Ziskanie AUTHORIZATION RULE KEY zavisi od typu SERVICE BUS RESOURCE.
+      A. Pre SERVICE BUS NAMESPACE sa AUTHORIZATION RULE KEY ziskava pomocou COMMAND [az servicebus namespace authorization-rule keys list].
+      B. Pre SERVICE BUS QUEUE sa AUTHORIZATION RULE KEY ziskava pomocou COMMAND [az servicebus queue authorization-rule keys list].
+      C. Pre SERVICE BUS TOPIC sa AUTHORIZATION RULE KEY ziskava pomocou COMMAND [az servicebus topic authorization-rule create].
+   C. Vygeneruje sa ACCESS TOKEN pomocou nasledujucich PARAMETERS.
+      A. PARAMETER [RESOURCE_URL]. PARAMETER [RESOURCE_URL] ma nasleduujuci FORMAT.
+         A. Pre SERVICE BUS NAMESPACE ma FORMAT [SERIVCE_BUS_NAMESPACE.servicebus.windows.net], kde VALUE [SEVICE_BUS_NAMESPACE] je nazov SERVICE BUS NAMESPACE.
+         B. Pre SERVICE BUS QUEUE ma FORMAT [SERIVCE_BUS_NAMESPACE.servicebus.windows.net/SERVICE_BUS_QUEUE_NAME], kde VALUE [SEVICE_BUS_NAMESPACE] je nazov SERVICE BUS NAMESPACE a OPTIONAL VALUE [SERVICE_BUS_QUEUE_NAME] je nazov SERVICE BUS QUEUE.
+         C. Pre SERVICE BUS TOPIC ma FORMAT [SERIVCE_BUS_NAMESPACE.servicebus.windows.net/SERVICE_BUS_TOPIC_NAME], kde VALUE [SEVICE_BUS_NAMESPACE] je nazov SERVICE BUS NAMESPACE a OPTIONAL VALUE [SERVICE_BUS_TOPIC_NAME] je nazov SERVICE BUS TOPIC.
+      B. PARAMETER [KEY_NAME]. PARAMETER [KEY_NAME] je nazov AUTHORIZATION RULE, ktory je pre SERVICE BUS NAMESPACES vytvoreny pomocou COMMAND [az servicebus namespace authorization-rule create], pre SERVICE BUS QUEUE vytvoreny pomocou COMMAND [az servicebus queue authorization-rule create] a pre SERVICE BUS TOPIC vytvoreny pomocou COMMAND [az servicebus topic authorization-rule create].
+      C. PARAMETER [KEY_VALUE]. PARAMETER [KEY_VALUE] je AUTHORIZATION RULE KEY VALUE, ktora je pre SERVICE BUS NAMESPACES ziskana pomocou COMMAND [az servicebus namespace authorization-rule keys list], pre SERVICE BUS QUEUES ziskana pomocou COMMAND [az servicebus queue authorization-rule keys list] a pre SERVICE BUS TOPIC ziskana pomocou COMMAND [az servicebus topic authorization-rule create].
+   D. Vytvori sa instancia CLASS [AzureSasCredential], ktorej PARAMETER je vygenerovany ACCESS TOKEN.
+   E. Instancia CLASS [AzureSasCredential] sa pouzije ako PARAMETER instancie CLASS [ServiceBusClient].
+33. SERVICE BUS SUBSCRIBERS pripajajuci sa pomocou SHARED ACCESS SIGNATURE sa implementuje nasledujucim sposobom.
+   A. Pre existujuci SERVICE BUS RESOURCE sa vytvori AUTHORIZATION RULE, ktora musi mat ACCESS RIGTS [Listen]. Vytvorenie AUTHORIZATION RULE zavisi od typu SERVICE BUS RESOURCE.
+      A. Pre SERVICE BUS NAMESPACE sa AUTHORIZATION RULE vytvara pomocou COMMAND [az servicebus namespace authorization-rule create].
+      B. Pre SERVICE BUS QUEUE sa AUTHORIZATION RULE vytvara pomocou COMMAND [az servicebus queue authorization-rule create].
+      C. Pre SERVICE BUS TOPIC sa AUTHORIZATION RULE vytvara pomocou COMMAND [az servicebus topic authorization-rule create].
+   B. Pre existujuci SERVICE BUS RESOURCE sa ziska AUTHORIZATION RULE KEY. Ziskanie AUTHORIZATION RULE KEY zavisi od typu SERVICE BUS RESOURCE.
+      A. Pre SERVICE BUS NAMESPACE sa AUTHORIZATION RULE KEY ziskava pomocou COMMAND [az servicebus namespace authorization-rule keys list].
+      B. Pre SERVICE BUS QUEUE sa AUTHORIZATION RULE KEY ziskava pomocou COMMAND [az servicebus queue authorization-rule keys list].
+      C. Pre SERVICE BUS TOPIC sa AUTHORIZATION RULE KEY ziskava pomocou COMMAND [az servicebus topic authorization-rule create].
+   C. Vygeneruje sa ACCESS TOKEN pomocou nasledujucich PARAMETERS.
+      A. PARAMETER [RESOURCE_URL]. PARAMETER [RESOURCE_URL] ma nasleduujuci FORMAT.
+         A. Pre SERVICE BUS NAMESPACE ma FORMAT [SERIVCE_BUS_NAMESPACE.servicebus.windows.net], kde VALUE [SEVICE_BUS_NAMESPACE] je nazov SERVICE BUS NAMESPACE.
+         B. Pre SERVICE BUS QUEUE ma FORMAT [SERIVCE_BUS_NAMESPACE.servicebus.windows.net/SERVICE_BUS_QUEUE_NAME], kde VALUE [SEVICE_BUS_NAMESPACE] je nazov SERVICE BUS NAMESPACE a OPTIONAL VALUE [SERVICE_BUS_QUEUE_NAME] je nazov SERVICE BUS QUEUE.
+         C. Pre SERVICE BUS TOPIC ma FORMAT [SERIVCE_BUS_NAMESPACE.servicebus.windows.net/SERVICE_BUS_TOPIC_NAME], kde VALUE [SEVICE_BUS_NAMESPACE] je nazov SERVICE BUS NAMESPACE a OPTIONAL VALUE [SERVICE_BUS_TOPIC_NAME] je nazov SERVICE BUS TOPIC.
+      B. PARAMETER [KEY_NAME]. PARAMETER [KEY_NAME] je nazov AUTHORIZATION RULE, ktory je pre SERVICE BUS NAMESPACES vytvoreny pomocou COMMAND [az servicebus namespace authorization-rule create], pre SERVICE BUS QUEUE vytvoreny pomocou COMMAND [az servicebus queue authorization-rule create] a pre SERVICE BUS TOPIC vytvoreny pomocou COMMAND [az servicebus topic authorization-rule create].
+      C. PARAMETER [KEY_VALUE]. PARAMETER [KEY_VALUE] je AUTHORIZATION RULE KEY VALUE, ktora je pre SERVICE BUS NAMESPACES ziskana pomocou COMMAND [az servicebus namespace authorization-rule keys list], pre SERVICE BUS QUEUES ziskana pomocou COMMAND [az servicebus queue authorization-rule keys list] a pre SERVICE BUS TOPIC ziskana pomocou COMMAND [az servicebus topic authorization-rule create].
+   D. Vytvori sa instancia CLASS [AzureSasCredential], ktorej PARAMETER je vygenerovany ACCESS TOKEN.
+   E. Instancia CLASS [AzureSasCredential] sa pouzije ako PARAMETER instancie CLASS [ServiceBusClient].
+34. S AUTHORIZATION RULES pre SERVICE BUS NAMESPACES sa pracuje pomocou nasledujucich COMMANDS.
+   A. SERVICE BUS NAMESPACE AUTHORIZATION RULE sa vytvara pomocou COMMAND [az servicebus namespace authorization-rule create]. Prikladom je COMMAND [az servicebus namespace authorization-rule create --name MyBusNamespacePublisherRule --namespace-name MyServiceBusNamespaceTA76 --resource-group Chapter11 --rights Send].
+   B. SERVICE BUS NAMESPACE AUTHORIZATION RULE sa odstranuje pomocou COMMAND [az servicebus namespace authorization-rule delete]. Prikladom je COMMAND [az servicebus namespace authorization-rule delete --name MyBusNamespacePublisherRule --namespace-name MyServiceBusNamespaceTA76 --resource-group Chapter11].
+   C. Zoznam SERVICE BUS NAMESPACE AUTHORIZATION RULES vracia COMMAND [az servicebus namespace authorization-rule list]. Prikladom je COMMAND [az servicebus namespace authorization-rule list --namespace-name MyServiceBusNamespaceTA76 --resource-group Chapter11].
+   D. SERVICE BUS NAMESPACE AUTHORIZATION RULE KEYS sa ziskavaju pomocou COMMAND [az servicebus namespace authorization-rule keys list]. Prikladom je COMMAND [az servicebus namespace authorization-rule keys list --name MyBusNamespacePublisherRule --namespace-name MyServiceBusNamespaceTA76 --resource-group Chapter11].
+35. S AUTHORIZATION RULES pre SERVICE BUS QUEUES sa pracuje pomocou nasledujucich COMMANDS.
+   A. SERVICE BUS QUEUE AUTHORIZATION RULE sa vytvara pomocou COMMAND [az servicebus queue authorization-rule create]. Prikladom je COMMAND [az servicebus queue authorization-rule create --name MyBusQueuePublisherRule --queue-name MyQueueTA76 --namespace-name MyServiceBusNamespaceTA76 --resource-group Chapter11 --rights Send].
+   B. SERVICE BUS QUEUE AUTHORIZATION RULE sa odstranuje pomocou COMMAND [az servicebus queue authorization-rule delete]. Prikladom je COMMAND [az servicebus queue authorization-rule delete --name MyBusQueuePublisherRule --queue-name MyQueueTA76 --namespace-name MyServiceBusNamespaceTA76 --resource-group Chapter11].
+   C. Zoznam SERVICE BUS QUEUE AUTHORIZATION RULES vracia COMMAND [az servicebus queue authorization-rule list]. Prikladom je COMMAND [az servicebus queue authorization-rule list --queue-name MyQueueTA76 --namespace-name MyServiceBusNamespaceTA76 --resource-group Chapter11].
+   D. SERVICE BUS QUEUE AUTHORIZATION RULE KEYS sa ziskavaju pomocou COMMAND [az servicebus queue authorization-rule keys list]. Prikladom je COMMAND [az servicebus queue authorization-rule keys list --name MyBusQueuePublisherRule --queue-name MyQueueTA76 --namespace-name MyServiceBusNamespaceTA76 --resource-group Chapter11].
+36. S AUTHORIZATION RULES pre SERVICE BUS TOPICS sa pracuje pomocou nasledujucich COMMANDS.
+   A. SERVICE BUS TOPIC AUTHORIZATION RULE sa vytvara pomocou COMMAND [az servicebus topic authorization-rule create]. Prikladom je COMMAND [az servicebus topic authorization-rule create --name MyBusTopicPublisherRule --topic-name MyTopicTA76 --namespace-name MyServiceBusNamespaceTA76 --resource-group Chapter11 --rights Send].
+   B. SERVICE BUS TOPIC AUTHORIZATION RULE sa odstranuje pomocou COMMAND [az servicebus topic authorization-rule delete]. Prikladom je COMMAND [az servicebus topic authorization-rule delete --name MyBusTopicPublisherRule --topic-name MyTopicTA76 --namespace-name MyServiceBusNamespaceTA76 --resource-group Chapter11].
+   C. Zoznam SERVICE BUS TOPIC AUTHORIZATION RULES vracia COMMAND [az servicebus topic authorization-rule list]. Prikladom je COMMAND [az servicebus topic authorization-rule list --topic-name MyTopicTA76 --namespace-name MyServiceBusNamespaceTA76 --resource-group Chapter11].
+   D. SERVICE BUS TOPIC AUTHORIZATION RULE KEYS sa ziskavaju pomocou COMMAND [az servicebus topic authorization-rule keys list]. Prikladom je COMMAND [az servicebus topic authorization-rule keys list --name MyBusTopicPublisherRule --topic-name MyTopicTA76 --namespace-name MyServiceBusNamespaceTA76 --resource-group Chapter11].
+37. PROGRAMS, ktore pristpuju k AZURE SERVICE BUS mozu mat definovane ROLES obmezujuce ich ACCESS RIGHTS pomocou ROLE BASED ACCESS CONTROL. Pre ROLE BASED ACCESS CONTROL platia nasledujuce fakty.
+   A. ROLE BASED ACCESS CONTROL umoznuje pridelenie ROLES nasledujucim ENTITIES.
+      A. ENTITY [USER].
+      B. ENTITY [GROUP].
+      C. ENTITY [MANAGED IDENTITY].
+      D. ENTITY [APPLICATION REGISTRATION]. Vyuziva CLIENT ID a CLIENT SECRET.
+   B. ROLE BASED ACCESS CONTROL umoznuju pouzivanie nasledujucich ROLES.
+      A. ROLE [Azure Service Bus Data Sender]. ROLE umoznuje odosielat MESSAGES do AZURE SERVICE BUS.
+      B. ROLE [Azure Service Bus Data Receiver]. ROLE umoznuje nacitavat MESSAGES z AZURE SERVICE BUS.
+      C. ROLE [Azure Service Bus Data Owner]. ROLE umoznuje spravu AZURE SERVICE BUS, vratane zapisovania a citania MESSAGES.
+38. SERVICE BUS PUBLISHER pripajajuci sa pomocou ROLE BASED ACCESS CONTROL s vyuzitim ENTITY [APPLICATION REGISTRATION] sa implementuje nasledujucim sposobom.
+   A. Pre SERVICE BUS PUBLISHER sa vytvori APPLICATION REGISTRATION.
+      A. APPLICATION REGISTRATION sa vykona pomocou COMMAND [az ad app create]. Prikladom je COMMAND [az ad app create --display-name "MyBusPublisher"].
+      B. Z vykonaneho COMMAND sa ulozi PROPERTY [id].
+   B. Pre vytvorenu APPLICATION REGISTRATION sa vykona PASSWORD RESET.
+      A. PASSWORD RESET sa vykona pomocou COMMAND [az ad app credential reset --id "804b9bdb-39b3-4e22-8dcd-1c343b143960" --display-name MyClientSecretPublisher --append].
+      B. VALUE [804b9bdb-39b3-4e22-8dcd-1c343b143960] je PROPERTY [id] z COMMAND [az ad app create].
+      C. Z vykonaneho COMMAND sa ulozi PROPERTY [appId], PROPERTY [password] a PROPERTY [tenant].
+   C. Pre vytvorenu APPLICATION REGISTRATION sa vytvori SERVICE PRINCIPAL.
+      A. SERVICE PRINCIPAL sa vytvara pomcou COMMAND [az ad sp create]. Prikladom je COMMAND [az ad sp create --id "acfb710d-a804-4a1e-8229-7eccde6c6908"].
+      B. VALUE [acfb710d-a804-4a1e-8229-7eccde6c6908] je PROPERTY [appId] z COMMAND [az ad app credential reset].
+   D. Vytvorenej APPLICATION REGISTRATION sa priradi ROLE [Azure Service Bus Data Sender].
+      A. ROLE sa priraduje pomocou COMMAND [az role assignment create]. Prikladom je COMMAND [az role assignment create --assignee "acfb710d-a804-4a1e-8229-7eccde6c6908" --scope "/subscriptions/b5f70a84-6ba2-4485-84cd-ac0883d618c5/resourceGroups/Chapter11/providers/Microsoft.ServiceBus/namespaces/MyServiceBusNamespaceTA76" --role "Azure Service Bus Data Sender"].
+      B. VALUE [acfb710d-a804-4a1e-8229-7eccde6c6908] je PROPERTY [appId] z COMMAND [az ad app credential reset].
+      C. VALUE [/subscriptions/b5f70a84-6ba2-4485-84cd-ac0883d618c5/resourceGroups/Chapter11/providers/Microsoft.ServiceBus/namespaces/MyServiceBusNamespaceTA76] je SCOPE pre SERVICE BUS NAMESPACE.
+   E. Vytvori sa instancia CLASS [ClientSecretCredential].
+      A. PARAMETER [TenantID] je VALUE [tenant], ktoru vrati COMMAND [az ad app credential reset].
+      B. PARAMETER [ClientID] je VALUE [appId], ktoru vrati COMMAND [az ad app credential reset].
+      C. PARAMETER [ClientSecret] je VALUE [password], ktoru vrati COMMAND [az ad app credential reset].
+   F. Vytvori sa instancia CLASS [ServiceBusClient], ktora ma ako PARAMETER instanciu CLASS [ClientSecretCredential]. Ta sa pouzije na zapis MESSAGES do AZURE SERVICE BUS.
+39. SERVICE BUS SUBSCRIBER pripajajuci sa pomocou ROLE BASED ACCESS CONTROL s vyuzitim ENTITY [APPLICATION REGISTRATION] sa implementuje nasledujucim sposobom.
+   A. Pre SERVICE BUS CONSUMER sa vytvori APPLICATION REGISTRATION.
+      A. APPLICATION REGISTRATION sa vykona pomocou COMMAND [az ad app create]. Prikladom je COMMAND [az ad app create --display-name "MyBusSubscriber"].
+      B. Z vykonaneho COMMAND sa ulozi PROPERTY [id].
+   B. Pre vytvorenu APPLICATION REGISTRATION sa vykona PASSWORD RESET.
+      A. PASSWORD RESET sa vykona pomocou COMMAND [az ad app credential reset]. Prikladom je COMMAND [az ad app credential reset --id "e35e6330-da94-4f51-a0a5-d599c6135532" --display-name MyClientSecretSubscriber --append].
+      B. VALUE [e35e6330-da94-4f51-a0a5-d599c6135532] je PROPERTY [id] z COMMAND [az ad app create].
+      C. Z vykonaneho COMMAND sa ulozi PROPERTY [appId], PROPERTY [password] a PROPERTY [tenant].
+   C. Pre vytvorenu APPLICATION REGISTRATION sa vytvori SERVICE PRINCIPAL.
+      A. SERVICE PRINCIPAL sa vytvara pomcou COMMAND [az ad sp create]. Prikladom je COMMAND [az ad sp create --id "982cd04e-a075-4b4d-804e-8ac1602a3f1c"].
+      B. VALUE [982cd04e-a075-4b4d-804e-8ac1602a3f1c] je PROPERTY [appId] z COMMAND [az ad app credential reset].
+   D. Vytvorenej APPLICATION REGISTRATION sa priradi ROLE [Azure Service Bus Data Receiver].
+      A. ROLE sa priraduje pomocou COMMAND [az role assignment create]. Prikladom je COMMAND [az role assignment create --assignee "982cd04e-a075-4b4d-804e-8ac1602a3f1c" --scope "/subscriptions/b5f70a84-6ba2-4485-84cd-ac0883d618c5/resourceGroups/Chapter11/providers/Microsoft.ServiceBus/namespaces/MyServiceBusNamespaceTA76" --role "Azure Service Bus Data Receiver"].
+      B. VALUE [982cd04e-a075-4b4d-804e-8ac1602a3f1c] je PROPERTY [appId] z COMMAND [az ad app credential reset].
+      C. VALUE [/subscriptions/b5f70a84-6ba2-4485-84cd-ac0883d618c5/resourceGroups/Chapter11/providers/Microsoft.ServiceBus/namespaces/MyServiceBusNamespaceTA76] je SCOPE pre SERVICE BUS NAMESPACE.
+   E. Vytvori sa instancia CLASS [ClientSecretCredential].
+      A. PARAMETER [TenantID] je VALUE [tenant], ktoru vrati COMMAND [az ad app credential reset].
+      B. PARAMETER [ClientID] je VALUE [appId], ktoru vrati COMMAND [az ad app credential reset].
+      C. PARAMETER [ClientSecret] je VALUE [password], ktoru vrati COMMAND [az ad app credential reset].
+   F. Vytvori sa instancia CLASS [ServiceBusClient], ktora ma ako PARAMETER instanciu CLASS [ClientSecretCredential]. Ta sa pouzije na citanie MESSAGES z AZURE SERVICE BUS.
+40. AZURE SERVICE BUS umoznuje pre SERVICE BUS SUBSCRIPTIONS definovat FILTERS. Pre FILTERS platia nasledujuce fakty.
+   A. SERIVCE BUS SUBSCRIPTIONS umoznuju existenciu paralelnych SUBSCRIBERS, ktori citaju MESSAGES z danej SERIVCE BUS SUBSCRIPTION, ktora prijima MESSAGE z SERIVCE BUS TOPIC.
+   B. FILTERS umoznuju filtrovat, ktore MESSAGES z SERIVCE BUS TOPIC budu odoslane do danej SERIVCE BUS SUBSCRIPTION.
+   C. FILTERS su definovane pomocou FILTER RULES. FILTER RULES obsahuju nasledujuce ELEMENTS.
+      A. FILTER CONDITION. Obsahuje CONDITION daneho FILER.
+      B. FILTER ACTION. Obsahuje ACTION daneho FILTER. ACTION je OPTIONAL a moze menit PROPERTIES (CREATE, UPDATE, DELETE) danej MESSAGE.
+   !!! D. Vsetky FILTER RULES, ktore NEMAJU definovanu FILTER ACTION su kombinovane pomocou OPERATOR OR. To znamena, ze ak MESSAGE splna 1, alebo viacero FILTER RULES, ktore NEMAJU definovanu FILTER ACTION, tak do SERIVCE BUS SUBSCRIPTION je zaslana 1 kopia tejto MESSAGE.
+   !!! E. Kazdy FILTER RULE, ktory MA definovanu FILTER ACTION, ak splna FILTER CONDITION, vygeneruje novu kopiu MESSAGE, ktora je modifikovana pomocou FILTER ACTION, a zaroven ma pridanu PROPERTY [RuleName], ktora obsahuje nazov FILTER RULE, ktora bola aplikovana na MESSAGE. To znamena, ze ak existuje 'N' FILTER RULES, ktore MAJU definovanu FILTER ACTION a splnaju FILTER CONDITION, do SERIVCE BUS SUBSCRIPTION je dorucenych 'N' MESSAGES, kde kazda MESSAGE bola modifikovana prislusnou FILTER ACTION.
+   F. SERIVCE BUS SUBSCRIPTION ma po vytvoreny definovanu FILTER RULE, ktora vsetky MESSAGES zo SERIVCE BUS TOPIC preposiela do danej SERIVCE BUS SUBSCRIPTION.
+   G. AZURE SERVICE BUS definuje nasledujuce typy FILTERS.
+      A. SQL FILTERS.
+      B. CORRELATION FILTERS.
+      C. BOOLEAN FILTERS.
+   !!! H. FILTERS je mozne aplikovat na APPLICATION PROPERTIES a SYSTEM PROPERTIES, ktore su spolu s MESSAGE posielane ako MESSAGE METADATA. FILTERS vsak NIE JE mozne aplikovat na MESSAGE BODY.
+41. Pre SQL FILTERS platia nasledujuce fakty.
+   A. SQL FILTER je reprezentovany CLASS [SqlRuleFilter].
+   B. SQL FILTER umoznuje definovat CUSTOM EXPRESSIONS, ktore maju podobu EXPRESSIONS v SQL QUERIES.
+   C. SQL FILTER umoznuju pouzivat okrem OPERATOR EQUAL, aj dalsie typy SQL OPERATORS. SQL FILTER zaroven rozlisuje PROPERTY TYPE ci je to STRING VALUE, INTEGER NUMBER VALUE, FLOATING POINT NUMBER VALUE, alebo BOOLEAN VALUE.
+   !!! D. SQL FILTER sa aplikuje na APPLICATION PROPERTIES, ktore je mozne v SERVICE BUS MESSAGE nastavit pomocou PROPERTY [IDictionary<string,object> ServiceBusMessage.ApplicationProperties].
+   !!! E. SQL FILTER je mozne aplikovat aj na SYSTEM PROPERTIES pomocou PREFIX [sys].
+   F. SQL FILTER je POMALSI, ako CORRELATION FILTER.
+42. Pre CORRELATION FILTERS platia nasledujuce fakty.
+   A. CORRELATION FILTER je reprezentovany CLASS [CorrelationRuleFilter].
+   B. CORRELATION FILTER umoznuje definovat CUSTOM EXPRESSIONS, ktore testuju ci PROPERTY ma nastaveny danu VALUE.
+   !!! C. CORRELATION FILTER NEUMOZNUJE pouzitie inych OPERATORS ako OPERATOR EQUAL a NEROZLISUJE TYPE danej PROPERTY. Vsetky PROPERTIES povazuje za STRING VALUE.
+   !!! D. CORRELATION FILTER sa aplikuje na APPLICATION PROPERTIES, ktore je mozne v SERVICE BUS MESSAGE nastavit pomocou PROPERTY [IDictionary<string,object> ServiceBusMessage.ApplicationProperties].
+   !!! E. CORRELATION FILTER je mozne aplikovat aj na SYSTEM PROPERTIES.
+   F. CORRELATION FILTER je RYCHLEJSI, ako SQL FILTER.
+43. Pre BOOLEAN FILTERS platia nasledujuce fakty.
+   A. BOOLEAN FILTER je reprezentovany CLASS [TrueFilter], alebo CLASS [FalseFilter ].
+   B. BOOLEAN FILTER umoznuje akceptovat kazdu MESSAGE, alebo odmietnut vsetky MESSAGES.
+44. Pre FILTER ACTIONS platia nasledujuce fakty.
+   A. FILTER ACTIONS mozu modifikovat MESSAGES predtym, nez su odoslane do SERVICE BUS SUBSCRIPTION.
+   B. FILTER ACTIONS mozu modifikovat APPLICATION PROPERTIES pristupne pomocou PROPERTY [IDictionary<string,object> ServiceBusMessage.ApplicationProperties].
+   !!! C. FILTER ACTIONS mozu modifikovat aj SYSTEM PROPERTIES. No zmena nie kazdej SYSTEM PROPERTIY sposobi zmenu chovania sa MESSAGE. Niektore SYSTEM PROPERTIES su spracovane uz pri nacitani MESSAGE a ich modifikacia nema vplyv na chovanie sa MESSAGE.
+   D. FILTER ACTIONS mozu modifikovat aj naraz viacero APPLICATION PROPERTIES a SYSTEM PROPERTIES, ktore su oddelene pomocou CHARACTER [;].
+   E. Pridanie, alebo modifikacia PROPERTIES sa vykonava pomocou SYNTAX [SET PROPERTY_NAME=EXPRESSION], kde VALUE [PROPERTY_NAME] je nazov PROPERTY a VALUE [EXPRESSION] je EXPRESSION, na ktoru sa ma nastavit PROPERTY VALUE.
+   F. Odstranenie existujucich PROPERTIES sa vykonava pomocou SYNTAX [REMOVE PROPERTY_NAME], kde VALUE [PROPERTY_NAME] je nazov PROPERTY.
+   !!!!! G. Podla dokumentacia je FILTER ACTIONS mozne aplikovat iba na SQL FILTERS. No na CORRELATION FILTER sa FILTER ACTIONS tiez aplikovali, ale IBA pre pridanie a modifikaciu novej PROPERTY. Odstranenie existujucej PROPERTY NEFUNGOVALO.
+45. So SERVICE BUS SUBSCRIPTION FILTER RULES sa pracuje pomocou nasledujucich COMMANDS.
+   A. SERVICE BUS SUBSCRIPTION FILTER RULE sa vytvara pomocou COMMAND [az servicebus topic subscription rule create]. Prikladom je COMMAND [az servicebus topic subscription rule create --name MySubscriptionTA76Filter1Rule1 --namespace-name MyServiceBusNamespaceTA76 --resource-group Chapter11 --topic-name MyTopicTA76 --subscription-name MySubscriptionTA76Filter1 --filter-sql-expression "MyProperty1=1"].
+   B. SERVICE BUS SUBSCRIPTION FILTER RULE sa odstranuje pomocou COMMAND [az servicebus topic subscription rule delete]. Prikladom je COMMAND [az servicebus topic subscription rule delete --name MySubscriptionTA76Filter1Rule1 --namespace-name MyServiceBusNamespaceTA76 --resource-group Chapter11 --topic-name MyTopicTA76 --subscription-name MySubscriptionTA76Filter1].
+   C. Zoznam SERVICE BUS SUBSCRIPTION FILTER RULES vracia COMMAND [az servicebus topic subscription rule list]. Prikladom je COMMAND [az servicebus topic subscription rule list --namespace-name MyServiceBusNamespaceTA76 --resource-group Chapter11 --topic-name MyTopicTA76 --subscription-name MySubscriptionTA76Filter1].
+46. K instancii CLASS [ServiceBusClient] je mozne pripojit viacero instancii CLASS [ServiceBusSender]. Kazda instancia zapisuje MESSAGES NEZAVISLE na inych instanciach CLASS [ServiceBusSender].
+47. K instancii CLASS [ServiceBusClient] je mozne pripojit viacero instancii CLASS [ServiceBusReceiver], alebo instancii CLASS [ServiceBusProcessor]. Kazda instancia cita MESSAGES NEZAVISLE a jedna MESSAGE je spracovana vzdy iba 1 instanciou CLASS [ServiceBusReceiver], alebo instanciu CLASS [ServiceBusProcessor].
+48. AZURE SERVICE BUS podporuje DEAD LETTER QUEUES. Pre DEAD LETTER QUEUES platia nasledujuce fakty.
+   A. DEAD LETTER QUEUE je asociovana s kazdou SERVICE BUS QUEUE a SERVICE BUS SUBSCRIPTION.
+   B. Pristup z .NET k DEAD LETTER QUEUE sa realizuje pomocou rovnakeho API ako pristup k SERVICE BUS QUEUES.
+   C. K DEAD LETTER QUEUE SERVICE BUS RECEIVERS pristupuju nasledujucimi sposobmi.
+      A. Pre instanciu CLASS [ServiceBusReceiver] je potrebne nastavit PROPERTY [SubQueue ServiceBusReceiverOptions.SubQueue] na VALUE [SubQueue.DeadLetter].
+      B. Pre instanciu CLASS [ServiceBusProcessor] je potrebne nastavit PROPERTY [SubQueue ServiceBusProcessorOptions.SubQueue] na VALUE [SubQueue.DeadLetter].
+   D. SERVICE BUS RECEIVERS mozu explicitne odoslat MESSAGE do DEAD LETTER QUEUES pomocou METHOD [Task DeadLetterMessageAsync(ServiceBusReceivedMessage Message, IDictionary<string,object> PropertiesToModify, string DeadLetterReason, string DeadLetterErrorDescription, CancellationToken CancellationToken)].
+49. AZURE SERVICE BUS podporuje SERVICE BUS QUEUE a SERVICE BUS TOPIC PARTITIONING. Pre PARTITIONING platia nasledujuce fakty.
+   A. PARTITIONING umoznuje rozdelit SERVICE BUS QUEUE, alebo SERVICE BUS TOPIC na viacero PARTITIONS.
+   B. Pri PARTITIONING, kazda PARTITION ma vlastny STORAGE a vlastny MESSAGE BROOKER, ktory je zodpovedny za zapis a citanie MESSAGES z danej PARTITION.
+   !!! C. PARTITIONS su plne spravovane AZURE SERVICE BUS a USERS nemaju ziadnu kontrolu nad procesom delenia MESSAGES do PARTITIONS.
+50. AZURE SERVICE BUS podporuje PAIRED NAMESPACES. Pre PAIRED NAMESPACES platia nasledujuce fakty.
+   A. PAIRED NAMESPACES umoznuje, aby SERVICE BUS NAMESPACE, ktora je oznacena ako PRIMARY SERVICE BUS NAMESPACE bola sparovana s SECONDARY SERVICE BUS NAMESPACE. MESSAGES su odosielane automaticky do oboch SERVICE BUS NAMESPACES, aby bola zabezpecena redudancia.
+   B. PAIRED NAMESPACES zabezpecuje dostupnost MESSAGES v AZURE SERVICE BUS aj v pripade, ze vypadku PRIMARY SERVICE BUS NAMESPACE.
+51. AZURE SERVICE BUS podporuje ZONE REDUNDANCY. Pre ZONE REDUNDANCY platia nasledujuce fakty.
+   A. ZONE REDUNDANCY umoznuje, aby bol cely SERVICE BUS NAMESPACE replikovany do viacerych AVAILABILITY ZONES v ramci jedneho AZURE REGION.
+   B. ZONE REDUNDANCY zabezpecuje replikaciu SERVICE BUS NAMESPACE METADATA (SERVICE BUS QUEUES, SERVICE BUS TOPICS a SERVICE BUS SUBSCRIPTIONS), ako aj replikaciu SERVICE BUS MESSAGES.
+   C. ZONE REDUNDANCY je podporovany vsetkymi SERVICE BUS TIERS.
+52. AZURE SERVICE BUS podporuje GEO DISASTER RECOVERY. Pre GEO DISASTER RECOVERY platia nasledujuce fakty.
+   A. GEO DISASTER RECOVERY zabezpecuje automaticku replikaciu SERVICE BUS NAMESPACE do PRIMARY SERVICE BUS NAMESPACE a SECONDARY SERVICE BUS NAMESPACE. Obe NAMESPACES sa mozu nachadzat v rozlicnych AZURE REGIONS.
+   !!! B. GEO DISASTER RECOVERY replikuje IBA SERVICE BUS NAMESPACE METADATA (SERVICE BUS QUEUES, SERVICE BUS TOPICS a SERVICE BUS SUBSCRIPTIONS), ale nie MESSAGES, ktore su v SERVICE BUS NAMESPACES ulozene.
+   C. GEO DISASTER RECOVERY je dostupna iba pre PREMIUM TIER.
+53. AZURE SERVICE BUS podporuje GEO REPLICATION. Pre GEO REPLICATION platia nasledujuce fakty.
+   A. GEO REPLICATION zabezpecuje automaticku replikaciu SERVICE BUS NAMESPACE do PRIMARY SERVICE BUS NAMESPACE a SECONDARY SERVICE BUS NAMESPACE. Obe NAMESPACES sa mozu nachadzat v rozlicnych AZURE REGIONS.
+   !!! B. GEO REPLICATION replikuje SERVICE BUS NAMESPACE METADATA (SERVICE BUS QUEUES, SERVICE BUS TOPICS a SERVICE BUS SUBSCRIPTIONS), ako aj MESSAGES, ktore su v SERVICE BUS NAMESPACES ulozene.
+   C. GEO REPLICATION je dostupna iba pre PREMIUM TIER.
+54. AZURE SERVICE BUS podporuje RETRIES pri odosielani a citani MESSAGES. Pre MESSAGE RETRIES platia nasledujuce fakty.
+   A. MESSAGE RETRIES podporuje nasledujuce MODES.
+      A. EXPONENTIAL MESSAGE RETRIES MODE. Pri tomto MODE sa cas dalsieho RETRY exponencialne zvysuje.
+      B. FIXED MESSAGE RETRIES MODE. Pri tomto MODE je cas dalsieho RETRY konstatny.
+      C. CUSTOM MESSAGE RETRIES MODE. Pri tomto MODE cas dalsieho RETRY urcuje implementacia CUSTOM CLASS, ktora je DERIVED z CLASS [ServiceBusRetryPolicy].
+   B. MESSAGE RETRIES PROPERTIES su definovane pomocou instancie CLASS [ServiceBusRetryOptions].
+   C. MESSAGE RETRIES sa nastavuje pre CLASS [ServiceBusClient] pomocou CLASS [ServiceBusClientOptions] a jej PROPERTY [ServiceBusRetryOptions ServiceBusClientOptions.RetryOptions].
+55. CLASS [ServiceBusRetryOptions] sluzi nastavenie RETRY SETTINGS. Pre CLASS platia nasledujuce fakty.
+   A. PROPERTY [ServiceBusRetryMode Mode] urcuje RETRY MODE. Moze obsahovat VALUE [ServiceBusRetryMode.Exponential], alebo VALUE [ServiceBusRetryMode.Fixed].
+   B. PROPERTY [int MaxRetries] urcuje maximalny pocet RETRIES, ktore sa maju vykonat. Ak OPEREATION neskonci uspesne ani po poslednom RETRY, je povazovana za zlyhanu.
+   C. PROPERTY [TimeSpan Delay] urcuje DELAY medzi jednotlivymi RETRIES. Pre MODE [ServiceBusRetryMode.Fixed] sa tento cas nemeni. Pre MODE [ServiceBusRetryMode.Exponential] tato VALUE sluzi ako zaklad pre prepocet exponencialneho narastu casu.
+   D. PROPERTY [TimeSpan MaxDelay] urcuje maximalny DELAY medzi jednotlivymi RETRIES. Pouziva sa pre MODE [ServiceBusRetryMode.Exponential].
+   E. PROPERTY [TimeSpan TryTimeout] urcuje maximalny cas na vykonanie danej OPERATION.
+   F. PROPERTY [ServiceBusRetryPolicy CustomRetryPolicy] umoznuje definovat CUSTOM RETRY POLICY definovanim vlastnej instancie CLASS [ServiceBusRetryPolicy]. Ak je tato PROPERTY nastavena, VALUES ostatnych PROPERTIES su ignorovane.
+56. CLASS [ServiceBusRetryPolicy] sluzi na definovanie CUSTOM RETRY POLICY. Pre CLASS platia nasledujuce fakty.
+   A. ABSTRACT METHOD [TimeSpan CalculateTryTimeout(int AttemptCount)] urcuje cas, ktory ma SERVICE BUS BROKER cakat na vykonanie OPERATION pre dany ATTEMPT.
+   B. ABSTRACT METHOD [TimeSpan? CalculateRetryDelay(Exception LastException, int AttemptCount)] urcuje cas, ktory ma SERVICE BUS BROKER cakat na vykonanie dalsieho RETRY pre dany ATTEMPT. Ak METHOD vrati VALUE [null] tak k dalsiemu RETRY nedojde a OPERATION je povazovana za zlyhanu.
+57. AZURE SERVICE BUS podporuje nasledujuce komunikacne PROTOCOLS.
+   A. PROTOCOL [ADVANCED MESSAGE QUEUEING PROTOCOL] je standardny PROTOCOL pre pristup k MESSAGE QUEUES. Ma mnozstvo FEATURES.
+   B. PROTOCOL [SERVICE BUS MESSAGING PROTOCOL] je specialne optimalizovany QUEUEING PROTOCOL pre .NET.
+58. AZURE SERVICE BUS podporuje nasledujuce RECEIVE MODES.
+   A. MODE [RECEIVE AND DELETE]. Tento MODE automaticky pri vybere MESSAGE z MESSAGE QUEUE ju z MESSAGE QUEUE odstrani. Nevyhodou je, ze MODE nepodporuje TRANSACTIONS. To znamena, ze ak pri spracovani MESSAGE dojde k ERROR, MESSAGE je nenavratne stratena.
+   B. MODE [PEEK LOCK]. Pri tomto MODE je pri vybere MESSAGE z MESSAGE QUEUE MESSAGE LOCKED, ale nie je DELETED z MESSAGE QUEUE. MESSAGE je DELETED z MESSAGE QUEUE az ked PROGRAM spracovajuci danu MESSAGE to explicitne prikaze volanim prislusnej METHOD. Tento MODE podporuje TRANSACTIONS.
+59. AZURE SERVICE BUS podporuje PREFETCHING. Pre PREFETCHING platia nasledujuce fakty.
+   A. PREFETCHING umoznuje SUBSCRIBERS pri jednej komunikacii nacitat viacero MESSAGES z MESSAGE QUEUE.
+   B. PREFETCHING optimalizuje PERFORMANCE, pretoze PREFETCHED MESSAGES su ulozene v LOCAL QUEUE a pri dalsej poziadavke na nacitanie MESSAGE z MESSAGE QUEUE je tato MESSAGE nacitata z CACHE, bez nutnosti vykonat komunikaciu s MESSAGE QUEUE.
+   C. AZURE SERVICE BUS umoznuje definovat pocet PREFETCHED MESSAGES pomocou PROPERTY [int ServiceBusReceiverOptions.PrefetchCount].
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+AZURE CLI COMMANDS - SERVICE BUS NAMESPACES.
+
+1. COMMAND [az servicebus namespace create --name NAMESPACE_NAME --resource-group RESOURCE_GROUP_NAME --location LOCATION_NAME --sku SKU_TYPE --min-tls TLS_VERSION].
+   A. COMMAND vytvara novy SERVICE BUS NAMESPACE.
+   B. OPTION [--name NAMESPACE_NAME] vo VALUE [NAMESPACE_NAME] obsahuje nazov SERVICE BUS NAMESPACE.
+   C. OPTION [--resource-group RESOURCE_GROUP_NAME] vo VALUE [RESOURCE_GROUP_NAME] urcuje RESOURCE GROUP NAME.
+   D. OPTION [--location LOCATION_NAME] vo VALUE [LOCATION_NAME] urcuje nazov LOCATION.
+   !!! E. OPTION [--name SKU_TYPE] vo VALUE [SKU_TYPE] urcuje type STOCK KEEPING UNIT. Pre studijne ucely sa odporuca VALUE [Standard].
+   F. OPTION [--min-tls TLS_VERSION] vo VALUE [TLS_VERSION] urcuje verziu TLS PROTOCOL. Odporuca sa VALUE [1.2].
+2. COMMAND [az servicebus namespace delete --name NAMESPACE_NAME --resource-group RESOURCE_GROUP_NAME].
+   A. COMMAND odstranuje existujuci SERVICE BUS NAMESPACE.
+   B. OPTION [--name NAMESPACE_NAME] vo VALUE [NAMESPACE_NAME] obsahuje nazov SERVICE BUS NAMESPACE.
+   C. OPTION [--resource-group RESOURCE_GROUP_NAME] vo VALUE [RESOURCE_GROUP_NAME] urcuje RESOURCE GROUP NAME.
+3. COMMAND [az servicebus namespace list --resource-group RESOURCE_GROUP_NAME].
+   A. COMMAND vracia zoznam existujucich SERVICE BUS NAMESPACES.
+   B. OPTION [--resource-group RESOURCE_GROUP_NAME] vo VALUE [RESOURCE_GROUP_NAME] urcuje RESOURCE GROUP NAME.
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+AZURE CLI COMMANDS - SERVICE BUS QUEUES.
+
+1. COMMAND [az servicebus queue create --name QUEUE_NAME --namespace-name NAMESPACE_NAME --resource-group RESOURCE_GROUP_NAME].
+   A. COMMAND vytvara novu SERVICE BUS QUEUE.
+   B. OPTION [--name QUEUE_NAME] vo VALUE [QUEUE_NAME] obsahuje nazov SERVICE BUS QUEUE.
+   C. OPTION [--namespace-name NAMESPACE_NAME] vo VALUE [NAMESPACE_NAME] obsahuje nazov SERVICE BUS NAMESPACE.
+   D. OPTION [--resource-group RESOURCE_GROUP_NAME] vo VALUE [RESOURCE_GROUP_NAME] urcuje RESOURCE GROUP NAME.
+2. COMMAND [az servicebus queue delete --name QUEUE_NAME --namespace-name NAMESPACE_NAME --resource-group RESOURCE_GROUP_NAME].
+   A. COMMAND odstranuje existujucu SERVICE BUS QUEUE.
+   B. OPTION [--name QUEUE_NAME] vo VALUE [QUEUE_NAME] obsahuje nazov SERVICE BUS QUEUE.
+   C. OPTION [--namespace-name NAMESPACE_NAME] vo VALUE [NAMESPACE_NAME] obsahuje nazov SERVICE BUS NAMESPACE.
+   D. OPTION [--resource-group RESOURCE_GROUP_NAME] vo VALUE [RESOURCE_GROUP_NAME] urcuje RESOURCE GROUP NAME.
+3. COMMAND [az servicebus queue list --namespace-name NAMESPACE_NAME --resource-group RESOURCE_GROUP_NAME].
+   A. COMMAND vracia zoznam existujucich SERVICE BUS QUEUES.
+   B. OPTION [--namespace-name NAMESPACE_NAME] vo VALUE [NAMESPACE_NAME] obsahuje nazov SERVICE BUS NAMESPACE.
+   C. OPTION [--resource-group RESOURCE_GROUP_NAME] vo VALUE [RESOURCE_GROUP_NAME] urcuje RESOURCE GROUP NAME.
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+AZURE CLI COMMANDS - SERVICE BUS TOPICS.
+
+1. COMMAND [az servicebus topic create --name TOPIC_NAME --namespace-name NAMESPACE_NAME --resource-group RESOURCE_GROUP_NAME].
+   A. COMMAND vytvara novy SERVICE BUS TOPIC.
+   B. OPTION [--name TOPIC_NAME] vo VALUE [TOPIC_NAME] obsahuje nazov SERVICE BUS TOPIC.
+   C. OPTION [--namespace-name NAMESPACE_NAME] vo VALUE [NAMESPACE_NAME] obsahuje nazov SERVICE BUS NAMESPACE.
+   D. OPTION [--resource-group RESOURCE_GROUP_NAME] vo VALUE [RESOURCE_GROUP_NAME] urcuje RESOURCE GROUP NAME.
+2. COMMAND [az servicebus topic delete --name TOPIC_NAME --namespace-name NAMESPACE_NAME --resource-group RESOURCE_GROUP_NAME].
+   A. COMMAND odstranuje existujuci SERVICE BUS TOPIC.
+   B. OPTION [--name TOPIC_NAME] vo VALUE [TOPIC_NAME] obsahuje nazov SERVICE BUS TOPIC.
+   C. OPTION [--namespace-name NAMESPACE_NAME] vo VALUE [NAMESPACE_NAME] obsahuje nazov SERVICE BUS NAMESPACE.
+   D. OPTION [--resource-group RESOURCE_GROUP_NAME] vo VALUE [RESOURCE_GROUP_NAME] urcuje RESOURCE GROUP NAME.
+3. COMMAND [az servicebus topic list --namespace-name NAMESPACE_NAME --resource-group RESOURCE_GROUP_NAME].
+   A. COMMAND vracia zoznam existujucich SERVICE BUS TOPICS.
+   B. OPTION [--namespace-name NAMESPACE_NAME] vo VALUE [NAMESPACE_NAME] obsahuje nazov SERVICE BUS NAMESPACE.
+   C. OPTION [--resource-group RESOURCE_GROUP_NAME] vo VALUE [RESOURCE_GROUP_NAME] urcuje RESOURCE GROUP NAME.
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+AZURE CLI COMMANDS - SERVICE BUS SUBSCRIPTIONS.
+
+1. COMMAND [az servicebus topic subscription create --name SUBSCRIPTION_NAME --namespace-name NAMESPACE_NAME --resource-group RESOURCE_GROUP_NAME --topic-name TOPIC_NAME --max-delivery-count MAX_DELIVERY_COUNT --enable-dead-lettering-on-message-expiration ENABLE_DEAD_LETTERING_ON_MESSAGE_EXPIRATION --status STATUS_VALUE].
+   A. COMMAND vytvara novu SERVICE BUS SUBSCRIPTION.
+   B. OPTION [--name SUBSCRIPTION_NAME] vo VALUE [SUBSCRIPTION_NAME] obsahuje nazov SERVICE BUS SUBSCRIPTION.
+   C. OPTION [--namespace-name NAMESPACE_NAME] vo VALUE [NAMESPACE_NAME] obsahuje nazov SERVICE BUS NAMESPACE.
+   D. OPTION [--resource-group RESOURCE_GROUP_NAME] vo VALUE [RESOURCE_GROUP_NAME] urcuje RESOURCE GROUP NAME.
+   E. OPTION [--topic-name TOPIC_NAME] vo VALUE [TOPIC_NAME] obsahuje nazov SERVICE BUS TOPIC.
+   F. OPTION [--max-delivery-count MAX_DELIVERY_COUNT] vo VALUE [MAX_DELIVERY_COUNT] urcuje pocet pokusov o dorucenie MESSAGE, po ktorej bude MESSAGE odoslana do DEAD LETTER QUEUE.
+   G. OPTION [--enable-dead-lettering-on-message-expiration ENABLE_DEAD_LETTERING_ON_MESSAGE_EXPIRATION] vo VALUE [ENABLE_DEAD_LETTERING_ON_MESSAGE_EXPIRATION] urcuje ci MESSAGES, ktore su EXPIRED maju byt presunute do DEAD LETTER QUEUE.
+   H. OPTION [--status STATUS_VALUE] vo VALUE [STATUS_VALUE] urcuje stav v akom sa ma SERVICE BUS SUBSCRIPTION nachadzat. VALUE [Active] znamena, SERVICE BUS SUBSCRIPTION je aktivna a je mozne cez nu prijimat MESSAGES.
+2. COMMAND [az servicebus topic subscription delete --name SUBSCRIPTION_NAME --namespace-name NAMESPACE_NAME --resource-group RESOURCE_GROUP_NAME --topic-name TOPIC_NAME].
+   A. COMMAND odstranuje existujucu SERVICE BUS SUBSCRIPTION.
+   B. OPTION [--name SUBSCRIPTION_NAME] vo VALUE [SUBSCRIPTION_NAME] obsahuje nazov SERVICE BUS SUBSCRIPTION.
+   C. OPTION [--namespace-name NAMESPACE_NAME] vo VALUE [NAMESPACE_NAME] obsahuje nazov SERVICE BUS NAMESPACE.
+   D. OPTION [--resource-group RESOURCE_GROUP_NAME] vo VALUE [RESOURCE_GROUP_NAME] urcuje RESOURCE GROUP NAME.
+   E. OPTION [--topic-name TOPIC_NAME] vo VALUE [TOPIC_NAME] obsahuje nazov SERVICE BUS TOPIC.
+3. COMMAND [az servicebus topic subscription list --namespace-name NAMESPACE_NAME --resource-group RESOURCE_GROUP_NAME --topic-name TOPIC_NAME].
+   A. COMMAND vracia zoznam existujucich SERVICE BUS SUBSCRIPTIONS.
+   B. OPTION [--namespace-name NAMESPACE_NAME] vo VALUE [NAMESPACE_NAME] obsahuje nazov SERVICE BUS NAMESPACE.
+   C. OPTION [--resource-group RESOURCE_GROUP_NAME] vo VALUE [RESOURCE_GROUP_NAME] urcuje RESOURCE GROUP NAME.
+   D. OPTION [--topic-name TOPIC_NAME] vo VALUE [TOPIC_NAME] obsahuje nazov SERVICE BUS TOPIC.
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+AZURE CLI COMMANDS - SERVICE BUS SUBSCRIPTION FILTER RULES.
+
+1. COMMAND [az servicebus topic subscription rule create --name FILTER_RULE_NAME --namespace-name NAMESPACE_NAME --resource-group RESOURCE_GROUP_NAME --topic-name TOPIC_NAME --subscription-name SUBSCRIPTION_NAME --filter-type FILTER_TYPE --filter-sql-expression SQL_FILTER_EXPRESSION --correlation-filter CORRELATION_FILTER_DICTIONARY --to TO_VALUE --action-sql-expression ACTION_SQL_EXPRESSION].
+   A. COMMAND vytvara novy SERVICE BUS SUBSCRIPTION FILTER RULE.
+   B. OPTION [--name FILTER_RULE_NAME] vo VALUE [FILTER_RULE_NAME] obsahuje nazov SERVICE BUS SUBSCRIPTION FILTER RULE.
+   C. OPTION [--namespace-name NAMESPACE_NAME] vo VALUE [NAMESPACE_NAME] obsahuje nazov SERVICE BUS NAMESPACE.
+   D. OPTION [--resource-group RESOURCE_GROUP_NAME] vo VALUE [RESOURCE_GROUP_NAME] urcuje RESOURCE GROUP NAME.
+   E. OPTION [--topic-name TOPIC_NAME] vo VALUE [TOPIC_NAME] obsahuje nazov SERVICE BUS TOPIC.
+   F. OPTION [--subscription-name SUBSCRIPTION_NAME] vo VALUE [SUBSCRIPTION_NAME] obsahuje nazov SERVICE BUS SUBSCRIPTION.
+   G. OPTION [--filter-type FILTER_TYPE] vo VALUE [FILTER_TYPE] obsahuje FILTER TYPE. Povolena je VALUE [SqlFilter] a VALUE [CorrelationFilter].
+   H. OPTION [--filter-sql-expression SQL_FILTER_EXPRESSION] vo VALUE [SQL_FILTER_EXPRESSION] obsahuje SQL FILTER EXPRESSION, ak je SETTING [FILTER_TYPE] nastaveny na VALUE [SqlFilter].
+   I. OPTION [--correlation-filter CORRELATION_FILTER_DICTIONARY] vo VALUE [CORRELATION_FILTER_DICTIONARY] obsahuje CORRELATION KEY VALUE PAIRS, ak je SETTING [FILTER_TYPE] nastaveny na VALUE [CorrelationFilter].
+   J. OPTION [--to TO_VALUE] vo VALUE [TO_VALUE] obsahuje VALUE SYSTEM PROPERTY [To], ktoru musi MESSAGE obsahovat, aby bola zaradena do SERVICE BUS SUBSCRIPTION.
+   K. OPTION [--action-sql-expression ACTION_SQL_EXPRESSION] vo VALUE [ACTION_SQL_EXPRESSION] obsahuje ACTION EXPRESSION, co je zoznam ACTIONS, ktore sa aplikuju na MESSAGE predtym nez je odoslana do SERVICE BUS SUBSCRIPTION.
+2. COMMAND [az servicebus topic subscription rule delete --name FILTER_RULE_NAME --namespace-name NAMESPACE_NAME --resource-group RESOURCE_GROUP_NAME --topic-name TOPIC_NAME --subscription-name SUBSCRIPTION_NAME].
+   A. COMMAND odstranuje existujuci SERVICE BUS SUBSCRIPTION FILTER RULE.
+   B. OPTION [--name FILTER_RULE_NAME] vo VALUE [FILTER_RULE_NAME] obsahuje nazov SERVICE BUS SUBSCRIPTION FILTER RULE.
+   C. OPTION [--namespace-name NAMESPACE_NAME] vo VALUE [NAMESPACE_NAME] obsahuje nazov SERVICE BUS NAMESPACE.
+   D. OPTION [--resource-group RESOURCE_GROUP_NAME] vo VALUE [RESOURCE_GROUP_NAME] urcuje RESOURCE GROUP NAME.
+   E. OPTION [--topic-name TOPIC_NAME] vo VALUE [TOPIC_NAME] obsahuje nazov SERVICE BUS TOPIC.
+   F. OPTION [--subscription-name SUBSCRIPTION_NAME] vo VALUE [SUBSCRIPTION_NAME] obsahuje nazov SERVICE BUS SUBSCRIPTION.
+3. COMMAND [az servicebus topic subscription rule list --namespace-name NAMESPACE_NAME --resource-group RESOURCE_GROUP_NAME --topic-name TOPIC_NAME --subscription-name SUBSCRIPTION_NAME].
+   A. COMMAND vracia zoznam existujucich SERVICE BUS SUBSCRIPTION FILTER RULES.
+   B. OPTION [--namespace-name NAMESPACE_NAME] vo VALUE [NAMESPACE_NAME] obsahuje nazov SERVICE BUS NAMESPACE.
+   C. OPTION [--resource-group RESOURCE_GROUP_NAME] vo VALUE [RESOURCE_GROUP_NAME] urcuje RESOURCE GROUP NAME.
+   D. OPTION [--topic-name TOPIC_NAME] vo VALUE [TOPIC_NAME] obsahuje nazov SERVICE BUS TOPIC.
+   E. OPTION [--subscription-name SUBSCRIPTION_NAME] vo VALUE [SUBSCRIPTION_NAME] obsahuje nazov SERVICE BUS SUBSCRIPTION.
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+AZURE CLI COMMANDS - SERVICE BUS NAMESPACE AUTHORIZATION RULES.
+
+1. COMMAND [az servicebus namespace authorization-rule create --name RULE_NAME --namespace-name NAMESPACE_NAME --resource-group RESOURCE_GROUP_NAME --rights RULE_RIGHTS].
+   A. COMMAND vytvara novu SERVICE BUS NAMESPACE AUTHORIZATION RULE.
+   B. OPTION [--name RULE_NAME] vo VALUE [RULE_NAME] obsahuje nazov AUTHORIZATION RULE.
+   C. OPTION [--namespace-name NAMESPACE_NAME] vo VALUE [NAMESPACE_NAME] obsahuje nazov SERVICE BUS NAMESPACE.
+   D. OPTION [--resource-group RESOURCE_GROUP_NAME] vo VALUE [RESOURCE_GROUP_NAME] urcuje RESOURCE GROUP NAME.
+   E. OPTION [--rights RULE_RIGHTS] vo VALUE [RULE_RIGHTS] obsahuje RULE RIGHTS. Moze obsahovat VALUE [Send], VALUE [Listen], alebo VALUE [Manage].
+2. COMMAND [az servicebus namespace authorization-rule delete --name RULE_NAME --namespace-name NAMESPACE_NAME --resource-group RESOURCE_GROUP_NAME].
+   A. COMMAND odstranuje existujucu SERVICE BUS NAMESPACE AUTHORIZATION RULE.
+   B. OPTION [--name RULE_NAME] vo VALUE [RULE_NAME] obsahuje nazov AUTHORIZATION RULE.
+   C. OPTION [--namespace-name NAMESPACE_NAME] vo VALUE [NAMESPACE_NAME] obsahuje nazov SERVICE BUS NAMESPACE.
+   D. OPTION [--resource-group RESOURCE_GROUP_NAME] vo VALUE [RESOURCE_GROUP_NAME] urcuje RESOURCE GROUP NAME.
+3. COMMAND [az servicebus namespace authorization-rule list --namespace-name NAMESPACE_NAME --resource-group RESOURCE_GROUP_NAME].
+   A. COMMAND vracia zoznam existujucich SERVICE BUS NAMESPACE AUTHORIZATION RULES.
+   B. OPTION [--namespace-name NAMESPACE_NAME] vo VALUE [NAMESPACE_NAME] obsahuje nazov SERVICE BUS NAMESPACE.
+   C. OPTION [--resource-group RESOURCE_GROUP_NAME] vo VALUE [RESOURCE_GROUP_NAME] urcuje RESOURCE GROUP NAME.
+4. COMMAND [az servicebus namespace authorization-rule keys list --name RULE_NAME --namespace-name NAMESPACE_NAME --resource-group RESOURCE_GROUP_NAME].
+   A. COMMAND vracia SERVICE BUS NAMESPACE AUTHORIZATION RULE KEYS A CONNECTION STRINGS.
+   B. OPTION [--name RULE_NAME] vo VALUE [RULE_NAME] obsahuje nazov AUTHORIZATION RULE.
+   C. OPTION [--namespace-name NAMESPACE_NAME] vo VALUE [NAMESPACE_NAME] obsahuje nazov SERVICE BUS NAMESPACE.
+   D. OPTION [--resource-group RESOURCE_GROUP_NAME] vo VALUE [RESOURCE_GROUP_NAME] urcuje RESOURCE GROUP NAME.
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+AZURE CLI COMMANDS - SERVICE BUS QUEUE AUTHORIZATION RULES.
+
+1. COMMAND [az servicebus queue authorization-rule create --name RULE_NAME --queue-name QUEUE_NAME --namespace-name NAMESPACE_NAME --resource-group RESOURCE_GROUP_NAME --rights RULE_RIGHTS].
+   A. COMMAND vytvara novu SERVICE BUS QUEUE AUTHORIZATION RULE.
+   B. OPTION [--name RULE_NAME] vo VALUE [RULE_NAME] obsahuje nazov AUTHORIZATION RULE.
+   C. OPTION [--queue-name QUEUE_NAME] vo VALUE [QUEUE_NAME] obsahuje nazov SERVICE BUS QUEUE.
+   D. OPTION [--namespace-name NAMESPACE_NAME] vo VALUE [NAMESPACE_NAME] obsahuje nazov SERVICE BUS NAMESPACE.
+   E. OPTION [--resource-group RESOURCE_GROUP_NAME] vo VALUE [RESOURCE_GROUP_NAME] urcuje RESOURCE GROUP NAME.
+   F. OPTION [--rights RULE_RIGHTS] vo VALUE [RULE_RIGHTS] obsahuje RULE RIGHTS. Moze obsahovat VALUE [Send], VALUE [Listen], alebo VALUE [Manage].
+2. COMMAND [az servicebus queue authorization-rule delete --name RULE_NAME --queue-name QUEUE_NAME --namespace-name NAMESPACE_NAME --resource-group RESOURCE_GROUP_NAME].
+   A. COMMAND odstranuje existujucu SERVICE BUS QUEUE AUTHORIZATION RULE.
+   B. OPTION [--name RULE_NAME] vo VALUE [RULE_NAME] obsahuje nazov AUTHORIZATION RULE.
+   C. OPTION [--queue-name QUEUE_NAME] vo VALUE [QUEUE_NAME] obsahuje nazov SERVICE BUS QUEUE.
+   D. OPTION [--namespace-name NAMESPACE_NAME] vo VALUE [NAMESPACE_NAME] obsahuje nazov SERVICE BUS NAMESPACE.
+   E. OPTION [--resource-group RESOURCE_GROUP_NAME] vo VALUE [RESOURCE_GROUP_NAME] urcuje RESOURCE GROUP NAME.
+3. COMMAND [az servicebus queue authorization-rule list --queue-name QUEUE_NAME --namespace-name NAMESPACE_NAME --resource-group RESOURCE_GROUP_NAME].
+   A. COMMAND vracia zoznam existujucich SERVICE BUS QUEUE AUTHORIZATION RULES.
+   B. OPTION [--queue-name QUEUE_NAME] vo VALUE [QUEUE_NAME] obsahuje nazov SERVICE BUS QUEUE.
+   C. OPTION [--namespace-name NAMESPACE_NAME] vo VALUE [NAMESPACE_NAME] obsahuje nazov SERVICE BUS NAMESPACE.
+   D. OPTION [--resource-group RESOURCE_GROUP_NAME] vo VALUE [RESOURCE_GROUP_NAME] urcuje RESOURCE GROUP NAME.
+4. COMMAND [az servicebus queue authorization-rule keys list --name RULE_NAME --queue-name QUEUE_NAME --namespace-name NAMESPACE_NAME --resource-group RESOURCE_GROUP_NAME].
+   A. COMMAND vracia SERVICE BUS QUEUE AUTHORIZATION RULE KEYS A CONNECTION STRINGS.
+   B. OPTION [--name RULE_NAME] vo VALUE [RULE_NAME] obsahuje nazov AUTHORIZATION RULE.
+   C. OPTION [--queue-name QUEUE_NAME] vo VALUE [QUEUE_NAME] obsahuje nazov SERVICE BUS QUEUE.
+   D. OPTION [--namespace-name NAMESPACE_NAME] vo VALUE [NAMESPACE_NAME] obsahuje nazov SERVICE BUS NAMESPACE.
+   E. OPTION [--resource-group RESOURCE_GROUP_NAME] vo VALUE [RESOURCE_GROUP_NAME] urcuje RESOURCE GROUP NAME.
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+AZURE CLI COMMANDS - SERVICE BUS TOPIC AUTHORIZATION RULES.
+
+1. COMMAND [az servicebus topic authorization-rule create --name RULE_NAME --topic-name TOPIC_NAME --namespace-name NAMESPACE_NAME --resource-group RESOURCE_GROUP_NAME --rights RULE_RIGHTS].
+   A. COMMAND vytvara novu SERVICE BUS TOPIC AUTHORIZATION RULE.
+   B. OPTION [--name RULE_NAME] vo VALUE [RULE_NAME] obsahuje nazov AUTHORIZATION RULE.
+   C. OPTION [--topic-name TOPIC_NAME] vo VALUE [TOPIC_NAME] obsahuje nazov SERVICE BUS TOPIC.
+   D. OPTION [--namespace-name NAMESPACE_NAME] vo VALUE [NAMESPACE_NAME] obsahuje nazov SERVICE BUS NAMESPACE.
+   E. OPTION [--resource-group RESOURCE_GROUP_NAME] vo VALUE [RESOURCE_GROUP_NAME] urcuje RESOURCE GROUP NAME.
+   F. OPTION [--rights RULE_RIGHTS] vo VALUE [RULE_RIGHTS] obsahuje RULE RIGHTS. Moze obsahovat VALUE [Send], VALUE [Listen], alebo VALUE [Manage].
+2. COMMAND [az servicebus topic authorization-rule delete --name RULE_NAME --topic-name TOPIC_NAME --namespace-name NAMESPACE_NAME --resource-group RESOURCE_GROUP_NAME].
+   A. COMMAND odstranuje existujucu SERVICE BUS TOPIC AUTHORIZATION RULE.
+   B. OPTION [--name RULE_NAME] vo VALUE [RULE_NAME] obsahuje nazov AUTHORIZATION RULE.
+   C. OPTION [--topic-name TOPIC_NAME] vo VALUE [TOPIC_NAME] obsahuje nazov SERVICE BUS TOPIC.
+   D. OPTION [--namespace-name NAMESPACE_NAME] vo VALUE [NAMESPACE_NAME] obsahuje nazov SERVICE BUS NAMESPACE.
+   E. OPTION [--resource-group RESOURCE_GROUP_NAME] vo VALUE [RESOURCE_GROUP_NAME] urcuje RESOURCE GROUP NAME.
+3. COMMAND [az servicebus topic authorization-rule list --topic-name TOPIC_NAME --namespace-name NAMESPACE_NAME --resource-group RESOURCE_GROUP_NAME].
+   A. COMMAND vracia zoznam existujucich SERVICE BUS TOPIC AUTHORIZATION RULES.
+   B. OPTION [--topic-name TOPIC_NAME] vo VALUE [TOPIC_NAME] obsahuje nazov SERVICE BUS TOPIC.
+   C. OPTION [--namespace-name NAMESPACE_NAME] vo VALUE [NAMESPACE_NAME] obsahuje nazov SERVICE BUS NAMESPACE.
+   D. OPTION [--resource-group RESOURCE_GROUP_NAME] vo VALUE [RESOURCE_GROUP_NAME] urcuje RESOURCE GROUP NAME.
+4. COMMAND [az servicebus topic authorization-rule keys list --name RULE_NAME --topic-name TOPIC_NAME --namespace-name NAMESPACE_NAME --resource-group RESOURCE_GROUP_NAME].
+   A. COMMAND vracia SERVICE BUS TOPIC AUTHORIZATION RULE KEYS A CONNECTION STRINGS.
+   B. OPTION [--name RULE_NAME] vo VALUE [RULE_NAME] obsahuje nazov AUTHORIZATION RULE.
+   C. OPTION [--topic-name TOPIC_NAME] vo VALUE [TOPIC_NAME] obsahuje nazov SERVICE BUS TOPIC.
+   D. OPTION [--namespace-name NAMESPACE_NAME] vo VALUE [NAMESPACE_NAME] obsahuje nazov SERVICE BUS NAMESPACE.
+   E. OPTION [--resource-group RESOURCE_GROUP_NAME] vo VALUE [RESOURCE_GROUP_NAME] urcuje RESOURCE GROUP NAME.
+//----------------------------------------------------------------------------------------------------------------------

@@ -1,0 +1,1 @@
+az servicebus topic subscription rule create --name MySubscriptionTA76Filter1Rule5 --namespace-name MyServiceBusNamespaceTA76 --resource-group Chapter11 --topic-name MyTopicTA76 --subscription-name MySubscriptionTA76Filter1 --filter-sql-expression "MyProperty1=2" --action-sql-expression "SET MyRuleProperty1=200;REMOVE MyProperty1"

@@ -166,7 +166,7 @@
    H. EVENT [Func<PartitionInitializingEventArgs,Task> PartitionInitializingAsync] je volany ak je PARTITION inicializovana.
    I. EVENT [Func<PartitionClosingEventArgs,Task> PartitionClosingAsync] je volany ak je PARTITION uzatvorena.
    J. EVENT [Func<ProcessEventArgs,Task> ProcessEventAsync] je volany pri nacitavani EVENT z PARTITION.
-   K. EVENT [Func<ProcessErrorEventArgs,Task> ProcessErrorAsync] je volany pri nacitavani EVENTS z PARTITION doslo k ERROR.
+   K. EVENT [Func<ProcessErrorEventArgs,Task> ProcessErrorAsync] je volany ak pri nacitavani EVENTS z PARTITION doslo k ERROR.
    L. PROTECTED METHOD [Task OnProcessingEventBatchAsync(IEnumerable<EventData> Events, EventProcessorPartition Partition, CancellationToken CancellationToken)] vykonava cinnosti potrebne na spracovanie EVENT BATCH.
    M. PROTECTED METHOD [Task OnProcessingErrorAsync(Exception Exception, EventProcessorPartition Partition, string OperationDescription, CancellationToken CancellationToken)] vykonava cinnosti potrebne na spracovanie ERROR, ktora sa vyskytla pri nacitavani EVENTS z AZURE EVENT HUBS PARTITION.
    N. PROTECTED METHOD [Task OnInitializingPartitionAsync(EventProcessorPartition Partition, CancellationToken CancellationToken)] vykonava cinnosti potrebne na spracovanie PARTITION INITIALIZATION.
@@ -193,7 +193,7 @@
    B. PROPERTY [string PartitionId] obsahuje PARTITION IDENTIFIER v ktorej doslo k EXCEPTION pri vycitavani EVENTS.
    C. PROPERTY [string Operation] obsahuje popis OPERATION, pri ktorej doslo k EXCEPTION.
    D. PROPERTY [Exception Exception] obsahuje EXCEPTION ku ktorej doslo pri nacitani EVENTS z AZURE EVENT HUBS PARTITION.
-   !!! E. PROPERTY [CancellationToken CancellationToken] obsahuje CANCELLATION TOKEN, ktory ked je nastaveny, C# EVENT HANDLER spracovavajuci EVENT by mal okamzite ukoncit spracovanie daneho EVENT.
+   !!! E. PROPERTY [CancellationToken CancellationToken] obsahuje CANCELLATION TOKEN, ktory ked je nastaveny, C# EVENT HANDLER spracovavajuci ERROR by mal okamzite ukoncit spracovanie daneho ERROR.
 31. EVENTS su do PARTITIONS zaradzovane nasledujucim sposobom.
    A. BY-DEFAULT, AZURE EVENT HUBS zaradzuje EVENTS do jednotlivych PARTITIONS pomocou ROUND ROBIN sposobu, aby pocet EVENTS v jednotlivych PARTITIONS bol rovnomerny.
    B. EVENTS mozu byt zaslane do konkretnej PARTITION, ktora je identifikovana pomocou PARTITION IDENTIFIER. Platia nasledujuce fakty.
@@ -283,13 +283,13 @@
       B. PARAMETER [KEY_NAME]. PARAMETER [KEY_NAME] je nazov AUTHORIZATION RULE, ktory je pre EVENT HUBS NAMESPACES vytvoreny pomocou COMMAND [az eventhubs namespace authorization-rule create] a pre EVENT HUBS HUBS vytvoreny pomocou COMMAND [az eventhubs eventhub authorization-rule create].
       C. PARAMETER [KEY_VALUE]. PARAMETER [KEY_VALUE] je AUTHORIZATION RULE KEY VALUE, ktora je pre EVENT HUBS NAMESPACES ziskana pomocou COMMAND [az eventhubs namespace authorization-rule keys list] a pre EVENT HUBS HUBS ziskana pomocou COMMAND [az eventhubs eventhub authorization-rule keys list].
    D. Vytvoreny ACCESS TOKEN sa vlozi ako PARAMETER do CONSTRUCTOR CLASS [AzureSasCredential], ktora sa pre EVENT HUBS PRODUCERS pouzije ako PARAMETER do CLASS [EventHubProducerClient] a pre EVENT HUBS CONSUMERS pouzije ako PARAMETER do CLASS [EventProcessorClient].
-40. AZURE HUBS PUBLISHER pripajajuci sa pomocou SHARED ACCESS SIGNATURE sa implementuje nasledujucim sposobom.
+40. AZURE HUBS PRODUCER pripajajuci sa pomocou SHARED ACCESS SIGNATURE sa implementuje nasledujucim sposobom.
    A. Pre existujuci AZURE HUBS RESOURCE sa vytvori AUTHORIZATION RULE, ktora musi mat ACCESS RIGTS [Send]. Vytvorenie AUTHORIZATION RULE zavisi od typu AZURE HUBS RESOURCE.
-      A. Pre AZURE HUBS NAMESPACE sa AUTHORIZATION RULE vytvara pomocou COMMAND [az eventhubs namespace authorization-rule create]. Prikladom je COMMAND [az eventhubs namespace authorization-rule create --name MyNamespacePublisherRule --namespace-name MyNamespaceTA76 --resource-group Chapter10 --rights Send].
-      B. Pre AZURE HUBS HUB sa AUTHORIZATION RULE vytvara pomocou COMMAND [az eventhubs eventhub authorization-rule create]. Prikladom je COMMAND [az eventhubs eventhub authorization-rule create --name MyHubPublisherRule --eventhub-name MyHubTA76 --namespace-name MyNamespaceTA76 --resource-group Chapter10 --rights Send].
+      A. Pre AZURE HUBS NAMESPACE sa AUTHORIZATION RULE vytvara pomocou COMMAND [az eventhubs namespace authorization-rule create]. Prikladom je COMMAND [az eventhubs namespace authorization-rule create --name MyNamespaceProducerRule --namespace-name MyNamespaceTA76 --resource-group Chapter10 --rights Send].
+      B. Pre AZURE HUBS HUB sa AUTHORIZATION RULE vytvara pomocou COMMAND [az eventhubs eventhub authorization-rule create]. Prikladom je COMMAND [az eventhubs eventhub authorization-rule create --name MyHubProducerRule --eventhub-name MyHubTA76 --namespace-name MyNamespaceTA76 --resource-group Chapter10 --rights Send].
    B. Pre existujuci AZURE HUBS RESOURCE sa ziska AUTHORIZATION RULE KEY. Ziskanie AUTHORIZATION RULE KEY zavisi od typu AZURE HUBS RESOURCE.
-      A. Pre AZURE HUBS NAMESPACE sa AUTHORIZATION RULE KEY ziskava pomocou COMMAND [az eventhubs namespace authorization-rule keys list]. Prikladom je COMMAND [az eventhubs namespace authorization-rule keys list --name MyNamespacePublisherRule --namespace-name MyNamespaceTA76 --resource-group Chapter10].
-      B. Pre AZURE HUBS HUB sa AUTHORIZATION RULE KEY ziskava pomocou COMMAND [az eventhubs eventhub authorization-rule keys list]. Prikladom je COMMAND [az eventhubs eventhub authorization-rule keys list --name MyHubPublisherRule --eventhub-name MyHubTA76 --namespace-name MyNamespaceTA76 --resource-group Chapter10].
+      A. Pre AZURE HUBS NAMESPACE sa AUTHORIZATION RULE KEY ziskava pomocou COMMAND [az eventhubs namespace authorization-rule keys list]. Prikladom je COMMAND [az eventhubs namespace authorization-rule keys list --name MyNamespaceProducerRule --namespace-name MyNamespaceTA76 --resource-group Chapter10].
+      B. Pre AZURE HUBS HUB sa AUTHORIZATION RULE KEY ziskava pomocou COMMAND [az eventhubs eventhub authorization-rule keys list]. Prikladom je COMMAND [az eventhubs eventhub authorization-rule keys list --name MyHubProducerRule --eventhub-name MyHubTA76 --namespace-name MyNamespaceTA76 --resource-group Chapter10].
    C. Vygeneruje sa ACCESS TOKEN pomocou nasledujucich PARAMETERS.
       A. PARAMETER [RESOURCE_URL]. PARAMETER [RESOURCE_URL] ma nasleduujuci FORMAT.
          A. Pre AZURE HUBS NAMESPACE ma FORMAT [EVENT_HUB_NAMESPACE.servicebus.windows.net/EVENT_HUB_NAME], kde VALUE [EVENT_HUB_NAMESPACE] je nazov EVENT HUB NAMESPACE.
@@ -317,7 +317,7 @@
    A. EVENT HUBS NAMESPACE AUTHORIZATION RULE sa vytvara pomocou COMMAND [az eventhubs namespace authorization-rule create]. Prikladom je COMMAND [az eventhubs namespace authorization-rule create --name MyNamespaceConsumerRule --namespace-name MyNamespaceTA76 --resource-group Chapter10 --rights Listen].
    B. EVENT HUBS NAMESPACE AUTHORIZATION RULE sa odstranuje pomocou COMMAND [az eventhubs namespace authorization-rule delete]. Prikladom je COMMAND [az eventhubs namespace authorization-rule delete --name MyNamespaceConsumerRule --namespace-name MyNamespaceTA76 --resource-group Chapter10].
    C. Zoznam EVENT HUBS NAMESPACE AUTHORIZATION RULES vracia COMMAND [az eventhubs namespace authorization-rule list]. Prikladom je COMMAND [az eventhubs namespace authorization-rule list --namespace-name MyNamespaceTA76 --resource-group Chapter10].
-   D. EVENT HUBS NAMESPACE AUTHORIZATION RULE KEYS sa ziskavaju pomocou COMMAND [az eventhubs namespace authorization-rule keys list]. Prikladom je COMMAND [az eventhubs namespace authorization-rule keys list --name MyNamespacePublisherRule --namespace-name MyNamespaceTA76 --resource-group Chapter10].
+   D. EVENT HUBS NAMESPACE AUTHORIZATION RULE KEYS sa ziskavaju pomocou COMMAND [az eventhubs namespace authorization-rule keys list]. Prikladom je COMMAND [az eventhubs namespace authorization-rule keys list --name MyNamespaceProducerRule --namespace-name MyNamespaceTA76 --resource-group Chapter10].
 43. S AUTHORIZATION RULES pre EVENT HUBS HUBS sa pracuje pomocou nasledujucich COMMANDS.
    A. EVENT HUBS HUB AUTHORIZATION RULE sa vytvara pomocou COMMAND [az eventhubs eventhub authorization-rule create]. Prikladom je COMMAND [az eventhubs eventhub authorization-rule create --name MyHubConsumerRule --eventhub-name MyHubTA76 --namespace-name MyNamespaceTA76 --resource-group Chapter10 --rights Listen].
    B. EVENT HUBS HUB AUTHORIZATION RULE sa odstranuje pomocou COMMAND [az eventhubs eventhub authorization-rule delete]. Prikladom je COMMAND [az eventhubs eventhub authorization-rule delete --name MyHubConsumerRule --eventhub-name MyHubTA76 --namespace-name MyNamespaceTA76 --resource-group Chapter10].

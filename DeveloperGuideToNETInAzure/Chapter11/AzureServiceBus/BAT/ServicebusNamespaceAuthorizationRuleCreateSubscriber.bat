@@ -1,0 +1,1 @@
+az servicebus namespace authorization-rule create --name MyBusNamespaceSubscriberRule --namespace-name MyServiceBusNamespaceTA76 --resource-group Chapter11 --rights Listen

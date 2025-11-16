@@ -1,0 +1,1 @@
+az servicebus namespace authorization-rule create --name MyBusNamespacePublisherRule --namespace-name MyServiceBusNamespaceTA76 --resource-group Chapter11 --rights Send

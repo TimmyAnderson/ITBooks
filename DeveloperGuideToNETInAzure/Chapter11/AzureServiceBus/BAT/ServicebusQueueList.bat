@@ -1,0 +1,1 @@
+az servicebus queue list --namespace-name MyServiceBusNamespaceTA76 --resource-group Chapter11
