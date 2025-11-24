@@ -1,0 +1,1 @@
+az keyvault secret set --name MySecretName --vault-name MyKeyVaultTA76 --value MySecretValue --encoding "utf-8"

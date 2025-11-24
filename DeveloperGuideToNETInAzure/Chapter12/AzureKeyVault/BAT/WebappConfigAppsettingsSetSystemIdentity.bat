@@ -1,0 +1,1 @@
+az webapp config appsettings set --name KeyVaultSystemAssignedManagedIdentity --resource-group Chapter12 --settings "MySecretFromKeyVault=@Microsoft.KeyVault(SecretUri=https://mykeyvaultta76.vault.azure.net/secrets/mysecretname)"

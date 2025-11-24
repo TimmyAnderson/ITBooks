@@ -1,0 +1,1 @@
+az keyvault key create --name MyKey --vault-name MyKeyVaultTA76

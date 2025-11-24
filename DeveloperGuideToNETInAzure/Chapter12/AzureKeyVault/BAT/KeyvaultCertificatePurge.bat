@@ -1,0 +1,1 @@
+az keyvault certificate purge --name MyCertificate --vault-name MyKeyVaultTA76

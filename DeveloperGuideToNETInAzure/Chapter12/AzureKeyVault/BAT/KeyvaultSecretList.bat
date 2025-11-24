@@ -1,0 +1,1 @@
+az keyvault secret list --vault-name MyKeyVaultTA76

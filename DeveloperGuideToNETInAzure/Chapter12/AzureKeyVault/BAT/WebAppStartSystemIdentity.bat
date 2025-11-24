@@ -1,0 +1,1 @@
+az webapp start --name KeyVaultSystemAssignedManagedIdentity --resource-group Chapter12

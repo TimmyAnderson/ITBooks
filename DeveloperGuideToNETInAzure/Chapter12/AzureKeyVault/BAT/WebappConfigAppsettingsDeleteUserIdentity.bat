@@ -1,0 +1,1 @@
+az webapp config appsettings delete --name KeyVaultUserAssignedManagedIdentity --resource-group Chapter12 --setting-names "MySecretFromKeyVault"

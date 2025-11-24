@@ -1,0 +1,1 @@
+az keyvault secret download --name MySecretName --vault-name MyKeyVaultTA76 --encoding "utf-8" --file MySecretName.txt

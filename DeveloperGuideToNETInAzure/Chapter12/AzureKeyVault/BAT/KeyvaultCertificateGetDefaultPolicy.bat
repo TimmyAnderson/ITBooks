@@ -1,0 +1,1 @@
+az keyvault certificate get-default-policy > DefaultCertificatePolicy.json

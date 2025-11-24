@@ -1,0 +1,1 @@
+az webapp delete --name KeyVaultSystemAssignedManagedIdentity --resource-group Chapter12 --keep-empty-plan

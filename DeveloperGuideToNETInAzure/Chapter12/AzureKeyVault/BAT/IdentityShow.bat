@@ -1,0 +1,1 @@
+az identity show --name MyIdentity --resource-group Chapter12

@@ -1,0 +1,1 @@
+az keyvault certificate download --name MyCertificate --vault-name MyKeyVaultTA76 --encoding PEM --file MyCertificate.pem

@@ -1,0 +1,1 @@
+az keyvault key delete --name MyKey --vault-name MyKeyVaultTA76

@@ -1,0 +1,1 @@
+az group create --name Chapter12 --location centralus

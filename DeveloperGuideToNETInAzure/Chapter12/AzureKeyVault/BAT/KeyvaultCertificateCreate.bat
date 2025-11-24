@@ -1,0 +1,1 @@
+az keyvault certificate create --name MyCertificate --vault-name MyKeyVaultTA76 --policy @DefaultCertificatePolicy.json

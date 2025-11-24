@@ -1,0 +1,1 @@
+az keyvault create --name MyKeyVaultTA76 --resource-group Chapter12 --location centralus

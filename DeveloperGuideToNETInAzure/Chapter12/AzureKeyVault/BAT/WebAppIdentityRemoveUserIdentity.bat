@@ -1,0 +1,4 @@
+REM !!! Odstrani USER ASSIGNED MANAGED IDENTITY pre APP SERVICE.
+REM !!! VALUE ["/subscriptions/b5f70a84-6ba2-4485-84cd-ac0883d618c5/resourcegroups/Chapter12/providers/Microsoft.ManagedIdentity/userAssignedIdentities/MyIdentity"] je USER ASSIGNED MANAGED IDENTITY ID. USER ASSIGNED MANAGED IDENTITY ID sa nachadza v PROPERTY [id], ktoru vracia COMMAND [az identity show].
+
+az webapp identity remove --name KeyVaultUserAssignedManagedIdentity --resource-group Chapter12 --identities "/subscriptions/b5f70a84-6ba2-4485-84cd-ac0883d618c5/resourcegroups/Chapter12/providers/Microsoft.ManagedIdentity/userAssignedIdentities/MyIdentity"

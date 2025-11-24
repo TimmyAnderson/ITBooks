@@ -1,0 +1,1 @@
+az keyvault key purge --name MyKey --vault-name MyKeyVaultTA76

@@ -1,0 +1,82 @@
+//----------------------------------------------------------------------------------------------------------------------
+1. ROLE BASED ACCESS CONTROL je univerzalny mechanizmus umoznujuci pridelovat ROLES danym SECURITY PRINCIPALS na pristup k AZURE SCOPES, ktore obsahuju AZURE RESOURCES.
+2. SECURITY PRINCIPAL je AZURE OBJECT, ktoremu moze byt priradena ROLE. AZURE podporuje nasledujuce typy SECURITY PRINCIPALS.
+   A. SECURITY PRINCIPAL [USER]. USER je standardny AZURE USER.
+   B. SECURITY PRINCIPAL [GROUP]. GROUP je standardna AZURE GROUP obsahujuca AZURE USERS.
+   C. SECURITY PRINCIPAL [SERVICE PRINCIPAL]. SERVICE PRINCIPALS je mozne vytvorit napriklad pre APPLICATION REGISTRATIONS.
+   D. SECURITY PRINCIPAL [MANAGED IDENTITY]. MANAGED IDENTIIES je mozne vytvorit pre rozne SERVICES.
+3. SCOPE urcuje mnozinu RESOURCES na ktore mozu byt aplikovane ROLES.
+4. SCOPES su usporiadane podla SCOPE LEVELS v PARENT CHILD HIERARCHY. To znamena, ze ACCESS RIGHTS aplikovane na PARENT SCOPE LEVEL sa automaticky aplikuju aj na vsetkych CHILD SCOPE LEVELS.
+5. V AZURE existuju nasledujuce SCOPE LEVELS, zotriedene podla PARENT-CHILD HIERARCHY.
+   A. SCOPE LEVEL [MANAGEMENT GROUP].
+   B. SCOPE LEVEL [SUBSCRIPTION].
+   C. SCOPE LEVEL [RESOURCE GROUP].
+   D. SCOPE LEVEL [RESOURCE].
+6. SCOPE LEVEL [MANAGEMENT GROUP] moze byt hierarchicka. To znamena, ze jeden SCOPE LEVEL [MANAGEMENT GROUP] moze obsahovat ine SCOPE LEVELS [MANAGEMENT GROUP].
+7. V COMMAND LINE TOOLS su SCOPES identifikovane pomocou SCOPE STRINGS. Platia nasledujuce fakty.
+   A. Pre SCOPE LEVEL [MANAGEMENT GROUP] ma SCOPE STRING FORMAT [/providers/Microsoft.Management/managementGroups/MANAGEMENT_GROUP_NAME], kde VALUE [MANAGEMENT_GROUP_NAME] je nazov MANAGEMENT GROUP.
+   B. Pre ostatne SCOPE LEVELS ma SCOPE STRING FORMAT [/subscriptions/SUBSCRIPTION_ID/resourcegroups/RESOURCE_GROUP_NAME/providers/PROVIDER_NAME/RESOURCE_TYPE/RESOURCE_SUB_TYPE_1/RESOURCE_SUB_TYPE_2/.../RESOURCE_SUB_TYPE_N/RESOURCE_NAME], kde jednotlive VALUES maju nasledujuci vyznam.
+      A. VALUE [SUBSCRIPTION_ID] je SUBSCRIPTION ID, ktore je vo formate GUID.
+      B. VALUE [RESOURCE_GROUP_NAME] je nazov RESOURCE GROUP.
+      C. VALUE [PROVIDER_NAME] je nazov RESOURCE PROVIDER. Tieto VALUES su pevne definovane v AZURE.
+      D. VALUES [RESOURCE_SUB_TYPE_X] su nazvy RESOURCE PROVIDER SUB TYPES. Tieto VALUES su OPTIONAL v zavislosti od typu RESOURCE.
+      E. VALUE [RESOURCE_NAME] je nazov RESOURCE.
+   C. Priklady SCOPE STRIGS.
+      A. SCOPE LEVEL [MANAGEMENT GROUP] SCOPE STRING [/providers/Microsoft.Management/managementGroups/marketing-group].
+      B. SCOPE LEVEL [SUBSCRIPTION] SCOPE STRING [/subscriptions/00000000-0000-0000-0000-000000000000].
+      C. SCOPE LEVEL [RESOURCE GROUP] SCOPE STRING [/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/Example-Storage-rg].
+      D. SCOPE LEVEL [RESOURCE] SCOPE STRING [/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/Example-Storage-rg/providers/Microsoft.Storage/storageAccounts/azurestorage12345/blobServices/default/containers/blob-container-01].
+8. ROLE je mnozina PERMISSIONS, ktore su aplikovane na RESOURCE, ak je na RESOURCE aplikovana dana ROLE.
+9. AZURE definuje nasledujuce typy ROLES.
+   A. BUILT-IN ROLES.
+   B. CUSTOM ROLES.
+10. ROLES sa pre jednotlive RESOURCES spravuju pomocou nasledujucich COMMANDS.
+   A. Danemu SECURITY PRINCIPAL a SCOPE sa prideluje ROLE pomocou COMMAND [az role assignment create].
+   B. Danemu SECURITY PRINCIPAL a SCOPE sa odstranuje ROLE pomocou COMMAND [az role assignment delete].
+   C. Zoznam ROLES vracia COMMAND [az role assignment list --all].
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+Priklady COMMANDS.
+
+Pre USER.
+
+1. COMMAND [az role assignment create --assignee "5138f3d7-3ec0-4d89-97f5-40a6f6000528" --scope "/subscriptions/b5f70a84-6ba2-4485-84cd-ac0883d618c5/resourceGroups/Chapter12/providers/Microsoft.KeyVault/vaults/MyKeyVaultTA76" --role "Key Vault Administrator"].
+   A. COMMAND prideluje ROLE danemu USER pre RESOURCE KEY VALUT.
+   B. PARAMETER [--assignee "5138f3d7-3ec0-4d89-97f5-40a6f6000528"] obsahuje PRINCIPAL ID USER ACCOUNT, ktory je mozne ziskat z PROPERTY [id], ktoru vrati COMMAND [az ad user list].
+   C. PARAMETER [--scope "/subscriptions/b5f70a84-6ba2-4485-84cd-ac0883d618c5/resourceGroups/Chapter12/providers/Microsoft.KeyVault/vaults/MyKeyVaultTA76"] obsahuje KEY VAULT RESOURCE [MyKeyVaultTA76].
+   D. PARAMETER [--role "Key Vault Administrator"] obsahuje BUILT IN ROLE [Key Vault Administrator].
+2. COMMAND [az role assignment delete --assignee "5138f3d7-3ec0-4d89-97f5-40a6f6000528" --scope "/subscriptions/b5f70a84-6ba2-4485-84cd-ac0883d618c5/resourceGroups/Chapter12/providers/Microsoft.KeyVault/vaults/MyKeyVaultTA76" --role "Key Vault Administrator"].
+   A. COMMAND odstranuje ROLE danemu USER pre RESOURCE KEY VALUT.
+   B. PARAMETER [--assignee "5138f3d7-3ec0-4d89-97f5-40a6f6000528"] obsahuje PRINCIPAL ID USER ACCOUNT, ktory je mozne ziskat z PROPERTY [id], ktoru vrati COMMAND [az ad user list].
+   C. PARAMETER [--scope "/subscriptions/b5f70a84-6ba2-4485-84cd-ac0883d618c5/resourceGroups/Chapter12/providers/Microsoft.KeyVault/vaults/MyKeyVaultTA76"] obsahuje KEY VAULT RESOURCE [MyKeyVaultTA76].
+   D. PARAMETER [--role "Key Vault Administrator"] obsahuje BUILT IN ROLE [Key Vault Administrator].
+
+
+Pre SERVICE PRINCIPAL.
+
+1. COMMAND [az role assignment create --assignee "acfb710d-a804-4a1e-8229-7eccde6c6908" --scope "/subscriptions/b5f70a84-6ba2-4485-84cd-ac0883d618c5/resourceGroups/Chapter11/providers/Microsoft.ServiceBus/namespaces/MyServiceBusNamespaceTA76" --role "Azure Service Bus Data Sender"].
+   A. COMMAND prideluje ROLE danemu SERVICE PRINICIPAL pre RESOURCE SERVICE BUS NAMESPACE.
+   B. PARAMETER [--assignee "acfb710d-a804-4a1e-8229-7eccde6c6908"] obsahuje SERVICE PRINCIPAL APPLICATION REGISTRATION. APPLICATION REGISTRATION sa vytvara pomocou COMMAND [az ad app create] a nasledne sa pre nu vytvara SERVICE PRINCIPAL pomocou COMMAND [az ad sp create]. SERVICE PRINCIPAL APPLICATION REGISTRATION obsahuje PROPERTY [appId], ktoru vracia COMMAND [az ad app list].
+   C. PARAMETER [--scope "/subscriptions/b5f70a84-6ba2-4485-84cd-ac0883d618c5/resourceGroups/Chapter11/providers/Microsoft.ServiceBus/namespaces/MyServiceBusNamespaceTA76"] obsahuje SERVICE BUS NAMESPACE RESOURCE [MyServiceBusNamespaceTA76].
+   D. PARAMETER [--role "Azure Service Bus Data Sender"] obsahuje BUILT IN ROLE [Azure Service Bus Data Sender].
+2. COMMAND [az role assignment delete --assignee "acfb710d-a804-4a1e-8229-7eccde6c6908" --scope "/subscriptions/b5f70a84-6ba2-4485-84cd-ac0883d618c5/resourceGroups/Chapter11/providers/Microsoft.ServiceBus/namespaces/MyServiceBusNamespaceTA76" --role "Azure Service Bus Data Sender"].
+   A. COMMAND odstranuje ROLE danemu SERVICE PRINICIPAL pre RESOURCE SERVICE BUS NAMESPACE.
+   B. PARAMETER [--assignee "acfb710d-a804-4a1e-8229-7eccde6c6908"] obsahuje SERVICE PRINCIPAL APPLICATION REGISTRATION. APPLICATION REGISTRATION sa vytvara pomocou COMMAND [az ad app create] a nasledne sa pre nu vytvara SERVICE PRINCIPAL pomocou COMMAND [az ad sp create]. SERVICE PRINCIPAL APPLICATION REGISTRATION obsahuje PROPERTY [appId], ktoru vracia COMMAND [az ad app list].
+   C. PARAMETER [--scope "/subscriptions/b5f70a84-6ba2-4485-84cd-ac0883d618c5/resourceGroups/Chapter11/providers/Microsoft.ServiceBus/namespaces/MyServiceBusNamespaceTA76"] obsahuje SERVICE BUS NAMESPACE RESOURCE [MyServiceBusNamespaceTA76].
+   D. PARAMETER [--role "Azure Service Bus Data Sender"] obsahuje BUILT IN ROLE [Azure Service Bus Data Sender].
+
+
+Pre MANAGED IDENTITY.
+
+1. COMMAND [az role assignment create --assignee "6f0c96bc-335f-4cb6-89bb-768fc46f90ff" --scope "/subscriptions/b5f70a84-6ba2-4485-84cd-ac0883d618c5/resourceGroups/MyResources/providers/Microsoft.ContainerRegistry/registries/containertimmyanderson" --role "AcrPull"].
+   A. COMMAND prideluje ROLE danej MANAGED IDENTITY pre RESOURCE CONTAINER REGISTRY.
+   B. PARAMETER [--assignee "6f0c96bc-335f-4cb6-89bb-768fc46f90ff"] obsahuje PRINCIPAL ID MANAGED IDENTITY.
+   C. PARAMETER [--scope "/subscriptions/b5f70a84-6ba2-4485-84cd-ac0883d618c5/resourceGroups/MyResources/providers/Microsoft.ContainerRegistry/registries/containertimmyanderson"] obsahuje CONTAINER REGISTRY RESOURCE [containertimmyanderson].
+   D. PARAMETER [--role "AcrPull"] obsahuje BUILT IN ROLE [AcrPull].
+2. COMMAND [az role assignment delete --assignee "6f0c96bc-335f-4cb6-89bb-768fc46f90ff" --scope "/subscriptions/b5f70a84-6ba2-4485-84cd-ac0883d618c5/resourceGroups/MyResources/providers/Microsoft.ContainerRegistry/registries/containertimmyanderson" --role "AcrPull"].
+   A. COMMAND odstranuje ROLE danej MANAGED IDENTITY pre RESOURCE CONTAINER REGISTRY.
+   B. PARAMETER [--assignee "6f0c96bc-335f-4cb6-89bb-768fc46f90ff"] obsahuje PRINCIPAL ID MANAGED IDENTITY.
+   C. PARAMETER [--scope "/subscriptions/b5f70a84-6ba2-4485-84cd-ac0883d618c5/resourceGroups/MyResources/providers/Microsoft.ContainerRegistry/registries/containertimmyanderson"] obsahuje CONTAINER REGISTRY RESOURCE [containertimmyanderson].
+   D. PARAMETER [--role "AcrPull"] obsahuje BUILT IN ROLE [AcrPull].
+//----------------------------------------------------------------------------------------------------------------------

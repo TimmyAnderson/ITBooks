@@ -1,0 +1,1 @@
+az keyvault certificate list --vault-name MyKeyVaultTA76

@@ -1,0 +1,4 @@
+REM !!!!! VALUE [5138f3d7-3ec0-4d89-97f5-40a6f6000528] je PRINCIPAL ID USER ACCOUNT. PRINCIPAL ID USER ACCOUNT je v PROPERTY [id], ktoru vracia COMMAND [az ad user list].
+REM !!!!! VALUE ["/subscriptions/b5f70a84-6ba2-4485-84cd-ac0883d618c5/resourceGroups/Chapter12/providers/Microsoft.KeyVault/vaults/MyKeyVaultTA76"] je KEYVAULT ID. Ziskava sa z PROPERTY [id] pomocou COMMAND [az keyvault list --resource-group Chapter12].
+
+az role assignment delete --assignee "5138f3d7-3ec0-4d89-97f5-40a6f6000528" --scope "/subscriptions/b5f70a84-6ba2-4485-84cd-ac0883d618c5/resourceGroups/Chapter12/providers/Microsoft.KeyVault/vaults/MyKeyVaultTA76" --role "Key Vault Administrator"

@@ -1,0 +1,1 @@
+az webapp stop --name KeyVaultUserAssignedManagedIdentity --resource-group Chapter12

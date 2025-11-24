@@ -1,0 +1,1 @@
+az keyvault delete --name MyKeyVaultTA76 --resource-group Chapter12

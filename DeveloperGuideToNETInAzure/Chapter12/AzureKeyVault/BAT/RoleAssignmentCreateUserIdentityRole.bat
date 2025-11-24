@@ -1,0 +1,4 @@
+REM !!!!! VALUE [d75996b8-dbb6-4869-aa3f-555aefbeddd4] je PRINCIPAL ID USER ASSIGNED MANAGED IDENTITY. PRINCIPAL ID je v PROPERTY [principalId], ktoru vracia COMMAND [az identity show].
+REM !!!!! VALUE ["/subscriptions/b5f70a84-6ba2-4485-84cd-ac0883d618c5/resourceGroups/Chapter12/providers/Microsoft.KeyVault/vaults/MyKeyVaultTA76"] je KEYVAULT ID. Ziskava sa z PROPERTY [id] pomocou COMMAND [az keyvault list --resource-group Chapter12].
+
+az role assignment create --assignee "d75996b8-dbb6-4869-aa3f-555aefbeddd4" --scope "/subscriptions/b5f70a84-6ba2-4485-84cd-ac0883d618c5/resourceGroups/Chapter12/providers/Microsoft.KeyVault/vaults/MyKeyVaultTA76" --role "Key Vault Administrator"

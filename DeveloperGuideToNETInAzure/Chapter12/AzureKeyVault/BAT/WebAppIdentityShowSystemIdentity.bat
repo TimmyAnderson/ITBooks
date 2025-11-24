@@ -1,0 +1,1 @@
+az webapp identity show --name KeyVaultSystemAssignedManagedIdentity --resource-group Chapter12

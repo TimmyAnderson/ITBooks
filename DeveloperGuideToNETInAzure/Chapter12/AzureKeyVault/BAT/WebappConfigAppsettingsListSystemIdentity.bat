@@ -1,0 +1,1 @@
+az webapp config appsettings list --name KeyVaultSystemAssignedManagedIdentity --resource-group Chapter12

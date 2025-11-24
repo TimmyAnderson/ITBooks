@@ -1,0 +1,1 @@
+az keyvault key download --name MyKey --vault-name MyKeyVaultTA76 --encoding PEM --file MyKey.pem

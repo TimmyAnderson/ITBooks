@@ -1,0 +1,1 @@
+az keyvault certificate delete --name MyCertificate --vault-name MyKeyVaultTA76
