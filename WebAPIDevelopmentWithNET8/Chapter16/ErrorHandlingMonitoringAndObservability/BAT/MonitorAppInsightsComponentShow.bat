@@ -1,0 +1,1 @@
+az monitor app-insights component show --app MyAppTA76 --resource-group Chapter16

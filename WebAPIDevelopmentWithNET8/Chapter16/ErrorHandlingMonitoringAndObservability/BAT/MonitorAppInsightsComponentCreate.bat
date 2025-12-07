@@ -1,0 +1,1 @@
+az monitor app-insights component create --app MyAppTA76 --workspace MyWorkspaceTA76 --resource-group Chapter16 --location centralus

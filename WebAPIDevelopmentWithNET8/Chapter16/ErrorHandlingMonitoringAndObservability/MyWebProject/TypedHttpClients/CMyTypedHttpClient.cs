@@ -4,7 +4,7 @@ using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
 //--------------------------------------------------------------------------------------------------------------------------------
-namespace WebAPICommonPracticesWeb
+namespace MyWebProject
 {
 //--------------------------------------------------------------------------------------------------------------------------------
 	public sealed class CMyTypedHttpClient
@@ -20,7 +20,7 @@ namespace WebAPICommonPracticesWeb
 			MClient=Client;
 
 			// !!! Nastavi sa BASE ADDRESS.
-			Client.BaseAddress=new Uri("https://localhost:7000/");
+			Client.BaseAddress=new Uri("https://localhost:8000/");
 		}
 //--------------------------------------------------------------------------------------------------------------------------------
 //--------------------------------------------------------------------------------------------------------------------------------
@@ -51,9 +51,9 @@ namespace WebAPICommonPracticesWeb
 //--------------------------------------------------------------------------------------------------------------------------------
 //--------------------------------------------------------------------------------------------------------------------------------
 //--------------------------------------------------------------------------------------------------------------------------------
-		public async Task<CMyGetResponseType> ExecuteGetNamedHttpClient(int Parameter)
+		public async Task<string> ExecuteMyService1DoSomething1()
 		{
-			string												URL=$"RemoteWebAPI/ExecuteGet?Parameter={Parameter}";
+			string												URL=$"MyService1/DoSomething1";
 
 			using(HttpRequestMessage RequestMessage=new HttpRequestMessage(HttpMethod.Get,URL))
 			{
@@ -61,33 +61,26 @@ namespace WebAPICommonPracticesWeb
 				{
 					ResponseMessage.EnsureSuccessStatusCode();
 
-					string										RawContent=await ResponseMessage.Content.ReadAsStringAsync();
-					CMyGetResponseType							Content=Deserialize<CMyGetResponseType>(RawContent);
+					string										Content=await ResponseMessage.Content.ReadAsStringAsync();
 
 					return(Content);
 				}
 			}
 		}
 //--------------------------------------------------------------------------------------------------------------------------------
-		public async Task<CMyGetResponseType> ExecutePostNamedHttpClient(CMyPostRequestType Request)
+		public async Task<string> ExecuteMyService2DoSomething2()
 		{
-			string												URL="RemoteWebAPI/ExecutePost";
+			string												URL=$"MyService2/DoSomething2";
 
-			using(HttpRequestMessage RequestMessage=new HttpRequestMessage(HttpMethod.Post,URL))
+			using(HttpRequestMessage RequestMessage=new HttpRequestMessage(HttpMethod.Get,URL))
 			{
-				string											RawRequestContent=Serialize<CMyPostRequestType>(Request);
-				StringContent									RequestContent=new StringContent(RawRequestContent,Encoding.UTF8,"application/json");
-
-				RequestMessage.Content=RequestContent;
-
 				using(HttpResponseMessage ResponseMessage=await MClient.SendAsync(RequestMessage))
 				{
 					ResponseMessage.EnsureSuccessStatusCode();
 
-					string										RawResponseContent=await ResponseMessage.Content.ReadAsStringAsync();
-					CMyGetResponseType							ResponseContent=Deserialize<CMyGetResponseType>(RawResponseContent);
+					string										Content=await ResponseMessage.Content.ReadAsStringAsync();
 
-					return(ResponseContent);
+					return(Content);
 				}
 			}
 		}

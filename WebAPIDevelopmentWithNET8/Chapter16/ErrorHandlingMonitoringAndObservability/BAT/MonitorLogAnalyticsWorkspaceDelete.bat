@@ -1,0 +1,1 @@
+az monitor log-analytics workspace delete --workspace-name MyWorkspaceTA76 --resource-group Chapter16

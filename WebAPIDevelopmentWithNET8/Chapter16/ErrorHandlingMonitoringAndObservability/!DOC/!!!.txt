@@ -1,0 +1,256 @@
+//----------------------------------------------------------------------------------------------------------------------
+1. Solution demonstruje pouzitie ERROR HANDLING, MONITORING a OBSERVABILITY vo WEB API.
+2. Ak ACTION METHOD hodi UNHANDLED EXCEPTION, BY-DEFAULT ASP.NET vrati STATUS CODE [500]. RESPONSE sa lisi podla ENVIRONEMENT.
+   A. V DEVELOPMENT ENVIROMNENTS RESPONSE obsahuje kompletny STACK TRACE vo formate PLAIN TEXT.
+   B. V PRODUCTION ENVIROMNENT RESPONSE neobsahuje ziaden CONTENT.
+3. ASP.NET obsahuje EXCEPTION HANDLER MIDDLEWARE COMPONENT, ktora umoznuje v pripade EXCEPTION vratit PROBLEM DETAILS. Pre PROBLEM DETAILS platia nasledujuce fakty.
+   A. PROBLEM DETAILS je EXTENSIBLE RESPONSE STRUCTURE obsahujuca popis ERROR.
+   B. PROBLEM DETAILS je definovany v RFC 7807.
+   C. PROBLEM DETAILS obsahuje BY DEFAULT nasledujuce PROPERTIES.
+      A. PROPERTY [type]. Je to OPTIONAL PROPERTY, ktora obsahuje URL, ktore obsahuje blizsi HUMAN READABLE popis daneho typu ERROR.
+      B. PROPERTY [title]. PROPERTY obsahuje sumarny popis ERROR.
+      C. PROPERTY [status]. PROPERTY obsahuje HTTP STATUS CODE generovany povodnym HTTP SERVER.
+      D. PROPERTY [detail]. PROPERTY obsahuje HUMAN READABLE DETAIL danej ERROR.
+      E. PROPERTY [instance]. Je to OPTIONAL PROPERTY, ktora obsahuje URL, ktore obsahuje blizsi popis detailov o tejto konkretnej ERROR.
+   D. PROBLEM DETAILS je odosielany ako JSON s MIME TYPE [application/problem+json].
+   E. PROBLEM DETAILS RESPONSE je JSON a je teda parsovatelny na CLIENT SIDE.
+   F. PROBLEM DETAILS sa moze lisit pre rozlicne ENVIRONMENTS. NON-PRODUCTION ENVIRONMENTS mozu napriklad obsahovat STACK TRACE.
+   G. PROBLEM DETAILS je implementovany ako EXCEPTION HANDLER MIDDLEWARE COMPONENT.
+4. EXCEPTION HANDLER MIDDLEWARE COMPONENT sa pouziva nasledujucim sposobom.
+   A. Definuje sa CUSTOM CONTROLER, ktoreho ulohou je generovat CUSTOM PROBLEM DETAILS v pripade vzniku UNHANDLED EXCEPTION v ACTION METHODS. Pre CUSTOM CONTROLLER platia nasledujuce fakty.
+      A. CONTROLLER musi mat 1, alebo viac ACTION METHODS, ktorych ulohou je vygenerovat PROBLEM DETAILS. Viacere ACTION METHODS sa pouzivaju napriklad ak je treba vygenerovat iny PROBLEM DETAIL pre DEVELOPMENT ENVIRONEMNTS a iny pre PRODUCTION ENVIRONEMNT.
+      B. ACTION METHODS mozu z HTTP CONTEXT ziskat instanciu INTERFACE [IExceptionHandlerFeature], ktora obsahuje vzniknutu UNHANDLED EXCEPTION.
+      C. Na generovanie PROBLEM DETAILS je mozne pouzit HELPER METHOD [ObjectResult ControllerBase.Problem(string Detail, string Instance, int? StatusCode, string Title, string Type)].
+   B. Zavola sa METHOD [IApplicationBuilder UseExceptionHandler(this IApplicationBuilder App, string ErrorHandlingPath)] pre zaregistrovanie CUSTOM CONTROLLER ACTION METHOD. Ak ma CUSTOM CONTROLLER viacero ACTION METHOD pre rozne ENVIRONMENTS, METHOD sa zavola viackrat.
+5. ASP.NET umoznuje vykonavat MODEL VALIDATION HTTP REQUEST MESSAGE CONTENTS. Pre MODEL VALIDATION platia nasledujuce fakty.
+   A. MODEL VALIDATION sa realizuje aplikovanim ATTRIBUTES na PROPERTIES CUSTOM REQUEST MESSAGE CLASS. MODEL VALIDATION definuje nasledujuce ATTRIBUTES.
+      A. ATTRIBUTE [CompareAttribute] umoznuje porovnat VALUES 2 PROPERTIES na ci su zhodne. PROPERTY, ktora sa ma porovnat je urcena pomocou PROPERTY [CompareAttribute.OtherProperty].
+      B. ATTRIBUTE [RangeAttribute] umoznuje definovat RANGE v ktorom sa ma VALUE danej PROPERTY nachadzat.
+      C. ATTRIBUTE [RegularExpressionAttribute] umoznuje spravit VALIDATION VALUE danej PROPERTY voci REGULAR EXPRESSION.
+      D. ATTRIBUTE [RequiredAttribute] umoznuje vykonat VALIDATION ci VALUE danej PROPERTY je nastavena.
+      E. ATTRIBUTE [StringLengthAttribute] umoznuje vykonat VALIDATION ci STRING VALUE ma zadany pocet CHARACTERS.
+      F. ATTRIBUTE [CustomValidationAttribute] umoznuje vykonat CUSTOM VALIDATION VALUE danej PROPERTY.
+      G. ATTRIBUTE [MinLengthAttribute] umoznuje vykonat VALIDATION ci STRING VALUE, alebo ARRAY VALUE ma zadany pocet CHARACTERS/ITEMS.
+      H. ATTRIBUTE [MaxLengthAttribute] umoznuje vykonat VALIDATION ci STRING VALUE, alebo ARRAY VALUE nema vacsi ako zadany pocet CHARACTERS/ITEMS.
+      I. ATTRIBUTE [EmailAddressAttribute] umoznuje vykonat VALIDATION ci STRING VALUE obsahuje validnu EMAIL ADDRESS.
+      J. ATTRIBUTE [UrlAttribute] umoznuje vykonat VALIDATION ci STRING VALUE obsahuje validnu URL ADDRESS.
+   B. MODEL VALIDATION v pripade detekcie ERROR generuje PROBLEM DETAILS RESPONSE so STATUS CODE 400.
+6. FLUENT VALIDATION LIBRARY umoznuje efektivnejsi MODEL VALIDATION. Pre LIBRARY FLUENT VALIDATION platia nasledujuce fakty.
+   A. FLUENT VALIDATION LIBRARY je implementovana v PACKAGE [FluentValidation].
+   B. Pre MODEL CLASS je nutne implementovat CUSTOM VALIDATOR. Pre CUSTOM VALIDATOR platia nasledujuce fakty.
+      A. CUSTOM VALIDATOR je CUSTOM CLASS, ktora musi byt DERIVED z CLASS [AbstractValidator<TModelClass>], kde TYPE PARAMETER [TModelClass] reprezentuje MODEL CLASS.
+      B. CUSTOM VALIDATOR v CONSTRUCTOR vyuziva FLUENT VALIDATION LIBRARY API na vykonanie VALIDATION MODEL CLASS.
+      C. CUSTOM VALIDATOR musi byt zaregistrovany v DEPENDENCY INJECTION CONTAINER.
+   C. V ACTION METHOD CONTROLLER je potrebne vykonat nasledujuce kroky.
+      A. Do CONTROLLER vlozit instanciu CUSTOM VALIDATOR ako TYPE [IValidator<TModelClass>] cez DEPENDENCY INJECTION.
+      B. Vykonat VALIDATION volanim METHOD [ValidationResult AbstractValidator<TModelClass>.Validate(TModelClass Instance)], alebo volanim METHOD [Task<ValidationResult> ValidateAsync(TModelClass Instance, CancellationToken Cancellation)].
+      C. Skontrolovat vysledok VALIDATION, a ak doslo k VALIDATION ERROR, vratit BAD REQUEST RESPONSE.
+7. V pripade, ze je v ASSEMBLY vela CUSTOM VALIDATORS je mozne zaregistrovat vsetky v nasledujucich krokoch.
+   A. Do PROJECT sa vlozi PACKAGE [FluentValidation.DependencyInjectionExtensions].
+   B. Volanim METHOD [IServiceCollection AddValidatorsFromAssemblyContaining<TModelClass>(this IServiceCollection Services, ServiceLifetime Lifetime, Func<AssemblyScanResult,bool> Filter, bool IncludeInternalTypes)] sa zaregistruju vsetky CUSTOM VALIDATORS v ASSEMBLY v ktorej sa nachadza definovany CUSTOM VALIDATOR.
+8. ASP.NET umoznuje vykonavat HEALTH CHECKS daneho WEB PROGRAM, ktory umoznuje MONITORING TOOLS monitorovat stav WEB PROGRAM. Pre HEALTH CHECKS platia nasledujuce fakty.
+   A. HEALTH CHECK vystavuje jednoduche WEB API, ktore na HTTP REQUEST s VERB GET vracia informaciu ci WEB PROGRAM funguje korektne, alebo nie.
+   B. HEALTH CHECK moze vykonat lubovolnu diagnistiku WEB PROGRAM, vratane verifikacie ci funguje pouzivane DATABASES a pouzivane WEB SERVICES.
+   C. WEB PROGRAM moze obsahovat viacero HEALTH CHECKS, kde kazdy HEALTH CHECK vystavuje osobitne WEB API.
+9. HEALTH CHECK sa realizuje nasledujucim sposobom.
+   A. DEFAULT HEALTH CHECK nevykonava ziadnu diagnostiku, iba vrati STATUS CODE 200, ako indikator, ze WEB PROGRAM bezi.
+   B. CUSTOM HEALTH CHECK sa implementuje implementaciou INTERFACE [IHealthCheck]. Pre CUSTOM HEALTH CHECK platia nasledujuce fakty.
+      A. CUSTOM HEALTH CHECK musi implementovat METHOD [Task<HealthCheckResult> IHealthCheck.CheckHealthAsync(HealthCheckContext Context, CancellationToken CancellationToken)].
+      B. METHOD v pripade uspesnej validacie WEB PROGRAM musi vratit SUCCESS RESPONSE, ktora sa vytvara pomocou HELPER METHOD [HealthCheckResult HealthCheckResult.Healthy(string Description, IReadOnlyDictionary<string,object> Data)].
+      C. METHOD v pripade ciastocne uspesnej validacie WEB PROGRAM musi vratit DEGRADATION RESPONSE, ktora sa vytvara pomocou HELPER METHOD [HealthCheckResult HealthCheckResult.Degraded(string Description, Exception Exception, IReadOnlyDictionary<string,object> Data)].
+      D. METHOD v pripade neuspesnej validacie WEB PROGRAM musi vratit FAILURE RESPONSE, ktora sa vytvara pomocou HELPER METHOD [HealthCheckResult HealthCheckResult.Unhealthy(string Description, Exception Exception, IReadOnlyDictionary<string,object> Data)].
+   C. Do DEPENDENCY INJECTION CONTAINER sa pridaju SERVICES potrebne pre implementaciu HEALTH CHECKS volanim METHOD [IHealthChecksBuilder AddHealthChecks(this IServiceCollection Services)].
+   D. CUSTOM HEALTH CHECKS sa pridavaju volanim METHOD [IHealthChecksBuilder AddCheck<TCustomHealthCheck>(this IHealthChecksBuilder Builder, string Name, HealthStatus? FailureStatus, IEnumerable<string> Tags)].
+   E. CUSTOM HEALTH CHECKS sa vystavuju ako WEB API volanim METHOD [IEndpointConventionBuilder MapHealthChecks(this IEndpointRouteBuilder Endpoints, string Pattern, HealthCheckOptions Options)]. METHOD moze byt volana viackrat pre rozne HEALTH CHECKS. METHOD moze pomocou PARAMETER TYPE [HealthCheckOptions] vlozit viacero HEALTH CHECKS do toho isteho WEB API.
+   !!! F. HEALTH CHECK WEB API ak ma zaregistrovanych viacero CUSTOM HEALTH CHECKS, tak vracia NAJHORSIU VALUE zo vsetkych, ktoru CUSTOM HEALTH CHECKS vratili.
+10. ASP.NET implementuje HEALTH CHECKS pre DATABASES ku ktorym sa pristupuje cez ENTITY FRAMEWORK. Pre DATABASE HEALTH CHECKS platia nasledujuce fakty.
+   A. DATABASE HEALTH CHECKS je implementovany v LIBRARY [Microsoft.Extensions.Diagnostics.HealthChecks.EntityFrameworkCore].
+   B. DATABASE HEALTH CHECKS sa pridavaju volanim METHOD [IHealthChecksBuilder AddDbContextCheck<TContext>(this IHealthChecksBuilder Builder, string Name, HealthStatus? FailureStatus, IEnumerable<string> Tags, Func<TContext,CancellationToken,Task<bool>> CustomTestQuery)].
+   C. CUSTOM HEALTH CHECKS sa vystavuju ako WEB API volanim METHOD [IEndpointConventionBuilder MapHealthChecks(this IEndpointRouteBuilder Endpoints, string Pattern, HealthCheckOptions Options)].
+11. KUBERNETES vykonava pravidelny monitoring pripojenych CONTAINERS. Ak niektory CONTAINER oznaci za FAULTY, vykona jeho RESTART. KUBERNETES vykonava nasledujuce typy HEALTH CHECKS.
+   A. STARTUP HEALTH CHECK. Pre STARTUP HEALTH CHECK platia nasledujuce fakty.
+      A. STARTUP HEALTH CHECK sa vykonava iba raz, po starte CONTAINER.
+      B. Ak STARTUP HEALTH CHECK vrati negativny vysledok, alebo nevrati nic, KUBERNETES vykona RESTART daneho CONTAINER.
+      C. STARTUP HEALTH CHECK by mal verifikovat ci CONTAINER korektne nastartoval a je schopny funkcionality.
+      D. KUBERNETES nevykonava pre dany CONTAINER ostatne HEALTH CHECKS, kym STARTUP HEALTH CHECK neskonci uspesne.
+   B. LIVENESS HEALTH CHECK. Pre LIVENESS HEALTH CHECK platia nasledujuce fakty.
+      A. LIVENESS HEALTH CHECK je vykonavany KUBERNETES v kratkych intervaloch.
+      B. LIVENESS HEALTH CHECK by nemal vykonavat ziadne dodatocne CHECKS, iba vrati RESPONSE, ak CONTAINER zije.
+      C. LIVENESS HEALTH CHECK moze byt vykonany cez HTTP PROTOCOL, TCP/IP PROTOCOL, alebo GRPC PROTOCOL.
+      D. Ak LIVENESS HEALTH CHECK zlyha nastaveny pocet pokusov, KUBERNETES vykona RESTART daneho CONTAINER.
+   C. READINES HEALTH CHECK. Pre READINES HEALTH CHECK platia nasledujuce fakty.
+      A. READINES HEALTH CHECK je vykonavany KUBERNETES v dlhsich intervaloch.
+      B. READINES HEALTH CHECK by mal vykonat komplexnu diagnostiku ci dany CONTAINER nielen zije, ale aj ci je schopny vykonavat svoju funkcionalitu.
+      C. Ak READINES HEALTH CHECK zlyha nastaveny pocet pokusov, KUBERNETES povazuje dany CONTAINER za UNHEALTHY a presane don posielat TRAFFIC, pretoze CONTAINER je povazovany za docasne nefunkcny.
+12. OBSERVABILITY je podrobny MONITORING PROGRAM, ktory pozostava z nasledujucich casti.
+   A. LOGS. LOGS zapisuju informacie o cinnosti PROGRAMU, vratane ERRORS.
+   B. METRICS. METRICS sa pouziva na meranie vykonnosti PROGRAMU. Moze zaznamenavat rychlost spracovanie HTTP REQUEST, ci rychlost vykonavania DATABASE OPERATIONS. METRICS mozu vyvolat ALERTS, ak sa PEFORMANCE daneho PROGRAMU zhorsi.
+   C. TRACES. TRACES sa pouzivaju na TRACKING toku HTTP REQUESTS rozlicnymi SERVICES na identifikaciu ERRORS ci PERFORMANCE BOTTLENECKS. TRACES su dolezite najma pri MICROSERVICE ARCHITECTURE.
+13. OPEN TELEMETRY je OPEN SOURCE CODE FRAMEWORK realizujuci OBSERVABILITY. OPEN TELEMETRY sa sklada z nasledujucich casti.
+   A. CORE API. CORE API je mnozina CLASSES a INTERFACES, ktore definuju OPEN TELEMETRY API. Je to PLATFORM INDEPENTENT API implementujuci OBSERVABILITY.
+   B. INSTRUMENTATION. INSTRUMENTATION je mnozina LIBRARIES, ktore sluzia na zber telemetrickych dat o danom PROGRAME. INSTRUMENTATION obsahuje viacero PACKAGES pre rozlicne FRAMEWORKS a PLATFORMS ako ASP.NET CORE, GPRC, HTTP CALLS, ci SQL DATABASE OPERATIONS.
+   C. EXPORTERS. EXPORTERS su pouzivane na exportovanie telemetrickych dat do rozlicnych TARGETS ako je napriklad CONSOLE, alebo APPLICAITON PERFORMANCE MONITORING (APM) SYSTEMS, z ktorych mozu byt dalej spracovavane.
+14. OBSERVABILITY pozostava z nasledujucich krokov.
+   A. Definicie METRICS, ktore maju byt monitorovane.
+   B. Generovania a zberu INSTRUMENTATION DATA.
+   C. Vizualizacie INSTRUMENTATION DATA v DASHBOARD.
+15. OPEN TELEMETRY pozostava z viacerych PACKAGES.
+   A. PACKAGE [OpenTelemetry.Instrumentation.AspNetCore].
+   B. PACKAGE [OpenTelemetry.Instrumentation.Http].
+   C. PACKAGE [OpenTelemetry.Exporter.OpenTelemetryProtocol].
+   D. PACKAGE [OpenTelemetry.Exporter.Console].
+   E. PACKAGE [OpenTelemetry.Extensions.Hosting].
+16. OPEN TELEMETRY definuje INSTRUMENTS, pomocou ktorych je mozne monitorovat PROGRAM. OPEN TELEMETRY definuje nasledujuce INSTRUMENTS.
+   A. INSTRUMENT [Counter]. Pre COUNTER platia nasledujuce fakty.
+      A. COUNTER je implementovany pomocou CLASS [Counter<TType>].
+      B. COUNTER reprezenuje COUNTER, ktory moze byt inkrementovany.
+      C. COUNTER sa pouziva napriklad pri pocitani spracovanych REQUESTS.
+   B. INSTRUMENT [UpDownCounter]. Pre UP DOWN COUNTER platia nasledujuce fakty.
+      A. UP DOWN COUNTER je implementovany pomocou CLASS [UpDownCounter<TType>].
+      B. UP DOWN COUNTER reprezenuje COUNTER, ktory moze byt inkrementovany aj dekrementovany.
+      C. UP DOWN COUNTER sa pouziva napriklad pri pocitani poctu aktualne spracovavanych REQUESTS.
+   C. INSTRUMENT [Gauge]. Pre GAUGE platia nasledujuce fakty.
+      A. GAUGE je implementovany pomocou CLASS [Gauge<TType>].
+      B. GAUGE sa pouziva na meranie ACTUAL VALUE danej METRIC.
+      C. GAUGE sa pouziva napriklad pre ulozenie aktualneho vykonu CPU ci mnozstva pouzitej MEMORY.
+   D. INSTRUMENT [Histogram]. Pre HISTOGRAM platia nasledujuce fakty.
+      A. HISTOGRAM je implementovany pomocou CLASS [Histogram<TType>].
+      B. HISTOGRAM sa pouziva na meranie statistickej distribucie VALUES s vyuzitim AGGREGATIONS.
+      C. HISTOGRAM sa pouziva napriklad pre pocitanie REQUESTS, ktorych spracovanie trvalo dlhsie ako priemerny cas spracovania REQUEST.
+17. OPEN TELEMETRY sa pouziva nasledujucim sposobom.
+   A. Definuje sa SERVICE CLASS, ktora v CONSTRUCTOR cez DEPENDENCY INJECTION prijima instanciu INTERFACE [IMeterFactory].
+   !!! B. SERVICE CLASS MUSI registrovat CUSTOM METER volanim METHOD [Meter Create(this IMeterFactory MeterFactory, string Name, string Version, IEnumerable<KeyValuePair<string,object>> Tags)].
+   C. Volanim METHODS CLASS [Meter] sa vytvoria patricne INSTRUMENTS OBJECTS.
+   D. Pre INSTRUMENTS OBJECTS sa v SERVICE CLASS definuju METHODS pre pracu s nimi.
+   E. SERVICE CLASS sa zaregistruje ako SINGLETON do DEPENDENCY INJECTION CONTAINER.
+   F. SERVICE CLASS sa vklada do CONTROLLERS pomocou DEPENDENCY INJECTION, kde sa volaju jej METHOD na zmenu hodnot INSTRUMENTS OBJECTS.
+18. OPEN TELEMETRY sa konfiguruje v nasledujucich krokoch.
+   A. SERVICES potrebne pre funkcionalitu OPEN TELEMETRY sa pridavaju volanim METHOD [OpenTelemetryBuilder AddOpenTelemetry(this IServiceCollection Services)].
+   B. OPEN TELEMETRY RESOURCE sa konfiguruje volanim METHOD [OpenTelemetryBuilder OpenTelemetryBuilder.ConfigureResource(Action<ResourceBuilder> Configure)].
+   C. OPEN TELEMETRY METRICS sa konfiguruje volanim METHOD [OpenTelemetryBuilder OpenTelemetryBuilder.WithMetrics(Action<MeterProviderBuilder> Configure)].
+   D. OPEN TELEMETRY TRACING sa konfiguruje volanim METHOD [OpenTelemetryBuilder OpenTelemetryBuilder.WithTracing(Action<TracerProviderBuilder> Configure)].
+   !!! E. V OPEN TELEMETRY METRICS CONFIGURATION je potrebne zaregistrovat CUSTOM METER volanim METHOD [MeterProviderBuilder MeterProviderBuilder.AddMeter(params string[] Names)].
+19. OPEN TELEMETRY OUTPUT je mozne monitorovat pomocou TOOL [dotnet-counters]. Pre TOOL [dotnet-counters] platia nasledujuce fakty.
+   A. TOOL [dotnet-counters] sa instaluje pomocou COMMAND [dotnet tool install --global dotnet-counters].
+   B. TOOL [dotnet-counters] musi byt spusteny po starte PROGRAMU a s ADMIN ACCESS RIGHTS.
+   C. TOOL [dotnet-counters] umoznuje monitoring COUNTERS v NAMESPACE [Microsoft.AspNetCore.Hosting] pomocou COMMAND [dotnet-counters monitor --name RESOURCE_NAME --counters Microsoft.AspNetCore.Hosting], kde VALUE [RESOURCE_NAME] je nazov zaregistrovany volanim METHOD [ResourceBuilder AddService(this ResourceBuilder ResourceBuilder, string ServiceName, string ServiceNamespace, string ServiceVersion, bool AutoGenerateServiceInstanceId, string ServiceInstanceID)]. Prikladom je COMMAND [dotnet-counters monitor --name MyWebProject --counters Microsoft.AspNetCore.Hosting].
+   D. TOOL [dotnet-counters] umoznuje monitoring CUSTOM COUNTERS pomocou COMMAND [dotnet-counters monitor --name RESOURCE_NAME --counters NAMESPACE_1,NAMESPACE_2,...,NAMESPACE_N], kde kde VALUE [RESOURCE_NAME] je nazov zaregistrovany volanim METHOD [ResourceBuilder AddService(this ResourceBuilder ResourceBuilder, string ServiceName, string ServiceNamespace, string ServiceVersion, bool AutoGenerateServiceInstanceId, string ServiceInstanceID)] a VALUES [NAMESPACE_X] su nazvy NAMESPACES, ktore maju byt monitorovane. Prikladom je COMMAND [dotnet-counters monitor --name MyWebProject --counters MyWebProject.Observability], alebo COMMAND [dotnet-counters monitor --name MyWebProject --counters MyWebProject.Observability,Microsoft.AspNetCore.Hosting].
+20. PROMETHEUS je OPEN SOURCE MONITORING TOOL. Pre PROMETHEUS platia nasledujuce fakty.
+   A. PROMETHEUS vykonava zber METRICS z rozlicnych SOURCES ako su napriklad PROGRAMS, OPERATING SYSTEMS, ci DATABASES.
+   B. PROMETHEUS definuje QUERY LANGUAGE, ktorym je mozne vykonavat QUERIES nad zozbieranymi METRICS.
+   C. PROMETHEUS vystavuje WEB DASHBOARD na zobrazenie METRICS.
+   D. PROMETHEUS je TOOL, ktory je nutne stiahnut z WEB [https://prometheus.io/download/].
+   E. PROMETHEUS definuje OPEN TELEMETRY EXPORTER v PACKAGE [OpenTelemetry.Exporter.Prometheus.AspNetCore].
+   F. PROMETHEUS OPEN TELEMETRY EXPORTER sa pridava volanim METHOD [MeterProviderBuilder AddPrometheusExporter(this MeterProviderBuilder Builder)].
+   !!! G. PROMETHEUS vyzaduje aby WEB PROGRAM vystavil ENDPOINT cez ktory moze PROMETHEUS zbierat METRICS. ENDPOINT sa vystavuje volanim METHOD [IEndpointConventionBuilder MapPrometheusScrapingEndpoint(this IEndpointRouteBuilder Endpoints)] a ENDPOINT je BY-DEFAULT vystaveny na RELATIVE URL [/metrics].
+   H. PROMETHEUS BY-DEFAULT vystavuje DASHBOARD na URL [http://localhost:9090].
+21. PROMETHEUS TOOL je nutne nakonfigurovat, aby zbieral data z WEB PROGRAM. Platia nasledujuce fakty.
+   A. PROMETHEUS TOOL sa nastavuje vo FILE [prometheus.yml], ktory je v rovnakom DIRECTORY ako PROGRAM [prometheus.exe].
+   B. Do FILE [prometheus.yml] sa musi pridat CUSTOM CONFIGURATION do SECTION [scrape_configs]. CUSTOM CONFIGURATION musi obsahovat nasledujuce SETTINGS.
+      A. CONFIGURATION [job_name], ktora obsahuje nazov zaregistrovany vo WEB PROGRAME volanim METHOD [ResourceBuilder AddService(this ResourceBuilder ResourceBuilder, string ServiceName, string ServiceNamespace, string ServiceVersion, bool AutoGenerateServiceInstanceId, string ServiceInstanceID)]. Prikladom je COMMAND [dotnet-counters monitor --name MyWebProject --counters Microsoft.AspNetCore.Hosting].
+      B. CONFIGURATION [scrape_interval] obsahuje SCRAPE INTERVAL.
+      C. CONFIGURATION [scheme] obsahuje typ HTTP SCHEME.
+      D. CONFIGURATION [static_configs.targets] obsahuje URL na WEB PROGRAM, ktory vystavuje ENDPOINT na RELATIVE URL [/metrics].
+      E. CONFIGURATION [labels.app] obsahuje LABEL daneho WEB PROGRAM na zaklade, ktoreho je mozne vyhladavat METRICS.
+22. GRAFANA je OPEN SOURCE ANALYTICS a DASHBOARDING TOOL. Pre GRAFANA platia nasledujuce fakty.
+   A. GRAFANA moze vizualizovat METRICS z rozlicnych SOURCES, ako je napriklad PROMETHEUS, ELASTICSEARCH ci AZURE MONITOR.
+   B. GRAFANA umoznuje vytvarat DASHBOARDS obsahujuce rozlicne METRICS.
+   C. GRAFANA je TOOL, ktory je nutne stiahnut z WEB [https://grafana.com/oss/grafana/].
+   D. GRAFANA BY-DEFAULT vystavuje WEB INTERFACE na URL [http://localhost:3000]. DEFAULT CREDENTIALS je USER NAME [admin] PASSWORD [admin].
+   E. V GRAFANA je nutne vytvorit CONNECTION na PROMETHEUS.
+   F. GRAFANA SERVER je implementovany vo FILE [grafana-server.exe].
+23. ASP.NET umoznuje TRACING. Pre TRACING platia nasledujuce fakty.
+   A. TRACING sa pouziva na monitorovanie volani viacerych SERVICES z WEB SERVICES, co je typicky PATTERN pouzivany pri MICROSERVICE ARCHITECTURE.
+   B. TRACING monitoruje volanie jednotlivych SERVICES a umoznuje ziskat informacie o priebehu WORKFLOW.
+   C. TRACING definuje koncept SPAN. Pre SPAN platia nasledujuce fakty.
+      A. SPAN je UNIT OF WORK v TRACING.
+      B. SPAN zahrna volanie inej SERVICE v ramci jedneho WORKFLOW.
+      !!! C. Viacero SPANS, ktore sa podielaju na vykonavani jedneho lgickeho WORKFLOW sa nazyvaju TRACE. TRACE je teda COLLECTION SPANS.
+      D. TRACE ma unikatny ID, rovnako ako kazdy SPAN v ramci daneho TRACE ma vlastny unikatny ID.
+   D. TRACING sa v OPEN TELEMETRY konfiguruje volanim METHOD [OpenTelemetryBuilder OpenTelemetryBuilder.WithTracing(Action<TracerProviderBuilder> Configure)].
+   !!! E. TRACING pre OPEN TELEMETRY MUSI byt povoleny vo vsetkych SERVICES, ktore dany TRACE vola volanim METHOD [OpenTelemetryBuilder OpenTelemetryBuilder.WithTracing(Action<TracerProviderBuilder> Configure)]. Zaroven musi byt povoleny EXPORT do PROTOCOL OTLP volanim METHOD [TracerProviderBuilder AddOtlpExporter(this TracerProviderBuilder Builder)].
+24. JAEGER je OPEN SOURCE TRACKING TOOL. Pre JAEGER platia nasledujuce fakty.
+   A. JAEGER zaznamenava a vizualizuje TRACES a SPANS a umoznuje MONITORING a TROUBLESHOOTING DISTRIBUTED WORKFLOWS.
+   B. JAEGER zachytava TRACES z OPEN TELEMETRY a dokaze ich spracovat a vizualizovat.
+   C. JAEGER je TOOL, ktory je nutne stiahnut z WEB [https://www.jaegertracing.io/download/].
+   D. JAEGER je implementovany vo FILE [jaeger.exe].
+   E. JAEGER COLLECTOR zodpovedny za zber TRACES vystavuje GPRC ENDPOINT na URL [localhost:4317] a HTTP ENDPOINT na URL [localhost:4318].
+   !!! F. JAEGER zaznamena TRACES iba ak vo WEB PROGRAMS je povoleny TRACING EXPORT do PROTOCOLU OTLP volanim METHOD [TracerProviderBuilder AddOtlpExporter(this TracerProviderBuilder Builder)].
+   F. JAEGER vystavuje svoje WEB UI na URL [http://localhost:16686/].
+25. ASP.NET umoznuje HTTP LOGGING. Pre HTTP LOGGING platia nasledujuce fakty.
+   A. HTTP LOGGING umoznuje LOGGING kompletnych HTTP REQUEST MESSAGES a HTTP RESPONSE MESSAGES.
+   B. SERVICES potrebne pre vykonanie HTTP LOGGING sa pridavaju volanim METHOD [IServiceCollection AddHttpLogging(this IServiceCollection Services, Action<HttpLoggingOptions> ConfigureOptions)].
+   !!! C. PROPERTY [HttpLoggingFields HttpLoggingOptions.LoggingFields] umoznuje definovat, ktore FIELDS HTTP REQUEST MESSAGES a HTTP RESPONSE MESSAGES budu LOGGED.
+   D. Pre realizaciu HTTP LOGGING je potrebne do ASP.NET PIPELINE vlozit HTTP LOGGING MIDDLEWARE COMPONENT volanim METHOD [IApplicationBuilder UseHttpLogging(this IApplicationBuilder App)].
+   E. V CONFIGURATION FILE [appsettings.json] je nutne povolit LOGGING pre NAMESPACE [Microsoft.AspNetCore.HttpLogging.HttpLoggingMiddleware].
+26. OPEN TELEMETRY podporuje OBSERVABILITY aj pre AZURE APPLICATION INSIGHTS. Pre AZURE APPLICATION INSIGHTS platia nasledujuce fakty.
+   A. AZURE APPLICATION INSIGHTS je EXTENSIBLE APPLICATION PERFORMANCE MANAGEMENT (APM) SERVICE pre MONITORING PROGRAMS.
+   B. AZURE APPLICATION INSIGHTS umoznuje zber a analyzu LOGS, METRICS a TRACES z rozlicnych SOURCES.
+   C. AZURE APPLICATION INSIGHTS OPEN TELEMETRY LIBRARY sa nachadza v PACKAGE [Azure.Monitor.OpenTelemetry.AspNetCore].
+   D. AZURE APPLICATION INSIGHTS vyzaduje vytvorenie nasledujucich RESOURCES.
+      A. AZURE APPLICATION INSIGHTS WORKSPACE.
+      B. AZURE APPLICATION INSIGHTS COMPONENT.
+27. S AZURE APPLICATION INSIGHTS WORKSPACES sa pracuje pomocou nasledujucich COMMANDS.
+   A. AZURE APPLICATION INSIGHTS WORKSPACE sa vytvara pomocou COMMAND [az monitor log-analytics workspace create]. Prikladom je COMMAND [az monitor log-analytics workspace create --workspace-name MyWorkspaceTA76 --resource-group Chapter16 --location centralus].
+   B. AZURE APPLICATION INSIGHTS WORKSPACE sa odstranuje pomocou COMMAND [az monitor log-analytics workspace delete]. Prikladom je COMMAND [az monitor log-analytics workspace delete --workspace-name MyWorkspaceTA76 --resource-group Chapter16].
+   C. Zoznam AZURE APPLICATION INSIGHTS WORKSPACES vracia COMMAND [az monitor log-analytics workspace list]. Prikladom je COMMAND [az monitor log-analytics workspace list --resource-group Chapter16].
+28. S AZURE APPLICATION INSIGHTS COMPONENTS sa pracuje pomocou nasledujucich COMMANDS.
+   A. AZURE APPLICATION INSIGHTS COMPONENT sa vytvara pomocou COMMAND [az monitor app-insights component create]. Prikladom je COMMAND [az monitor app-insights component create --app MyAppTA76 --workspace MyWorkspaceTA76 --resource-group Chapter16 --location centralus].
+   B. AZURE APPLICATION INSIGHTS COMPONENT sa odstranuje pomocou COMMAND [az monitor app-insights component delete]. Prikladom je COMMAND [az monitor app-insights component delete --app MyAppTA76 --resource-group Chapter16].
+   C. Detaily o AZURE APPLICATION INSIGHTS COMPONENT vracia COMMAND [az monitor app-insights component show]. Prikladom je COMMAND [az monitor app-insights component show --app MyAppTA76 --resource-group Chapter16].
+29. Pouzitie AZURE APPLICATION INSIGHTS v PROGRAMOCH sa realzuje v nasledujucich krokoch.
+   A. Vytvori sa AZURE APPLICATION INSIGHTS WORKSPACE pomocou COMMAND [az monitor log-analytics workspace create]. Prikladom je COMMAND [az monitor log-analytics workspace create --workspace-name MyWorkspaceTA76 --resource-group Chapter16 --location centralus].
+   B. Vytvori sa AZURE APPLICATION INSIGHTS COMPONENT pomocou COMMAND [az monitor app-insights component create]. Prikladom je COMMAND [az monitor app-insights component create --app MyAppTA76 --workspace MyWorkspaceTA76 --resource-group Chapter16 --location centralus].
+   C. Ziska sa CONNECTION STRING z PROPERTY [connectionString], ktoru vracia COMMAND [az monitor app-insights component show]. Prikladom je COMMAND [az monitor app-insights component show --app MyAppTA76 --resource-group Chapter16].
+   D. Ziskany CONNECTION STRING sa vlozi do KEY [APPLICATIONINSIGHTS_CONNECTION_STRING] v CONFIGURATION FILE [appsettings.json], kazdeho PROGRAMU, ktory ma zapisovat LOGS, METRICS a TRACES do AZURE APPLICATION INSIGHTS.
+   E. OPEN TELEMETRY sa nakonfiguruje pre pouzitie AZURE APPLICATION INSIGHTS volanim METHOD [OpenTelemetryBuilder UseAzureMonitor(this OpenTelemetryBuilder Builder)].
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+Priklad konfiguracie FILE [prometheus.yml].
+
+scrape_configs:
+  - job_name: "MyWebProject"
+    scrape_interval: 5s
+    scheme: https
+    static_configs:
+      - targets: ["localhost:7000"]
+        labels:
+          app: "MyWebProject"
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+AZURE CLI COMMANDS - AZURE APPLICATION INSIGHTS WORKSPACES.
+
+1. COMMAND [az monitor log-analytics workspace create --workspace-name WORKSPACE_NAME --resource-group RESOURCE_GROUP_NAME --location LOCATION_NAME].
+   A. COMMAND vytvara novy AZURE APPLICATION INSIGHTS WORKSPACE.
+   B. OPTION [--workspace-name WORKSPACE_NAME] vo VALUE [WORKSPACE_NAME] obsahuje nazov AZURE APPLICATION INSIGHTS WORKSPACE.
+   C. OPTION [--resource-group RESOURCE_GROUP_NAME] vo VALUE [RESOURCE_GROUP_NAME] urcuje RESOURCE GROUP NAME.
+   D. OPTION [--location LOCATION_NAME] vo VALUE [LOCATION_NAME] urcuje nazov LOCATION.
+2. COMMAND [az monitor log-analytics workspace delete --workspace-name WORKSPACE_NAME --resource-group RESOURCE_GROUP_NAME].
+   A. COMMAND odstranuje existujuci AZURE APPLICATION INSIGHTS WORKSPACE.
+   B. OPTION [--workspace-name WORKSPACE_NAME] vo VALUE [WORKSPACE_NAME] obsahuje nazov AZURE APPLICATION INSIGHTS WORKSPACE.
+   C. OPTION [--resource-group RESOURCE_GROUP_NAME] vo VALUE [RESOURCE_GROUP_NAME] urcuje RESOURCE GROUP NAME.
+3. COMMAND [az monitor log-analytics workspace list --resource-group RESOURCE_GROUP_NAME].
+   A. COMMAND vracia zoznam existujucich AZURE APPLICATION INSIGHTS WORKSPACES.
+   B. OPTION [--resource-group RESOURCE_GROUP_NAME] vo VALUE [RESOURCE_GROUP_NAME] urcuje RESOURCE GROUP NAME.
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+AZURE CLI COMMANDS - AZURE APPLICATION INSIGHTS COMPONENTS.
+
+1. COMMAND [az monitor app-insights component create --app APPLICATION_NAME --workspace WORKSPACE_NAME --resource-group RESOURCE_GROUP_NAME --location LOCATION_NAME].
+   A. COMMAND vytvara novy AZURE APPLICATION INSIGHTS COMPONENT.
+   B. OPTION [--app APPLICATION_NAME] vo VALUE [APPLICATION_NAME] obsahuje nazov AZURE APPLICATION INSIGHTS COMPONENT (PROGRAMU).
+   C. OPTION [--workspace-name WORKSPACE_NAME] vo VALUE [WORKSPACE_NAME] obsahuje nazov AZURE APPLICATION INSIGHTS WORKSPACE.
+   D. OPTION [--resource-group RESOURCE_GROUP_NAME] vo VALUE [RESOURCE_GROUP_NAME] urcuje RESOURCE GROUP NAME.
+   E. OPTION [--location LOCATION_NAME] vo VALUE [LOCATION_NAME] urcuje nazov LOCATION.
+2. COMMAND [az monitor app-insights component delete --app APPLICATION_NAME --resource-group RESOURCE_GROUP_NAME].
+   A. COMMAND odstranuje existujuci AZURE APPLICATION INSIGHTS COMPONENT.
+   B. OPTION [--app APPLICATION_NAME] vo VALUE [APPLICATION_NAME] obsahuje nazov AZURE APPLICATION INSIGHTS COMPONENT (PROGRAMU).
+   C. OPTION [--resource-group RESOURCE_GROUP_NAME] vo VALUE [RESOURCE_GROUP_NAME] urcuje RESOURCE GROUP NAME.
+3. COMMAND [az monitor app-insights component show --app APPLICATION_NAME --resource-group RESOURCE_GROUP_NAME].
+   A. COMMAND vracia detaily danej AZURE APPLICATION INSIGHTS COMPONENT.
+   B. OPTION [--app APPLICATION_NAME] vo VALUE [APPLICATION_NAME] obsahuje nazov AZURE APPLICATION INSIGHTS COMPONENT (PROGRAMU).
+   C. OPTION [--resource-group RESOURCE_GROUP_NAME] vo VALUE [RESOURCE_GROUP_NAME] urcuje RESOURCE GROUP NAME.
+//----------------------------------------------------------------------------------------------------------------------

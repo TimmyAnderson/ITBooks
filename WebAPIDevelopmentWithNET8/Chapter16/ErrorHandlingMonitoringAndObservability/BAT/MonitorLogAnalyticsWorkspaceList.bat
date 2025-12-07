@@ -1,0 +1,1 @@
+az monitor log-analytics workspace list --resource-group Chapter16
