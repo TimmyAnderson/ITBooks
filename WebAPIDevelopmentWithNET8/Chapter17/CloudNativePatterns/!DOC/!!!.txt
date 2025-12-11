@@ -1,0 +1,228 @@
+//----------------------------------------------------------------------------------------------------------------------
+1. Solution demonstruje CLOUD NATIVE PATTERNS.
+2. DOMAIN DRIVEN DESIGN je PATTERN, ktory je zamerany na DOMAIN a DOMAIN LOGIC, ktoru potrebuje PROGRAM riesit. Pre DOMAIN DRIVEN DESIGN platia nasledujuce fakty.
+   A. Centrom DOMAIN DRIVEN DESIGN je DOMAIN, ktoru PROGRAM implementuje a DOMAIN LOGIC, ktoru PROGRAM potrebuje riesit.
+   B. DOMAIN DRIVEN DESIGN je nastaveny tak, aby bola mozna dobra interakcia s DOMAIN EXPERTS, ktori nie su programatori, no rozumej DOMAIN, ktoru ma dany PROGRAM riesit.
+   C. DOMAIN MODEL je CONCEPTUAL MODEL tej DOMAIN, ktoru ma PROGRAM riesit.
+   D. V DOMAIN DRIVEN DESIGN je klucove pouzivat DOMAIN LANGUAGE. To znamena, ze nielen pri komunikacii s DOMAIN EXPERTS by sa mali pouzivat TERMS z danej DOMAIN, ale tieto TERMS by mal aj definovat nazvy CLASSES, INTERFACES, FIELDS, PROPERTIES ci METHODS, aby boli zrozumitelne.
+   E. V DOMAIN DRIVEN DESIGN sa pouziva koncept BOUNDED CONTEXT, co je BOUNDARY, ktora definuje DOMAIN MODEL a urcuje oblast zodpovednosti v ramci celeho PROGRAMU.
+   F. DOMAIN DRIVEN DESIGN nie je zavisly na ziadne konkretnej technologii ci PROGRAMMING LANGUAGE.
+4. DOMAIN DRIVEN DESIGN predpoklada existenciu nasledujucich LAYERS.
+   A. PRESENTATION LAYER. PRESENTATION LAYER je zodpovedny interakciu s USERS. To znamena, ze je zodpovedny za zber USER INPUTS a zobrazenie USER OUTPUTS danym USERS.
+   B. APPLICATION LAYER. APPLICATION LAYER je zodpovedny za koordinaciu cinnosti v ramci jednotlivych LAYERS. APPLICATION LAYER dostava INPUT z PRESENTATION LAYER a s vyuzitim BUSINESS LOGIC implementovanej v APPLICATION LAYER a RESOURCES ako su DATABASES v INFRASTRUCTURE LAYER vykonava cinnost PROGRAMU, aby vysledky vrati spat USERS.
+   C. DOMAIN LAYER. DOMAIN LAYER obsahuje DOMAIN MODEL a riesi BUSINESS LOGIC daneho PROGRAMU. Je uplne nezavisly na ostatnych LAYERS. To znamena, ze by nemal mat vedomost napriklad do akej DATABASE su data v INFRASTRUCTURE LAYER ukladane. Pristup k INFRASTRUCTURE LAYER RESOURCES by mal mat iba prostrednictvom INTERFACES.
+   D. INFRASTRUCTURE LAYER. INFRASTRUCTURE LAYER je zodpovedny za poskytovanie pristupu k rozlicnych RESOURCES, ako su DATABASES, FILE SYSTEM, ine SERVICES, MESSAGE QUEUES ci LOG SYSTEMS.
+5. DOMAIN DRIVEN DESIGN definuje nasledujuce BUILDING BLOCKS.
+   A. ENTITY. Pre ENTITY platia nasledujuce fakty.
+      A. ENTITY predstavuje OBJECT, ktory ma priradenu jedinecnu IDENTITY.
+      B. ENTITY sa spravidla mapuje priamo na DATABASE TABLE.
+      C. ENTITY IDENTITY je NEMENNA. Po vytvoreni ENTITY sa ENTITY IDENTITY sa nesmie zmenit.
+      D. ENTITY IDENTITY moze byt bud 1 FIELD spravidla pomenovany ako ID, alebo ENTITY IDENTITY moze byt komplexny, tvoreny viacerymi FIELDS.
+      E. Ak viacero ENTITIES maju tie iste PROPERTY VALUES, ale maju rozlicne ENTITY IDENTITIES, tak su povazovane za rozlicne ENTITIES.
+   B. VALUE OBJECT. Pre VALUE OBJECT platia nasledujuce fakty.
+      A. VALUE OBJECT je OBJECT, ktoreho FIELDS su IMMUTABLE.
+      B. VALUE OBJECT vystavuje FIELDS vo forme READ-ONLY PROPERTIES.
+      C. VALUE OBJECT nema definovanu IDENTITY.
+      D. Ak viacero VALUE OBJECTS maju tie iste PROPERTY VALUES, tak su povazovane za identicke VALUE OBJECTS.
+   C. AGGREGATE. Pre AGGREGATE platia nasledujuce fakty.
+      A. AGGREGATE je mnozina OBJECTS, vratane ENTITIES a VALUE OBJECTS, ktore su povazovane za jeden uceleny logicky OBJECT.
+      B. AGGREGATE ma ROOT OBJECT, ktory obsahuje vsetky ostatne OBJECTS.
+      C. AGGREGATE ROOT OBJECT je jediny OBJECT, ktory pomocou svojich METHODS umoznuje menit stav celeho AGGREGATE. To znamena, ze externe prostredie nema iny pristup k OBJECTS obsiahnutych v ramci AGGREGATE, iba prostrednictvom ROOT OBJECT.
+      D. AGGREGATE ROOT OBJECT je zodpovedny za konzistenciu integritu OBJECTS, ktore pouziva.
+   D. REPOSITORY. Pre REPOSITORY platia nasledujuce fakty.
+      A. REPOSITORY je ABSTRACTION LAYER, ktory sa pouziva pri pristupe PERSISTENT STORAGE, alebo REMOTE SERVICES.
+      B. REPOSITORY obsahuje METHODS umoznujuce vykonavat OPERATIONS nad PERSISTENT STORAGE, alebo REMOTE SERVICES.
+      C. REPOSITORY NIE je zavisly na ziadnej konkretnej TECHNOLOGY, a preto je spravidla implementovany ako INTERFACE.
+      D. REPOSITORY ma svoju IMPLEMENTATION v podobe CLASS, ktora je sucastou INFRASTRUCTURE LAYER. Tato CLASS uz pouziva konkretnu PERSISTENT STORAGE TECHNOLOGY, alebo REMOTE SERVICE TECHNOLOGY.
+   E. DOMAIN SERVICE. Pre DOMAIN SERVICE platia nasledujuce fakty.
+      A. DOMAIN SERVICE je STATELESS SERVICE, ktory obsahuje DOMAIN LOGIC, ktora nepatri ziadnej konkretnej ENTITY ci VALUE OBJECT.
+      B. DOMAIN SERVICE obsahuje komplexnu DOMAIN LOGIC, ktoru je nutne vykonavat nad viacerymi ENTITIES a VALUE OBJECTS.
+      C. DOMAIN SERVICE pri vykonavani svojej cinnosti moze pouzivat REPOSITORIES, pomocou ktorych pristupuje k PERSISTENT STORAGE, alebo REMOTE SERVICES.
+      D. DOMAIN SERVICE REPOSITORIES su do DOMAIN SERVICE vkladane pomocou CONSTRUCTOR DEPENDENCY INJECTION MECHANISM.
+   F. UNIT OF WORK. Pre UNIT OF WORK platia nasledujuce fakty.
+      A. UNIT OF WORK je sekvencia OPERATIONS, ktore sa bud vykonaju kompletne vsetky, alebo sa nevykona ziadna z nich.
+      B. UNIT OF WORK je konceptualne podobna DATABASE TRANSACTIONS, ale netyka sa len DATABASE OPERATIONS, ale aj inych typov OPERATIONS, ako napriklad volanie REMOTE SERVICES.
+      C. UNIT OF WORK, ak obsahuje iba DATABASE OPERATIONS, moze byt implementovana pomocou DATABASE TRANSACTIONS.
+      D. UNIT OF WORK, ak obsahuje kombinaciu DATABASE OPERATIONS a inych OPERATIONS, moze byt implementovana pomocou MESSAGE QUEUES. Pri pouzity MESSAGE QUEUES, je OPERATION vytiahnuta ako MESSAGE z MESSAGE QUEUE, pricom vsak v ako MESSAGE v MESSAGE QUEUE stale ostava. OPERATION sa zacne spracovavat, a az ked cela uspesne skonci, je MESSAGE odstranena z MESSAGE QUEUE, aby sa opatovne nevykonala. Ak OPERATION zlyha, tak moze byt zopakovana opatovnym vytiahnutim MESSAGE z MESSAGE QUEUE.
+   G. APPLICATION SERVICE. Pre APPLICATION SERVICE platia nasledujuce fakty.
+      A. APPLICATION SERVICE je zodpovedny za realizaciu celej logickej DOMAIN OPERATION v PROGRAM.
+      B. APPLICATION SERVICE prijima USER INPUT z PRESENTATION LAYER, vyvolava DOMAN SERVICES na vykonanie DOMAIN OPERATION a vysledky vrati spat do PRESENTATION LAYER.
+      C. APPLICATION SERVICE je vo WEB PROGRAMS predstavuje bud priamo ACTION METHOD v CONTROLLER, alebo pri zlozitejsej DOMAIN OPERATION je vytovrena osobitna SERVICE, ktora sa vklada cez DEPENDENCY INJECTION MECHANISM do CONSTRUCTOR daneho CONTROLLER a CONTROLLER ju nasledne pouziva na vykonanie DOMAIN OPERATION.
+      D. APPLICATION SERVICE je spravidla iba tenky WRAPPER okolo DOMAIN SERVICE.
+      E. APPLICATION SERVICE na komunikaciu s CONTROLLER (ak je APPLICATION SERVICE implementovany ako osobitny SERVICE), alebo na komunikaciu s DOMAIN SERVICES pouziva DATA TRANSFER OBJECTS. DATA TRANSFER OBJECTS su jednoduche OBJECT sluziace na prenos dat, ktore neobsahuju ziadne BUSINESS LOGIC METHODS, iba DATA FIELDS a PROPERTIES.
+      F. Do APPLICATION SERVICE zasle PRESENRATION LAYER USER INPUT vo forme DATA TRANSFER OBJECTS. APPLICATION SERVICE vyuzije DOMAIN SERVICES na vykonanie DOMAIN OPERATIONS, a nasledne vrati RESPONSE vo forme DATA TRANSFER OBJECTS do PRESENTATION LAYER.
+6. CLEAN ARCHITECTURE je SOFTWARE ARCHITECTURE, ktora je orientovana na rozdelenie PROGRAMU do nezavislych LAYERS. Pre CLEAN ARCHITECTURE platia nasledujuce fakty.
+   A. CLEAN ARCHITECTURE rozdeluje PROGRAM na nezavisle LAYERS, ktore vzajomne komunikuju prostrednictvom definovanych INTERFACES.
+   B. CLEAN ARCHITECTURE nie je zavisla na ziadnej konkretnej TECHNOLOGY ci FRAMEWORK.
+   C. CLEAN ARCHITECTURE deli PROGRAMS do nasledujucich LAYERS.
+      A. UI LAYER. Pre UI LAYER platia nasledujuce fakty.
+         A. INFRASTRUCTURE LAYER implementuje USER INTERFACE pre USERS.
+         B. UI LAYER je zavisly na konkretnych TECHNOLOGIES.
+         C. UI LAYER vyuziva APPLICATION CORE AND DOMAIN SERVICES LAYER.
+         D. UI LAYER moze byt nahradeny bez narusenia funkcionality APPLICATION CORE AND DOMAIN SERVICES LAYER.
+      B. INFRASTRUCTURE LAYER. Pre INFRASTRUCTURE LAYER platia nasledujuce fakty.
+         A. INFRASTRUCTURE LAYER implementuje SERVICES, ktore poskytuju pristup k EXTERNAL RESOURCES, ako su napriklad DATABASES ci EXTERNAL WEB SERVICES.
+         B. INFRASTRUCTURE LAYER je zavisly na konkretnych TECHNOLOGIES.
+         C. INFRASTRUCTURE LAYER vyuziva APPLICATION CORE AND DOMAIN SERVICES LAYER.
+         D. INFRASTRUCTURE LAYER moze byt nahradeny bez narusenia funkcionality APPLICATION CORE AND DOMAIN SERVICES LAYER.
+      C. APPLICATION CORE AND DOMAIN SERVICES LAYER. Pre APPLICATION CORE AND DOMAIN SERVICES LAYER platia nasledujuce fakty.
+         A. APPLICATION CORE AND DOMAIN SERVICES LAYER obsahuje ENTITIES a INTERFACES pouzite na implementaciu BUSINESS LOGIC.
+         B. APPLICATION CORE AND DOMAIN SERVICES LAYER obsahuje DOMAIN SERVICES, ktore implementuju INTERFACES implementujuce BUSINESS LOGIC.
+         C. APPLICATION CORE AND DOMAIN SERVICES LAYER je nazavisla na ostatnych LAYERS.
+         D. APPLICATION CORE AND DOMAIN SERVICES LAYER je nezavisla na konkretnej TECHNOLOGY.
+   D. CLEAN ARCHITECTURE je silne zavisla na DEPENDENCY INJECTION a INVERSION OF CONTROL na separaciu jednotlivych LAYERS.
+7. MICROSERVICES je ARCHITECTURE, ktora deli PROGRAM na mensie, nezavisle casti, ktore mozu byt nezavisle vyvijane aj nasadzovane. Pre MICROSERVICES platia nasledujuce fakty.
+   A. MICROSERVICE je mensia cast celeho PROGRAMU, ktora implementuje konkretnu funkcionalitu celeho PROGRAMU.
+   B. MICROSERVICE ma vlastnu DATABASE, ktora je nezavisla na DATABASES inych MICROSERVICES.
+   C. MICROSERVICE vystavuje svoje API cez definovany INTERFACE. Typickym INTERFACE je PROTOCOL HTTP, PROTOCOL GRPC ci MESSAGE QUEUES.
+   D. MICROSERVICE moze byt SCALLED nezavisle na ostatnych MICROSERVICES.
+   E. MICROSERVICE moze byt vyvijany a nasadzovany nezavisle na ostatnych MICROSERVICES.
+   F. MICROSERVICES komunikuju vzajomne cez vystavene API.
+   G. MICROSERVICE PROGRAM maju spravidla GATEWAY SERVICE, ktory sluzi ako koordinator ostatnych SERVICES. GATEWAY SERVICE spravidla nema vlastnu DATABASE a svoju BUSINESS LOGIC realizuje volanim inych MICROSERVICES.
+8. Podstatou COMMAND QUERY RESPONSIBILITY SEGREGATION (CQRS) PATTERN je rozdelenie OPERATIONS nad READ OPERATIONS a WRITE OPERATIONS. Pre COMMAND QUERY RESPONSIBILITY SEGREGATION PATTERN platia nasledujuce fakty.
+   A. COMMAND QUERY RESPONSIBILITY SEGREGATION PATTERN oddeluje od seba READ OPERATIONS a WRITE OPERATIONS, aj ked mozu pristupovat k tomu istemu DATA STORAGE.
+   B. COMMAND QUERY RESPONSIBILITY SEGREGATION PATTERN vychadza z predpokladu, ze READ OPERATIONS a WRITE OPERATIONS vyzaduju ine rozlicny pristup, vratane rozdielnych poziadaviek na optimalizaciu ci SCALING tychto OPERATIONS.
+   C. COMMAND QUERY RESPONSIBILITY SEGREGATION PATTERN oznacuje READ OPERATIONS za QUERIES a WRITE OPERATIONS za COMMANDS.
+   !!! D. COMMAND QUERY RESPONSIBILITY SEGREGATION PATTERN moze viest k tomu, ze READ OPERATIONS a WRITE OPERATIONS su vykonavane nad rozlicnymi DATA STORAGES, kde WRITE DATA STORAGE je pravidelne synchronizovany do READ DATA STORAGE. READ DATA STORAGES moze byt aj viac, kde kazdy READ DATA STORAGE je replika WRITE DATA STORAGE, aby sa zvysila vykonnost READ OPERATIONS.
+9. Pre realizaciu COMMAND QUERY RESPONSIBILITY SEGREGATION je mozne vyuzit MEDIATOR PATTERN. Pre MEDIATOR PATTERN platia nasledujuce fakty.
+   A. MEDIATOR PATTERN umoznuje jednotlivym OBJECTS referovat sa jeden na druhy bez toho, aby sa explicitne na seba referovali pomocou OBJECTS.
+   !!! B. V MEDIATOR PATTERN OBJECTS komunikuju pomocou MEDIATOR OBJECTS, ktore umoznuju separaciu OBJECTS. OBJECTS nekomunikuju navzajom, ale iba prostrednicvom MEDIATOR OBJECTS, ktore maju ulozenu informaciu, ktory OBJECT pre vykonanie danej OPERATION je nutne pouzit.
+   C. MEDIATOR OBJECTS maju pre jednotlive OPERATIONS definovane HANDLERS. HANDLER urcuje, ktore OBJECTS sa maju pouzit pre vykonanie danej OPERATIONS, bez toho, aby CLIENT OBJECT vedel ake SERVER OBJECT budu pouzite.
+10. V .NET je MEDIATOR PATTEN LIBRARY implementovana v PACKAGE [MediatR].
+11. LIBRARY MEDIATR definuje nasledujuce INTERFACES.
+   A. INTERFACE [ISender] sluzi na odosielanie REQUESTS cez MEDIATOR PIPELINE do 1 HANDLER.
+   B. INTERFACE [IPublisher] sluzi na odosielanie REQUESTS cez MEDIATOR PIPELINE do viacerych HANDLERS.
+   C. INTERFACE [IMediator] je univerzany INTERFACE, ktory sluzi na odosielanie odosielanie REQUESTS cez MEDIATOR PIPELINE do jedneho, alebo viacerych HANDLERS.
+   D. INTERFACE [IRequest<TResponse>] sluzi na definiciu REQUEST.
+   E. INTERFACE [IRequestHandler<TRequest,TResponse>] sluzi na implementaciu HANDLERS, ktore vracaju RESPONSE.
+   F. INTERFACE [INotificationHandler<TRequest>] sluzi na implementaciu HANDLERS, ktore nevracaju ziadnu RESPONSE.
+12. QUERY sa v LIBRARY MEDIATR implementuje nasledujucim sposobom.
+   A. Vytvori sa REQUEST CLASS, ktora implementuje INTERFACE [IRequestHandler<TResponse>] a obsahuje vsetky REQUEST PARAMETERS. TYPE PARAMETER [TResponse] obsahuje CLASS, ktorej instanciu bude vraciat dana QUERY.
+   B. Vytvori sa HANDLER CLASS, ktora implementuje INTERFACE [IRequestHandler<TRequest,TResponse>]. TYPE PARAMETER [TRequest] je REQUEST CLASS a TYPE PARAMETER [TResponse] obsahuje CLASS, ktorej instanciu bude vraciat dana QUERY.
+13. COMMAND sa v LIBRARY MEDIATR implementuje nasledujucim sposobom.
+   A. Vytvori sa REQUEST CLASS, ktora implementuje INTERFACE [IRequestHandler<TResponse>] a obsahuje vsetky REQUEST PARAMETERS. TYPE PARAMETER [TResponse] obsahuje CLASS, ktorej instanciu bude vraciat dany COMMAND.
+   B. Vytvori sa HANDLER CLASS, ktora implementuje INTERFACE [IRequestHandler<TRequest,TResponse>]. TYPE PARAMETER [TRequest] je REQUEST CLASS a TYPE PARAMETER [TResponse] obsahuje CLASS, ktorej instanciu bude vraciat dany COMMAND.
+14. NOTIFICATION sa v LIBRARY MEDIATR implementuje nasledujucim sposobom.
+   A. Vytvori sa NOTIFICATION CLASS, ktora implementuje INTERFACE [INotification] a obsahuje vsetky REQUEST PARAMETERS.
+   B. Vytvori sa HANDLER CLASS, ktora implementuje INTERFACE [INotificationHandler<TNotification>]. TYPE PARAMETER [TNotification] je NOTIFICATION CLASS.
+15. MEDIATR HANDLERS sa pridavaju do DEPENDENCY INJECTION CONTAINER volanim METHOD [IServiceCollection AddMediatR(this IServiceCollection Services, Action<MediatRServiceConfiguration> Configuration)].
+16. PUBLISHER SUBSCRIBER PATTERN umoznuje ASYNCHRONOUS COMMUNICATION medzi SERVICES. Pre PUBLISHER SUBSCRIBER PATTERN platia nasledujuce fakty.
+   A. PUBLISHER SUBSCRIBER PATTERN pozorovava z nasledujucich COMPONENTS.
+      A. PUBLISHER SERVICES. PUBLISHER SERVICES su CLIENT SERVICES, ktore potrebuju volat SERVER SERVICES. PUBLISHER SERVICES odosielaju do SUBSCRIBER SERVICES MESSAGES prostrednictvom MESSAGE BROKER SERVICE.
+      B. SUBSCRIBER SERVICES. SUBSCRIBER SERVICES su SERVER SERVICES, ktore spracuvaju MESSAGES odoslane z PUBLISHER SERVICES a prenesene pomocou MESSAGE BROKER SERVICE.
+      C. MESSAGE BROKER SERVICE. MESSAGE BROKER SERVICE je zodpovedny za distribuciu MESSAGES medzi PUBLISHER SERVICES a SUBSCRIBER SERVICES.
+   B. Komunikacia medzi PUBLISHER SERVICES a SUBSCRIBER SERVICES prebieha pomocou vymeny MESSAGES, kde PUBLISHER SERVICES odisielaju MESSAGES, ktore SUBSCRIBER SERVICES spracuvaju.
+   C. PUBLISHER SUBSCRIBER PATTERN umoznuje od seba oddelit PUBLISHER SERVICES a SUBSCRIBER SERVICES.
+   D. V PUBLISHER SUBSCRIBER PATTERN je MESSAGE BROKER zodpovedny za distribuciu MESSAGES z PUBLISHER SERVICES do SUBSCRIBER SERVICES ASYNCHRONNYM sposobom.
+   E. PUBLISHER SUBSCRIBER PATTERN podporuje ASYNCHRONNU komunikaciu medzi SERVICES.
+   F. PUBLISHER SUBSCRIBER PATTERN umoznuje DECOUPLING medzi PUBLISHER SERVICES a SUBSCRIBER SERVICES.
+   G. PUBLISHER SUBSCRIBER PATTERN umoznuje nielen komunikaciu 1:1, ale aj BROADCASTING MESSAGES na viacero SUBSCRIBER SERVICES, co umoznuje komunikaciu typu 1:N.
+17. PUBLISHER SUBSCRIBER PATTERN moze byt implementovany pomocou nasledujucich MESSAGE BROKER SERVICES.
+   A. RABBITMQ. RABBITMQ je OPEN SOURCE CROSS PLATFORM MESSAGE BROKER, ktory je LIGHTWEIGHT a moze byt DEPLOYED do CLOUD. RABBITMQ moze byt pouzity na implementaciu MESSAGE BROKER SERVICE.
+   B. REDIS. REDIS je OPEN SOURCE IN MEMORY STORAGE. REDIS moze byt pouzity na implementaciu MESSAGE BROKER SERVICE.
+   C. APACHE KAFKA. APACHE KAFKA je OPEN SOURCE DISTRIBUTED EVENT STREAMING PLATFORM. APACHE KAFKA podporuje DURABLE a RELIABLE ukladanie MESSAGES. Podporuje aj FAULT TOLERANCE a SECURITY. APACHE KAFKA moze byt pouzity na implementaciu MESSAGE BROKER SERVICE.
+   D. AZURE SERVICE BUS. AZURE SERVICE BUS CLOUD MESSAGE BROKER SERVICE, ktory bezi ako sucast AZURE. AZURE SERVICE BUS moze byt pouzity na implementaciu MESSAGE BROKER SERVICE.
+18. BACKEND FOR FRONTENDS PATTERN je PATTERN, ktory riesi problem, ak k tomu istemu BACKEND pristupuju viacere typy CLIENTS (DESKTOP, WEB, MOBILE), ktore maju rozlicne poziadavky na DATA, ktore potrebuju zobrazit. BACKEND FOR FRONTENDS PATTERN platia nasledujuce fakty.
+   A. BACKEND FOR FRONTENDS PATTERN predpoklada vytvorenie specialneho BACKEND SERVICE pre kazdy FRONTEND CLIENT, ktoreho ulohou je nacitavat data z ostatnych BACKEND SERVICES a poskytovat data vo formate vhodnom pre daneho FRONTEND CLIENT.
+   B. BACKEND SERVICES pre FRONTEND CLIENTS su spravidla LIGHTWEIGHT SERVICES, ktore by nemali obsahovat ziadnu BUSINESS logiku, ale iba logiku suvisiacu so zozbieranim a pripravou dat pre prislusny FRONTEND CLIENT.
+   C. BACKEND SERVICES pre FRONTEND CLIENTS umoznuju oddelenie BACKEND SERVICES od FRONTEND CLIENTS. To znamena, ze BACKEND SERVICES nemusia riesit specificku logiku potrebu pre prislusny CLIENT, pretoze to riesia BACKEND SERVICES pre FRONTEND CLIENTS.
+19. RESILIENCE PATTERNS su PATTERNS zabezpecujuce RESILIENCE a RELIABILIY WEB PROGRAMS. Pre RESILIENCE PATTERNS platia nasledujuce fakty.
+   A. RESILIENCE PATTERNS riesia problem WEB PROGRAMS, kde jednotlive SERVICES mozu byt docasne nedostupne, komunikacia s nimi moze zlyhat, SERVICES mozu byt pretazene v danom momente. Vypadok komunikacia so SERVICES sposobi nefunkcnost WEB PROGRAM.
+   B. RESILIENCE PATTERNS riesia nasledujuce problemy.
+      A. NETWORK LATENCY.
+      B. TRANSIENT FAILURES WEB SERVICES a NETWORK.
+      C. SERVICE UNAVAILABILITY.
+      D. HIGH TRAFFIC.
+   C. RESILIENCE PATTERNS riesia problemy WEB PROGRAMS nasledujucimi sposobmi..
+      A. Pouzitim RATE LIMITING.
+      B. Pouzitim RETRY POLICIES.
+      C. Pouzitim TIMEOUTS.
+      D. Pouzitim CIRCUIT BREAKERS.
+20. LIBRARY POLLY je .NET LIBRARY, ktora riesi RESILIENCE PATTERNS. Pre LIBRARY POLLY platia nasledujuce fakty.
+   A. LIBRARY POLLY je implementovana v PACKAGE [Polly.Core].
+   B. LIBRARY POLLY EXTENSIONS je implementovana v PACKAGE [Polly.Extensions].
+   C. LIBRARY POLLY umoznuje vyskladat pomocou CLASS [ResiliencePipelineBuilder] RESILIENCE PIPELINE, v ktorej je mozne nastavit rozne RESILIENCE POLICIES, ktore riesia konkretne problemy, ktore riesi RESILIENCE PATTERNS.
+21. LIBRARY POLLY je mozne pouzit na stanovenie maximalneho TIMEOUT pocas ktoreho sa ASYNCHRONOUS OPERATION ma vykonat. Pre implementaciu maximalneho TIMEOUT pomocou LIBRARY POLLY platia nasledujuce fakty.
+   A. LIBRARY POLLY umoznuje definovany maximalny TIMEOUT pre lubovolnu ASYCHRONOUS OPERATION.
+   B. LIBRARY POLLY implementuje TIMEOUT tak, ze pre realizaciu ASYCHRONOUS OPERATION umoznuje definovat vlastnu CALLBACK METHOD, ktora ma ako instanciu STRUCTURE [CancellationToken].
+   !!! C. CALLBACK METHOD je pri volanie ASYNCHRONOUS METHODS povinna pouzit instanciu STRUCTURE [CancellationToken] ako CANCELLATION TOKEN.
+   D. Po expirovani definovaneho TIMEOUT je instancia STRUCTURE [CancellationToken] je nastavena do CANCELLED STATE, cim sa vykonavana ASYNCHRONOUS OPERATION automaticky ukonci hodim EXCEPTION.
+   E. LIBRARY POLLY umoznuje definovanie maximalneho TIMEOUT nasledujucimi sposobmi.
+      A. Maximalny TIMEOUT pre vykonanie OPERATION pomocou MANUALNEHO vytvorenia POLLY PIPELINE sa realizuje v nasledujucich krokoch.
+         A. Vytvori sa instancia CLASS [ResiliencePipelineBuilder].
+         B. Volanim METHOD [TBuilder AddTimeout<TBuilder>(this TBuilder Builder, TimeSpan Timeout)] sa definuje maximalny TIMEOUT na vykonanie ASYNCHRONOUS OPERATION.
+         C. Volanim METHOD [ResiliencePipeline ResiliencePipelineBuilder.Build()] sa vytvori POLLY PIPELINE.
+         !!! D. CODE, ktory ma byt chraneny maximalnym TIMEOUT sa vola pomocou METHOD [ValueTask ResiliencePipeline.ExecuteAsync(Func<CancellationToken,ValueTask> Callback, CancellationToken CancellationToken)]. METHOD ma PARAMETER TYPE [CancellationToken], ktory je nastaveny, ked POLLY LIBRARY detekuje pretecenie maximalneho TIMEOUT.
+         !!!!! E. CALLBACK METHOD volana METHOD [ValueTask ResiliencePipeline.ExecuteAsync(Func<CancellationToken,ValueTask> Callback, CancellationToken CancellationToken)] MUSI pri realizacii ASYNCHRONOUS OPERATIONS pouzit instanciu STRUCTURE [CancellationToken], aby ta bola CANCELLED pri preteceni maximalneho TIMEOUT.
+      B. Maximalny TIMEOUT pre vykonanie OPERATION pomocou predkonfigurovanej POLLY PIPELINE sa realizuje v nasledujucich krokoch.
+         A. Volanim METHOD [IServiceCollection AddResiliencePipeline<TKey>(this IServiceCollection Services, TKey Key, Action<ResiliencePipelineBuilder> Configure)] sa vytvori preddefinovana CONFIGURATION POLLY PIPELINE.
+         B. Do CONTROLLER sa cez DEPENDENCY INJECTION vlozi instancia CLASS [ResiliencePipelineProvider<TKey>], ktora sluzi na vytvaranie preddefinovanych POLLY PIPELINES.
+         C. Volanim METHOD [ResiliencePipeline ResiliencePipelineProvider<TKey>.GetPipeline(TKey Key)] sa vytvori POLLY PIPELINE, z CONFIGURATION, ktora bola vytvorena v CONFIGURATION PROGRAMU.
+         !!! C. CODE, ktory ma byt chraneny maximalnym TIMEOUT sa vola pomocou METHOD [ValueTask ResiliencePipeline.ExecuteAsync(Func<CancellationToken,ValueTask> Callback, CancellationToken CancellationToken)]. METHOD ma PARAMETER TYPE [CancellationToken], ktory je nastaveny, ked POLLY LIBRARY detekuje pretecenie maximalneho TIMEOUT.
+         !!!!! D. CALLBACK METHOD volana METHOD [ValueTask ResiliencePipeline.ExecuteAsync(Func<CancellationToken,ValueTask> Callback, CancellationToken CancellationToken)] MUSI pri realizacii ASYNCHRONOUS OPERATIONS pouzit instanciu STRUCTURE [CancellationToken], aby ta bola CANCELLED pri preteceni maximalneho TIMEOUT.
+22. STANDARD MIDDLEWARE COMPONENT [RateLimiter] umoznuje limitovat pocet HTTP REQUEST MESSAGES na PROGRAM. MIDDLEWARE COMPONENT [RateLimiter] sa pouziva nasledujucim sposobom.
+   A. Do DEPENDENCY INJECTION CONTAINER sa pridaju SERVICES potrebne pre beh MIDDLEWARE COMPONENT [RateLimiter] volanim METHOD [IServiceCollection AddRateLimiter(this IServiceCollection Services, Action<RateLimiterOptions> ConfigureOptions)]. Pomocou PARAMETER [Action<RateLimiterOptions> ConfigureOptions] sa nakonfiguruju RATE LIMITING POLICIES, ktore sa maju aplikovat na jednotlive URLs.
+   B. Do REQUEST PIPELINE sa prida STANDARD MIDDLEWARE COMPONENT [RateLimiter] volanim METHOD [IApplicationBuilder UseRateLimiter(this IApplicationBuilder Application)].
+   C. Na ACTION METHOD sa aplikuje RATE LIMITING POLICY, ktora bola vytvorena pri registracii SERVICES pomocou ATTRIBUTE [EnableRateLimiting].
+   !!!!! D. Ak je LIMIT RATE LIMITER prekroceny, RATE LIMITER drzi REQUESTS v QUEUE a umozni ich vykonanie az po uplynuti casoveho LIMITU.
+23. LIBRARY POLLY je mozne pouzit na implementaciu RATE LIMITER. Pre implementaciu RATE LIMITER pomocou LIBRARY POLLY platia nasledujuce fakty.
+   A. LIBRARY POLLY umoznuje definovat RATE LIMITER, ktory limituje maximlany pocet REQUESTS, ktore moze dana ACTION METHOD v stanovenom casovom intervale spracovat.
+   B. LIBRARY POLLY hodi ERROR, ak je maximlany pocet REQUESTS pre danu ACTION METHOD prekroceny.
+   C. LIBRARY POLLY umoznuje definovat rozlicne typy RATE LIMITER POLICIES, ako FIXED WINDOW RATE LIMITER, alebo SLIDING WINDOWS RATE LIMITER.
+   D. LIBRARY POLLY implementuje RATE LIMITER v PACKAGE [Polly.RateLimiting].
+   E. LIBRARY POLLY umoznuje pouzitie RATE LIMITER nasledujucimi sposobmi.
+      A. MANUALNE vytvorenie RATE LIMITER v ACTION METHOD sa realizuje v nasledujucich krokoch.
+         A. Vytvori sa instancia CLASS [ResiliencePipelineBuilder].
+         B. Vytvori sa instancia CLASS, ktora je DERIVED z CLASS [RateLimiter]. CLASS sa konfiguruje pomocou OPTIONS CLASS, ktora sa zasiela do CLASS ako CONSTRUCTOR PARAMETER.
+         C. Volanim METHOD [TBuilder AddRateLimiter<TBuilder>(this TBuilder Builder, RateLimiter Limiter)] sa prida instancia CLASS [RateLimiter] do POLLY PIPELINE.
+         D. Volanim METHOD [ResiliencePipeline ResiliencePipelineBuilder.Build()] sa vytvori POLLY PIPELINE.
+         E. CODE, na ktory ma byt ma aplikovat RATE LIMITER sa OPAKOVANE vola pomocou METHOD [ValueTask ResiliencePipeline.ExecuteAsync(Func<CancellationToken,ValueTask> Callback, CancellationToken CancellationToken)].
+         !!! F. V pripade, ze RATE LIMITER detekuje prekrocenie RATE, dojde pri volani METHOD [ValueTask ResiliencePipeline.ExecuteAsync(Func<CancellationToken,ValueTask> Callback, CancellationToken CancellationToken)] k vzniku EXCEPTION.
+         G. Po ukonceni prace s TIME LIMITER musi byt instancia CLASS, ktora je DERIVED z CLASS [RateLimiter] uvolnena volanim METHOD [void IDisposable.Dispose()].
+      B. Predkonfigurovane vytvorenie RATE LIMITER v GLOBAL CONFIGURATION sa realizuje v nasledujucich krokoch.
+         A. Volanim METHOD [IServiceCollection AddResiliencePipeline<TKey,TResult>(this IServiceCollection Services, TKey Key, Action<ResiliencePipelineBuilder<TResult>,AddResiliencePipelineContext<TKey>> Configure)] sa vytvori preddefinovana CONFIGURATION POLLY PIPELINE.
+         !!!!! B. Kedze CLASSES, ktore su DERIVED z CLASS [RateLimiter] implementuju INTERFACE [IDisposible], je NUTNE volanim METHOD [void AddResiliencePipelineContext<TKey>.OnPipelineDisposed(Action Callback)] nastavit CALLBACK, ktory uvolni instanciu CLASS DERIVED z CLASS [RateLimiter] volani METHOD [void IDisposable.Dispose()].
+         C. Do CONTROLLER sa cez DEPENDENCY INJECTION vlozi instancia CLASS [ResiliencePipelineProvider<TKey>], ktora sluzi na vytvaranie preddefinovanych POLLY PIPELINES.
+         D. Volanim METHOD [ResiliencePipeline ResiliencePipelineProvider<TKey>.GetPipeline(TKey Key)] sa vytvori POLLY PIPELINE, z CONFIGURATION, ktora bola vytvorena v CONFIGURATION PROGRAMU.
+         E. CODE, na ktory ma byt ma aplikovat RATE LIMITER sa OPAKOVANE vola pomocou METHOD [ValueTask ResiliencePipeline.ExecuteAsync(Func<CancellationToken,ValueTask> Callback, CancellationToken CancellationToken)].
+         !!! F. V pripade, ze RATE LIMITER detekuje prekrocenie RATE, dojde pri volani METHOD [ValueTask ResiliencePipeline.ExecuteAsync(Func<CancellationToken,ValueTask> Callback, CancellationToken CancellationToken)] k vzniku EXCEPTION.
+         G. ASP.NET po ukonceni pouzivania TIME LIMITER automaticky pre instanciu CLASS, ktora je DERIVED z CLASS [RateLimiter] vola METHOD [void IDisposable.Dispose()], ktora bola zaregistrovana pomocou METHOD [void AddResiliencePipelineContext<TKey>.OnPipelineDisposed(Action Callback)].
+24. LIBRARY POLLY je mozne pouzit na implementaciu RETRY. Pre implementaciu RETRY pomocou LIBRARY POLLY platia nasledujuce fakty.
+   A. RETRY umoznuje zopakovanie OPERATION, ak OPERATION zlyhala. RETRY ma vyznam aplikovat vtedy, ak sa jedna o TEMPORARY ERROR, ako je NETWORK FAILURE a opakovanie OPERATION moze viest k jej uspesnemu vykonaniu.
+   B. RETRY v LIBRARY POLLY moze byt nakonfigurovana odlisne pre rozlicne TYPY ERRORS.
+   C. RETRY v LIBRARY POLLY moze byt nakonfigurovana, aby cas medzi jednotlivymi RETRIES bol konstatny, alebo exponencialne narastal.
+   D. LIBRARY POLLY umoznuje pouzitie RETRY nasledujucimi sposobmi.
+      A. MANUALNE vytvorenie RETRY v ACTION METHOD sa realizuje v nasledujucich krokoch.
+         A. Vytvori sa instancia CLASS [ResiliencePipelineBuilder<TResponse>], ktore TYPE PARAMETER [TResponse] je TYPE, ktory vracia METHOD na ktoru ma byt aplikovany RETRY.
+         B. Vytvori sa instancia CLASS [RetryStrategyOptions<TResponse>], ktore TYPE PARAMETER [TResponse] je TYPE, ktory vracia METHOD na ktoru ma byt aplikovany RETRY.
+         C. Instancia CLASS [RetryStrategyOptions<TResponse>] sa nakonfiguruje RETRY PROPERTIES. Konfiguracia umoznuje nastavit CALLBACK METHOD, ktora sa zavola na vyhodnotenie ci sa ma vykonat dalsi RETRY ako i nastavenie CALLBACK METHOD, ktora sa zavola pri zlyhani RETRY.
+         D. Volanim METHOD [ResiliencePipelineBuilder<TResponse> AddRetry<TResponse>(this ResiliencePipelineBuilder<TResponse> Builder, RetryStrategyOptions<TResponse> Options)] sa aplikuje RETRY na vykonanie ASYNCHRONOUS OPERATION.
+         E. Volanim METHOD [ResiliencePipeline<TResponse> Build()] sa vytvori POLLY PIPELINE.
+         !!! F. CODE, ktory na ktory ma byt aplikovany RETRY sa vola pomocou METHOD [ValueTask<TResponse> ResiliencePipeline<TResponse>.ExecuteAsync<TResponse>(Func<CancellationToken,ValueTask<TResponse>> Callback, CancellationToken CancellationToken)].
+         !!!!! G. CALLBACK METHOD volana METHOD [ValueTask<TResponse> ResiliencePipeline<TResponse>.ExecuteAsync<TResponse>(Func<CancellationToken,ValueTask<TResponse>> Callback, CancellationToken CancellationToken)] MUSI pri realizacii ASYNCHRONOUS OPERATIONS pouzit instanciu STRUCTURE [CancellationToken], aby ta bola CANCELLED pri preteceni maximalneho TIMEOUT.
+      B. Predkonfigurovane vytvorenie RETRY v GLOBAL CONFIGURATION sa realizuje v nasledujucich krokoch.
+         A. Volanim METHOD [IServiceCollection AddResiliencePipeline<TKey,TResponse>(this IServiceCollection Services, TKey Key, Action<ResiliencePipelineBuilder<TResponse>> Configure)] sa vytvori preddefinovana CONFIGURATION POLLY PIPELINE. TYPE PARAMETER [TResponse] je TYPE, ktory vracia METHOD na ktoru ma byt aplikovany RETRY.
+         B. Do CONTROLLER sa cez DEPENDENCY INJECTION vlozi instancia CLASS [ResiliencePipelineProvider<TKey>], ktora sluzi na vytvaranie preddefinovanych POLLY PIPELINES.
+         C. Volanim METHOD [ResiliencePipeline<TResult> GetPipeline<TResponse>(TKey Key)] sa vytvori POLLY PIPELINE, z CONFIGURATION, ktora bola vytvorena v CONFIGURATION PROGRAMU.
+         !!! D. CODE, ktory na ktory ma byt aplikovany RETRY sa vola pomocou METHOD [ValueTask<TResponse> ResiliencePipeline<TResponse>.ExecuteAsync<TResponse>(Func<CancellationToken,ValueTask<TResponse>> Callback, CancellationToken CancellationToken)].
+         !!!!! E. CALLBACK METHOD volana METHOD [ValueTask<TResponse> ResiliencePipeline<TResponse>.ExecuteAsync<TResponse>(Func<CancellationToken,ValueTask<TResponse>> Callback, CancellationToken CancellationToken)] MUSI pri realizacii ASYNCHRONOUS OPERATIONS pouzit instanciu STRUCTURE [CancellationToken], aby ta bola CANCELLED pri preteceni maximalneho TIMEOUT.
+25. LIBRARY POLLY je mozne pouzit na implementaciu CIRCUIT BREAKER. Pre implementaciu CIRCUIT BREAKER pomocou LIBRARY POLLY platia nasledujuce fakty.
+   A. CIRCUIT BREAKER je PATTERN, ktory umoznuje zabranit, aby SERVICE bol OVERLOADED.
+   B. CIRCUIT BREAKER PATTERN vyzaduje, aby CLIENT prestal po stanoveny cas odosielat REQUEST na SERVICE, ktora je aktualne OVERLOADED.
+   C. LIBRARY POLLY implementuje CIRCUIT BREAKER PATTERN tak, ze ak pocet FAILURES prekroci stanoveny pocet, LIBRARY POLLY prestane na stanoveny TIMEOUT vykonavat dalsie OPERATIONS. Az po uplynuti TIMEOUT pokracuje vo vykonavani OPERATIONS.
+   D. LIBRARY POLLY umoznuje pouzitie CIRCUIT BREAKER nasledujucimi sposobmi.
+      A. MANUALNE vytvorenie CIRCUIT BREAKER v ACTION METHOD sa realizuje v nasledujucich krokoch.
+         A. Vytvori sa instancia CLASS [ResiliencePipelineBuilder<TResponse>], ktore TYPE PARAMETER [TResponse] je TYPE, ktory vracia METHOD na ktoru ma byt aplikovany CIRCUIT BREAKER.
+         B. Vytvori sa instancia CLASS [CircuitBreakerStrategyOptions<TResponse>], ktore TYPE PARAMETER [TResponse] je TYPE, ktory vracia METHOD na ktoru ma byt aplikovany CIRCUIT BREAKER.
+         C. Instancia CLASS [CircuitBreakerStrategyOptions<TResponse>] sa nakonfiguruje CIRCUIT BREAKER PROPERTIES. Konfiguracia umoznuje nastavit CALLBACK METHOD, ktora sa zavola ked doslo k rozpojeniu CIRCUIT BREAKER (OPERATION bude blokovana po stanoveny cas) ako i nastavenie CALLBACK METHOD, ktora sa zavola zapojeni CIRCUIT BREAKER (kedy je mozne OPERATIONS opat vykonavat).
+         D. Volanim METHOD [ResiliencePipelineBuilder<TResponse> AddCircuitBreaker<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] TResponse>(this ResiliencePipelineBuilder<TResponse> Builder, CircuitBreakerStrategyOptions<TResponse> Options)] sa aplikuje CIRCUIT BREAKER na vykonanie ASYNCHRONOUS OPERATION.
+         E. Volanim METHOD [ResiliencePipeline<TResponse> Build()] sa vytvori POLLY PIPELINE.
+         !!! F. CODE, ktory na ktory ma byt aplikovany CIRCUIT BREAKER sa vola pomocou METHOD [ValueTask<TResponse> ResiliencePipeline<TResponse>.ExecuteAsync<TResponse>(Func<CancellationToken,ValueTask<TResponse>> Callback, CancellationToken CancellationToken)].
+         !!!!! G. CALLBACK METHOD volana METHOD [ValueTask<TResponse> ResiliencePipeline<TResponse>.ExecuteAsync<TResponse>(Func<CancellationToken,ValueTask<TResponse>> Callback, CancellationToken CancellationToken)] MUSI pri realizacii ASYNCHRONOUS OPERATIONS pouzit instanciu STRUCTURE [CancellationToken], aby ta bola CANCELLED pri preteceni maximalneho TIMEOUT.
+      B. Predkonfigurovane vytvorenie CIRCUIT BREAKER v GLOBAL CONFIGURATION sa realizuje v nasledujucich krokoch.
+         A. Volanim METHOD [IServiceCollection AddResiliencePipeline<TKey,TResponse>(this IServiceCollection Services, TKey Key, Action<ResiliencePipelineBuilder<TResponse>> Configure)] sa vytvori preddefinovana CONFIGURATION POLLY PIPELINE. TYPE PARAMETER [TResponse] je TYPE, ktory vracia METHOD na ktoru ma byt aplikovany CIRCUIT BREAKER.
+         B. Do CONTROLLER sa cez DEPENDENCY INJECTION vlozi instancia CLASS [ResiliencePipelineProvider<TKey>], ktora sluzi na vytvaranie preddefinovanych POLLY PIPELINES.
+         C. Volanim METHOD [ResiliencePipeline<TResult> GetPipeline<TResponse>(TKey Key)] sa vytvori POLLY PIPELINE, z CONFIGURATION, ktora bola vytvorena v CONFIGURATION PROGRAMU.
+         !!! D. CODE, ktory na ktory ma byt aplikovany RETRY sa vola pomocou METHOD [ValueTask<TResponse> ResiliencePipeline<TResponse>.ExecuteAsync<TResponse>(Func<CancellationToken,ValueTask<TResponse>> Callback, CancellationToken CancellationToken)].
+         !!!!! E. CALLBACK METHOD volana METHOD [ValueTask<TResponse> ResiliencePipeline<TResponse>.ExecuteAsync<TResponse>(Func<CancellationToken,ValueTask<TResponse>> Callback, CancellationToken CancellationToken)] MUSI pri realizacii ASYNCHRONOUS OPERATIONS pouzit instanciu STRUCTURE [CancellationToken], aby ta bola CANCELLED pri preteceni maximalneho TIMEOUT.
+//----------------------------------------------------------------------------------------------------------------------
