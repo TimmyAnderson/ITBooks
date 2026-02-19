@@ -1,0 +1,269 @@
+//----------------------------------------------------------------------------------------------------------------------
+1. Solution demonstruje pouzitie COROUTINES v C++.
+2. COROUTINES su FUNCTIONS, ktorych vykonavanie moze byt pozastavene samotnou COROUTINE a CALLER FUNCTION moze vykonat RESUME vykonavania COROUTINE. Pre COROUTINES platia nasledujuce fakty.
+   A. COROUTINES su FUNCTIONS, ktore mozu pozastavit vykonavanie (SUSPEND) svojho CODE a dorucit PARTIAL RESULT do CALLER FUNCTION.
+   B. CALLER FUNCTION moze opatovne spustit (RESUME) vykonavanie pozastavenej COROUTINE.
+   !!! C. CALLER FUNCTION a COROUTINE standardne NEBEZIA PARALELNE. Ale bud bezi CALLER FUNCTION, alebo bezi COROUTINE.
+   !!!!! D. CALLER FUNCTION a COROUTINE mozu bezat paralelne v separatnych THREADS. Pre paralelnych beh platia nasledujuce fakty.
+      !!! A. Paralelnych beh CALLER FUNCTION a COROUTINE MUSI byt MANUALNE implementovany. Samotna funkcionalita COROUTINES neimplementuje OUT-OF-BOX paralelny beh CALLER FUNCTION a COROUTINE v separatnych THREADS.
+      !!! B. Pretoze STATE COROUTINE nie je ulozeny na STACK, alebo v LOCAL OBJECT, COROUTINES mozu byt spustane aj v inych THREADS v akych boli spustene.
+   E. CALLER FUNCTIONS mozu nad COROUTINES vykonavat nasledujuce OPERATIONS.
+      A. OPERATION [START]. CALLER FUNCTION spusta COROUTINE, ktora vykona iba svoju prvu cast, az do momentu kym COROUTINE nevykona SUSPEND.
+      B. OPERATION [RESUME]. CALLER FUNCTION spusti pokracovanie COROUTINE, ktora boal SUSPENDED.
+   F. COROUTINES mozu vykonavat nasledujuce OPERATIONS.
+      A. OPERATION [SUSPEND]. COROUTINE pozastavi svoju cinnost a eventualne vrati ciastocnu RETURN VALUE do CALLER FUNCTION.
+      B. OPERATION [END]. COROUTINE ukonci svoju cinnost a eventualne vrati kompletnu RETURN VALUE do CALLER FUNCTION.
+   !!! G. COROUTINES su reprezentovane pomocou COROUTINE OBJECTS. Pre COROUTINE OBJECTS platia nasledujuce fakty.
+      !!!!! A. COROUTINE OBJECTS su CUSTOM CLASSES, ktore musia implementovat vsetky MEMBERS, ktore vyzaduje implementacia COROUTINE OBJECT.
+      B. COROUTINE OBJECT umoznuje vykonat START a RESUME danej COROUTINE.
+      !!! C. COROUTINE OBJECT sluzi na ukladanie STATE danej COROUTINE, ak je COROUTINE SUSPENED. To umoznuje vykonat RESUME danej COROUTINE v inom CONTEXT, ako je ina FUNCTION, alebo iny THREAD.
+   !!! H. COROUTINES su STACKLESS. To znamena, ze ak OUTER COROUTINE vola INNER COROUTINE, tak OUTER COROUTINE nemoze vykonat SUSPEND INNER COROUTINE. OUTER COROUTINE moze vykonat iba SUSPEND samotnej OUTER COROUTINE.
+   I. FUNCTION sa stava COROUTINE, ake pouziva aspon jedno z nasledujucich KEYWORDS.
+      A. KEYWORD [co_await].
+      B. KEYWORD [co_yield].
+      C. KEYWORD [co_return].
+   J. Ak COROUTINE nepotrebuje byt SUSPENDED, musi pouzit KEYWORD [co_return], aby ju C++ IDENTIFIKOVAL ako COROUTINE.
+   !!! K. Pretoze stavy COROUTINES su ukladane v nezavislych COROUTINE OBJECTS, CALLER FUNCTION moze spustit viacero COROUTINES a prepinat beh medzi nimi.
+   !!!!! L. Ak COROUTINE vola inu COROUTINE, tak CALLER COROUTINE je zodpovedna za volanie METHOD [void coroutine_handle<TPromiseType>::resume(void) const] pre CALLED COROUTINE. Volanie tejto METHOD moze byt vykonane nasledujucimi sposobmi.
+      A. V CALLER COROUTINE, ktora manualne zavola METHOD [void coroutine_handle<TPromiseType>::resume(void) const] CALLED COROUTINE.
+      !!!!! B. Pridanim AWAITER INTERFACE do COROUTINE OBJECT, ktory vracia CALLED COROUTINE. V taktom pripade na COROUTINE OBJECT CALLED COROUTINE je mozne aplikovat OPERATOR [OPERATOR co_await] a tak CALLER FUNCTION, ktora volala CALLER COROUTINE moze priamo vykonat volanie METHOD [void coroutine_handle<TPromiseType>::resume(void) const] pre CALLED COROUTINE.
+!!! 3. Pretoze zivotnost COROUTINES presahuje zivotnost uvodneho volania COROUTINE, je NEBEZPECNE posielat do COROUTINES PARAMETERS BY-REFERENCE.
+   A. Pri volani beznej FUNCTION je FUNCTION okamzite vykonana. To znamena, ze napriklad ak sa do FUNCTION posle PARAMETER TYPE [const TYPE&], tak odoslany PARAMETER je validny pocas celeho behu FUNCTION. Plati to aj pre LITERAL PARAMETERS, ktorych platnost trva az do skoncenia volania FUNCTION.
+   !!!!! B. Pri volani COROUTINE vsak EXPRESSIONS, ktorymi sa posielaju PARAMETERS do COROUTINES skoncia okamzite po zavolani COROUTINE, aj ked samotna COROUTINE este nie je skoncena. To znamena, ze ak ak ma COROUTINE PARAMETER TYPE [const TYPE&], pricom sa do COROUTINE posle LITERAL VALUE, ktorej platnost konci po prvotnom volani COROUTINE, pocas dalsich volani COROUTINE je tento PARAMETER uz NEPLATNY a dojde k RUNTIME ERROR.
+4. COROUTINES mozu volat ine COROUTINES. Platia nasledujuce fakty.
+   A. COROUTINE moze priamo, alebo nepriamo cez inu FUNCTION volat inu COROUTINE.
+   B. PARENT COROUTINE moze vykonat RESUME CHILD COROUTINE, cim sa vykonavanie CHILD COROUTINE spusti.
+   !!! C. Ak CALLER METHOD vykona RESUME PARENT COROUTINE, tak CHILD COROUTINE NIE JE AUTOMATICKY spustena. CHILD COROUTINE iba ak pocas behu PARENT COROUTINE vykona PARENT COROUTINE RESUME CHILD COROUTINE.
+   !!!!! D. Ak CHILD COROUTINE pocas behu PARENT COROUTINE neskocila, pretoze sa nevolal dostatocny pocet RESUME CHILD COROUTINE, ktory by CHILD COROUTINE ukoncil, ostane CHILD COROUTINE neukoncena.
+5. COROUTINE OBJECTS musia obsahovat nasledujuce MEMBERS.
+   A. COROUTINE HANDLE. Pre COROUTINE HANDLE platia nasledujuce fakty.
+      A. COROUTINE HANDLE je TYPE [coroutine_handle<TType>], kde TYPE PARAMETER [TType] reprezentuje PROMISE TYPE.
+      B. COROUTINE HANDLE reprezentuje HANDLE ku COROUTINE API pomocou ktoreho je mozne vykonat RESUME SUSPENDED COROUTINE, ci zistit ci COROUTINE uz skoncila.
+   B. PROMISE TYPE. Pre PROMISE TYPE platia nasledujuce fakty.
+      A. PROMISE TYPE je CUSTOM TYPE, ktory musi byt definovany v COROUTINE OBJECT a musi mat NAME [promise_type].
+      B. PROMISE TYPE musi byt mat PUBLIC VISIBILITY.
+      C. PROMISE TYPE obsahuje METHODS, ktore C++ RUNTIME vola pri pouzivani COROUTINES.
+      D. PROMISE TYPE vykonava nasledujuce OPERATIONS.
+         A. Vytvara instanciu COROUTINE OBJECT, ktora interne obsahuje COROUTINE HANDLE a PROMISE TYPE.
+         B. Urcuje ci COROUTINE ma byt po starte SUSPENDED.
+         C. Urcuje ci COROUTINE ma byt po ukonceni SUSPENDED.
+         D. Zabezpecuje prenos VALUES, ktore su prenasane medzi CALLER FUNCTION a COROUTINE.
+         E. Zabezpecuje spracovanie UNHANDLED EXCEPTIONS, ktore vznikli v COROUTINE.
+      E. PROMISE TYPE musi mat definovane nasledujuce METHODS.
+         A. METHOD [get_return_object()]. Pre METHOD platia nasledujuce fakty.
+            A. METHOD ma PROTOTYPE [TCoroutineObject get_return_object(void)], kde TYPE PARAMETER [TCoroutineObject] reprezentuje TYPE COROUTINE OBJECT.
+            B. Ulohou METHOD je vytvorit instanciu COROUTINE OBJECT.
+            C. METHOD interne pouziva METHOD [coroutine_handle coroutine_handle::from_promise(TCoroutineObject& _Prom)] na ziskanie COROUTINE HANDLE.
+            D. Vytvoreny COROUTINE HANDLE sa pouziva ako PARAMETER CONSTRUCTOR COROUTINE OBJECT.
+         B. METHOD [initial_suspend()]. Pre METHOD platia nasledujuce fakty.
+            A. METHOD ma PROTOTYPE [TSuspendType initial_suspend(void)], kde TYPE PARAMETER [TSuspendType] reprezentuje SUSPEND TYPE.
+            B. Ulohou METHOD je urcit ci COROUTINE ma byt pri spusteni SUSPENDED.
+            C. Ak ma byt COROUTINE pri starte SUSPENDED musi METHOD vratit TYPE [suspend_always].
+            D. Ak ma COROUTINE byt hned spustena musi METHOD vratit TYPE [suspend_never].
+         C. METHOD [final_suspend()]. Pre METHOD platia nasledujuce fakty.
+            A. METHOD ma PROTOTYPE [TSuspendType final_suspend(void) noexcept], kde TYPE PARAMETER [TSuspendType] reprezentuje SUSPEND TYPE.
+            B. Ulohou METHOD je urcit ci COROUTINE ma byt pri ukonceni SUSPENDED.
+            C. Ak ma byt COROUTINE pri ukonceni SUSPENDED musi METHOD vratit TYPE [suspend_always].
+            D. Ak ma COROUTINE pri ukonceni nema byt SUSPENDED musi METHOD vratit TYPE [suspend_never].
+            E. METHOD MUSI byt oznacena ako NO EXCEPT.
+            F. Odporuca sa, aby COROUTINE bola vzdy pri ukonceni SUSPENDED.
+         D. METHOD [unhandled_exception()]. Pre METHOD platia nasledujuce fakty.
+            A. METHOD ma PROTOTYPE [void unhandled_exception(void)].
+            B. METHOD je volana ak v COROUTINE vznikla UNHANDLED EXCEPTION.
+         E. METHOD [return_void()]. Pre METHOD platia nasledujuce fakty.
+            A. METHOD ma PROTOTYPE [void return_void(void)].
+            B. METHOD je volana ak COROUTINE skoncila, alebo vykonala CODE [co_return;].
+            !!! C. METHOD je volana IBA ak COROUTINE nevracia ziadnu RETURN VALUE.
+   C. INTERFACE METHODS. Pre INTERFACE METHODS platia nasledujuce fakty.
+      A. INTERFACE METHODS su CUSTOM METHODS pomocou ktorych COROUTINE OBJECT umoznuje pristup ku COROUTINE HANDLE.
+      B. INTERFACE METHODS by mali umoznit vykonanie RESUME danej COROUTINE, ako aj vracat informaciu ci COROUTINE uz neskoncila.
+6. COROUTINE OBJECTS mozu byt implementovane nasledujucimi sposobmi.
+   A. PROMISE TYPE je na zaciatku DEFINICIE COROUTINE OBJECT iba DEKLAROVANY a jeho DEFINICIA moze byt bud na konci DEFINICIE COROUTINE OBJECT, alebo externe mimo COROUTINE OBJECT.
+   B. PROMISE TYPE je na zaciatku DEFINICIE COROUTINE OBJECT rono DEFINOVANY.
+   C. PROMISE TYPE je mimo DEFINICIE COROUTINE OBJECT DEFINOVANY ako TEMPLATE, ktory ma ako TEMPLATE PARAMETER COROUTINE OBJECT.
+7. Pre MEMORY MANAGEMENT COROUTINES platia nasledujuce fakty.
+   A. COROUTINE uklada svoj STATE do MEMORY, ktora je alokovana spravidla na HEAP, co umoznuje pouzit COROUTINE v rozlicnych CONTEXTS (inych METHODS, ci THREADS).
+   B. COROUTINE HANDLE je len REFERENCE na MEMORY BLOCK, ktory je ulozeny na HEAP.
+   !!!!! C. Kopirovanie COROUTINE HANDLE nesposobuje alokaciu noveho MEMORY BLOCK na HEAP, ale iba kopiu COROUTINE HANDLE, ktory odkazuje na povodny MEMORY BLOCK. Preto by COPY CONSTRUCTOR a COPY OPERATOR [OPERATOR=] mali byt VZDY DELETED.
+   !!! D. COROUTINE OBJECT moze definovat MOVE CONSTRUCTOR a MOVE OPEATOR [OPEATOR=].
+   !!! E. COROUTINE OBJECT MUSI v DESTRUCTOR uvolnit MEMORY BLOCK na ktory referuje COROUTINE HANDLE volanim METHOD [void coroutine_handle<TPremise>::destroy(void) const noexcept].
+8. COROUTINES mozu vracat RETURN VALUES do CALLER FUNCTIONS nasledujucimi sposobmi.
+   A. Pomocou KEYWORD [co_yield] moze COROUTINE vratit RETURN VALUE do CALLER FUNCTION pri kazdom vykonani SUSPEND danej COROUTINE.
+   B. Pomocou KEYWORD [co_return] moze COROUTINE vratit RETURN VALUE do CALLER FUNCTION po skoncni behu COROUTINE.
+9. COROUTINE pri zavolani KEYWORD [co_yield VALUE] vykonava nasledujuce kroky.
+   A. Zavola sa METHOD [AWAITER yield_value(TYPE Value)], ktora je sucastou PROMISE TYPE.
+   B. METHOD [AWAITER yield_value(TYPE Value)] ma ako PARAMETER VALUE [VALUE] z CODE [co_yield VALUE]. To umoznuje METHOD ulozit VALUE [VALUE] do FIELD PROMISE TYPE.
+   C. METHOD [AWAITER yield_value(TYPE Value)] ma RETURN VALUE TYPE TYPE [AWAITER], ktory urcuje ci COROUTINE ma byt SUSPENDED pri pouziti CODE [co_yield VALUE].
+   !!! D. Po skonceni volania METHOD [AWAITER yield_value(TYPE Value)] sa vykona COROUTINE SUSPEND a beh PROGRAMU vrati do CALLER FUNCTION.
+   E. CALLER FUNCTION moze vytiahnut vratenu RETURN VALUE pomocou COROUTINE OBJECT INTERFACE METHOD, ktoru COROUTINE OBJECT musi vystavit.
+10. COROUTINE moze vracat RETURN VALUE. Pre vratenie RETURN VALUE z COROUTINE platia nasledujuce fakty.
+   A. COROUTINE vracia RETURN VALUE pomocou OPERATOR [OPERATOR co_return].
+   B. Po KEYWORD OPERATOR [OPERATOR co_return] sa vykonavaju nasledujuce kroky.
+      A. Na zaklade pouzitia OPERATOR [OPERATOR co_return] sa vykona nasledujuce operacia.
+         A. Ak sa OPERATOR [OPERATOR co_return] pouzil v CODE [co_return;], zavola sa METHOD [return_void()] PROMISE OBJECT.
+         B. Ak sa OPERATOR [OPERATOR co_return] pouzil v CODE [co_return EXPRESSION;], zavola sa METHOD [return_value(EXPRESSION)] PROMISE OBJECT.
+      B. Uvolnia sa vsetky LOCAL VARIABLES v opacnom poradi v akom boli vytvorene.
+      C. Zavola sa METHOD [final_suspend()] PROMISE OBJECT a na vrateny AWAITER OBJECT sa aplikuje OPERATOR [OPERATOR co_await].
+   !!! C. COROUTINE NESMIE na navrat RETURN VALUE pouzit KEYWORD [return]. Na navrat RETURN VALUE sa VZDY musi pouzit OPERATOR [OPERATOR co_return].
+   !!!!! D. Ak COROUTINE pouziva OPERATOR [OPERATOR co_return], musi ho pouzit na konci kazdej CODE BRANCHE, ktora ukoncuje CODE COROUTINE. Ak by v niektorej CODE BRANCH sa na konci vykonavania COROUTINE nepouzil OPERATOR [OPERATOR co_return], tak to povedie k UNDEFINED BEHAVIOR.
+   !!!!! E. PROMISE TYPE NEMOZE zaroven obsahovat aj METHOD [void return_value(const TReturnValue& Value)], aj METHOD [void return_void(void)].
+11. AWAITING je mechanizmus, ktorym mozu COROUTINES vykonat SUSPEND a RESUME svojho behu. Pre AWAITING platia nasledujuce fakty.
+   A. AWAITERS su TYPES, ktore implementuju funkcionalitu AWAITING. Pre AWAITERS platia nasledujuce fakty.
+      A. AWAITERS su TYPES, ktore musia implementovat nasledujuce METHODS.
+         A. METHOD [bool await_ready(void) const noexcept]. METHOD urcuje ci COROUTINE SUSPENSION je nevyhnuta.
+         B. METHOD [TReturnType await_suspend(coroutine_handle<TPromiseType> AwaitHandle) const noexcept]. METHOD je volana pri COROUTINE SUSPEND.
+         C. METHOD [TYieldReturnValueType await_resume(void) const noexcept]. METHOD je volana pri COROUTINE RESUME.
+      B. OBJECTS vytvorene z AWAITERS sa nazyvaju AWAITABLES.
+   B. AWAITABLES su OBJECTS, ktore umoznuju AWAITING. Pre AWAITABLES platia nasledujuce fakty.
+      A. AWAITABLES su OBJECTS, na ktore je moze aplikovat OPERATOR [OPERATOR co_await], alebo OPERATOR [OPERATOR co_yield].
+      B. AWAITABLES maju TYPE AWAITERS CLASSES.
+12. AWAITERS musia implementovat nasledujuce METHODS.
+   A. METHOD [bool await_ready(void) const noexcept]. Pre METHOD platia nasledujuce fakty.
+      A. METHOD je volana tesne predtym ako je COROUTINE SUSPENDED.
+      B. METHOD umoznuje na zaklade RETURN VALUE urcit ci ku COROUTINE SUSPENSION vobec dojde. RETURN VALUE [false] znamena, ze ma dojst k COROUTINE SUSPENSION. RETURN VALUE [true] znamena, ze NEMA dojst k COROUTINE SUSPENSION.
+      !!! C. METHOD vracia RETURN VALUE [true] zabranujucej vykonat COROUTINE SUSPENSION vtedy, ak je vysledok ASYNCHRONOUS OPERATION okamzite k dispozicii a nie je nutne vykonat COROUTINE SUSPENSION, aby hned nasledne bol vykonany COROUTINE RESUME.
+      !!! D. Pri volani tejto METHOD este COROUTINE zatial NIE JE SUSPENDED.
+      !!! E. METHOD by nemala interne volat METHOD [void coroutine_handle<TPromiseType>::resume(void) const] ani METHOD [void coroutine_handle<TPromiseType>::destroy(void) const noexcept].
+   B. METHOD [TReturnType await_suspend(coroutine_handle<TPromiseType> AwaitHandle) const noexcept]. Pre METHOD platia nasledujuce fakty.
+      !!! A. METHOD je volana OKAMZITE potom ako bola COROUTINE SUSPENDED.
+      !!!!! B. PARAMETER obsahuje COROUTINE HANDLE na CURRENT COROUTINE, ktora pouzila OPERATOR [OPERATOR co_await], alebo OPERATOR [OPERATOR co_yield].
+      !!! C. Pomocou RETURN VALUE moze METHOD urcit aka OPERATION sa ma vykonat. METHOD moze vracat nasledujuce RETURN TYPES.
+         A. RETURN TYPE [void]. Ak METHOD nevracia RETURN VALUE, tak COROUTINE je SUSPENDED a beh sa okamzite vrati do CALLER FUNCTION.
+         !!! B. RETURN TYPE [bool]. Nasledujuca OPERATION zavisi od RETURN VALUE.
+            A. Ak METHOD vracia VALUE [true], tak C++ vrati beh PROGRAMU do CALLER FUNCTION. Cize vykona sa rovnaka OPERATION, ako ked METHOD nevrati ziadnu RETURN VALUE.
+            B. Ak METHOD vracia VALUE [false], tak C++ vykona RESUME CURRENT COROUTINE.
+         !!!!! C. RETURN TYPE [COROUTINE_HANDLE]. Ak METHOD vracia COROUTINE HANDLE, tak C++ vykona COROUTINE RESUME tej COROUTINE, ktorej HANDLE bol vrateny, volanim METHOD [void coroutine_handle<TPromiseType>::resume(void) const].
+      !!! D. Ak METHOD hodi EXCEPTION, C++ zachyti EXCEPTION, COROUTINE je RESUMED a EXCEPTION je okamzite RETHROWN.
+      !!! E. METHOD moze interne volat METHOD [void coroutine_handle<TPromiseType>::destroy(void) const noexcept].
+   C. METHOD [TYieldReturnValueType await_resume(void) const noexcept]. Pre METHOD platia nasledujuce fakty.
+      !!! A. METHOD je volana OKAMZITE potom ako bola COROUTINE RESUMED.
+      !!!!! B. METHOD ako RETURN VALUE vracia VALUE, ktoru vracia OPERATOR [OPERATOR co_yield] a OPERATOR [OPERATOR co_await] spat do COROUTINE. POZOR RETURN VALUE je vratena do COROUTINE a NIE do CALLER FUNCTION. Tuto RETURN VALUE je mozne vyuzit, aby pri COROUTINE RESUME CALLER FUNCTION vratila VALUE do COROUTINE.
+13. C++ STANDARD LIBRARY definuje nasledujuce typy AWAITERS.
+   A. STRUCTURE [suspend_always]. AWAITER VZDY vykona SUSPENSION. METHOD [bool await_ready(void) const noexcept] vzdy vracia VALUE [false].
+   B. STRUCTURE [suspend_never]. AWAITER NIKDY nevykona SUSPENSION. METHOD [bool await_ready(void) const noexcept] vzdy vracia VALUE [true].
+!!!!! 14. COROUTINE OBJECT sa moze stat AWAITER TYPE, ak implementuje AWAITER INTERFACE. To umoznuje, aby COROUTINE SUSPENSION vnorenej SUB COROUTINE bolo propagovane az do CALLER FUNCTION a CALLER FUNCTION tak mohla priamo vykonavat RESUME SUB COROUTINES.
+15. Pri vykonani COROUTINE SUSPEND, C++ umoznuje prenost VALUES medzi COROUTINE a CALLER FUNCTION.
+   A. COROUTINE moze poslat do CALLER FUNCTION VALUE. Pre posielanie VALUES z COROUTINE do CALLER FUNCTION platia nasledujuce fakty.
+      A. COROUTINE posiela VALUE do CALLER FUNCTION pomocou CODE [co_yield VALUE], kde VALUE [VALUE] je VALUE, ktora je poslana do CALLER FUNCTION.
+      B. Implementacia posielania VALUE z COROUTINE do CALLER FUNCTION vyzaduje realizaciu nasledujucich krokov.
+         A. PROMISE TYPE musi obsahovat FIELD, do ktoreho sa ulozi VALUE, ktora ma byt prenesena z COROUTINE do CALLER FUNCTION.
+         B. Pri volani CODE [co_yield VALUE], C++ vola METHOD [AWAITER yield_value(TYPE Value)], ktora musi ulozit VALUE do FIELD.
+         C. COROUTINE OBJECT musi vystavit CUSTOM METHOD pomocou ktorej moze CALLER FUNCTION ziskat VALUE ulozenu vo FIELD PROMISE TYPE. Tuto METHOD potom moze CALLER FUNCTION zavolat, ked za beh PROGRAMU po COROUTINE SUSPEND vrati z COROUTINE do CALLER FUNCTION na ziskanie VALUE.
+      C. Prenos VALUE z COROUTINE do CALLER FUNCTION sa implementuje nasledujucim sposobom.
+         A. COROUTINE vola CODE [co_yield VALUE].
+         B. CODE [co_yield VALUE] spusti volanie METHOD [AWAITER yield_value(TYPE Value)], ktora ulozi VALUE do FIELD PROMISE TYPE.
+         C. METHOD [AWAITER yield_value(TYPE Value)] vracia AWAITER, ktory sa pouzije na vykonanie COROUTINE SUSPEND.
+         D. Po COROUTINE SUSPEND sa beh PROGRAMU vrati do CALLER FUNCTION.
+         E. CALLER FUNCTION pouzije CUSTOM METHOD na ziskanie VALUE, ktoru COROUTINE zaslala pomocou CODE [co_yield VALUE] do CALLER FUNCTION.
+         F. Po spracovani VALUE moze CALLER FUNCTION opatovne vykonat COROUTINE RESUME.
+   B. CALLER FUNCTION moze do COROUTINE poslat VALUE. Pre posielanie VALUES z CALLER FUNCTION do COROUTINE platia nasledujuce fakty.
+      A. CALLER FUNCTION posiela VALUE do COROUTINE pomocou CODE [VALUE_2=co_yield VALUE_1], kde VALUE [VALUE_2] je VALUE, ktora je poslana do COROUTINE.
+      B. Implementacia posielania VALUE z CALLER FUNCTION do COROUTINE vyzaduje realizaciu nasledujucich krokov.
+         A. PROMISE TYPE musi obsahovat FIELD, do ktoreho sa ulozi VALUE, ktora ma byt prenesena z CALLER FUNCTION do COROUTINE.
+         B. PROMISE TYPE musi implementovat METHOD [AWAITER yield_value(TYPE Value)], ktora vracia specialny AWAITER TYPE oznacovany aj ako BACK AWAITER TYPE.
+         C. BACK AWAITER TYPE musi obsahovat FIELD do ktoreho sa ulozi COROUTINE HANDLE na COROUTINE, do ktorej ma CALLER FUNCTION odoslat VALUE.
+         D. BACK AWAITER TYPE musi definovat METHOD [TReturnType await_suspend(coroutine_handle<TPromiseType> AwaitHandle)] v ktorej do FIELD ulozi PARAMETER [AwaitHandle], ktory obsahuje COROUTINE HANDLE na COROUTINE do ktorej ma CALLER FUNCTION poslat VALUE.
+         !!! E. BACK AWAITER TYPE musi definovat METHOD [TYieldReturnValueType await_resume(void) const noexcept], ktora v RETURN VALUE vracia VALUE, ktora ma byt prenesena z CALLER FUNCTION do COROUTINE. METHOD pouzije COROUTINE HANDLE, ktory je ulozeny vo FIELD BACK AWAITER na zisanie PROMISE TYPE, ktory obsahuje FIELD s VALUE, ktora sa ma preniest z CALLER FUNCTION do COROUTINE.
+         F. COROUTINE OBJECT musi vystavit METHOD, ktora umoznuje nastavit v PROMISE TYPE FIELD VALUE, ktora ma byt prenesena z CALLER FUNCTION do COROUTINE.
+      C. Prenos VALUE z CALLER FUNCTION do COROUTINE sa implementuje nasledujucim sposobom.
+         A. COROUTINE vola CODE [VALUE_2=co_yield VALUE_1].
+         B. CODE [VALUE_2=co_yield VALUE_1] spusti volanie METHOD [AWAITER yield_value(TYPE Value)], ktora v RETURN VALUE vrati BACK AWAITER.
+         C. C++ pouzije BACK AWAITER na vykonanie COROUTINE SUSPEND.
+         D. C++ zavola BACK AWAITER METHOD [TReturnType await_suspend(coroutine_handle<TPromiseType> AwaitHandle)], ktora do BACK AWAITER FIELD ulozi COROUTINE HANDLE prave SUSPENDED COROUTINE.
+         E. Beh PROGRAMU sa vrati do CALLER FUNCTION.
+         !!! F. CALLER FUNCTION pouzije CUSTOM METHOD na ulozenie VALUE, ktoru chce odoslat do COROUTINE. CUSTOM METHOD ulozi tuto VALUE do FIELD PROMISE TYPE.
+         G. CALLER FUNCTION vykona RESUME COROUTINE.
+         !!! H. C++ Zavola BACK AWAITER METHOD [TYieldReturnValueType await_resume(void) const noexcept], ktora v RETURN VALUE vrati VALUE, ktoru CALLER FUNCTION odoslala to COROUTINE. METHOD tuto VALUE nacita z FIELD PROMISE TYPE, kde je VALUE ulozena. PROMISE TYPE METHOD ziska z COROUTINE HANDLE, ktoru do FIELD BACK AWAITER ulozila METHOD [TReturnType await_suspend(coroutine_handle<TPromiseType> AwaitHandle)].
+         I. Beh PROGRAMU sa vrati do COROUTINE.
+         J. Z CODE [VALUE_2=co_yield VALUE_1] COROUTINE ziska VALUE [VALUE_2], ktora obsahuje VALUE, ktoru CALLER FUNCTION odoslal do COROUTINE.
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+Pre COROUTINES platia nasledujuce fakty.
+
+1. COROUTINES su STACKLESS.
+   A. Po vykonani SUSPEND danej COROUTINE je obsah LOCAL STACK ulozeny do COROUTINE STATE.
+   B. Pred vykonani RESUME danej COROUTINE je obsah povodneho LOCAL STACK ulozeneho v COROUTINE STATE preneseny do CURRENT LOCAL STACK, a nasledne je COROUTINE RESUMED.
+   !!! C. Vdaka ukladaniu COROUTINE LOCAL STACK do COROUTINE STATE je mozne vykonat SUSPEND a RESUME danej COROUTINE v rozlicnych CONTEXTS, ako su napriklad rozlicne THREADS.
+2. COROUTINE je asociovana s nasledujucimi ENTITIES.
+   A. PROMISE OBJECT. Pre PROMISE OBJECT platia nasledujuce fakty.
+      A. PROMISE OBJECT je modifikovany vo vnutri COROUTINE.
+      B. PROMISE OBJECT umoznuje posielat RETURN VALUES, alebo EXCEPTIONS, ktore vznikli v COROUTINE do CALLER FUNCTION.
+   B. COROUTINE HANDLE. Pre COROUTINE HANDLE platia nasledujuce fakty.
+      A. COROUTINE HANDLE je modifikovany mimo COROUTINE.
+      B. COROUTINE HANDLE pouziva CALLER FUNCTION na vykonanie RESUME danej COROUTINE, alebo na DESTRUCTION FRAME.
+   C. COROUTINE STATE. Pre COROUTINE STATE platia nasledujuce fakty.
+      A. COROUTINE STATE je DYNAMICKY ALOKOVANA MEMORY, ktora sluzi na ukladanie dat asociovanych s COROUTINE.
+      B. COROUTINE STATE obsahuje nasledujuce ELEMENTS.
+         A. PROMISE OBJECT.
+         B. Vsetky PARAMETERS COROUTINE.
+         C. Vsetky LOCAL VARIABLES a TEMPORARY VARIABLES, ktore COROUTINE mala v case SUSPENSION POINT ulozene na LOCAL STACK.
+         D. Reprezentaciu CURRENT SUSPENSION POINT, aby pri RESUME mohla COROUTINE byt opatovne spustena a pri DESTROY, aby bolo zrejme, ktore VARIABLES je nutne uvolnit.
+3. COROUTINE po spusteni vykonava nasledujuce operacie.
+   A. Pre COROUTINE sa alokuje COROUTINE STATE pomocou OPERATOR [OPERATOR new].
+   B. Do COROUTINE STATE sa nakopiruju vsetky PARAMETERS danej COROUTINE. BY-VALUE PARAMETERS su do COROUTINE STATE COPIED, alebo MOVED a BY-REFERENCE PARAMETERS su ulozene v COROUTINE STATE BY-REFERENCE.
+   C. Zavola sa CONSTRUCTOR PROMISE OBJECT. Ak ma PROMISE OBJECT CONSTRUCTOR, ktory ma tie iste PARAMETERS ako samotna COROUTINE, tak sa pouzije tento CONSTRUCTOR. Inak sa pouzije DEFAULT CONSTRUCTOR.
+   !!! D. Zavola sa METHOD [get_return_object()] PROMISE OBJECT, ktora vytvara COROUTINE OBJECT. COROUTINE OBJECT sa ulozi do LOCAL VARIABLE. COROUTINE OBJECT sa vrati ako RETURN VALUE volania COROUTINE do CALLER FUNCTION ked je COROUTINE prvykrat SUSPENDED. Pri vzniku EXCEPTION je tato EXCEPTION vratena do CALLER FUNCTION, a nie je ulozena do PROMISE OBJECT.
+   E. Zavola sa METHOD [initial_suspend()] PROMISE OBJECT a na vrateny AWAITER OBJECT sa aplikuje OPERATOR [OPERATOR co_await].
+   !!! F. Po prvom vykonani COROUTINE SUSPEND (ci uz k nemu dojde okamzite po spusteni COROUTINE, alebo az neskor pri prvom volani OPERATOR [OPERATOR co_await]) sa riadenie vrati do CALLER FUNCTION, pricom do CALLER FUNCTION je ako RETURN VALUE vratena instancia COROUTINE OBJECT.
+4. Ked COROUTINE dosiahne volanie OPERATOR [OPERATOR co_return] vykonaju sa nasledujuce operacie.
+   A. Na zaklade pouzitia OPERATOR [OPERATOR co_return] sa vykona nasledujuce operacia.
+      A. Ak sa OPERATOR [OPERATOR co_return] pouzil v CODE [co_return;], zavola sa METHOD [return_void()] PROMISE OBJECT.
+      B. Ak sa OPERATOR [OPERATOR co_return] pouzil v CODE [co_return EXPRESSION;], zavola sa METHOD [return_value(EXPRESSION)] PROMISE OBJECT.
+   B. Uvolnia sa vsetky LOCAL VARIABLES v opacnom poradi v akom boli vytvorene.
+   C. Zavola sa METHOD [final_suspend()] PROMISE OBJECT a na vrateny AWAITER OBJECT sa aplikuje OPERATOR [OPERATOR co_await].
+5. Ked COROUTINE skonci vykonavanie svojho CODE vykonaju sa nasledujuce operacie.
+   A. Zavola sa METHOD [return_void()] PROMISE OBJECT.
+   B. Uvolnia sa vsetky LOCAL VARIABLES v opacnom poradi v akom boli vytvorene.
+   C. Zavola sa METHOD [final_suspend()] PROMISE OBJECT a na vrateny AWAITER OBJECT sa aplikuje OPERATOR [OPERATOR co_await].
+6. Ak v COROUTINE vznikne UNHANDLED EXCEPTION, vykonaju sa nasledujuce operacie.
+   A. EXCEPTION je zachytena a v CATCH BLOCK sa zavola METHOD [unhandled_exception()] PROMISE OBJECT.
+   B. Zavola sa METHOD [final_suspend()] PROMISE OBJECT a na vrateny AWAITER OBJECT sa aplikuje OPERATOR [OPERATOR co_await].
+   !!! C. Ak je COROUTINE v ktorej vznikla UNHANDLED EXCEPTION RESUMED je dojde k UNDEFINED BEHAVIOR.
+7. Ak je COROUTINE STATE DESTROYED pre ukoncenie COROUTINE, vznik UNHANDLED EXCEPTION, alebo preto, ze je DESTROYED COROUTINE HANDLE, vykonaju sa nasledujuce operacie.
+   A. Zavola sa DESTRUCTOR PROMISE OBJECT.
+   B. Zavolaju sa DESTRUCTORS vsetkych COROUTINE PARAMETERS, ktore su ulozene v COROUTINE STATE.
+   C. Zavola sa OPERATOR [OPERATOR delete] na uvolnenie MEMORY alokovanej pre COROUTINE STATE.
+   D. Beh PROGRAMU sa vrati do CALLER FUNCTION.
+8. Pre OPERATOR [OPERATOR co_await] platia nasledujuce fakty.
+   A. OPERATOR [OPERATOR co_await] vykonava COROUTINE SUSPEND.
+   B. OPERATOR [OPERATOR co_await] je UNARY OPERATOR, ktory ma SYNTAX [co_await EXPRESSION], kde VALUE [EXPRESSION] reprezentuje EXPRESSION, ktora reprezentovat AWAITABLE OBJECT.
+   C. OPERATOR [OPERATOR co_await] nemoze byt pouzity v EXCEPTION HANDLERS, v DECLARATION STATEMENTS s vynimkou INITIALIZERS, v SIMPLE DECLARATIONS, v DEFAULT ARGUMENT a ako INITIALIZER BLOCK SCOPE VARIABLE, ak VARIABLE je STATIC, alebo THREAD LOCAL.
+   D. OPERATOR [OPERATOR co_await] pri realizacii CODE [co_await EXPRESSION] vykonava nasledujuce OPERATIONS.
+      A. EXPRESSION [EXPRESSION] je konvertovana na AWAITABLE OBJECT nasledujucimi sposobmi.
+         A. Ak EXPRESSION [EXPRESSION] vznikla v INITIAL SUSPEND POINT, FINAL SUSPEND POINT, alebo pouzitim OPERATOR [OPERATOR yield], ako AWAITABLE OBJECT sa pouzije priamo EXPRESSION [EXPRESSION].
+         B. Inak, ak PROMISE TYPE ma definovanu METHOD [TAwaiter await_transform(EXPRESSION)], tak za tato METHOD zavola a jej RETURN VALUE sa pouzije ako AWAITABLE OBJECT.
+         C. Inak sa EXPRESSION [EXPRESSION] pouzije ako AWAITABLE OBJECT.
+      B. Po konverzii EXPRESSION [EXPRESSION] na AWAITABLE OBJECT sa ziska AWAITER OBJECT nasledujucimi sposobmi. Vykona sa OVERLOAD RESOLUTION pre OPERATOR [OPERATOR co_await]. Na zaklade vysledku OVERLOAD RESOLUTION sa vykona nasledujuce OPERATION.
+         A. Ak RESOLUTION najde BEST OVERLOADED OPERATOR, C++ pre MEMBER OVERLOAD zavola OPERATOR [AWAITABLE.operator co_await()] a pre NON-MEMBER OVERLOAD zavola OPERATOR [operator co_await(static_cast<TAwaitable&&>(AWAITABLE))].
+         B. Inak, ak RESOLUTION nenajde ziaden OVERLOADED OPERATOR, ako AWAITER OBJECT sa pouzije AWAITABLE OBJECT.
+         C. Inak, ak je RESOLUTION UNAMBIGUOUS, C++ hodi COMPILATION ERROR.
+      C. Po ziskani AWAITER OBJECT sa pre AWAITER OBJECT zavola METHOD [bool await_ready(void) const noexcept]. Ak METHOD vrati VALUE [false] vykona sa COROUTINE SUSPENSION.
+      D. Pri COROUTINE SUSPENSION sa vykonavaju nasledujuce OPERATIONS.
+         A. COROUTINE je SUSPENDED.
+         B. Pre AWAITER OBJECT sa zavola METHOD [TReturnType await_suspend(coroutine_handle<TPromiseType> AwaitHandle)], kde PARAMETER [AwaitHandle] reprezentuje COROUTINE HANDLE na CURRENT COROUTINE. Na zaklade RETURN VALUE, ktoru METHOD vracia sa vykona nasledujuce OPERATION.
+            A. RETURN TYPE [void]. Ak METHOD nevracia RETURN VALUE, tak COROUTINE je SUSPENDED a beh sa okamzite vrati do CALLER FUNCTION.
+            !!! B. RETURN TYPE [bool]. Nasledujuca OPERATION zavisi od RETURN VALUE.
+               A. Ak METHOD vracia VALUE [true], tak C++ vrati beh PROGRAMU do CALLER FUNCTION. Cize vykona sa rovnaka OPERATION, ako ked METHOD nevrati ziadnu RETURN VALUE.
+               B. Ak METHOD vracia VALUE [false], tak C++ vykona RESUME CURRENT COROUTINE.
+            !!!!! C. RETURN TYPE [COROUTINE_HANDLE]. Ak METHOD vracia COROUTINE HANDLE, tak C++ vykona COROUTINE RESUME tej COROUTINE, ktorej HANDLE bol vrateny, volanim METHOD [void coroutine_handle<TPromiseType>::resume(void) const].
+         !!! C. Ak METHOD [TReturnType await_suspend(coroutine_handle<TPromiseType> AwaitHandle)] hodi EXCEPTION, C++ zachyti EXCEPTION, COROUTINE je RESUMED a EXCEPTION je okamzite RETHROWN.
+         D. COROUTINE je RESUMED volanim METHOD [void coroutine_handle<TPromiseType>::resume(void) const].
+         !!!!! E. Po vykonani COROUTINE RESUME sa pre AWAITER OBJECT zavola METHOD [TYieldReturnValueType await_resume(void) const noexcept]. RETURN VALUE tejto METHOD je pouzita ako RETURN VALUE OPERATOR [OPERATOR co_await]. To znamena, ze umoznuje CALLER FUNCTION vratit pri COROUTINE RESUME RETURN VALUE do COROUTINE.
+   E. Pred ukoncenim OPERATOR [OPERATOR co_await] dojde k uvolneniu AWAITER OBJECT a AWAITABLE OBJECT.
+9. Pre OPERATOR [OPERATOR co_yield] platia nasledujuce fakty.
+   A. OPERATOR [OPERATOR co_yield] vykonava COROUTINE SUSPEND a vracia RETURN VALUE po vykonani COROUTINE RESUME.
+   B. OPERATOR [OPERATOR co_yield] moze byt volany nasledujucimi sposobmi.
+      A. OPERATOR [OPERATOR co_yield] sa moze volat pomocou CODE [co_yield EXPRESSION].
+      B. OPERATOR [OPERATOR co_yield] sa moze volat pomocou CODE [co_yield BRACED_INIT_LIST].
+   C. OPERATOR [OPERATOR co_yield] je ekvivalent CODE [AWAITER PROMISE_TYPE.yield_value(EXPRESSION)].
+10. Pre OPERATOR [OPERATOR return] platia nasledujuce fakty.
+   A. OPERATOR [OPERATOR co_return] sa pouziva na vratenie RETURN VALUE z COROUTINE.
+   B. Po KEYWORD OPERATOR [OPERATOR co_return] sa vykonavaju nasledujuce kroky.
+      A. Na zaklade pouzitia OPERATOR [OPERATOR co_return] sa vykona nasledujuce operacia.
+         A. Ak sa OPERATOR [OPERATOR co_return] pouzil v CODE [co_return;], zavola sa METHOD [return_void()] PROMISE OBJECT.
+         B. Ak sa OPERATOR [OPERATOR co_return] pouzil v CODE [co_return EXPRESSION;], zavola sa METHOD [return_value(EXPRESSION)] PROMISE OBJECT.
+      B. Uvolnia sa vsetky LOCAL VARIABLES v opacnom poradi v akom boli vytvorene.
+      C. Zavola sa METHOD [final_suspend()] PROMISE OBJECT a na vrateny AWAITER OBJECT sa aplikuje OPERATOR [OPERATOR co_await].
+   !!!!! C. Ak COROUTINE pouziva OPERATOR [OPERATOR co_return], musi ho pouzit na konci kazdej CODE BRANCHE, ktora ukoncuje CODE COROUTINE. Ak by v niektorej CODE BRANCH sa na konci vykonavania COROUTINE nepouzil OPERATOR [OPERATOR co_return], tak to povedie k UNDEFINED BEHAVIOR.
+//----------------------------------------------------------------------------------------------------------------------
