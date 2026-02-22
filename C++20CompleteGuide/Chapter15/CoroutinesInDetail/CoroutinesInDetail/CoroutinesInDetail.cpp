@@ -32,6 +32,7 @@
 #include "CCoroutineObjectAwaitTransform.h"
 #include "CCoroutineObjectCustomOperatorCoAwait.h"
 #include "CCoroutineObjectThreadPool.h"
+#include "CCoroutineObjectCoroutineTraits.h"
 //----------------------------------------------------------------------------------------------------------------------
 #ifdef _MSC_VER
 #pragma warning( disable : 4804 )
@@ -1781,6 +1782,8 @@ CCoroutineObjectThreadPool CoroutineObjectThreadPoolLevel1(int ID)
 		Stream << L"\tLEVEL 1 - ID [" << ID << L"] THREAD ID [" << get_id() << L"] COROUTINE STARTED." << endl;
 	}
 
+	// !!!!! Pre CLASS [CCoroutineObjectThreadPool], ktory vacia COROUTINE [CoroutineObjectThreadPoolLevel2()] sa vola CUSTOM OPERATOR [OPERATOR co_await].
+	// !!!!! CUSTOM OPERATOR [OPERATOR co_await] vlozi COROUTINE HANDLE do THREAD POOL, aby bola vykonana na separatnom THREAD.
 	co_await CoroutineObjectThreadPoolLevel2(ID,1);
 
 	{
@@ -1789,6 +1792,8 @@ CCoroutineObjectThreadPool CoroutineObjectThreadPoolLevel1(int ID)
 		Stream << L"\tLEVEL 1 - ID [" << ID << L"] THREAD ID [" << get_id() << L"] RESUME AFTER STEP 1." << endl;
 	}
 
+	// !!!!! Pre CLASS [CCoroutineObjectThreadPool], ktory vacia COROUTINE [CoroutineObjectThreadPoolLevel2()] sa vola CUSTOM OPERATOR [OPERATOR co_await].
+	// !!!!! CUSTOM OPERATOR [OPERATOR co_await] vlozi COROUTINE HANDLE do THREAD POOL, aby bola vykonana na separatnom THREAD.
 	co_await CoroutineObjectThreadPoolLevel2(ID,2);
 
 	{
@@ -1864,6 +1869,145 @@ void TestCoroutineObjectThreadPool2(void)
 //----------------------------------------------------------------------------------------------------------------------
 //----------------------------------------------------------------------------------------------------------------------
 //----------------------------------------------------------------------------------------------------------------------
+void TestCoroutineObjectThreadPoolSynchronously(void)
+{
+	{
+		wosyncstream											Stream{wcout};
+
+		Stream << L"TEST - THREAD ID [" << get_id() << L"] TEST STARTED." << endl;
+	}
+
+	CCoroutineObjectThreadPoolThreadPool						ThreadPool(4);
+
+	{
+		{
+			wosyncstream										Stream{wcout};
+
+			Stream << L"TEST - THREAD ID [" << get_id() << L"] TASK [" << 1 << L"] STARTING." << endl;
+		}
+
+		CCoroutineObjectThreadPool								CoroutineObject=CoroutineObjectThreadPoolLevel1(1);
+
+		ThreadPool.RunTask(move(CoroutineObject));
+	}
+
+	{
+		{
+			wosyncstream										Stream{wcout};
+
+			Stream << L"TEST - THREAD ID [" << get_id() << L"] TASK [" << 2 << L"] STARTING." << endl;
+		}
+
+		CCoroutineObjectThreadPool								CoroutineObject=CoroutineObjectThreadPoolLevel1(2);
+
+		// !!!!! Synchrone sa caka na skoncenie COROUTINE.
+		ThreadPool.RunTaskSynchronously(move(CoroutineObject));
+	}
+
+	// !!!!! Tieto COROUTINES sa spustia AZ po skonceni predoslej COROUTINE.
+
+	{
+		{
+			wosyncstream										Stream{wcout};
+
+			Stream << L"TEST - THREAD ID [" << get_id() << L"] TASK [" << 3 << L"] STARTING." << endl;
+		}
+
+		CCoroutineObjectThreadPool								CoroutineObject=CoroutineObjectThreadPoolLevel1(3);
+
+		ThreadPool.RunTask(move(CoroutineObject));
+	}
+
+	{
+		{
+			wosyncstream										Stream{wcout};
+
+			Stream << L"TEST - THREAD ID [" << get_id() << L"] TASK [" << 4 << L"] STARTING." << endl;
+		}
+
+		CCoroutineObjectThreadPool								CoroutineObject=CoroutineObjectThreadPoolLevel1(4);
+
+		ThreadPool.RunTask(move(CoroutineObject));
+	}
+
+	{
+		wosyncstream											Stream{wcout};
+
+		Stream << L"TEST - THREAD ID [" << get_id() << L"] TEST WAITING for COROUTINES to FINISH." << endl;
+	}
+
+	ThreadPool.WaitUntilAllCoroutinesFinished();
+
+	{
+		wosyncstream											Stream{wcout};
+
+		Stream << L"TEST - THREAD ID [" << get_id() << L"] TEST FINISHED." << endl;
+	}
+}
+//----------------------------------------------------------------------------------------------------------------------
+
+
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+void CoroutineCoroutineTraits(CCoroutineObjectCoroutineTraits& CoroutineObject, int Parameter1, double Parameter2)
+{
+	(void) CoroutineObject;
+
+	wcout << L"\tCoroutineCoroutineTraits() - PART 1. PARAMETER 1 [" << Parameter1 << L"] PARAMETER 2 [" << Parameter2 << L"]." << endl;
+
+	suspend_always											Awaiter1{};
+
+	co_await Awaiter1;
+
+	wcout << L"\tCoroutineCoroutineTraits() - PART 2. PARAMETER 1 [" << Parameter1 << L"] PARAMETER 2 [" << Parameter2 << L"]." << endl;
+
+	suspend_always											Awaiter2{};
+
+	co_await Awaiter2;
+
+	wcout << L"\tCoroutineCoroutineTraits() - PART 3. PARAMETER 1 [" << Parameter1 << L"] PARAMETER 2 [" << Parameter2 << L"]." << endl;
+}
+//----------------------------------------------------------------------------------------------------------------------
+void TestCoroutineCoroutineTraits(void)
+{
+	PrintLineSeparator();
+
+	wcout << L"Test() - STARTED." << endl;
+
+	{
+		// !!!!! COROUTINE OBJECT sa vytvori MIMO COROUTINE.
+		CCoroutineObjectCoroutineTraits							MyCoroutineTask;
+
+		// !!!!! COROUTINE OBJECT sa posle ako PARAMETER do COROUTINE.
+		CoroutineCoroutineTraits(MyCoroutineTask,100,123.456);
+
+		wcout << L"Test() - AFTER COROUTINE STARTED." << endl;
+
+		while(true)
+		{
+			bool												CanResume=MyCoroutineTask.Resume();
+
+			if (CanResume==true)
+			{
+				wcout << L"Test() - AFTER COROUTINE SUSPENDED." << endl;
+			}
+			else
+			{
+				wcout << L"Test() - AFTER COROUTINE FINISHED." << endl;
+
+				break;
+			}
+		}
+	}
+
+	wcout << L"Test() - FINISHED." << endl;
+
+	PrintLineSeparator();
+}
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
 int main(void)
 {
 	SafeMain();
@@ -1895,7 +2039,9 @@ int main(void)
 	//TestCoroutineObjectAwaitTransform();
 	//TestCoroutineObjectCustomOperatorCoAwait();
 	//TestCoroutineObjectThreadPool1();
-	TestCoroutineObjectThreadPool2();
+	//TestCoroutineObjectThreadPool2();
+	TestCoroutineObjectThreadPoolSynchronously();
+	//TestCoroutineCoroutineTraits();
 
 	ShowExitLine();
 

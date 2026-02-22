@@ -2,67 +2,57 @@
 #pragma once
 //----------------------------------------------------------------------------------------------------------------------
 #include <coroutine>
-#include <exception>
 #include <iostream>
 //----------------------------------------------------------------------------------------------------------------------
 //----------------------------------------------------------------------------------------------------------------------
 //----------------------------------------------------------------------------------------------------------------------
 template<typename TCoroutineObject>
-struct SCoroutineObjectAwaitTransformPromiseType final
+struct SCoroutineObjectCoroutineTraitsPromiseType final
 {
 //----------------------------------------------------------------------------------------------------------------------
-	private:
-		int														MValue1;
-		double													MValue2;
-
 	public:
-		TCoroutineObject get_return_object(void);
+		// !!!!! Pri pouziti COROUTINE TRAITS, sa METHOD NIKDY NEVOLA, pretoze COROUTINE OBJECT je vytvorena priamo v CALLER FUNCTION.
+		void get_return_object(void);
 		std::suspend_always initial_suspend(void);
 		void unhandled_exception(void);
 		void return_void(void);
 		std::suspend_always final_suspend(void) noexcept;
 
 	public:
-		std::suspend_always await_transform(int Value);
-		std::suspend_always await_transform(double Value);
-
-	public:
-		int GetValue1(void) const noexcept;
-		double GetValue2(void) const noexcept;
-
-	public:
-		SCoroutineObjectAwaitTransformPromiseType(void);
-		~SCoroutineObjectAwaitTransformPromiseType(void);
+		// !!!!! Pri pouziti COROUTINE TRAITS, je nutne definovat CONSTRUCTOR, ktory ma rovnake PARAMETERS ako COROUTINE OBJECT.
+		SCoroutineObjectCoroutineTraitsPromiseType(TCoroutineObject& CoroutineObject, int Parameter1, double Parameter2);
+		~SCoroutineObjectCoroutineTraitsPromiseType(void);
 //----------------------------------------------------------------------------------------------------------------------
 };
 //----------------------------------------------------------------------------------------------------------------------
 //----------------------------------------------------------------------------------------------------------------------
 //----------------------------------------------------------------------------------------------------------------------
 template<typename TCoroutineObject>
-SCoroutineObjectAwaitTransformPromiseType<TCoroutineObject>::SCoroutineObjectAwaitTransformPromiseType(void)
-	: MValue1(), MValue2()
+SCoroutineObjectCoroutineTraitsPromiseType<TCoroutineObject>::SCoroutineObjectCoroutineTraitsPromiseType(TCoroutineObject& CoroutineObject, int Parameter1, double Parameter2)
 {
-}
-//----------------------------------------------------------------------------------------------------------------------
-template<typename TCoroutineObject>
-SCoroutineObjectAwaitTransformPromiseType<TCoroutineObject>::~SCoroutineObjectAwaitTransformPromiseType(void)
-{
-}
-//----------------------------------------------------------------------------------------------------------------------
-//----------------------------------------------------------------------------------------------------------------------
-//----------------------------------------------------------------------------------------------------------------------
-template<typename TCoroutineObject>
-TCoroutineObject SCoroutineObjectAwaitTransformPromiseType<TCoroutineObject>::get_return_object(void)
-{
-	std::coroutine_handle<SCoroutineObjectAwaitTransformPromiseType>	Handle=std::coroutine_handle<SCoroutineObjectAwaitTransformPromiseType>::from_promise(*this);
+	(void)Parameter1;
+	(void)Parameter2;
 
-	TCoroutineObject											CoroutineObject(Handle);
+	std::coroutine_handle<SCoroutineObjectCoroutineTraitsPromiseType<TCoroutineObject>>	Handle=std::coroutine_handle<SCoroutineObjectCoroutineTraitsPromiseType<TCoroutineObject>>::from_promise(*this);
 
-	return(CoroutineObject);
+	CoroutineObject.SetCoroutineHandle(Handle);
 }
 //----------------------------------------------------------------------------------------------------------------------
 template<typename TCoroutineObject>
-std::suspend_always SCoroutineObjectAwaitTransformPromiseType<TCoroutineObject>::initial_suspend(void)
+SCoroutineObjectCoroutineTraitsPromiseType<TCoroutineObject>::~SCoroutineObjectCoroutineTraitsPromiseType(void)
+{
+}
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+template<typename TCoroutineObject>
+void SCoroutineObjectCoroutineTraitsPromiseType<TCoroutineObject>::get_return_object(void)
+{
+	// EMTPTY.
+}
+//----------------------------------------------------------------------------------------------------------------------
+template<typename TCoroutineObject>
+std::suspend_always SCoroutineObjectCoroutineTraitsPromiseType<TCoroutineObject>::initial_suspend(void)
 {
 	std::suspend_always											Result{};
 
@@ -70,19 +60,19 @@ std::suspend_always SCoroutineObjectAwaitTransformPromiseType<TCoroutineObject>:
 }
 //----------------------------------------------------------------------------------------------------------------------
 template<typename TCoroutineObject>
-void SCoroutineObjectAwaitTransformPromiseType<TCoroutineObject>::unhandled_exception(void)
+void SCoroutineObjectCoroutineTraitsPromiseType<TCoroutineObject>::unhandled_exception(void)
 {
-	std::terminate();
+	std::wcout << L"!!!!! UNHANDLED EXCEPTION DETECTED. !!!!!" << std::endl;
 }
 //----------------------------------------------------------------------------------------------------------------------
 template<typename TCoroutineObject>
-void SCoroutineObjectAwaitTransformPromiseType<TCoroutineObject>::return_void(void)
+void SCoroutineObjectCoroutineTraitsPromiseType<TCoroutineObject>::return_void(void)
 {
 	// EMPTY.
 }
 //----------------------------------------------------------------------------------------------------------------------
 template<typename TCoroutineObject>
-std::suspend_always SCoroutineObjectAwaitTransformPromiseType<TCoroutineObject>::SCoroutineObjectAwaitTransformPromiseType::final_suspend(void) noexcept
+std::suspend_always SCoroutineObjectCoroutineTraitsPromiseType<TCoroutineObject>::SCoroutineObjectCoroutineTraitsPromiseType::final_suspend(void) noexcept
 {
 	std::suspend_always											Result{};
 
@@ -91,74 +81,55 @@ std::suspend_always SCoroutineObjectAwaitTransformPromiseType<TCoroutineObject>:
 //----------------------------------------------------------------------------------------------------------------------
 //----------------------------------------------------------------------------------------------------------------------
 //----------------------------------------------------------------------------------------------------------------------
-template<typename TCoroutineObject>
-std::suspend_always SCoroutineObjectAwaitTransformPromiseType<TCoroutineObject>::await_transform(int Value)
-{
-	std::wcout << L"METHOD [suspend_always await_transform(int Value)] CALLED. VALUE [" << Value << L"]." << std::endl;
-
-	MValue1=Value;
-
-	std::suspend_always											Awaiter{};
-
-	return(Awaiter);
-}
-//----------------------------------------------------------------------------------------------------------------------
-template<typename TCoroutineObject>
-std::suspend_always SCoroutineObjectAwaitTransformPromiseType<TCoroutineObject>::await_transform(double Value)
-{
-	std::wcout << L"METHOD [suspend_always await_transform(double Value)] CALLED. VALUE [" << Value << L"]." << std::endl;
-
-	MValue2=Value;
-
-	std::suspend_always											Awaiter{};
-
-	return(Awaiter);
-}
 //----------------------------------------------------------------------------------------------------------------------
 //----------------------------------------------------------------------------------------------------------------------
 //----------------------------------------------------------------------------------------------------------------------
-template<typename TCoroutineObject>
-int SCoroutineObjectAwaitTransformPromiseType<TCoroutineObject>::GetValue1(void) const noexcept
-{
-	return(MValue1);
-}
-//----------------------------------------------------------------------------------------------------------------------
-template<typename TCoroutineObject>
-double SCoroutineObjectAwaitTransformPromiseType<TCoroutineObject>::GetValue2(void) const noexcept
-{
-	return(MValue2);
-}
-//----------------------------------------------------------------------------------------------------------------------
-//----------------------------------------------------------------------------------------------------------------------
-//----------------------------------------------------------------------------------------------------------------------
-//----------------------------------------------------------------------------------------------------------------------
-//----------------------------------------------------------------------------------------------------------------------
-//----------------------------------------------------------------------------------------------------------------------
-class [[nodiscard]] CCoroutineObjectAwaitTransform final
+class [[nodiscard]] CCoroutineObjectCoroutineTraits final
 {
 //----------------------------------------------------------------------------------------------------------------------
-	public:
-		using													promise_type=SCoroutineObjectAwaitTransformPromiseType<CCoroutineObjectAwaitTransform>;
+	// !!! COROUTINE OBJECT nemusi mat definovany PUBLIC TYPE [promise_type].
+
+	template<typename TCoroutineObject>
+	friend struct SCoroutineObjectCoroutineTraitsPromiseType;
 
 	private:
-		std::coroutine_handle<SCoroutineObjectAwaitTransformPromiseType<CCoroutineObjectAwaitTransform>>	MHandle;
+		using													TPromiseType=SCoroutineObjectCoroutineTraitsPromiseType<CCoroutineObjectCoroutineTraits>;
+
+	private:
+		std::coroutine_handle<TPromiseType>						MHandle;
 
 	public:
-		CCoroutineObjectAwaitTransform& operator=(const CCoroutineObjectAwaitTransform&)=delete;
-		CCoroutineObjectAwaitTransform& operator=(CCoroutineObjectAwaitTransform&& Other) noexcept;
+		CCoroutineObjectCoroutineTraits& operator=(const CCoroutineObjectCoroutineTraits&)=delete;
+		CCoroutineObjectCoroutineTraits& operator=(CCoroutineObjectCoroutineTraits&& Other) noexcept;
+
+	private:
+		void SetCoroutineHandle(std::coroutine_handle<TPromiseType> Handle);
 
 	public:
 		bool Resume(void) const;
 
 	public:
-		int GetValue1(void) const noexcept;
-		double GetValue2(void) const noexcept;
-
+		CCoroutineObjectCoroutineTraits(void);
+		CCoroutineObjectCoroutineTraits(const CCoroutineObjectCoroutineTraits&)=delete;
+		CCoroutineObjectCoroutineTraits(CCoroutineObjectCoroutineTraits&& Other) noexcept;
+		~CCoroutineObjectCoroutineTraits(void) noexcept;
+//----------------------------------------------------------------------------------------------------------------------
+};
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+// !!!!! Definuje sa TEMPLATE SPECIALIZATION COROUTINE TRAIT pre COROUTINE.
+// !!!!! TEMPLATE SPECIALIZATION COROUTINE TRAIT musi ma tie iste RETURN VALUE TYPE a PARAMETERS, ako COROUTINE.
+template<>
+struct std::coroutine_traits<void,CCoroutineObjectCoroutineTraits&,int,double>
+{
+//----------------------------------------------------------------------------------------------------------------------
 	public:
-		CCoroutineObjectAwaitTransform(std::coroutine_handle<SCoroutineObjectAwaitTransformPromiseType<CCoroutineObjectAwaitTransform>> Handle);
-		CCoroutineObjectAwaitTransform(const CCoroutineObjectAwaitTransform&)=delete;
-		CCoroutineObjectAwaitTransform(CCoroutineObjectAwaitTransform&& Other) noexcept;
-		~CCoroutineObjectAwaitTransform(void) noexcept;
+		// !!!!! COROUTINE TRAIT MUSI definovat TYPE [promise_type].
+		using													promise_type=SCoroutineObjectCoroutineTraitsPromiseType<CCoroutineObjectCoroutineTraits>;
 //----------------------------------------------------------------------------------------------------------------------
 };
 //----------------------------------------------------------------------------------------------------------------------
