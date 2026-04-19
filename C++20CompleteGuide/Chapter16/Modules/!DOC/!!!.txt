@@ -1,0 +1,194 @@
+//----------------------------------------------------------------------------------------------------------------------
+1. Solution demonstruje pouzitie MODULES v C++.
+2. MODULES je C++ FEATURE, ktora bola pridana do C++ 20. Pre MODULES platia nasledujuce fakty.
+   A. MODULES poskytuju sposob ako kombinovat CODE z viacerych SOURCE CODE FILES do jednej logickej ENTITY, ktora sa nazyva MODULE.
+   B. MODULES mozu obsahovat CODE ELEMENTS ako su NAMESPACES, CLASSES, STRUCTURES, ENUMS, TEMPLATES, ci FUNCTIONS.
+   !!! C. MODULES umoznuju definovat svoje API, ktore moze byt tvorene CODE ELEMENTS ako NAMESPACES, CLASSES, STRUCTURES, ENUMS, TEMPLATES, ci FUNCTIONS a ktore je mozne exportovat na pouzitie v inych MODULES ci SOURCE CODE FILES.
+   !!! D. MODULES umoznuju definovat INTERNE CODE ELEMENTS ako NAMESPACES, CLASSES, STRUCTURES, ENUMS, TEMPLATES, ci FUNCTIONS, ktore NIE JE SUCASTOU EXPORTED API. Taketo CODE ELEMENTS potom nie su viditelne v CODE, ktory importu dany MODULE.
+   !!! E. CODE v MODULES nepredstavuje novy SCOPE. To znamena, ze SCOPE vo FILES, ktore importuju dany MODULE je rovnaky, aky bol v samotnom MODULE. To znaci, ze ak je CODE v MODULE definovany v NAMESPACE, tak aj v CODE, ktory pouzivat MODULE je definovany v tomto NAMESPACE. Ak naopak NAMEPSACE v MODULE nie je definovany, tak MODULE CODE je pristupny v GLOBAL NAMESPACE.
+   F. MODULES mozu obsahovat DECLARATIONS a DEFINITIONS ako bezne HEADER FILES ci SOURCE FILES.
+   !!!!! G. Na MODULES sa NEAPLIKUE ONE DEFINITION RULE pri importe MODULES. To znamena, ze CODE DEFINITIONS v MODULE mozu byt IMPORTED do viacerych SOURCE FILES, bez toho, aby narusili ONE DEFINITION RULE.
+   !!!!! H. MODULES su alternativou voci tradicnemu pouzitiu HEADER FILES a SOURCE FILES. Pretoze MODULES su nezavisle ENTITIES, su COMPILED osobitne, cim sa zabranuje nutnosti opakovanie kompilacie tych istych HEADER FILES, ako je to v pripade pouzitia HEADER FILES a SOURCE FILES.
+   !!! I. MODULES NEVYZADUJU pouzitie KEYWORD [inline] pre CODE DEFINTION FUNCTIONS, pretoze na MODULES sa NEAPLIKUJE ONE DEFINITION RULE.
+   !!! J. MODULES NEVYZADUJU pouzitie PREPROCESSOR GUARDS.
+3. Pre implementaciu MODULES platia nasledujuce fakty.
+   A. CODE daneho MODULE moze byt ulozeny v 1, alebo viacerych FILES.
+   B. Kazdy MODULE musi obsahovat presne 1 MODULE INTERFACE UNIT FILE. Tento FILE nema standardizovanu EXTENSION a VISUAL STUDIO pouziva EXTENSTION [ixx].
+   C. MODULE INTERFACE UNIT FILE musi obsahovat definiciu MODULE NAME. Pre MODULE NAME platia nasledujuce fakty.
+      A. MODULE NAME sa definuje pomocou CODE [export module MODULE_NAME;], kde VALUE [MODULE_NAME] je nazov MODULE NAME.
+      B. MODULE NAME moze obsahovat CHARACTER [.], ktory je vsak intepretovany ako bezny CHARACTER a nema ziaden specificky vyznam.
+      C. MODULE NAME sa pouziva ako identifikator pre IMPORT daneho MODULE.
+   D. MODULE moze obsahovat vsetky C++ ELEMENTS ako su napriklad NAMESPACES, CLASSES, STRUCTURES, ENUMS, TEMPLATES, ci FUNCTIONS.
+   !!! E. MODULE moze definovat, ktore C++ ELEMENTS budu z daneho MODULE EXPORTED. Pre EXPORTED ELEMENTS platia nasledujuce fakty.
+      A. C++ ELEMENT je EXPORTED, ak jeho DECLARATION, alebo DEFINITION zacina KEYWORD [export].
+      B. EXPORTED C++ ELEMENTS su viditelne a pouzitelne v SOURCE FILES, ktore importovany dany MODULE.
+      !!! C. C++ ELEMENTS, ktore NIE SU EXPORTED su PRIVATNE a NIE su pouzitelne v SOURCE FILES, ktore importovany dany MODULE.
+4. MODULES mozu byt IMPORTED. Pre MODULE IMPORT platia nasledujuce fakty.
+   A. MODULES su IMPORTED pomocou CODE [import MODULE_NAME;], kde VALUE [MODULE_NAME] je nazov MODULE NAME.
+   !!! B. MODULES su IMPORTED IBA na zaklade svojho MODULE NAME. Preto NEOBSAHUJU PATH k danemu MODULE, pretoze COMPILER ho vie, kedze pri kompilacii samotneho MODULE sa definuje PATH k danemu MODULE.
+5. MODULES su COMPILED nasledujucim sposobom.
+   A. MODULES mozu obsahovat DECLARATIONS aj DEFINITIONS, ktore su COMPILER osobitne.
+   B. MODULES, kedze obsahuju DECLARATIONS aj DEFINITIONS logicky reprezentuju sucastne HEADER FILE aj SOURCE CODE FILE.
+   C. C++ vykona PRECOMPILATION vsetkych EXPORTED DECLARATIONS a vsetkych EXPORTED TEMPLATE DEFINITIONS. Platia nasledujuce fakty.
+      A. C++ vykonava PRECOMPILATION vsetkych EXPORTED DECLARATIONS a vsetkych EXPORTED TEMPLATE DEFINITIONS, ktore sa nachadzaju v danom MODULE.
+      B. Vysledok COMPILATION je ulozeny do FILE, ktory ma NAME identicky ako NAME daneho MODULE. FILE EXTENSION vsak nie je standardizovany. VISUAL STUDIO pouziva FILE EXTENSION [.ifc] a GCC pouziva FILE EXTENSION [.gcm].
+   D. C++ vykona COMPILATION vsetkych DEFINITIONS. Platia nasledujuce fakty.
+      A. C++ vykonava COMPILATION vsetkych DEFINITIONS, ktore sa nachadzaju v danom MODULE.
+      B. Vysledok COMPILATION je ulozeny do FILE, ktory ma COMPILER DEPENDENT NAME. FILE EXTENSION nie je standardizovany. VISUAL STUDIO pouziva FILE EXTENSION [.obj] a GCC pouziva FILE EXTENSION [.o].
+   !!! E. Pri MODULE IMPORT musi byt vykonana PRECOMPILATION vsetkych EXPORTED DECLARATIONS a vsetkych EXPORTED TEMPLATE DEFINITIONS predtym ako SOURCE CODE importuje dany MODULE. Preto je poradie COMPILATION dolezite.
+6. Pri MODULES ma pre CODE ELEMENTS definovane v MODULES vyznam rozlisovat nasledujuce pojmy.
+   A. VISIBILITY. Pre VISIBILITY platia nasledujuce fakty.
+      A. CODE ELEMENT je v IMPORTED CODE VISIBLE, ak dany CODE ELEMENT bol EXPORTED.
+      B. CODE ELEMENTS, ktore neboli EXPORTED z daneho MODULE, NIE su v CODE, ktory importuju danu MODULE VISIBLE.
+      C. Ak CODE ELEMENT nie je VISIBLE, nie je mozne ho v CODE, ktory vykonava IMPORT daneho MODULE PRIAMO pouzivat.
+      !!! D. Prikladom nemoznosti pouzitia NOT VISIBLE CODE ELEMENTS je nemoznost volania NOT EXPORTED FUNCTIONS, ci nemoznost definovat VARIABLES NOT EXPORTED TYPES.
+      !!! E. Ak CODE ELEMENTS, ktore NIE SU VISIBLE mozu vsak byt REACHABLE, ked mozu byt v CODE, ktory importoval dany MODULE NEPRIAMO pouzitelne.
+   B. REACHABILIY. Pre REACHABILIY platia nasledujuce fakty.
+      A. CODE ELEMENTS ktore nie su VISIBLE, to znamena, ze neboli EXPORTED z daneho MODULE, vsak mozu byt nepriamo pouzite.
+      !!! B. VARIABLE NOT EXPORTED TYPE sice nemoze byt priamo deklarovana pouzitim nazvu daneho TYPE, ale je mozne pouzit KEYWORD [auto], alebo KEYWORD [decltype].
+      !!! C. REACHABILITY CODE ELEMENTS moze byt obmedzena aplikaciou PRIVATE MODULE FRAGMENTS.
+7. MODULES mozu exportovat NAMESPACES nasldujucimi sposobmi.
+   A. Pouzitim NOT EXPORTED NAMESPACE. Pre pouzitie NOT EXPORTED NAMESPACE platia nasledujuce fakty.
+      A. NOT EXPORTED NAMESPACE je klasicky NAMESPACE na ktory nebol aplikovany KEYWORD [export].
+      B. CODE ELEMENTS nachadzajuce sa v NOT EXPORTED NAMESPACE mozu byt EXPORTED aplikaciou KEYWORD [export].
+      C. EXPORTED CODE ELEMENTS su pristupne v CODE, ktory importuje dany MODULE ako sucast NOT EXPORTED NAMESPACE.
+   B. Pouzitim EXPORTED NAMESPACE.
+      A. EXPORTED NAMESPACE je NAMESPACE na ktory bol aplikovany KEYWORD [export].
+      B. Vsetky ELEMENTS, ktore sa nachadzaju v EXPORTED NAMESPACE su EXPORTED.
+      C. CODE ELEMENTS v EXPORTED NAMESPACE su pristupne v CODE, ktory importuje dany MODULE ako sucast EXPORTED NAMESPACE.
+8. MODULES umoznuju definovat GLOBAL MODULE FRAGMENTS. Pre GLOBAL MODULE FRAGMENTS platia nasledujuce fakty.
+   A. GLOBAL MODULE FRAGMENTS mozu obsahovat vsetky PREPROCESSOR KEYWORDS, ako je napriklad KEYWORD [#include], alebo KEYWORD [#define].
+   !!! B. GLOBAL MODULE FRAGMENTS maju aplikovany MODULE LINKAGE, co znamena, ze su VISIBLE iba v ramci daneho MODULE FILE a ich obsah NIE JE EXPORTED do inych FILES.
+   C. Z HEADER FILES importovanych v GLOBAL MODULE FRAGMENTS su do MODULE OBJECT FILES vlozene iba tie C++ ELEMENTS, ktore MODULE realne pouziva. Ostatne C++ ELEMENTS su ignorovane.
+   D. GLOBAL MODULE FRAGMENTS sa definuju v nasledujucich krokoch.
+      A. Na zaciatku FILE, ktory je sucastou MODULE sa pouzije CODE [module;], ktory identifikuje ze FILE reprezentuje FILE, ktory je sucastou MODULE.
+      B. Po CODE [module;] nasleduje pouzitie PREPROCESSOR KEYWORDS ako je napriklad KEYWORD [#include], alebo KEYWORD [#define].
+      C. Po pouziti PREPROCESSOR KEYWORDS nasleduje zaciatok samotneho MODULE CODE pomcou niektoreho z KEYWORDS identifikujucich zaciatok MODULE CODE.
+         A. CODE [export module MODULE_NAME;], kde VALUE [MODULE_NAME] je nazov MODULE identifikuje zaciatok PRIMARY INTERFACE MODULE FILE.
+         B. CODE [module MODULE_NAME;], kde VALUE [MODULE_NAME] je nazov MODULE identifikuje zaciatok IMPLEMENTATION UNIT MODULE FILE.
+         C. CODE [module MODULE_NAME:PARTITION_NAME;], kde VALUE [MODULE_NAME] je nazov MODULE a VALUE [PARTITION_NAME] je nazov PARTITION identifikuje zaciatok INTERNAL PARITION MODULE FILE.
+         D. CODE [export module MODULE_NAME:PARTITION_NAME;], kde VALUE [MODULE_NAME] je nazov MODULE a VALUE [PARTITION_NAME] je nazov PARTITION identifikuje zaciatok INTERFACE PARITION MODULE FILE.
+      D. Po tomto mieste uz NIE JE mozne pouzivat PREPROCESSOR DIRECTIVE [#include], hoci ostatne PREPROCESSOR DIRECTIVES ako napriklad PREPROCESSOR DIRECTIVE [#define] je mozne pouzit.
+9. MODULES umoznuju definovat MODULE CODE vo viacerych FILES. Pre MULTIFILES MODULES platia nasledujuce fakty.
+   A. MULTIFILES MODULES umoznuju rozdelit MODULE CODE do viacerych nezavislych FILES, ktore logicky tvoria jeden spolocny MODULE.
+   B. MULTIFILES MODULES definuju nasledujuce typy MODULE FILES.
+      A. PRIMARY INTERFACE UNIT FILES.
+      B. IMPLEMENTATION UNIT MODULE FILES.
+      C. INTERNAL PARITION MODULE FILES.
+      D. INTERFACE PARITION MODULE FILES.
+   !!! C. MODULE FILES v MULTIFILES MODULES NEMAJU standardizovane FILE EXTENSIONS, a preto je mozne pouzit lubovolne FILE EXTENSIONS.
+   !!!!! D. COMPILER identifikuje to o aky typ MODULE FILE sa jedna tak, ze vykona PARSING zaciatku MODULE FILES, pricom v nich hlada KEYWORD [module], alebo KEYWORDS [export module].
+   E. Vsetky FILES v MULTIFILES MODULES tvoria logicky jediny MODULE, a nie je ich mozne importovat nezavisle do inych SOURCE CODE FILES. C++ umoznuje iba import celeho MODULE, bez ohladu na to ci je MODULE definovany v jednom, alebo viacerych MODULE FILES.
+10. Pre PRIMARY INTERFACE UNIT FILES platia nasledujuce fakty.
+   A. PRIMARY INTERFACE UNIT FILES obsahuje DECLARATION C++ ELEMENTS a DEFINITIONS C++ ELEMENTS.
+   !!! B. Pre kazdy MODULE musi existovat PRESNE JEDEN PRIMARY INTERFACE UNIT FILE.
+   C. PRIMARY INTERFACE UNIT FILE moze importovat INTERNAL PARITION MODULE FILES pomocou CODE [import :PARTITION_NAME], kde VALUE [PARTITION_NAME] je nazov PARTITION.
+   D. PRIMARY INTERFACE UNIT FILE moze importovat INTERFACE PARITION MODULE FILES pomocou CODE [export import :PARTITION_NAME], kde VALUE [PARTITION_NAME] je nazov PARTITION.
+11. Pre IMPLEMENTATION UNIT MODULE FILES platia nasledujuce fakty.
+   A. IMPLEMENTATION UNIT MODULE FILES obsahuje DEFINITIONS C++ ELEMENTS.
+   B. IMPLEMENTATION UNIT MODULE FILES su analogiou SOURCE CODE FILES v beznom C++.
+   !!! C. CODE ELEMENTS z IMPLEMENTATION UNIT MODULE FILES nikdy NIE SU EXPORTED. C++ ELEMENTS su definovane iba INTERNE a pouzivane INTERNE v ramci daneho MODULE.
+   D. IMPLEMENTATION UNIT MODULE FILES su kompilovane ako nezavisle OBJECT FILES, ktore nasledne LINKER sklada do vysledneho CODE.
+   E. IMPLEMENTATION UNIT MODULE FILES su definovane pouzitim CODE [module MODULE_NAME], kde VALUE [MODULE_NAME] je nazov MODULE.
+   !!! F. IMPLEMENTATION UNIT MODULE FILES NEMOZU byt IMPORTED, kedze reprezentuju SOURCE CODE FILES, ktore takisto nie su INCLUDED.
+   !!! G. IMPLEMENTATION UNIT MODULE FILES automaticky importuju vsetky C++ ELEMENTS z PRIMARY INTERFACE UNIT FILE.
+12. Pre INTERNAL PARITION MODULE FILE platia nasledujuce fakty.
+   A. INTERNAL PARITION MODULE FILES obsahuje DECLARATION C++ ELEMENTS a DEFINITIONS TEMPLATES.
+   B. INTERNAL PARITION MODULE FILES su analogiou HEADER FILES v beznom C++.
+   !!! C. CODE ELEMENTS z INTERNAL PARITION MODULE FILES nikdy NIE SU EXPORTED. C++ ELEMENTS su definovane iba INTERNE a pouzivane INTERNE v ramci daneho MODULE.
+   D. INTERNAL PARITION MODULE FILES su definovane pouzitim CODE [module MODULE_NAME:PARTITION_NAME], kde VALUE [MODULE_NAME] je nazov MODULE a VALUE [PARTITION_NAME] je nazov PARTITION.
+   !!! E. INTERNAL PARITION MODULE FILES je mozne importovat do ostatnych MODULE FILES pomocou CODE [import :PARTITION_NAME], kde VALUE [PARTITION_NAME] je nazov PARTITION.
+   !!!!! F. INTERNAL PARITION MODULE FILES NEPODPORUJU SUBPARTITIONS. Preto CODE [module MODULE_NAME:PARTITION_NAME_1:PARTITION_NAME_2] hoci ERROR.
+   !!! G. INTERNAL PARITION MODULE FILES automaticky importuju vsetky C++ ELEMENTS z PRIMARY INTERFACE UNIT FILE.
+13. Pre INTERFACE PARITION MODULE FILES platia nasledujuce fakty.
+   A. INTERFACE PARITION MODULE FILES obsahuje EXPORTED DECLARATION C++ ELEMENTS a EXPORTED DEFINITIONS TEMPLATES.
+   B. INTERFACE PARITION MODULE FILES su analogiou HEADER FILES v beznom C++.
+   !!! C. CODE ELEMENTS z INTERFACE PARITION MODULE FILES mozu byt EXPORTED a tym padom su viditelne aj v CODE, ktory importuje dany MODULE.
+   D. INTERFACE PARITION MODULE FILES su definovane pouzitim CODE [export module MODULE_NAME:PARTITION_NAME], kde VALUE [MODULE_NAME] je nazov MODULE a VALUE [PARTITION_NAME] je nazov PARTITION.
+   !!! E. INTERFACE PARITION MODULE FILES je mozne importovat do ostatnych MODULE FILES pomocou CODE [export import :PARTITION_NAME], kde VALUE [PARTITION_NAME] je nazov PARTITION.
+   !!!!! F. INTERFACE PARITION MODULE FILES NEPODPORUJU SUBPARTITIONS. Preto CODE [export module MODULE_NAME:PARTITION_NAME_1:PARTITION_NAME_2] hoci ERROR.
+   !!! G. INTERFACE PARITION MODULE FILES automaticky importuju vsetky C++ ELEMENTS z PRIMARY INTERFACE UNIT FILE.
+14. C++ umoznuje do MODULES importovat HEADER FILES. Platia nasledujuce fakty.
+   A. IMPORT HEADER FILE do MODULE sa robi pomocou CODE [import <HEADER_FILE>], kde VALUE [HEADER_FILE] je nazov HEADER FILE.
+   B. Pri IMPORT HEADER FILE sa importuju vsetky DECLARATIONS a DEFINITIONS, ktore dany HEADER FILE obsahuje. Importuju sa aj vsetky MACROS.
+   C. Ak pred IMPORT HEADER FILE boli pouzite PREPROCESSOR DIRECTIVES [#define], tieto nie su aplikovane na IMPORTED HEADER FILE.
+   D. Importovat je mozne iba STANDARD C++ HEADERS. Importovat nie je mozne C HEADER FILES, ktore boli prebrate do C++ ako napriklad HEADER FILE [cassert].
+15. C++ podporuje PRIVATE MODULE FRAGMENTS. Pre PRIVATE MODULE FRAGMENTS platia nasledujuce fakty.
+   A. PRIVATE MODULE FRAGMENTS umoznuju ukryt DECLARATIONS C++ ELEMENTS i DEFINITIONS C++ ELEMENTS, ktorych DECLARATIONS boli EXPORTED z daneho MODULE.
+   B. DEFINITIONS, ktore sa nachadzaju v PRIVATE MODULE FRAGMENTS nie su EXPORTED, co znamena, ze NIE su VISIBLE, ani REACHABLE.
+   !!! C. PRIVATE MODULE FRAGMENTS je mozne pouzit IBA v PRIMARY INTERFACE UNIT FILES. V ostatnych MODULE FILES NIE je mozne pouzit PRIVATE MODULE FRAGMENTS.
+   D. PRIVATE MODULE FRAGMENT sa deklaruje nasldujucim sposobom.
+      A. PRIVATE MODULE FRAGMENT sa deklaruje pomocou CODE [module :private].
+      B. Po CODE [module :private] je vsetko dalsi CODE nachadzajuci sa v PRIVATE MODULE FRAGMENT sucastou PRIVATE MODULE FRAGMENT, a NIE je EXPORTED.
+16. Pre EXPORT C++ ELEMENTS z MODULES platia nasledujuce fakty.
+   A. Z MODULES mozu byt EXPORTED vsetky C++ ELEMENTS, ktore maju NAME.
+   B. Pre exporte NAMESPACES, CLASSES, STRUCTURES, UNIONS, ENUMS su EXPORTED aj vsetky MEMBERS danych C++ ELEMENTS. Tie preto netreba exportovat osobitne.
+   C. MODULES umoznuju exportovat aj OBJECTS.
+   D. MODULES umoznuju exportovat aj USINGS.
+   !!! E. MODULES NEUMOZNUJU EXPORT UNNAMED NAMESPACES a STATIC OBJECTS.
+   F. KEYWORD [export] je mozne pouzit iba pri 1. DECLARATION daneho C++ ELEMENT.
+   G. EXPORTED C++ ENTITIES nevyzaduju pouzitie KEYWORD [inline].
+   H. MODULES mozu exportovat vsetky C++ ELEMENTS, ktore importuje. Platia nasledujuce fakty.
+      A. C++ ELEMENTS, ktore boli IMPORTED z ineho MODULE sa exportuju pomocou SYNTAX [export using NAMESPACE_NAME::ELEMENT_NAME], kde VALUE [NAMESPACE_NAME] je nazov NAMESPACE a VALUE [ELEMENT_NAME] je nazov ELEMENT NAME.
+      B. Ak je C++ ELEMENT definovany v GLOBAL NAMESPACE, na EXPORT importovaneho C++ ELEMENT sa pouziva CODE [export using ::ELEMENT_NAME], kde VALUE [ELEMENT_NAME] je nazov ELEMENT NAME.
+      C. C++ umoznuje EXPORT vsetkych IMPORTED C++ ELEMENTS ako su NAMESPACES, CLASSES, STRUCTURES, UNIONS, ENUMS, ci OBJECTS.
+17. Pre IMPORT C++ ELEMENTS z MODULES platia nasledujuce fakty.
+   A. IMPORT sa vykonava pomocou CODE [import MODULE_NAME;], kde VALUE [MODULE_NAME] je nazov MODULE NAME.
+   !!! B. MODULE, ktory je IMPORTED musi byt COMPILED SKOR ako MODULE, ktory IMPORT vykonal.
+   !!! C. Cyklicke DEPENDENCIES pre IMPORTED MODULES su zakazane.
+!!! 18. Pri IMPORTE daneho MODULE platia pre IMPORTED TYPES nasledujuce fakty.
+   A. Pri IMPORT su nepriamo IMPORTED aj vsetky TYPES, ktore pouzivaju C++ ELEMENTS, ktore su EXPORTED z daneho MODULE, hoci samotne TYPES EXPORTED NIE SU.
+   B. Takto nepriamo IMPORTED TYPES NIE su VISIBLE, pretoze NEBOLI z daneho MODULU EXPORTED.
+   C. No nepriamo IMPORTED TYPES su REACHABLE, vratane vsetkych svojich MEMBERS.
+   !!! D. Ak tieto nepriamo IMPORTED TYPES pouzivaju FREE STANDING FUNCTIONS, ktore samotne nie su EXPORTED, tak tak tieto FREE STANDING FUNCTIONS NIE su EXPORTED a teda nie su VISIBLE, ani REACHABLE.
+   !!!!! E. Nepriamo IMPORTED TYPES, ktore nie su VISIBLE ale su REACHABLE nemoznu sposobi konflikt NAMES. To znamena, ze ak z viacerych MODULES su nepriamo IMPORTED TYPES s rovnakymi NAME, vsetky tieto TYPES su REACHABLE a je mozne ich pouzit pomocou KEYWORD [auto].
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+Pouzitie MODULES vo VISUAL C++.
+
+1. VISUAL C++ potrebuje pri pouziti INTERNAL PARITION MODULE FILES nedokaze vykonat korektnu COMPILATION. COMPILER hodi ERROR [Module partition 'PARTITION_NAME' for module unit 'MODULE_NAME' was not found]. VISUAL C++ umoznuje riesit tento problem nasledujucimi sposobmi.
+   A. Nastavenim SETTINGS pre kazdy FILE osobitne. Platia nasledujuce fakty.
+      A. Kazdy FILE, ktory obsahuje INTERNAL PARITION MODULE FILE vyzaduje nastavenie COMPILATION FLAG [/internalPartition].
+      B. Nastavenie COMPILATION FLAG [/internalPartition] sa vykonava nastavenim OPTION [FILE CONTEXT MENU->Properties->Configuration Properties->C/C++->Advanced->Compile as] na VALUE [Compile as C++ Module Internal Partition (/internalPartition)].
+      !!! C. Tuto zmenu je NUTNE vykonat na KAZDOM FILE, ktory reprezentuje INTERNAL PARITION MODULE FILE a teda obahuje CODE [module MODULE_NAME:PARTITION_NAME].
+      !!! D. Vyhodou tohto postupu je, ze INTERNAL PARITION MODULE FILE moze mat lubovolnu FILE EXTENSION.
+   B. Nastavenim SETTINGS pre cely PROJECT. Platia nasledujuce fakty.
+      A. Podmienkou pre tento postup je, aby INTERNAL PARITION MODULE FILES mali FILE EXTENSION [.cpp].
+      B. Nastavenie sa robi nastavenim OPTIONS [Project->Properties->C/C++->General->Scan Sources for Module Dependencies] na VALUE [Yes].
+2. Vo VISUAL C++ je odporucane pre MODULE FILES pouzitie nasledujucich FILE EXTENSIONS.
+   A. Pre PRIMARY INTERFACE UNIT FILES pouzit EXTENSION [.ixx].
+   B. Pre IMPLEMENTATION UNIT MODULE FILES pouzit EXTENSION [.cpp].
+   C. Pre INTERNAL PARITION MODULE FILES pouzit EXTENSION [.cpp].
+   D. Pre PRIMARY INTERFACE UNIT FILES pouzit EXTENSION [.cppm].
+3. Pre COMILATION MODULE FILES vo VISUAL C++ platia nasledujuce fakty.
+   A. Pre COMPILATION PRIMARY INTERFACE UNIT FILES platia nasledujuce fakty.
+      A. COMPILATION PRIMARY INTERFACE UNIT FILES by mali mat EXTENSION [.ixx].
+      B. COMPILATION PRIMARY INTERFACE UNIT FILES, ak maju EXTENSION [.ixx] su to kompilovane ako COMPILATION PRIMARY INTERFACE UNIT FILES s pouzitim COMPILATION FLAG [/interface].
+      C. COMPILATION INTERFACE PARITION MODULE FILES MUSI mat nastaveny COMPILATION FLAG [/interface].
+   B. Pre COMPILATION IMPLEMENTATION UNIT MODULE FILES platia nasledujuce fakty.
+      A. COMPILATION IMPLEMENTATION UNIT MODULE FILES by mali mat EXTENSION [.cpp].
+      B. COMPILATION IMPLEMENTATION UNIT MODULE FILES, ak maju EXTENSION [.cpp] su to klasicke SOURCE FILES, ktore nie je treba nijako specialne kompilovat. VISUAL C++ ich kompiluje ako klasicke SOURCE FILES.
+   C. Pre COMPILATION INTERNAL PARITION MODULE FILES platia nasledujuce fakty.
+      A. COMPILATION INTERNAL PARITION MODULE FILES by mali mat EXTENSION [.cpp]. Vdaka tomu su tieto FILES kompilovane ako SOURCE FILES.
+      B. COMPILATION INTERNAL PARITION MODULE FILES MUSI mat nastaveny COMPILATION FLAG [/internalPartition].
+      C. COMPILATION INTERNAL PARITION MODULE FILE sa kompiluje pomocou COMMAND LINE [cl /Tp /internalPartition /c SOURCE_FILE.cpp], kde VALUE [SOURCE_FILE.cpp] je nazov COMPILATION INTERNAL PARITION MODULE FILE.
+   D. Pre COMPILATION INTERFACE PARITION MODULE FILES platia nasledujuce fakty.
+      A. COMPILATION INTERFACE PARITION MODULE FILES by mali mat EXTENSION [.cppm]. Vdaka tomu su tieto FILES kompilovane ako COMPILATION INTERNAL PARITION MODULE FILES, pricom je na ne automaticky aplikovany COMPILATION FLAG [/interface].
+      B. COMPILATION INTERFACE PARITION MODULE FILES MUSI mat nastaveny COMPILATION FLAG [/interface].
+      C. COMPILATION INTERFACE PARITION MODULE FILE sa kompiluje pomocou COMMAND LINE [cl /TP /interface /c SOURCE_FILE.cppm], kde VALUE [SOURCE_FILE.cppm] je nazov COMPILATION INTERNAL PARITION MODULE FILE.
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+Pouzitie MODULES vo VISUAL GCC.
+
+1. GCC ignoruje FILE EXTENSIONS a kompiluje MODULE FILES na zaklade ich obsahu. Konkretne na zaklade pouzitia KEYWORD [module].
+2. MODULES musia byt kompilovane v presne definovanom poradi, inak COMPILATION zlyha.
+3. Poradie kompilacie MODULE FILES je dane vzajomnymi zavislostami, ktore existuju medzi FILES, ktore tvoria dany MODULE.
+!!! 4. Plati pravidlo, ze ak MODULE FILE [FILE_2] obsahuje IMPORT MODULE FILE [FILE_1], potom MODULE FILE [FILE_1] musi byt COMPILED PRED MODULE FILE [FILE_2].
+5. PRIMARY INTERFACE UNIT FILE nemusi byt COMPILER pred ostatnymi MODULE FILES. Je to aj nemozne, kedze PRIMARY INTERFACE UNIT FILE spravidla obsahuje IMPORTS ostatnych MODULE FILES.
+!!! 6. Vlozenie C++ STANDARD LIBRARY HEADERS ako MODULES sa realizuje v nasledujucich krokoch.
+   A. STANDARD LIBRARY HEADER sa vklada pomocou COMPILER FLAG [-x c++-system-header HEADER_NAME], kde VALUE [HEADER_NAME] je nazov STANDARD LIBRARY HEADER.
+   B. Ak je potrebne vlozit viacero STANDARD LIBRARY HEADERS, tak je COMPILER FLAG [-x c++-system-header HEADER_NAME] potrebne zadat viackrat.
+   !!! C. Po vlozeni vsetkych COMPILER FLAGS [-x c++-system-header HEADER_NAME] je nutne pouzit COMPILER FLAG [-x c++], aby zbytok COMMAND LINE bol interpretovany ako C++ COMPILER COMMAND LINE.
+//----------------------------------------------------------------------------------------------------------------------
