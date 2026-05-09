@@ -25,7 +25,7 @@ export namespace ExportExportedNamespace
 //----------------------------------------------------------------------------------------------------------------------
 	void ExportedFunction1(void)
 	{
-		wcout << "EXPORTED FUNCTION 1 CALLED." << endl;
+		wcout << L"EXPORTED FUNCTION 1 CALLED." << endl;
 	}
 //----------------------------------------------------------------------------------------------------------------------
 }
@@ -38,7 +38,7 @@ namespace ExportExportedNamespace
 	// !!!!! FUNCTION NIE JE EXPORTED, lebo je v NON-EXPORTED casti EXPORTED NAMESPACE.
 	void NotExportedFunction(void)
 	{
-		wcout << "NOT-EXPORTED FUNCTION CALLED." << endl;
+		wcout << L"NOT-EXPORTED FUNCTION CALLED." << endl;
 	}
 //----------------------------------------------------------------------------------------------------------------------
 }
@@ -50,7 +50,7 @@ export namespace ExportExportedNamespace
 //----------------------------------------------------------------------------------------------------------------------
 	void ExportedFunction2(void)
 	{
-		wcout << "EXPORTED FUNCTION 2 CALLED." << endl;
+		wcout << L"EXPORTED FUNCTION 2 CALLED." << endl;
 	}
 //----------------------------------------------------------------------------------------------------------------------
 }
@@ -71,7 +71,7 @@ export class CExportExportedClass
 //----------------------------------------------------------------------------------------------------------------------
 void CExportExportedClass::Print(void) const
 {
-	wcout << "EXPORTED CLASS METHOD CALLED." << endl;
+	wcout << L"EXPORTED CLASS METHOD CALLED." << endl;
 }
 //----------------------------------------------------------------------------------------------------------------------
 //----------------------------------------------------------------------------------------------------------------------
@@ -94,7 +94,7 @@ export int														ExportExportedObject=100;
 // !!! EXPORTED LAMBDA FUNCTION OBJECT.
 export auto														ExportExportedLambdaFunctionObject=[]
 {
-	wcout << "EXPORTED LAMBDA FUNCTION CALLED." << endl;
+	wcout << L"EXPORTED LAMBDA FUNCTION CALLED." << endl;
 };
 //----------------------------------------------------------------------------------------------------------------------
 //----------------------------------------------------------------------------------------------------------------------

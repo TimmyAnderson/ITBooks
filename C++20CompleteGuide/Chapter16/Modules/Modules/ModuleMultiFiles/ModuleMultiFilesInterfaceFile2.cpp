@@ -29,6 +29,6 @@ CMultiFileClass2::~CMultiFileClass2(void) noexcept
 //----------------------------------------------------------------------------------------------------------------------
 void CMultiFileClass2::Print(void) const
 {
-	wcout << "CLASS 2 - VALUE [" << MObject.GetValue() << L"]." << endl;
+	wcout << L"CLASS 2 - VALUE [" << MObject.GetValue() << L"]." << endl;
 }
 //----------------------------------------------------------------------------------------------------------------------

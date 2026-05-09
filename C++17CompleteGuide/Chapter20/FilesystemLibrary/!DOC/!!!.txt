@@ -1,0 +1,374 @@
+//----------------------------------------------------------------------------------------------------------------------
+1. Solution demonstruje pouzitie FILESYSTEM LIBRARY v C++.
+2. FILESYSTEM LIBRARY je definovana v LIBRARY [filesystem].
+3. FILESYSTEM LIBRARY je definovana v NAMESPACE [std::filesystem].
+4. FILESYSTEM LIBRARY je postavena na nasledujucich principoch.
+   A. FILESYSTEM LIBRARY je postavena na POSIX standardoch.
+   B. Ak danu FILESYSTEM LIBRARY OPERATION je mozne pre dany OPERATING SYSTEM implementovat, tak by ju FILESYSTEM LIBRARY ju mala implementovat.
+   C. Ak danu FILESYSTEM LIBRARY OPERATION NIE je mozne pre dany OPERATING SYSTEM implementovat, tak FILESYSTEM LIBRARY by mala vratit ERROR.
+5. Funkcionalita FILESYSTEM PATH je implementovana pomocou CLASS [path]. Pre FILESYSTEM PATHS platia nasledujuce fakty.
+   A. PATH reprezentuje FILE LOCATION vo FILESYSTEM.
+   B. PATH je tvoreny nasledujucimi ELEMENTS.
+      A. OPTIONAL ROOT NAME.
+      B. OPTIONAL ROOT DIRECTORY.
+      C. Sekvenciou FILE NAMES, ktore su oddelene pomocou DIRECTORY SEPARATORS.
+   C. PATH moze byt nasledujucich typov.
+      A. ABSOLUTE PATH. ABSOLUTE PATH je plna PATH, ktora nezavisi na hodnote CURRENT DIRECTORY.
+       B. RELATIVE PATH. RELATIVE PATH je ciastocna PATH, ktora zavisi na hodnote CURRENT DIRECTORY.
+   D. CLASS [path] podporuje nasledujuce PATH FORMATSS.
+      A. GENERIC PATH FORMAT. Pre GENERIC PATH FORMAT platia nasledujuce fakty.
+         A. GENERIC PATH FORMAT vychadza z POSIX specifikacie.
+         B. GENERIC PATH FORMAT je PORTABLE.
+         C. GENERIC PATH FORMAT ma FORMAT [[ROOT_NAME][ROOT_DIRECTORY][RELATIVE_PATH]], kde VALUE [ROOT_NAME] je OPTIONAL ROOT NAME (napriklad VALUE [C:], alebo VALUE [\\host]), VALUE [ROOT_DIRECTORY] je OPTIONAL ROOT DIRECTORY a VALUE [RELATIVE_PATH] je RELATIVE PATH oddelena DIRECTORY SEPARATORS.
+      B. NATIVE PATH FORMAT. Pre NATIVE PATH FORMAT platia nasledujuce fakty.
+         A. NATIVE PATH FORMAT je specificky pre dany FILESYSTEM a OPERATING SYSTEM.
+         B. NATIVE PATH FORMAT NIE je PORTABLE.
+   E. PATH definuje nasledujuce SPECIAL FILE NAMES.
+      A. SPECIAL FILE NAME [.] definuje CURRENT DIRECTORY.
+      B. SPECIAL FILE NAME [..] definuje PARENT DIRECTORY.
+   F. PATH moze obsahovat DIRECTORY SEPARATORS. Pre DIRECTORY SEPARATORS platia nasledujuce fakty.
+      A. DIRECTORY SEPARATOR je tvoreny jednym, alebo viacerymi DIRECTORY SEPARATOR CHARACTERS.
+      B. DIRECTORY SEPARATOR CHARACTER moze obahovat nasledujuce VALUE.
+         A. VALUE [/] je GENERIC FORMAT DIRECTORY SEPARATOR CHARACTER.
+         B. Ina VALUE, napriklad VALUE [\] vo WINDOWS je PREFERRED IMPLEMENTATION SPECIFIC DIRECTORY SEPARATOR CHARACTER.
+   G. CLASS [path] poskytuje METHODS pre konverziu medzi GENERIC PATH FORMAT a NATIVE PATH FORMAT.
+   H. CLASS [path] podporuje aj EMTPY PATHS.
+   !!! I. PATH moze byt NORMALIZED. NORMALIZATION aplikuje nasledujuce RULES.
+      A. Ak PATH je EMPTY, NORMALIZED PATH je EMPTY.
+      B. V NORMALIZED PATH su vsetky vyskyty DIRECTORY SEPARATOR CHARACTER [/], ktore sa mozu nachadzat aj opakovane za sebou, nahradene JEDNYM PREFERRED IMPLEMENTATION SPECIFIC DIRECTORY SEPARATOR CHARACTER (napriklad VALUE [\]).
+      C. V NORMALIZED PATH su vsetky vyskyty DIRECTORY SEPARATOR CHARACTER [/] v ROOT NAME nahradene PREFERRED IMPLEMENTATION SPECIFIC DIRECTORY SEPARATOR CHARACTER (napriklad VALUE [\]).
+      D. V NORMALIZED PATH sa odstrania vsetky vyskyty VALUE [.DIRECTORY_SEPARATOR_CHARACTER], kde VALUE [DIRECTORY_SEPARATOR_CHARACTER] je DIRECTORY SEPARATOR CHARACTER.
+      E. V NORMALIZED PATH sa odstrania vsetky vyskyty VALUE [..DIRECTORY_SEPARATOR_CHARACTER___DIRECTORY_NAME___DIRECTORY_SEPARATOR_CHARACTER], kde VALUE [DIRECTORY_SEPARATOR_CHARACTER] je DIRECTORY SEPARATOR CHARACTER a VALUE [DIRECTORY_NAME] je DIRECTORY NAME.
+      F. V NORMALIZED PATH, ak PATH obsahuje ROOT DIRECTORY, odstrania sa vsetky vyskyty VALUE [..DIRECTORY_SEPARATOR_CHARACTER], kde VALUE [DIRECTORY_SEPARATOR_CHARACTER] je DIRECTORY SEPARATOR CHARACTER, ktore nasleduju HNED za ROOT DIRECTORY.
+      G. V NORMALIZED PATH, je posledny FILE NAME SPECIAL FILE NAME [..], odstrani sa nasledujuci DIRECTORY SEPARATOR CHARACTER ak taky existuje.
+      H. Ak je NORMALIZED PATH EMPTY, nastavi sa na SPECIAL FILE NAME [.].
+6. FILESYSTEM LIBRARY definuje MEMBER METHODS a FREE STANDING FUNCTIONS. Platia nasledujuce principy.
+   A. Ako MEMBER METHODS su implementovanie tie OPERATIONS, ktore NEVYZADUJU vykonavanie narocnych FILESYSTEM OPERATIONS.
+   B. Ako FREE STANDING FUNCTIONS su implementovanie tie OPERATIONS, ktore VYZADUJU vykonavanie narocnych FILESYSTEM OPERATIONS.
+7. ERROR HANDLING v FILESYSTEM LIBRARY je mozne realizovat nasledujucimi sposobmi.
+   A. Volanim OVERLOADED FUNCTIONS, ktore NEMAJU OUTPUT PARAMETER TYPE [error_code]. Taketo FUNCTIONS pri vzniku ERROR hodia EXCEPTION [filesystem_error].
+   B. Volanim OVERLOADED FUNCTIONS, ktore MAJU OUTPUT PARAMETER TYPE [error_code]. Taketo FUNCTIONS pri vzniku ERROR hodia NEHODIA EXCEPTION, ale nastavia OUTPUT PARAMETER TYPE [error_code] na ERROR CODE.
+8. CLASS [filesystem_error] reprezentuje EXCEPTION TYPE, ktory je hodeny pri vzniku ERRORS vo FILESYSTEM LIBRARY. CLASS [filesystem_error] ma nasledujuce MEMBERS.
+   A. CLASS [filesystem_error] je DERIVED z CLASS [system_error].
+   B. CONSTRUCTOR umoznuje vytvarat instancie CLASS.
+   C. COPY CONSTRUCTOR umoznuje vytvarat COPY kopie instancii CLASS.
+   D. DESTRUCTOR je VIRTUAL a uvolnuje instanciu CLASS.
+   E. COPY OPERATOR [OPERATOR=] kopiruje instanciu CLASS do inej instancie CLASS pomocou COPY SEMANTICS.
+   F. METHOD [const path& path1(void) const noexcept] vracia PATH 1, kde doslo k vzniku EXCEPTION.
+   G. METHOD [const path& path2(void) const noexcept] vracia PATH 2, kde doslo k vzniku EXCEPTION.
+   H. METHOD [const char* what(void) const noexcept] vracia textovy popis EXCEPTION.
+   I. METHOD [const error_code& code(void) const noexcept] vracia ERROR CODE danej EXCEPTION.
+9. CLASS [error_code] reprezentuje ERROR TYPE, ktory je hodeny pri vzniku ERRORS vo C++ STANDARD LIBRARY. CLASS [error_code] ma nasledujuce MEMBERS.
+   A. CONSTRUCTOR umoznuje vytvarat instancie CLASS.
+   B. COPY CONSTRUCTOR umoznuje vytvarat COPY kopie instancii CLASS.
+   C. MOVE CONSTRUCTOR umoznuje vytvarat MOVE kopie instancii CLASS.
+   D. COPY OPERATOR [OPERATOR=] kopiruje instanciu CLASS do inej instancie CLASS pomocou COPY SEMANTICS.
+   E. MOVE OPERATOR [OPERATOR=] kopiruje instanciu CLASS do inej instancie CLASS pomocou MOVE SEMANTICS.
+   F. OPERATOR [OPERATOR BOOL] vracia informaciu ci instancia CLASS indikuje ERROR.
+   G. NON-MEMBER OPERATOR [OPERATOR==] porovnava instancie CLASS pre EQUAL.
+   H. NON-MEMBER OPERATOR [OPERATOR!=] porovnava instancie CLASS pre NOT EQUAL.
+   I. NON-MEMBER OPERATOR [OPERATOR<] porovnava instancie CLASS pre LESS THAN.
+   J. NON-MEMBER OPERATOR [OPERATOR<=>] porovnava instancie CLASS.
+   K. NON-MEMBER OPERATOR [OPERATOR<<] zapisuje textovu reprezentaciu instancie CLASS do OUTPUT STREAM.
+   L. METHOD [void assign(int Val, const error_category& Cat) noexcept] priradzuje do instancie CLASS novy ERROR CODE a ERROR CATEGORY.
+   M. METHOD [void clear(void) noexcept] nastavuje ERROR CODE a ERROR CATEGORY na DEFAULT VALUES.
+   !!! N. METHOD [int value(void) const noexcept] vracia ERROR CODE VALUE. ERROR CODES mozu byt z ENUM [errc], ktory obsahuje zoznam PORTABLE ERRORS.
+   O. METHOD [const error_category& category(void) const noexcept] vracia ERROR CATEGORY VALUE.
+   P. METHOD [error_condition default_error_condition(void) const noexcept] vracia DEFAULT ERROR CATEGORY VALUE.
+   Q. METHOD [string message(void) const] vracia ERROR MESSAGE.
+10. ENUM [errc] obsahuje zoznam PORTABLE ERROR CODES.
+11. ENUM [file_type] obsahuje zoznam FILE TYPES. ENUM obsahuje nasledujce VALUES.
+   A. VALUE [none] znamena, ze FILE TYPE este nebol identifikovany.
+   B. VALUE [not_found] znamena, ze FILE nebol najdeny.
+   C. VALUE [regular] reprezentuje REGULAR FILE.
+   D. VALUE [directory] reprezentuje DIRECTORY.
+   E. VALUE [symlink] reprezentuje SYMBOLIC LINK.
+   F. VALUE [block] reprezentuje BLOCK SPECIAL FILE.
+   G. VALUE [character] reprezentuje CHARACTER SPECIAL FILE.
+   H. VALUE [fifo] reprezentuje FIFO PIPE FILE.
+   I. VALUE [socket] reprezentuje SOCKET FILE.
+   J. VALUE [unknown] znamena, ze FILE existuje, ale jeho TYPE nebol zisteny.
+   K. IMPLEMENTATION DEFINED VALUES su VALUES pre FILES, ktore su PLATFORM DEPENDENT.
+12. CLASS [path] reprezentuje PATH. CLASS ma nasledujuce MEMBERS.
+   1. CONSTRUCTOR umoznuje vytvarat instancie CLASS.
+   2. COPY CONSTRUCTOR umoznuje vytvarat COPY kopie instancii CLASS.
+   3. MOVE CONSTRUCTOR umoznuje vytvarat MOVE kopie instancii CLASS.
+   4. DESTRUCTOR uvolnuje instanciu CLASS.
+   5. TYPE [value_type] obsahuje CHARACTER TYPE, ktory reprezentuje CHARACTERS v PATH. Moze obsahovat TYPE [char], alebo TYPE [wchar_t].
+   6. TYPE [string_type] obsahuje STRING TYPE, ktory reprezentuje PATH. Obsahuje TYPE [basic_string<value_type>].
+   7. TYPE [const_iterator] reprezentuje CONST ITERATOR.
+   8. TYPE [iterator] reprezentuje CONST ITERATOR.
+   9. ENUM TYPE [format] reprezentuje FORMAT v ktorom je PATH.
+   10. STATIC CONST FIELD [constexpr value_type preferred_separator] obsahuje VALUE PREFERRED SEPARATOR.
+   11. COPY OPERATOR [OPERATOR=] kopiruje instanciu CLASS do inej instancie CLASS pomocou COPY SEMANTICS.
+   12. MOVE OPERATOR [OPERATOR=] kopiruje instanciu CLASS do inej instancie CLASS pomocou MOVE SEMANTICS.
+   !!!!! 13. OPERATOR [OPERATOR/=] k existujucej PATH prida novu PATH, pricom medzi povodnu a novu PATH prida DIRECTORY SEPARATOR, ak povodna PATH nebola ukoncena DIRECTORY SEPARATOR. Ak je nova PATH ABSOLUTE PATH, tak tato ABSOLUTE PATH kompletne nahradi povodnu PATH. Ak povodna PATH obsahuje ROOT ELEMENT, tak nova PATH je pridana az za ROOT ELEMENT, bud hned za ROOT ELEMENT, ak je nova PATH ABSOLUTE PATH, alebo na koniec povodnej PATH, ak je nova PATH RELATIVE PATH.
+   14. OPERATOR [OPERATOR+=] zluci dve PATHS bez vlozenia DIRECTORY SEPARATOR.
+   15. OPERATOR [OPERATOR string_type] vracia NATIVE FORMAT danej PATH BY VALUE.
+   !!!!! 16. NON-MEMBER OPERATOR [OPERATOR<=>] porovnava hodnoty 2 PATHS. OPERATOR porovnava PATHS iba LEXIKALNE. To znamena, ze neberie do uvahy, ze sa LOGICKY moze jednat o tie iste PATHS. Oproti cisto lexikalnemu porovnanie jediny rozdiel je, ze PATHS povazuje za zhodne, ak sa lisia iba v pozicii DIRECTORY SEPARATORS.
+   !!!!! 17. NON-MEMBER OPERATOR [OPERATOR/] vytvori novu PATH, ktora vznikne zlucenim 2 PATHS a pridanim DIRECTORY SEPARATOR medzi ne. Ak je PATH na pravej strane OPERATOR [OPERATOR/] ABSOLUTE PATH, tak OPERATOR vrati tuto ABSOLUTE PATH. Ak PATH na lavej strane OPERATOR [OPERATOR/] obsahuje ROOT ELEMENT, tak nova PATH je pridana az za ROOT ELEMENT, bud hned za ROOT ELEMENT, ak je PATH na pravej strane OPERATOR [OPERATOR/] ABSOLUTE PATH, alebo na koniec povodnej PATH, ak je na pravej strane OPERATOR [OPERATOR/] RELATIVE PATH.
+   !!! 18. NON-MEMBER OPERATOR [OPERATOR>>] cita textovu reprezentaciu PATH z INPUT STREAM. OPERATOR dokaze citat PATH, ktora moze, ale aj nemusi byt vo formate QUOTED STRING.
+   !!! 19. NON-MEMBER OPERATOR [OPERATOR<<] zapisuje textovu reprezentaciu PATH do OUTPUT STREAM. OPERATOR zapisuje PATH ako QUOTED STRING. To znamena, ze PATH ma FORMAT ["PATH"], kde VALUE [PATH] je PATH ulozena v CLASS.
+   20. METHOD [path& assign(string_type&& Source)] nastavuje VALUE danej PATH.
+   !!!!! 21. TEMPLATE METHOD [path& append(const Source& Source)] k existujucej PATH prida novu PATH, pricom medzi povodnu a novu PATH prida DIRECTORY SEPARATOR, ak povodna PATH nebola ukoncena DIRECTORY SEPARATOR. Ak je nova PATH ABSOLUTE PATH, tak tato ABSOLUTE PATH kompletne nahradi povodnu PATH. Ak povodna PATH obsahuje ROOT ELEMENT, tak nova PATH je pridana az za ROOT ELEMENT, bud hned za ROOT ELEMENT, ak je nova PATH ABSOLUTE PATH, alebo na koniec povodnej PATH, ak je nova PATH RELATIVE PATH.
+   22. TEMPLATE METHOD [path& concat(const Source& Source)] zluci dve PATHS bez vlozenia DIRECTORY SEPARATOR.
+   23. METHOD [const value_type* c_str(void) const noexcept] vracia NATIVE FORMAT danej PATH.
+   24. METHOD [const string_type& native(void) const noexcept] vracia NATIVE FORMAT danej PATH BY REFERENCE.
+   25. METHOD [void clear(void) noexcept] vymaze obsah PATH.
+   !!! 26. METHOD [path& make_preferred(void)] modifikuje v PATH vsetky GENERIC DIRECTORY SEPARATORS za PREFERRED DIRECTORY SEPARATORS. METHOD teda vykonava MODIFIKACIU danej PATH.
+   !!! 27. METHOD [path& remove_filename(void)] odstrani z PATH FILE FILENAME. FILENAME je posledny PATH COMPONENT.
+   !!! 28. METHOD [path& replace_filename(const path& Replacement)] nahradi FILENAME za iny FILENAME. FILENAME je posledny PATH COMPONENT.
+   !!! 29. METHOD [path& replace_extension(const path& Replacement)] nahradi v PATH FILE EXTENSION za inu FILE EXTENSION. Ak EXTENSION NEEXISTUJE, prida ju. Ak EXTENSION existuje a nova EXTENSION je EMPTY PATH, povodna EXTENSION je odstranena. CHARACTER [.] je pridany do EXTENSION, ak v novej EXTENSION chyba.
+   30. METHOD [void swap(path& Other) noexcept] vymeni obsah 2 instancii CLASS.
+   31. TEMPLATE METHOD [basic_string<CharT,Traits,Alloc> string(const Alloc& Alloc) const] vracia NATIVE PATH konvertovanu na instanciu CLASS [basic_string<CharT,Traits,Alloc>].
+   32. METHOD [string string(void) const] vracia NATIVE PATH konvertovanu na instanciu CLASS [string].
+   33. METHOD [wstring wstring(void) const] vracia NATIVE PATH konvertovanu na instanciu CLASS [wstring].
+   34. METHOD [u16string u16string(void) const] vracia NATIVE PATH konvertovanu na instanciu CLASS [u16string].
+   35. METHOD [u32string u32string(void) const] vracia NATIVE PATH konvertovanu na instanciu CLASS [u32string].
+   36. METHOD [string u8string(void) const] vracia NATIVE PATH v UTF-8 konvertovanu CLASS [string].
+   37. METHOD [u8string u8string(void) const] vracia NATIVE PATH v UTF-8 konvertovanu CLASS [u8string].
+   38. METHOD [string generic_string(void) const] vracia GENERIC PATH konvertovanu na instanciu CLASS [string].
+   39. METHOD [wstring generic_wstring(void) const] vracia GENERIC PATH konvertovanu na instanciu CLASS [wstring].
+   40. METHOD [u16string generic_u16string(void) const] vracia GENERIC PATH konvertovanu na instanciu CLASS [u16string].
+   41. METHOD [u32string generic_u32string(void) const] vracia GENERIC PATH konvertovanu na instanciu CLASS [u32string].
+   42. METHOD [string generic_u8string(void) const] vracia GENERIC PATH v UTF-8 konvertovanu CLASS [string].
+   43. METHOD [u8string generic_u8string(void) const] vracia GENERIC PATH v UTF-8 konvertovanu CLASS [u8string].
+   !!!!! 44. METHOD [int compare(const path& Path)] porovnava 2 instancie PATH. METHOD porovnava PATHS iba LEXIKALNE. To znamena, ze neberie do uvahy, ze sa LOGICKY moze jednat o tie iste PATHS. Oproti cisto lexikalnemu porovnanie jediny rozdiel je, ze PATHS povazuje za zhodne, ak sa lisia iba v pozicii DIRECTORY SEPARATORS.
+   45. METHOD [path lexically_normal(void) const] konvertuje PATH do NORMAL FORM.
+   !!! 46. METHOD [path lexically_relative(const path& Base) const] porovnava CURRENT RELATIVE PATH a RELATIVE PATH v PARMETER [Base]. Ak su PATHS vzajomne RELATIVE, METHOD vracia RELATIVE PATH medzi nimi. Ak su PATHS identicke vracia sa PATH [.]. Ak nie su vzajomne RELATIVE, METHOD vracia EMTPY PATH.
+   !!! 47. METHOD [path lexically_proximate(const path& Base) const] porovnava CURRENT RELATIVE PATH a RELATIVE PATH v PARMETER [Base]. Ak su PATHS vzajomne RELATIVE, METHOD vracia RELATIVE PATH medzi nimi. Ak su PATHS identicke vracia sa PATH [.]. Ak nie su vzajomne RELATIVE, METHOD vracia CURRENT PATH.
+   48. METHOD [path root_name(void) const] vracia GENERIC FORM ROOT NAME z danej PATH, ak existuje. Inak vracia EMPTY PATH.
+   49. METHOD [path root_directory(void) const] vracia GENERIC FORM ROOT DIRECTORY z danej PATH, ak existuje. Inak vracia EMPTY PATH.
+   50. METHOD [path root_path(void) const] vracia GENERIC FORM ROOT PATH z danej PATH, ak existuje. Inak vracia EMPTY PATH.
+   51. METHOD [path relative_path(void) const] vracia GENERIC FORM RELATIVE PATH z danej PATH.
+   52. METHOD [path parent_path(void) const] vracia GENERIC FORM PARENT PATH z danej PATH. Ak PARENT PATH neexistuje vrati celu PATH.
+   53. METHOD [path filename(void) const] vracia GENERIC FORM FILENAME z danej PATH.
+   54. METHOD [path stem(void) const] vracia GENERIC FORM FILENAME bez EXTENSION z danej PATH.
+   55. METHOD [path extension(void) const] vracia GENERIC FORM EXTENSION z danej PATH, ak existuje. Inak vracia EMPTY PATH.
+   56. METHOD [bool empty(void) const noexcept] vracia informaciu ci PATH v GENERIC FORMAT je EMPTY.
+   57. METHOD [bool has_root_path(void) const] vracia informaciu ci PATH ma ROOT PATH.
+   58. METHOD [bool has_root_name(void) const] vracia informaciu ci PATH ma ROOT NAME.
+   59. METHOD [bool has_root_directory(void) const] vracia informaciu ci PATH ma ROOT DIRECTORY.
+   60. METHOD [bool has_relative_path(void) const] vracia informaciu ci PATH ma RELATIVE PATH.
+   61. METHOD [bool has_parent_path(void) const] vracia informaciu ci PATH ma PARENT PATH.
+   62. METHOD [bool has_filename(void) const] vracia informaciu ci PATH ma FILENAME.
+   63. METHOD [bool has_stem(void) const] vracia informaciu ci PATH ma ROOT PATH bez EXTENSION.
+   64. METHOD [bool has_extension(void) const] vracia informaciu ci PATH ma EXTENSION.
+   65. METHOD [bool is_absolute(void) const] vracia informaciu ci PATH je ABSOLUTE.
+   66. METHOD [bool is_relative(void) const] vracia informaciu ci PATH je RELATIVE.
+   !!! 67. METHOD [iterator begin(void) const] vracia BEGIN ITERATOR na ITERATOR, ktory iteruje jednotlivymi PATH ELEMENTS.
+   !!! 68. METHOD [iterator end(void) const] vracia END ITERATOR, ktory iteruje jednotlivymi PATH ELEMENTS.
+   69. FUNCTION [void swap(path& Lhs, path& Rhs) noexcept] vymeni obsah 2 instancii CLASS.
+   !!! 70. FUNCTION [size_t hash_value(const path& Path) noexcept] vrati HASH CODE danej PATH. HASH sa vypocitava z lexikalnej hodnoty HASH a pre logicky zhodne PATHS, ktore su ale reprezentovane inymi STRINGS sa HASH VALUES lisia. FUNCTION pri vypocte HASH VALUE vsak IGNORUJE viacnasobne DIRECTORY SEPARATORS podobne ako COMPARISON OPERATORS. To znamena, ze pre zhodne PATHS vrati rovnaku HASH VALUE.
+13. CLASS [path] implementuje ITERATOR. Pre ITERATOR platia nasledujuce fakty.
+   A. ITERATOR umoznuje prechadzat jednotlivymi PATH ELEMENTS.
+   B. ITERATOR je BIDIRECTIONAL, co znamena, ze moze prechadzat PATH ELEMENTS aj odzadu dopredu.
+   C. VALUE TYPE ITERATOR je TYPE [path].
+   D. METHOD [iterator path::begin(void) const] vracia BEGIN ITERATOR na ITERATOR, ktory iteruje jednotlivymi PATH ELEMENTS.
+   E. METHOD [iterator path::end(void) const] vracia END ITERATOR, ktory iteruje jednotlivymi PATH ELEMENTS.
+14. FUNCTION [path current_path(void)] vracia CURRENT PATH.
+15. FUNCTION [void current_path(const path& Path)] nastavuje CURRENT PATH.
+16. FUNCTION [path temp_directory_path(void)] vracia PATH na TEMP DIRECTORY.
+!!! 17. FUNCTION [bool equivalent(const path& Path1, const path& Path2)] vykonava LOGICKE porovnanie 2 PATHS beruc do uvahy ci dane PATHS odkazuju na ten isty FILE. FUNCTION vola FUNCTIONS OPERATING SYSTEM a FILE MUSI EXISTOVAT.
+!!! 18. FUNCTION [bool exists(const path& Path)] vracia informaciu ci FILE existuje. FUNCTION nasleduje SYMBOLIC LINKS.
+19. FUNCTION [bool is_regular_file(const path& Path)] vracia informaciu ci FILE je REGULAR FILE.
+20. FUNCTION [bool is_directory(const path& Path)] vracia informaciu ci FILE je DIRECTORY.
+21. FUNCTION [bool is_other(const path& Path)] vracia informaciu ci FILE je OTHER FILE.
+22. FUNCTION [bool is_symlink(const path& Path)] vracia informaciu ci FILE je SYMBOLIC LINK.
+23. FUNCTION [bool is_block_file(const path& Path)] vracia informaciu ci FILE je BLOCK FILE.
+24. FUNCTION [bool is_character_file(const path& Path)] vracia informaciu ci FILE je CHARACTER FILE.
+25. FUNCTION [bool is_fifo(const path& Path)] vracia informaciu ci FILE je FIFO FILE.
+26. FUNCTION [bool is_socket(const path& Path)] vracia informaciu ci FILE je SOCKET FILE.
+27. FUNCTION [bool is_empty(const path& Path)] vracia informaciu ci FILE je EMPTY.
+28. FUNCTION [uintmax_t file_size(const path& Path)] vracia dlzku FILE v BYTES.
+29. FUNCTION [uintmax_t hard_link_count(const path& Path)] vracia pocat HARD LINKS na FILE.
+30. FUNCTION [file_time_type last_write_time(const path& Path)] vracia LAST WRITE TIME daneho FILE.
+31. FUNCTION [void last_write_time(const path& Path, file_time_type NewTime)] nastavuje LAST WRITE TIME pre dany FILE.
+32. FILESYSTEM LIBRARY umoznuje optimalizovany pristup k FILE ATTRIBUTES.
+   A. FUNCTIONS, ktore vracaju FILE ATTRIBUTES a maju PARAMETER TYPE [const path&] VZDY vykonavaju volanie FILE SYSTEM CALLS. To znamena, ze su relativne pomale.
+   B. Ak je potrebne ziskat viacero FILE ATTRIBUTES z daneho FILE je optimalnejsie pouzit instanciu CLASS [file_status], do ktorej sa ulozi kompletny FILE STATUS a nasledne volanie FUNCTIONS uz iba vracia FILE ATTRIBUTES z tejto instancie BEZ volania FILE SYSTEM CALLS.
+   C. Instanciu CLASS [file_status] je mozne ziskat nasledujucimi sposobmi.
+      A. Pomocou FUNCTION [file_status status(const path& Path)], ktora vracia FILE STATUS daneho FILE. Ak FILE odkazuje na SYMBOLIC LINK, tak sa spravi RESOLVE SYMBOLIC LINK.
+      B. Pomocou FUNCTION [file_status symlink_status(const path& Path)], ktora vracia FILE STATUS daneho FILE. Ak FILE odkazuje na SYMBOLIC LINK, tak sa nespravi RESOLVE SYMBOLIC LINK.
+!!! 33. FUNCTION [file_status status(const path& Path)] vracia FILE STATUS daneho FILE. Ak FILE odkazuje na SYMBOLIC LINK, tak sa spravi RESOLVE SYMBOLIC LINK.
+!!! 34. FUNCTION [file_status symlink_status(const path& Path)] vracia FILE STATUS daneho FILE. Ak FILE odkazuje na SYMBOLIC LINK, tak sa nespravi RESOLVE SYMBOLIC LINK.
+35. CLASS [file_status] umoznuje ziskat PROPERTIES daneho FILE bez volania SYSTEM CALLS. CLASS ma nasledujuce MEMBERS.
+   A. CONSTRUCTOR umoznuje vytvarat instancie CLASS.
+   B. COPY CONSTRUCTOR umoznuje vytvarat COPY kopie instancii CLASS pomocou COPY SEMANTICS.
+   C. MOVE CONSTRUCTOR umoznuje vytvarat COPY kopie instancii CLASS pomocou MOVE SEMANTICS.
+   D. DESTRUCTOR uvolnuje instanciu CLASS.
+   E. COPY OPERATOR [OPERATOR=] kopiruje instanciu CLASS do inej instancie CLASS pomocou COPY SEMANTICS.
+   F. MOVE OPERATOR [OPERATOR=] kopiruje instanciu CLASS do inej instancie CLASS pomocou MOVE SEMANTICS.
+   G. NON-MEMBER OPERATOR [OPERATOR==] porovnava instancie CLASS pre EQUAL.
+   H. METHOD [file_type type(void) const noexcept] vracia FILE TYPE.
+   I. METHOD [void type(file_type Type) noexcept] nastavuje FILE TYPE.
+   J. METHOD [perms permissions(void) const noexcept] vracia FILE PERMISSIONS.
+   K. METHOD [void permissions(perms Perm) noexcept] nastavuje FILE PERMISSIONS.
+36. FILESYSTEM LIBRARY umoznuje pracovat s FILE PERMISSIONS.
+   A. FILE PERMISSIONS su inspirovane POSIX OPERATING SYSTEMS.
+   B. FILE PERMISSIONS su reprezentovane pomocou ENUM [perms].
+   C. FILE PERMISSIONS je mozne ziskat pomocou METHOD [perms file_status::permissions(void) const noexcept].
+   D. FILE PERMISSIONS je mozne nastavovat pomocou FUNCTION [void permissions(const path& Path, perms Permissions, perm_options Options)].
+37. ENUM [perms] obsahuje zoznam FILE PERMISSIONS. ENUM obsahuje nasledujce VALUES.
+   A. VALUE [none] znamena, ze FILE nema ziadne PERMISSIONS.
+   B. VALUE [owner_read] znamena, ze FILE OWNER ma k danemu FILE READ PERMISSION.
+   C. VALUE [owner_write] znamena, ze FILE OWNER ma k danemu FILE WRITE PERMISSION.
+   D. VALUE [owner_exec] znamena, ze FILE OWNER ma k danemu FILE EXECUTE a SEARCH PERMISSION.
+   E. VALUE [owner_all] znamena, ze FILE OWNER ma k danemu FILE READ PERMISSION, WRITE PERMISSION a EXECUTE a SEARCH PERMISSION.
+   F. VALUE [group_read] znamena, ze FILE USER GROUP ma k danemu FILE READ PERMISSION.
+   G. VALUE [group_write] znamena, ze FILE USER GROUP ma k danemu FILE WRITE PERMISSION.
+   H. VALUE [group_exec] znamena, ze FILE USER GROUP ma k danemu FILE EXECUTE a SEARCH PERMISSION.
+   I. VALUE [group_all] znamena, ze FILE USER GROUP ma k danemu FILE READ PERMISSION, WRITE PERMISSION a EXECUTE a SEARCH PERMISSION.
+   J. VALUE [others_read] znamena, ze OTHER USERS maju k danemu FILE READ PERMISSION.
+   K. VALUE [others_write] znamena, ze OTHER USERS maju k danemu FILE WRITE PERMISSION.
+   L. VALUE [others_exec] znamena, ze OTHER USERS maju k danemu FILE EXECUTE a SEARCH PERMISSION.
+   M. VALUE [others_all] znamena, ze OTHER USERS maju k danemu FILE READ PERMISSION, WRITE PERMISSION a EXECUTE a SEARCH PERMISSION.
+   N. VALUE [all] znamena, ze vsetci USERS maju k danmeu FILE READ PERMISSION, WRITE PERMISSION a EXECUTE a SEARCH PERMISSION.
+   O. VALUE [set_uid] znamena, ze je mozne nastavit USER ID na FILE OWNER USER ID pre EXECUTION.
+   P. VALUE [set_gid] znamena, ze je mozne nastavit GROUP ID na GROUP OWNER USER ID pre EXECUTION.
+   Q. VALUE [sticky_bit] znamena, ze ak je tato PERMISSION nastavena na DIRECTORY, iba FILE OWNERS moze vykonat DELETE FILES v tomto DIRECTORY, aj ked k DIRECTORY maju aj ini USERS WRITE PERMISSION.
+   R. VALUE [mask] obsahuje VALID BITS vsetkych PERMISSIONS.
+   S. VALUE [unknown] reprezentuje UNKNOWN PERMISSIONS.
+!!! 38. FUNCTION [bool exists(file_status Status) noexcept] vracia informaciu ci FILE existuje. FUNCTION nasleduje SYMBOLIC LINKS.
+39. FUNCTION [bool is_regular_file(file_status Status) noexcept] vracia informaciu ci FILE je REGULAR FILE.
+40. FUNCTION [bool is_directory(file_status Status) noexcept] vracia informaciu ci FILE je DIRECTORY.
+41. FUNCTION [bool is_other(file_status Status) noexcept] vracia informaciu ci FILE je OTHER FILE.
+42. FUNCTION [bool is_symlink(file_status Status) noexcept] vracia informaciu ci FILE je SYMBOLIC LINK.
+43. FUNCTION [bool is_block_file(file_status Status) noexcept] vracia informaciu ci FILE je BLOCK FILE.
+44. FUNCTION [bool is_character_file(file_status Status) noexcept] vracia informaciu ci FILE je CHARACTER FILE.
+45. FUNCTION [bool is_fifo(file_status Status) noexcept] vracia informaciu ci FILE je FIFO FILE.
+46. FUNCTION [bool is_socket(file_status Status) noexcept] vracia informaciu ci FILE je SOCKET FILE.
+47. FUNCTION [bool status_known(file_status Status) noexcept] vracia informaciu ci FILE TYPE je rozne od TYPE [file_type::none].
+48. FUNCTION [bool create_directory(const path& Path)] vytvara novy DIRECTORY. Ak DIRECTORY existuje, tak ho nevytvori ani nehodi ERROR, akurat v RETURN VALUE vrati VALUE [false]. DIRECTORY ma nastavene PERMISSIONS na VALUE [perms::all].
+49. FUNCTION [bool create_directory(const path& Path, const path& ExistingPath)] vytvara novy DIRECTORY. Ak DIRECTORY existuje, tak ho nevytvori ani nehodi ERROR, akurat v RETURN VALUE vrati VALUE [false]. DIRECTORY prebera ATTRIBUTES z DIRECTORY, na ktory referuje PARAMETER [ExistingPath].
+50. FUNCTION [bool create_directories(const path& Path)] vytvara postupnosti DIRECTORIES, ktore definuje PARAMETER [Path]. Ak ziaden novy DIRECTORY nebol vytvoreny, v RETURN VALUE sa vrati VALUE [false].
+51. FUNCTION [void create_hard_link(const path& Target, const path& Link)] vytvara HARD LINK na existujuci FILE.
+52. FUNCTION [void create_symlink(const path& Target, const path& Link)] vytvara SYMBOLIC LINK na existujuci FILE.
+53. FUNCTION [void create_directory_symlink(const path& Target, const path& Link)] vytvara SYMBOLIC LINK na existujuci DIRECTORY.
+54. FUNCTION [void copy_symlink(const path& From, const path& To)] kopiruje SYMBOLIC LINK do novej PATH.
+55. FUNCTION [void copy(const path& From, const Path& To)] kopiruje FILES a DIRECTORIES do novej PATH.
+56. FUNCTION [void copy(const path& From, const path& To, copy_options Options)] kopiruje FILES a DIRECTORIES do novej PATH s pouzitim OPTIONS, ktore su nastavene v PARAMETER [Options].
+57. FUNCTION [void copy_file(const path& From, const Path& To)] kopiruje FILE CONTENT do FILE v novej PATH.
+58. FUNCTION [void copy_file(const path& From, const path& To, copy_options Options)] FILE CONTENT do FILE novej PATH s pouzitim OPTIONS, ktore su nastavene v PARAMETER [Options].
+59. ENUM [copy_options] obsahuje zoznam COPY OPTIONS. ENUM obsahuje nasledujce VALUES.
+   A. VALUE [none] znamena, ze nie su nastavene ziadne COPY OPTIONS. Ma nasledujuci vyznam.
+      A. Ak FILE EXISTUJE, OPTION znamena, ze dojde k ERROR.
+      B. Pre DIRECTORIES znamena, ze sa NEROBI rekurzivna kopia DIRECTORIES.
+      C. Pre SYMBOLIC LINKS znamena, ze sa kopiruje CONTENT daneho SYMBOLIC LINK.
+      D. Pre FILES znamena, ze sa kopiruje CONTENT daneho FILE.
+   B. VALUE [skip_existing] znamena, ze ak FILE existuje, je kopirovanie tohto FILE preskocene.
+   C. VALUE [overwrite_existing] znamena, ze ak FILE existuje, je jeho CONTENT prepisany.
+   D. VALUE [update_existing] znamena, ze ak FILE existuje, je jeho CONTENT prepisany, ak je jeho DATE STARSI, ako DATE noveho FILE.
+   E. VALUE [recursive] pre DIRECTORIES znamena, ze sa vykonava rekurzivne kopirovanie DIRECTORIES.
+   F. VALUE [copy_symlinks] pre SYMBOLIC LINKS znamena, ze sa kopiruju ako SYMBOLIC LINKS a nie ako CONTENT SYMBOLIC LINKS.
+   G. VALUE [skip_symlinks] pre SYMBOLIC LINKS znamena, ze sa kopirovanie SYMBOLIC LINKS ignoruje.
+   H. VALUE [directories_only] znamena, ze sa kopiruju IBA DIRECTORIES, ale NIE FILES.
+   I. VALUE [create_symlinks] pre SYMBOLIC LINKS znamena, ze sa kopiruju ako SYMBOLIC LINKS odkazujuce povodne FILES.
+   J. VALUE [create_hard_links] pre HARD LINKS znamena, ze sa kopiruju ako HARD LINKS odkazujuce povodne FILES.
+!!! 60. FUNCTION [bool remove(const path& Path)] odstranuje FILE a vracia informaciu ci FILE bol odstraneny. V pripade SYMBOLIC LINKS su odstranovane SYMBOLIC LINKS a nie FILES na ktorej SYMBOLIC LINKS odkazuju.
+61. FUNCTION [bool remove_all(const path& Path)] odstranuje FILES. Ak FILE je DIRECTORY, rekurizvne odstranuje DIRECTORY aj vsetky jeho SUBDIRECTORIES. RETURN VALUE obsahuje pocet odstranenych FILES.
+62. FUNCTION [void rename(const path& OldPath, const path& NewPath)] vykonava RENAME, alebo MOVE FILES a DIRECTORIES. Platia nasledujuce fakty.
+   A. Ak PARAMETER [OldPath] odkazuje na FILE a PARAMETER [NewPath] odkazuje na EXISTING FILE, tak FILE [NewPath] je zmazany, PATH [NewPath] je LINKED na FILE [OldPath] a PATH [OldPath] je UNLIKNED na FILE [OldPath].
+   B. Ak PARAMETER [OldPath] odkazuje na FILE a PARAMETER [NewPath] odkazuje na NON-EXISTING FILE, tak PATH [NewPath] je LINKED na FILE [OldPath] a PATH [OldPath] je UNLIKNED na FILE [OldPath].
+   C. Ak PARAMETER [OldPath] odkazuje na DIRECTORY a PARAMETER [NewPath] odkazuje na EXISTING DIRECTORY, tak FILE [NewPath] je odstraneny, PATH [NewPath] je LINKED na DIRECTORY PATH [OldPath] je UNLINKED na DIRECTORY.
+   D. Ak PARAMETER [OldPath] odkazuje na DIRECTORY a PARAMETER [NewPath] odkazuje na NON-EXISTING DIRECTORY, tak PATH [NewPath] je LINKED na DIRECTORY PATH [OldPath] je UNLINKED na DIRECTORY.
+63. FUNCTION [void permissions(const path& Path, perms Permissions, perm_options Options)] nastavuje PERMISSIONS pre dany FILE. Platia nasledujuce fakty.
+   A. PARAMETER [perm_options Options] umoznuje nastavit mod, akym sa maju PERMISSIONS nastavovat. Umoznuje urcit ci PERMISSIONS maju byt pridane, nahradene, alebo odobrate.
+   B. PARAMETER [perm_options Options] ma DEFAULT VALUE [perm_options::replace].
+   !!! C. Vo WINDOWS je mozne nastavit iba 2 typy PERMISSIONS a to READ, WRITE a EXECUTE a SEARCH PERMISSIONS pre vsetkych USERS a GROUPS, alebo READ a EXECUTE a SEARCH PERMISSIONS pre vsetkych USERS a GROUPS.
+64. ENUM [perm_options] obsahuje zoznam PERMISSION SET OPTIONS. ENUM obsahuje nasledujce VALUES.
+   A. VALUE [replace] znamena, ze existujuce PERMISSIONS sa nahradia novymi PERMISSIONS.
+   B. VALUE [add] znamena, ze sa vykona OPERATION [CURRENT_PERMISSIONS | NEW_PERMISSIONS], kde VALUE [CURRENT_PERMISSIONS] su existujuce PERMISSIONS a VALUE [NEW_PERMISSIONS] su nove PERMISSIONS. Teda nove PERMISSIONS sa pridaju k existujucim PERMISSIONS.
+   C. VALUE [remove] znamena, ze sa vykona OPERATION [CURRENT_PERMISSIONS & ~(NEW_PERMISSIONS)], kde VALUE [CURRENT_PERMISSIONS] su existujuce PERMISSIONS a VALUE [NEW_PERMISSIONS] su nove PERMISSIONS. Teda nove PERMISSIONS sa odstrania z existujucich PERMISSIONS.
+   D. VALUE [nofollow] znamena, ze pre SYMBOLIC LINKS sa PERMISSIONS na SYMBOLIC LINKS a nie na FILES, na ktore SYMBOLIC LINKS odkazuju.
+65. FUNCTION [void resize_file(const path& Path, uintmax_t NewSize)] vykona RESIZE daneho FILE.
+66. FUNCTION [path read_symlink(const path& Path)] vracia PATH na ktoru odkazuje SYMBOLIC LINK. SYMBOLIC LINK MUSI existovat.
+67. FUNCTION [path absolute(const path& Path)] vracia ABSOLUTE PATH voci CURRENT PATH pre danu PATH. FILE NEMUSI existovat.
+!!! 68. FUNCTION [path canonical(const path& Path)] vracia CANONICAL ABSOLUTE PATH voci CURRENT PATH pre danu PATH, pricom FILE pre danu PATH MUSI existovat. CANONICAL ABSOLUTE PATH robi RESOLVE SYMBOLIC LINK a neobsahuje DIRECTORY [.], ani DIRECTORY [..]. FILE MUSI existovat.
+!!! 69. FUNCTION [path weakly_canonical(const path& Path)] vracia WEAKLY CANONICAL ABSOLUTE PATH voci CURRENT PATH pre danu PATH, pricom FILE na danej PATH NEMUSI existovat. CANONICAL ABSOLUTE PATH robi RESOLVE SYMBOLIC LINK a neobsahuje DIRECTORY [.], ani DIRECTORY [..]. FILE NEMUSI existovat.
+70. FUNCTION [path relative(const path& Path, const path& Base)] vracia RELATIVE PATH v PARAMETER [Path] voci PATH v PARAMETER [Base]. FUNCTION vykonava RESOLVE SYMBOLIC LINKS. PATH v PARAMETER [Path] NEMUSI existovat. V pripade, RELATIVE PATH NEEXISTUJE, FUNCTION vrati EMPTY PATH.
+71. FUNCTION [path proximate(const path& Path, const path& Base)] vracia RELATIVE PATH v PARAMETER [Path] voci PATH v PARAMETER [Base]. FUNCTION vykonava RESOLVE SYMBOLIC LINKS. PATH v PARAMETER [Path] NEMUSI existovat. V pripade, RELATIVE PATH NEEXISTUJE, FUNCTION vrati VALUE PARAMETER [Path].
+72. FUNCTION [space_info space(const path& Path)] vracia informacie o FILE SYSTEM na ktory odkazuje dana PATH.
+73. STRUCTURE [space_info] obsahuje informacie o FILE SYSTEM. STRUCTURE ma nasledujuce MEMBERS.
+   A. FIELD [uintmax_t capacity] TOTAL SIZE daneho FILE SYSTEM v BYTES.
+   B. FIELD [uintmax_t free] FREE SPACE daneho FILE SYSTEM v BYTES.
+   C. FIELD [uintmax_t available] FREE SPACE pre NON PRIVILEGED PROCESS daneho FILE SYSTEM v BYTES.
+74. CLASS [directory_entry] reprezentuje DIRECTORY ENTRY. DIRECTORY ENTRY obsahuje informacie o FILE alebo DIRECTORY cez ktore sa prechadza pri DIRECTORY ITERATION. CLASS ma nasledujuce MEMBERS.
+   1. CONSTRUCTOR umoznuje vytvarat instancie CLASS.
+   2. COPY CONSTRUCTOR umoznuje vytvarat COPY kopie instancii CLASS.
+   3. MOVE CONSTRUCTOR umoznuje vytvarat MOVE kopie instancii CLASS.
+   4. DESTRUCTOR uvolnuje instanciu CLASS.
+   5. COPY OPERATOR [OPERATOR=] kopiruje instanciu CLASS do inej instancie CLASS pomocou COPY SEMANTICS.
+   6. MOVE OPERATOR [OPERATOR=] kopiruje instanciu CLASS do inej instancie CLASS pomocou MOVE SEMANTICS.
+   !!! 7. OPERATOR [OPERATOR<=>] porovnava hodnoty 2 DIRECTORY ENTRIES.
+   8. CONVERSION OPERATOR [OPERATOR path()] vracia FULL PATH danej DIRECTORY ENTRY.
+   !!! 9. NON-MEMBER OPERATOR [OPERATOR<<] zapisuje textovu reprezentaciu DIRECTORY ENTRY do OUTPUT STREAM.
+   10. METHOD [const path& path(void) const noexcept] vracia FULL PATH danej DIRECTORY ENTRY.
+   !!! 11. METHOD [void assign(const path& Path)] nastavuje VALUE danej PATH pre DIRECTORY ENTRY. METHOD vsak NEROBI automaticky REFRESH PARAMETERS. Na to je potrebne volat METHOD [void refresh()].
+   !!! 12. METHOD [void replace_filename(const path& Path)] nastavuje FILENAME danej PATH pre DIRECTORY ENTRY. METHOD vsak NEROBI automaticky REFRESH PARAMETERS. Na to je potrebne volat METHOD [void refresh()].
+   !!! 13. METHOD [void refresh(void)] vykonava REFRESH PARAMETERS danej DIRECTORY ENTRY.
+   14. METHOD [file_status status(void) const] vracia FILE STATUS danej DIRECTORY ENTRY. FUNCTION vykonava RESOLVE SYMBOLIC LINKS.
+   15. METHOD [file_status symlink_status(void) const] vracia FILE STATUS danej DIRECTORY ENTRY. FUNCTION NEVYKONAVA RESOLVE SYMBOLIC LINKS. To znamena, ze pre SYMBOLIC LINKS vracia STATUS danej SYMBOLIC LINK.
+   16. METHOD [bool exists() const] vracia informaciu ci FILE, na ktory odkazuje DIRECTORY ENTRY existuje.
+   17. METHOD [uintmax_t file_size(void)] vracia dlzku FILE, na ktory odkazuje DIRECTORY ENTRY.
+   18. METHOD [uintmax_t hard_link_count(void)] vracia HARD LINKS na FILE, na ktory odkazuje DIRECTORY ENTRY.
+   19. METHOD [file_time_type last_write_time(void)] vracia LAST WRITE TIME FILE, na ktory odkazuje DIRECTORY ENTRY.
+   20. METHOD [bool is_regular_file(void)] vracia informaciu ci FILE, na ktory referuje DIRECTORY ENTRY je REGULAR FILE.
+   21. METHOD [bool is_directory(void)] vracia informaciu ci FILE, na ktory referuje DIRECTORY ENTRY je DIRECTORY.
+   22. METHOD [bool is_other(void)] vracia informaciu ci FILE, na ktory referuje DIRECTORY ENTRY je OTHER FILE.
+   23. METHOD [bool is_symlink(void)] vracia informaciu ci FILE, na ktory referuje DIRECTORY ENTRY je SYMBOLIC LINK.
+   24. METHOD [bool is_block_file(void)] vracia informaciu ci FILE, na ktory referuje DIRECTORY ENTRY je BLOCK FILE.
+   25. METHOD [bool is_character_file(void)] vracia informaciu ci FIL, na ktory referuje DIRECTORY ENTRYE je CHARACTER FILE.
+   26. METHOD [bool is_fifo(void)] vracia informaciu ci FILE, na ktory referuje DIRECTORY ENTRY je FIFO FILE.
+   27. METHOD [bool is_socket(void)] vracia informaciu ci FILE, na ktory referuje DIRECTORY ENTRY je SOCKET FILE.
+!!! 75. CLASS [directory_entry] spravidla obsahuje CACHED VALUES jednotlivych FILE PROPERTIES. Pomocou METHOD [void directory_entry::refresh(void)] je mozne vykonat REFRESH tychto PROPERTIES.
+76. CLASS [directory_iterator] reprezentuje DIRECTORY ITERATOR. DIRECTORY ITERATOR vykonava ITERATION cez DIRECTORY ENTRIES. CLASS ma nasledujuce MEMBERS.
+   A. DEFAULT CONSTRUCTOR vytvara END ITERATOR.
+   B. CONSTRUCTOR [directory_iterator(const path& Path)] vytvara DIRECTORY ITERATOR pre danu PATH.
+   C. CONSTRUCTOR [directory_iterator(const path& Path, directory_options Options)] vytvara DIRECTORY ITERATOR s nastavenymi ITERATION OPTIONS pre danu PATH.
+   D. COPY CONSTRUCTOR umoznuje vytvarat COPY kopie instancii CLASS.
+   E. MOVE CONSTRUCTOR umoznuje vytvarat MOVE kopie instancii CLASS.
+   F. DESTRUCTOR uvolnuje instanciu CLASS.
+   G. TYPE [value_type] obsahuje TYPE [directory_entry].
+   H. TYPE [const_iterator] obsahuje TYPE [ptrdiff_t].
+   I. TYPE [pointer] obsahuje POINTER TYPE [const directory_entry*].
+   J. TYPE [reference] obsahuje TYPE [const directory_entry&].
+   K. TYPE [iterator_category] obsahuje ITERATOR CATEGORY TYPE [input_iterator_tag].
+   L. COPY OPERATOR [OPERATOR=] kopiruje instanciu CLASS do inej instancie CLASS pomocou COPY SEMANTICS.
+   M. MOVE OPERATOR [OPERATOR=] kopiruje instanciu CLASS do inej instancie CLASS pomocou MOVE SEMANTICS.
+   N. OPERATOR [OPERATOR*] vykonava pristup k ITERATOR VALUE. OPERATOR vracia REFERENCE na TYPE [pointer].
+   O. OPERATOR [OPERATOR->] vykonava pristup k ITERATOR VALUE. OPERATOR vracia REFERENCE na TYPE [reference].
+   P. OPERATOR [OPERATOR++] inkrementuje ITERATOR.
+   Q. METHOD [directory_iterator& increment(error_code& ErrorCode)] inkrementuje ITERATOR.
+   R. FUNCTION [directory_iterator begin(directory_iterator Iterator) noexcept] vracia BEGIN ITERATOR.
+   S. FUNCTION [directory_iterator end(directory_iterator Iterator) noexcept] vracia END ITERATOR.
+77. CLASS [recursive_directory_iterator] reprezentuje RECURSIVE DIRECTORY ITERATOR. RECURSIVE DIRECTORY ITERATOR vykonava RECURSIVE ITERATION cez DIRECTORY ENTRIES. CLASS ma nasledujuce MEMBERS.
+   A. DEFAULT CONSTRUCTOR vytvara END ITERATOR.
+   B. CONSTRUCTOR [recursive_directory_iterator(const path& Path)] vytvara RECURSIVE DIRECTORY ITERATOR pre danu PATH.
+   C. CONSTRUCTOR [recursive_directory_iterator(const path& Path, directory_options Options)] vytvara RECURSIVE DIRECTORY ITERATOR s nastavenymi ITERATION OPTIONS pre danu PATH.
+   D. COPY CONSTRUCTOR umoznuje vytvarat COPY kopie instancii CLASS.
+   E. MOVE CONSTRUCTOR umoznuje vytvarat MOVE kopie instancii CLASS.
+   F. DESTRUCTOR uvolnuje instanciu CLASS.
+   G. TYPE [value_type] obsahuje TYPE [directory_entry].
+   H. TYPE [const_iterator] obsahuje TYPE [ptrdiff_t].
+   I. TYPE [pointer] obsahuje POINTER TYPE [const directory_entry*].
+   J. TYPE [reference] obsahuje TYPE [const directory_entry&].
+   K. TYPE [iterator_category] obsahuje ITERATOR CATEGORY TYPE [input_iterator_tag].
+   L. COPY OPERATOR [OPERATOR=] kopiruje instanciu CLASS do inej instancie CLASS pomocou COPY SEMANTICS.
+   M. MOVE OPERATOR [OPERATOR=] kopiruje instanciu CLASS do inej instancie CLASS pomocou MOVE SEMANTICS.
+   N. OPERATOR [OPERATOR*] vykonava pristup k ITERATOR VALUE. OPERATOR vracia REFERENCE na TYPE [pointer].
+   O. OPERATOR [OPERATOR->] vykonava pristup k ITERATOR VALUE. OPERATOR vracia REFERENCE na TYPE [reference].
+   P. OPERATOR [OPERATOR++] inkrementuje ITERATOR.
+   Q. METHOD [recursive_directory_iterator& increment(error_code& ErrorCode)] inkrementuje ITERATOR.
+   R. METHOD [directory_options options(void) const] vracia VALUE [directory_options].
+   S. METHOD [int depth(void) const] vracia aktulnu hlbku RESURSION.
+   T. METHOD [bool recursion_pending(void) const] vracia VALUE [true], ak nasledujuce ITERATION sposobi vnorenie do dalsieho DIRECTORY.
+   U. METHOD [void pop(void)] vrati DIRECTORY ITERATOR o jeden DIRECTORY nahor.
+   V. METHOD [void disable_recursion_pending(void)] zrusi vnorenie na aktualne referovany DIRECTORY.
+   W. FUNCTION [recursive_directory_iterator begin(recursive_directory_iterator Iterator) noexcept] vracia BEGIN ITERATOR.
+   X. FUNCTION [recursive_directory_iterator end(recursive_directory_iterator Iterator) noexcept] vracia END ITERATOR.
+78. ENUM [directory_options] obsahuje zoznam DIRECTORY OPTIONS pouzivanych pre ITERATION. ENUM obsahuje nasledujce VALUES.
+   A. VALUE [none] znamena, ze nedochadza k vnoreniu do SYMBOLIC LINKS a v pripade, ak PROCESS nema ACCESS k danemu DIRECTORY dojde k vznik EXCEPTION.
+   B. VALUE [follow_directory_symlink] znamena, ze nedochadza k vnoreniu do SYMBOLIC LINKS.
+   C. VALUE [skip_permission_denied] znamena, ze DIRECTORIES pre ktore nema PROCESS ACCESS maju byt pri ITERATION preskocene.
+//----------------------------------------------------------------------------------------------------------------------

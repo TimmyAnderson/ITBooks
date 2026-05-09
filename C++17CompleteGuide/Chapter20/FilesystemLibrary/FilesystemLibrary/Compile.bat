@@ -1,0 +1,1 @@
+g++ -m64 -std=gnu++26 -fconcepts -pthread -fexceptions -pedantic -Wall -Wextra -Wno-parentheses -Wno-inaccessible-base -o Program.exe Helpers/MyDebug.cpp Helpers/CException.cpp Helpers/CString.cpp FilesystemLibrary.cpp

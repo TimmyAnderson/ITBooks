@@ -17,7 +17,7 @@ using namespace std;
 //----------------------------------------------------------------------------------------------------------------------
 export void ModuleInternalPrint(void)
 {
-	wcout << "MODULE INTERNAL FUNCTION CALLED." << endl;
+	wcout << L"MODULE INTERNAL FUNCTION CALLED." << endl;
 }
 //----------------------------------------------------------------------------------------------------------------------
 //----------------------------------------------------------------------------------------------------------------------
@@ -27,7 +27,7 @@ export namespace MyModuleInternal1
 //----------------------------------------------------------------------------------------------------------------------
 	void ModuleInternalInsideNamespacePrint1(void)
 	{
-		wcout << "MODULE INTERNAL INSIDE NAMESPACE 1 FUNCTION CALLED." << endl;
+		wcout << L"MODULE INTERNAL INSIDE NAMESPACE 1 FUNCTION CALLED." << endl;
 	}
 //----------------------------------------------------------------------------------------------------------------------
 }
@@ -39,7 +39,7 @@ export namespace MyModuleInternal2
 //----------------------------------------------------------------------------------------------------------------------
 	void ModuleInternalInsideNamespacePrint2(void)
 	{
-		wcout << "MODULE INTERNAL INSIDE NAMESPACE 2 FUNCTION CALLED." << endl;
+		wcout << L"MODULE INTERNAL INSIDE NAMESPACE 2 FUNCTION CALLED." << endl;
 	}
 //----------------------------------------------------------------------------------------------------------------------
 }
