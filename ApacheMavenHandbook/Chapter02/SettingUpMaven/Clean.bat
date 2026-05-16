@@ -1,0 +1,1 @@
+rmdir /S /Q VerifyMavenInstallation\GeneratedFromArchetype\target
