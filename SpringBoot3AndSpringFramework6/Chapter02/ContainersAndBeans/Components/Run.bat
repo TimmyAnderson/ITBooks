@@ -1,0 +1,1 @@
+mvnw clean package spring-boot:run -Dspring-boot.run.debug=true

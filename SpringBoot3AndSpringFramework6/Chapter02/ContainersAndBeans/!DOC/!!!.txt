@@ -42,4 +42,610 @@
    E. INTERFACE [ConfigurableApplicationContext] je DERIVED z INTERFACE [ListableBeanFactory], ktory obsahuje METHOD [String[] ListableBeanFactory.getBeanDefinitionNames()]. Tato METHOD vracia zoznam vsetkych SPRING MANAGED BEANS.
    !!! E. INTERFACE [ConfigurableApplicationContext] je DERIVED z INTERFACE [ListableBeanFactory] a to je DERIVED z INTERFACE [BeanFactory]. Tento INTERFACE definuje mnozstvo METHODS pomocou ktorych je mozne ziskat instancie SPRING MANAGED BEANS.
 !!!!! 5. Zasadny rozdiel medzi SPRING FRAMEWORK PROGRAMS a SPRING BOOT PROGRAMS je, ze v SPRING FRAMEWORK PROGRAMS je nutne CONFIGURATION vsetkych SPRING MANAGED BEANS nutne vykonat manualne. V SPRING BOOT PROGRAMS pri spusteni dochadza k procesu AUTOCONFIGURATION, ked su SPRING MANAGED BEANS nakonfigurovane AUTOMATICKY.
+!!!!! 6. SPRING CONTAINERS je mozne vykonavat aj MANUALNE. Pre manualne vytvaranie SPRING CONTAINERS platia nasledujuce fakty.
+   A. Pri pouziti manualneho vytvarania SPRING CONTAINERS sa CLASS [SpringApplication] vobec NEPOUZIVA.
+   B. Manualne vytvaranie SPRING CONTAINERS sa vykonava pomocou nasledujucich krokov.
+      A. Vytvori sa instancia CLASS [AnnotationConfigApplicationContext], ktora reprezentuje SPRING CONTAINER.
+      !!!!! B. Pretoze CLASS [AnnotationConfigApplicationContext] alokuje RESOURCES a implementuje INTERFACE [AutoCloseable] odporuca sa vytvaranie jej instancie uzavriet v TRY WITH RESOURCES STATEMENT.
+      C. Volaju sa METHODS CLASS [AnnotationConfigApplicationContext] pomocou ktorych je mozne nakonfigurovat SPRING CONTAINER.
+      !!! D. Volanim METHOD [void AnnotationConfigApplicationContext.scan(String... basePackages)] sa registruju SCAN PATHS, kde ma SPRING CONTAINER vyhladavat SPRING MANAGED BEANS.
+      !!! E. Volanim METHOD [void AnnotationConfigApplicationContext.register(Class<?>... componentClasses)] sa registruju COMPONENT CLASSES reprezentujuce CONFIGURATION CLASSES, alebo jednotlive SPRING MANAGED BEANS.
+      !!!!! F. Po nakonfigurovani SPRING CONTAINER je NUTNE volat METHOD [void AbstractApplicationContext.refresh() throws BeansException, IllegalStateException], aby doslo k spusteniu SPRING CONTAINER.
+      G. Po zavolani METHOD [void AbstractApplicationContext.refresh() throws BeansException, IllegalStateException] je plne inicializovany a funkcny.
+7. SPRING MANAGED BEANS je mozne pridavat do SPRING CONTAINERS nasledujucimi sposobmi.
+   A. DEKLARATIVNE pomocou ANNOTATIONS.
+   B. DEKLARATIVNE pomocou XML CONFIGURATION FILE.
+   C. MANUALNE v CODE.
+8. SPRING MANAGED BEANS je mozne pridavat do SPRING CONTAINERS pomocou ANNOTATION [@Configuration]. Pre ANNOTATION [@Configuration] platia nasledujuce fakty.
+   A. ANNOTATION [@Configuration] je SPRING FRAMEWORK ANNOTATION, a NIE SPRING BOOT ANNOTATION.
+   B. ANNOTATION [@Configuration] moze byt aplikovana na TYPES.
+   C. ANNOTATION [@Configuration] je pristupna v RUNTIME pomocou REFLECTION.
+   D. ANNOTATION [@Configuration] vykonava nasledujucu cinnost.
+      A. SPRING BOOT AUTOMATICKY pridava SPRING MANAGED BEANS oznacene pomocu ANNOTATION [@Configuration] do SPRING CONTAINERS. Podmienkou je, aby SPRING MANAGED BEANS boli ulozene v istom PACKAGE v akom sa nachadza MAIN CLASS, alebo v jeho CHILD PACKAGES.
+      !!! B. SPRING BOOT AUTOMATICKY NEPRIDAVA do SPRING CONTAINERS SPRING MANAGED BEANS, ktore sice su oznacene pomocu ANNOTATION [@Configuration], ale sa nenachadzaju v tom istom PACKAGE v akom sa nachadza MAIN CLASS, alebo v jeho CHILD PACKAGES. Tieto PACKAGES je treba pridat PROGRAMOVO do CLASS PATH, aby boli automaticky vlozene do SPRING CONTAINERS.
+9. SPRING BOOT pridava TYPES oznacene pomocou ANNOTATION [@Configuration] do SPRING CONTAINERS, pretoze na MAIN CLASS je aplikovany ANNOTATION [@SpringBootApplication]. Pre ANNOTATION [@SpringBootApplication] platia nasledujuce fakty.
+   A. ANNOTATION [@SpringBootApplication] moze byt aplikovana na TYPES.
+   B. ANNOTATION [@SpringBootApplication] je pristupna v RUNTIME pomocou REFLECTION.
+   !!! C. ANNOTATION [@SpringBootApplication] ma aplikovanu ANNOTATION [@ComponentScan], ktora vykonava COMPONENT SCAN v istom PACKAGE v akom sa nachadza MAIN CLASS, alebo v jeho CHILD PACKAGES.
+10. SPRING BOOT AUTOMATICKY pridava SPRING MANAGED BEANS v nasledujucich krokoch.
+   A. Pri spusteni MAIN CLASS sa vytvori SPRING CONTAINER.
+   B. SPRING CONTAINER spusti SCAN vsetkych SPRING MANAGED BEANS v definovanych PACKAGES.
+   C. Pre kazdy najdeny SPRING MANAGED BEAN je vytvorena jeho instancia.
+   D. Instancie SPRING MANAGED BEANS su pridane do SPRING CONTAINER.
+11. SPRING BOOT definuje aj dalsie ANNOTATIONS na definovanie SPRING MANAGED BEANS. Platia nasledujuce fakty.
+   A. SPRING BOOT definuje nasledujuce ANNOTATIONS na definovanie SPRING MANAGED BEANS.
+      A. ANNOTATION [@Controller]. Semnaticky ANNOTATION oznacuje SPRING MANAGED BEAN, ktory sluzi ako CONTROLLER, ktory vystavuje WEB API ENDPOINT.
+      B. ANNOTATION [@Service]. Semnaticky ANNOTATION oznacuje SPRING MANAGED BEAN, ktory sluzi ako SERVICE, ktore realizuje BUSINESS LOGIC.
+      C. ANNOTATION [@Repository]. Semnaticky ANNOTATION oznacuje SPRING MANAGED BEAN, ktory sluzi ako REPOSITORY, ktore realizuje DB OPERATIONS.
+   B. Pre ANNOTATIONS platia nasledujuce fakty.
+      A. ANNOTATIONS mozu byt aplikovane na TYPES.
+      !!! B. ANNOTATIONS su COMPOSITE ANNOTATIONS, ktore preberaju ANNOTATION [@Component].
+   !!! C. SPRING BOOT umoznuje definovat CUSTOM ANNOTATIONS, na ktore ak je aplikovana ANNOTATION [@Component], tak danu ANNOTATION je mozne pouzit na oznacenie SPRING MANAGED BEANS.
+12. SPRING BOOT vyzaduje, aby do SPRING CONTAINER bola zaslana START CONFIGURATION. Pre START CONFIGURATION platia nasledujuce fakty.
+   A. START CONFIGURATION je zasialana vo forme CONFIGURATION CLASSES. Pre CONFIGURATION CLASS platia nasledujuce fakty.
+      A. CONFIGURATION CLASS obsahuje CONFIGURATION SPRING PROGRAM.
+      !!! B. CONFIGURATION CLASS MUSI byt oznacena pomocou ANNOTATION [@Configuration], alebo pomocou ANNOTATION [@Component]. Vynimkou je iba START CONFIGURATION, ktora NEMUSI byt oznacena pomocou tychto ANNOTATIONS.
+      !!!!! C. START CONFIGURATION NEMUSI byt oznacena pomocou ANNOTATION [@Configuration], alebo pomocou ANNOTATION [@Component]. Je to preto, lebo START CONFIGURATION je zasielana priamo do SPING BOOT bud do CONSTRUCTOR CLASS [SpringApplication], alebo do METHODS [SpringApplication.run()]. A tym padom JAVA AUTOMATICKY poklada START CONFIGURATION CLASS za CONFIGURATION CLASS, aj ked NIE je oznacena pomocou ANNOTATION [@Configuration], alebo pomocou ANNOTATION [@Component].
+   B. CONFIGURATION CLASSES su zasielane do SPRING BOOT nasledujucimi sposobmi.
+      A. Ako PARAMETERS do CONSTRUCTOR CLASS [SpringApplication(Class<?>... primarySources)].
+      B. Ako PARAMETER do METHOD [ConfigurableApplicationContext SpringApplication.run(Class<?> primarySource,, String... args)].
+      C. Ako PARAMETERS do METHOD [ConfigurableApplicationContext SpringApplication.run(Class<?>[] primarySources, String[] args)].
+   C. BY-DEFAULT ako CONFIGURATION CLASS je pouziva MAIN CLASS.
+   !!! D. MAIN CLASS je BY-DEFAULT oznacena pomocou ANNOTATION [@SpringBootApplication].
+   !!! E. ANNOTATION [@SpringBootApplication] je COMPOSITE ANNOTATION, ktora je oznacena pomocou ANNOTATION [@SpringBootConfiguration].
+   !!!!! F. ANNOTATION [@SpringBootConfiguration] je COMPOSITE ANNOTATION, ktora je oznacena pomocou ANNOTATION [@Configuration]. Takymto sposobom je na MAIN CLASS BY-DEFAULT applikovana ANNOTATION [@Configuration], co z nej robi CONFIGURATION CLASS.
+13. COMPONENT SCAN je mechanizmus umoznujuci SPRING BOOT automaticke vyhladavanie SPRING MANAGED BEANS. Pre COMPONENT SCAN platia nasledujuce fakty.
+   A. COMPONENT SCAN umonzuje automaticky vyhladavanie SPRING MANAGED BEANS v FILE SYSTEM daneho PROJECT.
+   B. COMPONENT SCAN je logickou sucastou SPRING BOOT a umoznuje SPRING BOOT automaticku konfiguraciu SPRING MANAGED BEANS.
+   C. COMPONENT SCAN sa realizuje pomocou ANNOTATION [@ComponentScan].
+   !!!!! D. COMPONENT SCAN sa vykonava v nasledujucich krokoch.
+      A. COMPONENT SCAN pouzije ELEMENT [String[] basePackages] a ELEMENT ELEMENT [Class<?>[] basePackageClasses] na urcenie, BASE PACKAGES. Ak ELEMENT [String[] basePackages] a ELEMENT ELEMENT [Class<?>[] basePackageClasses] NIE su definovane, ako BASE PACKAGE sa pouzije PACKAGE v ktorej je CLASS s aplikovanou ANNOTATION [@ComponentScan] definovana.
+      !!! B. COMPONENT SCAN sa vykonava nielen v BASE PACKAGES, ale aj vo vsetkych CHILD PACKAGES danych BASE PACKAGES.
+      C. COMPONENT SCAN prechadza vsetkych TYPES, ktore sa nachadzaju v BASE PACKAGES a CHILD PACKAGES a vykonava pre ne nasledujuce cinnosti.
+         !!! A. Pre TYPE zavola vsetky EXCLUDE FILTERS, ktore su definovane v ELEMENT [ComponentScan.Filter[] excludeFilters]. Ak niektory EXCLUDE FILTER vrati VALUE [true], TYPE je ignorovany, a NIE je zaradeny do SPRING CONTAINER ako SPRING MANAGED BEAN.
+         !!! B. Pre TYPE zavola vsetky INCLUDE FILTERS, ktore su definovane v ELEMENT [ComponentScan.Filter[] includeFilters]. Ak niektory INCLUDE FILTER vrati VALUE [true], TYPE je zaradeny do SPRING CONTAINER ako SPRING MANAGED BEAN.
+      !!!!! D. BY-DEFAULT ma ANNOTATION [@ComponentScan] nastaveny ELEMENT [useDefaultFilters] na VALUE [true]. V takomto pripade DEFAULT INCLUDE FILTER vklada vsetky TYPES, na ktore je aplikovana ANNOTATION [@Component], ci niektora z jej CHILD ANNOTATIONS.
+14. Pre ANNOTATION [@ComponentScan] platia nasledujuce fakty.
+   A. ANNOTATION [@ComponentScan] moze byt aplikovana na TYPES.
+   B. ANNOTATION [@ComponentScan] je pristupna v RUNTIME pomocou REFLECTION.
+   C. ANNOTATION [@ComponentScan] je oznacena pomocou ANNOTATION [@Repeatable] co znamena, ze moze byt aplikovana viackrat na ten isty TYPE.
+   D. ELEMENT [String[] basePackages] umoznuje definovat BASE PACKAGES. Platia nasledujuce fakty.
+      !!! A. ELEMENT [String[] basePackages] definuje zoznam BASE PACKAGES. COMPONENT SCAN vykonava vyhladavanie SPRING MANAGED BEANS v tychto PACKAGES, ako aj vo vsetkych CHILD PACKAGES tychto PACKAGES.
+      B. Jeden BASE PACKAGE moze definovat aj viacero BASE PACKAGES, ktore su oddelene pomocou SEPARATORS ako su WHITESPACES, COMMAS, alebo SEMICOLLONS.
+      C. Ak je ELEMENT [String[] basePackages] pre ANNOTATION [@ComponentScan] explicitne nastaveny, potom ANNOTATION [@ComponentScan] nevykonava COMPONENT SCAN v PACKAGE v ktorom je TYPE s aplikovanou ANNOTATION [@ComponentScan] definovany.
+      D. ELEMENT je ALIAS k ELEMENT [value].
+   E. ELEMENT [Class<?>[] basePackageClasses] umoznuje definovat BASE PACKAGES CLASSES. Platia nasledujuce fakty.
+      !!! A. ELEMENT [Class<?>[] basePackageClasses] definuje zoznam CLASSES, ktore urcuju, ktore v ktorych PACKAGES sa bude vykonavat COMPONENT SCAN. Plati, ze COMPONENT SCAN sa vykonava v PACKAGE v ktorom je dana CLASS definovana a takisto vo vsetkych CHILD PACKAGES.
+      B. Pouzitie ELEMENT [Class<?>[] basePackageClasses] je bezpecnejsie oproti pouzitiu ELEMENT [String[] basePackages], ze ELEMENT [Class<?>[] basePackageClasses] pouziva CLASSES namiesto STRINGS a tym padom pri premenovani PACKAGE nedojde k vzniku nekompabilit.
+   F. ELEMENT [boolean useDefaultFilters] urcuje ci do zoznamu FILTERS maju byt pridane DEFAULT FILTERS.
+   G. ELEMENT [ComponentScan.Filter[] includeFilters] umoznuje definovat INCLUDE FILTERS. INCLUDE FILTERS urcuju, ktore TYPES maju byt vlozene do SPRING CONTAINER ako SPRING MANAGED BEANS.
+   H. ELEMENT [ComponentScan.Filter[] excludeFilters] umoznuje definovat EXCLUDE FILTERS. EXCLUDE FILTERS urcuju, ktore TYPES NEMAJU byt vlozene do SPRING CONTAINER ako SPRING MANAGED BEANS.
+15. Pre ANNOTATION [@ComponentScan.Filter] platia nasledujuce fakty.
+   A. ANNOTATION [@ComponentScan.Filter] umoznuje definovat CUSTOM FILTERS, ktore sa aplikuju pri COMPONENT SCAN.
+   B. ANNOTATION [@ComponentScan.Filter] je INNER ANNOTATION ANNOTATION [@ComponentScan].
+   C. ANNOTATION [@ComponentScan.Filter] je pristupna v RUNTIME pomocou REFLECTION.
+   D. ELEMENT [Class<?>[] classes] definuje zoznam CLASSES, na ktore ma byt aplikovany FILTER.
+   E. ELEMENT [String[] pattern] definuje SEARCH PATTERN, ktory sa aplikuje na FILTER NAMIESTO ELEMENT [Class<?>[] classes].
+   F. ELEMENT [FilterType type] definuje TYPE daneho FILTER.
+16. ENUM [FilterType] definuje FILTER TYPE. ENUM ma nasledujuce VALUES.
+   A. VALUE [ANNOTATION] znamena, ze FILTER sa aplikuje na TYPES, ktore maju definovanu danu ANNOTATION, alebo niektoru z CHILD ANNOTATIONS.
+   !!! B. VALUE [ASSIGNABLE_TYPE] znamena, ze FILTER sa aplikuje na TYPES, ktore je mozne priradit do definovanych TYPES pomocou OPERATOR [instanceof].
+   C. VALUE [ASPECTJ] znamena, ze FILTER sa aplikuje na TYPES, ktorych nazov splna ASPECTJ EXPRESSION.
+   D. VALUE [REGEX] znamena, ze FILTER sa aplikuje na TYPES, ktorych nazov splna REGEX EXPRESSION.
+   !!! E. VALUE [CUSTOM] znamena, ze FILTER vola CUSTOM FILTER TYPE [TypeFilter] METHOD [boolean match(MetadataReader MetadataReader, MetadataReaderFactory MetadataReaderFactory) throws IOException], ktora ak vrati VALUE [true] tak FILTER je na dany TYPE aplikovany.
+!!! 17. COMPONENT SCAN umoznuje definovat CUSTOM FILTERS. Platia nasledujuce fakty.
+   A. Definuje sa CUSTOM TYPE, ktory implementuje INTERFACE [TypeFilter].
+   B. INTERFACE [TypeFilter] ma METHOD [boolean match(MetadataReader MetadataReader, MetadataReaderFactory MetadataReaderFactory) throws IOException], ktoru vola FILTER pre urcenie ci na dany TYPE ma byt FILTER aplikovany, alebo nie.
+   !!!!! C. PARAMETER TYPE [MetadataReader] a PARAMETER TYPE [MetadataReaderFactory] umoznuju kontrolu lubovolnej casti metadat daneho TYPE. To znamena, ze CUSTOM FILTER moze napriklad vyberat tie TYPES, ktore maju implementovane specificke BASE TYPES, INTERFACES, CONSTRUCTORS, ci METHODS.
+   D. Definuje sa CUSTOM FILTER, ktory musi mat nasledujuce nastavenia.
+      A. ELEMENT [FilterType type] musi obsahovat VALUE [CUSTOM].
+      B. ELEMENT [Class<?>[] classes] musi obsahovat CUSTOM FILTER TYPE.
+18. SPRING FRAMEWORK umoznuje vytvarat SHELL PROGRAMS. Pre SHELL PROGRAMS platia nasledujuce fakty.
+   A. SHELL PROGRAM je INTERAKTIVNY PROGRAM, ktory umoznuje interakciu s USERS bud pomocou CONSOLE USER INTERFACE, alebo pomocou GRAPHICAL USER INTERFACE.
+   B. SHELL PROGRAMS su implementovane pomocou DEPENDENCY [spring-shell-starter].
+   !!!!! C. Ak je do SPRING BOOT PROJECT vlozena DEPENDENCY [spring-shell-starter], PROGRAM sa automaticky stava SHELL PROGRAMOM. To znamena nasledujuce.
+      A. V METHOD [SpringApplication.run()] je spusteny CONSOLE USER INTERFACE.
+      !!! B. METHOD [SpringApplication.run()] je BLOCKED az kym CONSOLE USER INTERFACE nie je ukonceny.
+   D. DEFAULT CONSOLE USER INTERFACE podporuje nasledujuce COMMANDS.
+      A. COMMAND [help]. COMMAND zobrazi HELP TEXT.
+      !!! B. COMMAND [exit]. COMMAND ukonci SHELL a vykona sa CODE za METHOD [SpringApplication.run()].
+   !!!!! E. Z ECLIPSE NIE JE mozne spustat SHELL PROGRAMS. Je ich mozne spustat IBA z CONSOLE.
+19. Do SHELL PROGRAMS je mozne pridavat nove COMMANDS nasledujucim sposobom.
+   A. Definuje sa CUSTOM CLASS, ktora je oznacena pomocou ANNOTATION [@Component].
+   !!! B. V CUSTOM CLASS sa pre kazdy COMMAND definuje METHOD, ktora je oznacena ANNOTATION [@Command]. Ak ANNOTATION [@ShellMethod] pouzije ELEMENT [String[] name] jeho VALUE definuje COMMAND NAMES. Ak sa ELEMENT [String[] name] NEPOUZIJE, COMMAND NAME je odvodeny z nazvu METHOD.
+   C. Po pridani novej COMMAND je COMMAND mozne zobrazit pomocou COMMAND [help].
+   D. COMMAND moze mat PARAMETERS, ktore sa prenasaju ako METHOD PARAMETERS do COMMAND METHOD. Tieto METHOD PARAMETERS MUSIA byt oznacene pomocou ANNOTATION [@Option]. PARAMETERS, ktore obsahujuju WHITESPACES MUSIA byt uzatvorene pomocou CHARACTERS ["VALUE"], kde VALUE [VALUE] je VALUE WHITESPACES.
+   !!! E. COMMAND METHOD moze vratit lubovolnu RETURN VALUE, ktora je zobrazena ako vystup COMMAND v SHELL PROGRAM.
+   F. COMMAND METHOD moze vykonavat lubovolnu cinnost ako je napriklad vypis do CONSOLE, ci ine operacie.
+20. Pre ANNOTATION [@Command] platia nasledujuce fakty.
+   A. ANNOTATION umoznuje definovat METHOD, ktora sa vykona ako COMMAND v SHELL PROGRAM.
+   B. ANNOTATION moze byt aplikovana na METHODS.
+   C. ANNOTATION je pristupna v RUNTIME pomocou REFLECTION.
+   D. ELEMENT [String group] urcuje GROUP do ktorej COMMAND patri.
+   !!! E. ELEMENT [String[] name] urcuje COMMAND NAMES pomocou ktorych je COMMAND vyvolany. Ak tento ELEMENT NIE je nastaveny, tak sa ako COMMAND NAME pouziva nazov METHOD v KEBAB CASE.
+   F. ELEMENT [String description] obsahuje COMMAND DESCRIPTION, ktory je zobrazovany pri zavolani COMMAND [help].
+21. Pre ANNOTATION [@Option] platia nasledujuce fakty.
+   A. ANNOTATION umoznuje oznacit METHOD PARAMETER, ktory ma byt do METHOD zaslany ako PARAMETER daneho COMMAND.
+   B. ANNOTATION moze byt aplikovana na METHOD PARAMETERS.
+   C. ANNOTATION je pristupna v RUNTIME pomocou REFLECTION.
+   D. ELEMENT [char shortName] definuje SHORT NAME daneho COMMAND.
+   E. ELEMENT [String longName] definuje LONG NAME daneho COMMAND.
+   F. ELEMENT [String description] definuje DESCRIPTION daneho COMMAND.
+   G. ELEMENT [String defaultValue] definuje DEFAULT VALUE daneho COMMAND.
+   H. ELEMENT [boolean required] definuje ci COMMAND je REQUIRED.
+22. SPRING FRAMEWORK podporuje nasledujuce CONCEPTS.
+   A. INVERSION OF CONTROL. Pri INVERSION OF CONTROL nie su OBJECTS vytvarane priamo v CODE daneho PROGRAMU, ale vytvara ich FRAMEWORK, v ktorom PRORGRAM bezi a nasledne ich vklada do CODE.
+   B. DEPENDENCY INJECTION. Pri DEPENDENCY INJECTION su DEPENDENT OBJECTS vytvarane FRAMEWORK a automaticky vkladane do COMPONENTS.
+23. SPRING FRAMEWORK realizuje DEPENDENCY INJECTION nasledujucimi sposobmi.
+   A. CONSTRUCTOR INJECTION. Pre CONSTRUCTOR INJECTION platia nasledujuce fakty.
+      A. Pri CONSTRUCTOR INJECTION je DEPENDENT OBJECT vlozeny SPRING FRAMEWORK do CLASS volanim CONSTRUCTOR s nastavenym CONSTRUCTOR PARAMETER. CONSTRUCTOR moze CONSTRUCTOR PARAMETER vlozit do FIELD pre dalsie pouzitie.
+      B. CONSTRUCTOR INJECTION sa aplikuje iba na TYPES, ktore su SPRING MANAGED BEANS a na TYPES.
+      C. PARAMETERS CONSTRUCTOR INJECTION musia byt tiez SPRING MANAGED BEANS.
+      !!! D. CONSTRUCTOR na ktory sa ma aplikovat CONSTRUCTOR INJECTION MUSI byt oznaceny pomocou ANNOTATION [@Autowired]. No ak ma TYPE iba 1 CONSTRUCTOR, tento NEMUSI byt oznaceny ANNOTATION [@Autowired] a SPRING FRAMEWORK ho AUTOMATICKY zavola pre CONSTRUCTOR INJECTION.
+      E. Pouzitie CONSTRUCTOR INJECTION umoznuje nastavit FIELD, do ktoreho sa uklada SPRING MANAGED BEAN pomocou KEYWORD [final].
+      !!! F. Pouzitie CONSTRUCTOR INJECTION vytvara zavislost jedneho SPRING MANAGED BEAN na inom a SPRING FRAMEWORK musi pri vytvarani SPRING CONTAINER graf tychto zavislosti.
+      !!! G. CONSTRUCTOR NEMUSI byt oznaceny ako PUBLIC. SPRING FRAMEWORK vola CONSTRUCTOR pomocou REFLECTION a tym padom sa VISIBILITY IGNORUJE.
+   B. SETTER INJECTION. Pre SETTER INJECTION platia nasledujuce fakty.
+      A. Pri SETTER INJECTION je DEPENDENT OBJECT vlozeny SPRING FRAMEWORK do CLASS volanim SETTER METHOD.
+      B. SETTER INJECTION sa aplikuje iba na TYPES, ktore su SPRING MANAGED BEANS a na TYPES.
+      C. PARAMETERS SETTER INJECTION musia byt tiez SPRING MANAGED BEANS.
+      D. SETTER, na ktory sa ma aplikovat SETTER INJECTION MUSI byt oznaceny pomocou ANNOTATION [@Autowired].
+      !!! E. Pouzitie FIELD INJECTION ZNEMOZNUJE nastavit FIELD, do ktoreho sa uklada SPRING MANAGED BEAN pomocou KEYWORD [final].
+      !!! F. SETTER pouzity pre SETTER INJECTION moze mat LUBOVOLNY NAME a NEMUSI zacinat PREFIX [set].
+      !!! G. SETTER NEMUSI byt oznaceny ako PUBLIC. SPRING FRAMEWORK vola SETTER pomocou REFLECTION a tym padom sa VISIBILITY IGNORUJE.
+      !!!!! H. SETTER moze mat LUBOVOLNY pocet PARAMETERS. Kazdy PARAMETER nahradi SPRING FRAMEWORK za prislusnu instanciu SPRING MANAGED BEAN. Jeden SETTER tak umoznuje nastavit LUBOVOLNY pocet SPRING MANAGED BEANS.
+   C. FIELD INJECTION. Pre SETTER INJECTION platia nasledujuce fakty.
+      A. Pri FIELD INJECTION je DEPENDENT OBJECT vlozeny SPRING FRAMEWORK do CLASS nastavenim daneho FIELD.
+      B. FIELD INJECTION sa aplikuje iba na TYPES, ktore su SPRING MANAGED BEANS a na TYPES.
+      C. PARAMETERS FIELD INJECTION musia byt tiez SPRING MANAGED BEANS.
+      D. FIELD, na ktory sa ma aplikovat FIELD INJECTION MUSI byt oznaceny pomocou ANNOTATION [@Autowired].
+      !!! E. Pouzitie FIELD INJECTION ZNEMOZNUJE nastavit FIELD, do ktoreho sa uklada SPRING MANAGED BEAN pomocou KEYWORD [final].
+      !!!!! F. FIELD INJECTION NIE JE mozne pouzit na nastavenie STATIC FIELDS.
+      !!! G. FIELD NEMUSI byt oznaceny ako PUBLIC. SPRING FRAMEWORK vola FIELD pomocou REFLECTION a tym padom sa VISIBILITY IGNORUJE.
+24. SPRING FRAMEWORK riesi DEPENDENCY INJECTION pomocou WIRING. Pre WIRING platia nasledujuce fakty.
+   A. WIRING sa vykonava pri spusteni SPRING CONTAINER.
+   B. SPRING CONTAINER vytvara instancie zaregistrovanych SPRING MANAGED BEANS.
+   C. Ak SPRING MANAGED BEANS obsahuje DEPENDENCIES, tak tieto DEPENDENT OBJECTS su vytvorene SKOR, pred vytvorenim samotnej SPRING MANAGED BEAN su pomocou DEPENDENCY INJECTION vlozene do danej SPRING MANAGED BEAN.
+   D. Po vytvoreni SPRING CONTAINER je vytvoreny SPRING MANAGED BEANS GRAPH obsahujuci vsetky nainicializovane SPRING MANAGED BEANS s vyriesenymi vzajomnymi DEPENDENCIES.
+25. Ak SPRING PROGRAM nevie najst niektory z REQUIRED SPRING MANAGED BEAN dojde k ERROR. ERROR je spracovana nasledujucim sposobom.
+   A. Ak SPRING PROGRAM NEVYUZIVA SPRING BOOT, iba SPRING FRAMEWORK, do OUTPUT STREAM je vypisany obsah EXCEPTION, ktora vznikla v dosledku MISSING REQUIRED SPRING MANAGED BEAN.
+   B. Ak SPRING PROGRAM VYUZIVA SPRING BOOT, EXCEPTION, ktora vznikla v dosledku MISSING REQUIRED SPRING MANAGED BEAN je spracovana pomocou FAILURE ANALYZER.
+   C. DEFAULT FAILURE ANALYZER zobrazuje nasledujuce informacie o MISSING REQUIRED SPRING MANAGED BEAN.
+      A. DESCRIPTION. DESCRIPTION obsahuje podrobnu informaciu o tom, ktory REQUIRED SPRING MANAGED BEAN je MISSING.
+      B. ACTION. ACTION obsahuje HINT, ako problem s MISSING REQUIRED SPRING MANAGED BEAN riesit.
+   D. SPRING PROGRAM moze definovat CUSTOM FAILURE ANALYZER definovanim CLASS, ktora implementuje ABSTRACT CLASS [AbstractFailureAnalyzer].
+26. SPRING MANAGED BEANS mozu byt oznacene ako OPTIONAL. Platia nasledujuce fakty.
+   A. Ak je SPRING MANAGED BEAN oznaceny ako OPTIONAL, tak v pripade, ze sa instanciu SPRING MANAGED BEAN nepodari vytvorit PROGRAM sa aj napriek tomu spusti.
+   B. SPRING MANAGED BEANS mozu byt oznacene ako OPTIONAL nasledujucimi sposobmi.
+      A. Pomocou ANNOTATION [@Autowired], ktora ma nastaveny ELEMENT [required] na VALUE [false].
+      B. Pomocou ANNOTATION [@Nullable].
+      C. Pouzitim TYPE [Optional]. TYPE [Optional] je GENERIC TYPE, ktory ma ako parameter TYPE SPRING MANAGED BEAN. Ak sa SPRING MANAGED BEAN nepodari zaviest, instancia TYPE [Optional] je prazdna.
+      !!! D. Pouzitim TYPE [ObjectProvider]. TYPE [ObjectProvider] je GENERIC TYPE, ktory ma ako parameter TYPE SPRING MANAGED BEAN. Ak sa SPRING MANAGED BEAN nepodari zaviest, instancia TYPE [ObjectProvider] je prazdna. TYPE [ObjectProvider] implementuje LAZY LOADING. To znamena, ze pokus o vytovrenie SPRING MANAGED BEAN prebieha az pri prvom dotaze na dany SPRING MANAGED BEAN.
+27. Pre CYCLIC DEPENDENCIES SPRING MANAGED BEANS platia nasledujuce fakty.
+   A. K CYCLIC DEPENDENCIES SPRING MANAGED BEANS dochadza ak BEAN 1 vyzaduje BEAN 2, a zaroven BEAN 2 vyzaduje BEAN 1.
+   !!! B. BY-DEFAULT CYCLIC DEPENDENCIES SPRING MANAGED BEANS su ZAKAZANE.
+   C. CYCLIC DEPENDENCIES SPRING MANAGED BEANS je mozne povolit nasledujucimi sposobmi.
+      !!! A. Najprv je NUTNE nastavit CONFIGURATION PROPERTY [spring.main.allow-CYCLIC-references] na VALUE [true]. Alternativne je mozne pouzit aj voolanie METHOD [public void public void SpringApplication.setAllowCircularReferences(boolean allowCircularReferences)].
+      B. Nasledne je mozne pouzit niektore z nasledujucich nastaveni pre pouzitie CYCLIC DEPENDENCIES SPRING MANAGED BEANS.
+         A. Pouzitim SETTER INJECTION. SETTER INJECTION umoznuje pouzit CYCLIC DEPENDENCIES SPRING MANAGED BEANS.
+         !!! B. Aplikovanim ANNOTATION [@Lazy] na SPRING MANAGED BEANS, ktore obsahuju CYCLIC DEPENDENCIES. Pri pouziti ANNOTATION [@Lazy] musia byt VSETKY SPRING MANAGED BEANS, aj tie, ktore maju NEPRIAMU CYCLIC DEPENDENCIES referovanych SPRING MANAGED BEANS pouzit ANNOTATION [@Lazy].
+28. SPRING FRAMEWORK umoznuje pomocou DEPENDENCY INJECTION vkladat aj CLASSES, ktore NIE su SPRING MANAGED BEANS. Prikladom su nasledujuce CLASSES.
+   A. CLASS [ApplicationContext].
+   B. CLASS [BeanFactory].
+   C. CLASS [Environment].
+   D. CLASS [ResourceLoader].
+   E. CLASS [ApplicationEventPublisher].
+   F. CLASS [MessageSource].
+   G. CLASS [ApplicationArguments].
+29. V SPRING FRAMEWORK je mozne SPRING MANAGED BEANS vytvarat nasledujucimi sposobmi.
+   A. Aplikovanim ANNOTATION [@Component] na TYPE. Pre tento sposob vytvarania SPRING MANAGED BEANS platia nasledujuce fakty.
+      A. SPRING FRAMEWORK z kazdeho TYPE, ktory je oznaceny pomocou ANNOTATION [@Component] vytvara instanciu SPRING MANAGED BEAN, ktora je zaradena do SPRING CONTAINER.
+      B. SPRING FRAMEWORK vytvara instanciu SPRING MANAGED BEAN volanim CONSTRUCTOR, na ktory je aplikovana ANNOTATION [@Autowired].
+      C. Pri volani CONSTRUCTOR je aplikovana DEPENDENCY INJECTION na CONSTRUCTOR PARAMETERS a nasledne je aplikovana aj SETTERS a FIELD DEPENDENCY INJECTION.
+      !!! D. SPRING MANAGED BEAN vytvoreny aplikovanim ANNOTATION [@Component] ma BY DEFAULT NAME, ktory je ZHODNY s TYPE NAME.
+      !!! E. Pouzitie ANNOTATION [@Component] ma nasledujuce nevyhody.
+         A. Vsetka CUSTOMIZATION daneho SPRING MANAGED BEAN sa musi realizovat v CONSTRUCTOR.
+         B. Nie je mozne vytvarat rozne instancie danej SPRING MANAGED BEAN na zaklade dynamicky sa meniacich CONDITIONS.
+         C. Nie je mozne vytvarat SPRING MANAGED BEANS z TYPES, na ktore nie je aplikovana ANNOTATION [@Component].
+   B. Implementaciou FACTORY METHODS v CONFIGURATION TYPES. Pre tento sposob vytvarania SPRING MANAGED BEANS platia nasledujuce fakty.
+      A. FACTORY METHOD je CUSTOM METHOD, ktora vytvara instanciu SPRING MANAGED BEAN.
+      B. FACTORY METHOD musi byt oznacena ANNOTATION [@Bean].
+      C. FACTORY METHOD musi byt definovana v TYPE, na ktory je aplikovana ANNOTATION [@Configuration].
+      D. FACTORY METHOD by mala mat PUBLIC VISIBILITY.
+      !!!!! E. FACTORY METHOD NESMIE byt oznacena pomocou KEYWORD [final]. Je to preto, lebo SPRING FRAMEWORK na pozadi vytvara z CONFIGURATION TYPE DERIVED PROXY CLASS, ktora vykonava OVERRIDING FACTORY METHODS.
+      F. FACTORY METHOD moze mat LUBOVOLNY NAME, no BY-DEFAULT je nazov METHOD pouzity ako nazov SPRING MANAGED BEAN v SPRING CONTAINER.
+      G. FACTORY METHOD moze mat PARAMETERS. Tieto PARAMETERS su substituovane SPRING FRAMEWORK pomocou DEPENDENCY INJECTION.
+      !!!!! H. FACTORY METHOD by mala mat v RETURN VALUE TYPE co NAJSPECIFICKEJSI TYPE, pretoze SPRING FRAMEWORK vyuziva STATIC TYPE INFORMATION pri vytvarani SPRING MANAGED BEANS. STATIC TYPE INFORMATION sa napriklad pouziva pre CONDITIONAL SPRING MANAGED BEANS, ktore su vytvorene iba pri specifickych CONDITIONS. Preto napriklad pri DERIVED TYPES sa odporuca, aby v RETURN VALUE TYPE sa pouzil DERIVED TYPE, a nie BASE TYPE.
+      !!! I. FACTORY METHOD umoznuje vytvarat SPRING MANAGED BEANS z LUBOVOLNYCH TYPES, to znamena, ze aj z TYPES, ktore NIE su oznacene pomocou ANNOTATION [@Component]. To znamena, ze SPRING MANAGED BEANS je mozne vytvarat aj z TYPES ako TYPE [String], TYPE [String[]], alebo TYPE [List<String>].
+      J. FACTORY METHOD moze byt aj STATIC METHOD. Pre STATIC FACTORY METHOD platia nasledujuce fakty.
+         A. STATIC FACTORY METHOD nepotrebuje vytvorenie instancie CONFIGURATION TYPE.
+         B. Kedze STATIC FACTORY METHOD nepouziva CONFIGURATION TYPE, tak sa NEPOUZIVA ani PROXY OBJECT vytvoreny z CONFIGURATION TYPE a tym padom pri vzajomnom volani jednotlivych STATIC FACTORY METHOD sa tieto METHODS volaju NA PRIAMO, BEZ pouzitia PROXY OBJECT.
+         C. STATIC FACTORY METHODS su volane este pred vytvorenim instancie CONFIGURATION TYPE, v ktorom sa STATIC FACTORY METHODS nachadzaju.
+!!!!! 30. Ak sa SPRING MANAGED BEANS vytvaraju pomocou CONFIGURATION TYPES vo FACTORY METHODS, SPRING FRAMEWORK postupuje nasledujucim sposobom.
+   A. SPRING FRAMEWORK vytvori pre CONFIGURATION TYPE PROXY TYPE.
+   B. PROXY TYPE je CLASS, ktora je DERIVED z CONFIGURATION TYPE. Z tohto dovodu CONFIGURATION TYPES NEMOZU byt oznaceny pomocou KEYWORD [final].
+   !!! C. PROXY TYPE vykonava OVERRIDING VSETKYCH FACTORY METHODS, ktore sluzia ako PROXY METHODS, ktore interne volaju povodne FACTORY METHODS. Z tohto dovodu FACTORY METHODS NEMOZU byt oznacene pomocou KEYWORD [final].
+   !!! D. SPRING FRAMEWORK pri vytvarani SPRING CONTAINER vytvara instancie PROXY TYPES, pre ktore vola OVERRIDEN PROXY METHODS FACTORY METHODS, ktore interne volaju povodne FACTORY METHODS.
+   !!!!! E. PROXY METHODS FACTORY METHODS pre SPRING MANAGED BEANS, ktore su SINGLETON vykonavaju kontrolu ci SINGLETON SPRING MANAGED BEAN uz bol vytvoreny, a ak ano, vratia UZ VYTVORENY SPRING MANAGED BEAN, a NEVYTVARAJU NOVY SPRING MANAGED BEAN.
+   !!!!! F. Dosledkom pouzitia PROXY METHODS FACTORY METHODS je, ze ak je v CONFIGURATION TYPE v FACTORY METHOD volana ina FACTORY METHOD na vytvorenie novej instancie SPRING MANAGED BEAN, kedze v skutocnosti sa vola PROXY METHOD FACTORY METHOD namiesto skutocnej FACTORY METHOD, tak PROXY METHOD FACTORY METHOD vrati UZ VYTVORENY SPRING MANAGED BEAN, a NIE NOVY SPRING MANAGED BEAN.
+   !!!!! G. SPRING FRAMEWORK NEVYTVARA PROXY TYPES pre TYPES s ANNOTATION [@Component]. Instancie tychto TYPES su vytvarane PRIAMO BEZ pouzitia PROXY TYPES.
+   H. Vytvaranie PROXY OBJECTS je mozne zakazat nastavenim ELEMENT [proxyBeanMethods] na VALUE [false] v ANNOTATION [@Configuration].
+31. ANNOTATION [@Configuration] umoznuje oznacit CLASSES za CONFIGURATION CLASS v ktorej mozu byt definicie FACTORY METHODS pre SPRING MANAGED BEANS. Pre ANNOTATION [@Configuration] platia nasledujuce fakty.
+   A. ANNOTATION [@Configuration] moze byt aplikovana na TYPES.
+   B. ANNOTATION [@Configuration] je pristupna v RUNTIME pomocou REFLECTION.
+   !!! C. ANNOTATION [@Configuration] ma aplikovanu ANNOTATION [@Component]. To znamena, ze TYPES, ktore su oznacene ANNOTATION [@Configuration] su zaroven aj COMPONENTS.
+32. Pre vytvaranie SPRING MANAGED BEANS platia nasledujuce fakty.
+   A. SPRING FRAMEWORK umoznuje vytvarat viacero SPRING MANAGED BEANS rovnakeho TYPE.
+   B. Kazda SPRING MANAGED BEAN MUSI mat UNIKATNY NAME. V pripade, ze viacero SPRING MANAGED BEANS maju rovnake NAMES, pri vytvoreni SPRING CONTAINER dojde k vzniku EXCEPTION.
+   C. SPRING MANAGED BEANS su vytvarana VZDY pri starte SPRING CONTAINER. SPRING CONTAINER ich nevytvara az pri prvom dotaze na niektory zo SPRING MANAGED BEANS, ale hned pri starte SPRING CONTAINER.
+   !!!!! D. Poradie vytvarania SPRING MANAGED BEANS je DOLEZITE. Ak napriklad existuje BEAN TYPE [String], BEAN TYPE [String[]] a BEAN TYPE [MyComponent], ktora ma DEPENDENCY na BEAN TYPE [String] a BEAN TYPE [String[]], moze dojst k nasledujucej situacii.
+      A. Vytvori sa BEAN TYPE [String].
+      B. Vytvori sa BEAN TYPE [MyComponent].
+      !!! C. V BEAN TYPE [MyComponent] DEPENDENCY BEAN TYPE [String[]] bude obsahovat iba 1 ITEM s uz vytvorenym BEAN TYPE [String].
+      !!! D. Vytvori sa BEAN TYPE [String[]], ktory ma N ITEMS.
+      !!!!! E. Ak teraz niektory BEAN vyzaduje DEPENDENCY na BEAN TYPE [String[]], tak DEPENDENCY bude obsahovat N ITEMS.
+!!! 33. SPRING FRAMEWORK umoznuje definovat LIFE CYCLE SPRING MANAGED BEANS pomocou SCOPES. Platia nasledujuce fakty.
+   A. SCOPE definuje zivotnost SPRING MANAGED BEAN.
+   B. SPRING FRAMEWORK definuje nasledujuce SCOPES.
+      A. SCOPE [SINGLETON]. SINGLETON SCOPE znamena, ze pre SPRING MANAGED BEAN s danym NAME existuje v SPRING CONTEXT iba 1 INSTANCIA.
+      B. SCOPE [PROTOTYPE]. PROTOTYPE SCOPE znamena, ze SPRING FRAMEWORK vytovri vzdy NOVU INSTANCIU SPRING MANAGED BEAN pri kazdom poziadani o ziskanie instancie SPRING MANAGED BEAN.
+      C. SCOPE [REQUEST].
+      D. SCOPE [SESSION].
+      E. SCOPE [APPLICATION].
+   C. SCOPE sa definuje aplikovanim ANNOTATION [@Scope] na SPRING MANAGED BEAN, alebo SPRING MANAGED BEAN FACTORY METHOD.
+34. SPRING FRAMEWORK umoznuje vytvarat instancie SPRING MANAGED BEANS na zaklade miesta, kde boli pomocou DEPENDENCY INJECTION vlozene. Platia nasledujuce fakty.
+   A. FACTORY METHOD moze mat PARAMETER TYPE [InjectionPoint], ktory obsahuje informaciu o mieste, kde ma byt SPRING MANAGED BEAN vlozeny.
+   B. TYPE [InjectionPoint] je INTERFACE, ktory obsahuje METHODS umoznujuce zistit podrobnosti o mieste v CODE, kde ma byt vytvarany SPRING MANAGED BEAN vlozeny. METHODS umoznuju zistit napriklad ci na vkladany SPRING MANAGED BEAN je aplikovana nejaka ANNOTATION, alebo METADATA o FIELD ci MEMBER, cez ktory je vytvarany SPRING MANAGED BEAN vkladany do CONTEXT.
+   !!! C. Ak FACTORY METHOD vytvara ROZNE instancie SPRING MANAGED BEANS na zaklade TYPE [InjectionPoint], MUSI byt SPRING MANAGED BEAN oznaceny ako PROTOTYPE BEAN, a NIE SINGLETON BEAN. Pretoze SINGLETON BEAN je vytvoreny iba raz, a nie je ho moze vytvorit viackrat na zaklade udajov v TYPE [InjectionPoint].
+35. SPRING FRAMEWORK umoznuje importovat CONFIGURATION TYPES do inych CONFIGURATION TYPES vdaka comu je mozne obist casovo narocny COMPONENT SCAN. Pre IMPORT CONFIGURATION TYPES platia nasledujuce fakty.
+   A. IMPORT CONFIGURATION TYPES umoznuje do CONFIGURATION FILE vlozit ine CONFIGURATION FILES, alebo aj priamo COMPONENTS, vdaka comu su SPRING MANAGED BEANS definovane v tychto CONFIGURATION FILES, alebo COMPONENTS vlozene do SPRING CONTAINER.
+   B. IMPORT CONFIGURATION TYPES umoznuje obist casovo narocny COMPONENT SCAN uplne, ak MAIN CONFIGURATION TYPE obsahuje referencie na vsetky potrebne CONFIGURATION TYPES a COMPONENTS, ktore PROGRAM vyuziva.
+   C. IMPORT CONFIGURATION TYPES sa vykonava aplikovanim ANNOTATION [@Import] na CONFIGURATION TYPE. Takyto CONFIGURATION TYPE importuje vsetky TYPES (CONFIGURATION TYPES, COMPONENTS), ktore su uvedene v ANNOTATION [@Import].
+   D. IMPORT CONFIGURATION TYPES pomocou ANNOTATION [@Import] moze byt implementovana nasledujucimi sposobmi.
+      A. STATICKY. Pre STATICKY IMPORT CONFIGURATION TYPES platia nasledujuce fakty.
+         A. Zoznam IMPORTED CONFIGURATION TYPES a COMPONENTS je definovany v COMPILE TIME priamo v ANNOTATION [@Import].
+         B. ANNOTATION [@Import] musi v ELEMENT [value] vracat zoznam instancii TYPE [Class<?>], ktory obsahuje vsetky CONFIGURATION TYPES a COMPONENTS, ktore maju byt IMPORTED.
+         C. SPRING FRAMEWORK pouzije TYPES v ANNOTATION [@Import] na IMPORT CONFIGURATION TYPES a COMPONENTS.
+      B. DYNAMICKY. Pre DYNAMICKY IMPORT CONFIGURATION TYPES platia nasledujuce fakty.
+         A. DYNAMICKY IMPORT CONFIGURATION TYPES vyzaduje implementovanie INTERFACE [ImportSelector].
+         B. INTERFACE [ImportSelector] definuje METHOD [String[] selectImports(AnnotationMetadata importingClassMetadata)], ktora vracia zoznam STRINGS obsahujucich nazvy CONFIGURATION TYPES a COMPONENTS, ktore maju byt IMPORTED.
+         !!! C. Implementovany INTERFACE [ImportSelector] je nutne aplikovat na CONFIGURATION TYPE pomocou ANNOTATION [@Import], ktora v ELEMENT [value] vrati instanciu TYPE, ktora implementuje INTERFACE [ImportSelector].
+         D. SPRING FRAMEWORK pouzije TYPE implementujuci INTERFACE [ImportSelector] na IMPORT CONFIGURATION TYPES a COMPONENTS.
+36. SPRING FRAMEWORK umoznuje ziskavat instancie SPRING MANAGED BEANS z SPRING CONTAINER pomocou NAMES. Platia nasledujuce fakty.
+   A. SPRING MANAGED BEAN ma definovany NAME na zaklade, ktoreho moze byt ziskana instancia SPRING MANAGED BEAN z SPRING CONTAINER.
+   B. SPRING MANAGED BEAN moze mat definovanych VIACERO NAMES, ktore sa nazyvaju ALIASES.
+   C. Ak SPRING MANAGED BEAN nema EXPLICITNE definvany NAME, SPRING FRAMEWORK mu pridali DEFAULT NAME nasledujucim sposobom.
+      A. Ak je SPRING MANAGED BEAN definovany pomocou ANNOTATION [@Component], SPRING MANAGED BEAN je zhodny s nazom COMPONENT CLASS.
+      B. Ak je SPRING MANAGED BEAN definovany pomocou ANNOTATION [@Bean], SPRING MANAGED BEAN je zhodny s nazom FACTORY METHOD.
+   D. SPRING MANAGED BEAN moze EXPLICITNE definovat NAME a ALIASES nasledujucim sposobom.
+      A. Ak je SPRING MANAGED BEAN definovany pomocou ANNOTATION [@Component], NAME je definovany pomocou ELEMENT [String value] ANNOTATION [@Component].
+      B. Ak je SPRING MANAGED BEAN definovany pomocou ANNOTATION [@Bean], NAME je definovany pomocou ELEMENT [String[] value] ANNOTATION [@Bean]. ELEMENT [value] je STRING ARRAY, co znamena, ze ELEMENT umoznuje definovat NAME aj ALIASES daneho SPRING MANAGED BEAN.
+!!! 37. SPRING FRAMEWORK umoznuje pri DEPENDENCY INJECTION SPRING MANAGED BEANS nahradzat BASE CLASSES a BASE INTERFACES za DERIVED CLASSES a DERIVED INTERFACES. Platia nasledujuce fakty.
+   A. SPRING CONTAINER umoznuje nahradzat BASE CLASSES a BASE INTERFACES za DERIVED CLASSES, ktore implementuju tieto BASE CLASSES a BASE INTERFACES.
+   B. Ak pri DEPENDENCY INJECTION je vyzadovany BASE CLASS, alebo BASE INTERFACE pre ktory ma SPRING CONTAINER zaregistrovany iba DERIVED TYPE, ktory implementuje tento BASE CLASS, alebo BASE INTERFACES, tak SPRING CONTAINER pri DEPENDENCY INJECTION vrati tento DERIVED CLASS.
+!!! 38. SPRING FRAMEWORK umoznuje DEPENDENCY INJECTION SPRING MANAGED BEANS aj na zaklade GENERIC ARGUMENTS GENERIC TYPES. Platia nasledujuce fakty.
+   !!! A. SPRING CONTAINER pri DEPENDENCY INJECTION vyuziva STATIC TYPE INFORMATION, a nie RUNTIME TYPE INFORMATION. To znamena, ze SPRING CONTAINER dokaze ukladat SPRING MANAGED BEANS GENERIC TYPES, ktore sa vzajomne lisia iba v zozname GENERIC ATTRIBUTES. STATIC TYPE tychto TYPES su totizto ROZDIELNE, hoci DYNAMIC TYPES tychto TYPES, kedze GENERIC ARGUMENTS su nahradene TYPE [Object] su ROVNAKE.
+   B. SPRING CONTAINER umoznuje ulozit v SPRING CONTAINER SPRING MANAGED BEAN TYPE [GENERIC_TYPE<TYPE_PARAMETERS_1>] a SPRING MANAGED BEAN TYPE [GENERIC_TYPE<TYPE_PARAMETERS_2>], to znamena viacero rovnakych GENERIC TYPES s ROZNYMI GENERIC ATTRIBUTES.
+   !!! C. SPRING CONTAINER pri DEPENDENCY INJECTION dokaze rozlisit medzi SPRING MANAGED BEAN TYPE [GENERIC_TYPE<TYPE_PARAMETERS_1>] a SPRING MANAGED BEAN TYPE [GENERIC_TYPE<TYPE_PARAMETERS_2>].
+   !!!!! D. Ak je definovany GENERIC TYPE SPRING MANAGED BEAN ako COMPONENT pomocou ANNOTATION [@Component], tak SPRING FRAMEWORK vytvori iba 1 instanciu takehoto GENERIC TYPE SPRING MANAGED BEAN. Preto GENERIC TYPE SPRING MANAGED BEANS MUSIA byt VZDY vytvarane pomocou FACTORY METHODS.
+!!! 39. Ak pri DEPENDENCY INJECTION existuje viacero SPRING MANAGED BEANS, ktore mozu byt nahradene, dochadza k TYPE AMBIGUITY. SPRING FRAMEWORK NEUMOZNUJE TYPE AMBIGUITY a pri jej detekcii hodi EXCEPTION [NoUniqueBeanDefinitionException].
+40. Ak pri realizacii DEPENDENCY INJECTION je potrebne rozlisit, ktory konkretny SPRING MANAGED BEAN ma byt pre DEPENDENCY INJECTION je potrebne pouzit, je mozne vyuzit ANNOTATION [@Qualifier]. Pre ANNOTATION [@Qualifier] platia nasledujuce fakty.
+   A. ANNOTATION [@Qualifier] umoznuje priradit danemu SPRING MANAGED BEAN unikatny IDENTIFIER, ktory je mozne pouzit na urcenie, ktory SPRING MANAGED BEAN ma byt pouzity pri DEPENDENCY INJECTION.
+   !!!!! B. ANNOTATION [@Qualifier] definuje IDENTIFIER na zaklade VALUES vsetkych ELEMENTS. To znamena, ze dve ANNOTATIONS sa lisia vtedy ak sa lisia vo VALUE aspon 1 ELEMENTU. Dve ANNOTATIONS su ROVNAKE, ak su VALUES vsetky ELEMENTS ROVNAKE.
+   C. ANNOTATION [@Qualifier] moze byt aplikovana na FIELDS, METHODS, PARAMETERS, TYPES a ANNOTATION TYPES.
+   !!! D. ANNOTATION [@Qualifier] sa aplikuje nasledujucim sposobom.
+      A. ANNOTATION [@Qualifier] sa aplikuje na SPRING MANAGED BEAN. Vdaka tejto aplikacii su SPRING MANAGED BEANS priradene unikatne IDENTIFIERS.
+      B. ANNOTATION [@Qualifier] sa aplikuje na DEPENDENCY INJECTION PARAMETER. Vdaka tejto aplikacii sa pre DEPENDENCY INJECTION urci, ktoru verziu SPRING MANAGED BEAN sa ma pri danej DEPENDENCY INJECTION pouzit.
+   !!! E. PROGRAM moze definovat aj CUSTOM ANNOTATIONS, na ktore su aplikovane ANNOTATION [@Qualifier] na identifikaciu SPRING MANAGED BEANS. Je mozne pouzit nasledujuce postupy.
+      A. Pre kazdy SPRING MANAGED BEAN sa definuje vlastna CUSTOM ANNOTATION. Tieto CUSTOM ANNOTATIONS priradia kazdej SPRING MANAGED BEAN unikatny IDENTIFIER, na zaklade ktoreho je mozne konkretny SPRING MANAGED BEAN priradit pre dany DEPENDENCY INJECTION.
+      B. Pre vsetky SPRING MANAGED BEANS sa definuje 1 CUSTOM ANNOTATION, ktory ma definovany IDENTIFIER ELEMENT na zaklade, ktoreho sa definuje unikatny IDENTIFIER daneho BEAN, na zaklade ktoreho je mozne konkretny SPRING MANAGED BEAN priradit pre dany DEPENDENCY INJECTION.
+41. SPRING FRAMEWORK umoznuje definovat SPRING MANAGED BEANS ako PRIMARY BEANS. Platia nasledujuce fakty.
+   A. PRIMARY SPRING MANAGED BEAN je SPRING MANAGED BEAN, ktory sa pouzije ako DEFAULT SPRING MANAGED BEAN, ak existuje viacero SPRING MANAGED BEANS, ktore je mozne pre danu DEPENDENCY INJECTION mozne substituovat. To znamena, ze ak SPRING FRAMEWORK zisti, ze existuje viacero SPRING MANAGED BEANS, ktore moze substituovat pre danu DEPENDENCY INJECTION, co by sposobil TYPE AMBIGUITY, ale jeden z tychto SPRING MANAGED BEANS je oznaceny ako PRIMARY SPRING MANAGED BEAN, SPRING FRAMEWORK pouzije pre danu DEPENDENCY INJECTION PRIMARY SPRING MANAGED BEAN.
+   B. PRIMARY SPRING MANAGED BEAN, ktory je oznaceny pomocou ANNOTATION [@Primary].
+   !!! C. SPRING FRAMEWORK NEUMOZNUJE oznacit viacero SPRING MANAGED BEANS rovnakeho TYPE ako PRIMARY SPRING MANAGED BEANS.
+42. SPRING FRAMEWORK umoznuje ziskat viacero, alebo aj vsetky instancie SPRING MANAGED BEANS pomocou DEPENDENCY INJECTION. Platia nasledujuce fakty.
+   A. Ak existuje DEPENDENCY na COLLECTION SPRING MANAGED BEANS, pricom samotny COLLECTION TYPE nie je definovany ako SPRING MANAGED BEAN, potom SPRING FRAMEWORK substituje danu DEPENDENCY za vsetky SPRING MANAGED BEANS pre ktore existuje pre danu DEPENDENCY MATCH.
+   B. Mapovanie COLLECTIONS SPRING MANAGED BEANS umoznuje ziskat vsetky SPRING MANAGED BEANS pre ktore existuje MATCH pre danu DEPENDENCY.
+   C. Mapovanie COLLECTIONS SPRING MANAGED BEANS ma nasledujuce podmienky.
+      A. SPRING MANAGED BEAN musi mat DEPENDENCY na COLLECTION SPRING MANAGED BEANS. Ako COLLECTION TYPE je mozne pouzit ARRAY, LIST TYPES, alebo SET TYPES.
+      B. SPRING MANAGED BEANS COLLECTION TYPE NESMIE byt definovany ako samostatny SPRING MANAGED BEAN.
+   D. Mapovanie COLLECTIONS SPRING MANAGED BEANS umoznuje aj mapovanie na MAPS. Platia nasledujuce fakty.
+      A. MAP musi byt MAP TYPE, ktora ma ako KEY TYPE [String] a VALUE TYPE je TYPE daneho SPRING MANAGED BEAN.
+      B. SPRING FRAMEWORK naplni MAP TYPE KEY VALUE VALUES, kde KEY obsahuje nazov SPRING MANAGED BEAN a VALUE obsahuje samotny SPRING MANAGED BEAN.
+   E. Mapovanie COLLECTIONS SPRING MANAGED BEANS umoznuje aj FILTERING. Pre FILTERING platia nasledujuce fakty.
+      A. FILTERING umoznuje do COLLECTION SPRING MANAGED BEANS ulozit iba tie SPRING MANAGED BEANS na ktore maju identicky IDENTIFIER.
+      B. FILTERING vyuziva IDENTIFIERS z ANNOTATION [@Qualifier], ktoru je nutne aplikovat ako na dane SPRING MANAGED BEANS tak aj na COLLECTION SPRING MANAGED BEANS DEPENDECY na ktoru sa ma aplikovat dany FILTERING.
+      C. Pri FILTERING SPRING FRAMEWORK ulozi do DEPENDECY na COLLECTION SPRING MANAGED BEANS ulozi iba tie SPRING MANAGED BEANS, ktore maju IDENTIFIER definovany v ANNOTATION [@Qualifier].
+43. SPRING FRAMEWORK umoznuje urcovat, ktory SPRING MANAGED BEAN sa ma pri DEPENDENCY INJECTION substituovat pomocou NAMING CONVENTION nazyvanym aj FALLBACK MATCH. Pre DEPENDENCY INJECTION pomocou FALLBACK MATCH platia nasledujuce fakty.
+   A. FALLBACK MATCH umoznuje vykonat substituciu FIELDS a PARAMETERS pri DEPENDENCY INJECTION pomocou nazvov FIELDS a PARAMETERS, ktore ma substituovat.
+   B. Pri FALLBACK MATCH ak pre dany FIELD, alebo PARAMETER v DEPENDENCY INJECTION existuje viacero SPRING MANAGED BEANS, ktore by mohli byt substituovane a doslo by k TYPE AMBIGUITY, SPRING FRAMEWORK zisti, ci NAME daneho FIELD, alebo PARAMETER nie je zhodny s SPRING MANAGED BEAN NAME. Ak ano, vyberie tento SPRING MANAGED BEAN pre substituciu v danej DEPENDENCY INJECTION.
+   C. FALLBACK MATCH je mozne pouzit pre CONSTRUCTOR INJECTION, SETTER INJECTION aj FIELD INJECTION.
+   !!! D. FALLBACK MATCH sa NEODPORUCA pouziva, pretoze je ERROR PRONE. Pri zmene nazvu SPRING MANAGED BEAN bez zmeny nazvu FIELD alebo PARAMETER dojde k znefunkcneniu FALLBACK MATCH.
+44. DEPENDENCY INJECTION je mozne vykonavat aj pomocou ANNOTATION [@Resource]. Platia nasledujuce fakty.
+   A. Pri pouziti ANNOTATION [@Resource] su SPRING MANAGED BEANS vyhladavana na zaklade NAME, ktory je definovany v ELEMENT [name] ANNOTATION [@Resource].
+   B. ANNOTATION [@Resource] musi byt aplikovana na samotny na DEPENDENCY, ktora ma byt pomocou DEPEDENCY INJECTION RESOLVED. Takato DEPENDECY je nasledne RESOLVED IBA na zaklade SPRING MANAGED BEAN NAME.
+   !!! C. Pri pouziti ANNOTATION [@Resource] TYPE danej DEPENDENCY NEHRA pre RESOLVING ZIADEN VYZNAM. Kludne moze byt TYPE danej DEPENDENCY TYPE [Object].
+   !!! D. Ak v ANNOTATION [@Resource] NIE je nastavena VALUE ELEMENT [name], tak SPRING FRAMEWORK zoberie nazov DEPENDENCY (SETTER PARAMETER, alebo FIELD NAME) a pouzije ho na vyhladanie SPRING MANAGED BEAN.
+   !!! E. ANNOTATION [@Resource] NIE je mozne pouzit pre CONSTRUCTOR DEPENDENCY.
+   F. ANNOTATION [@Resource] je mozne pouzit pre FIELD DEPENDENCY.
+   !!!!! G. ANNOTATION [@Resource] je mozne pouzit pre SETTER DEPENDENCY, ale SETTER MUSI byt KLASICKY JAVA SETTER, ktory ma iba 1 PARAMETER a nie SETTER METHOD, ktore standardne SPRING FRAMEWORK pre ine typy riesenia DEPENDENCY INJECTION podporuje.
+   H. Pouzitie ANNOTATION [@Resource] NEVYZADUJE aplikaciu ANNOTATION [@Autowired] na FIELD ci SETTER.
+45. SPRING FRAMEWORK umoznuje ziskavat instancie SPRING MANAGED BEANS programovo pomocou INTERFACE [ObjectProvider<T>]. Pre INTERFACE [ObjectProvider<T>] platia nasledujuce fakty.
+   A. INTERFACE umoznuje PROGRAMOVO ziskavat instancie SPRING MANAGED BEANS zo SPRING CONTAINER.
+   B. Instanciu INTERFACE je mozne ziskat nasledujucimi sposobmi.
+      A. Pomocou DEPENDENCY INJECTION.
+      B. Volanim METHOD [<T> ObjectProvider<T> BeanFactory.getBeanProvider(Class<T> requiredType)]. INTERFACE [BeanFactory] je implementovany SPRING CONTAINER OBJECT.
+   !!! C. INTERFACE [ObjectProvider<T>] implementuje INTERFACE [ObjectFactory<T>], ktora definuje METHOD [T getObject() throws BeansException], ktora v DEFAULT IMPLEMENTATION ziskava instancie SPRING MANAGED BEANS zo SPRING CONTAINER.
+   D. INTERFACE [ObjectProvider<T>] ma nasledujuce MEMBERS.
+      A. METHOD [T ObjectFactory<T>.getObject() throws BeansException] je zdedena z INTERFACE [ObjectFactory<T>] a vybera instanciu SPRING MANAGED BEAN zo SPRING CONTAINER. METHOD vykonava nasledujucu cinnost.
+         A. Ak METHOD najde v SPRING CONTAINER presne 1 instanciu SPRING MANAGED BEAN, vrati ho.
+         B. Ak METHOD NENAJDE v SPRING CONTAINER ziadnu instanciu SPRING MANAGED BEAN, hodi EXCEPTION [NoSuchBeanDefinitionException].
+         C. Ak METHOD NAJDE v SPRING CONTAINER VIACERO instancii SPRING MANAGED BEANS, hodi EXCEPTION [NoUniqueBeanDefinitionException].
+      B. DEFAULT METHOD [T getObject(@Nullable Object... args) throws BeansException] vykonava nasledujucu cinnost.
+         A. METHOD vola METHOD [<T> T BeanFactory.getBean(Class<T> requiredType) throws BeansException] INTERFACE [BeanFactory].
+         B. Ak instancia SPRING MANAGED BEAN existuje, vrati ju.
+         !!! C. Ak instancia SPRING MANAGED BEAN NEEXISTUJE, pricom SPRING MANAGED BEAN ma PROTOTYPE SCOPE, METHOD vytvori instanciu SPRING MANAGED BEAN s pouzitim PARAMETERS, ktore zasle do CONSTRUCTOR, alebo FACTORY METHOD daneho SPRING MANAGED BEAN.
+         D. Ak instancia SPRING MANAGED BEAN NEEXISTUJE, pricom SPRING MANAGED BEAN NEMA PROTOTYPE SCOPE, METHOD hodi EXCEPTION.
+      C. DEFAULT METHOD [@Nullable T getIfAvailable() throws BeansException] vykonava nasledujucu cinnost.
+         A. Ak instancia SPRING MANAGED BEAN existuje, vrati ju.
+         B. Ak instancia SPRING MANAGED BEAN neexistuje, vrati VALUE [null].
+         C. Ak existuje viac ako 1 instancia SPRING MANAGED BEAN, METHOD hodi EXCEPTION [NoUniqueBeanDefinitionException].
+      D. DEFAULT METHOD [default T getIfAvailable(Supplier<T> defaultSupplier) throws BeansException] vykonava nasledujucu cinnost.
+         A. METHOD zavola METHOD [@Nullable T getIfAvailable() throws BeansException].
+         B. Ak METHOD [@Nullable T getIfAvailable() throws BeansException] vratila VALUE [null], zavola sa METHOD [T Supplier<T>.get()] INTERFACE [Supplier<T>] a vysledok volania sa vrati ako RETURN VALUE.
+      E. DEFAULT METHOD [void ifAvailable(Consumer<T> dependencyConsumer) throws BeansException] vykonava nasledujucu cinnost.
+         A. Ak instancia SPRING MANAGED BEAN existuje, pre danu instanciu zavola METHOD [void Consumer<T>.accept(T t)] INTERFACE [Consumer<T>].
+         B. Ak instancia SPRING MANAGED BEAN neexistuje, METHOD skonci.
+         C. Ak existuje viac ako 1 instancia SPRING MANAGED BEAN, METHOD hodi EXCEPTION [NoUniqueBeanDefinitionException].
+      F. DEFAULT METHOD [@Nullable T getIfUnique() throws BeansException] vykonava nasledujucu cinnost.
+         A. Ak existuje 1 instancia SPRING MANAGED BEAN, METHOD ju vrati.
+         B. Ak existuje 0, alebo N instancii SPRING MANAGED BEANS, METHOD vrati VALUE [null].
+      G. DEFAULT METHOD [T getIfUnique(Supplier<T> defaultSupplier) throws BeansException] vykonava nasledujucu cinnost.
+         A. METHOD zavola METHOD [@Nullable T getIfUnique() throws BeansException].
+         B. Ak METHOD [@Nullable T getIfUnique() throws BeansException] vratila VALUE [null], zavola sa METHOD [T Supplier<T>.get()] INTERFACE [Supplier<T>] a vysledok volania sa vrati ako RETURN VALUE.
+      H. DEFAULT METHOD [void ifUnique(Consumer<T> dependencyConsumer) throws BeansException] vykonava nasledujucu cinnost.
+         A. METHOD zavola METHOD [@Nullable T getIfUnique() throws BeansException].
+         B. Ak METHOD [@Nullable T getIfUnique() throws BeansException] vratila instanciu SPRING MANAGED BEAN, pre danu instanciu zavola METHOD [void Consumer<T>.accept(T t)] INTERFACE [Consumer<T>].
+      I. DEFAULT METHOD [Iterator<T> iterator()] vracia ITERATOR, ktorym je mozne iterovat vsetkymi instanciami SPRING MANAGED BEANS.
+      J. DEFAULT METHOD [Stream<T> stream()] vracia STREAM, ktorym je mozne iterovat vsetkymi instanciami SPRING MANAGED BEANS.
+      K. DEFAULT METHOD [Stream<T> orderedStream()] vracia ORDERED STREAM, ktorym je mozne iterovat vsetkymi instanciami SPRING MANAGED BEANS, ktore su ORDERED na zaklade hodnoty ANNOTATION [@Order].
+46. Ak SPRING FRAMEWORK vykonava DEPENDENCY INJECTION VSETKYCH SPRING MANAGED BEANS daneho TYPE (napriklad do COLLECTION TYPE PARAMETERS), SPRING FRAMEWORK umoznuje definovat poradia v akom budu tieto SPRING MANAGED BEANS ulozene v COLLECTION PARAMETER. Platia nasledujuce fakty.
+   A. ORDER urcuje poradie v akom budu SPRING MANAGED BEANS daneho TYPE ukladane do COLLECTION TYPE PARAMETERS pri DEPENDENCY INJECTION.
+   B. ORDER je urceny INTEGER VALUE, pricom plati, ze NIZSIA VALUE daneho ORDER znamena VYSSIU PRIORITU.
+   C. ORDER moze obsahovat aj ZAPORNE hodnoty.
+   D. DEFAULT ORDER je VALUE [Ordered.LOWEST_PRECEDENCE], ktora je zhodna s VALUE [Integer.MAX_VALUE].
+   E. ORDER pre SPRING MANAGED BEAN je mozne definovat nasledujucimi sposobmi.
+      A. Pomocou ANNOTATION [@Order] aplikovanou na SPRING MANAGED BEAN TYPE, ktora v ELEMENT [value] obsahuje ORDER VALUE.
+      B. Implementaciou INTERFACE [Ordered], ktoru implementuje SPRING MANAGED BEAN TYPE. INTERFACE [Ordered] ma METHOD [int Ordered.getOrder()], ktora vracia ORDER VALUE.
+47. V SPRING MANAGED BEANS sa aplikuje INHERITANCE nasledujucim sposobom.
+   A. ANNOTATION [@Bean] JE INHERITED. To znamena, ze aj CONFIGURATION CLASS ma PARENT CLASS obsahujuci FACTORY METHODS, alebo PARENT INTERFACES, ktore obsahuju FACTORY DEFAULT METHODS, tak tieto METHODS su INHERITED do DERIVED CLASS a FACTORY METHODS su volane a prislusne SPRING MANAGED BEANS su vlozene do SPRING CONTAINER.
+   B. ANNOTATION [@Component] NIE JE INHERITED. To znamnena, ze ak na BASE CLASS je aplikovana ANNOTATION [@Component], tak na DERIVED CLASS NIE JE automaticky aplikovana tato ANNOTATION a DERIVED CLASS sa tym padom NESTAVA AUTOMATICKY SPRING MANAGED BEAN. Je to preto, lebo ANNOTATION [@Component] NEMA aplikovanu ANNOTATION [@Inherited], ktora by takuto INHERITANCE sposobila.
+   C. Pre ANNOTATION [@Autowired] platia nasledujuce fakty.
+      A. Ak sa ANNOTATION [@Autowired] aplikuje v BASE CLASS SPRING MANAGED BEAN, tak SPRING FRAMEWORK vykona DEPENDENCY INJECTION pre BASE CLASS.
+      !!! B. Ak je ANNOTATION [@Autowired] aplikovana na SETTER v BASE CLASS, a tento SETTER je OVERRIDEN v DERIVED CLASS, tak ANNOTATION [@Autowired] NIE JE INHERITED a v OVERRIDEN METHOD NEDOJDE k rieseniu DEPENDENCY INJECTION, ak OVERRIDEN METHOD nie je tiez explicitne oznacena pomocou ANNOTATION [@Autowired].
+48. SPRING FRAMEWORK umoznuje vyjadrit DEPENDENCIES medzi SPRING MANAGED BEANS explicitne pomocou ANNOTATION [@DependsOn]. Pre ANNOTATION [@DependsOn] platia nasledujuce fakty.
+   A. ANNOTATION [@DependsOn] umoznuje definovat zoznam SPRING MANAGED BEANS, na ktorych je dany SPRING MANAGED BEAN zavisly.
+   B. ANNOTATION [@DependsOn] sa aplikuje vtedy, ak DEPENDENCIES medzi SPRING MANAGED BEANS nie je mozne vyjadrit IMPLICITNE pomocou DEPENDENCY INJECTION a ANNOTATION [@Autowired].
+   C. ANNOTATION [@DependsOn] moze byt aplikovany ako na COMPONENT TYPES, tak aj na FACTORY METHODS.
+   !!!!! D. SPRING FRAMEWORK pri ziskavani SPRING MANAGED BEANS zo SPRING CONTAINER volanim METHODS ako je METHOD [<T> T BeanFactory.getBean(Class<T> requiredType) throws BeansException] vytvara instanciu SPRING MANAGED BEAN, ak neexistuje. Spolahlivy sposob ako zistit ci instancia SPRING MANAGED BEAN existuje bez toho, aby bola okamzite vytvorena vyzaduje vykonanie nasledujucich krokov.
+      A. Ziska sa instancia SPRING MANAGED BEAN [ApplicationContext].
+      B. Zavola sa METHOD [AutowireCapableBeanFactory ApplicationContext.getAutowireCapableBeanFactory() throws IllegalStateException] na ziskanie instancie SPRING MANAGED BEAN [DefaultListableBeanFactory].
+      C. Zavola sa METHOD [public boolean DefaultSingletonBeanRegistry.containsSingleton(String beanName)], ktora vrati informaciu ci SPRING MANAGED BEAN uz bol zavedeny, bez toho, aby bol automaticky zavedeny, ak este zavedeny nebol.
+49. SPRING FRAMEWORK podporuje LAZY LOADING SPRING MANAGED BEANS. Pre LAZY LOADING SPRING MANAGED BEANS platia nasledujuce fakty.
+   A. BY-DEFAULT su SPRING MANAGED BEANS vytvarane pomocou principu EAGER LOADING, ked vsetky pri starte SPRING CONTAINER su vsetky SPRING MANAGED BEANS okamzite vytvorene.
+   B. EAGER LOADING vedie k pomalsiemu startu PROGRAMU, no dava istotu, ze vsetky SPRING MANAGED BEANS boli po starte uspesne vytvorene a pri behu PROGRAMU nedojde k chybe pri vytvarani SPRING MANAGED BEANS.
+   C. SPRING MANAGED BEAN moze byt oznaceny aby bol zavedeny pomocou LAZY LOADING aplikovanim ANNOTATION [@Lazy]. Pre ANNOTATION [@Lazy] platia nasledujuce fakty.
+      A. ANNOTATION [@Lazy] umoznuje oznacit ci SPRING MANAGED BEAN ma byt zavedeny pomocou LAZY LOADING, alebo EAGER LOADING.
+      B. ANNOTATION [@Lazy] ma ELEMENT [value], ktora ak je nastavena na VALUE [true], tak SPRING MANAGED BEAN bude zavedena pomocou LAZY LOADING a ak je nastavena na VALUE [false], tak SPRING MANAGED BEAN bude zavedena pomocou EAGER LOADING.
+      !!! C. ANNOTATION [@Lazy] moze byt aplikovana na TYPES, METHODS, CONSTRUCTORS, PARAMETERS a FIELDS. To znamena, ze ANNOTATION [@Lazy] moze byt aplikovana ako na CONFIGURATION TYPES, tak aj na FACTORY METHODS. ANNOTATION [@Lazy] aj pri AUTOWIRING v INJECTION POINTS.
+      !!! D. Nastavenie ANNOTATION [@Lazy] na CHILD JAVA ELEMENT prepise nastavenie ANNOTATION [@Lazy] na PARENT JAVA ELEMENT. To znamena, ze ak napriklad na CONFIGURATION TYPE je aplikovana ANNOTATION [@Lazy(true)] vyzadujuca, aby vsetky MANAGED BEANS definovane v tomto CONFIGURATION TYPE boli zavedene pomocou LAZY LOADING, ak je na niektoru FACTORY METHOD aplikovana ANNOTATION [@Lazy(false)], tak tento SPRING MANAGED BEAN bude zavedeny pomocou EAGER LOADING.
+   !!!!! D. Interne LAZY LOADING SPRING MANAGED BEANS je implementovany tak, ze pre SPRING MANAGED BEAN, ktory je oznaceny, aby bol zavedeny pomocou LAZY LOADING vytvori SPRING FRAMEWORK PROXY OBJECT. Ak PROGRAM prvykrat pristupi k tomuto PROXY OBJECT, SPRING FRAMEWORK automaticky vytvori instanciu SPRING MANAGED BEAN.
+   E. BY DEFAULT SPRING FRAMEWORK pouziva EAGER LOADING. Tento SETTING je mozne zmenit volanim METHOD [void SpringApplication.setLazyInitialization(boolean lazyInitialization)].
+50. V SPRING FRAMEWORK moze dojst k BEAN INITIALIZATION PROBLEM. Pre BEAN INITIALIZATION PROBLEM platia nasledujuce fakty.
+   A. Pri vytvarani instancii SPRING MANAGED BEANS, SPRING FRAMEWORK vykonava AUTOWIRING v nasledujucom poradi.
+      !!! A. Zavola sa CONSTRUCTOR daneho TYPE. CONSTRUCTOR sa vola bez ohladu na to ci je oznaceny pomocou ANNOTATION [@Autowired], alebo nie.
+      B. Vykona sa AUTOWIRING vsetkych AUTOWIRED FIELDS.
+      C. Vykona sa AUTOWIRING vsetkych AUTOWIRED SETTERS.
+   !!! B. Pre BEAN INITIALIZATION PROBLEM vznika vtedy, ak sa CODE v CONSTRUCTOR SPRING MANAGED BEAN pokusi pristupit k instancii SPRING MANAGED BEAN, ktora je AUTOWIRED pomocou FIELD, alebo SETTER. Kedze CONSTRUCTOR daneho SPRING MANAGED BEAN je volany PRED vykonanim FIELDS AUTOWIRING a SETTERS AUTOWIRING, su v CONSTRUCTOR tieto instancie SPRING MANAGED BEANS nastavene na VALUE [null].
+   C. Riesenim je, ze ak CONSTRUCTOR potrebuje vyuzit SPRING MANAGED BEANS, ktore su AUTOWIRED pomocou FIELDS, alebo SETTERS, je lepsie nahradi FIELDS AUTOWIRING a SETTERS AUTOWIRING za CONSTRUCTORS AUTORIWING.
+51. SPRING FRAMEWORK definuje CALLBACK METHODS, ktore su volane pocas LIFECYCLE daneho SPRING MANAGED BEAN. Tieto CALLBACK METHODS na nazyvaju LIFECYCLE CALLBACKS. Pre LIFECYCLE CALLBACKS platia nasledujuce fakty.
+   A. LIFECYCLE CALLBACKS su EVENTS, ktore volane pocas zivotnosti SPRING MANAGED BEANS, umoznujuc ich CUSTOMIZATION.
+   B. LIFECYCLE CALLBACKS je mozne definovat nasledujucimi sposobmi.
+      A. Definovanim METHODS v SPRING MANAGED BEAN TYPES, ktore su oznacene prislusnymi ANNOTATIONS.
+      B. Implementovanim INTERFACES zo strany SPRING MANAGED BEAN TYPES, ktorych METHODS reprezentuju prislusne LIFECYCLE CALLBACKS.
+52. Pre definovanie LIFECYCLE CALLBACKS pomocou ANNOTATIONS platia nasledujuce fakty.
+   A. SPRING FRAMEWORK definuje nasledujuce ANNOTATIONS, ktorymi je mozne oznacit METHODS za LIFECYCLE CALLBACKS.
+      A. ANNOTATION [@PostConstruct] definuje LIFECYCLE CALLBACK volany po inicializacii SPRING MANAGED BEAN. Pri volani tejto LIFECYCLE CALLBACK je dany SPRING MANAGED BEAN plne inicializovany a vsetky AUTOWIRINGS su vykonane.
+      B. ANNOTATION [@PreDestroy] definuje LIFECYCLE CALLBACK volany pred uvolnenim SPRING MANAGED BEAN. Interne je tato LIFECYCLE CALLBACK implementovana pomocou SHUTDOWN HOOKS, ktore su volane aj v pripade, ze sa vola METHOD [void System.exit(int status)].
+   B. LIFECYCLE CALLBACKS musia byt definovane ako NON-STATIC MEMBER METHODS SPRING MANAGED BEAN pre ktory sa maju volat.
+   C. LIFECYCLE CALLBACKS standardne NEMAJU PARAMETERS, okrem JAKARTA ENTERPRISE BEANS INTERCEPTORS, ktore su OPTIONAL.
+   D. LIFECYCLE CALLBACKS nemaju ziadnu RETURN VALUE.
+   E. LIFECYCLE CALLBACKS NESMU hodit CHECKED EXCEPTIONS. Mozu vsak hodit UNCHECKED EXCEPTIONS.
+   F. LIFECYCLE CALLBACKS su volane pomocou REFLECTION, takze ich VISIBILITY NIE je dolezita.
+   G. LIFECYCLE CALLBACKS su INHERITED a teda su volane aj pre INHERITED SPRING MANAGED BEANS, ak su tieto LIFECYCLE CALLBACKS v BASE CLASSES ci v BASE INTERFACES, ako DEFAULT METHODS.
+   !!! H. Pre SPRING MANAGED BEANS vytvarane pomocou ANNOTATION [@Bean] su LIFECYCLE CALLBACKS su definovane nasledujucim sposobom.
+      A. ANNOTATION [@Bean] obsahuje ELEMENT [initMethod], ktora umoznuje definovant POST CONSTRUCT LIFECYCLE CALLBACK. METHOD musi byt definovana v SPRING MANAGED BEAN TYPE.
+      B. ANNOTATION [@Bean] obsahuje ELEMENT [destroyMethod], ktora umoznuje definovant PRE DESTROY LIFECYCLE CALLBACK. METHOD musi byt definovana v SPRING MANAGED BEAN TYPE.
+      !!!!! C. Ak v ANNOTATION [@Bean] NIE JE nastaveny ELEMENT [destroyMethod], tak SPRING FRAMEWORK postupuje nasledujucim sposobom.
+         A. SPRING FRAMEWORK hlada ci v SPRING MANAGED BEAN TYPE nie je definovana METHOD [void close()]. Ak ano, tak ju zavola ako PRE DESTROY LIFECYCLE CALLBACK.
+         B. Ak METHOD [void close()] nebola definovana, tak SPRING FRAMEWORK hlada ci v SPRING MANAGED BEAN TYPE nie je definovana METHOD [void shutdown()]. Ak ano, tak ju zavola ako PRE DESTROY LIFECYCLE CALLBACK.
+         C. Ak SPRING MANAGED BEAN TYPE definuje METHOD [void close()] aj METHOD [void shutdown()], tak sa vola IBA METHOD [void close()].
+      !!! D. METHOD [void close()] aj METHOD [void shutdown()] MUSIA byt PUBLIC METHODS definovane v prislusnom SPRING MANAGED BEAN TYPE.
+53. Pre definovanie LIFECYCLE CALLBACKS pomocou INTERFACES platia nasledujuce fakty.
+   A. SPRING FRAMEWORK definuje nasledujuce INTERFACES, ktorymi je mozne oznacit METHODS za LIFECYCLE CALLBACKS.
+      A. INTERFACE [InitializingBean], ktory definuje METHOD [void afterPropertiesSet() throws Exception]. Pri volani tejto LIFECYCLE CALLBACK je dany SPRING MANAGED BEAN plne inicializovany a vsetky AUTOWIRINGS su vykonane.
+      B. INTERFACE [DisposableBean], ktory definuje METHOD [void destroy() throws Exception]. METHOD je volana pred uvolnenim SPRING MANAGED BEAN.
+   B. SPRING MANAGED BEAN, ktory chce zachytavat LIFECYCLE CALLBACKS musi implementovat prislusne INTERFACES.
+   !!! C. SPRING MANAGED BEAN moze implementovat LIFECYCLE CALLBACKS pomocou ANNOTATIONS, aj pomocou INTERFACES. METHODS su volane v nasledujucom poradi.
+      A. Pri vytvarani SPRING MANAGED BEAN sa vola METHOD oznacena pomocou ANNOTATION [@PostConstruct].
+      B. Nasledne sa vola INTERFACE METHOD [void InitializingBean.afterPropertiesSet() throws Exception].
+      C. Pri uvolnovani SPRING MANAGED BEAN sa vola METHOD oznacena pomocou ANNOTATION [@PreDestroy].
+      D. Nasledne sa vola INTERFACE METHOD [void DisposableBean.destroy() throws Exception].
+   D. SPRING FRAMEWORK definuje mnozsto AWARE INTERFACES, ktore maju METHODS, ktore SPRING FRAMEWORK vola ako LIFECYCLE CALLBACKS. Platia nasledujuce fakty.
+      A. AWARE INTERFACES su INTERFACES, ktore implementuju EMPTY INTERFACE [Aware].
+      B. AWARE INTERFACES definuju METHODS, ktore SPRING FRAMEWORK vola pri roznych prilezitostiach pocas zivota SPRING MANAGED BEAN. Tieto METHODS reprezentuju LIFECYCLE CALLBACKS.
+      C. SPRING FRAMEWORK definuje napriklad tieto AWARE INTERFACES.
+         A. INTERFACE [ApplicationContextAware]. Definuje METHOD [void setApplicationContext(ApplicationContext applicationContext)], ktora umoznuje ziskat instanciu TYPE [ApplicationContext].
+         B. INTERFACE [BeanNameAware]. Definuje METHOD [void setBeanName(String name)], ktora umoznuje ziskat BEAN NAME.
+         C. INTERFACE [EnvironmentAware]. Definuje METHOD [void setEnvironment(Environment environment)], ktora umoznuje ziskat instanciu TYPE [Environment].
+         D. INTERFACE [BeanClassLoaderAware]. Definuje METHOD [void setBeanClassLoader(ClassLoader classLoader)], ktora umoznuje ziskat instanciu TYPE [ClassLoader].
+         E. INTERFACE [BeanFactoryAware]. Definuje METHOD [void setBeanFactory(BeanFactory beanFactory)], ktora umoznuje ziskat instanciu TYPE [BeanFactory].
+54. SPRING FRAMEWORK umoznuje vytvarat instancie SPRING MANAGED BEANS MANUALNE v PROGRAME. Pre MANUALNE vytvaranie instancii SPRING MANAGED BEANS platia nasledujuce fakty.
+   A. MANAUALNA registracia instancii SPRING MANAGED BEANS sa realizuje v nasledujucich krokoch.
+      A. Vytvori sa instancia CLASS [BeanDefinitionBuilder], napriklad volanim STATIC METHOD [BeanDefinitionBuilder BeanDefinitionBuilder.genericBeanDefinition(Class<?> beanClass)].
+      B. Zavolaju sa METHOD CLASS [BeanDefinitionBuilder], ktorymi je mozne napriklad nastavit nasledujuce PARAMETERS.
+         A. CONSTRUCTOR PARAMETERS, ktore sa maju pouzit pri vytvarani instancie SPRING MANAGED BEAN.
+         B. Zoznam SETTERS s VALUES, ktore sa maju po vytvoreni instancie SPRING MANAGED BEAN volat.
+         C. SCOPE danej instancie SPRING MANAGED BEAN.
+         D. Ci SPRING MANAGED BEAN ma byt inicializovana pomocou LAZY INITIALIZATION.
+         E. Ci instancia SPRING MANAGED BEAN je PRIMARY.
+         F. Zoznam instancii SPRING MANAGED BEANS, na ktorych je instancia SPRING MANAGED BEAN zavisla.
+      C. Zavola sa METHOD [AbstractBeanDefinition BeanDefinitionBuilder.getBeanDefinition()], ktora vytvori instanciu INTERFACE [AbstractBeanDefinition].
+      D. Zavola sa METHOD [void DefaultListableBeanFactory.registerBeanDefinition(String beanName, BeanDefinition beanDefinition) throws BeanDefinitionStoreException], ktora zaregistruje instanciu SPRING MANAGED BEAN v SPRING CONTAINER.
+   !!! B. MANUALNE vytvorene instancie SPRING MANAGED BEANS su vkladane pomocou DEPENDENCY INJECTION do inych instancii SPRING MANAGED BEANS. No podmienkou je, aby boli vytvorene SKOR, ako sa ma vykonat prislusna DEPENDENCY INJECTION.
+   !!! C. MANUALNE vytvaranie instancii SPRING MANAGED BEANS sa spravidla robi v FACTORY SPRING MANAGED BEANS, ktore maju ako DEPENDENCY instanciu TYPE [DefaultListableBeanFactory]. Ak sa nasledne pouziva MANUALNE registrovana SPRING MANAGED BEAN v DEPENDENCY INJECTION inych SPRING MANAGED BEANS, tieto SPRING MANAGED BEANS by mali mat definovanu ZAVISLOST na FACTORY SPRING MANAGED BEANS aplikovanim ANNOTATION [@DependsOn].
+55. SPRING FRAMEWORK definuje INTERFACE [BeanPostProcessor] pomocou, ktoreho je mozne vykonavat CUSTOM INITIALIZATION SPRING MANAGED BEANS bez toho, aby SPRING MANAGED BEANS museli implementovat CUSTOM METHODS ci CUSTOM INTERFACES. Pre INTERFACE [BeanPostProcessor] platia nasledujuce fakty.
+   A. INTERFACE [BeanPostProcessor] poskytuje mechanizmus, ako initializovat jednotlive SPRING MANGED BEANS bez toho, aby SPRING MANGED BEANS o tom vedeli a museli implementovat CUSTOM METHODS, alebo CUSTOM INTERFACES.
+   !!! B. INTERFACE [BeanPostProcessor] umoznuje obalit instancie SPRING MANAGES BEANS PROXY OBJECTS, ktore su zaregistrovane v SPRING CONTAINER namiesto povodnych SPRING MANAGED BEANS.
+   !!! C. SPRING FRAMEWORK definuje desiatky implementacii INTERFACE [BeanPostProcessor], ktore vykonavaju rozne cinnosti, ako napriklad DEPENDENCY INJECTIONS SPRING MANAGED BEANS, alebo volanie AWARE INTERFACES.
+   D. Implementaciu INTERFACE [BeanPostProcessor] je mozne v SPRING FRAMEWORK registrovat nasledujucimi sposobmi.
+      !!! A. CLASS implementujuca INTERFACE [BeanPostProcessor] sa zaregistruje ako SPRING MANAGED BEAN bud pomocou niektorej ANNOTATION, alebo pomocou FACTORY METHOD. Pri pouziti FACTORY METHOD by sa mala pouzit STATIC FACTORY METHOD a NIE INSTANCE FACTORY METHOD.
+      B. CLASS implementujuca INTERFACE [BeanPostProcessor] sa zaregistruje PROGRAMOVO volanim METHOD [void ConfigurableBeanFactory.addBeanPostProcessor(BeanPostProcessor beanPostProcessor)].
+   E. Poradie volania CLASSES implementujucich INTERFACE [BeanPostProcessor] je mozne definovat nasledujucimi sposobmi.
+      A. Ak CLASS implementujuca INTERFACE [BeanPostProcessor] implementuje INTERFACE [Ordered], tak VALUE vratena tymto INTERFACES urcuje poradie volania CLASSES.
+      B. Ak su CLASSES implementujuce INTERFACE [BeanPostProcessor] registrovane PROGRAMOVO volanim METHOD [void ConfigurableBeanFactory.addBeanPostProcessor(BeanPostProcessor beanPostProcessor)], tak poradie volania tychto METHODS urcuje poradie volania CLASSES.
+   F. INTERFACE [BeanPostProcessor] ma nasledujuce MEMBERS.
+      A. DEFAULT METHOD [Object postProcessBeforeInitialization(Object bean, String beanName) throws BeansException] je volana PREDTYM, ako sa pre danu instanciu SPRING MANAGED BEANS volali LIFECYCLE CALLBACKS. METHOD moze vracat PROXY OBJECT, ktory sa zaregistruje v SPRING CONTAINER namiesto povodneho SPRING MANAGED BEAN.
+      B. DEFAULT METHOD [Object postProcessAfterInitialization(Object bean, String beanName) throws BeansException] je volana POTOM, ako sa pre danu instanciu SPRING MANAGED BEANS volali LIFECYCLE CALLBACKS. METHOD moze vracat PROXY OBJECT, ktory sa zaregistruje v SPRING CONTAINER namiesto povodneho SPRING MANAGED BEAN.
+56. SPRING FRAMEWORK umoznuje ziskavat instancie SPRING MANAGED BEANS pomocou roznych METHODS roznych INTERFACES. Platia nasledujuce fakty.
+   A. SPRING MANAGED BEANS je mozne ziskavat pomocou BEAN FACTORY.
+   B. BEAN FACTORY je implementovany pomocou CLASS [ConfigurableListableBeanFactory].
+   C. Instanciu CLASS [ConfigurableListableBeanFactory] je mozne ziskat volanim METHOD [ConfigurableListableBeanFactory ConfigurableApplicationContext.getBeanFactory() throws IllegalStateException].
+   D. CLASS [ConfigurableListableBeanFactory] implementuje INTERFACE [BeanFactory], ktora ma nasledujuce METHODS.
+      A. METHOD [Object getBean(String name) throws BeansException] vracia instanciu SPRING MANAGED BEAN na zaklade jeho NAME.
+      B. METHOD [<T> T getBean(Class<T> requiredType) throws BeansException] vracia instanciu SPRING MANAGED BEAN na zaklade jeho TYPE.
+      C. METHOD [<T> T getBean(String name, Class<T> requiredType) throws BeansException] vracia instanciu SPRING MANAGED BEAN na zaklade jeho NAME a TYPE.
+      D. METHOD [boolean containsBean(String name)] vracia instanciu informaciu ci SPRING MANAGED BEAN s danym NAME v SPRING CONTAINER existuje.
+      E. METHOD [<T> ObjectProvider<T> getBeanProvider(Class<T> requiredType)] vracia pre TYPE SPRING MANAGED BEAN instanciu CLASS [ObjectProvider<T>].
+      F. METHOD [Class<?> getType(String name)] TYPE daneho SPRING MANAGED BEAN identifikovaneho pomocou jeho NAME.
+      G. METHOD [boolean isPrototype(String name)] vracia informaciu ci SPRING MANAGED BEAN identifikovany pomocou jeho NAME je PROTOTYPE BEAN.
+      H. METHOD [boolean isSingleton(String name)] vracia informaciu ci SPRING MANAGED BEAN identifikovany pomocou jeho NAME je PROTOTYPE BEAN.
+      I. METHOD [String[] getAliases(String name)] vracia zoznam ALIASES SPRING MANAGED BEAN identifikovany pomocou jeho NAME je PROTOTYPE BEAN.
+   E. CLASS [ConfigurableListableBeanFactory] implementuje INTERFACE [ListableBeanFactory], ktory implementuje INTERFACE [BeanFactory]. INTERFACE [ListableBeanFactory] ma nasledujuce METHODS.
+      A. METHOD [<T> Map<String,T> getBeansOfType(Class<T> type) throws BeansException] vracia MAP SPRING MANAGED BEANS daneho TYPE.
+      B. METHOD [Map<String,Object> getBeansWithAnnotation(Class<? extends Annotation> annotationType) throws BeansException] vracia MAP SPRING MANAGED BEANS, na ktore je aplikovana dana ANNOTATION.
+      C. METHOD [String[] getBeanDefinitionNames()] vracia MAP SPRING MANAGED BEAN NAMES.
+      D. METHOD [String[] getBeanNamesForType(@Nullable Class<?> type)] vracia MAP SPRING MANAGED BEAN NAMES daneho TYPE.
+      E. METHOD [String[] getBeanNamesForAnnotation(Class<? extends Annotation> annotationType)] vracia MAP SPRING MANAGED BEAN NAMES, na ktore je aplikovana dana ANNOTATION.
+      F. METHOD [<A extends Annotation> A findAnnotationOnBean(String beanName, Class<A> annotationType)] vracia ANNOTATION daneho TYPE, ktory je aplikovany na SPRING MANAGED BEAN identifikovany pomocou jeho NAME.
+      G. METHOD [<A extends Annotation> Set<A> findAllAnnotationsOnBean(String beanName, Class<A> annotationType, boolean allowFactoryBeanInit)] vracia SET ANNOTATIONS, ktore su aplikovana na SPRING MANAGED BEAN identifikovany pomocou jeho NAME.
+57. SPRING FRAMEWORK umoznuje definovat HIERARCHICAL CONTEXT. Pre HIERARCHICAL CONTEXT platia nasledujuce fakty.
+   A. BY-DEFAULT SPRING CONTAINER obsahuje vsetky SPRING MANAGED BEANS, ktore je pomocou DEPENDENCY INJECTION mozne vkladat do inych SPRING MANAGED BEANS. Vsetky SPRING MANAGED BEANS su teda vzajomne pristupne.
+   B. HIERARCHICAL CONTEXT umoznuje medzi SPRING MANAGED BEANS definovat PARENT-CHILD HIERARCHY, kde platia nasledujuce fakty.
+      A. PARENT SPRING MANAGED BEANS obsahuju CHILD MANAGED BEANS.
+      !!!!! B. PARENT SPRING MANAGED BEANS NEMOZU pomocou DEPENDENCY INJECTION vkladat CHILD MANAGED BEANS.
+      !!! C. CHILD SPRING MANAGED BEANS MOZU pomocou DEPENDENCY INJECTION vkladat PARENT MANAGED BEANS.
+      !!! D. CHILD SPRING MANAGED BEANS teda logicky repreznetuju UZATVORENE SPRING CONTAINERS, ktorych SPRING MANAGED BEANS NIE su viditelne v PARENT SPRING MANAGED BEANS.
+      !!! E. SIBLING SPRING MANAGED BEANS su SPRING MANAGED BEANS, ktore su na rovnakej hierarchickej urovni HIERARCHICAL CONTEXT a NEMAJU vzajomny pristup k svojim SPRING MANAGED BEANS.
+   C. HIERARCHICAL CONTEXTS sa vytvaraju pomocou CLASS [SpringApplicationBuilder]. CLASS ma nasledujuce MEMBERS.
+      !!! A. METHOD [SpringApplicationBuilder parent(Class<?>... sources)] pridava CONFIGURATION CLASSES do novovytvoreneho PARENT SPRING CONTAINER. METHOD vracia instanciu [SpringApplicationBuilder] pre novovytvoreny PARENT SPRING CONTAINER pomocou, ktoreho je mozne PARENT SPRING CONTAINER nakonfigurovat.
+      !!! B. METHOD [SpringApplicationBuilder child(Class<?>... sources)] pridava CONFIGURATION CLASSES do novovytvoreneho CHILD SPRING CONTAINER. METHOD vracia instanciu [SpringApplicationBuilder] pre novovytvoreny CHILD SPRING CONTAINER pomocou, ktoreho je mozne CHILD SPRING CONTAINER nakonfigurovat.
+      !!! C. METHOD [SpringApplicationBuilder sibling(Class<?>... sources)] pridava CONFIGURATION CLASSES do pridava CONFIGURATION CLASSES do novovytvoreneho SIBLING SPRING CONTAINER. METHOD vracia instanciu [SpringApplicationBuilder] pre novovytvoreny SIBLING SPRING CONTAINER pomocou, ktoreho je mozne SIBLING SPRING CONTAINER nakonfigurovat.
+      D. METHOD [SpringApplicationBuilder sources(Class<?>... sources)] nastavuje CONFIGURATION CLASSES do CURRENT SPRING CONTAINER. METHOD vracia instanciu [SpringApplicationBuilder] pre CURRENT SPRING CONTAINER.
+!!! 58. JAKARTA ENTERPRISE ENVIRONMENT definuje vlastne ANNOTATIONS, ktore sluzia na popis COMPONENTS pre DEPENDENCY INJECTION. Pre tieto ANNOTATIONS platia nasledujuce fakty.
+   A. ANNOTATIONS pre DEPENDENCY INJECTION v JAKARTA ENTERPRISE ENVIRONMENT su definovane v specifikacii JSR 330.
+   B. ANNOTATIONS definovane v specifikacii JSR 330 su AUTOMATICKY mapovane na ANNOTATIONS v SPRING FRAMEWORK.
+   C. ANNOTATIONS su definovane v DEPENDENCY [jakarta.inject-api].
+   !!! D. ANNOTATIONS definovane v specifikacii JSR 330 sa v cisto SPRING FRAMEWORK PROGRAMS NEORPORUCA pouzivat. Lepsie je pouzit SPRING FRAMEWORK ANNOTATIONS.
+59. SPRING FRAMEWORK umoznuej definovat SPRING MANAGED BEANS, ak splnaju urcite CONDITIONS. Pre CONDITIONAL SPRING MANAGED BEANS platia nasledjuce fakty.
+   A. CONDITIONAL SPRING MANAGED BEANS su SPRING MANAGED BEANS, ktorych instancie su vytvorene iba ak je splnena definovana CONDITION.
+   B. CONDITION pre CONDITIONAL SPRING MANAGED BEANS sa definuje implementovanim INTERFACE [Condition], ktory ma METHOD [boolean matches( ConditionContext context, AnnotatedTypeMetadata metadata)].
+   C. CONDITION sa aplikuje na SPRING MANAGED BEANS pomocou ANNOTATION [@Conditional].
+   D. ANNOTATION [@Conditional] moze byt aplikovana na TYPES SPRING MANAGES BEANS, ako aj FACTORY METHODS SPRING MANAGED BEANS.
+   !!!!! E. Ak su na SPRING MANAGED BEAN viacero CONDITIONS, tak instancia SPRING MANAGED BEAN je vytvorena IBA ak su splnene VSETKY CONTITIONS.
+60. SPRING FRAMEWORK definuje mnozstvo ANNOTATIONS pre definiciu CONDITIONAL SPRING MANAGED BEANS.
+   !!! A. ANNOTATION [@ConditionalOnProperty] vytvori instanciu SPRING MANAGED BEAN, ak dana PROGRAM na nastavenu danu PROPERTY na danu VALUE. PROPERTIES je mozne nastavit konfiguracne, alebo PROGRAMOVO pomocou METHOD [void SpringApplication.setDefaultProperties(Map<String, Object> defaultProperties)].
+   B. ANNOTATION [@ConditionalOnBean] vytvori instanciu SPRING MANAGED BEAN, ak EXISTUJE ina instancia SPRING MANAGED BEAN daneho TYPE.
+   C. ANNOTATION [@ConditionalOnMissingBean] vytvori instanciu SPRING MANAGED BEAN, ak NEEXISTUJE ina instancia SPRING MANAGED BEAN daneho TYPE.
+   D. ANNOTATION [@ConditionalOnSingleCandidate] vytvori instanciu SPRING MANAGED BEAN, ak EXISTUJE iba 1 ina instancia SPRING MANAGED BEAN daneho TYPE.
+   E. ANNOTATION [@ConditionalOnClass] vytvori instanciu SPRING MANAGED BEAN, ak v CLASSPATH je definovana CLASS daneho TYPE.
+   F. ANNOTATION [@ConditionalOnMissingClass] vytvori instanciu SPRING MANAGED BEAN, ak v CLASSPATH NIE je definovana CLASS daneho TYPE.
+   G. ANNOTATION [@ConditionalOnExpression] vytvori instanciu SPRING MANAGED BEAN, ak je splnena dana CONDITION definovana pomocou SPRING EXPRESSION LANGUAGE.
+   H. ANNOTATION [@ConditionalOnJava] vytvori instanciu SPRING MANAGED BEAN, ak je PROGRAM kompilovany v danej verzii JAVY.
+   I. ANNOTATION [@ConditionalOnJndi] vytvori instanciu SPRING MANAGED BEAN, je dany JAVA NAMING AND DIRECTORY INTERFACE dostupny.
+   J. ANNOTATION [@ConditionalOnWebApplication] vytvori instanciu SPRING MANAGED BEAN, ak PROGRAM je WEB PROGRAMOM.
+   K. ANNOTATION [@ConditionalOnNotWebApplication] vytvori instanciu SPRING MANAGED BEAN, ak PROGRAM NIE je WEB PROGRAMOM.
+   L. ANNOTATION [@ConditionalOnResource] vytvori instanciu SPRING MANAGED BEAN, ak je dostupny dany RESOURCE.
+   M. ANNOTATION [@ConditionalOnCloudPlatform] vytvori instanciu SPRING MANAGED BEAN, ak PROGRAM bezi v CLOUD.
+   N. ANNOTATION [@ConditionalOnWarDeployment] vytvori instanciu SPRING MANAGED BEAN, ak PROGRAM je DEPLOYED ako WEB APPLICATION RESOURCE (WAR) pre SERVLET CONTAINER.
+61. SPRING FRAMEWORK definuje velke mnozstvo SPRING MANAGED BEANS, na ktore su aplikovane CONDITIONAL ANNOTATIONS. SPRING FRAMEWORK pre tieto AUTOCONFIGURATION SPRING MANAGED BEANS pouziva nasledujucu konvenciu.
+   A. AUTOCONFIGURATION SPRING MANAGED BEAN TYPES maju v NAME POSTFIX [AutoConfiguration].
+   B. AUTOCONFIGURATION SPRING MANAGED BEAN TYPES maju aplikovanu ANNOTATION [@AutoConfiguration].
+   C. AUTOCONFIGURATION SPRING MANAGED BEAN TYPES maju aplikovane dalsie CONDITIONAL ANNOTATIONS.
+!!! 62. Standardne AUTOCONFIGURATION SPRING MANAGED BEANS hoci su zaroven aj COMPONENTS (su oznacene pomocou ANNOTATION [@Component]) nie su vkladane do SPRING CONTAINER pomocou standardneho COMPONENT SCAN, ale nasledujucim sposobom.
+   A. Standardne AUTOCONFIGURATION SPRING MANAGED BEANS su deklarovane v DEPENDENCY [spring-boot-autoconfigure], ktora je vlozena do kazdeho SPRING BOOT PROJECT.
+   B. DEPENDENCY [spring-boot-autoconfigure] obsahuje v DIRECTORY [spring] FILE [org.springframework.boot.autoconfigure.AutoConfiguration.imports], ktory obsahuje zoznam vsetkych standardnych AUTOCONFIGURATION SPRING MANAGED BEANS.
+   C. SPRING BOOT pouziva tento FILE na nacitanie vsetkych AUTOCONFIGURATION SPRING MANAGED BEANS.
+   !!! D. SPRING BOOT vyuziva AUTOCONFIGURATION SPRING MANAGED BEANS IBA ak je na MAIN CLASS aplikovana ANNOTATION [@SpringBootApplication], ktora ma ANNOTATION [@EnableAutoConfiguration].
+   !!! E. Ak sa ANNOTATION [@EnableAutoConfiguration] NEAPLIKUJE na MAIN CLASS, nebude do PROGRAM vlozena ZIADNY AUTOCONFIGURATION SPRING MANAGED BEAN. AUTOCONFIGURATION SPRING MANAGED BEAN je mozne vkladat do PROGRAMU aplikovanim ANNOTATION [@Import] na MAIN CLASS.
+63. Pre ANNOTATION [@AutoConfiguration] platia nasledujuce fakty.
+   A. ANNOTATION [@AutoConfiguration] sluzi na oznacenie AUTOCONFIGURATION SPRING MANAGED BEANS, ktore pouzivaju CONDITIONAL ANNOTATIONS.
+   B. ANNOTATION [@AutoConfiguration] je viditelna v RUNTIME cez REFLECTION.
+   C. ANNOTATION [@AutoConfiguration] moze byt aplikovana iba na TYPES.
+   !!! D. ANNOTATION [@AutoConfiguration] ma aplikovanu ANNOTATION [@Configuration], pricom ta ma nastaveny ELEMENT [proxyBeanMethods] na VALUE [false], co znamena, ze pre SPRING MANAGED BEANS na ktore je aplikovana ANNOTATION [@AutoConfiguration] sa nevytaraju PROXY OBJECTS.
+   E. ELEMENT [before] umoznuje definovat AUTOCONFIGURATION SPRING MANAGED BEANS, ktore musia byt inicializovane PRED vykonanim CURRENT AUTOCONFIGURATION SPRING MANAGED BEAN.
+   F. ELEMENT [after] umoznuje definovat AUTOCONFIGURATION SPRING MANAGED BEANS, ktore musia byt inicializovane PO vykonani CURRENT AUTOCONFIGURATION SPRING MANAGED BEAN.
+!!! 64. SPRING FRAMEWORK moze zobrazit podrobny DEBUG LOG o tom, ktore AUTOCONFIGURATION SPRING MANAGED BEANS boli zaregistrovane do SPRING CONTAINER, a ktore nie. DEBUG LOG sa povoluje nasledujucimi sposobmi.
+   A. Nastavenim COMMAND LINE OPTION [--debug], alebo COMMAND LINE OPTION [-Ddebug].
+   B. Spustenim CODE [SpringApplication.run(*.class, "--debug")].
+   C. Nastavenim VALUE [debug=true] vo FILE [application.properties].
+   D. Nastavenim VALUE [debug: true] vo FILE [application.yaml].
+   E. Nastavenim PROPERTY [debug] na VALUE [true] a naslednym volanim CODE [void SpringApplication.setDefaultProperties(Map<String, Object> defaultProperties)].
+65. ANNOTATION [@EnableAutoConfiguration] umoznuje povolit, alebo zakazat aplikovanie AUTOCONFIGURATION SPRING MANAGED BEANS. Pre ANNOTATION [@EnableAutoConfiguration] platia nasledujuce fakty.
+   A. ANNOTATION [@EnableAutoConfiguration] je aplikovana na ANNOTATION [@SpringBootApplication], ktora je standardne aplikovana na MAIN CLASS.
+   B. ANNOTATION [@EnableAutoConfiguration] je viditelna v RUNTIME cez REFLECTION.
+   C. ANNOTATION [@EnableAutoConfiguration] moze byt aplikovana iba na TYPES.
+   D. ELEMENT [Class<?>[] exclude] umoznuje definovat AUTOCONFIGURATION SPRING MANAGED BEANS, ktore budu IGNOROVANE.
+   E. ELEMENT [String[] excludeName] umoznuje definovat AUTOCONFIGURATION SPRING MANAGED BEANS, ktore budu IGNOROVANE.
+66. SPRING EXPRESSION LANGUAGE (SPEL) je EXPRESSION LANGUAGE pre OBJECT QUERYING a OBJECT MANIPULATION v RUNTIME. Pre SPRING EXPRESSION LANGUAGE platia nasledujuce fakty.
+   A. SPRING EXPRESSION LANGUAGE umoznuje definovat EXPRESSIONS, ktore mozu byt definovane DEKLARATIVNE a mozu vykonavat OPERATIONS nad OBJECTS.
+   B. SPRING EXPRESSION LANGUAGE umoznuje definovat EXPRESSIONS DEKLARATIVNE napriklad v ANNOTATIONS ci XML CONFIGURATION FILES a nasledne pomocou SPRING EXPRESSION LANGUAGE su tieto EXPRESSIONS vykonane.
+   C. SPRING EXPRESSION LANGUAGE podporuje nasledujuce typy OPERATIONS.
+      A. ARITHMETIC OPERATORS.
+      B. LOGICAL OPERATORS ako OPERATOR [and] OPERATOR [or] a OPERATOR [not].
+      C. CONDITIONAL OPERATOR.
+      D. STRING OPERATIONS, ktore su definovane v JAVA CLASS [String]. STRINGS v SPRING EXPRESSION LANGUAGE su definovane pomocou SYNTAXE ['STRING_VALUE'], kde VALUE [STRING_VALUE] je VALUE daneho STRING.
+      E. Vytvaranie instancii JAVA CLASSES pomocou OPERATOR NEW.
+      F. Pristup k PROPERTIES JAVA CLASSES pomocou SYNTAX [OBJECT.PROPERTY_NAME], kde VALUE [OBJECT] je JAVA OBJECT IDENTIFIER a VALUE [PROPERTY_NAME] je nazov PROPERTY. Pre takuto EXPRESSION SPRING EXPRESSION LANGUAGE PROPERTY automaticky EXPRESSION SPRING EXPRESSION LANGUAGE vola prislusnu GETTER METHOD.
+      G. Pracu s instanciami JAVA CLASS [List<TType>]. Platia nasledujuce fakty.
+         A. Instancia JAVA CLASS [List<TType>] sa vytvara pomocou SYNTAX [{VALUE_1,...,VALUE_N}}], kde VALUES [VALUE_X] reprezentuju VALUES daneho LIST.
+         B. Vykonavanim OPERATIONS nad instanciou JAVA CLASS [List<TType>]. Napriklad CODE [{1,2,3,4}.get(0)] vytvori instanciu JAVA CLASS [List<int>] a pristupi k 1. ITEM v tomto LIST.
+      H. Vykonavanie REGULAR EXPRESSION pomocou SYNTAX [STRING_VALUE matches REGULAR_EXPRESSION], kde VALUE [STRING_VALUE] je STRING VALUE a VALUE [REGULAR_EXPRESSION] je REGULAR EXPRESSION, ktory ma byt nad STRING VALUE vykonany.
+      I. Pristup k STATIC METHODS pomocou SYNTAX ["T(CLASS_TYPE).METHOD_NAME(PARAMETER_1,...,PARAMETER_N)], kde VALUE [CLASS_TYPE] je nazov CLASS TYPE, VALUE [METHOD_NAME] je nazov STATIC METHOD NAME a VALUES [PARAMETER_X] su PARAMETERS STATIC METHOD.
+      !!!!! J. Pouzitie OPERATOR [@], ktory umoznuje referovat sa na instanciu SPRING MANAGED BEAN. Pri pouziti OPERATOR [@] je nutne spustit nasledujuci CODE.
+         A. Zo SPRING CONTAINER sa ziska instancia CLASS [BeanFactory].
+         B. Vytvori sa instancia CLASS [ExpressionParser].
+         C. Vytvori sa instancia CLASS [StandardEvaluationContext].
+         D. Vytvori sa instancia CLASS [BeanFactoryResolver] pricom do CONSTRUCTOR sa zada instancia CLASS [BeanFactory].
+         E. Volanim METHOD [void StandardEvaluationContext.setBeanResolver(@Nullable BeanResolver beanResolver)] sa nastavi instancia CLASS [BeanFactoryResolver] v CLASS [StandardEvaluationContext].
+         F. Zavola sa METHOD [Expression ExpressionParser.parseExpression(String expressionString) throws ParseException], ktora vrati instanciu CLASS [Expression].
+         G. Zavola sa METHOD [Object Expression.getValue(EvaluationContext context) throws EvaluationException], ktora vykona SPRING EXPRESSION LANGUAGE EXPRESSION s pouzitym OPERATOR [@].
+   D. SPRING EXPRESSION LANGUAGE PARSER je implementovany v CLASS [SpelExpressionParser], ktora implementuje INTERFACE [ExpressionParser]. INTERFACE [ExpressionParser] ma nasledujuce METHODS.
+      A. METHOD [Expression parseExpression(String expressionString) throws ParseException] vykona PARSING danej SPRING EXPRESSION LANGUAGE EXPRESSION.
+      B. METHOD [Expression parseExpression(String expressionString, ParserContext context) throws ParseException] vykona PARSING danej SPRING EXPRESSION LANGUAGE EXPRESSION s definovanym CONTEXT.
+   E. INTERFACE [Expression] obsahuje PARSED SPRING EXPRESSION LANGUAGE EXPRESSION. Ma nasledujuce MEMBERS.
+      A. METHOD [Object getValue() throws EvaluationException] vykona danu EXPRESSION.
+      B. METHOD [<T> T getValue(Class<T> desiredResultType) throws EvaluationException] vykona danu EXPRESSION s definovanym RESULT TYPE.
+      C. METHOD [Object getValue(Object rootObject) throws EvaluationException] vykona danu EXPRESSION s danym ROOT OBJECT.
+      D. METHOD [<T> T getValue(Object rootObject, Class<T> desiredResultType) throws EvaluationException] vykona danu EXPRESSION s danym ROOT OBJECT a definovanym RESULT TYPE.
+      E. METHOD [String getExpressionString()] vracia povodnu SPRING EXPRESSION LANGUAGE EXPRESSION.
+67. SPRING EXPRESSION LANGUAGE EXPRESSIONS je mozne v SPRING FRAMEWORK vyuzivat nasledujucimi sposobmi.
+   A. V CONDITIONAL ANNOTATION [@ConditionalOnExpression].
+   B. V CONDITIONAL ANNOTATION [@Cacheable].
+   C. V CONDITIONAL ANNOTATION [@Scheduled].
+68. Pre ANNOTATION [@ConditionalOnExpression] platia nasledujuce fakty.
+   A. ANNOTATION [@ConditionalOnExpression] umoznuje registrovat SPRING MANAGES BEANS, ak je splnena SPRING EXPRESSION LANGUAGE EXPRESSION.
+   B. ELEMENT [String value] obsahuje SPRING EXPRESSION LANGUAGE EXPRESSION, ktora sa ma testovat.
+   C. SPRING EXPRESSION LANGUAGE EXPRESSION MUSI vracat VALUE TYPE [boolean].
+   !!!!! D. SPRING EXPRESSION LANGUAGE EXPRESSION NESMIE obsahovat OPERATOR [@], ktory umoznuje referovat sa na instanciu SPRING MANAGED BEAN. V knihe je sice tato moznost spomenuta, no podla AI takyto CODE NEBUDE FUNGOVAT, a mne ani NEFUNGOVAL. Je to preto, lebo SPRING EXPRESSION LANGUAGE EXPRESSIONS su EVALUATED SKOR, ako su vytvorene instancie SPRING MANAGED BEANS.
 //----------------------------------------------------------------------------------------------------------------------
