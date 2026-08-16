@@ -1,0 +1,389 @@
+//----------------------------------------------------------------------------------------------------------------------
+1. Solution demonstruje pouzitie RANGES a VIEWS v C++.
+2. Pre RANGES platia nasledujuce fakty.
+   A. RANGE je ABSTRACTION, ktora reprezentuje sekvenciu ELEMENTS nad ktorou je mozne vykonat ITERATION.
+   !!!!! B. RANGE VLASTNI DATA nad ktorymi je mozne vykonavat ITERATION. To znamena, ze kopirovanie RANGES je CASOVO NAROCNE a ma zlozitost O(N), pretoze vyzaduje kopirovanie ELEMENTS, ktore RANGE obsahuje.
+   !!! C. RANGES musia splnat CONCEPT [range], ktory vyzaduje aby RANGES mali definovanu METHOD [begin()] a METHOD [end()].
+   !!! D. Za RANGES su C++ povazovane nasledujuce ENTITIES.
+      A. ENTITIES, ktore maju BEGIN ITERATOR a END ITERATOR toho isteho TYPE.
+      B. ENTITIES, ktore maju BEGIN ITERATOR a SENTINEL, co je END ITERATOR, ktory moze vracat INY TYPE ako BEGIN ITERATOR.
+      C. ENTITIES, ktore maju BEGIN ITERATOR a COUNT urcujuci pocet ITEMS.
+      D. ENTITIES, ktore reprezentuju C-ARRAYS.
+   !!! E. Medzi RANGES patria vsetky C++ COLLECTIONS, ako aj C++ ARRAYS.
+   F. RANGES reprezentuju alternativu zasielania BEGIN ITERATORS a END ITERATORS na definovanie logickeho RANGE v COLLECTION.
+   G. RANGES umoznuju prenos BEGIN ITERATOR a END ITERATOR v JEDNOM OBJECT namiesto posielania PARAMETER BEGIN ITERATOR a PARAMETER END ITERATOR.
+   H. Pre RANGES su v C++ STANDARD LIBRARY definovane RANGE ALGORITHMS, ktore sa nachadzaju v NAMESPACE [std::ranges].
+   I. RANGES su definovane v NAMESPACE [std::ranges].
+   !!! J. Pri pouzivani RANGES by sa NIKDY nemal NAMESPACE [std::ranges] vkladat pomocou KEYWORD [using], pretoze to moze sposobit velke mnozstvo COMPILATION CONFLICTS.
+3. Pre VIEWS platia nasledujuce fakty.
+   A. VIEWS su LIGHTWEIGHT RANGES, ktore sa referuju na RANGES, alebo SUBRANGES.
+   !!!!! B. VIEWS NIKDY NEVLASTNIA DATA, na ktore referuju. To znamena, ze CREATE, COPY a MOVE je CASOVO NENAROCNE a ma zlozitost O(1).
+   C. VIEWS vlastnia TEMPORARY RANGES.
+   D. VIEWS mozu byt vytvarane pomocou RANGE ADAPTORS. C++ definuje RANGE ADAPTORS, ktore umoznuju vykonavat nasledujuce OPERATIONS.
+      A. FILTERING VIEW ELEMENTS.
+      B. TRANSFORMATION VIEW ELEMENTS.
+      C. GENEROVANIE VIEW ELEMENTS.
+   !!!!! E. VIEWS podporuju PIPELINES, ktore definuju jednoduchu SYNTAX pre pracu s VIEWS.
+   !!! F. VIEWS maju definovane TYPES. Na VIEWS sa je mozne referovat nasledujucimi sposobmi.
+      A. Pomocou KEYWORD [auto].
+      B. Pomocou NON-TEMPLATE TYPES, ako je napriklad TYPE [ranges::take_view], pre VIEW [take].
+      C. Pomocou TEMPLATE TYPES, ako je napriklad TYPE [ranges::take_view<ranges::ref_view<vector<int>>>], pre VIEW [take] nad COLLECTION [vector<int>].
+   !!!!! G. VIEW su WRITABLE. To znamena, ze VIEWS mozu vykonavat WRITING do POVODNEJ COLLECTION, nad ktorou su postavene. Vsetky WRITINGS vo VIEWS sa premietnu do POVODNEJ COLLECTION.
+   H. VIEWS realizuju LAZY EVALUATION. To znamena, ze VIEWS nie su aktivovane, az kym nedojde k ITERATION ich ELEMENTS.
+   !!!!! I. VIEWS mozu pouzivat CACHING, kde sa do CACHE ukladaju ITERATORS. V dosledku moznosti pouzitia CACHING sa NEODPORUCA, aby COLLECTION pre ktoru bol vytvoreny VIEW bola modifikovana potom co bol VIEW vytvoreny, ale este predtym ako sa VIEW pouzil. Taketo pouzitie moze viest k UNDEFINED BEHAVIOR.
+   J. VIEWS su definovane v NAMESPACE [std::ranges::views]. Pre NAMESPACE je vytvoreny ALIAS [std::views].
+   !!! K. Pri pouzivani VIEWS by sa NIKDY nemal NAMESPACE [std::ranges::views] vkladat pomocou KEYWORD [using], pretoze to moze sposobit velke mnozstvo COMPILATION CONFLICTS.
+4. RANGES a VIEWS su definovane v nasledujucich HEADERS.
+   A. RANGES a VIEWS su definovane v HEADER [ranges].
+   B. Niektore ALGORITHMS pre RANGES a VIEWS su definovane v HEADER [algorithm].
+!!! 5. RANGES a VIEWS pouzivaju CONCEPTS co umoznuje lepsiu typovu kontrolu pouzitia RANGES a VIEWS. Pre RANGES a VIEWS su definovane nasledujuce CONCEPTS.
+   A. CONCEPT [range]. Pre CONCEPT [range] platia nasledujuce fakty.
+      A. CONCEPT [range] reprezentuje zakladny CONCEPT pre vsetkych RANGES.
+      B. CONCEPT [range] vyzaduje aby TYPE mal definovanu METHOD [begin(TType&)].
+      C. CONCEPT [range] vyzaduje aby TYPE mal definovanu METHOD [end(TType&)].
+   B. CONCEPT [output_range]. Pre CONCEPT [output_range] platia nasledujuce fakty.
+      A. CONCEPT [output_range] vyzaduje aby TYPE bol CONCEPT splnajuci CONCEPT [range].
+      B. CONCEPT [output_range] vyzaduje aby TYPE mal OUTPUT ITERATOR. Type ITERATOR je detekovany tym, aky ITERATOR vracia METHOD [begin()].
+   C. CONCEPT [input_range]. Pre CONCEPT [input_range] platia nasledujuce fakty.
+      A. CONCEPT [input_range] vyzaduje aby TYPE bol CONCEPT splnajuci CONCEPT [range].
+      B. CONCEPT [input_range] vyzaduje aby TYPE mal INPUT ITERATOR. Type ITERATOR je detekovany tym, aky ITERATOR vracia METHOD [begin()].
+   D. CONCEPT [forward_range]. Pre CONCEPT [forward_range] platia nasledujuce fakty.
+      A. CONCEPT [forward_range] vyzaduje aby TYPE bol CONCEPT splnajuci CONCEPT [range].
+      B. CONCEPT [forward_range] vyzaduje aby TYPE mal FORWARD ITERATOR. Type ITERATOR je detekovany tym, aky ITERATOR vracia METHOD [begin()].
+   E. CONCEPT [bidirectional_range]. Pre CONCEPT [bidirectional_range] platia nasledujuce fakty.
+      A. CONCEPT [bidirectional_range] vyzaduje aby TYPE bol CONCEPT splnajuci CONCEPT [range].
+      B. CONCEPT [bidirectional_range] vyzaduje aby TYPE mal BIDIRECTIONAL ITERATOR. Type ITERATOR je detekovany tym, aky ITERATOR vracia METHOD [begin()].
+   F. CONCEPT [random_access_range]. Pre CONCEPT [random_access_range] platia nasledujuce fakty.
+      A. CONCEPT [random_access_range] vyzaduje aby TYPE bol CONCEPT splnajuci CONCEPT [range].
+      B. CONCEPT [random_access_range] vyzaduje aby TYPE mal RANDOM ACCESS ITERATOR. Type ITERATOR je detekovany tym, aky ITERATOR vracia METHOD [begin()].
+   G. CONCEPT [contiguous_range]. Pre CONCEPT [contiguous_range] platia nasledujuce fakty.
+      A. CONCEPT [contiguous_range] vyzaduje aby TYPE bol CONCEPT splnajuci CONCEPT [range].
+      B. CONCEPT [contiguous_range] vyzaduje aby TYPE mal CONTINOUS ITERATOR. Type ITERATOR je detekovany tym, aky ITERATOR vracia METHOD [begin()]. ITERATOR musi byt konvertovatelny na POINTER.
+      C. CONCEPT [contiguous_range] vyzaduje aby TYPE mal definovanu METHOD [data()], ktora vracia POINTER.
+   H. CONCEPT [sized_range]. Pre CONCEPT [sized_range] platia nasledujuce fakty.
+      A. CONCEPT [sized_range] vyzaduje aby TYPE bol CONCEPT splnajuci CONCEPT [range].
+      B. CONCEPT [contiguous_range] vyzaduje aby TYPE mal definovanu METHOD [size()].
+   I. CONCEPT [view]. Pre CONCEPT [view] platia nasledujuce fakty.
+      A. CONCEPT [view] vyzaduje aby TYPE bol CONCEPT splnajuci CONCEPT [range].
+      B. CONCEPT [view] vyzaduje aby TYPE bol MOVEABLE.
+      C. CONCEPT [view] vyzaduje aby TYPE bol DERIVED z TYPE [view_base].
+   J. CONCEPT [viewable_range]. Pre CONCEPT [viewable_range] platia nasledujuce fakty.
+      A. CONCEPT [viewable_range] vyzaduje aby TYPE bol CONCEPT splnajuci CONCEPT [range].
+      B. CONCEPT [viewable_range] vyzaduje aby TYPE bol konvertovatelny na VIEW.
+   K. CONCEPT [borrowed_range]. Pre CONCEPT [borrowed_range] platia nasledujuce fakty.
+      A. CONCEPT [borrowed_range] vyzaduje aby TYPE bol CONCEPT splnajuci CONCEPT [range].
+      B. CONCEPT [borrowed_range] vyzaduje aby RANGE s ITERATORS nebol zviazany s LIFETIME daneho RANGE.
+   L. CONCEPT [common_range]. Pre CONCEPT [common_range] platia nasledujuce fakty.
+      A. CONCEPT [common_range] vyzaduje aby TYPE bol CONCEPT splnajuci CONCEPT [range].
+      B. CONCEPT [common_range] vyzaduje aby TYPE mal METHOD [begin()] a METHOD [end()], pricom obe METHODS vracaju ten isty typ ITERATOR.
+6. Pre PIPELINES platia nasledujuce fakty.
+   A. PIPELINES definuju jednoduchsiu SYNTAX pre pouzivanie VIEWS a VIEW ADAPTORS.
+   B. PIPELINES sa pouzivaju pomocou SYNTAX [PIPELINE=RANGE | VIEW_ADAPTOR_1 | VIEW_ADAPTOR_2 ... | VIEW_ADAPTOR_N], kde VALUE [PIPELINE] je PIPELINE, ktora ma TYPE [auto], VALUE [RANGE] je RANGE, na ktoru maju byt aplikovane VIEW ADAPTORS a VALUES [VIEW_ADAPTOR_X] definuju VIEW ADAPTORS.
+7. VIEWS maju definovane TYPES. Pre VIEW TYPES platia nasledujuce fakty.
+   A. Kazdy VIEW TYPE ma definovany specializovany TYPE. Prikladom je TYPE [ranges::take_view<ranges::ref_view<vector<int>>>] pre VIEW [take].
+   B. VIEW TYPES sa standardne vytvaraju pomocou CONSTRUCTION METHODS. Pre VIEW TAKE su definovane nasledujuce METHODS.
+      A. METHOD [template<ranges::viewable_range R> constexpr ranges::view auto take(R&& R, ranges::range_difference_t<R> Count)], ktora sa pouziva, ak sa NEPOUZIVAJU PIPELINES.
+      B. METHOD [template<typename DifferenceType> constexpr RANGE_ADAPTOR_CLOSURE take(DifferenceType&& Count)], ktora sa pouziva, ak sa POUZIVAJU PIPELINES.
+   !!! C. VIEW TYPES je mozne vytvarat volanim ich CONSTRUCTORS. Toto vytvaranie VIEW TYPES je vsak MENEJ EFEKTIVNE, pretoze sa neaplikuju niektore OPTIMIZATIONS.
+8. C++ RANGES definuju koncept SENTINELS. Pre SENTINELS platia nasledujuce fakty.
+   A. SENTINEL reprezentuje END ITERATOR, ktory oznacuje koniec RANGE.
+   B. SENTINELS na rozdiel od klasickych END ITERATORS pouzivanych v C++ STANDARD LIBRARY NEMUSIA byt rovnakeho TYPE ako BEGIN ITERATOR.
+   !!! C. Vdaka tomu, ze SENTINEL moze mat iny TYPE ako BEGIN ITERATOR, je mozne obmedzit ich funkcionalitu, ktora nema vyznam, alebo by viedla k INDEFINED BEHAVIOR. SENTINELS NEMUSIA mat implementovany OPERATOR [OPERATOR*], pretoze dereferovanie END ITERATOR odkazujuceho na 1 ELEMENT ZA poslednym ELEMENT vedie k UNDEFINED BEHAVIOR.
+   !!! D. SENTINELS umoznuju aj to, ze netreba pred zaciatkom ITERATION vyhladat END ITERATOR, ako to bolo napriklad v pripade C-ARRAYS, kde END ITERATOR je indikovany vyskytom CHARACTER [\0].
+   !!! E. STANDARD ALGORITHMS definovane v NAMESPACE [std] NEUMOZNUJU pouzit SENTINELS, pretoze vyzaduju pouzitie rovnakych BEGIN ITERATORS a END ITERATORS. No STANDARD ALGORITHMS, ktore su definovane v NAMESPACE [std::ranges] umoznuju pouzitie SENTINELS.
+9. C++ umoznuje definovat RANGES pomocou CLASS [subrange<TIterator,TSentinel,TSubrangeKind]. Pre CLASS platia nasledujuce fakty.
+   A. CLASS [subrange<TIterator,TSentinel,TSubrangeKind] umoznuje definovat RANGES pre BEGIN ITERATOR a END ITERATOR, ktore su rovnakeho TYPE, alebo pre BEGIN ITERATOR a SENTINEL, ktore su rozneho TYPE.
+   B. CLASS [subrange<TIterator,TSentinel,TSubrangeKind] je LIGHTWEIGHT a je ju mozne prenasat BY-VALUE do FUNCTIONS a METHODS.
+   C. CLASS [subrange<TIterator,TSentinel,TSubrangeKind] je zaroven aj VIEW a interne uklada BEGIN ITERATOR a SENTINEL vo svojich FIELDS.
+   D. CLASS [subrange<TIterator,TSentinel,TSubrangeKind] moze byt zasielana do RANGE ALGORITHMS.
+   E. Instancia CLASS [subrange<TIterator,TSentinel,TSubrangeKind] moze byt iterovana pomocou RANGE BASED FOR LOOPS.
+   F. CLASS [subrange<TIterator,TSentinel,TSubrangeKind] ma nasledujuce MEMBERS.
+      A. PRIVATE FIELD [TIterator begin_] obsahuje BEGIN ITERATOR.
+      B. PRIVATE FIELD [TSentinel end_] obsahuje SENTINEL.
+      C. CONSTRUCTOR vytvara instanciu SUBRANGE.
+      D. OPERATOR [constexpr operator PairLike() const] konvertuje SUBRANGE na PAIR.
+      E. OPERATOR [operator bool(void)] vracia informaciu ci RANGE je EMPTY.
+      F. OPERATOR [OPERATOR[]] vracia Nty ELEMENT daneho RANGE. OPERATOR je definovany IBA ak sa jedna o RANDOM ACCESS RANGE.
+      G. METHOD [TIterator begin(void)] vracia BEGIN ITERATOR.
+      H. METHOD [TSentinel end(void) const] vracia SENTINEL.
+      I. METHOD [bool empty(void) const] vracia informaciu ci RANGE je EMPTY.
+      J. METHOD [iter_difference_t<TIterator> size(void) const] vracia pocet ITEMS v RANGE. RANGE musi byt SIZED RANGE.
+      K. METHOD [subrange& advance(iter_difference_t<TIterator> N)] posuva ITERATOR o N ITEMS dopredu.
+      L. METHOD [subrange prev(iter_difference_t<TIterator> N=1) const] posuva ITERATOR o 1 ITEM dozadu.
+      M. METHOD [subrange next(iter_difference_t<TIterator> N=1) const] posuva ITERATOR o 1 ITEM dopredu.
+      N. METHOD [auto cbegin(void)] vracia CONST BEGIN ITERATOR.
+      O. METHOD [auto cend(void)] vracia CONST BEGIN ITERATOR.
+      P. METHOD [auto data(void)] vracia POINTER DATA, ak RANGE je definovany pomocou CONTIGOUS ITERATORS.
+      Q. METHOD [decltype(auto) front(void)] prvy ELEMENT daneho RANGE.
+      R. METHOD [decltype(auto) back(void)] posledny ELEMENT daneho RANGE.
+10. C++ umoznuje definovat RANGES pomocou BEGIN ITERATOR a COUNT. Platia nasledujuce fakty.
+   A. RANGE definovany pomocou BEGIN ITERATOR a COUNT sa definuje volanim FUNCTION [SUBRANGE counted(TIterator&& Iterator, TDifferenceType&& Count)].
+   B. FUNCTION nekontrouje ci RANGE skutocne obsahuje definovany pocet ITEMS. Ak ich ma menej vznika UNDEFINED BEHAVIOR.
+   C. FUNCTION umoznuje definovanie RANGES, ktore maju 0 dlzku.
+11. C++ RANGE ALGORITHMS umoznuju pouzitie PROJECTIONS. Pre PROJECTIONS platia nasledujuce fakty.
+   A. PROJECTION umoznuje transformaciu OBJECT spracovaneho RANGE ALGORITHM na NOVY OBJECT PRED vykonanim daneho RANGE ALGORITHM.
+   B. PROJECTION je definovany ako extra PARAMETER RANGE ALGORITHM. Pre ALGORITHM [SORT] je PROJECTION definovana ako POSLEDNY PARAMETER METHOD [template<random_access_iterator TIterator, sentinel_for<TIterator> TSentinel, typename TComparer, typename TProjection> TIterator sort(TIterator First, TSentinel Last, TComparer Comparer, TProjection Projection)].
+   C. Ako PROJECTION sa moze pouzit FUNCTION, LAMBDA EXPRESSION, alebo FUNCTION OBJECT, ktory ma 1 PARAMETER zodpovedajuci TYPE OBJECTS, nad ktorymi sa RANGE ALGORITHM vykonava. PROJECTION musi vracat VALUE, ktora je rovnakeho TYPE ako OBJECTS , nad ktorymi sa RANGE ALGORITHM vykonava.
+   !!! D. PROJECTION NEMENI samotny OBJECT, ktory sa vrati vo vysledku daneho RANGE ALGORITHM. To znamena, ze ak RANGE ALGORITHM spracuva VALUE [5], ale PROJECTION z neho vyrobi VALUE [-5], tak vo vysledku sa vrati VALUE [5], NIE VALUE [-5].
+   E. Ako DEFAULT PROJECTION sa pouziva FUNCTION OBJECT [identity].
+12. C++ definuje viacero HELPER UTILITIES, ktore zjednodusuju implementaciu CUSTOM RANGE ALGORITHMS. Pre HELPER UTILITIES platia nasledujuce fakty.
+   A. HELPER UTILITIES su CLASSES, FUNCTIONS a CONCEPTS, ktore zjednodusuju implementaciu CUSTOM RANGE ALGORITHMS.
+   B. CUSTOM RANGE ALGORITHMS mozu byt pouzite pre rozlicne typy RANGES ako su C-ARRAYS, C++ STANDARD COLLECTIONS ci SUBRANGES.
+   C. C++ definuje nasledujuce napriklad aj tieto HELPER UTILITIES.
+      A. CONCEPT [input_range]. Umoznuje definovat CONDITION pre GENERIC INPUT RANGES. INPUT RANGES su RANGES, ktore maju INPUT ITERATOR.
+	  B. TEMPLATE USING [template<typename TType> using iterator_t=decltype(begin(declval<TType&>()))] vracia TYPE ITERATOR danej RANGE.
+	  C. TEMPLATE USING [template<range TRange> using const_iterator_t=decltype(cbegin(declval<TRange&>()))] vracia TYPE CONST ITERATOR danej RANGE.
+	  D. TEMPLATE USING [template<range TRange> using sentinel_t=decltype(end(declval<TRange&>()))] vracia TYPE SENTINEL danej RANGE.
+	  E. TEMPLATE USING [template<range TRange> range_value_t=iter_value_t<iterator_t<TRange>>] vracia TYPE VALUE danej RANGE.
+	  F. TEMPLATE FUNCTION [template<typename TType> constexpr bool empty(TType&& Rangee)] vracia informaciu ci RANGE je EMPTY. Na zistenie ci je RANGE EMPTY, FUNCTION vola bud METHOD [empty()], alebo FUNCTION [size()], alebo porovnava BEGIN ITERATOR, alebo END ITERATOR ci su rovne.
+	  G. TEMPLATE FUNCTION [template<typename TType> input_or_output_iterator auto begin(TType&& Range)] vracia BEGIN ITERATOR danej RANGE.
+	  H. TEMPLATE FUNCTION [template<typename TType> sentinel_for<iterator_t<TType>> auto end(TType&& Range)] vracia END ITERATOR (SENTINEL) danej RANGE.
+13. C++ RANGES a VIEWS maju viacero obmedzeni.
+   A. C++ nedefinuje RANGE ALGORITHMS pre NUMERIC ALGORITHMS ako je napriklad ALGORITHM [accumulate].
+   B. C++ nedefinuje RANGE ALGORITHMS pre PARALLEL ALGORITMS.
+   C. Niektore NON-CONST VIEWS mozu modifikovat svoj INTERNAL STATES. Pouzitie tychto VIEWS v CUSTOM PARALLEL ALGORITMS moze viest k UNDEFINED BEHAVIOR.
+   D. Niektore tradicne API vyzauju rovnaky TYPE pre BEGIN ITERATOR a END ITERATOR, co zabranuje pouzitiu SENTINELS v RANGES.
+   E. Niektore VIEWS, ktore modifikuju svoje INTERNAL STATES NIE je mozne pre CONST VIEWS.
+   F. Pre niektore VIEWS, ktore modifikuju svoje INTERNAL STATES NIE je mozne pouzit CONST BEGIN ITERATOR vytvoreny pomocou FUNCTION [cbegin()] a CONST END ITERATOR vytvoreny pomocou FUNCTION [cend()].
+14. C++ RANGES podporuju koncept BORROWED ITERATORS. Pre BORROWED ITERATORS platia nasledujuce fakty.
+   A. BORROWED ITERATORS sluzia ako ochrana pred DANGLING ITERATORS, ktore vznikaju, ak sa RANGE ALGORITHMS vracajuce ITERATORS pouzivaju nad RANGES, ktorych zivotnost konci hned po skonceni vykonavania RANGE ALGORITHM. Pouzitie takehoto ITERATOR by viedlo k UNDEFINED BEHAVIOR.
+   B. BORROWED ITERATORS v pripade, ze referuju na DANGLING ITERATORS nemaju definovane ziadne OPERATIONS, a preto ich pouzitie generuje COMPILER ERROR, co umoznuje ich detekciu.
+   C. BORROWED ITERATORS su implementovane pomocou TEMPLATE USING [template<range TRange> using borrowed_iterator_t<TRange>].
+   D. BORROWED ITERATORS su implementovane nasledujucim sposobom.
+      A. RANGE ALGORITHMS, ktore potrebuju vratit ITERATOR na RANGE, ktory je zaslany do RANGE ALGORITHM maju RETURN VALUE TYPE [borrowed_iterator_t<TRange>].
+	  !!! B. Ak RANGE TYPE zaslany do RANGE ALGORITHM je LVALUE REFERENCE TYPE, alebo RANGE je BORROWED RANGE, ktora neposobuje vznik DANGLING ITERATORS, tak TEMPLATE USING [borrowed_iterator_t<TRange>] je EVALUATED ako TYPE TYPE [iterator_t<TRange>], a teda jedna sa o klasicky VALIDNY ITERATOR, ktory je mozne pouzit.
+	  !!! C. Ak RANGE TYPE zaslany do RANGE ALGORITHM NIE je TYPE LVALUE, ani RANGE NIE je BORROWED RANGE, tak TEMPLATE USING [borrowed_iterator_t<TRange>] je EVALUATED ako TYPE [ranges::dangling], ktory NEMA implementovane ZIADNE OPERATIONS a jeho pouzitie sposobi COMPILATION ERROR.
+	  !!!!! D. Verzie RANGE ALGORITHMS, ktore vracaju RETURN VALUE TYPE [borrowed_iterator_t<TRange>] by mali RANGE PARAMETER ako TYPE [TRange&&], aby sa tieto verzie RANGE ALGORITHMS pouzivali IBA pre RVALUE REFERENCE TYPES. Pri TYPE [TRange&&] dochadza k REFERENCE COLLAPSING, kde platia nasledujuce RULES.
+	     A. Z ARGUMENT TYPE [RANGE], sa stava PARAMETER TYPE [RANGE&&], ktory je vsak interpretovany ako TYPE [RANGE&], ak pri volani RANGE ALGORITHM nebola pouzita MOVE SEMANTICS. V taktom pripade TEMPLATE USING [borrowed_iterator_t<TRange>] je interpretovany ako TYPE  [iterator_t<TRange>].
+	     B. Z ARGUMENT TYPE [RANGE&], sa stava PARAMETER TYPE [RANGE&]. V taktom pripade TEMPLATE USING [borrowed_iterator_t<TRange>] je interpretovany ako TYPE [iterator_t<TRange>].
+	     C. Z ARGUMENT TYPE [RANGE&&], sa stava PARAMETER TYPE [RANGE&&]. V taktom pripade TEMPLATE USING [borrowed_iterator_t<TRange>] je interpretovany ako TYPE [ranges::dangling].
+   E. Prikladom pouzitia BORROWED ITERATORS je ALOGRITHM [template<input_range TRange, typename TValue, typename TProjection> borrowed_iterator_t<TRange> find(TRange&& Range, const TValue& Value, TProjection Projection)].
+   !!!!! F. NEVYHODOU pouzitia BORROWED ITERATORS je, ze sposobia COMPILATION ERROR, aj ked je ITERATOR VALIDNY. K tomu dochadza napriklad pri CODE [ProcessBorrowedIterator(ranges::find(BorrowedIteratorsCreateCollection(),2))], kde pri volani FUNCTION [ProcessBorrowedIterator()] je ITERATOR vrateny FUNCTION [find()] nad TEMPORARY COLLECTION vratenou FUNCTION [BorrowedIteratorsCreateCollection()] stale VALIDNY. Je to preto, lebo TEMPORARY COLLECTION vratenou FUNCTION [BorrowedIteratorsCreateCollection()] trva az do skoncenia celej EXPRESSION, teda, az do skoncenia volania FUNCTION [ProcessBorrowedIterator()]. No pre pouzitie BORROWED ITERATORS tento VALIDNY CODE hodi COMPILATION ERROR.
+15. C++ RANGES podporuju koncept BORROWED RANGES. Pre BORROWED RANGES platia nasledujuce fakty.
+   A. BORROWED RANGES su RANGES, ktore definuju BORROWED ITERATORS, ktore mozu byt pouzite aj potom co povodna BORROWED RANGE prestala existovat.
+   B. BORROWED RANGES su definovane pomocou CONCEPT [borrowed_range]. CONCEPT je splneny ak plati niektora z nasledujucich CONDITIONS.
+      A. Ak je RANGE OBJECT zaslany ako LVALUE.
+	  B. Ak ITERATORS danej RANGE nezavisia na zivotnosti tejto RANGE.
+   C. Prikladmi BORROWED RANGES su nasledujuce RANGES.
+      A. RANGE [iota_view]. Tento RANGE generuje inkrementalnu sekvenciu VALUES. V tejto RANGE ITERATOR uklada LOKALNE CURRENT VALUE a nereferuje na ziadnu externu COLLECTION. Preto sa jedna o BORROWED RANGE.
+	  B. RANGE [empty_view]. Tento RANGE je EMPTY a vzdy referuje na koniec RANGE a neumoznuje ziadnu ITERATION.
+      !!! C. Vsetky RANGES prenasane pomocou LVALUE.
+	  !!! D. RANGES, ktore generuju ITERATORS, ktore odkazuju na UNDERLYING RANGE bez pouzitia VIEW, pre ktory boli volane FUNCTION [begin()] a FUNCTION [end()]. No tieto BORROWED RANGES mozu vratit DANGLING ITERATOR, ak povodna UNDERLYING RANGE prestala existovat.
+   D. Medzi BORROWED RANGES nepatria nasledujuce RANGES.
+      A. Vsetky C++ STANDARD CONTAINERS.
+	  B. VIEWS, ktore referuju na RANGES, ktore boli odoslane ako RVALUES.
+   !!! E. CUSTOM COLLECTION je mozne oznacit za BORROWED RANGE specializaciou TEMPLATE VARIABLE [enable_borrowed_range<TRange>].
+16. C++ definuje STANDARD VIEWS. Pre STANDARD VIEWS platia nasledujuce fakty.
+   A. STANDARD VIEWS su TYPES, ktore implementuju funkcionalitu VIEWS.
+   B. STANDARD VIEW TYPES su definovane v NAMESPACE [std::ranges].
+   C. Podla konvencie, vacsina STANDARD VIEW TYPES ma NAME POSTFIX [_view].
+   D. Pra takmer vsetky STANDARD VIEWS su definovane CUSTOMIZATION POINT OBJECTS co su FUNCTION OBJECTS, ktore maju definovany OPERATOR [OPERATOR()], ktory vytvara prislusny VIEW.
+   E. CUSTOMIZATION POINT OBJECTS sa rozdeluju do nasledujucich kategorii.
+      A. RANGE ADAPTORS. RANGE ADAPTORS vytvaraju VIEWS nad zadanymi RANGES.
+      B. RANGE FACTORIES. RANGE FACTORIES vytvaraju VIEWS, ktore nie su vytvorene nad zadanymi RANGES. Patria sem napriklad VALUE GENERATORS.
+   F. Podla konvencie CUSTOMIZATION POINT OBJECTS obsahuju iba nazov VIEW, bez POSTFIX [_view].
+   G. CUSTOMIZATION POINT OBJECTS su definovane v NAMESPACE [std::ranges::views].
+   H. STANDARD VIEWS splnaju CONCEPT [view].
+   I. STANDARD VIEWS maju implementovanu MOVE OPERATION, ktora ma zlozitost O(1).
+17. C++ definuje nasledujuce STANDARD VIEWS.
+   A. VIEW [ALL]. Pre VIEW platia nasledujuce fakty.
+      A. Vytvara VIEW z celej RAMGE.
+      B. VIEW pouziva nasledujuce VIEW TYPES.
+	     A. RANGE TYPE. RANGE TYPE poureprezentuje VIEW TYPE, ak RANGE je zaroven aj VIEW.
+	     B. TYPE [ref_view]. TYPE [ref_view] sa pouzije, ak RANGE je LVALUE.
+	     C. TYPE [owning_view]. TYPE [owning_view] sa pouzije, ak RANGE je RVALUE.
+     C. VIEW ma definovanu ADAPTOR/FACTORY FUNCTION [all(RANGE)].
+   B. VIEW [COUNTED]. Pre VIEW platia nasledujuce fakty.
+      A. Vytvara VIEW z BEGIN ITERATOR a poctu ELEMENTS.
+      B. VIEW pouziva nasledujuce VIEW TYPES.
+	     A. TYPE [span]. TYPE [span] sa pouzije, ak RANGE je CONTIGOUS a COMMON.
+	     B. TYPE [subrange]. TYPE [subrange] sa pouzije, ak RANGE NIE je CONTIGOUS a COMMON.
+      C. VIEW ma definovanu ADAPTOR/FACTORY FUNCTION [counted(BEGIN_ITERATOR,NUMBER_OF_ITEMS)].
+   C. VIEW [IOTA(START_VALUE)]. Pre VIEW platia nasledujuce fakty.
+      A. Vytvara nekonecny VIEW inkrementalne zvysovanych VALUES, ktore zacinaju definovanou VALUE [START_VALUE].
+      B. VIEW pouziva nasledujuce VIEW TYPE [iota_view].
+      C. VIEW ma definovanu ADAPTOR/FACTORY FUNCTION [iota(START_VALUE)].
+   D. VIEW [IOTA(START_VALUE,END_VALUE)]. Pre VIEW platia nasledujuce fakty.
+      A. Vytvara konecny VIEW inkrementalne zvysovanych VALUES, ktore zacinaju definovanou VALUE [START_VALUE] a koncia definovanou VALUE [END_VALUE-1].
+      B. VIEW pouziva nasledujuce VIEW TYPE [iota_view].
+      C. VIEW ma definovanu ADAPTOR/FACTORY FUNCTION [iota(START_VALUE,END_VALUE)].
+   E. VIEW [SINGLE]. Pre VIEW platia nasledujuce fakty.
+      A. Vytvara VIEW, ktory obsahuje iba 1 ELEMENT.
+      B. VIEW pouziva nasledujuce VIEW TYPE [single_view].
+      C. VIEW ma definovanu ADAPTOR/FACTORY FUNCTION [single(VALUE)].
+   F. VIEW [EMPTY]. Pre VIEW platia nasledujuce fakty.
+      A. Vytvara VIEW, ktory je EMPTY.
+      B. VIEW pouziva nasledujuce VIEW TYPE [empty_view].
+      C. VIEW ma definovanu ADAPTOR/FACTORY FUNCTION [empty<TType>()].
+   G. VIEW [BASIC ISTREAM]. Pre VIEW platia nasledujuce fakty.
+      A. Vytvara VIEW, ktory cita ELEMENTS z INPUT STREAM.
+      B. VIEW pouziva nasledujuce VIEW TYPE [basic_istream_view].
+   H. VIEW [ISTREAM]. Pre VIEW platia nasledujuce fakty.
+      A. Vytvara VIEW, ktory cita ELEMENTS zo STREAM obsahujucom VALUES TYPE [char].
+      B. VIEW pouziva nasledujuce VIEW TYPE [istream_view].
+      C. VIEW ma definovanu ADAPTOR/FACTORY FUNCTION [istream<TType>(STREAM)].
+   I. VIEW [WISTREAM]. Pre VIEW platia nasledujuce fakty.
+      A. Vytvara VIEW, ktory cita ELEMENTS zo STREAM obsahujucom VALUES TYPE [wchar_t].
+      B. VIEW pouziva nasledujuce VIEW TYPE [wistream_view].
+   J. VIEW [BASIC STRING]. Pre VIEW platia nasledujuce fakty.
+      A. Vytvara READ ONLY VIEW, ktory cita ELEMENTS z CHARACTER ARRAY.
+      B. VIEW pouziva nasledujuce VIEW TYPE [basic_string_view].
+   K. VIEW [span]. Pre VIEW platia nasledujuce fakty.
+      A. Vytvara READ ONLY VIEW, ktory cita ELEMENTS z CONTIGOUS MEMORY.
+      B. VIEW pouziva nasledujuce VIEW TYPE [span].
+   L. VIEW [SUBRANGE]. Pre VIEW platia nasledujuce fakty.
+      A. Vytvara READ ONLY VIEW, z ELEMENTS, ktore sa nachadzaju medzi BEGIN ITERATOR a SENTINEL.
+      B. VIEW pouziva nasledujuce VIEW TYPE [subrange].
+   M. VIEW [TAKE]. Pre VIEW platia nasledujuce fakty.
+      A. Vytvara VIEW, ktory cita PRVYCH N ELEMENTS.
+      B. VIEW pouziva rozlicne VIEW TYPES.
+      C. VIEW ma definovanu ADAPTOR FUNCTION [take(NUMBER_OF_ELEMENTS)].
+   L. VIEW [TAKE WHILE]. Pre VIEW platia nasledujuce fakty.
+      A. Vytvara VIEW, ktory cita PRVE ELEMENTS pre ktore je splneny zadany PREDICATE.
+      B. VIEW pouziva rozlicne VIEW TYPE [take_while_view].
+      C. VIEW ma definovanu ADAPTOR FUNCTION [take_while(PREDICATE)].
+   N. VIEW [DROP]. Pre VIEW platia nasledujuce fakty.
+      A. Vytvara VIEW, ktory cita vsetky ELEMENTS, okrem PRVYCH N ELEMENTS.
+      B. VIEW pouziva rozlicne VIEW TYPES.
+      C. VIEW ma definovanu ADAPTOR FUNCTION [drop(NUMBER_OF_ELEMENTS)].
+   O. VIEW [DROP WHILE]. Pre VIEW platia nasledujuce fakty.
+      A. Vytvara VIEW, ktory cita vsetky ELEMENTS, okrem PRVYCH ELEMENTS pre ktore je splneny zadany PREDICATE.
+      B. VIEW pouziva rozlicne VIEW TYPE [drop_while_view].
+      C. VIEW ma definovanu ADAPTOR FUNCTION [drop_while(PREDICATE)].
+   P. VIEW [FILTER]. Pre VIEW platia nasledujuce fakty.
+      A. Vytvara VIEW, ktory cita vsetky ELEMENTS, pre ktore je splneny zadany PREDICATE.
+      B. VIEW pouziva rozlicne VIEW TYPE [filter_view].
+      C. VIEW ma definovanu ADAPTOR FUNCTION [FILTER(PREDICATE)].
+   Q. VIEW [FILTER]. Pre VIEW platia nasledujuce fakty.
+      A. Vytvara VIEW, ktory obsahuje vsetky ELEMENTS, pre ktore su modifikovane pomocou definovanej FUNCTION.
+      B. VIEW pouziva rozlicne VIEW TYPE [transform_view].
+      C. VIEW ma definovanu ADAPTOR FUNCTION [transform(FUNCTION)].
+   R. VIEW [ELEMENTS]. Pre VIEW platia nasledujuce fakty.
+      A. Vytvara VIEW, ktory obsahuje N-ty ELEMENTS zo vsetkych ELEMENTS.
+      B. VIEW pouziva rozlicne VIEW TYPE [elements_view].
+      C. VIEW ma definovanu ADAPTOR FUNCTION [elements<INDEX>].
+   S. VIEW [KEYS]. Pre VIEW platia nasledujuce fakty.
+      A. Vytvara VIEW, ktory obsahuje PRVY ELEMENTS zo vsetkych ELEMENTS.
+      B. VIEW pouziva rozlicne VIEW TYPE [elements_view].
+      C. VIEW ma definovanu ADAPTOR FUNCTION [keys].
+   T. VIEW [KEYS]. Pre VIEW platia nasledujuce fakty.
+      A. Vytvara VIEW, ktory obsahuje DRUHY ELEMENTS zo vsetkych ELEMENTS.
+      B. VIEW pouziva rozlicne VIEW TYPE [elements_view].
+      C. VIEW ma definovanu ADAPTOR FUNCTION [values].
+   U. VIEW [REVERSE]. Pre VIEW platia nasledujuce fakty.
+      A. Vytvara VIEW, ktory obsahuje vsetky ELEMENTS v obratenom poradi.
+      B. VIEW pouziva rozlicne VIEW TYPES.
+      C. VIEW ma definovanu ADAPTOR FUNCTION [revrse()].
+   V. VIEW [JOIN]. Pre VIEW platia nasledujuce fakty.
+      A. Vytvara VIEW, ktory obsahuje vsetky ELEMENTS z viacerych RANGES.
+      B. VIEW pouziva rozlicne VIEW TYPE [join_view].
+      C. VIEW ma definovanu ADAPTOR FUNCTION [join()].
+   W. VIEW [SPLIT]. Pre VIEW platia nasledujuce fakty.
+      A. Vytvara VIEW, ktory obsahuje vsetky ELEMENTS RANGE, ktore su rozdelene do viacerych RANGES.
+      B. VIEW pouziva rozlicne VIEW TYPE [split_view].
+      C. VIEW ma definovanu ADAPTOR FUNCTION [split(SEPARATOR)].
+   X. VIEW [LAZY SPLIT]. Pre VIEW platia nasledujuce fakty.
+      A. Vytvara VIEW, ktory obsahuje vsetky ELEMENTS INOUT, alebo CONST RANGE, ktore su rozdelene do viacerych RANGES.
+      B. VIEW pouziva rozlicne VIEW TYPE [lazy_split_view].
+      C. VIEW ma definovanu ADAPTOR FUNCTION [lazy_split(SEPARATOR)].
+   Y. VIEW [COMMON]. Pre VIEW platia nasledujuce fakty.
+      A. Vytvara VIEW, ktory obsahuju ELEMENTS rovnakeho povodneho RANGE, pricom VIEW ma rovnaky TYPE pre BEGIN ITERATOR a TYPE pre SENTINEL.
+      B. VIEW pouziva rozlicne VIEW TYPES.
+      C. VIEW ma definovanu ADAPTOR FUNCTION [common()].
+18. STANDARD C++ CONTAINERS NIE su VIEWS, pretoze nemaju COPY CONSTRUCTORS so zlozitostou O(1). No, STANDARD C++ CONTAINERS je mozne konvertovat na VIEWS nasledujucimi sposobmi.
+   A. Explicitne pomocou VIEW [ALL].
+   B. Explicitne pomocou TYPE [SUBRANGE].
+   C. Explicitne pomocou VIEW [COUNTED].
+   D. Implicitne pouzitim VIEW ADAPTOR.
+19. VIEWS je mozne vytvarat nasledujucimi sposobmi.
+   A. Vytvorenim instancie prislusneho VIEW TYPE.
+   B. Volanim prislusnej VIEW ADAPTOR FUNCTION.
+   C. Pomocou PIPELINE.
+20. C++ pri pouziti ADAPTOR FUNCTIONS robi CONVERSIONS na VIEWS nasledujucim sposobom.
+   A. Ak je do ADAPTOR FUNCTION poslany VIEW, tak sa ziadna CONVERSION nerobi a pouzije sa zaslany VIEW.
+   B. Ak je do ADAPTOR FUNCTION poslany RANGE ako LVALUE, vytvori sa VIEW TYPE [ref_view] pomocou ADAPTOR FUNCTION [all()].
+   !!! C. Ak je do ADAPTOR FUNCTION poslany RANGE ako RVALUE, vytvori sa VIEW TYPE [owning_view] pomocou ADAPTOR FUNCTION [all()]. VIEW TYPE [owning_view] je inicializovany pomocou MOVE OPERATION, to znamena, ze priamo vlastni povodny RANGE.
+21. VIEWS vykonavaju LAZY EVALUATION. Pre LAZY EVALUATION VIEWS platia nasledujuce fakty.
+   A. VIEWS su len DATA OBJECTS. Ich vytvorenim nedochadza k spusteniu spracovania VIEWS.
+   B. Pri pouziti VIES k spracovaniu RANGES dochadza az po spusteni ITERATION nad danym VIEW.
+   C. VIEWS vykonavaju pri ITERATION nasledujuce cinnosti.
+      A. Ak je VIEW poziadany o vratenie nasledujuceho ELEMENT, VIEW vykonava ITERATION, az kym nenajde prislusny ELEMENT.
+	  B. Ak je VIEW poziadany o vratenie VALUE ELEMENT na ktory prave odkazuje, VIEW vykona definovane TRANSFORMATIONS a vrati danu VALUE.
+   D. VIEWS teda pouzivaju PULL MODEL, ktory ma nasledujuce vyhody.
+      A. Umoznuje spracovavat iba tie ELEMENTS, ktore su skutocne potrebne.
+	  B. Umoznuje spracovavat VIEWS nad nekonecnymi RANGES.
+22. VIEWS vykonavaju na zlepsenie PERFORMANCE CACHING. Pre CACHING platia nasledujuce fakty.
+   A. VIEWS mozu implementovat CACHING na zlepsenie PERFORMANCE pri opakovanej ITERATION cez PIPELINE, v ktorej sa nachadza dany VIEW.
+   B. VIEWS pri CACHNING mozu napriklad ukladat poziciu ITERATOR, ktory bol najdeny pri prvej ITERATION do svojho VIEW OBJECT a pri dalsej ITERATION pouzit CACHED VALUE.
+   C. VIEW CACHING sposobuje nasledujuce problemy.
+      A. Ak je UNDERLYING RANGE po uvodnej ITERATION, ked bola CACHE UPDATED zmenena, dalsia ITERATION moze generovat NESPRAVNE VYSLEDKY.
+	  B. VIEW CACHING znemoznuje pouzitie CONST VIEW OBJECTS, pretoze pri CACHING, VIEWS musia ukladat CACHED VALUES do svojich VIEW OBJECTS a tie tym padom NEMOZU byt CONST.
+23. Pouzitie VIEWS moze sposobit PEFRORMANCE ISSUES. Platia nasledujuce fakty.
+   A. VIEWS pouzivaju pri ziskavani VALUES z PIPELINE PULL MODEL, ktory moze sposobit opakovane volanie VIEWS, ktore uz predtym boli zavolane.
+   !!! B. Ak napriklad PIPELINE obsahuje TRANSFORM VIEW a az po nom FILTER VIEW, tak TRANSFORM VIEW sa pre kazdu VALUE, ktora presla FILTROM vola 2 krat. Raz pri hladani ITERATOR pomocou OPERATOR [OPERATOR++] a nasledne pri vrateni VALUE z PIPELINE volanim OPERATOR [OPERATOR*].
+   !!! C. Ak PIPELINE ma VIEWS [TRANSFORM_1 | TRANSFORM_2 | FILTER_1 | TRANSFORM_3 | FILTER_2] tak platia nasledujuce fakty.
+      A. Pre ELEMENT pre ktory VIEW [FILTER_1] vrati VALUE [false] sa vykonaju nasledujuce VIEWS.
+	     A. VIEW [TRANSFORM_1].
+	     B. VIEW [TRANSFORM_2].
+	     C. VIEW [FILTER_1].
+      B. Pre ELEMENT pre ktory VIEW [FILTER_1] vrati VALUE [true] a VIEW [FILTER_2] vrati VALUE [false] sa vykonaju nasledujuce VIEWS.
+	     A. VIEW [TRANSFORM_1].
+	     B. VIEW [TRANSFORM_2].
+	     C. VIEW [FILTER_1].
+	     !!! D. VIEW [TRANSFORM_1].
+	     !!! E. VIEW [TRANSFORM_2].
+	     !!! F. VIEW [TRANSFORM_3].
+	     !!! G. VIEW [FILTER_2].
+      C. Pre ELEMENT pre ktory VIEW [FILTER_1] vrati VALUE [true] a VIEW [FILTER_2] vrati VALUE [true] sa vykonaju nasledujuce VIEWS.
+	     A. VIEW [TRANSFORM_1].
+	     B. VIEW [TRANSFORM_2].
+	     C. VIEW [FILTER_1].
+	     !!! D. VIEW [TRANSFORM_1].
+	     !!! E. VIEW [TRANSFORM_2].
+	     !!! F. VIEW [TRANSFORM_3].
+	     !!! G. VIEW [FILTER_2].
+	     !!! H. VIEW [TRANSFORM_1].
+	     !!! I. VIEW [TRANSFORM_2].
+	     !!! J. VIEW [TRANSFORM_3].
+24. LIFETIME VIEWS a RANGE, na ktoru su VIEWS aplikovane su vzajomne previazane. Pre LIFETIME VIEWS a RANGE platia nasledujuce fakty.
+   A. VIEWS, ktore su vytvarane pre RANGES prenesenych ako LVALUE obsahuju interne LVALUE REFERNCE na povodny VIEW. To znamena, ze RANGE musi existovat, ked su pren pouzitie tieto VIEWS, inak dojde k UNDEFINED BEHAVIOR.
+   !!! B. VIEWS, ktore su vytvarane pre RANGES prenesenych ako RVALUE su MOVED do PRVEHO VIEW v PIPELINE. Dalsie VIEWS uz pouzivaju LAZY EVAULATION a tak NEPOTREBUJU mat referenciu na RANGE. Preto tieto VIEWS mozu byt pouzite aj potom co RVALUE RANGE je uvolnena z MEMORY.
+25. Pre modifikaciu VALUES vo VIEWS platia nasledujuce fakty.
+   A. VIEWS mozu byt pouzite na vratenie RANGE ELEMENTS, ktore mozu byt nasledne MODIFIKOVANE. To znamena, ze ak PIPELINE tvorena viacerymi VIEWS vrati RANGE ELEMENT, na tento RANGE ELEMENT je mozne referovat pomocou NON-CONST REFERENCE a modifikovat ho.
+   !!!!! B. Samotne VIEWS vo svojich FUNCTION NESMU modifikovat ELEMENTS, ktore spracovavaju. Ak to spravia, vysledkom je UNDEFINED BEHAVIOR.
+26. Pre modifikaciu VALUES v RANGES potom ako VIEWS nad tymito RANGES vykonali CACHING vykonanim prvej ITERATION platia nasledujuce fakty.
+   A. Pre RANDOM ACCESS RANGES si VIEWS ukladaju do CACHE INDEX daneho ELEMENT, a nie ITERATOR. Ak sa RANGE zmeni napriklad vymazanim ELEMENTS z RANGE, moze CACHED INDEX odkazovat mimo RANGE do NEALOKOVANEJ MEMORY.
+   B. Pre NON-RANDOM ACCESS RANGES ako napriklad LISTS, do CACHE sa uklada ITERATOR na ELEMENT. To moze sposobit problemy, ak je ELEMENT na ktory odkazuje ITERATOR odstraneny z RANGE, alebo nove ELEMENTS su priane PRED CACHED ITERATOR.
+   !!! C. Pri kopirovani VIEWS moze dojst k zneplatneniu CACHE.
+      A. Pre RANDOM ACCESS RANGES VIEWS, ktore su COPIED nevykonavaju RESET CACHED ELEMENT.
+      B. Pre NON-RANDOM ACCESS RANGES VIEWS, ktore su COPIED vykonavaju RESET CACHED ELEMENT.
+   !!!!! D. Pre tieto nuansy je idealne NEVYKONAVAT modifikacie RANGES po vytvoreni VIEWS, ale VIEWS po ich vytvoreni okamzite pouzit.
+27. Pre pouzitie CONST VIEWS platia nasledujuce fakty.
+   A. CONST VIEWS nie je mozne konzistentne pouzit, pretoze niektore VIEWS si ukladaju CACHED VALUES do svojich OBJECTS, a tym padom NEMOZU byt pouzite ako CONST VIEWS. Tym padom niektore CONST VIEWS nie je mozne iterovat.
+   B. VIEWS odstranuju propagaciu CONSTNESS do ELEMENTS.
+   C. CONST FUNCTIONS ako CONST FUNCTION [begin()] a CONST FUNCTION [end()] su implementovane iba ak VIEWS referuju na RANGES, ktore podporuju RANDOM ACCESS.
+   D. METHODS ako METHOD [cbegin()] a METHOD [cend()] nie su VIEWS implementovane.
+   E. FUNCTIONS ako FUNCTION [std::ranges::cbegin()] a FUNCTION [std::ranges::cend()] maju pre CONST VIEW BROKEN implementaciu.
+   !!! E. Vdaka nedostatkom pri imlementacii CONST VIEWS, nie je mozne implementovat univerzane TEMPLATE METHODS, ktore maju ako PARAMETER CONST VIEW, ktore by bolo mozne pouzit pre vsetky typy RANGES a VIEWS.
+   !!!!! F. Pretoze VIEWS mozu modifikovat svoj INTERNAL STATE, VIEWS NIE su THREAD SAFE. Pouzitie toho isteho VIEW vo viacerych THREADS vedie k UNDEFINED BEHAVIOR.
+28. Ak sa ma vytvorit TEMPLATE FUNCTION, ktora ma byt volatelna pre RANGE aj VIEW je nutne pouzit nasledujuci postup.
+   A. Vytvori sa 1. OVERLOADED TEMPLATE FUNCTION pre RANGES. Tato musi nmat CONCEPT CONSTRAINT, ze sa bude volat iba pre RANGES [ranges::input_range<TRange>], ktore NIE su VIEWS [!ranges::view<TRange>]. Ako PARAMETER by mala mat TYPE [const TRange&], kde VALUE [TRange] reprezentuje RANGE TYPE.
+   B. Vytvori sa 2. OVERLOADED TEMPLATE FUNCTION pre VIEWS.  Tato musi nmat CONCEPT CONSTRAINT pre VIEWS [ranges::view]. Ako PARAMETER by mala mat TYPE [TView], kde VALUE [TView] reprezentuje VIEW TYPE.
+   !!! C. Nevyhodou tohto pristupu je, ze v 2. OVERLOADED TEMPLATE FUNCTION pre VIEWS sa PARAMETER prenasa BY-VALUE, pre ktory v niektorych VIEWS dochadza k RESET internej CACHE.
+29. VIEWS mozu odstranovat propagaciu CONSTNESS z VIEWS na VIEW ELEMENTS. Platia nasledujuce fakty.
+   A. C++ CONTAINERS (RANGES) podporuju DEEP CONSTNESS. To znamena, ze ak CODE obsahuje CONST LVALUE REFERENCE na RANGE, tak nie je mozne modifikovat ELEMENTS daneho RANGE. COMPILER v takom pripade hodi ERROR.
+   !!! B. C++ VIEWS podporuju SHALLOW CONSTNESS. To znamena, ze aj ked CODE obsahuje obsahuje CONST LVALUE REFERENCE na VIEW, tak UMOZNUJE modifikaciu ELEMENTS UNDERLYING RANGE.
+   !!! C. Ak su VIEWS prenasane ako RVALUE REFERENCE tak propagacia CONSTNESS z VIEWS na ELEMENTS ostava zachovana a pri pokuse modifikovat ELEMENTS hodi COMPILER ERROR.
+   !!!!! D. Problm s nepropagaciou CONSTNESS z VIEWS na VIEW ELEMENTS je mozne riesit nasledujucimi sposobmi.
+      A. RANGE pre ktoru je vytvarany VIEW sa oznaci ako CONST RANGE. V takom pripade VIEW NEMOZE modifikovat ELEMENTS daneho RANGE.
+      B. Na RANGE pred vytvorenim VIEW sa aplikje FUNCTION [template<typename TType> std::add_const_t<TType>& as_const(TType& Type) noexcept], ktora vytvori CONST RANGE. V takom pripade VIEW NEMOZE modifikovat ELEMENTS daneho RANGE.
+      C. Na VIEW po jeho vytvoreni sa aplikuje [views::as_const()], ktora CELY VIEW spravi CONST. V takom pripade VIEW NEMOZE modifikovat ELEMENTS daneho RANGE.
+30. CONSTNESS do VIEWS je mozne vratit nasledujucimi sposobmi.
+   A. Pri iterovani VIEW ELEMENTS je mozne sa na ELEMENTS referovat pomocou CONST REFERENCES.
+   B. Pri iterovani VIEW ELEMENTS je mozne ELEMENT konvertovat na CONST VALUE pomocou FUNCTION [std::as_const()].
+31. C++ ma pri pouziti CONSTNESS vo VIEWS nasledujuce problemy, ktore NIE su VYRIESENE.
+   A. VIEWS NEDEFINUJU CONST ITERATORS [const_iterator]. Jediny VIEW, ktory definje CONST ITERATOR [const_iterator] je VIEW [string_view].
+   !!! B. V C++ 20 VIEWS NEDEFINOVALI METHOD [cbegin()] a METHOD [cend()], no v C++ 23 uz tieto METHODS DEFINUJU.
+   C. FUNCTION [std::cbegin()] a FUNCTION [std::cend()] su CHYBNE implementovane pre VIEWS a NEGARANTUJU CONSTNESS.
+   !!! D. FUNCTION [std::ranges::cbegin()] a FUNCTION [std::ranges::cend()] uz boli v C++ 2023 FIXED a pre VIEWS a GARANTUJU CONSTNESS.
+//----------------------------------------------------------------------------------------------------------------------

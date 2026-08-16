@@ -1,0 +1,1 @@
+g++ -m64 -std=gnu++2c -fconcepts -pthread -fexceptions -pedantic -Wall -Wextra -Wno-parentheses -Wno-inaccessible-base -fconcepts-diagnostics-depth=100 -o Program.exe Helpers/MyDebug.cpp Helpers/CException.cpp Helpers/CString.cpp RangesAndViews.cpp CGeneratorRange.cpp
